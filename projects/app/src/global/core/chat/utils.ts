@@ -28,10 +28,12 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   const flatResData: ChatHistoryItemResType[] =
     historyItem.responseData
       ?.map((item) => {
-        if (item.pluginDetail || item.toolDetail) {
-          return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
-        }
-        return item;
+        return [
+          item,
+          ...(item.pluginDetail || []),
+          ...(item.toolDetail || []),
+          ...(item.loopDetail || [])
+        ];
       })
       .flat() || [];
 

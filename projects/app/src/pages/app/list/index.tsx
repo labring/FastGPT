@@ -1,13 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  useDisclosure,
-  Input,
-  InputGroup,
-  InputLeftElement
-} from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -95,15 +87,23 @@ const MyApps = () => {
 
   const RenderSearchInput = useMemo(
     () => (
-      <InputGroup maxW={['auto', '250px']}>
-        <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-          <MyIcon name={'common/searchLight'} w={'1rem'} />
-        </InputLeftElement>
+      <InputGroup maxW={['auto', '250px']} position={'relative'}>
+        <MyIcon
+          position={'absolute'}
+          zIndex={10}
+          name={'common/searchLight'}
+          w={'1rem'}
+          color={'myGray.600'}
+          left={2.5}
+          top={'50%'}
+          transform={'translateY(-50%)'}
+        />
         <Input
           value={searchKey}
           onChange={(e) => setSearchKey(e.target.value)}
           placeholder={appT('search_app')}
           maxLength={30}
+          pl={8}
           bg={'white'}
         />
       </InputGroup>
@@ -179,66 +179,67 @@ const MyApps = () => {
 
             {isPc && RenderSearchInput}
 
-            {userInfo?.team.permission.hasWritePer &&
-              folderDetail?.type !== AppTypeEnum.httpPlugin && (
-                <MyMenu
-                  iconSize="2rem"
-                  Button={
-                    <Button variant={'primary'} leftIcon={<AddIcon />}>
-                      <Box>{t('common:common.Create New')}</Box>
-                    </Button>
+            {(folderDetail
+              ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
+              : userInfo?.team.permission.hasWritePer) && (
+              <MyMenu
+                size="md"
+                Button={
+                  <Button variant={'primary'} leftIcon={<AddIcon />}>
+                    <Box>{t('common:common.Create New')}</Box>
+                  </Button>
+                }
+                menuList={[
+                  {
+                    children: [
+                      {
+                        icon: 'core/app/simpleBot',
+                        label: t('app:type.Simple bot'),
+                        description: t('app:type.Create simple bot tip'),
+                        onClick: () => setCreateAppType(AppTypeEnum.simple)
+                      },
+                      {
+                        icon: 'core/app/type/workflowFill',
+                        label: t('app:type.Workflow bot'),
+                        description: t('app:type.Create workflow tip'),
+                        onClick: () => setCreateAppType(AppTypeEnum.workflow)
+                      },
+                      {
+                        icon: 'core/app/type/pluginFill',
+                        label: t('app:type.Plugin'),
+                        description: t('app:type.Create one plugin tip'),
+                        onClick: () => setCreateAppType(AppTypeEnum.plugin)
+                      },
+                      {
+                        icon: 'core/app/type/httpPluginFill',
+                        label: t('app:type.Http plugin'),
+                        description: t('app:type.Create http plugin tip'),
+                        onClick: onOpenCreateHttpPlugin
+                      }
+                    ]
+                  },
+                  {
+                    children: [
+                      {
+                        icon: '/imgs/app/templateFill.svg',
+                        label: t('app:template_market'),
+                        description: t('app:template_market_description'),
+                        onClick: () => setTemplateModalType('all')
+                      }
+                    ]
+                  },
+                  {
+                    children: [
+                      {
+                        icon: FolderIcon,
+                        label: t('common:Folder'),
+                        onClick: () => setEditFolder({})
+                      }
+                    ]
                   }
-                  menuList={[
-                    {
-                      children: [
-                        {
-                          icon: 'core/app/simpleBot',
-                          label: t('app:type.Simple bot'),
-                          description: t('app:type.Create simple bot tip'),
-                          onClick: () => setCreateAppType(AppTypeEnum.simple)
-                        },
-                        {
-                          icon: 'core/app/type/workflowFill',
-                          label: t('app:type.Workflow bot'),
-                          description: t('app:type.Create workflow tip'),
-                          onClick: () => setCreateAppType(AppTypeEnum.workflow)
-                        },
-                        {
-                          icon: 'core/app/type/pluginFill',
-                          label: t('app:type.Plugin'),
-                          description: t('app:type.Create one plugin tip'),
-                          onClick: () => setCreateAppType(AppTypeEnum.plugin)
-                        },
-                        {
-                          icon: 'core/app/type/httpPluginFill',
-                          label: t('app:type.Http plugin'),
-                          description: t('app:type.Create http plugin tip'),
-                          onClick: onOpenCreateHttpPlugin
-                        }
-                      ]
-                    },
-                    {
-                      children: [
-                        {
-                          icon: '/imgs/app/templateFill.svg',
-                          label: t('app:template_market'),
-                          description: t('app:template_market_description'),
-                          onClick: () => setTemplateModalType('all')
-                        }
-                      ]
-                    },
-                    {
-                      children: [
-                        {
-                          icon: FolderIcon,
-                          label: t('common:Folder'),
-                          onClick: () => setEditFolder({})
-                        }
-                      ]
-                    }
-                  ]}
-                />
-              )}
+                ]}
+              />
+            )}
           </Flex>
 
           {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}

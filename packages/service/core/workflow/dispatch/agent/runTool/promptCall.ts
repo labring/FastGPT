@@ -29,7 +29,6 @@ import { WorkflowResponseType } from '../../type';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { i18nT } from '../../../../../../web/i18n/utils';
 
 type FunctionCallCompletion = {
   id: string;
@@ -225,7 +224,11 @@ export const runToolWithPromptCall = async (
 
   // console.log(JSON.stringify(requestMessages, null, 2));
   /* Run llm */
-  const { response: aiResponse, isStreamResponse } = await createChatCompletion({
+  const {
+    response: aiResponse,
+    isStreamResponse,
+    getEmptyResponseTip
+  } = await createChatCompletion({
     body: requestBody,
     userKey: user.openaiAccount,
     options: {
@@ -251,8 +254,11 @@ export const runToolWithPromptCall = async (
       return result.choices?.[0]?.message?.content || '';
     }
   })();
-
   const { answer: replaceAnswer, toolJson } = parseAnswer(answer);
+  if (!answer && !toolJson) {
+    return Promise.reject(getEmptyResponseTip());
+  }
+
   // No tools
   if (!toolJson) {
     if (replaceAnswer === ERROR_TEXT) {
@@ -534,9 +540,6 @@ async function streamResponse({
     }
   }
 
-  if (!textAnswer) {
-    return Promise.reject(i18nT('chat:LLM_model_response_empty'));
-  }
   return { answer: textAnswer.trim() };
 }
 

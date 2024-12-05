@@ -35,9 +35,7 @@ weight: 707
 
 ### Milvus版本
 
-暂不推荐，部分系统存在精度丢失，等待修复。
-
-对于千万级以上向量性能更优秀。
+生产部署首选，对于千万级以上向量性能更优秀。
 
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
@@ -51,9 +49,7 @@ weight: 707
 
 ### zilliz cloud版本
 
-暂不推荐，部分系统存在精度丢失，等待修复。
-
-亿级以上向量首选。
+Milvus 的全托管服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
 
 由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
 
@@ -138,14 +134,16 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 # curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-zilliz.yml
 ```
 
-### 2. 修改 docker-compose.yml 环境变量
+### 2. 修改环境变量
+
+找到 yml 文件中，fastgpt 容器的环境变量进行下面操作：
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="PgVector版本" >}}
 {{< markdownify >}}
 
 ```
-无需操作
+FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://cloud.fastgpt.cn
 ```
 
 {{< /markdownify >}}
@@ -154,7 +152,7 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 {{< markdownify >}}
 
 ```
-无需操作
+FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://cloud.fastgpt.cn
 ```
 
 {{< /markdownify >}}
@@ -162,11 +160,14 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 {{< tab tabName="Zilliz版本" >}}
 {{< markdownify >}}
 
+打开 [Zilliz Cloud](https://zilliz.com.cn/), 创建实例并获取相关秘钥。
+
 ![zilliz_key](/imgs/zilliz_key.png)
 
 {{% alert icon="🤖" context="success" %}}
 
-修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
+1. 修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
+2. 修改FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://cloud.fastgpt.cn
 
 {{% /alert %}}
 

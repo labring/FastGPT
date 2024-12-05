@@ -333,7 +333,7 @@ export const useDebug = () => {
                   <Flex alignItems={'center'} mb={1}>
                     <Box position={'relative'}>
                       {required && (
-                        <Box position={'absolute'} right={-2} top={'-1px'} color={'red.600'}>
+                        <Box position={'absolute'} left={'-8px'} top={'-2px'} color={'red.600'}>
                           *
                         </Box>
                       )}

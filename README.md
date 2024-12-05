@@ -105,12 +105,12 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
   [点击查看 Sealos 一键部署 FastGPT 教程](https://doc.tryfastgpt.ai/docs/development/sealos/)
 
 * [快速开始本地开发](https://doc.tryfastgpt.ai/docs/development/intro/)
-* [部署 FastGPT](https://doc.tryfastgpt.ai/docs/development/sealos)
+* [部署 FastGPT](https://doc.tryfastgpt.ai/docs/development/sealos/)
 * [系统配置文件说明](https://doc.tryfastgpt.ai/docs/development/configuration/)
 * [多模型配置](https://doc.tryfastgpt.ai/docs/development/one-api/)
-* [版本更新/升级介绍](https://doc.tryfastgpt.ai/docs/development/upgrading)
+* [版本更新/升级介绍](https://doc.tryfastgpt.ai/docs/development/upgrading/)
 * [OpenAPI API 文档](https://doc.tryfastgpt.ai/docs/development/openapi/)
-* [知识库结构详解](https://doc.tryfastgpt.ai/docs/course/dataset_engine/)
+* [知识库结构详解](https://doc.tryfastgpt.ai/docs/guide/knowledge_base/rag/)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
@@ -118,13 +118,18 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🏘️ 社区交流群
 
-扫码加入飞书话题群 (新开，逐渐弃用微信群)：
+扫码加入飞书话题群：
 
 ![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
+
+## 🏘️ 加入我们
+
+我们正在寻找志同道合的小伙伴，加速 FastGPT 的发展。你可以通过 [FastGPT 2025 招聘](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg) 了解 FastGPT 的招聘信息。
+
 
 ## 💪 相关项目
 
@@ -149,7 +154,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🌿 第三方生态
 
-- [OnWeChat 个人微信/企微机器人](https://doc.tryfastgpt.ai/docs/use-cases/onwechat/)
+- [COW 个人微信/企微机器人](https://doc.tryfastgpt.ai/docs/use-cases/external-integration/onwechat/)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
@@ -171,7 +176,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
         <picture>
           <source media="(prefers-color-scheme: dark)" srcset="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=dark">
           <img alt="Active participants of labring - past 28 days" src="https://next.ossinsight.io/widgets/official/compose-org-active-contributors/thumbnail.png?activity=active&period=past_28_days&owner_id=102226726&repo_ids=605673387&image_size=2x3&color_scheme=light">
-        </picture>
+        </picture>****
       </td>
       <td rowspan="2">
         <picture>

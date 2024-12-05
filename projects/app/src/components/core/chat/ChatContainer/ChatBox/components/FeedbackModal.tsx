@@ -4,30 +4,25 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { updateChatUserFeedback } from '@/web/core/chat/api';
+import { useContextSelector } from 'use-context-selector';
+import { ChatBoxContext } from '../Provider';
 
 const FeedbackModal = ({
   appId,
   chatId,
   dataId,
-  teamId,
-  teamToken,
-  shareId,
-  outLinkUid,
   onSuccess,
   onClose
 }: {
   appId: string;
   chatId: string;
   dataId: string;
-  shareId?: string;
-  teamId?: string;
-  teamToken?: string;
-  outLinkUid?: string;
   onSuccess: (e: string) => void;
   onClose: () => void;
 }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
 
   const { mutate, isLoading } = useRequest({
     mutationFn: async () => {
@@ -36,11 +31,8 @@ const FeedbackModal = ({
         appId,
         chatId,
         dataId,
-        shareId,
-        teamId,
-        teamToken,
-        outLinkUid,
-        userBadFeedback: val
+        userBadFeedback: val,
+        ...outLinkAuthData
       });
     },
     onSuccess() {

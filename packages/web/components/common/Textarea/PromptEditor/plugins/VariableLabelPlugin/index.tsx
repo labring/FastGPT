@@ -6,7 +6,7 @@ import { TextNode } from 'lexical';
 import { getHashtagRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 

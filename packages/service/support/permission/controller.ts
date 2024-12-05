@@ -413,7 +413,8 @@ export const createFileToken = (data: FileTokenQuery) => {
     return Promise.reject('System unset FILE_TOKEN_KEY');
   }
 
-  const expireMinutes = bucketNameMap[data.bucketName].previewExpireMinutes;
+  const expireMinutes =
+    data.customExpireMinutes ?? bucketNameMap[data.bucketName].previewExpireMinutes;
   const expiredTime = Math.floor(addMinutes(new Date(), expireMinutes).getTime() / 1000);
 
   const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
@@ -435,14 +436,14 @@ export const authFileToken = (token?: string) =>
     const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
 
     jwt.verify(token, key, function (err, decoded: any) {
-      if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.tmbId || !decoded?.fileId) {
+      if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.fileId) {
         reject(ERROR_ENUM.unAuthFile);
         return;
       }
       resolve({
         bucketName: decoded.bucketName,
         teamId: decoded.teamId,
-        tmbId: decoded.tmbId,
+        uid: decoded.uid,
         fileId: decoded.fileId
       });
     });

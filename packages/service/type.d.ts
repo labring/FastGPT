@@ -23,9 +23,6 @@ declare global {
   var whisperModel: WhisperModelType;
   var reRankModels: ReRankModelItemType[];
 
-  var systemLoadedGlobalVariables: boolean;
-  var systemLoadedGlobalConfig: boolean;
-
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
   var appMarketTemplates: TemplateMarketItemType[];
 }

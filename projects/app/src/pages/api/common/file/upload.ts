@@ -9,7 +9,17 @@ import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addSeconds } from 'date-fns';
-import { authChatCert } from '@/service/support/permission/auth/chat';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+
+export type UploadChatFileProps = {
+  appId: string;
+} & OutLinkChatAuthProps;
+export type UploadDatasetFileProps = {
+  datasetId: string;
+};
 
 const authUploadLimit = (tmbId: string) => {
   if (!global.feConfigs.uploadFileMaxAmount) return;
@@ -28,15 +38,43 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     const upload = getUploadModel({
       maxSize: global.feConfigs?.uploadFileMaxSize
     });
-    const { file, bucketName, metadata } = await upload.doUpload(req, res);
+    const { file, bucketName, metadata, data } = await upload.doUpload<
+      UploadChatFileProps | UploadDatasetFileProps
+    >(req, res);
     filePaths.push(file.path);
-    const { teamId, tmbId, outLinkUid } = await authChatCert({
-      req,
-      authToken: true,
-      authApiKey: true
-    });
 
-    await authUploadLimit(outLinkUid || tmbId);
+    const { teamId, uid } = await (async () => {
+      if (bucketName === 'chat') {
+        const chatData = data as UploadChatFileProps;
+        const authData = await authChatCrud({
+          req,
+          authToken: true,
+          authApiKey: true,
+          ...chatData
+        });
+        return {
+          teamId: authData.teamId,
+          uid: authData.uid
+        };
+      }
+      if (bucketName === 'dataset') {
+        const chatData = data as UploadDatasetFileProps;
+        const authData = await authDataset({
+          datasetId: chatData.datasetId,
+          per: WritePermissionVal,
+          req,
+          authToken: true,
+          authApiKey: true
+        });
+        return {
+          teamId: authData.teamId,
+          uid: authData.tmbId
+        };
+      }
+      return Promise.reject('bucketName is empty');
+    })();
+
+    await authUploadLimit(uid);
 
     addLog.info(`Upload file success ${file.originalname}, cost ${Date.now() - start}ms`);
 
@@ -46,7 +84,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     const fileId = await uploadFile({
       teamId,
-      tmbId,
+      uid,
       bucketName,
       path: file.path,
       filename: file.originalname,
@@ -61,7 +99,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
         previewUrl: `${ReadFileBaseUrl}/${file.originalname}?token=${await createFileToken({
           bucketName,
           teamId,
-          tmbId,
+          uid,
           fileId
         })}`
       }

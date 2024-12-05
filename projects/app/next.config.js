@@ -45,8 +45,6 @@ const nextConfig = {
     }
 
     if (isServer) {
-      // config.externals.push('@zilliz/milvus2-sdk-node');
-
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
@@ -84,8 +82,14 @@ const nextConfig = {
   transpilePackages: ['@fastgpt/*', 'ahooks'],
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
-    serverComponentsExternalPackages: ['mongoose', 'pg', '@node-rs/jieba', 'duck-duck-scrape'],
-    outputFileTracingRoot: path.join(__dirname, '../../')
+    serverComponentsExternalPackages: [
+      'mongoose',
+      'pg',
+      '@node-rs/jieba',
+      '@zilliz/milvus2-sdk-node'
+    ],
+    outputFileTracingRoot: path.join(__dirname, '../../'),
+    instrumentationHook: true
   }
 };
 

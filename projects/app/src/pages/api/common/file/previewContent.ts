@@ -2,7 +2,7 @@
     Read db file content and response 3000 words
 */
 import type { NextApiResponse } from 'next';
-import { authFile } from '@fastgpt/service/support/permission/auth/file';
+import { authCollectionFile } from '@fastgpt/service/support/permission/auth/file';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
@@ -26,7 +26,7 @@ async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiRe
 
   const { teamId } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
-      return authFile({
+      return authCollectionFile({
         req,
         authToken: true,
         authApiKey: true,

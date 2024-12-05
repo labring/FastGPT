@@ -7,10 +7,8 @@
   "courseUrl": "https://fael3z0zfze.feishu.cn/wiki/Rkc5witXWiJoi5kORd2cofh6nDg?fromScene=spaceOverview",
   "showStatus": true,
   "weight": 10,
-
   "isTool": true,
   "templateType": "tools",
-
   "workflow": {
     "nodes": [
       {
@@ -52,6 +50,26 @@
             "canSelectImg": false,
             "maxFiles": 14,
             "defaultValue": ""
+          },
+          {
+            "renderTypeList": ["switch", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "HTMLtable",
+            "label": "HTMLtable",
+            "description": "是否以HTML格式输出表格。如果需要精确地输出表格，请打开此开关以使用HTML格式。关闭后，表格将转换为Markdown形式输出，但这可能会损失一些表格特性，如合并单元格。",
+            "defaultValue": false,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
           }
         ],
         "outputs": [
@@ -67,6 +85,13 @@
             "valueType": "arrayString",
             "key": "files",
             "label": "files",
+            "type": "hidden"
+          },
+          {
+            "id": "htmltable",
+            "valueType": "boolean",
+            "key": "HTMLtable",
+            "label": "HTMLtable",
             "type": "hidden"
           }
         ]
@@ -220,7 +245,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"files\": {{files}}\n}",
+            "value": "{\n  \"apikey\": \"{{apikey}}\",\n  \"HTMLtable\": {{HTMLtable}},\n  \"files\": {{files}}\n}",
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -305,6 +330,36 @@
             },
             "required": true,
             "value": [["pluginInput", "url"]]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "boolean",
+            "canEdit": true,
+            "key": "HTMLtable",
+            "label": "HTMLtable",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "htmltable"]
           }
         ],
         "outputs": [

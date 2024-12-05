@@ -9,6 +9,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
+import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -45,12 +46,13 @@ const scoreTheme: Record<
 const QuoteItem = ({
   quoteItem,
   canViewSource,
-  canEditDataset
+  canEditDataset,
+  ...RawSourceBoxProps
 }: {
   quoteItem: SearchDataResponseItemType;
   canViewSource?: boolean;
   canEditDataset?: boolean;
-}) => {
+} & Omit<readCollectionSourceBody, 'collectionId'>) => {
   const { t } = useTranslation();
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 
@@ -196,6 +198,7 @@ const QuoteItem = ({
             sourceName={quoteItem.sourceName}
             sourceId={quoteItem.sourceId}
             canView={canViewSource}
+            {...RawSourceBoxProps}
           />
           <Box flex={1} />
           {quoteItem.id && canEditDataset && (

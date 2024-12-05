@@ -1,5 +1,5 @@
 import { ChevronRightIcon } from '@chakra-ui/icons';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../../../../../components/common/Avatar';
 
@@ -28,7 +28,7 @@ export default function VariableLabel({
         color={parentLabel !== 'undefined' ? 'myGray.900' : 'red.600'}
       >
         {parentLabel !== 'undefined' ? (
-          <span>
+          <Flex alignItems={'center'} color={'myGray.600'}>
             <Avatar
               src={nodeAvatar as any}
               w={'1rem'}
@@ -36,12 +36,11 @@ export default function VariableLabel({
               borderRadius={'xs'}
               display={'inline-flex'}
               verticalAlign={'middle'}
-              mb={'3px'}
             />
             {parentLabel}
-            <ChevronRightIcon />
+            <ChevronRightIcon color={'myGray.500'} />
             {childLabel}
-          </span>
+          </Flex>
         ) : (
           <>
             <Box>{t('common:invalid_variable')}</Box>

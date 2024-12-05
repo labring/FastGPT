@@ -7,7 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const NodeComment = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs } = data;

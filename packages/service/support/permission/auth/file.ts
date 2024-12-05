@@ -7,7 +7,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 
-export async function authFile({
+export const authCollectionFile = async ({
   fileId,
   per = OwnerPermissionVal,
   ...props
@@ -17,7 +17,7 @@ export async function authFile({
   AuthResponseType & {
     file: DatasetFileSchema;
   }
-> {
+> => {
   const authRes = await parseHeaderCert(props);
   const { teamId, tmbId } = authRes;
 
@@ -33,7 +33,7 @@ export async function authFile({
 
   const permission = new Permission({
     per: ReadPermissionVal,
-    isOwner: file.metadata?.tmbId === tmbId
+    isOwner: file.metadata?.uid === tmbId || file.metadata?.tmbId === tmbId
   });
 
   if (!permission.checkPer(per)) {
@@ -45,4 +45,4 @@ export async function authFile({
     permission,
     file
   };
-}
+};

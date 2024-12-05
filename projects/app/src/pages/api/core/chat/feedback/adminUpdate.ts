@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import type { AdminUpdateFeedbackParams } from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,9 +19,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authChatCrud({
       req,
       authToken: true,
+      authApiKey: true,
       appId,
-      chatId,
-      per: ReadPermissionVal
+      chatId
     });
 
     await MongoChatItem.findOneAndUpdate(

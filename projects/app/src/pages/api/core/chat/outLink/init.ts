@@ -16,11 +16,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
   // auth link permission
-  const { shareChat, uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const { outLinkConfig, uid, appId } = await authOutLink({ shareId, outLinkUid });
 
   // auth app permission
   const [tmb, chat, app] = await Promise.all([
-    MongoTeamMember.findById(shareChat.tmbId, '_id userId').populate('userId', 'avatar').lean(),
+    MongoTeamMember.findById(outLinkConfig.tmbId, '_id userId').populate('userId', 'avatar').lean(),
     MongoChat.findOne({ appId, chatId, shareId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
@@ -35,7 +35,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
-  // pick share response field
 
   jsonRes<InitChatResponse>(res, {
     data: {
@@ -66,9 +65,3 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export default NextAPI(handler);
-
-export const config = {
-  api: {
-    responseLimit: '10mb'
-  }
-};

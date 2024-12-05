@@ -27,7 +27,7 @@ export const authOutLink = async ({
 }: ShareChatAuthProps): Promise<{
   uid: string;
   appId: string;
-  shareChat: OutLinkSchema;
+  outLinkConfig: OutLinkSchema;
 }> => {
   if (!outLinkUid) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
@@ -36,7 +36,7 @@ export const authOutLink = async ({
 
   const { uid } = await authOutLinkInit({
     outLinkUid,
-    tokenUrl: result.shareChat.limit?.hookUrl
+    tokenUrl: result.outLinkConfig.limit?.hookUrl
   });
 
   return {
@@ -54,21 +54,21 @@ export async function authOutLinkChatStart({
   shareId: string;
 }) {
   // get outLink and app
-  const { shareChat, appId } = await authOutLinkValid({ shareId });
+  const { outLinkConfig, appId } = await authOutLinkValid({ shareId });
 
   // check ai points and chat limit
   const [{ user }, { uid }] = await Promise.all([
-    getUserChatInfoAndAuthTeamPoints(shareChat.tmbId),
-    authOutLinkChatLimit({ outLink: shareChat, ip, outLinkUid, question })
+    getUserChatInfoAndAuthTeamPoints(outLinkConfig.tmbId),
+    authOutLinkChatLimit({ outLink: outLinkConfig, ip, outLinkUid, question })
   ]);
 
   return {
-    sourceName: shareChat.name,
-    teamId: shareChat.teamId,
-    tmbId: shareChat.tmbId,
+    sourceName: outLinkConfig.name,
+    teamId: outLinkConfig.teamId,
+    tmbId: outLinkConfig.tmbId,
     authType: AuthUserTypeEnum.token,
-    responseDetail: shareChat.responseDetail,
-    showNodeStatus: shareChat.showNodeStatus,
+    responseDetail: outLinkConfig.responseDetail,
+    showNodeStatus: outLinkConfig.showNodeStatus,
     user,
     appId,
     uid

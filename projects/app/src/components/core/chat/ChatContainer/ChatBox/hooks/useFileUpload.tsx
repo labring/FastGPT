@@ -17,14 +17,16 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type UseFileUploadOptions = {
-  outLinkAuthData: OutLinkChatAuthProps;
-  chatId: string;
   fileSelectConfig: AppFileSelectConfigType;
   fileCtrl: UseFieldArrayReturn<ChatBoxInputFormType, 'files', 'id'>;
+
+  outLinkAuthData?: OutLinkChatAuthProps;
+  appId: string;
+  chatId: string;
 };
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
-  const { outLinkAuthData, chatId, fileSelectConfig, fileCtrl } = props;
+  const { fileSelectConfig, fileCtrl, outLinkAuthData, appId, chatId } = props;
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -137,7 +139,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     [maxSelectFiles, appendFiles, toast, t, maxSize]
   );
 
-  const uploadFiles = async () => {
+  const uploadFiles = useCallback(async () => {
     const filterFiles = fileList.filter((item) => item.status === 0);
 
     if (filterFiles.length === 0) return;
@@ -158,7 +160,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           const { previewUrl } = await uploadFile2DB({
             file: copyFile.rawFile,
             bucketName: 'chat',
-            outLinkAuthData,
+            data: {
+              appId,
+              ...outLinkAuthData
+            },
             metadata: {
               chatId
             },
@@ -186,7 +191,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     );
 
     removeFiles(errorFileIndex);
-  };
+  }, [appId, chatId, fileList, outLinkAuthData, removeFiles, replaceFiles, t, toast, updateFiles]);
 
   const sortFileList = useMemo(() => {
     // Sort: Document, image

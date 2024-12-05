@@ -1,9 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
-import { delChatRecordById, getTeamChatInfo } from '@/web/core/chat/api';
+import { getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
 import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import SideBar from '@/components/SideBar';
 import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
@@ -25,10 +24,16 @@ import { InitChatResponse } from '@/global/core/chat/api';
 import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useChat } from '@/components/core/chat/ChatContainer/useChat';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider, {
+  ChatRecordContext
+} from '@/web/core/chat/context/chatRecordContext';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { useMount } from 'ahooks';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -38,51 +43,59 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
   const {
     teamId = '',
-    appId = '',
-    chatId = '',
+    appId: appIdQuery = '',
     teamToken,
     ...customVariables
   } = router.query as Props & {
     [key: string]: string;
   };
 
-  const { toast } = useToast();
   const theme = useTheme();
   const { isPc } = useSystem();
 
-  const [chatData, setChatData] = useState<InitChatResponse>(defaultChatData);
+  const { outLinkAuthData, appId, chatId } = useChatStore();
 
-  const {
-    onUpdateHistoryTitle,
-    onUpdateHistory,
-    onClearHistories,
-    onDelHistory,
-    isOpenSlider,
-    onCloseSlider,
-    forbidLoadChat,
-    onChangeChatId
-  } = useContextSelector(ChatContext, (v) => v);
+  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
+  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
+  const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
+  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
-  const params = useMemo(() => {
-    return {
-      appId,
-      chatId,
-      teamId,
-      teamToken,
-      type: GetChatTypeEnum.team
-    };
-  }, [appId, chatId, teamId, teamToken]);
-  const {
-    ChatBoxRef,
-    variablesForm,
-    pluginRunTab,
-    setPluginRunTab,
-    resetVariables,
-    chatRecords,
-    ScrollData,
-    setChatRecords,
-    totalRecordsCount
-  } = useChat(params);
+  const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+
+  // get chat app info
+  const { loading } = useRequest2(
+    async () => {
+      if (!appId || forbidLoadChat.current) return;
+
+      const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
+
+      setChatBoxData(res);
+
+      // reset chat records
+      resetVariables({
+        variables: res.variables
+      });
+    },
+    {
+      manual: false,
+      refreshDeps: [teamId, teamToken, appId, chatId],
+      onError(e: any) {
+        console.log(e);
+        if (chatId) {
+          onChangeChatId();
+        }
+      },
+      onFinally() {
+        forbidLoadChat.current = false;
+      }
+    }
+  );
 
   const startChat = useCallback(
     async ({
@@ -108,7 +121,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           teamId,
           teamToken,
           chatId: completionChatId,
-          appType: chatData.app.type
+          appType: chatBoxData.app.type
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -123,7 +136,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
 
       // update chat window
-      setChatData((state) => ({
+      setChatBoxData((state) => ({
         ...state,
         title: newTitle
       }));
@@ -136,65 +149,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       appId,
       teamId,
       teamToken,
-      chatData.app.type,
+      chatBoxData.app.type,
       onUpdateHistoryTitle,
+      setChatBoxData,
       forbidLoadChat,
       onChangeChatId
     ]
   );
 
-  // get chat app info
-  const { loading: isLoading } = useRequest2(
-    async () => {
-      if (!appId || forbidLoadChat.current) return;
-
-      const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
-      setChatData(res);
-
-      // reset chat records
-      resetVariables({
-        variables: res.variables
-      });
-    },
-    {
-      manual: false,
-      refreshDeps: [teamId, teamToken, appId, chatId],
-      onError(e: any) {
-        console.log(e);
-        if (chatId) {
-          onChangeChatId('');
-        }
-      },
-      onFinally() {
-        forbidLoadChat.current = false;
-      }
-    }
-  );
-
   const RenderHistoryList = useMemo(() => {
     const Children = (
-      <ChatHistorySlider
-        appId={appId}
-        appName={chatData.app.name}
-        appAvatar={chatData.app.avatar}
-        confirmClearText={t('common:core.chat.Confirm to clear history')}
-        onDelHistory={(e) => onDelHistory({ ...e, appId, teamId, teamToken })}
-        onClearHistory={() => {
-          onClearHistories({ appId, teamId, teamToken });
-        }}
-        onSetHistoryTop={(e) => {
-          onUpdateHistory({ ...e, teamId, teamToken, appId });
-        }}
-        onSetCustomTitle={async (e) => {
-          onUpdateHistory({
-            appId,
-            chatId: e.chatId,
-            customTitle: e.title,
-            teamId,
-            teamToken
-          });
-        }}
-      />
+      <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
     );
 
     return isPc || !appId ? (
@@ -211,26 +176,11 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [
-    appId,
-    chatData.app.avatar,
-    chatData.app.name,
-    isOpenSlider,
-    isPc,
-    onClearHistories,
-    onCloseSlider,
-    onDelHistory,
-    onUpdateHistory,
-    t,
-    teamId,
-    teamToken
-  ]);
-
-  const loading = isLoading;
+  }, [appId, isOpenSlider, isPc, onCloseSlider, t]);
 
   return (
     <Flex h={'100%'}>
-      <NextHead title={chatData.app.name} icon={chatData.app.avatar}></NextHead>
+      <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
@@ -253,49 +203,27 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             <ChatHeader
               totalRecordsCount={totalRecordsCount}
               apps={myApps}
-              chatData={chatData}
               history={chatRecords}
               showHistory
             />
             {/* chat box */}
             <Box flex={1}>
-              {chatData.app.type === AppTypeEnum.plugin ? (
+              {chatBoxData.app.type === AppTypeEnum.plugin ? (
                 <CustomPluginRunBox
-                  pluginInputs={chatData.app.pluginInputs}
-                  variablesForm={variablesForm}
-                  histories={chatRecords}
-                  setHistories={setChatRecords}
-                  appId={chatData.appId}
-                  tab={pluginRunTab}
-                  setTab={setPluginRunTab}
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   onNewChat={() => onChangeChatId(getNanoid())}
                   onStartChat={startChat}
                 />
               ) : (
                 <ChatBox
-                  ref={ChatBoxRef}
-                  ScrollData={ScrollData}
-                  chatHistories={chatRecords}
-                  setChatHistories={setChatRecords}
-                  variablesForm={variablesForm}
-                  appAvatar={chatData.app.avatar}
-                  userAvatar={chatData.userAvatar}
-                  chatConfig={chatData.app?.chatConfig}
+                  isReady={!loading}
+                  appId={appId}
+                  chatId={chatId}
+                  outLinkAuthData={outLinkAuthData}
                   feedbackType={'user'}
                   onStartChat={startChat}
-                  onDelMessage={({ contentId }) =>
-                    delChatRecordById({
-                      contentId,
-                      appId: chatData.appId,
-                      chatId,
-                      teamId,
-                      teamToken
-                    })
-                  }
-                  appId={chatData.appId}
-                  chatId={chatId}
-                  teamId={teamId}
-                  teamToken={teamToken}
                   chatType="team"
                   showRawSource
                   showNodeStatus
@@ -311,9 +239,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
 const Render = (props: Props) => {
   const { teamId, appId, teamToken } = props;
-  const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
+  const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     async () => {
@@ -323,34 +250,61 @@ const Render = (props: Props) => {
       return [];
     },
     {
-      manual: false
+      manual: true
     }
   );
 
   // 初始化聊天框
-  useEffect(() => {
-    (async () => {
-      if (appId || myApps.length === 0) return;
+  useMount(async () => {
+    setSource('team');
 
-      router.replace({
-        query: {
-          ...router.query,
-          appId: myApps[0]._id,
-          chatId: ''
-        }
-      });
-    })();
-  }, [appId, loadMyApps, myApps, router, t, toast]);
+    const apps = await loadMyApps();
+
+    if (appId || apps.length === 0) return;
+
+    router.replace({
+      query: {
+        ...router.query,
+        appId: apps[0]._id
+      }
+    });
+  });
+  // Watch appId
+  useEffect(() => {
+    setAppId(appId);
+  }, [appId, setAppId]);
+  useEffect(() => {
+    setOutLinkAuthData({
+      teamId,
+      teamToken
+    });
+    return () => {
+      setOutLinkAuthData({});
+    };
+  }, [teamId, teamToken, setOutLinkAuthData]);
 
   const contextParams = useMemo(() => {
     return { teamId, appId, teamToken };
   }, [teamId, appId, teamToken]);
+  const chatRecordProviderParams = useMemo(() => {
+    return {
+      appId,
+      chatId,
+      teamId,
+      teamToken,
+      type: GetChatTypeEnum.team
+    };
+  }, [appId, chatId, teamId, teamToken]);
 
-  return (
+  return source === ChatSourceEnum.team ? (
     <ChatContextProvider params={contextParams}>
-      <Chat {...props} myApps={myApps} />
+      <ChatItemContextProvider>
+        <ChatRecordContextProvider params={chatRecordProviderParams}>
+          <Chat {...props} myApps={myApps} />
+        </ChatRecordContextProvider>
+      </ChatItemContextProvider>
     </ChatContextProvider>
-  );
+  ) : null;
 };
 
 export async function getServerSideProps(context: any) {
