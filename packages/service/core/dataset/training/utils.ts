@@ -28,8 +28,7 @@ export const checkInvalidChunkAndLock = async ({
     err?.type === 'invalid_request_error' ||
     err?.code === 500
   ) {
-    addLog.info('Lock training data');
-    console.log(err);
+    addLog.error('Lock training data', err);
 
     try {
       await MongoDatasetTraining.findByIdAndUpdate(data._id, {

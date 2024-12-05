@@ -179,7 +179,8 @@ async function updateTraining({
     {
       $set: {
         model: agentModel,
-        retryCount: 5
+        retryCount: 5,
+        lockTime: new Date()
       }
     }
   );

@@ -1,6 +1,5 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import type {
   PushDatasetDataProps,
   PushDatasetDataResponse
@@ -39,15 +38,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     insertLen: predictDataLimitLength(collection.trainingType, data)
   });
 
-  jsonRes<PushDatasetDataResponse>(res, {
-    data: await pushDataListToTrainingQueue({
-      ...body,
-      teamId,
-      tmbId,
-      datasetId: collection.datasetId._id,
-      agentModel: collection.datasetId.agentModel,
-      vectorModel: collection.datasetId.vectorModel
-    })
+  return pushDataListToTrainingQueue({
+    ...body,
+    teamId,
+    tmbId,
+    datasetId: collection.datasetId._id,
+    agentModel: collection.datasetId.agentModel,
+    vectorModel: collection.datasetId.vectorModel
   });
 }
 

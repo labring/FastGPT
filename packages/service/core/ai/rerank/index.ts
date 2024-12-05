@@ -51,7 +51,6 @@ export function reRankRecall({
       }));
     })
     .catch((err) => {
-      console.log(err);
       addLog.error('rerank error', err);
 
       return [];
