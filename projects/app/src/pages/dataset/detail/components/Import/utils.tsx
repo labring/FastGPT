@@ -18,4 +18,6 @@ export const getPreviewSourceReadType = (previewSource: ImportSourceItemType) =>
   return DatasetSourceReadTypeEnum.fileLocal;
 };
 
-export default <></>;
+export default function Dom() {
+  return <></>;
+}
