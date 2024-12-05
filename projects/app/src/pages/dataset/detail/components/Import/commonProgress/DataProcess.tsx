@@ -75,7 +75,6 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
 
   useEffect(() => {
     if (collection) {
-      console.log('collection 是', collection);
       const fetchedSources: ImportSourceItemType[] = [
         {
           dbFileId: collection.fileId || undefined,
