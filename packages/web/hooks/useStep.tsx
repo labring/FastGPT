@@ -38,8 +38,7 @@ export const useMyStep = ({
         css={css({
           '.chakra-step__indicator': {
             borderWidth: '0 !important'
-          },
-          justifyContent: 'center'
+          }
         })}
       >
         {steps.map((step, index) => (

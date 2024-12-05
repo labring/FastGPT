@@ -11,20 +11,13 @@ import { getDocPath } from '@/web/common/system/doc';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { useRouter } from 'next/router';
-import { AdjustTrainingStatus } from '../../DataCard';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
-  loading: () => <Loading fixed={false} />
-});
-const ReTraining = dynamic(() => import('./ReTraining'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const LinkCollection = () => {
-  const router = useRouter();
-  const { adjustTraining } = router.query;
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
 
   return (

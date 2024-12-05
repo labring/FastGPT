@@ -31,11 +31,6 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 
-export enum AdjustTrainingStatus {
-  TRUE = 'true',
-  FALSE = 'false'
-}
-
 const DataCard = () => {
   const theme = useTheme();
   const router = useRouter();
@@ -52,26 +47,14 @@ const DataCard = () => {
   const { toast } = useToast();
 
   const handlereTraining = async () => {
-    if (!collection) {
-      console.error('collection 未定义');
-      return;
-    }
-
-    if (collection.type === 'file' || collection.type === 'link') {
-      router.push({
-        query: {
-          datasetId: router.query.datasetId,
-          currentTab: TabEnum.import,
-          source: ImportDataSourceEnum.reTraining,
-          collectionId: collectionId
-        }
-      });
-    } else {
-      toast({
-        title: t('dataset:dataset.Unsupported operation'),
-        status: 'error'
-      });
-    }
+    router.push({
+      query: {
+        datasetId: router.query.datasetId,
+        currentTab: TabEnum.import,
+        source: ImportDataSourceEnum.reTraining,
+        collectionId: collectionId
+      }
+    });
   };
 
   const scrollParams = useMemo(
@@ -167,7 +150,7 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          {canWrite && (
+          {collection && (collection.type === 'file' || collection.type === 'link') && (
             <Box>
               <Button
                 ml={2}
@@ -177,6 +160,10 @@ const DataCard = () => {
               >
                 {t('dataset:dataset.Adjust Training Parameters')}
               </Button>
+            </Box>
+          )}
+          {canWrite && (
+            <Box>
               <Button
                 ml={2}
                 variant={'whitePrimary'}

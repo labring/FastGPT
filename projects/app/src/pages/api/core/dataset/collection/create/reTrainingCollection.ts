@@ -1,27 +1,14 @@
-import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { reTrainingDatasetFileCollectionParams } from '@fastgpt/global/core/dataset/api';
-import {
-  createCollectionAndInsertData,
-  createOneCollection
-} from '@fastgpt/service/core/dataset/collection/controller';
+import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
   DatasetSourceReadTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoImage } from '@fastgpt/service/common/file/image/schema';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
-import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
+import { readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -30,6 +17,7 @@ import { delOnlyCollection } from '@fastgpt/service/core/dataset/collection/cont
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 
 // 获取集合并处理
 async function handler(req: ApiRequestProps<reTrainingDatasetFileCollectionParams>) {
@@ -55,15 +43,10 @@ async function handler(req: ApiRequestProps<reTrainingDatasetFileCollectionParam
     per: ReadPermissionVal
   });
 
-  const fileId = collection?.fileId;
-  const link = collection?.rawLink;
+  const fileId = collection.fileId;
+  const link = collection.rawLink;
 
-  let type: DatasetSourceReadTypeEnum;
-  if (fileId) {
-    type = DatasetSourceReadTypeEnum.fileLocal;
-  } else {
-    type = DatasetSourceReadTypeEnum.link;
-  }
+  const type = fileId ? DatasetSourceReadTypeEnum.fileLocal : DatasetSourceReadTypeEnum.link;
 
   const rawText = await readDatasetSourceRawText({
     teamId: collection.teamId,
@@ -71,28 +54,18 @@ async function handler(req: ApiRequestProps<reTrainingDatasetFileCollectionParam
     sourceId: fileId || link || ''
   });
 
-  const filename = collection.name;
-
-  const { teamId, tmbId, dataset } = await authDataset({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal,
-    datasetId: body.datasetId
-  });
-
-  const result = await createCollectionAndInsertData({
-    dataset,
+  await createCollectionAndInsertData({
+    dataset: collection.datasetId,
     rawText,
     createCollectionParams: {
       ...body,
       teamId: collection.teamId,
-      tmbId,
+      tmbId: collection.tmbId,
       type: fileId ? DatasetCollectionTypeEnum.file : DatasetCollectionTypeEnum.link,
-      name: filename,
-      fileId,
+      name: collection.name,
+      fileId: collection.fileId,
       metadata: {
-        relatedImgId: fileId
+        relatedImgId: collection.fileId
       },
 
       // special metadata
@@ -109,14 +82,7 @@ async function handler(req: ApiRequestProps<reTrainingDatasetFileCollectionParam
     relatedId: fileId
   });
 
-  // find all delete id
-
-  const collections = await findCollectionAndChild({
-    teamId,
-    datasetId: collection.datasetId._id,
-    collectionId,
-    fields: '_id teamId datasetId fileId metadata'
-  });
+  const collections: CollectionWithDatasetType[] = [collection];
 
   // delete
   await mongoSessionRun((session) =>

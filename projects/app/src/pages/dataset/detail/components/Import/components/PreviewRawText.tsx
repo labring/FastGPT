@@ -46,7 +46,7 @@ const PreviewRawText = ({
           datasetId,
           type: importType2ReadType(ImportDataSourceEnum.fileLocal),
           sourceId: previewSource.dbFileId,
-          isQAImport: true
+          isQAImport: false
         });
       }
 
