@@ -11,7 +11,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getDocPath } from '@/web/common/system/doc';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -42,6 +41,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { userInfo } = useUserStore();
   const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId } = useChatStore();
+
   const navbarList = useMemo(
     () => [
       {
@@ -184,6 +184,23 @@ const Navbar = ({ unread }: { unread: number }) => {
             </Badge>
           </Link>
         </Box>
+      )}
+
+      {feConfigs?.show_git && (
+        <MyTooltip label={`Git Star: ${gitStar}`} placement={'right-end'}>
+          <Link
+            as={NextLink}
+            href="https://github.com/labring/FastGPT"
+            target={'_blank'}
+            {...itemStyles}
+            {...hoverStyle}
+            mt={0}
+            color={'myGray.500'}
+            height={'48px'}
+          >
+            <MyIcon name={'common/gitInlight'} width={'26px'} height={'26px'} />
+          </Link>
+        </MyTooltip>
       )}
     </Flex>
   );
