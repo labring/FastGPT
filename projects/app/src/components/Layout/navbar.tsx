@@ -11,7 +11,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { NavbaGitHubItem } from '@fastgpt/global/common/layout/constant';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -97,10 +96,6 @@ const Navbar = ({ unread }: { unread: number }) => {
     return ['/toolkit'].includes(router.pathname);
   }, [router.pathname]);
 
-  const navbarItems = useMemo(() => {
-    return feConfigs?.navbarItems?.length ? feConfigs.navbarItems : [NavbaGitHubItem];
-  }, [feConfigs?.navbarItems]);
-
   return (
     <Flex
       flexDirection={'column'}
@@ -122,13 +117,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         cursor={'pointer'}
         onClick={() => router.push('/account')}
       >
-        <Avatar
-          w={'2rem'}
-          h={'2rem'}
-          src={userInfo?.avatar}
-          fallbackSrc={HUMAN_ICON}
-          borderRadius={'50%'}
-        />
+        <Avatar w={'2rem'} h={'2rem'} src={userInfo?.avatar} borderRadius={'50%'} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
@@ -191,14 +180,10 @@ const Navbar = ({ unread }: { unread: number }) => {
         </Box>
       )}
 
-      {navbarItems
+      {feConfigs?.navbarItems
         ?.filter((item) => item.isActive)
         .map((item) => (
-          <MyTooltip
-            key={item.id}
-            label={item.id !== NavbaGitHubItem.id ? item.name : `Git Star: ${gitStar}`}
-            placement={'right-end'}
-          >
+          <MyTooltip key={item.id} label={item.name} placement={'right-end'}>
             <Link
               as={NextLink}
               href={item.url}
@@ -209,10 +194,27 @@ const Navbar = ({ unread }: { unread: number }) => {
               color={'myGray.500'}
               height={'48px'}
             >
-              <Avatar src={item.avatar} fallbackSrc={HUMAN_ICON} borderRadius={'md'} />
+              <Avatar src={item.avatar} borderRadius={'md'} />
             </Link>
           </MyTooltip>
         ))}
+
+      {feConfigs?.show_git && (
+        <MyTooltip label={`Git Star: ${gitStar}`} placement={'right-end'}>
+          <Link
+            as={NextLink}
+            href="https://github.com/labring/FastGPT"
+            target={'_blank'}
+            {...itemStyles}
+            {...hoverStyle}
+            mt={0}
+            color={'myGray.500'}
+            height={'48px'}
+          >
+            <MyIcon name={'common/gitInlight'} width={'26px'} height={'26px'} />
+          </Link>
+        </MyTooltip>
+      )}
     </Flex>
   );
 };

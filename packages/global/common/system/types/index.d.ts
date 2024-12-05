@@ -9,7 +9,14 @@ import type {
   ReRankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
-import { NavbarItemType } from '../../../layout/type';
+
+export type NavbarItemType = {
+  id: string;
+  name: string;
+  avatar: string;
+  url: string;
+  isActive: boolean;
+};
 
 /* fastgpt main */
 export type FastGPTConfigFileType = {
