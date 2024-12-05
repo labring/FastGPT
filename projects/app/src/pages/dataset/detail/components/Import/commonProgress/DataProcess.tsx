@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -9,7 +9,6 @@ import {
   Textarea,
   useDisclosure
 } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -27,34 +26,10 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useRouter } from 'next/router';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
 
 function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
   const { t } = useTranslation();
-  const router = useRouter();
   const { feConfigs } = useSystemStore();
-
-  const { collectionId = '', datasetId = '' } = router.query as {
-    collectionId: string;
-    datasetId: string;
-  };
-
-  const { data: collection } = useQuery(
-    ['getDatasetCollectionById', collectionId],
-    () => getDatasetCollectionById(collectionId),
-    {
-      onError: () => {
-        router.replace({
-          query: {
-            datasetId
-          }
-        });
-      }
-    }
-  );
 
   const {
     goToNext,
@@ -65,33 +40,12 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     showPromptInput,
     maxChunkSize,
     priceTip,
-    chunkSize,
-    setSources
+    chunkSize
   } = useContextSelector(DatasetImportContext, (v) => v);
   const { getValues, setValue, register, watch } = processParamsForm;
   const { toast } = useToast();
   const mode = watch('mode');
   const way = watch('way');
-
-  useEffect(() => {
-    if (collection) {
-      const fetchedSources: ImportSourceItemType[] = [
-        {
-          dbFileId: collection.fileId || undefined,
-          createStatus: 'waiting',
-          icon: getFileIcon(collection.name) || 'default-icon',
-          id: collection._id,
-          isUploading: false,
-          sourceName: collection.name,
-          sourceSize: collection.file?.length ? `${collection.file.length} B` : undefined,
-          uploadedFileRate: 100,
-          link: collection.rawLink || undefined
-        }
-      ];
-
-      setSources(fetchedSources);
-    }
-  }, [collectionId, collection, setSources]);
 
   const {
     isOpen: isOpenCustomPrompt,

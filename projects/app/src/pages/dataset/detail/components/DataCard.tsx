@@ -29,7 +29,10 @@ import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -45,17 +48,6 @@ const DataCard = () => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
-
-  const handlereTraining = async () => {
-    router.push({
-      query: {
-        datasetId: router.query.datasetId,
-        currentTab: TabEnum.import,
-        source: ImportDataSourceEnum.reTraining,
-        collectionId: collectionId
-      }
-    });
-  };
 
   const scrollParams = useMemo(
     () => ({
@@ -150,32 +142,44 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          {collection && (collection.type === 'file' || collection.type === 'link') && (
-            <Box>
-              <Button
-                ml={2}
-                variant={'whitePrimary'}
-                size={['sm', 'md']}
-                onClick={handlereTraining}
-              >
-                {t('dataset:dataset.Adjust Training Parameters')}
-              </Button>
-            </Box>
-          )}
+          {collection &&
+            [
+              DatasetCollectionTypeEnum.file,
+              DatasetCollectionTypeEnum.link,
+              DatasetCollectionTypeEnum.apiFile
+            ].includes(collection?.type) && (
+              <Box>
+                <Button
+                  ml={2}
+                  variant={'whitePrimary'}
+                  size={['sm', 'md']}
+                  onClick={() => {
+                    router.push({
+                      query: {
+                        datasetId,
+                        currentTab: TabEnum.import,
+                        source: ImportDataSourceEnum.reTraining,
+                        collectionId
+                      }
+                    });
+                  }}
+                >
+                  {t('dataset:retain_collection')}
+                </Button>
+              </Box>
+            )}
           {canWrite && (
-            <Box>
-              <Button
-                ml={2}
-                variant={'whitePrimary'}
-                size={['sm', 'md']}
-                onClick={() => {
-                  if (!collection) return;
-                  setEditDataId('');
-                }}
-              >
-                {t('common:dataset.Insert Data')}
-              </Button>
-            </Box>
+            <Button
+              ml={2}
+              variant={'whitePrimary'}
+              size={['sm', 'md']}
+              isDisabled={!collection}
+              onClick={() => {
+                setEditDataId('');
+              }}
+            >
+              {t('common:dataset.Insert Data')}
+            </Button>
           )}
         </Flex>
         <Box justifyContent={'center'} px={6} pos={'relative'} w={'100%'}>
