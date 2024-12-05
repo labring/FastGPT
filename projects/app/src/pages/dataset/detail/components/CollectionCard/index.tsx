@@ -218,14 +218,14 @@ const CollectionCard = () => {
                     if (collection.type === DatasetCollectionTypeEnum.folder) {
                       router.push({
                         query: {
-                          ...router.query,
+                          datasetId: datasetDetail._id,
                           parentId: collection._id
                         }
                       });
                     } else {
                       router.push({
                         query: {
-                          ...router.query,
+                          datasetId: datasetDetail._id,
                           collectionId: collection._id,
                           currentTab: TabEnum.dataCard
                         }
