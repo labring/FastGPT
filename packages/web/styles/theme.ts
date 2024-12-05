@@ -494,7 +494,10 @@ const Radio = radioStyle({
 const Checkbox = checkBoxMultiStyle({
   baseStyle: checkBoxPart({
     label: {
-      fontFamily: 'mono' // change the font family of the label
+      fontFamily: 'mono', // change the font family of the label
+      _disabled: {
+        outline: 'none'
+      }
     },
     control: {
       borderRadius: 'xs',
@@ -507,6 +510,12 @@ const Checkbox = checkBoxMultiStyle({
         boxShadow: `${shadowLight} !important`,
         _hover: {
           bg: 'primary.50'
+        },
+        _disabled: {
+          bg: 'myGray.100',
+          borderColor: 'transparent',
+          color: 'myGray.400',
+          outline: 'none'
         }
       },
       _hover: {

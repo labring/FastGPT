@@ -45,6 +45,7 @@
   "request_headers": "請求頭",
   "retain_collection": "調整訓練參數",
   "retrain_task_submitted": "重新訓練任務已提交",
+  "same_api_collection": "存在相同的 API 集合",
   "start_sync_website_tip": "確認開始同步資料？\n將會刪除舊資料後重新獲取，請確認！",
   "tag.Add New": "新增",
   "tag.Add_new_tag": "新增標籤",
