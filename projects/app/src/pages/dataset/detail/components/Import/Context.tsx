@@ -12,7 +12,6 @@ import { UseFormReturn, useForm } from 'react-hook-form';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 type TrainingFiledType = {
   chunkOverlapRatio: number;
@@ -83,79 +82,84 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     parentId?: string;
   };
 
-  const { adjustTraining } = router.query as {
-    adjustTraining: string;
-  };
-
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   // step
   const modeSteps: Record<ImportDataSourceEnum, { title: string }[]> = {
-    [ImportDataSourceEnum.fileLocal]: [
-      ...(adjustTraining === 'true'
-        ? []
-        : [{ title: t('common:core.dataset.import.Select file') }]),
-      {
-        title:
-          adjustTraining === 'true'
-            ? t('dataset:core.dataset.import.Adjust parameters')
-            : t('common:core.dataset.import.Data Preprocessing')
-      },
+    [ImportDataSourceEnum.reTraining]: [
+      { title: t('dataset:core.dataset.import.Adjust parameters') },
       { title: t('common:core.dataset.import.Upload data') }
+    ],
+    [ImportDataSourceEnum.fileLocal]: [
+      {
+        title: t('common:core.dataset.import.Select file')
+      },
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
     ],
     [ImportDataSourceEnum.fileLink]: [
-      ...(adjustTraining === 'true'
-        ? []
-        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title:
-          adjustTraining === 'true'
-            ? t('dataset:core.dataset.import.Adjust parameters')
-            : t('common:core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Select file')
       },
-      { title: t('common:core.dataset.import.Upload data') }
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
     ],
     [ImportDataSourceEnum.fileCustom]: [
-      ...(adjustTraining === 'true'
-        ? []
-        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title:
-          adjustTraining === 'true'
-            ? t('dataset:core.dataset.import.Adjust parameters')
-            : t('common:core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Select file')
       },
-      { title: t('common:core.dataset.import.Upload data') }
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
     ],
     [ImportDataSourceEnum.csvTable]: [
-      ...(adjustTraining === 'true'
-        ? []
-        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title:
-          adjustTraining === 'true'
-            ? t('dataset:core.dataset.import.Adjust parameters')
-            : t('common:core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Select file')
       },
-      { title: t('common:core.dataset.import.Upload data') }
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
     ],
     [ImportDataSourceEnum.externalFile]: [
-      ...(adjustTraining === 'true'
-        ? []
-        : [{ title: t('common:core.dataset.import.Select file') }]),
       {
-        title:
-          adjustTraining === 'true'
-            ? t('dataset:core.dataset.import.Adjust parameters')
-            : t('common:core.dataset.import.Data Preprocessing')
+        title: t('common:core.dataset.import.Select file')
       },
-      { title: t('common:core.dataset.import.Upload data') }
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
+    ],
+    [ImportDataSourceEnum.apiDataset]: [
+      {
+        title: t('common:core.dataset.import.Select file')
+      },
+      {
+        title: t('common:core.dataset.import.Data Preprocessing')
+      },
+      {
+        title: t('common:core.dataset.import.Upload data')
+      }
     ]
   };
   const steps = modeSteps[source];
-  const defaultStep = 0;
   const { activeStep, goToNext, goToPrevious, MyStep } = useMyStep({
-    defaultStep,
+    defaultStep: 0,
     steps
   });
 

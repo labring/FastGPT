@@ -56,5 +56,6 @@
   "website_dataset_desc": "網站同步功能讓您可以直接使用網頁連結建立資料集",
   "core.dataset.import.Adjust parameters": "調整參數",
   "dataset.Adjust Training Parameters": "調整訓練參數",
-  "error.collectionNotFound": "找不到集合"
+  "error.collectionNotFound": "找不到集合",
+  "dataset.Unsupported operation": "操作不支持"
 }

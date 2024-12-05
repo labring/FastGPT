@@ -29,7 +29,6 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../NavBar';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useI18n } from '@/web/context/I18n';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
@@ -38,7 +37,7 @@ import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import dynamic from 'next/dynamic';
 
-const UploadReTraining = dynamic(() => import('../commonProgress/UploadReTraining'));
+const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const ReTraining = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
@@ -46,7 +45,7 @@ const ReTraining = () => {
   return (
     <>
       {activeStep === 0 && <AdjustTrainingStatu />}
-      {activeStep === 1 && <UploadReTraining />}
+      {activeStep === 1 && <Upload />}
     </>
   );
 };
@@ -55,25 +54,23 @@ export default React.memo(ReTraining);
 const AdjustTrainingStatu = React.memo(function AdjustTrainingStatu() {
   function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
     const { t } = useTranslation();
-    const { fileT } = useI18n();
     const router = useRouter();
     const { feConfigs } = useSystemStore();
 
-    const { collectionId = '', adjustTraining } = router.query as {
+    const { collectionId = '', datasetId = '' } = router.query as {
       collectionId: string;
-      adjustTraining: AdjustTrainingStatus;
+      datasetId: string;
     };
 
-    const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-
-    const { data: collection, error } = useQuery(
+    const { data: collection } = useQuery(
       ['getDatasetCollectionById', collectionId],
       () => getDatasetCollectionById(collectionId),
       {
-        onError: (error) => {
-          console.log('数据获取失败，跳转到备用路径');
+        onError: () => {
           router.replace({
-            query: { datasetId: collectionId }
+            query: {
+              datasetId
+            }
           });
         }
       }
@@ -89,39 +86,34 @@ const AdjustTrainingStatu = React.memo(function AdjustTrainingStatu() {
       maxChunkSize,
       priceTip,
       chunkSize,
-      importSource,
-      parentId,
-      sources,
       setSources
     } = useContextSelector(DatasetImportContext, (v) => v);
-    const { getValues, setValue, register, watch, handleSubmit } = processParamsForm;
-    const { toast } = useToast();
+    const { getValues, setValue, register, watch } = processParamsForm;
     const mode = watch('mode');
     const way = watch('way');
 
     useEffect(() => {
-      if (adjustTraining === 'true') {
-        console.log('collection为', collection);
+      if (collection) {
+        console.log('collection 是', collection);
+        const fetchedSources: ImportSourceItemType[] = [
+          {
+            dbFileId: collection.fileId || undefined,
+            createStatus: 'waiting',
+            icon: getFileIcon(collection.name) || 'default-icon',
+            id: collection._id,
+            isUploading: false,
+            sourceName: collection.name,
+            sourceSize: collection.file?.length ? `${collection.file.length} B` : undefined,
+            uploadedFileRate: 100,
+            link: collection.rawLink || undefined
+          }
+        ];
 
-        if (collection) {
-          const fetchedSources: ImportSourceItemType[] = [
-            {
-              dbFileId: collection.fileId || undefined,
-              createStatus: 'waiting',
-              icon: getFileIcon(collection.name) || 'default-icon',
-              id: collection._id,
-              isUploading: false,
-              sourceName: collection.name,
-              sourceSize: collection.file?.length ? `${collection.file.length} B` : undefined,
-              uploadedFileRate: 100,
-              link: collection.rawLink || undefined
-            }
-          ];
+        console.log('fetchedSources 是', fetchedSources);
 
-          setSources(fetchedSources);
-        }
+        setSources(fetchedSources);
       }
-    }, [adjustTraining, collectionId, collection, setSources]);
+    }, [collectionId, collection, setSources]);
 
     const {
       isOpen: isOpenCustomPrompt,
@@ -136,15 +128,9 @@ const AdjustTrainingStatu = React.memo(function AdjustTrainingStatu() {
 
     const onSelectTrainWay = useCallback(
       (e: TrainingModeEnum) => {
-        if (!feConfigs?.isPlus && !TrainingTypeMap[e]?.openSource) {
-          return toast({
-            status: 'warning',
-            title: t('common:common.system.Commercial version function')
-          });
-        }
         setValue('mode', e);
       },
-      [feConfigs?.isPlus, setValue, t, toast]
+      [setValue]
     );
 
     return (

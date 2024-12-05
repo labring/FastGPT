@@ -20,7 +20,7 @@ import type {
   DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
-  FileIdCreateDatasetCollectionParamsWithCollectionId,
+  reTrainingDatasetFileCollectionParams,
   LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams,
   TextCreateDatasetCollectionParams,
@@ -112,10 +112,8 @@ export const postCreateDatasetFileCollection = (data: FileIdCreateDatasetCollect
   POST<{ collectionId: string }>(`/core/dataset/collection/create/fileId`, data, {
     timeout: 360000
   });
-export const postreTrainingDatasetFileCollection = (
-  data: FileIdCreateDatasetCollectionParamsWithCollectionId
-) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/recreateCollection`, data, {
+export const postreTrainingDatasetFileCollection = (data: reTrainingDatasetFileCollectionParams) =>
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/reTrainingCollection`, data, {
     timeout: 360000
   });
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>

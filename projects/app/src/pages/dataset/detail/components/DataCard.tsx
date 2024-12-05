@@ -52,44 +52,25 @@ const DataCard = () => {
   const { toast } = useToast();
 
   const handlereTraining = async () => {
-    try {
-      if (!collection) {
-        console.error('collection 未定义');
-        return;
-      }
-      console.log('请求 collectionId:', collectionId);
+    if (!collection) {
+      console.error('collection 未定义');
+      return;
+    }
 
-      console.log('collection为', collection);
-
-      if (collection.type === 'file') {
-        router.push({
-          query: {
-            datasetId: router.query.datasetId,
-            currentTab: TabEnum.import,
-            source: ImportDataSourceEnum.fileLocal,
-            adjustTraining: AdjustTrainingStatus.TRUE,
-            collectionId: collectionId
-          }
-        });
-      } else if (collection.type === 'link') {
-        router.push({
-          query: {
-            datasetId: router.query.datasetId,
-            currentTab: TabEnum.import,
-            source: ImportDataSourceEnum.fileLink,
-            adjustTraining: AdjustTrainingStatus.TRUE,
-            collectionId: collectionId
-          }
-        });
-      } else {
-        console.error('不支持的操作：', collection.type, router.query.source);
-      }
-    } catch (error) {
+    if (collection.type === 'file' || collection.type === 'link') {
+      router.push({
+        query: {
+          datasetId: router.query.datasetId,
+          currentTab: TabEnum.import,
+          source: ImportDataSourceEnum.reTraining,
+          collectionId: collectionId
+        }
+      });
+    } else {
       toast({
-        title: t('dataset:error.collectionNotFound'),
+        title: t('dataset:dataset.Unsupported operation'),
         status: 'error'
       });
-      console.error('Error fetching collection source:', error);
     }
   };
 

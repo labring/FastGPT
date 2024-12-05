@@ -56,5 +56,6 @@
   "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link.",
   "core.dataset.import.Adjust parameters": "Adjust parameters",
   "dataset.Adjust Training Parameters": "Adjust Training Parameters",
-  "error.collectionNotFound": "Collection not found~"
+  "error.collectionNotFound": "Collection not found~",
+  "dataset.Unsupported operation": "dataset.Unsupported operation"
 }

@@ -56,5 +56,6 @@
   "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
   "core.dataset.import.Adjust parameters": "调整参数",
   "dataset.Adjust Training Parameters": "调整训练参数",
-  "error.collectionNotFound": "集合找不到了~"
+  "error.collectionNotFound": "集合找不到了~",
+  "dataset.Unsupported operation": "操作不支持"
 }

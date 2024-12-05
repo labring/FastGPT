@@ -52,7 +52,19 @@ const PreviewChunks = ({
           isQAImport: true
         });
       }
-
+      if (importSource === ImportDataSourceEnum.reTraining && previewSource.dbFileId) {
+        return getPreviewChunks({
+          datasetId,
+          type: importType2ReadType(ImportDataSourceEnum.fileLocal),
+          sourceId:
+            previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
+          chunkSize,
+          overlapRatio: chunkOverlapRatio,
+          customSplitChar: processParamsForm.getValues('customSplitChar'),
+          selector: processParamsForm.getValues('webSelector'),
+          isQAImport: false
+        });
+      }
       return getPreviewChunks({
         datasetId,
         type: importType2ReadType(importSource),

@@ -11,6 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import router from 'next/router';
 
 const PreviewRawText = ({
   previewSource,
@@ -21,6 +22,7 @@ const PreviewRawText = ({
 }) => {
   const { toast } = useToast();
   const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { data, isLoading } = useQuery(
     ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
@@ -34,6 +36,15 @@ const PreviewRawText = ({
         return getPreviewFileContent({
           datasetId,
           type: importType2ReadType(importSource),
+          sourceId: previewSource.dbFileId,
+          isQAImport: true
+        });
+      }
+
+      if (importSource === ImportDataSourceEnum.reTraining && previewSource.dbFileId) {
+        return getPreviewFileContent({
+          datasetId,
+          type: importType2ReadType(ImportDataSourceEnum.fileLocal),
           sourceId: previewSource.dbFileId,
           isQAImport: true
         });
