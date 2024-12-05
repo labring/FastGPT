@@ -102,7 +102,8 @@ export enum ImportDataSourceEnum {
   fileCustom = 'fileCustom',
   csvTable = 'csvTable',
   externalFile = 'externalFile',
-  apiDataset = 'apiDataset'
+  apiDataset = 'apiDataset',
+  reTraining = 'reTraining'
 }
 
 export enum TrainingModeEnum {
@@ -194,5 +195,6 @@ export enum DatasetSourceReadTypeEnum {
   fileLocal = 'fileLocal',
   link = 'link',
   externalFile = 'externalFile',
-  apiFile = 'apiFile'
+  apiFile = 'apiFile',
+  reTraining = 'reTraining'
 }

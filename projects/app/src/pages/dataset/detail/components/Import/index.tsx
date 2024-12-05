@@ -11,11 +11,13 @@ const FileCustomText = dynamic(() => import('./diffSource/FileCustomText'));
 const TableLocal = dynamic(() => import('./diffSource/TableLocal'));
 const ExternalFileCollection = dynamic(() => import('./diffSource/ExternalFile'));
 const APIDatasetCollection = dynamic(() => import('./diffSource/APIDataset'));
+const ReTraining = dynamic(() => import('./diffSource/ReTraining'));
 
 const ImportDataset = () => {
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
 
   const ImportComponent = useMemo(() => {
+    if (importSource === ImportDataSourceEnum.reTraining) return ReTraining;
     if (importSource === ImportDataSourceEnum.fileLocal) return FileLocal;
     if (importSource === ImportDataSourceEnum.fileLink) return FileLink;
     if (importSource === ImportDataSourceEnum.fileCustom) return FileCustomText;

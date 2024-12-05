@@ -53,5 +53,9 @@
   "the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt": "The Dataset has indexes that are being trained or rebuilt",
   "training_mode": "Chunk mode",
   "website_dataset": "Website Sync",
-  "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link."
+  "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link.",
+  "core.dataset.import.Adjust parameters": "Adjust parameters",
+  "dataset.Adjust Training Parameters": "Adjust Training Parameters",
+  "error.collectionNotFound": "Collection not found~",
+  "dataset.Unsupported operation": "dataset.Unsupported operation"
 }
