@@ -38,7 +38,6 @@ export type FastGPTFeConfigsType = {
   concatMd?: string;
 
   docUrl?: string;
-  chatbotUrl?: string;
   openAPIDocUrl?: string;
   systemPluginCourseUrl?: string;
   appTemplateCourse?: string;

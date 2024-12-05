@@ -2,6 +2,7 @@ import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 
 // Content of plan
 export type TeamStandardSubPlanItemType = {
+  name?: string;
   price: number; // read price / month
   pointPrice: number; // read price/ one thousand
   totalPoints: number; // n
@@ -24,6 +25,7 @@ export type StandSubPlanLevelMapType = Record<
 
 export type SubPlanType = {
   [SubTypeEnum.standard]: StandSubPlanLevelMapType;
+  planDescriptionUrl?: string;
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };

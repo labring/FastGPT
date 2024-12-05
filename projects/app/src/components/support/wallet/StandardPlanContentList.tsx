@@ -23,6 +23,7 @@ const StandardPlanContentList = ({
 
   const planContent = useMemo(() => {
     const plan = subPlans?.standard?.[level];
+
     if (!plan) return;
     return {
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
