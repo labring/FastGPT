@@ -66,6 +66,7 @@ export const readRawContentByFileBuffer = async ({
       return;
 
     const start = Date.now();
+    addLog.info('Parsing files from an external service');
 
     const data = new FormData();
     data.append('file', buffer, {
@@ -88,7 +89,7 @@ export const readRawContentByFileBuffer = async ({
       }
     });
 
-    addLog.info(`Use custom read file service, time: ${Date.now() - start}ms`);
+    addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
 
     const rawText = response.data.markdown;
     const { text, imageList } = matchMdImgTextAndUpload(rawText);
