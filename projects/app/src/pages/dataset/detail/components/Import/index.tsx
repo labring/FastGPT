@@ -25,7 +25,7 @@ const ImportDataset = () => {
   }, [importSource]);
 
   return ImportComponent ? (
-    <Box flex={'1 0 0'} overflow={'hidden'} position={'relative'}>
+    <Box flex={'1 0 0'} overflow={'auto'}>
       <ImportComponent />
     </Box>
   ) : null;
