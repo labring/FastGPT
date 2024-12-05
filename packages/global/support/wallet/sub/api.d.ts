@@ -12,6 +12,7 @@ export type StandardSubPlanUpdateResponse = {
   payPrice?: number;
   planPrice: number;
   planPointPrice: number;
+  name?: string;
 
   currentMode: `${SubModeEnum}`;
   nextMode: `${SubModeEnum}`;

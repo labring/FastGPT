@@ -63,7 +63,6 @@ const Info = () => {
   const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
-
   const { initUserInfo } = useUserStore();
 
   useQuery(['init'], initUserInfo);
@@ -343,6 +342,7 @@ const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const { userInfo, initUserInfo, teamPlanStatus } = useUserStore();
+  const { subPlans } = useSystemStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -460,9 +460,17 @@ const PlanUsage = () => {
               {t(planName as any)}
             </Box>
           </Box>
-          <Button onClick={() => router.push('/price')} w={'8rem'} size="sm">
-            {t('account_info:upgrade_package')}
-          </Button>
+          {subPlans?.planDescriptionUrl && (
+            <Button
+              onClick={() => {
+                router.push('/price');
+              }}
+              w={'8rem'}
+              size="sm"
+            >
+              {t('account_info:upgrade_package')}
+            </Button>
+          )}
         </Flex>
         <Box px={[5, 7]} pb={[3, 6]}>
           {isFreeTeam && (
@@ -623,28 +631,6 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
               {t('account_info:help_document')}
-            </Box>
-          </Link>
-        )}
-        {feConfigs?.chatbotUrl && (
-          <Link
-            href={feConfigs?.chatbotUrl}
-            target="_blank"
-            display={'flex'}
-            py={3}
-            px={6}
-            bg={'white'}
-            border={theme.borders.sm}
-            borderWidth={'1.5px'}
-            borderRadius={'md'}
-            alignItems={'center'}
-            userSelect={'none'}
-            textDecoration={'none !important'}
-            fontSize={'sm'}
-          >
-            <MyIcon name={'core/app/aiLight'} w={'18px'} />
-            <Box ml={2} flex={1}>
-              {t('account_info:help_chatbot')}
             </Box>
           </Link>
         )}
