@@ -9,6 +9,7 @@ import type {
   ReRankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
+import { NavbarItemType } from '../../../layout/type';
 
 /* fastgpt main */
 export type FastGPTConfigFileType = {
@@ -73,6 +74,7 @@ export type FastGPTFeConfigsType = {
   uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
   lafEnv?: string;
+  navbarItems?: NavbarItemType[];
 };
 
 export type SystemEnvType = {
