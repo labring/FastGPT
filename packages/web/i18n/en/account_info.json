@@ -3,7 +3,7 @@
   "account_knowledge_base_cleanup_warning": "When the free version team does not log in to the system for 30 consecutive days, the system will automatically clean up the account knowledge base.",
   "active": "Taking effect",
   "ai_points": "AI points",
-  "ai_points_calculation_standard": "AI points calculation standard",
+  "ai_points_calculation_standard": "AI points",
   "ai_points_usage": "AI points",
   "ai_points_usage_tip": "Each time the AI ​​model is called, a certain amount of AI points will be consumed. \nFor specific calculation standards, please refer to the \"Billing Standards\" above.",
   "avatar": "Avatar",

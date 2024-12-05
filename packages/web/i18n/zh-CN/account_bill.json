@@ -12,7 +12,7 @@
   "default_header": "默认抬头",
   "detail": "详情",
   "email_address": "邮箱地址",
-  "extra_ai_points": "AI 积分计算标准",
+  "extra_ai_points": "额外 AI 积分",
   "extra_dataset_size": "额外知识库容量",
   "generation_time": "生成时间",
   "has_invoice": "是否已开票",

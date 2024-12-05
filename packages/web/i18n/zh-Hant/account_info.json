@@ -3,7 +3,7 @@
   "account_knowledge_base_cleanup_warning": "免費版團隊連續 30 天未登入系統時，系統會自動清理帳號知識庫。",
   "active": "生效中",
   "ai_points": "AI 積分",
-  "ai_points_calculation_standard": "AI 積分運算標準",
+  "ai_points_calculation_standard": "AI 積分",
   "ai_points_usage": "AI 積分使用量",
   "ai_points_usage_tip": "每次呼叫 AI 模型時，都會消耗一定的 AI 積分。\n具體的計算標準可參考上方的「計費標準」。",
   "avatar": "頭像",

@@ -514,7 +514,7 @@ const RenderList = React.memo(function RenderList({
           return Promise.reject(e);
         }
       })();
-      console.log(templateNode);
+
       const nodePosition = screenToFlowPosition(position);
       const mouseX = nodePosition.x - 100;
       const mouseY = nodePosition.y - 20;

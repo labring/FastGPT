@@ -34,10 +34,7 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMD } from '@fastgpt/global/common/string/time';
-import {
-  AI_POINT_USAGE_CARD_ROUTE,
-  EXTRA_PLAN_CARD_ROUTE
-} from '@/web/support/wallet/sub/constants';
+import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
 
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
@@ -57,6 +54,9 @@ const UpdateNotification = dynamic(() => import('./components/UpdateNotification
 const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
+const AiPointsModal = dynamic(() =>
+  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+);
 
 const Info = () => {
   const { isPc } = useSystem();
@@ -352,6 +352,11 @@ const PlanUsage = () => {
     onClose: onCloseStandardModal,
     onOpen: onOpenStandardModal
   } = useDisclosure();
+  const {
+    isOpen: isOpenAiPointsModal,
+    onClose: onCloseAiPointsModal,
+    onOpen: onOpenAiPointsModal
+  } = useDisclosure();
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
@@ -437,7 +442,7 @@ const PlanUsage = () => {
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('account_info:package_and_usage')}
         </Flex>
-        <Button ml={4} size={'sm'} onClick={() => router.push(AI_POINT_USAGE_CARD_ROUTE)}>
+        <Button ml={4} size={'sm'} onClick={onOpenAiPointsModal}>
           {t('account_info:billing_standard')}
         </Button>
         <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
@@ -460,17 +465,17 @@ const PlanUsage = () => {
               {t(planName as any)}
             </Box>
           </Box>
-          {subPlans?.planDescriptionUrl && (
-            <Button
-              onClick={() => {
-                router.push('/price');
-              }}
-              w={'8rem'}
-              size="sm"
-            >
-              {t('account_info:upgrade_package')}
-            </Button>
-          )}
+          <Button
+            onClick={() => {
+              router.push(
+                subPlans?.planDescriptionUrl ? getDocPath(subPlans.planDescriptionUrl) : '/price'
+              );
+            }}
+            w={'8rem'}
+            size="sm"
+          >
+            {t('account_info:upgrade_package')}
+          </Button>
         </Flex>
         <Box px={[5, 7]} pb={[3, 6]}>
           {isFreeTeam && (
@@ -515,7 +520,7 @@ const PlanUsage = () => {
             </Box>
           </Flex>
           <Link
-            href={getWebReqUrl(EXTRA_PLAN_CARD_ROUTE)}
+            href={getWebReqUrl(getExtraPlanCardRoute())}
             transform={'translateX(15px)'}
             display={'flex'}
             alignItems={'center'}
@@ -578,6 +583,7 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
+      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
     </Box>
   ) : null;
 };
