@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -9,7 +9,8 @@ import {
   Link,
   Progress,
   Grid,
-  BoxProps
+  BoxProps,
+  FlexProps
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
@@ -593,7 +594,9 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
+  const { isPc } = useSystem();
   const { userInfo, updateUserInfo } = useUserStore();
+
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -613,8 +616,22 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
         status: 'success'
       });
     },
-    [reset, toast, updateUserInfo]
+    [reset, t, toast, updateUserInfo]
   );
+
+  const buttonStyles = useRef<FlexProps>({
+    bg: 'white',
+    py: 3,
+    px: 6,
+    border: theme.borders.sm,
+    borderWidth: '1.5px',
+    borderRadius: 'md',
+    alignItems: 'center',
+    cursor: 'pointer',
+    userSelect: 'none',
+    fontSize: 'sm'
+  });
+
   return (
     <Box>
       <Grid gridGap={4} mt={3}>
@@ -641,20 +658,24 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Link>
         )}
 
+        {!isPc &&
+          feConfigs?.navbarItems
+            ?.filter((item) => item.isActive)
+            .map((item) => (
+              <Flex
+                key={item.id}
+                {...buttonStyles.current}
+                onClick={() => window.open(item.url, '_blank')}
+              >
+                <Avatar src={item.avatar} w={'18px'} />
+                <Box ml={2} flex={1}>
+                  {item.name}
+                </Box>
+              </Flex>
+            ))}
+
         {feConfigs?.lafEnv && userInfo?.team.role === TeamMemberRoleEnum.owner && (
-          <Flex
-            bg={'white'}
-            py={3}
-            px={6}
-            border={theme.borders.sm}
-            borderWidth={'1.5px'}
-            borderRadius={'md'}
-            alignItems={'center'}
-            cursor={'pointer'}
-            userSelect={'none'}
-            onClick={onOpenLaf}
-            fontSize={'sm'}
-          >
+          <Flex {...buttonStyles.current} onClick={onOpenLaf}>
             <MyImage src="/imgs/workflow/laf.png" w={'18px'} alt="laf" />
             <Box ml={2} flex={1}>
               {'laf' + t('account_info:account_duplicate')}
@@ -669,19 +690,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
 
         {feConfigs?.show_openai_account && (
-          <Flex
-            bg={'white'}
-            py={3}
-            px={6}
-            border={theme.borders.sm}
-            borderWidth={'1.5px'}
-            borderRadius={'md'}
-            alignItems={'center'}
-            cursor={'pointer'}
-            userSelect={'none'}
-            onClick={onOpenOpenai}
-            fontSize={'sm'}
-          >
+          <Flex {...buttonStyles.current} onClick={onOpenOpenai}>
             <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
               {'OpenAI / OneAPI' + t('account_info:account_duplicate')}

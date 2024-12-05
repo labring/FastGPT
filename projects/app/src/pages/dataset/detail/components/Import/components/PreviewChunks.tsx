@@ -7,9 +7,9 @@ import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { getPreviewSourceReadType } from '../utils';
 
 const PreviewChunks = ({
   previewSource,
@@ -39,35 +39,10 @@ const PreviewChunks = ({
           a: ''
         }));
       }
-      if (importSource === ImportDataSourceEnum.csvTable) {
-        return getPreviewChunks({
-          datasetId,
-          type: importType2ReadType(importSource),
-          sourceId:
-            previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
-          chunkSize,
-          overlapRatio: chunkOverlapRatio,
-          customSplitChar: processParamsForm.getValues('customSplitChar'),
-          selector: processParamsForm.getValues('webSelector'),
-          isQAImport: true
-        });
-      }
-      if (importSource === ImportDataSourceEnum.reTraining && previewSource.dbFileId) {
-        return getPreviewChunks({
-          datasetId,
-          type: importType2ReadType(ImportDataSourceEnum.fileLocal),
-          sourceId:
-            previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
-          chunkSize,
-          overlapRatio: chunkOverlapRatio,
-          customSplitChar: processParamsForm.getValues('customSplitChar'),
-          selector: processParamsForm.getValues('webSelector'),
-          isQAImport: false
-        });
-      }
+
       return getPreviewChunks({
         datasetId,
-        type: importType2ReadType(importSource),
+        type: getPreviewSourceReadType(previewSource),
         sourceId:
           previewSource.dbFileId ||
           previewSource.link ||
@@ -80,7 +55,7 @@ const PreviewChunks = ({
         customSplitChar: processParamsForm.getValues('customSplitChar'),
 
         selector: processParamsForm.getValues('webSelector'),
-        isQAImport: false,
+        isQAImport: importSource === ImportDataSourceEnum.csvTable,
         externalFileId: previewSource.externalFileId
       });
     },

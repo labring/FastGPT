@@ -36,7 +36,6 @@ import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -303,7 +302,6 @@ function EditKeyModal({
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
-  const { publishT } = useI18n();
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
   const { feConfigs } = useSystemStore();
 
@@ -333,13 +331,13 @@ function EditKeyModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/key.svg"
-      title={isEdit ? publishT('edit_api_key') : publishT('create_api_key')}
+      title={isEdit ? t('publish:edit_api_key') : t('publish:create_api_key')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
-            placeholder={publishT('key_alias') || 'key_alias'}
+            placeholder={t('publish:key_alias') || 'key_alias'}
             maxLength={20}
             {...register('name', {
               required: t('common:common.name_is_empty') || 'name_is_empty'

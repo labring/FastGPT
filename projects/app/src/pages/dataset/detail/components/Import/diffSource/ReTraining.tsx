@@ -1,49 +1,64 @@
-import React, { useCallback, useMemo, useRef, useEffect } from 'react';
-import {
-  Box,
-  Flex,
-  Input,
-  Button,
-  ModalBody,
-  ModalFooter,
-  Textarea,
-  useDisclosure
-} from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
-import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
-import Preview from '../components/Preview';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
+import React from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetImportContext, type ImportFormType } from '../Context';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useRouter } from 'next/router';
-import { TabEnum } from '../../NavBar';
-import { getDatasetCollectionById } from '@/web/core/dataset/api';
-import { useQuery } from '@tanstack/react-query';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { DatasetImportContext } from '../Context';
+
 import dynamic from 'next/dynamic';
 import DataProcess from '../commonProgress/DataProcess';
+import { useRouter } from 'next/router';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getDatasetCollectionById } from '@/web/core/dataset/api';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
 
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const ReTraining = () => {
+  const router = useRouter();
+
+  const { collectionId = '' } = router.query as {
+    collectionId: string;
+  };
+
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
+  const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
+  const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
+
+  const { loading } = useRequest2(() => getDatasetCollectionById(collectionId), {
+    refreshDeps: [collectionId],
+    manual: false,
+    onSuccess: (collection) => {
+      setSources([
+        {
+          dbFileId: collection.fileId,
+          link: collection.rawLink,
+          apiFileId: collection.apiFileId,
+
+          createStatus: 'waiting',
+          icon: getFileIcon(collection.name),
+          id: collection._id,
+          isUploading: false,
+          sourceName: collection.name,
+          uploadedFileRate: 100
+        }
+      ]);
+      processParamsForm.reset({
+        mode: collection.trainingType,
+        way: ImportProcessWayEnum.auto,
+        embeddingChunkSize: collection.chunkSize,
+        qaChunkSize: collection.chunkSize,
+        customSplitChar: collection.chunkSplitter,
+        qaPrompt: collection.qaPrompt,
+        webSelector: collection.metadata?.webSelector
+      });
+    }
+  });
 
   return (
-    <>
+    <MyBox isLoading={loading} h={'100%'} overflow={'auto'}>
       {activeStep === 0 && <DataProcess showPreviewChunks={true} />}
       {activeStep === 1 && <Upload />}
-    </>
+    </MyBox>
   );
 };
 

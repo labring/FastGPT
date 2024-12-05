@@ -62,13 +62,14 @@ export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 };
 export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
-  apiFileId?: string;
+  apiFileId: string;
 };
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;
 };
-export type reTrainingDatasetFileCollectionParams = ApiCreateDatasetCollectionParams & {
-  collectionId?: string;
+export type reTrainingDatasetFileCollectionParams = DatasetCollectionChunkMetadataType & {
+  datasetId: string;
+  collectionId: string;
 };
 export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileMetadata?: Record<string, any>;

@@ -19,7 +19,7 @@ const ApiKey = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account_apikey', 'account']))
+      ...(await serviceSideProps(content, ['account_apikey', 'account', 'publish']))
     }
   };
 }
