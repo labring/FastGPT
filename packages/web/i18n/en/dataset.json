@@ -45,6 +45,7 @@
   "request_headers": "Request headers, will automatically append 'Bearer '",
   "retain_collection": "Adjust Training Parameters",
   "retrain_task_submitted": "The retraining task has been submitted",
+  "same_api_collection": "The same API set exists",
   "start_sync_website_tip": "Confirm to start synchronizing data? \nThe old data will be deleted and retrieved again, please confirm!",
   "tag.Add New": "Add New",
   "tag.Add_new_tag": "Add New Tag",

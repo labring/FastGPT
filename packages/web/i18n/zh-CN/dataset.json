@@ -45,6 +45,7 @@
   "request_headers": "请求头参数，会自动补充 Bearer",
   "retain_collection": "调整训练参数",
   "retrain_task_submitted": "重新训练任务已提交",
+  "same_api_collection": "存在相同的 API 集合",
   "start_sync_website_tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
   "tag.Add New": "新建",
   "tag.Add_new_tag": "新建标签",

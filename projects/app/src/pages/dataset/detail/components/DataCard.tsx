@@ -142,32 +142,25 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          {collection &&
-            [
-              DatasetCollectionTypeEnum.file,
-              DatasetCollectionTypeEnum.link,
-              DatasetCollectionTypeEnum.apiFile
-            ].includes(collection?.type) && (
-              <Box>
-                <Button
-                  ml={2}
-                  variant={'whitePrimary'}
-                  size={['sm', 'md']}
-                  onClick={() => {
-                    router.push({
-                      query: {
-                        datasetId,
-                        currentTab: TabEnum.import,
-                        source: ImportDataSourceEnum.reTraining,
-                        collectionId
-                      }
-                    });
-                  }}
-                >
-                  {t('dataset:retain_collection')}
-                </Button>
-              </Box>
-            )}
+          {datasetDetail.type !== 'websiteDataset' && !!collection?.chunkSize && (
+            <Button
+              ml={2}
+              variant={'whitePrimary'}
+              size={['sm', 'md']}
+              onClick={() => {
+                router.push({
+                  query: {
+                    datasetId,
+                    currentTab: TabEnum.import,
+                    source: ImportDataSourceEnum.reTraining,
+                    collectionId
+                  }
+                });
+              }}
+            >
+              {t('dataset:retain_collection')}
+            </Button>
+          )}
           {canWrite && (
             <Button
               ml={2}

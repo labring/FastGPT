@@ -6,7 +6,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getApiDatasetFileList } from '@/web/core/dataset/api';
+import { getApiDatasetFileList, getApiDatasetFileListExistId } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'react-i18next';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
@@ -66,6 +66,12 @@ const CustomAPIFileInput = () => {
       manual: false
     }
   );
+  const { data: existIdList = [] } = useRequest2(
+    () => getApiDatasetFileListExistId({ datasetId: datasetDetail._id }),
+    {
+      manual: false
+    }
+  );
 
   // Init selected files
   useMount(() => {
@@ -97,14 +103,16 @@ const CustomAPIFileInput = () => {
       const allFiles = await getFilesRecursively(selectFiles);
 
       setSources(
-        allFiles.map((item) => ({
-          id: item.id,
-          apiFileId: item.id,
-          apiFile: item,
-          createStatus: 'waiting',
-          sourceName: item.name,
-          icon: getSourceNameIcon({ sourceName: item.name }) as any
-        }))
+        allFiles
+          .filter((item) => !existIdList.includes(item.id))
+          .map((item) => ({
+            id: item.id,
+            apiFileId: item.id,
+            apiFile: item,
+            createStatus: 'waiting',
+            sourceName: item.name,
+            icon: getSourceNameIcon({ sourceName: item.name }) as any
+          }))
       );
     },
     {
@@ -196,7 +204,9 @@ const CustomAPIFileInput = () => {
             </Flex>
             {fileList.map((item) => {
               const isFolder = item.type === 'folder';
-              const isChecked = selectFiles.some((file) => file.id === item.id);
+              const isExists = existIdList.includes(item.id);
+              const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
+
               return (
                 <Flex
                   key={item.id}
@@ -205,6 +215,7 @@ const CustomAPIFileInput = () => {
                   pl={7}
                   cursor={'pointer'}
                   onClick={(e) => {
+                    if (isExists) return;
                     if (!(e.target as HTMLElement).closest('.checkbox')) {
                       handleItemClick(item);
                     }
@@ -214,8 +225,10 @@ const CustomAPIFileInput = () => {
                     className="checkbox"
                     mr={2.5}
                     isChecked={isChecked}
+                    isDisabled={isExists}
                     onChange={(e) => {
                       e.stopPropagation();
+                      if (isExists) return;
                       if (isChecked) {
                         setSelectFiles((state) => state.filter((file) => file.id !== item.id));
                       } else {

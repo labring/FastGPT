@@ -7,9 +7,9 @@ import DataProcess from '../commonProgress/DataProcess';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
+import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
@@ -35,7 +35,7 @@ const ReTraining = () => {
           apiFileId: collection.apiFileId,
 
           createStatus: 'waiting',
-          icon: getFileIcon(collection.name),
+          icon: getCollectionIcon(collection.type, collection.name),
           id: collection._id,
           isUploading: false,
           sourceName: collection.name,
