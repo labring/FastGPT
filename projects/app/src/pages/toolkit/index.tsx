@@ -6,7 +6,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
 import PluginCard from './components/PluginCard';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
