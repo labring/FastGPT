@@ -43,6 +43,8 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/price': true
 };
 
+export const navbarWidth = '64px';
+
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { Loading } = useLoading();
@@ -79,10 +81,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Auth>{children}</Auth>
             ) : (
               <>
-                <Box h={'100%'} position={'fixed'} left={0} top={0} w={'64px'}>
+                <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
                   <Navbar unread={unread} />
                 </Box>
-                <Box h={'100%'} ml={'70px'} overflow={'overlay'}>
+                <Box h={'100%'} ml={navbarWidth} overflow={'overlay'}>
                   <Auth>{children}</Auth>
                 </Box>
               </>

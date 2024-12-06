@@ -11,6 +11,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { AIChatItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 
 export type readCollectionSourceQuery = {};
 
@@ -144,6 +145,14 @@ async function handler(
     }
     if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
       return collection.rawLink;
+    }
+    if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
+      const apiServer = collection.datasetId.apiServer;
+      if (!apiServer) return Promise.reject('apiServer not found');
+
+      return useApiDatasetRequest({ apiServer }).getFilePreviewUrl({
+        apiFileId: collection.apiFileId
+      });
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.datasetId.externalReadUrl) {

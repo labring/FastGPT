@@ -44,6 +44,7 @@ const Standard = ({
             price: value.price * (selectSubMode === SubModeEnum.month ? 1 : 10),
             level: level as `${StandardSubLevelEnum}`,
             ...standardSubLevelMap[level as `${StandardSubLevelEnum}`],
+            label: value.name || standardSubLevelMap[level as `${StandardSubLevelEnum}`].label, // custom label
             maxTeamMember: value.maxTeamMember,
             maxAppAmount: value.maxAppAmount,
             maxDatasetAmount: value.maxDatasetAmount,
@@ -160,7 +161,7 @@ const Standard = ({
                   </Box>
                 )}
                 <Box fontSize={'md'} fontWeight={'500'} color={'myGray.900'}>
-                  {t(item.label)}
+                  {t(item.label as any)}
                 </Box>
                 <Box fontSize={['32px', '42px']} fontWeight={'bold'} color={'myGray.900'}>
                   ￥{item.price}

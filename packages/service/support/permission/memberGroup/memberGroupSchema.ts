@@ -25,6 +25,7 @@ export const MemberGroupSchema = new Schema(
     }
   },
   {
+    // Auto update updateTime
     timestamps: {
       updatedAt: 'updateTime'
     }

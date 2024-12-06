@@ -179,6 +179,7 @@ const Provider = ({
     finishSegmentedAudio,
     splitText2Audio
   } = useAudioPlay({
+    appId,
     ttsConfig,
     ...outLinkAuthData
   });

@@ -1,0 +1,12 @@
+{
+  "personal_information": "个人信息",
+  "usage_records": "使用记录",
+  "bills_and_invoices": "账单与发票",
+  "promotion_records": "促销记录",
+  "api_key": "API 密钥",
+  "personalization": "个性化",
+  "notifications": "通知",
+  "logout": "登出",
+  "confirm_logout": "确认退出登录?",
+  "team": "团队管理"
+}

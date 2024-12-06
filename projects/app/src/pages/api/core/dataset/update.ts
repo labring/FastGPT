@@ -41,8 +41,18 @@ async function handler(
   req: ApiRequestProps<DatasetUpdateBody, DatasetUpdateQuery>,
   _res: ApiResponseType<any>
 ): Promise<DatasetUpdateResponse> {
-  const { id, parentId, name, avatar, intro, agentModel, websiteConfig, externalReadUrl, status } =
-    req.body;
+  const {
+    id,
+    parentId,
+    name,
+    avatar,
+    intro,
+    agentModel,
+    websiteConfig,
+    externalReadUrl,
+    apiServer,
+    status
+  } = req.body;
 
   if (!id) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -103,6 +113,10 @@ async function handler(
         ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
+        ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),
+        ...(!!apiServer?.authorization && {
+          'apiServer.authorization': apiServer.authorization
+        }),
         ...(isMove && { inheritPermission: true })
       },
       { session }
@@ -165,7 +179,8 @@ async function updateTraining({
     {
       $set: {
         model: agentModel,
-        retryCount: 5
+        retryCount: 5,
+        lockTime: new Date()
       }
     }
   );

@@ -33,13 +33,13 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const CustomComponent = useMemo(() => {
     const quoteList = inputs.filter((item) => item.canEdit);
     const tokenLimit = (() => {
-      let maxTokens = 13000;
+      let maxTokens = 16000;
 
       nodeList.forEach((item) => {
         if ([FlowNodeTypeEnum.chatNode, FlowNodeTypeEnum.tools].includes(item.flowNodeType)) {
           const model =
             item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 13000;
+          const quoteMaxToken = getWebLLMModel(model)?.quoteMaxToken || 16000;
 
           maxTokens = Math.max(maxTokens, quoteMaxToken);
         }

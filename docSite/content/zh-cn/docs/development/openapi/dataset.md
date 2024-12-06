@@ -407,9 +407,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - parentId： 父级ID，不填则默认为根目录
 - name: 集合名称（必填）
 - metadata： 元数据（暂时没啥用）
-- trainingType:（必填）
-  - chunk: 按文本长度进行分割
-  - qa: QA拆分
+- trainingType: 训练模式（必填）
 - chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
 - chunkSplitter: 自定义最高优先分割符号（可选）
 - qaPrompt: qa拆分自定义提示词（可选）
@@ -483,9 +481,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - datasetId: 知识库的ID(必填)
 - parentId： 父级ID，不填则默认为根目录
 - metadata.webPageSelector: 网页选择器，用于指定网页中的哪个元素作为文本(可选)
-- trainingType:（必填）
-  - chunk: 按文本长度进行分割
-  - qa: QA拆分
+- trainingType:训练模式（必填）
 - chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
 - chunkSplitter: 自定义最高优先分割符号（可选）
 - qaPrompt: qa拆分自定义提示词（可选）
@@ -505,7 +501,13 @@ data 为集合的 ID。
     "statusText": "",
     "message": "",
     "data": {
-        "collectionId": "65abd0ad9d1448617cba6031"
+        "collectionId": "65abd0ad9d1448617cba6031",
+        "results": {
+            "insertLen": 1,
+            "overToken": [],
+            "repeat": [],
+            "error": []
+        }
     }
 }
 ```
@@ -544,12 +546,86 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - data: 知识库相关信息（json序列化后传入）
   - datasetId: 知识库的ID(必填)
   - parentId： 父级ID，不填则默认为根目录
-  - trainingType:（必填）
-    - chunk: 按文本长度进行分割
-    - qa: QA拆分
+  - trainingType:训练模式（必填）
   - chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
   - chunkSplitter: 自定义最高优先分割符号（可选）
   - qaPrompt: qa拆分自定义提示词（可选）
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+data 为集合的 ID。
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": {
+        "collectionId": "65abc044e4704bac793fbd81",
+        "results": {
+            "insertLen": 1,
+            "overToken": [],
+            "repeat": [],
+            "error": []
+        }
+    }
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+### 创建一个API集合
+
+传入一个文件的 id，创建一个集合，会读取文件内容进行分割。目前支持：pdf, docx, md, txt, html, csv。
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+使用代码上传时，请注意中文 filename 需要进行 encode 处理，否则容易乱码。
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/apiCollection' \
+--header 'Authorization: Bearer fastgpt-xxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "name": "A Quick Guide to Building a Discord Bot.pdf",
+    "apiFileId":"A Quick Guide to Building a Discord Bot.pdf",
+
+    "datasetId": "674e9e479c3503c385495027",
+    "parentId": null,
+
+    "trainingType": "chunk",
+    "chunkSize":512,
+    "chunkSplitter":"",
+    "qaPrompt":""
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+需要使用 POST form-data 的格式上传。包含 file 和 data 两个字段。
+
+{{% alert icon=" " context="success" %}}
+- name: 集合名，建议就用文件名，必填。
+- apiFileId: 文件的ID，必填。
+- datasetId: 知识库的ID(必填)
+- parentId： 父级ID，不填则默认为根目录
+- trainingType:训练模式（必填）
+- chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
+- chunkSplitter: 自定义最高优先分割符号（可选）
+- qaPrompt: qa拆分自定义提示词（可选）
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -637,7 +713,12 @@ data 为集合的 ID。
   "message": "",
   "data": {
     "collectionId": "6646fcedfabd823cdc6de746",
-    "insertLen": 3
+    "results": {
+        "insertLen": 1,
+        "overToken": [],
+        "repeat": [],
+        "error": []
+    }
   }
 }
 ```
@@ -1017,9 +1098,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 
 {{% alert icon=" " context="success" %}}
 - collectionId: 集合ID（必填）
-- trainingType:（必填）
-  - chunk: 按文本长度进行分割
-  - qa: QA拆分
+- trainingType:训练模式（必填）
 - prompt: 自定义 QA 拆分提示词，需严格按照模板，建议不要传入。（选填）
 - data：（具体数据）
   - q: 主要数据（必填）

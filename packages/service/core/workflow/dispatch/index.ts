@@ -72,7 +72,6 @@ import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
-import { responseWrite } from '../../../common/response';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -500,8 +499,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       value = replaceEditorVariable({
         text: value,
         nodes: runtimeNodes,
-        variables,
-        runningNode: node
+        variables
       });
 
       // replace reference variables
@@ -693,9 +691,17 @@ export function getSystemVariable({
   chatId,
   responseChatItemId,
   histories = [],
-  uid
+  uid,
+  chatConfig
 }: Props): SystemVariablesType {
+  const variables = chatConfig?.variables || [];
+  const variablesMap = variables.reduce<Record<string, any>>((acc, item) => {
+    acc[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    return acc;
+  }, {});
+
   return {
+    ...variablesMap,
     userId: uid,
     appId: String(runningAppInfo.id),
     chatId,

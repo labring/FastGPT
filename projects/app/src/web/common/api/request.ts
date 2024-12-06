@@ -163,8 +163,8 @@ function request(
       baseURL: getWebReqUrl('/api'),
       url,
       method,
-      data: ['POST', 'PUT'].includes(method) ? data : null,
-      params: !['POST', 'PUT'].includes(method) ? data : null,
+      data: ['POST', 'PUT'].includes(method) ? data : undefined,
+      params: !['POST', 'PUT'].includes(method) ? data : undefined,
       signal: cancelToken?.signal ?? controller?.signal,
       withCredentials,
       ...config // 用户自定义配置，可以覆盖前面的配置

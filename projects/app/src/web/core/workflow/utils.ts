@@ -22,9 +22,7 @@ import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textare
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
-  getGuideModule,
-  isValidArrayReferenceValue,
-  isValidReferenceValue
+  getGuideModule
 } from '@fastgpt/global/core/workflow/utils';
 import { TFunction } from 'next-i18next';
 import {

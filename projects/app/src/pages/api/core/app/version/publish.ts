@@ -9,6 +9,7 @@ import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/strin
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(
   req: ApiRequestProps<PostPublishAppProps>,
@@ -17,9 +18,12 @@ async function handler(
   const { appId } = req.query as { appId: string };
   const { nodes = [], edges = [], chatConfig, isPublish, versionName } = req.body;
 
-  const { tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
-  const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
+  const { nodes: formatNodes } = beforeUpdateAppFormat({
+    nodes,
+    isPlugin: app.type === AppTypeEnum.plugin
+  });
 
   await mongoSessionRun(async (session) => {
     // create version histories

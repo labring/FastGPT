@@ -283,7 +283,7 @@ const RenderList = React.memo(function RenderList({
                     {t(item.name as any)}
                   </Box>
                 </Flex>
-                <Box mt={2} color={'myGray.500'}>
+                <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                   {t(item.intro as any) || t('common:core.workflow.Not intro')}
                 </Box>
                 {showCost && <CostTooltip cost={item.currentCost} />}

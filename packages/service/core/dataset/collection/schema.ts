@@ -10,90 +10,100 @@ import {
 
 export const DatasetColCollectionName = 'dataset_collections';
 
-const DatasetCollectionSchema = new Schema({
-  parentId: {
-    type: Schema.Types.ObjectId,
-    ref: DatasetColCollectionName,
-    default: null
-  },
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName,
-    required: true
-  },
-  tmbId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamMemberCollectionName,
-    required: true
-  },
-  datasetId: {
-    type: Schema.Types.ObjectId,
-    ref: DatasetCollectionName,
-    required: true
-  },
-  type: {
-    type: String,
-    enum: Object.keys(DatasetCollectionTypeMap),
-    required: true
-  },
-  name: {
-    type: String,
-    required: true
-  },
-  createTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  updateTime: {
-    type: Date,
-    default: () => new Date()
-  },
-  forbid: {
-    type: Boolean,
-    default: false
-  },
+const DatasetCollectionSchema = new Schema(
+  {
+    parentId: {
+      type: Schema.Types.ObjectId,
+      ref: DatasetColCollectionName,
+      default: null
+    },
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamCollectionName,
+      required: true
+    },
+    tmbId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamMemberCollectionName,
+      required: true
+    },
+    datasetId: {
+      type: Schema.Types.ObjectId,
+      ref: DatasetCollectionName,
+      required: true
+    },
+    type: {
+      type: String,
+      enum: Object.keys(DatasetCollectionTypeMap),
+      required: true
+    },
+    name: {
+      type: String,
+      required: true
+    },
+    createTime: {
+      type: Date,
+      default: () => new Date()
+    },
+    updateTime: {
+      type: Date,
+      default: () => new Date()
+    },
+    forbid: {
+      type: Boolean,
+      default: false
+    },
 
-  // chunk filed
-  trainingType: {
-    type: String,
-    enum: Object.keys(TrainingTypeMap)
-  },
-  chunkSize: {
-    type: Number,
-    required: true
-  },
-  chunkSplitter: {
-    type: String
-  },
-  qaPrompt: {
-    type: String
-  },
-  ocrParse: Boolean,
+    // chunk filed
+    trainingType: {
+      type: String,
+      enum: Object.keys(TrainingTypeMap)
+    },
+    chunkSize: {
+      type: Number,
+      required: true
+    },
+    chunkSplitter: {
+      type: String
+    },
+    qaPrompt: {
+      type: String
+    },
+    ocrParse: Boolean,
 
-  tags: {
-    type: [String],
-    default: []
-  },
+    tags: {
+      type: [String],
+      default: []
+    },
 
-  // local file collection
-  fileId: {
-    type: Schema.Types.ObjectId,
-    ref: 'dataset.files'
-  },
-  // web link collection
-  rawLink: String,
-  // external collection
-  externalFileId: String,
+    // local file collection
+    fileId: {
+      type: Schema.Types.ObjectId,
+      ref: 'dataset.files'
+    },
+    // web link collection
+    rawLink: String,
+    // api collection
+    apiFileId: String,
+    // external collection
+    externalFileId: String,
+    externalFileUrl: String, // external import url
 
-  // metadata
-  rawTextLength: Number,
-  hashRawText: String,
-  externalFileUrl: String, // external import url
-  metadata: {
-    type: Object,
-    default: {}
+    // metadata
+    rawTextLength: Number,
+    hashRawText: String,
+    metadata: {
+      type: Object,
+      default: {}
+    }
+  },
+  {
+    // Auto update updateTime
+    timestamps: {
+      updatedAt: 'updateTime'
+    }
   }
-});
+);
 
 try {
   // auth file

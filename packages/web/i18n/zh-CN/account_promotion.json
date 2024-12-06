@@ -1,0 +1,13 @@
+{
+  "total_invited": "累计邀请人数",
+  "earnings": "收益（￥）",
+  "cashback_ratio": "返现比例",
+  "cashback_ratio_description": "好友充值时你将获得一定比例的余额奖励",
+  "invite_url": "邀请链接",
+  "invite_url_tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n 此外，好友使用手机号注册时，你将立即获得 5 元奖励。\n 奖励会发送到您的默认团队中。",
+  "copy_invite_link": "复制邀请链接",
+  "time": "时间",
+  "type": "类型",
+  "amount": "金额",
+  "no_invite_records": "暂无邀请记录"
+}

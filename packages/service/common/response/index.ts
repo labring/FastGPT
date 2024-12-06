@@ -31,6 +31,8 @@ export const jsonRes = <T = any>(
       clearCookie(res);
     }
 
+    addLog.error(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
+
     return res.json(ERROR_RESPONSE[errResponseKey]);
   }
 

@@ -11,7 +11,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -28,7 +27,6 @@ import {
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -40,7 +38,6 @@ function List() {
   const { setLoading } = useSystemStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
-  const { commonT } = useI18n();
   const { loadAndGetTeamMembers } = useUserStore();
   const {
     loadMyDatasets,
@@ -326,7 +323,7 @@ function List() {
                                 children: [
                                   {
                                     icon: 'edit',
-                                    label: commonT('dataset.Edit Info'),
+                                    label: t('common:dataset.Edit Info'),
                                     onClick: () =>
                                       setEditedDataset({
                                         id: dataset._id,
@@ -410,7 +407,7 @@ function List() {
       {editedDataset && (
         <EditResourceModal
           {...editedDataset}
-          title={commonT('dataset.Edit Info')}
+          title={t('common:dataset.Edit Info')}
           onClose={() => setEditedDataset(undefined)}
           onEdit={async (data) => {
             await onUpdateDataset({

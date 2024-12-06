@@ -182,7 +182,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           title: matchTitle
         };
       })
-      .filter((item) => item.text?.trim());
+      .filter((item) => !!item.title || !!item.text?.trim());
   };
 
   /* Gets the overlap at the end of a text as the beginning of the next block */
@@ -267,8 +267,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           parentTitle: parentTitle + item.title
         });
 
-        const lastChunk = innerChunks[innerChunks.length - 1];
-        if (!lastChunk) continue;
+        if (innerChunks.length === 0) {
+          chunks.push(`${parentTitle}${item.title}`);
+          continue;
+        }
 
         chunks.push(
           ...innerChunks.map(

@@ -19,7 +19,7 @@ export const checkTeamAiPointsAndLock = async (teamId: string) => {
           teamId
         });
         console.log('余额不足，暂停【向量】生成任务');
-        lockTrainingDataByTeamId(teamId);
+        await lockTrainingDataByTeamId(teamId);
       } catch (error) {}
     }
     return false;
