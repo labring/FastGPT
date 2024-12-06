@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
@@ -28,7 +28,7 @@ import {
 } from './useSnapshots';
 import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import { getAppConfigByDiff } from '@/web/core/app/diff';
+import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -51,7 +51,6 @@ const Header = ({
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
-  const appLatestVersion = useContextSelector(AppContext, (v) => v.appLatestVersion);
 
   const { lastAppListRouteType } = useSystemStore();
   const { allDatasets } = useDatasetStore();
@@ -105,19 +104,9 @@ const Header = ({
   const [isShowHistories, { setTrue: setIsShowHistories, setFalse: closeHistories }] =
     useBoolean(false);
 
-  const initialAppForm = useMemo(
-    () =>
-      appWorkflow2Form({
-        nodes: appLatestVersion?.nodes || [],
-        chatConfig: appLatestVersion?.chatConfig || {}
-      }),
-    [appLatestVersion]
-  );
-
   const onSwitchTmpVersion = useCallback(
     (data: SimpleAppSnapshotType, customTitle: string) => {
-      const pastState = getAppConfigByDiff(initialAppForm, data.diff);
-      setAppForm(pastState);
+      setAppForm(data.appForm);
 
       // Remove multiple "copy-"
       const copyText = t('app:version_copy');
@@ -125,11 +114,11 @@ const Header = ({
       const title = customTitle.replace(regex, `$1`);
 
       return saveSnapshot({
-        appForm: pastState,
+        appForm: data.appForm,
         title
       });
     },
-    [initialAppForm, saveSnapshot, setAppForm, t]
+    [saveSnapshot, setAppForm, t]
   );
   const onSwitchCloudVersion = useCallback(
     (appVersion: AppVersionSchemaType) => {
@@ -152,17 +141,30 @@ const Header = ({
   );
 
   // Check if the workflow is published
-  const [isPublished, setIsPublished] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   useDebounceEffect(
     () => {
       const savedSnapshot = past.find((snapshot) => snapshot.isSaved);
-      const pastState = getAppConfigByDiff(initialAppForm, savedSnapshot?.diff);
-      const val = compareSimpleAppSnapshot(pastState, appForm);
-      setIsPublished(val);
+      const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
+      setIsSaved(val);
     },
     [past, allDatasets],
     { wait: 500 }
   );
+
+  const onLeaveAutoSave = useCallback(() => {
+    if (isSaved) return;
+    try {
+      console.log('Leave auto save');
+      onClickSave({ isPublish: false, versionName: t('app:auto_save') });
+    } catch (error) {
+      console.error(error);
+    }
+  }, [isSaved, onClickSave, t]);
+  useBeforeunload({
+    tip: t('common:core.common.tip.leave page'),
+    callback: onLeaveAutoSave
+  });
 
   return (
     <Box h={14}>
@@ -196,13 +198,13 @@ const Header = ({
                     type={'borderFill'}
                     showDot
                     colorSchema={
-                      isPublished
+                      isSaved
                         ? publishStatusStyle.published.colorSchema
                         : publishStatusStyle.unPublish.colorSchema
                     }
                   >
                     {t(
-                      isPublished
+                      isSaved
                         ? publishStatusStyle.published.text
                         : publishStatusStyle.unPublish.text
                     )}

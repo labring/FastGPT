@@ -704,7 +704,7 @@ export const useWorkflow = () => {
         chatConfig: appDetail.chatConfig
       });
     },
-    [nodes, edges, appDetail.chatConfig],
+    [nodes, edges, appDetail.chatConfig, pushPastSnapshot],
     { wait: 500 }
   );
 
