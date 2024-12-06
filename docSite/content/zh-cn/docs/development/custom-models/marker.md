@@ -21,9 +21,11 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 
 参考文档 [Marker 安装教程](https://github.com/labring/FastGPT/tree/main/python/pdf-marker)，安装 Marker 模型。封装的 API 已经适配了 FastGPT 自定义解析服务。
 
-这里介绍快速 Docker 按照的方法：
+这里介绍快速 Docker 安装的方法：
 
-```
+```dockerfile
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
 ```
 
 ### 2. 添加 FastGPT 环境变量
