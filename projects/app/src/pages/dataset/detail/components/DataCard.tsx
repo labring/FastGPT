@@ -142,7 +142,7 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          <Box>
+          {datasetDetail.type !== 'websiteDataset' && !!collection?.chunkSize && (
             <Button
               ml={2}
               variant={'whitePrimary'}
@@ -160,7 +160,7 @@ const DataCard = () => {
             >
               {t('dataset:retain_collection')}
             </Button>
-          </Box>
+          )}
           {canWrite && (
             <Button
               ml={2}
