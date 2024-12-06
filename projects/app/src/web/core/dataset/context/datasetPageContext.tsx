@@ -115,7 +115,13 @@ export const DatasetPageContextProvider = ({
     if (datasetId === data.id) {
       setDatasetDetail((state) => ({
         ...state,
-        ...data
+        ...data,
+        apiServer: data.apiServer
+          ? {
+              baseUrl: data.apiServer.baseUrl,
+              authorization: ''
+            }
+          : undefined
       }));
     }
   };

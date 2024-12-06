@@ -95,20 +95,23 @@ export const markdownProcess = async ({
 };
 
 export const matchMdImgTextAndUpload = (text: string) => {
-  const base64Regex = /"(data:image\/[^;]+;base64[^"]+)"/g;
+  const base64Regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64[^)]+)\)/g;
   const imageList: ImageType[] = [];
-  const images = Array.from(text.match(base64Regex) || []);
-  for (const image of images) {
+
+  text = text.replace(base64Regex, (match, altText, base64Url) => {
     const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
-    const mime = image.split(';')[0].split(':')[1];
-    const base64 = image.split(',')[1];
-    text = text.replace(image, uuid);
+    const mime = base64Url.split(';')[0].split(':')[1];
+    const base64 = base64Url.split(',')[1];
+
     imageList.push({
       uuid,
       base64,
       mime
     });
-  }
+
+    // 保持原有的 alt 文本，只替换 base64 部分
+    return `![${altText}](${uuid})`;
+  });
 
   return {
     text,

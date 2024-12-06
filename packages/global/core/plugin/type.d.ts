@@ -39,6 +39,7 @@ export type PluginTemplateType = PluginRuntimeType & {
 };
 
 export type PluginRuntimeType = {
+  id: string;
   teamId?: string;
   name: string;
   avatar: string;
@@ -46,4 +47,6 @@ export type PluginRuntimeType = {
   isTool?: boolean;
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
+  currentCost?: number;
+  hasTokenFee?: boolean;
 };

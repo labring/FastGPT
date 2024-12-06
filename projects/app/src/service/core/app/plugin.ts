@@ -10,6 +10,7 @@ import { SystemPluginResponseType } from '@fastgpt/plugins/type';
 const getCommercialPlugins = () => {
   return GET<SystemPluginTemplateItemType[]>('/core/app/plugin/getSystemPlugins');
 };
+
 export const getSystemPlugins = async (refresh = false) => {
   if (isProduction && global.systemPlugins && global.systemPlugins.length > 0 && !refresh)
     return cloneDeep(global.systemPlugins);

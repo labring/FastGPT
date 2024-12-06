@@ -1,0 +1,23 @@
+{
+  "ai_model": "AI model",
+  "all": "all",
+  "app_name": "Application name",
+  "billing_module": "Deduction module",
+  "details": "Details",
+  "duration_seconds": "Duration (seconds)",
+  "generation_time": "Generation time",
+  "member": "member",
+  "member_name": "Member name",
+  "module_name": "module name",
+  "month": "moon",
+  "no_usage_records": "No usage record yet",
+  "order_number": "Order number",
+  "project_name": "Project name",
+  "source": "source",
+  "text_length": "text length",
+  "token_length": "token length",
+  "total_points": "AI points consumption",
+  "total_points_consumed": "AI points consumption",
+  "usage_detail": "Usage details",
+  "user_type": "type"
+}

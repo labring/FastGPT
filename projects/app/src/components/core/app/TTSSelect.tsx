@@ -14,6 +14,8 @@ import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/pages/app/detail/components/context';
 
 const TTSSelect = ({
   value = defaultTTSConfig,
@@ -25,6 +27,8 @@ const TTSSelect = ({
   const { t } = useTranslation();
   const { audioSpeechModelList } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const appId = useContextSelector(AppContext, (v) => v.appId);
 
   const list = useMemo(
     () => [
@@ -50,6 +54,7 @@ const TTSSelect = ({
   );
 
   const { playAudioByText, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({
+    appId,
     ttsConfig: value
   });
 

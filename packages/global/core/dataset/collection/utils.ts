@@ -9,7 +9,8 @@ export const getCollectionSourceData = (
       collection?.fileId ||
       collection?.rawLink ||
       collection?.externalFileId ||
-      collection?.externalFileUrl,
+      collection?.externalFileUrl ||
+      collection?.apiFileId,
     sourceName: collection?.name || ''
   };
 };

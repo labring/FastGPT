@@ -110,8 +110,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       replaceEditorVariable({
         text,
         nodes: runtimeNodes,
-        variables: allVariables,
-        runningNode: node
+        variables: allVariables
       }),
       allVariables
     );

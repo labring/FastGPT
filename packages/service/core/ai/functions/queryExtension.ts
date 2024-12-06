@@ -5,6 +5,7 @@ import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
 import { llmCompletionsBodyFormat } from '../utils';
+import { addLog } from '../../../common/system/log';
 
 /* 
     query extension - 问题扩展
@@ -183,7 +184,7 @@ A: ${chatBg}
       tokens: await countGptMessagesTokens(messages)
     };
   } catch (error) {
-    console.log(error);
+    addLog.error(`Query extension error`, error);
     return {
       rawQuery: query,
       extensionQueries: [],

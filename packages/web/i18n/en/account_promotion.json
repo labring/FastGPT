@@ -1,0 +1,13 @@
+{
+  "amount": "Amount",
+  "cashback_ratio": "Cash back ratio",
+  "cashback_ratio_description": "When your friends recharge, you will receive a certain percentage of your balance as a reward.",
+  "copy_invite_link": "Copy invitation link",
+  "earnings": "Income (￥)",
+  "invite_url": "Invitation link",
+  "invite_url_tip": "Friends who register through this link will be permanently bound to you, and you will receive a certain balance reward when they recharge.\n \nIn addition, when your friends register using their mobile phone number, you will immediately receive a 5 yuan reward.\n \nRewards are sent to your default team.",
+  "no_invite_records": "No invitation record yet",
+  "time": "time",
+  "total_invited": "Cumulative number of invitees",
+  "type": "type"
+}
