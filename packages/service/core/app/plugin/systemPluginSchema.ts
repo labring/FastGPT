@@ -25,12 +25,20 @@ const SystemPluginSchema = new Schema({
     type: Number,
     default: 0
   },
+  hasTokenFee: {
+    type: Boolean,
+    default: false
+  },
+  pluginOrder: {
+    type: Number,
+    default: 0
+  },
   customConfig: Object
 });
 
 SystemPluginSchema.index({ pluginId: 1 });
 
-export const MongoSystemPluginSchema = getMongoModel<SystemPluginConfigSchemaType>(
+export const MongoSystemPlugin = getMongoModel<SystemPluginConfigSchemaType>(
   collectionName,
   SystemPluginSchema
 );

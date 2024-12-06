@@ -5,39 +5,44 @@ import { getLLMModel } from '../ai/model';
 import { MongoApp } from './schema';
 
 export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
-  nodes
+  nodes,
+  isPlugin
 }: {
   nodes: T;
+  isPlugin: boolean;
 }) => {
   if (nodes) {
-    let maxTokens = 3000;
+    // Check dataset maxTokens
+    if (isPlugin) {
+      let maxTokens = 16000;
 
-    nodes.forEach((item) => {
-      if (
-        item.flowNodeType === FlowNodeTypeEnum.chatNode ||
-        item.flowNodeType === FlowNodeTypeEnum.tools
-      ) {
-        const model =
-          item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
-        const chatModel = getLLMModel(model);
-        const quoteMaxToken = chatModel.quoteMaxToken || 3000;
+      nodes.forEach((item) => {
+        if (
+          item.flowNodeType === FlowNodeTypeEnum.chatNode ||
+          item.flowNodeType === FlowNodeTypeEnum.tools
+        ) {
+          const model =
+            item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
+          const chatModel = getLLMModel(model);
+          const quoteMaxToken = chatModel.quoteMaxToken || 16000;
 
-        maxTokens = Math.max(maxTokens, quoteMaxToken);
-      }
-    });
+          maxTokens = Math.max(maxTokens, quoteMaxToken);
+        }
+      });
 
-    nodes.forEach((item) => {
-      if (item.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-        item.inputs.forEach((input) => {
-          if (input.key === NodeInputKeyEnum.datasetMaxTokens) {
-            const val = input.value as number;
-            if (val > maxTokens) {
-              input.value = maxTokens;
+      nodes.forEach((item) => {
+        if (item.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
+          item.inputs.forEach((input) => {
+            if (input.key === NodeInputKeyEnum.datasetMaxTokens) {
+              const val = input.value as number;
+              if (val > maxTokens) {
+                input.value = maxTokens;
+              }
             }
-          }
-        });
-      }
-    });
+          });
+        }
+      });
+    }
   }
 
   return {

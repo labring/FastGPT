@@ -24,7 +24,8 @@ async function handler(
     type = DatasetTypeEnum.dataset,
     avatar,
     vectorModel = global.vectorModels[0].model,
-    agentModel = getDatasetModel().model
+    agentModel = getDatasetModel().model,
+    apiServer
   } = req.body;
 
   // auth
@@ -54,7 +55,8 @@ async function handler(
     vectorModel,
     agentModel,
     avatar,
-    type
+    type,
+    apiServer
   });
 
   return _id;

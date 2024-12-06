@@ -4,6 +4,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const pushChatUsage = ({
   appName,
@@ -198,7 +199,7 @@ export const pushQuestionGuideUsage = ({
 };
 
 export function pushAudioSpeechUsage({
-  appName = 'support.wallet.usage.Audio Speech',
+  appName = i18nT('common:support.wallet.usage.Audio Speech'),
   model,
   charsLength,
   teamId,

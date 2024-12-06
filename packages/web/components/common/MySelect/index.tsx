@@ -18,9 +18,9 @@ import {
   Flex
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
-import { ChevronDownIcon } from '@chakra-ui/icons';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
+import MyDivider from '../MyDivider';
 
 export type SelectProps<T = any> = ButtonProps & {
   value?: T;
@@ -30,6 +30,7 @@ export type SelectProps<T = any> = ButtonProps & {
     label: string | React.ReactNode;
     description?: string;
     value: T;
+    showBorder?: boolean;
   }[];
   isLoading?: boolean;
   onchange?: (val: T) => any | Promise<any>;
@@ -59,8 +60,7 @@ const MySelect = <T = any,>(
     display: 'flex',
     alignItems: 'center',
     _hover: {
-      backgroundColor: 'myGray.100',
-      color: 'primary.700'
+      backgroundColor: 'myGray.100'
     },
     _notLast: {
       mb: 1
@@ -155,34 +155,37 @@ const MySelect = <T = any,>(
           overflowY={'auto'}
         >
           {list.map((item, i) => (
-            <MenuItem
-              key={i}
-              {...menuItemStyles}
-              {...(value === item.value
-                ? {
-                    ref: SelectedItemRef,
-                    color: 'primary.700',
-                    bg: 'myGray.100'
+            <Box key={i}>
+              <MenuItem
+                {...menuItemStyles}
+                {...(value === item.value
+                  ? {
+                      ref: SelectedItemRef,
+                      color: 'primary.700',
+                      bg: 'myGray.100',
+                      fontWeight: '600'
+                    }
+                  : {
+                      color: 'myGray.900'
+                    })}
+                onClick={() => {
+                  if (onChange && value !== item.value) {
+                    onChange(item.value);
                   }
-                : {
-                    color: 'myGray.900'
-                  })}
-              onClick={() => {
-                if (onChange && value !== item.value) {
-                  onChange(item.value);
-                }
-              }}
-              whiteSpace={'pre-wrap'}
-              fontSize={'sm'}
-              display={'block'}
-            >
-              <Box>{item.label}</Box>
-              {item.description && (
-                <Box color={'myGray.500'} fontSize={'xs'}>
-                  {item.description}
-                </Box>
-              )}
-            </MenuItem>
+                }}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                display={'block'}
+              >
+                <Box>{item.label}</Box>
+                {item.description && (
+                  <Box color={'myGray.500'} fontSize={'xs'}>
+                    {item.description}
+                  </Box>
+                )}
+              </MenuItem>
+              {item.showBorder && <MyDivider my={2} />}
+            </Box>
           ))}
         </MenuList>
       </Menu>

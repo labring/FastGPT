@@ -136,7 +136,8 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.JSONEditor,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select
+      FlowNodeInputTypeEnum.select,
+      VariableInputEnum.custom
     ];
 
     return list.includes(inputType as FlowNodeInputTypeEnum);
@@ -301,7 +302,8 @@ const InputTypeConfig = ({
                   }}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.input && (
+              {(inputType === FlowNodeInputTypeEnum.input ||
+                inputType === VariableInputEnum.custom) && (
                 <MyTextarea
                   {...register('defaultValue')}
                   bg={'myGray.50'}

@@ -134,7 +134,7 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
   if (quoteQA.length === 0) {
     return [];
   }
-  if (quoteQA.some((item) => !item.q || !item.datasetId)) {
+  if (quoteQA.some((item) => !item.q)) {
     return undefined;
   }
   return quoteQA;

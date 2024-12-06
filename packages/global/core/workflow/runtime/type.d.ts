@@ -82,17 +82,6 @@ export type RuntimeNodeItemType = {
   version: string;
 };
 
-export type PluginRuntimeType = {
-  id: string;
-  teamId?: string;
-  name: string;
-  avatar: string;
-  showStatus?: boolean;
-  currentCost?: number;
-  nodes: StoreNodeItemType[];
-  edges: StoreEdgeItemType[];
-};
-
 export type RuntimeEdgeItemType = StoreEdgeItemType & {
   status: 'waiting' | 'active' | 'skipped';
 };

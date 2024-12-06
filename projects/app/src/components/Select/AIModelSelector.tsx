@@ -3,12 +3,16 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
 import MySelect, { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import { HUGGING_FACE_ICON, LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import dynamic from 'next/dynamic';
+
+const AiPointsModal = dynamic(() =>
+  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+);
 
 type Props = SelectProps & {
   disableTip?: string;
@@ -18,6 +22,12 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
   const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
   const router = useRouter();
+
+  const {
+    isOpen: isOpenAiPointsModal,
+    onClose: onCloseAiPointsModal,
+    onOpen: onOpenAiPointsModal
+  } = useDisclosure();
 
   const avatarList = list.map((item) => {
     const modelData =
@@ -58,7 +68,7 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const onSelect = useCallback(
     (e: string) => {
       if (e === 'price') {
-        router.push(AI_POINT_USAGE_CARD_ROUTE);
+        onOpenAiPointsModal();
         return;
       }
       return onchange?.(e);
@@ -67,15 +77,25 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   );
 
   return (
-    <MyTooltip label={disableTip}>
-      <MySelect
-        className="nowheel"
-        isDisabled={!!disableTip}
-        list={expandList}
-        {...props}
-        onchange={onSelect}
-      />
-    </MyTooltip>
+    <Box
+      css={{
+        span: {
+          display: 'block'
+        }
+      }}
+    >
+      <MyTooltip label={disableTip}>
+        <MySelect
+          className="nowheel"
+          isDisabled={!!disableTip}
+          list={expandList}
+          {...props}
+          onchange={onSelect}
+        />
+      </MyTooltip>
+
+      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
+    </Box>
   );
 };
 

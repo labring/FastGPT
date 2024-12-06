@@ -251,7 +251,7 @@ const TemplateMarketModal = ({
           position={'relative'}
         >
           <Avatar src={'/imgs/app/templateFill.svg'} w={'2rem'} objectFit={'fill'} />
-          <Box color={'myGray.900'}>{t('app:templateMarket.Template_market')}</Box>
+          <Box color={'myGray.900'}>{t('app:template_market')}</Box>
 
           <Box flex={'1'} />
 

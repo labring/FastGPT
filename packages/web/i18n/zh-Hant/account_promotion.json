@@ -1,0 +1,13 @@
+{
+  "amount": "金額",
+  "cashback_ratio": "返現比例",
+  "cashback_ratio_description": "好友儲值時你將獲得一定比例的餘額獎勵",
+  "copy_invite_link": "複製邀請連結",
+  "earnings": "收益（￥）",
+  "invite_url": "邀請連結",
+  "invite_url_tip": "透過該連結註冊的好友將永久與你綁定，其儲值時你會獲得一定餘額獎勵。\n \n此外，好友使用手機號碼註冊時，你將立即獲得 5 元獎勵。\n \n獎勵會發送到您的預設團隊。",
+  "no_invite_records": "暫無邀請紀錄",
+  "time": "時間",
+  "total_invited": "累計邀請人數",
+  "type": "類型"
+}

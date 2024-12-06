@@ -5,9 +5,8 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { Box, Flex, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRouter } from 'next/router';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
+import { getAiPointUsageCardRoute } from '@/web/support/wallet/sub/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const StandardPlanContentList = ({
@@ -23,6 +22,7 @@ const StandardPlanContentList = ({
 
   const planContent = useMemo(() => {
     const plan = subPlans?.standard?.[level];
+
     if (!plan) return;
     return {
       price: plan.price * (mode === SubModeEnum.month ? 1 : 10),
@@ -96,7 +96,7 @@ const StandardPlanContentList = ({
             ml={1}
             label={t('common:support.wallet.subscription.AI points click to read tip')}
             onClick={() => {
-              router.push(AI_POINT_USAGE_CARD_ROUTE);
+              router.push(getAiPointUsageCardRoute());
             }}
           ></QuestionTip>
         </Flex>

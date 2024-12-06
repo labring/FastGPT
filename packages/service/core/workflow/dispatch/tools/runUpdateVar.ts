@@ -47,8 +47,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
           ? replaceEditorVariable({
               text: formatValue,
               nodes: runtimeNodes,
-              variables,
-              runningNode: node
+              variables
             })
           : formatValue;
       } else {

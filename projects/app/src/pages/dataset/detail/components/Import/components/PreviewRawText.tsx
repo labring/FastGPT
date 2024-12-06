@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
-import { useQuery } from '@tanstack/react-query';
 import { getPreviewFileContent } from '@/web/common/file/api';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
@@ -9,7 +8,9 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getPreviewSourceReadType } from '../utils';
 
 const PreviewRawText = ({
   previewSource,
@@ -20,32 +21,34 @@ const PreviewRawText = ({
 }) => {
   const { toast } = useToast();
   const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
-  const { data, isLoading } = useQuery(
-    ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
-    () => {
+  const { data, loading: isLoading } = useRequest2(
+    async () => {
       if (importSource === ImportDataSourceEnum.fileCustom && previewSource.rawText) {
         return {
           previewContent: previewSource.rawText.slice(0, 3000)
         };
       }
-      if (importSource === ImportDataSourceEnum.csvTable && previewSource.dbFileId) {
-        return getPreviewFileContent({
-          type: importType2ReadType(importSource),
-          sourceId: previewSource.dbFileId,
-          isQAImport: true
-        });
-      }
 
       return getPreviewFileContent({
-        type: importType2ReadType(importSource),
+        datasetId,
+        type: getPreviewSourceReadType(previewSource),
         sourceId:
-          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
-        isQAImport: false,
-        selector: processParamsForm.getValues('webSelector')
+          previewSource.dbFileId ||
+          previewSource.link ||
+          previewSource.externalFileUrl ||
+          previewSource.apiFileId ||
+          '',
+
+        isQAImport: importSource === ImportDataSourceEnum.csvTable,
+        selector: processParamsForm.getValues('webSelector'),
+        externalFileId: previewSource.externalFileId
       });
     },
     {
+      refreshDeps: [previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
+      manual: false,
       onError(err) {
         toast({
           status: 'warning',

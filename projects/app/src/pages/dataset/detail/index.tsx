@@ -23,7 +23,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const CollectionCard = dynamic(() => import('./components/CollectionCard/index'));
 const DataCard = dynamic(() => import('./components/DataCard'));
 const Test = dynamic(() => import('./components/Test'));
-const Info = dynamic(() => import('./components/Info'));
+const Info = dynamic(() => import('./components/Info/index'));
 const Import = dynamic(() => import('./components/Import'));
 
 export enum TabEnum {

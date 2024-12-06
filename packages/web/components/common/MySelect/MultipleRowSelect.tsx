@@ -14,7 +14,8 @@ export const MultipleRowSelect = ({
   maxH = 300,
   onSelect,
   popDirection = 'bottom',
-  styles
+  styles,
+  changeOnEverySelect = false
 }: MultipleSelectProps) => {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
@@ -68,8 +69,12 @@ export const MultipleRowSelect = ({
                   } else {
                     newValue[index] = item.value;
                     setCloneValue(newValue);
-                    if (!hasChildren) {
+
+                    if (changeOnEverySelect || !hasChildren) {
                       onSelect(newValue);
+                    }
+
+                    if (!hasChildren) {
                       onClose();
                     }
                   }

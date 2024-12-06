@@ -1,17 +1,19 @@
-import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type.d';
 import { MongoDatasetCollection } from './schema';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { MongoDatasetTraining } from '../training/schema';
-import { urlsFetch } from '../../../common/string/cheerio';
-import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
-import { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
+import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import {
+  DatasetCollectionSyncResultEnum,
+  DatasetCollectionTypeEnum,
+  DatasetSourceReadTypeEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { readDatasetSourceRawText } from '../read';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { createCollectionAndInsertData, delCollection } from './controller';
 
 /**
  * get all collection by top collectionId
@@ -60,148 +62,6 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
   if (name.startsWith('手动') || ['manual', 'mark'].includes(name)) return new Date('2999/9/9');
   return new Date();
 }
-
-/**
- * Get collection raw text by Collection or collectionId
- */
-export const getCollectionAndRawText = async ({
-  collectionId,
-  collection,
-  newRawText
-}: {
-  collectionId?: string;
-  collection?: CollectionWithDatasetType;
-  newRawText?: string;
-}) => {
-  const col = await (async () => {
-    if (collection) return collection;
-    if (collectionId) {
-      return (await MongoDatasetCollection.findById(collectionId).populate(
-        'datasetId'
-      )) as CollectionWithDatasetType;
-    }
-
-    return null;
-  })();
-
-  if (!col) {
-    return Promise.reject('Collection not found');
-  }
-
-  const { title, rawText } = await (async () => {
-    if (newRawText)
-      return {
-        title: '',
-        rawText: newRawText
-      };
-    // link
-    if (col.type === DatasetCollectionTypeEnum.link && col.rawLink) {
-      // crawl new data
-      const result = await urlsFetch({
-        urlList: [col.rawLink],
-        selector: col.datasetId?.websiteConfig?.selector || col?.metadata?.webPageSelector
-      });
-
-      return {
-        title: result[0]?.title,
-        rawText: result[0]?.content
-      };
-    }
-
-    // file
-
-    return {
-      title: '',
-      rawText: ''
-    };
-  })();
-
-  const hashRawText = hashStr(rawText);
-  const isSameRawText = rawText && col.hashRawText === hashRawText;
-
-  return {
-    collection: col,
-    title,
-    rawText,
-    isSameRawText
-  };
-};
-
-/* link collection start load data */
-export const reloadCollectionChunks = async ({
-  collection,
-  tmbId,
-  billId,
-  rawText,
-  session
-}: {
-  collection: CollectionWithDatasetType;
-  tmbId: string;
-  billId?: string;
-  rawText?: string;
-  session: ClientSession;
-}): Promise<PushDatasetDataResponse> => {
-  const {
-    title,
-    rawText: newRawText,
-    collection: col,
-    isSameRawText
-  } = await getCollectionAndRawText({
-    collection,
-    newRawText: rawText
-  });
-
-  if (isSameRawText)
-    return {
-      insertLen: 0
-    };
-
-  // split data
-  const { chunks } = splitText2Chunks({
-    text: newRawText,
-    chunkLen: col.chunkSize || 512,
-    customReg: col.chunkSplitter ? [col.chunkSplitter] : []
-  });
-
-  // insert to training queue
-  const model = await (() => {
-    if (col.trainingType === TrainingModeEnum.chunk) return col.datasetId.vectorModel;
-    if (col.trainingType === TrainingModeEnum.qa) return col.datasetId.agentModel;
-    return Promise.reject('Training model error');
-  })();
-
-  const result = await MongoDatasetTraining.insertMany(
-    chunks.map((item, i) => ({
-      teamId: col.teamId,
-      tmbId,
-      datasetId: col.datasetId._id,
-      collectionId: col._id,
-      billId,
-      mode: col.trainingType,
-      prompt: '',
-      model,
-      q: item,
-      a: '',
-      chunkIndex: i
-    })),
-    { session }
-  );
-
-  // update raw text
-  await MongoDatasetCollection.findByIdAndUpdate(
-    col._id,
-    {
-      ...(title && { name: title }),
-      rawTextLength: newRawText.length,
-      hashRawText: hashStr(newRawText)
-    },
-    { session }
-  );
-
-  return {
-    insertLen: result.length
-  };
-};
 
 export const createOrGetCollectionTags = async ({
   tags,
@@ -267,4 +127,89 @@ export const collectionTagsToTagLabel = async ({
       return tagsMap.get(tag) || '';
     })
     .filter(Boolean);
+};
+
+export const syncCollection = async (collection: CollectionWithDatasetType) => {
+  const dataset = collection.datasetId;
+
+  if (
+    collection.type !== DatasetCollectionTypeEnum.link &&
+    dataset.type !== DatasetTypeEnum.apiDataset
+  ) {
+    return Promise.reject(DatasetErrEnum.notSupportSync);
+  }
+
+  // Get new text
+  const sourceReadType = await (async () => {
+    if (collection.type === DatasetCollectionTypeEnum.link) {
+      if (!collection.rawLink) return Promise.reject('rawLink is missing');
+      return {
+        type: DatasetSourceReadTypeEnum.link,
+        sourceId: collection.rawLink,
+        selector: collection.metadata?.webPageSelector
+      };
+    }
+
+    if (!collection.apiFileId) return Promise.reject('apiFileId is missing');
+    if (!dataset.apiServer) return Promise.reject('apiServer not found');
+    return {
+      type: DatasetSourceReadTypeEnum.apiFile,
+      sourceId: collection.apiFileId,
+      apiServer: dataset.apiServer
+    };
+  })();
+  const rawText = await readDatasetSourceRawText({
+    teamId: collection.teamId,
+    ...sourceReadType
+  });
+
+  // Check if the original text is the same: skip if same
+  const hashRawText = hashStr(rawText);
+  if (collection.hashRawText && hashRawText === collection.hashRawText) {
+    return DatasetCollectionSyncResultEnum.sameRaw;
+  }
+
+  await mongoSessionRun(async (session) => {
+    // Create new collection
+    await createCollectionAndInsertData({
+      session,
+      dataset,
+      rawText: rawText,
+      createCollectionParams: {
+        teamId: collection.teamId,
+        tmbId: collection.tmbId,
+        datasetId: collection.datasetId._id,
+        name: collection.name,
+        type: collection.type,
+
+        fileId: collection.fileId,
+        rawLink: collection.rawLink,
+        externalFileId: collection.externalFileId,
+        externalFileUrl: collection.externalFileUrl,
+        apiFileId: collection.apiFileId,
+
+        rawTextLength: rawText.length,
+        hashRawText,
+
+        tags: collection.tags,
+        createTime: collection.createTime,
+
+        parentId: collection.parentId,
+        trainingType: collection.trainingType,
+        chunkSize: collection.chunkSize,
+        chunkSplitter: collection.chunkSplitter,
+        qaPrompt: collection.qaPrompt,
+        metadata: collection.metadata
+      }
+    });
+
+    // Delete old collection
+    await delCollection({
+      collections: [collection],
+      delRelatedSource: false,
+      session
+    });
+  });
+
+  return DatasetCollectionSyncResultEnum.success;
 };

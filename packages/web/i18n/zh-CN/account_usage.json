@@ -1,0 +1,23 @@
+{
+  "usage_detail": "使用详情",
+  "order_number": "订单号",
+  "generation_time": "生成时间",
+  "month": "月",
+  "app_name": "应用名",
+  "source": "来源",
+  "total_points_consumed": "AI 积分消耗",
+  "billing_module": "扣费模块",
+  "module_name": "模块名",
+  "ai_model": "AI 模型",
+  "token_length": "token 长度",
+  "text_length": "文本长度",
+  "duration_seconds": "时长（秒）",
+  "all": "所有",
+  "member": "成员",
+  "member_name": "成员名",
+  "user_type": "类型",
+  "project_name": "项目名",
+  "total_points": "AI 积分消耗",
+  "details": "详情",
+  "no_usage_records": "暂无使用记录"
+}
