@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, HStack, useDisclosure } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext, TabEnum } from '../context';
+import { AppContext } from '../context';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -19,18 +19,14 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
-const AppCard = ({
-  showSaveStatus,
-  isPublished
-}: {
-  showSaveStatus: boolean;
-  isPublished: boolean;
-}) => {
+const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved: boolean }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
-    useContextSelector(AppContext, (v) => v);
+  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp } = useContextSelector(
+    AppContext,
+    (v) => v
+  );
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
@@ -182,16 +178,12 @@ const AppCard = ({
                 showDot
                 bg={'transparent'}
                 colorSchema={
-                  isPublished
+                  isSaved
                     ? publishStatusStyle.published.colorSchema
                     : publishStatusStyle.unPublish.colorSchema
                 }
               >
-                {t(
-                  isPublished
-                    ? publishStatusStyle.published.text
-                    : publishStatusStyle.unPublish.text
-                )}
+                {t(isSaved ? publishStatusStyle.published.text : publishStatusStyle.unPublish.text)}
               </MyTag>
             </Flex>
           )}
@@ -205,7 +197,7 @@ const AppCard = ({
     appDetail.avatar,
     appDetail.name,
     isOpenImport,
-    isPublished,
+    isSaved,
     onCloseImport,
     showSaveStatus,
     t
