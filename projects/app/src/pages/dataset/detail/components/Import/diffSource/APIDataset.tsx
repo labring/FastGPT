@@ -8,7 +8,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getApiDatasetFileList, getApiDatasetFileListExistId } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
