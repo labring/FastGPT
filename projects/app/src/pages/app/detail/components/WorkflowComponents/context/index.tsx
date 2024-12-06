@@ -866,12 +866,6 @@ const WorkflowContextProvider = ({
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
       const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
 
-      const initialState: WorkflowStateType = {
-        nodes: simplifyWorkflowNodes(nodes),
-        edges,
-        chatConfig: e.chatConfig || appDetail.chatConfig
-      };
-
       // Get storage snapshot，兼容旧版正在编辑的用户，刷新后会把 local 数据存到内存并删除
       const pastSnapshot = (() => {
         try {
@@ -931,15 +925,25 @@ const WorkflowContextProvider = ({
         }
       }
 
+      // 有历史记录，直接用历史记录覆盖
+      if (isInit && past.length > 0) {
+        const firstPast = past[0];
+        setNodes(firstPast.nodes);
+        setEdges(firstPast.edges);
+        setAppDetail((state) => ({ ...state, chatConfig: firstPast.chatConfig }));
+        return;
+      }
+      // 初始化一个历史记录
       if (isInit && past.length === 0) {
         setPast([
           {
             title: t(`app:app.version_initial`),
             isSaved: true,
-            ...initialState
+            nodes: simplifyWorkflowNodes(nodes),
+            edges,
+            chatConfig: e.chatConfig || appDetail.chatConfig
           }
         ]);
-        forbiddenSaveSnapshot.current = true;
       }
 
       // Init memory data

@@ -81,20 +81,20 @@ const SimpleEdit = () => {
     }
 
     // 无旧的记录，正常初始化
-    const appForm = appWorkflow2Form({
-      nodes: appDetail.modules,
-      chatConfig: appDetail.chatConfig
-    });
-
     if (past.length === 0) {
+      const appForm = appWorkflow2Form({
+        nodes: appDetail.modules,
+        chatConfig: appDetail.chatConfig
+      });
       saveSnapshot({
         appForm,
         title: t('app:initial_form'),
         isSaved: true
       });
+      setAppForm(appForm);
+    } else {
+      setAppForm(past[0].appForm);
     }
-
-    setAppForm(appForm);
   });
 
   // Save snapshot to local
