@@ -1,3 +1,4 @@
+import { i18nT } from '../../../../web/i18n/utils';
 import { ErrType } from '../errorCode';
 
 /* dataset: 501000 */
@@ -9,9 +10,19 @@ export enum DatasetErrEnum {
   unAuthDatasetData = 'unAuthDatasetData',
   unAuthDatasetFile = 'unAuthDatasetFile',
   unLinkCollection = 'unLinkCollection',
-  invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel'
+  invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel',
+  notSupportSync = 'notSupportSync',
+  sameApiCollection = 'sameApiCollection'
 }
 const datasetErr = [
+  {
+    statusText: DatasetErrEnum.sameApiCollection,
+    message: i18nT('dataset:same_api_collection')
+  },
+  {
+    statusText: DatasetErrEnum.notSupportSync,
+    message: i18nT('dataset:collection_not_support_sync')
+  },
   {
     statusText: DatasetErrEnum.unExist,
     message: 'core.dataset.error.unExistDataset'

@@ -29,6 +29,7 @@ import SelectAiModel from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -52,7 +53,7 @@ const DatasetParamsModal = ({
   limit,
   similarity,
   usingReRank,
-  maxTokens = 3000,
+  maxTokens = defaultDatasetMaxTokens,
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
   datasetSearchExtensionBg,
@@ -116,6 +117,12 @@ const DatasetParamsModal = ({
       setValue('datasetSearchExtensionModel', '');
     }
   }, [chatModelSelectList, datasetSearchUsingCfrForm, queryExtensionModel, setValue]);
+
+  // 保证只有 80 左右个刻度。
+  const maxTokenStep = useMemo(() => {
+    if (maxTokens < 8000) return 80;
+    return Math.ceil(maxTokens / 80 / 100) * 100;
+  }, [maxTokens]);
 
   return (
     <MyModal
@@ -232,7 +239,7 @@ const DatasetParamsModal = ({
                     ]}
                     min={100}
                     max={maxTokens}
-                    step={50}
+                    step={maxTokenStep}
                     value={getValues(NodeInputKeyEnum.datasetMaxTokens) ?? 1000}
                     onChange={(val) => {
                       setValue(NodeInputKeyEnum.datasetMaxTokens, val);

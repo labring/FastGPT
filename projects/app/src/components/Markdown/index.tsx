@@ -23,6 +23,7 @@ const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: 
 const MdImage = dynamic(() => import('./img/Image'), { ssr: false });
 const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: false });
 const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false });
+const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -126,6 +127,13 @@ function Code(e: any) {
     }
     if (codeType === CodeClassNameEnum.iframe) {
       return <IframeCodeBlock code={strChildren} />;
+    }
+    if (codeType && codeType.toLowerCase() === CodeClassNameEnum.html) {
+      return (
+        <IframeHtmlCodeBlock className={className} codeBlock={codeBlock} match={match}>
+          {children}
+        </IframeHtmlCodeBlock>
+      );
     }
 
     return (

@@ -64,10 +64,7 @@ const Dataset = () => {
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
-      if (
-        !feConfigs?.isPlus &&
-        (e === DatasetTypeEnum.websiteDataset || e === DatasetTypeEnum.externalFile)
-      ) {
+      if (!feConfigs?.isPlus && e === DatasetTypeEnum.websiteDataset) {
         return toast({
           status: 'warning',
           title: t('common:common.system.Commercial version function')
@@ -107,7 +104,7 @@ const Dataset = () => {
       overflowY={'auto'}
       overflowX={'hidden'}
     >
-      <Flex pt={[4, 6]} pl={3} pr={[3, 10]}>
+      <Flex pt={[4, 6]} pl={3} pr={folderDetail ? [3, 6] : [3, 8]}>
         <Flex flexGrow={1} flexDirection="column">
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <ParentPaths
@@ -161,16 +158,16 @@ const Dataset = () => {
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.dataset)
                         },
                         {
+                          icon: 'core/dataset/externalDatasetColor',
+                          label: t('dataset:api_file'),
+                          description: t('dataset:external_file_dataset_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
+                        },
+                        {
                           icon: 'core/dataset/websiteDatasetColor',
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
-                        },
-                        {
-                          icon: 'core/dataset/externalDatasetColor',
-                          label: t('dataset:external_file'),
-                          description: t('dataset:external_file_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.externalFile)
                         }
                       ]
                     },

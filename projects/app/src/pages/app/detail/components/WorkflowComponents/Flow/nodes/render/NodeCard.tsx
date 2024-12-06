@@ -373,7 +373,7 @@ const NodeCard = (props: Props) => {
       {RenderToolHandle}
 
       <ConfirmSyncModal />
-      <EditTitleModal maxLength={20} />
+      <EditTitleModal maxLength={50} />
     </Flex>
   );
 };

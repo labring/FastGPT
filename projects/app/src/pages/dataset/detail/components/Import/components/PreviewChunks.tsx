@@ -1,17 +1,15 @@
-import React, { useMemo } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React from 'react';
+import { Box } from '@chakra-ui/react';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
-import { useQuery } from '@tanstack/react-query';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
 import { getPreviewChunks } from '@/web/core/dataset/api';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { getPreviewSourceReadType } from '../utils';
 
 const PreviewChunks = ({
   previewSource,
@@ -20,11 +18,11 @@ const PreviewChunks = ({
   previewSource: ImportSourceItemType;
   onClose: () => void;
 }) => {
-  const { toast } = useToast();
   const { importSource, chunkSize, chunkOverlapRatio, processParamsForm } = useContextSelector(
     DatasetImportContext,
     (v) => v
   );
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
 
   const { data = [], loading: isLoading } = useRequest2(
     async () => {
@@ -41,28 +39,24 @@ const PreviewChunks = ({
           a: ''
         }));
       }
-      if (importSource === ImportDataSourceEnum.csvTable) {
-        return getPreviewChunks({
-          type: importType2ReadType(importSource),
-          sourceId:
-            previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
-          chunkSize,
-          overlapRatio: chunkOverlapRatio,
-          customSplitChar: processParamsForm.getValues('customSplitChar'),
-          selector: processParamsForm.getValues('webSelector'),
-          isQAImport: true
-        });
-      }
 
       return getPreviewChunks({
-        type: importType2ReadType(importSource),
+        datasetId,
+        type: getPreviewSourceReadType(previewSource),
         sourceId:
-          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
+          previewSource.dbFileId ||
+          previewSource.link ||
+          previewSource.externalFileUrl ||
+          previewSource.apiFileId ||
+          '',
+
         chunkSize,
         overlapRatio: chunkOverlapRatio,
         customSplitChar: processParamsForm.getValues('customSplitChar'),
+
         selector: processParamsForm.getValues('webSelector'),
-        isQAImport: false
+        isQAImport: importSource === ImportDataSourceEnum.csvTable,
+        externalFileId: previewSource.externalFileId
       });
     },
     {

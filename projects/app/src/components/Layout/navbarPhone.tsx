@@ -29,11 +29,19 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('common:navbar.Tools'),
+        label: t('common:navbar.Datasets'),
+        icon: 'core/dataset/datasetLight',
+        activeIcon: 'core/dataset/datasetFill',
+        link: `/dataset/list`,
+        activeLink: ['/dataset/list', '/dataset/detail'],
+        unread: 0
+      },
+      {
+        label: t('common:navbar.Toolkit'),
         icon: 'phoneTabbar/tool',
         activeIcon: 'phoneTabbar/toolFill',
-        link: '/tools',
-        activeLink: ['/tools'],
+        link: `/toolkit`,
+        activeLink: ['/toolkit'],
         unread: 0
       },
       {
@@ -41,7 +49,16 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account',
-        activeLink: ['/account'],
+        activeLink: [
+          '/account/bill',
+          '/account/info',
+          '/account/team',
+          '/account/usage',
+          '/account/apikey',
+          '/account/individuation',
+          '/account/inform',
+          '/account/promotion'
+        ],
         unread
       }
     ],
@@ -56,7 +73,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         justifyContent={'space-between'}
         backgroundColor={'white'}
         position={'relative'}
-        px={10}
+        px={4}
       >
         {navbarList.map((item) => (
           <Flex

@@ -12,6 +12,7 @@ import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
+import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]: string[];
@@ -138,7 +139,7 @@ export const getFileContentFromLinks = async ({
 
         return url;
       } catch (error) {
-        console.log(error);
+        addLog.warn(`Parse url error`, { error });
         return '';
       }
     })

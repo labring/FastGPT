@@ -21,7 +21,6 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
-import { useI18n } from '@/web/context/I18n';
 import { SmallAddIcon } from '@chakra-ui/icons';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
@@ -45,7 +44,6 @@ export default React.memo(ExternalFileCollection);
 
 const CustomLinkInput = () => {
   const { t } = useTranslation();
-  const { datasetT, commonT } = useI18n();
   const { goToNext, sources, setSources } = useContextSelector(DatasetImportContext, (v) => v);
   const { register, reset, handleSubmit, control } = useForm<{
     list: {
@@ -93,9 +91,9 @@ const CustomLinkInput = () => {
         <Table bg={'white'}>
           <Thead>
             <Tr bg={'myGray.50'}>
-              <Th>{datasetT('external_url')}</Th>
-              <Th>{datasetT('external_id')}</Th>
-              <Th>{datasetT('filename')}</Th>
+              <Th>{t('dataset:external_url')}</Th>
+              <Th>{t('dataset:external_id')}</Th>
+              <Th>{t('dataset:filename')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -159,7 +157,7 @@ const CustomLinkInput = () => {
             });
           }}
         >
-          {commonT('add_new')}
+          {t('common:add_new')}
         </Button>
         <Button
           isDisabled={list.filter((item) => !!item.externalFileUrl).length === 0}

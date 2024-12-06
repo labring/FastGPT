@@ -2,7 +2,6 @@ import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d'
 import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { appData2FlowNodeIO, pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import type { PluginRuntimeType } from '@fastgpt/global/core/workflow/runtime/type';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -11,6 +10,9 @@ import { MongoApp } from '../schema';
 import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
 import { getAppLatestVersion, getAppVersionById } from '../version/controller';
+import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { MongoSystemPlugin } from './systemPluginSchema';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 
 /* 
   plugin id rule:
@@ -37,15 +39,45 @@ export async function splitCombinePluginId(id: string) {
 
 type ChildAppType = SystemPluginTemplateItemType & { teamId?: string };
 const getSystemPluginTemplateById = async (
-  pluginId: string
+  pluginId: string,
+  versionId?: string
 ): Promise<SystemPluginTemplateItemType> => {
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
-  if (!item) return Promise.reject('plugin not found');
+  if (!item) return Promise.reject(PluginErrEnum.unAuth);
 
-  return cloneDeep(item);
+  const plugin = cloneDeep(item);
+
+  if (plugin.associatedPluginId) {
+    // The verification plugin is set as a system plugin
+    const systemPlugin = await MongoSystemPlugin.findOne(
+      { pluginId: plugin.id, 'customConfig.associatedPluginId': plugin.associatedPluginId },
+      'associatedPluginId'
+    ).lean();
+    if (!systemPlugin) return Promise.reject(PluginErrEnum.unAuth);
+
+    const app = await MongoApp.findById(plugin.associatedPluginId).lean();
+    if (!app) return Promise.reject(PluginErrEnum.unAuth);
+
+    const version = versionId
+      ? await getAppVersionById({
+          appId: plugin.associatedPluginId,
+          versionId,
+          app
+        })
+      : await getAppLatestVersion(plugin.associatedPluginId, app);
+    if (!version.versionId) return Promise.reject('App version not found');
+
+    plugin.workflow = {
+      nodes: version.nodes,
+      edges: version.edges,
+      chatConfig: version.chatConfig
+    };
+    plugin.version = versionId || String(version.versionId);
+  }
+  return plugin;
 };
 
-/* format plugin modules to plugin preview module */
+/* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
   id
 }: {
@@ -77,7 +109,9 @@ export async function getChildAppPreviewNode({
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         version: version.versionId,
         originCost: 0,
-        currentCost: 0
+        currentCost: 0,
+        hasTokenFee: false,
+        pluginOrder: 0
       };
     } else {
       return getSystemPluginTemplateById(pluginId);
@@ -147,10 +181,12 @@ export async function getChildAppRuntimeById(
         // 用不到
         version: item?.pluginData?.nodeVersion || defaultNodeVersion,
         originCost: 0,
-        currentCost: 0
+        currentCost: 0,
+        hasTokenFee: false,
+        pluginOrder: 0
       };
     } else {
-      return getSystemPluginTemplateById(pluginId);
+      return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
 
@@ -162,6 +198,7 @@ export async function getChildAppRuntimeById(
     showStatus: app.showStatus,
     currentCost: app.currentCost,
     nodes: app.workflow.nodes,
-    edges: app.workflow.edges
+    edges: app.workflow.edges,
+    hasTokenFee: app.hasTokenFee
   };
 }

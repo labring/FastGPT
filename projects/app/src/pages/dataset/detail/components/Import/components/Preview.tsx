@@ -24,7 +24,7 @@ const Preview = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
         <MyIcon name={'core/dataset/fileCollection'} w={'20px'} />
         <Box fontSize={'md'}>{t('common:core.dataset.import.Sources list')}</Box>
       </Flex>
-      <Box mt={3} flex={'1 0 0'} width={'100%'} overflowY={'auto'}>
+      <Box mt={3} flex={'1 0 0'} h={['auto', 0]} width={'100%'} overflowY={'auto'}>
         <Grid w={'100%'} gap={3} gridTemplateColumns={['1fr', '1fr', '1fr', '1fr', '1fr 1fr']}>
           {sources.map((source) => (
             <Flex

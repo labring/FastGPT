@@ -223,25 +223,44 @@ function ExportPopover({
 }) {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { flowData2StoreDataAndCheck } = useContextSelector(WorkflowContext, (v) => v);
+  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
 
-  const onExportWorkflow = useCallback(async () => {
-    const data = flowData2StoreDataAndCheck();
-    if (data) {
-      copyData(
-        JSON.stringify(
-          {
-            nodes: filterSensitiveNodesData(data.nodes),
-            edges: data.edges,
-            chatConfig: chatConfig
-          },
-          null,
-          2
-        ),
-        t('app:export_config_successful')
-      );
-    }
-  }, [chatConfig, copyData, flowData2StoreDataAndCheck, t]);
+  const onExportWorkflow = useCallback(
+    async (mode: 'copy' | 'json') => {
+      const data = flowData2StoreData();
+      if (data) {
+        if (mode === 'copy') {
+          copyData(
+            JSON.stringify(
+              {
+                nodes: filterSensitiveNodesData(data.nodes),
+                edges: data.edges,
+                chatConfig
+              },
+              null,
+              2
+            ),
+            t('app:export_config_successful')
+          );
+        } else if (mode === 'json') {
+          fileDownload({
+            text: JSON.stringify(
+              {
+                nodes: filterSensitiveNodesData(data.nodes),
+                edges: data.edges,
+                chatConfig
+              },
+              null,
+              2
+            ),
+            type: 'application/json;charset=utf-8',
+            filename: `${appName}.json`
+          });
+        }
+      }
+    },
+    [appName, chatConfig, copyData, flowData2StoreData, t]
+  );
 
   return (
     <MyPopover
@@ -269,7 +288,7 @@ function ExportPopover({
               cursor: 'pointer'
             }}
             borderRadius={'xs'}
-            onClick={onExportWorkflow}
+            onClick={() => onExportWorkflow('copy')}
           >
             <MyIcon name={'copy'} w={'1rem'} mr={2} />
             <Box fontSize={'mini'}>{t('common:common.copy_to_clipboard')}</Box>
@@ -284,25 +303,7 @@ function ExportPopover({
               cursor: 'pointer'
             }}
             borderRadius={'xs'}
-            onClick={() => {
-              const data = flowData2StoreDataAndCheck();
-
-              if (!data) return;
-
-              fileDownload({
-                text: JSON.stringify(
-                  {
-                    nodes: filterSensitiveNodesData(data.nodes),
-                    edges: data.edges,
-                    chatConfig: chatConfig
-                  },
-                  null,
-                  2
-                ),
-                type: 'application/json;charset=utf-8',
-                filename: `${appName}.json`
-              });
-            }}
+            onClick={() => onExportWorkflow('json')}
           >
             <MyIcon name={'configmap'} w={'1rem'} mr={2} />
             <Box fontSize={'mini'}>{t('common:common.export_to_json')}</Box>

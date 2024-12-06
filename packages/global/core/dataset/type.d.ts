@@ -10,6 +10,7 @@ import {
 } from './constants';
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
+import { APIFileServer } from './apiDataset';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -30,10 +31,11 @@ export type DatasetSchemaType = {
     url: string;
     selector: string;
   };
-  externalReadUrl?: string;
   inheritPermission: boolean;
+  apiServer?: APIFileServer;
 
   // abandon
+  externalReadUrl?: string;
   defaultPermission?: number;
 };
 
@@ -64,6 +66,7 @@ export type DatasetCollectionSchemaType = {
   rawTextLength?: number;
   hashRawText?: string;
   externalFileUrl?: string; // external import url
+  apiFileId?: string; // api file id
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections

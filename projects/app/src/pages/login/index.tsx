@@ -61,8 +61,13 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     (res: ResLogin) => {
       setUserInfo(res.user);
       setToken(res.token);
+
+      const decodeLastRoute = decodeURIComponent(lastRoute);
+      // 检查是否是当前的 route
+      const navigateTo =
+        decodeLastRoute && !decodeLastRoute.includes('/login') ? decodeLastRoute : '/app/list';
       setTimeout(() => {
-        router.push(lastRoute ? decodeURIComponent(lastRoute) : '/app/list');
+        router.push(navigateTo);
       }, 300);
     },
     [lastRoute, router, setUserInfo]

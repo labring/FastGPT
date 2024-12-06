@@ -50,13 +50,13 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const {
     register,
     setValue,
-    getValues,
+    watch,
     formState: { errors },
     handleSubmit
   } = useForm({
     defaultValues: appDetail
   });
-  const avatar = getValues('avatar');
+  const avatar = watch('avatar');
 
   // submit config
   const { runAsync: saveSubmitSuccess, loading: btnLoading } = useRequest2(

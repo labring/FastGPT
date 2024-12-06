@@ -11,6 +11,7 @@ import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const { toast } = useToast();
+
   const { setLoginStore, feConfigs } = useSystemStore();
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
   const state = useRef(nanoid());
@@ -83,7 +86,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   ];
 
   const show_oauth =
-    !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso || oAuthList.length > 0);
+    !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -143,7 +146,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
               </Box>
             ))}
 
-            {feConfigs?.sso && (
+            {feConfigs?.sso?.url && (
               <Box mt={4} color={'primary.700'} cursor={'pointer'} textAlign={'center'}>
                 <Button
                   variant={'whitePrimary'}
@@ -152,7 +155,22 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                   borderRadius={'sm'}
                   leftIcon={<MyImage alt="" src={feConfigs.sso.icon as any} w="20px" />}
                   onClick={() => {
-                    feConfigs.sso?.url && router.replace(feConfigs.sso?.url, '_self');
+                    const url = feConfigs.sso?.url;
+                    if (!url) {
+                      toast({
+                        title: 'SSO URL is not set',
+                        status: 'error'
+                      });
+                      return;
+                    }
+                    setLoginStore({
+                      provider: OAuthEnum.sso,
+                      lastRoute,
+                      state: state.current
+                    });
+
+                    const formatUrl = `${url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`;
+                    router.replace(formatUrl, '_self');
                   }}
                 >
                   {feConfigs.sso.title}

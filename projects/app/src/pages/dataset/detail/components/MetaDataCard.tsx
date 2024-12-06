@@ -67,7 +67,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: collection.rawTextLength ?? '-'
       },
       {
-        label: t('common:core.dataset.collection.metadata.Training Type'),
+        label: t('dataset:collection.Training type'),
         value: t(TrainingTypeMap[collection.trainingType]?.label as any)
       },
       {

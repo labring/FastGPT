@@ -1,21 +1,16 @@
 import type { NextApiRequest } from 'next';
 import type { LinkCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   TrainingModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
-import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const {
@@ -35,59 +30,45 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     per: WritePermissionVal
   });
 
-  // 1. check dataset limit
-  await checkDatasetLimit({
-    teamId,
-    insertLen: predictDataLimitLength(trainingType, new Array(10))
+  const result = await urlsFetch({
+    urlList: [link],
+    selector: body?.metadata?.webPageSelector
   });
+  const { title = link, content = '' } = result[0];
 
-  return mongoSessionRun(async (session) => {
-    // 2. create collection
-    const collection = await createOneCollection({
+  if (!content) {
+    return Promise.reject('Can not fetch content from link');
+  }
+
+  const { collectionId, insertResults } = await createCollectionAndInsertData({
+    dataset,
+    rawText: content,
+    createCollectionParams: {
       ...body,
-      name: link,
+      name: title,
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.link,
+      metadata: {
+        relatedImgId: link,
+        webPageSelector: body?.metadata?.webPageSelector
+      },
 
       trainingType,
       chunkSize,
       chunkSplitter,
       qaPrompt,
 
-      rawLink: link,
-      session
-    });
+      rawLink: link
+    },
 
-    // 3. create bill and start sync
-    const { billId } = await createTrainingUsage({
-      teamId,
-      tmbId,
-      appName: 'core.dataset.collection.Sync Collection',
-      billSource: UsageSourceEnum.training,
-      vectorModel: getVectorModel(dataset.vectorModel).name,
-      agentModel: getLLMModel(dataset.agentModel).name,
-      session
-    });
-
-    // load
-    const result = await reloadCollectionChunks({
-      collection: {
-        ...collection.toObject(),
-        datasetId: dataset
-      },
-      tmbId,
-      billId,
-      session
-    });
-
-    return {
-      collectionId: collection._id,
-      results: {
-        insertLen: result.insertLen
-      }
-    };
+    relatedId: link
   });
+
+  return {
+    collectionId,
+    results: insertResults
+  };
 }
 
 export default NextAPI(handler);

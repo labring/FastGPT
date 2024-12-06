@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef } from 'react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import {
   Box,
@@ -17,29 +17,34 @@ import {
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
 import {
+  postCreateDatasetApiDatasetCollection,
   postCreateDatasetCsvTableCollection,
   postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
   postCreateDatasetLinkCollection,
-  postCreateDatasetTextCollection
+  postCreateDatasetTextCollection,
+  postReTrainingDatasetFileCollection
 } from '@/web/core/dataset/api';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
 
 const Upload = () => {
   const { t } = useTranslation();
-  const { fileT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
+  const { collectionId = '' } = router.query as {
+    collectionId: string;
+  };
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+  const retrainNewCollectionId = useRef('');
+
   const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
     useContextSelector(DatasetImportContext, (v) => v);
 
@@ -71,8 +76,8 @@ const Upload = () => {
     }
   }, [waitingFilesCount, totalFilesCount, allFinished, t]);
 
-  const { mutate: startUpload, isLoading } = useRequest({
-    mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
+  const { runAsync: startUpload, loading: isLoading } = useRequest2(
+    async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
@@ -100,7 +105,13 @@ const Upload = () => {
 
           name: item.sourceName
         };
-        if (importSource === ImportDataSourceEnum.fileLocal && item.dbFileId) {
+        if (importSource === ImportDataSourceEnum.reTraining) {
+          const res = await postReTrainingDatasetFileCollection({
+            ...commonParams,
+            collectionId
+          });
+          retrainNewCollectionId.current = res.collectionId;
+        } else if (importSource === ImportDataSourceEnum.fileLocal && item.dbFileId) {
           await postCreateDatasetFileCollection({
             ...commonParams,
             fileId: item.dbFileId
@@ -131,6 +142,11 @@ const Upload = () => {
             externalFileId: item.externalFileId,
             filename: item.sourceName
           });
+        } else if (importSource === ImportDataSourceEnum.apiDataset && item.apiFileId) {
+          await postCreateDatasetApiDatasetCollection({
+            ...commonParams,
+            apiFileId: item.apiFileId
+          });
         }
 
         setSources((state) =>
@@ -145,40 +161,46 @@ const Upload = () => {
         );
       }
     },
-    onSuccess() {
-      if (!sources.some((file) => file.errorMsg !== undefined)) {
-        toast({
-          title: t('common:core.dataset.import.Import success'),
-          status: 'success'
-        });
-      }
-
-      // close import page
-      router.replace({
-        query: {
-          ...router.query,
-          currentTab: TabEnum.collectionCard
+    {
+      onSuccess() {
+        if (!sources.some((file) => file.errorMsg !== undefined)) {
+          toast({
+            title:
+              importSource === ImportDataSourceEnum.reTraining
+                ? t('dataset:retrain_task_submitted')
+                : t('common:core.dataset.import.Import success'),
+            status: 'success'
+          });
         }
-      });
-    },
-    onError(error) {
-      setSources((state) =>
-        state.map((source) =>
-          source.createStatus === 'creating'
-            ? {
-                ...source,
-                createStatus: 'waiting',
-                errorMsg: error.message || fileT('upload_failed')
-              }
-            : source
-        )
-      );
-    },
-    errorToast: fileT('upload_failed')
-  });
+
+        // Close import page
+        router.replace({
+          query: {
+            datasetId: datasetDetail._id,
+            currentTab: retrainNewCollectionId.current ? TabEnum.dataCard : TabEnum.collectionCard,
+            collectionId: retrainNewCollectionId.current
+          }
+        });
+      },
+      onError(error) {
+        setSources((state) =>
+          state.map((source) =>
+            source.createStatus === 'creating'
+              ? {
+                  ...source,
+                  createStatus: 'waiting',
+                  errorMsg: error.message || t('file:upload_failed')
+                }
+              : source
+          )
+        );
+      },
+      errorToast: t('file:upload_failed')
+    }
+  );
 
   return (
-    <Box>
+    <Box h={'100%'} overflow={'auto'}>
       <TableContainer>
         <Table variant={'simple'} fontSize={'sm'} draggable={false}>
           <Thead draggable={false}>
