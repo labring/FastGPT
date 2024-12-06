@@ -72,20 +72,22 @@ export PROCESSES_PER_GPU="1"
 
 # 镜像打包和部署
 
-## 打包镜像
+## 本地构建镜像
 
-在 `pdf-marker` 根目录下执行：
+1. 在 `pdf-marker` 根目录下执行：
 
-```bash
-sudo docker build -t model_pdf -f Dockerfile .
+    ```bash
+    sudo docker build -t model_pdf -f Dockerfile .
+    ```
+2. 运行容器
+    ```bash
+    sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 model_pdf
+    ```
+## 快速构建镜像
+```dockerfile
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
 ```
-
-## 运行容器
-
-```bash
-sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 model_pdf
-```
-
 # 访问示例
 
 用Post方法访问端口为 `7321 ` 的 `v1/parse/file` 服务
