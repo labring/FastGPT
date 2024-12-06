@@ -36,7 +36,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
-const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
+const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs, outputs, nodeId } = data;
 
   const { t } = useTranslation();
@@ -143,7 +143,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
   );
 
   return (
-    <NodeCard minW={'400px'} {...data}>
+    <NodeCard minW={'400px'} selected={selected} {...data}>
       {isTool && (
         <>
           <Container>
