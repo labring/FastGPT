@@ -15,7 +15,7 @@ import {
   Icon
 } from '@chakra-ui/react';
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -25,7 +25,6 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import LightTip from '@fastgpt/web/components/common/LightTip';
 
 // question generator config
 const QGConfig = ({
@@ -243,10 +242,29 @@ const PromptTextarea = ({
   const ref = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
   const [value, setValue] = useState(defaultValue);
-
   const defaultPrompt = defaultQGConfig.customPrompt;
 
-  const fixedPrompt = `\n\n${t('common:core.app.QG.Fixed Prompt')}`;
+  // 自动调整高度
+  const adjustHeight = useCallback(() => {
+    const textarea = ref.current;
+    if (!textarea) return;
+
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustHeight();
+  }, [value, adjustHeight]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      adjustHeight();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [adjustHeight]);
+
   return (
     <MyModal
       isOpen
@@ -257,74 +275,72 @@ const PromptTextarea = ({
       w={'100%'}
       isCentered
     >
-      <Flex h={'494px'}>
-        <Box flex={1} py={6} px={8} borderRight={'1px solid'} borderColor={'borderColor.base'}>
-          <Stack spacing={4}>
-            <FormLabel color={'myGray.600'} fontWeight={'medium'}>
-              <CustomLightTip />
+      <Box py={6} px={8}>
+        <Stack spacing={4}>
+          <FormLabel color={'myGray.600'} fontWeight={'medium'}>
+            <CustomLightTip />
+          </FormLabel>
+          <Flex justifyContent={'space-between'} alignItems={'center'}>
+            <FormLabel color={'myGray.600'} fontWeight={'bold'} fontSize={'md'}>
+              {t('common:core.ai.Prompt')}
             </FormLabel>
-            <Flex justifyContent={'space-between'} alignItems={'center'}>
-              <FormLabel color={'myGray.600'} fontWeight={'bold'} fontSize={'md'}>
-                {t('common:core.ai.Prompt')}
-              </FormLabel>
 
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                onClick={() => setValue(defaultPrompt || '')}
-              >
-                <MyIcon name={'common/retryLight'} w={'14px'} h={'14px'} color={'myGray.600'} />
-                <Box ml={1} fontSize={'sm'} color={'myGray.600'}>
-                  {t('common:common.Reset')}
-                </Box>
-              </Flex>
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              onClick={() => setValue(defaultPrompt || '')}
+            >
+              <MyIcon name={'common/retryLight'} w={'14px'} h={'14px'} color={'myGray.600'} />
+              <Box ml={1} fontSize={'sm'} color={'myGray.600'}>
+                {t('common:common.Reset')}
+              </Box>
             </Flex>
-            <Box>
+          </Flex>
+          <Box
+            position="relative"
+            border="1px solid"
+            borderColor="borderColor.base"
+            borderRadius="md"
+            bg={'myGray.50'}
+            minH="320px"
+          >
+            <Box position="relative">
               <Textarea
                 ref={ref}
-                rows={8}
                 fontSize={'sm'}
-                value={value + fixedPrompt}
+                value={value}
                 onChange={(e) => {
-                  const newValue = e.target.value.replace(fixedPrompt, '');
-                  setValue(newValue);
+                  setValue(e.target.value);
                 }}
-                bg={'myGray.50'}
-                h={'320px'}
-                overflow={'auto'}
-                onKeyDown={(e) => {
-                  const start = e.currentTarget.selectionStart;
-                  const end = e.currentTarget.selectionEnd;
-
-                  const promptStart = value.length;
-
-                  if (start > promptStart || end > promptStart) {
-                    e.preventDefault();
-                  }
-                }}
-                onSelect={(e) => {
-                  const start = e.currentTarget.selectionStart;
-                  const promptStart = value.length;
-
-                  if (start > promptStart) {
-                    e.currentTarget.setSelectionRange(promptStart, promptStart);
-                  }
+                minH="5px"
+                resize="none"
+                overflow="hidden"
+                p={3}
+                bg="transparent"
+                border="none"
+                _focus={{
+                  border: 'none',
+                  boxShadow: 'none'
                 }}
               />
+              <Box position="relative" px={3} py={2} fontSize="sm" whiteSpace="pre-wrap">
+                <Box as="span" bg="yellow.100" px={1} py={0.5} borderRadius="sm">
+                  {t('common:core.app.QG.Fixed Prompt')}
+                </Box>
+              </Box>
             </Box>
-          </Stack>
-        </Box>
-      </Flex>
+          </Box>
+        </Stack>
+      </Box>
       <ModalFooter>
-        <Flex justify={'flex-end'} gap={3} pb={2} pr={8}>
+        <Flex justify={'flex-end'} gap={3}>
           <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
             {t('common:common.Close')}
           </Button>
           <Button
             fontWeight={'medium'}
             onClick={() => {
-              const val = value || '';
-              onChange(val);
+              onChange(value || '');
               onClose();
             }}
             w={20}

@@ -50,17 +50,11 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
     ? questionGuide.customPrompt + '\n' + SYSTEM_PROMPT_QUESTION_GUIDE
     : undefined;
 
-  console.log('customPromptWithFixed 是', customPromptWithFixed);
-
   const { result, tokens } = await createQuestionGuide({
     messages,
     model: qgModel,
     customPrompt: customPromptWithFixed
   });
-
-  console.log('qgModel', qgModel);
-  console.log('questionGuide?.model', questionGuide?.model);
-  console.log('result', result);
 
   jsonRes(res, {
     data: result
