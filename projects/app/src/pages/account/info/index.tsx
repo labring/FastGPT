@@ -61,10 +61,9 @@ const AiPointsModal = dynamic(() =>
 
 const Info = () => {
   const { isPc } = useSystem();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, initUserInfo } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
-  const { initUserInfo } = useUserStore();
 
   useQuery(['init'], initUserInfo);
 
@@ -112,11 +111,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
-  const { userInfo, updateUserInfo } = useUserStore();
+  const { userInfo, updateUserInfo, teamPlanStatus } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
-  const { teamPlanStatus } = useUserStore();
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isPc } = useSystem();
   const { toast } = useToast();
@@ -305,12 +303,14 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             )}
           </Flex>
         )}
-        <Flex mt={6} alignItems={'center'}>
-          <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
-          <Flex flex={'1 0 0'} w={0} align={'center'}>
-            <TeamSelector height={'28px'} w={'100%'} showManage />
+        {feConfigs.isPlus && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
+            <Flex flex={'1 0 0'} w={0} align={'center'}>
+              <TeamSelector height={'28px'} w={'100%'} showManage />
+            </Flex>
           </Flex>
-        </Flex>
+        )}
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
           <Box mt={6} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
