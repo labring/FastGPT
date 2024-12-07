@@ -26,12 +26,14 @@ import type {
   AppScheduledTriggerConfigType,
   ChatInputGuideConfigType,
   AppChatConfigType,
-  AppAutoExecuteConfigType
+  AppAutoExecuteConfigType,
+  AppQGConfigType
 } from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
   defaultAutoExecuteConfig,
   defaultChatInputGuideConfig,
+  defaultQGConfig,
   defaultTTSConfig,
   defaultWhisperConfig
 } from '../app/constants';
@@ -76,9 +78,9 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const variables: VariableItemType[] =
     guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value ?? [];
 
-  const questionGuide: boolean =
-    !!guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ??
-    false;
+  const questionGuide: AppQGConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ??
+    defaultQGConfig;
 
   const ttsConfig: AppTTSConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??

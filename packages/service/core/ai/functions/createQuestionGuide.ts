@@ -16,16 +16,18 @@ Remember to maintain consistency in tone and style with the existing conversatio
 
 export async function createQuestionGuide({
   messages,
-  model
+  model,
+  customPrompt
 }: {
   messages: ChatCompletionMessageParam[];
   model: string;
+  customPrompt?: string;
 }) {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {
       role: 'user',
-      content: Prompt_QuestionGuide
+      content: customPrompt || Prompt_QuestionGuide
     }
   ];
 

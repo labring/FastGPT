@@ -35,10 +35,12 @@
           },
           {
             "key": "questionGuide",
-            "valueType": "boolean",
+            "valueType": "hidden",
             "renderTypeList": ["hidden"],
             "label": "core.app.Question Guide",
-            "value": false
+            "value": {
+              "open": false
+            }
           },
           {
             "key": "tts",

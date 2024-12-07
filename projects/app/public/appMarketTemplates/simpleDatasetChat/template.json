@@ -35,10 +35,12 @@
           },
           {
             "key": "questionGuide",
-            "valueType": "WorkflowIOValueTypeEnum.boolean",
+            "valueType": "WorkflowIOValueTypeEnum.hidden",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "core.app.Question Guide",
-            "value": false
+            "value": {
+              "open": false
+            }
           },
           {
             "key": "tts",
