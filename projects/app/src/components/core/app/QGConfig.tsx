@@ -15,7 +15,7 @@ import {
   Icon
 } from '@chakra-ui/react';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -71,13 +71,12 @@ const QGConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel color={'myGray.600'}>{t('common:core.app.Question Guide')}</FormLabel>
+      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <MyTooltip label={t('common:core.app.QG.Switch')}>
         <Button
           variant={'transparentBase'}
-          iconSpacing={1}
           size={'sm'}
           mr={'-5px'}
           color={'myGray.600'}
@@ -137,14 +136,12 @@ const QGConfig = ({
 
               <Box mt={4}>
                 <Flex alignItems={'center'} mb={1}>
-                  <FormLabel mb={0}>{t('common:core.dataset.import.Custom prompt')}</FormLabel>
+                  <FormLabel>{t('common:core.dataset.import.Custom prompt')}</FormLabel>
                   <QuestionTip ml={1} label={t('common:core.app.QG.Custom prompt tip')} />
                 </Flex>
                 <Box
                   position={'relative'}
                   bg={'myGray.50'}
-                  fontSize={'sm'}
-                  whiteSpace={'pre-wrap'}
                   border={'1px'}
                   borderColor={'borderColor.base'}
                   borderRadius={'md'}
@@ -157,17 +154,14 @@ const QGConfig = ({
                     }
                   }}
                 >
-                  <Box overflow={'auto'} px={3} py={2} height={'140px'}>
+                  <Box px={3} py={2} height={'140px'}>
                     {customPrompt}
                   </Box>
                   <Box
                     display={'none'}
                     className="mask"
                     position={'absolute'}
-                    top={0}
-                    right={0}
-                    bottom={0}
-                    left={0}
+                    inset={0}
                     height={'140px'}
                     pointerEvents={'none'}
                     background={
@@ -219,7 +213,7 @@ const CustomLightTip = () => {
   return (
     <HStack px="3" py="1" color="primary.600" bgColor="primary.50" borderRadius="md">
       <Icon name="common/info" w="1rem" />
-      <Box fontSize={'sm'}>
+      <Box>
         {t('common:core.app.QG.Custom prompt tip1')}
         <Box as="span" color={'yellow.500'} fontWeight="500" display="inline">
           {t('common:core.app.QG.Custom prompt tip2')}
@@ -244,7 +238,6 @@ const PromptTextarea = ({
   const [value, setValue] = useState(defaultValue);
   const defaultPrompt = defaultQGConfig.customPrompt;
 
-  // 自动调整高度
   const adjustHeight = useCallback(() => {
     const textarea = ref.current;
     if (!textarea) return;
@@ -255,15 +248,9 @@ const PromptTextarea = ({
 
   useEffect(() => {
     adjustHeight();
-  }, [value, adjustHeight]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      adjustHeight();
-    }, 0);
-
+    const timer = setTimeout(adjustHeight, 0);
     return () => clearTimeout(timer);
-  }, [adjustHeight]);
+  }, [value, adjustHeight]);
 
   return (
     <MyModal
@@ -291,56 +278,52 @@ const PromptTextarea = ({
               onClick={() => setValue(defaultPrompt || '')}
             >
               <MyIcon name={'common/retryLight'} w={'14px'} h={'14px'} color={'myGray.600'} />
-              <Box ml={1} fontSize={'sm'} color={'myGray.600'}>
+              <Box ml={1} color={'myGray.600'}>
                 {t('common:common.Reset')}
               </Box>
             </Flex>
           </Flex>
           <Box
-            position="relative"
             border="1px solid"
             borderColor="borderColor.base"
             borderRadius="md"
             bg={'myGray.50'}
             minH="320px"
           >
-            <Box position="relative">
-              <Textarea
-                ref={ref}
-                fontSize={'sm'}
-                value={value}
-                onChange={(e) => {
-                  setValue(e.target.value);
-                }}
-                minH="5px"
-                resize="none"
-                overflow="hidden"
-                p={3}
-                bg="transparent"
-                border="none"
-                _focus={{
-                  border: 'none',
-                  boxShadow: 'none'
-                }}
-              />
-              <Box position="relative" px={3} py={2} fontSize="sm" whiteSpace="pre-wrap">
-                <Box as="span" bg="yellow.100" px={1} py={0.5} borderRadius="sm">
-                  {t('common:core.app.QG.Fixed Prompt')}
-                </Box>
+            <Textarea
+              ref={ref}
+              fontSize={'sm'}
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value);
+              }}
+              resize="none"
+              overflow="hidden"
+              p={3}
+              bg="transparent"
+              border="none"
+              _focus={{
+                border: 'none',
+                boxShadow: 'none'
+              }}
+            />
+            <Box px={3} py={2} fontSize="sm" whiteSpace="pre-wrap">
+              <Box as="span" bg="yellow.100" px={1} py={0.5} borderRadius="sm">
+                {t('common:core.app.QG.Fixed Prompt')}
               </Box>
             </Box>
           </Box>
         </Stack>
       </Box>
       <ModalFooter>
-        <Flex justify={'flex-end'} gap={3}>
+        <Flex gap={3}>
           <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
             {t('common:common.Close')}
           </Button>
           <Button
             fontWeight={'medium'}
             onClick={() => {
-              onChange(value || '');
+              onChange(value);
               onClose();
             }}
             w={20}
