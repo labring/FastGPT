@@ -149,7 +149,7 @@ export type AppWhisperConfigType = {
   autoTTSResponse: boolean;
 };
 
-// QG
+// question guide
 export type AppQGConfigType = {
   open: boolean;
   model?: string;

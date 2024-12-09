@@ -344,6 +344,7 @@ const ChatBox = ({
         {
           appId,
           chatId,
+          questionGuide,
           ...outLinkAuthData
         },
         abortSignal

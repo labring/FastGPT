@@ -8,18 +8,22 @@ import { NextAPI } from '@/service/middleware/entry';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 
-export const SYSTEM_PROMPT_QUESTION_GUIDE = `请严格遵循格式规则：以 JSON 格式返回题目：["问题1"，"问题2"，"问题3"]。`;
+export const SYSTEM_PROMPT_QUESTION_GUIDE = `Please strictly follow the format rules: \nReturn the questions in JSON format: ["question1", "question2", "question3"]`;
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   appId: string;
   chatId: string;
+  questionGuide: {
+    open: boolean;
+    model?: string;
+    customPrompt?: string;
+  };
 };
 
 async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: NextApiResponse<any>) {
-  const { appId, chatId } = req.body;
+  const { appId, chatId, questionGuide: inputQuestionGuide } = req.body;
   const [{ tmbId, teamId }] = await Promise.all([
     authChatCrud({
       req,
@@ -30,9 +34,8 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   ]);
 
   // Auth app and get questionGuide config
-  const { app } = await authApp({ appId, req, per: ReadPermissionVal, authToken: true });
-  const chatConfig = app.chatConfig;
-  const questionGuide = chatConfig.questionGuide;
+  const { chatConfig } = await getAppLatestVersion(appId);
+  const questionGuide = inputQuestionGuide || chatConfig.questionGuide;
 
   // Get histories
   const { histories } = await getChatItems({

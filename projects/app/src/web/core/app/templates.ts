@@ -58,7 +58,7 @@ export const emptyTemplates: Record<
           },
           {
             key: 'questionGuide',
-            valueType: WorkflowIOValueTypeEnum.any,
+            valueType: WorkflowIOValueTypeEnum.object,
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: 'core.app.Question Guide',
             value: {

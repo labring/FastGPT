@@ -171,5 +171,7 @@
   "workflow.user_file_input": "文件链接",
   "workflow.user_file_input_desc": "用户上传的文档和图片链接",
   "workflow.user_select": "用户选择",
-  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线"
+  "workflow.user_select_tip": "该模块可配置多个选项，以供对话时选择。不同选项可导向不同工作流支线",
+  "core.dataset.import.Custom prompt": "自定义提示词",
+  "core.app.QG.Switch": "开启猜你想问"
 }
