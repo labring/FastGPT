@@ -42,7 +42,7 @@ export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
 export const getPluginGroups = () =>
-  GET<PluginGroupSchemaType[]>('/proApi/core/app/plugin/getPluginGroups');
+  GET<PluginGroupSchemaType[]>('/core/app/plugin/getPluginGroups');
 
 export const getSystemPluginPaths = (parentId: ParentIdType) => {
   if (!parentId) return Promise.resolve<ParentTreePathItemType[]>([]);
