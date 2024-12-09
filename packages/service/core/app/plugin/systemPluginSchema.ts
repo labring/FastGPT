@@ -10,8 +10,7 @@ const SystemPluginSchema = new Schema({
     required: true
   },
   isActive: {
-    type: Boolean,
-    required: true
+    type: Boolean
   },
   inputConfig: {
     type: Array,

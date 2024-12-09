@@ -321,7 +321,7 @@ export function replaceEditorVariable({
     })();
 
     const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
-    text = text.replace(regex, formatVal);
+    text = text.replace(regex, () => formatVal);
   });
 
   return text || '';
