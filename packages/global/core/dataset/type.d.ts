@@ -34,6 +34,9 @@ export type DatasetSchemaType = {
   inheritPermission: boolean;
   apiServer?: APIFileServer;
 
+  syncSchedule?: { cronString: string; timezone: string };
+  syncNextTime?: Date;
+
   // abandon
   externalReadUrl?: string;
   defaultPermission?: number;
