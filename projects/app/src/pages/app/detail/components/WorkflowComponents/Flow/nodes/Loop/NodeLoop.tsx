@@ -31,7 +31,7 @@ import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
-import { useWorkflow } from '../../hooks/useWorkflow';
+import { useLoopNode } from '../../hooks/useWorkflow';
 import { useSize } from 'ahooks';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -41,7 +41,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const { resetParentNodeSizeAndPosition } = useWorkflow();
+  const { resetParentNodeSizeAndPosition } = useLoopNode();
 
   const {
     nodeWidth,
@@ -50,8 +50,12 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     loopNodeInputHeight = Input_Template_LOOP_NODE_OFFSET
   } = useMemo(() => {
     return {
-      nodeWidth: inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value,
-      nodeHeight: inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value,
+      nodeWidth: Number(
+        inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value?.toFixed(0)
+      ),
+      nodeHeight: Number(
+        inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value?.toFixed(0)
+      ),
       loopInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
       loopNodeInputHeight: inputs.find(
         (input) => input.key === NodeInputKeyEnum.loopNodeInputHeight

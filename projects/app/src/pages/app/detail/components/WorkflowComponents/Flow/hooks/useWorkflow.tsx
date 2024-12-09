@@ -292,63 +292,7 @@ export const useWorkflow = () => {
   const { getIntersectingNodes } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
-  // Loop node size and position
-  const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
-    const { childNodes, loopNode } = nodes.reduce(
-      (acc, node) => {
-        if (node.data.parentNodeId === parentId) {
-          acc.childNodes.push(node);
-        }
-        if (node.id === parentId) {
-          acc.loopNode = node;
-        }
-        return acc;
-      },
-      { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
-    );
-
-    if (!loopNode) return;
-
-    const rect = getNodesBounds(childNodes);
-    // Calculate parent node size with minimum width/height constraints
-    const width = Math.max(rect.width + 80, 840);
-    const height = Math.max(rect.height + 80, 600);
-
-    const offsetHeight =
-      loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
-        ?.value ?? 83;
-
-    // Update parentNode size and position
-    onChangeNode({
-      nodeId: parentId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.nodeWidth,
-      value: {
-        ...Input_Template_Node_Width,
-        value: width
-      }
-    });
-    onChangeNode({
-      nodeId: parentId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.nodeHeight,
-      value: {
-        ...Input_Template_Node_Height,
-        value: height
-      }
-    });
-    // Update parentNode position
-    onNodesChange([
-      {
-        id: parentId,
-        type: 'position',
-        position: {
-          x: rect.x - 70,
-          y: rect.y - offsetHeight - 240
-        }
-      }
-    ]);
-  });
+  const { resetParentNodeSizeAndPosition } = useLoopNode();
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
@@ -704,7 +648,7 @@ export const useWorkflow = () => {
         chatConfig: appDetail.chatConfig
       });
     },
-    [nodes, edges, appDetail.chatConfig, pushPastSnapshot],
+    [nodes, edges, appDetail.chatConfig],
     { wait: 500 }
   );
 
@@ -721,7 +665,73 @@ export const useWorkflow = () => {
     helperLineVertical,
     onNodeDragStop,
     onPaneContextMenu,
-    onPaneClick,
+    onPaneClick
+  };
+};
+
+export const useLoopNode = () => {
+  const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
+  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
+  const { onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+
+  const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
+    const { childNodes, loopNode } = nodes.reduce(
+      (acc, node) => {
+        if (node.data.parentNodeId === parentId) {
+          acc.childNodes.push(node);
+        }
+        if (node.id === parentId) {
+          acc.loopNode = node;
+        }
+        return acc;
+      },
+      { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
+    );
+
+    if (!loopNode) return;
+
+    const rect = getNodesBounds(childNodes);
+    // Calculate parent node size with minimum width/height constraints
+    const width = Math.max(rect.width + 80, 840);
+    const height = Math.max(rect.height + 80, 600);
+
+    const offsetHeight =
+      loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+        ?.value ?? 83;
+
+    // Update parentNode size and position
+    onChangeNode({
+      nodeId: parentId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.nodeWidth,
+      value: {
+        ...Input_Template_Node_Width,
+        value: width
+      }
+    });
+    onChangeNode({
+      nodeId: parentId,
+      type: 'updateInput',
+      key: NodeInputKeyEnum.nodeHeight,
+      value: {
+        ...Input_Template_Node_Height,
+        value: height
+      }
+    });
+    // Update parentNode position
+    onNodesChange([
+      {
+        id: parentId,
+        type: 'position',
+        position: {
+          x: rect.x - 70,
+          y: rect.y - offsetHeight - 240
+        }
+      }
+    ]);
+  });
+
+  return {
     resetParentNodeSizeAndPosition
   };
 };
