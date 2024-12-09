@@ -566,6 +566,7 @@
   "core.dataset.import.Continue upload": "Continue upload",
   "core.dataset.import.Custom process": "Custom Rules",
   "core.dataset.import.Custom process desc": "Customize segmentation and preprocessing rules",
+  "core.dataset.import.Custom prompt": "Custom Prompt",
   "core.dataset.import.Custom split char": "Custom Separator",
   "core.dataset.import.Custom split char Tips": "Allows you to segment based on custom separators. Usually used for pre-processed data, using specific separators for precise segmentation.",
   "core.dataset.import.Custom text": "Custom Text",
