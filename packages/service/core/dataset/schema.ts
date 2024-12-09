@@ -91,6 +91,18 @@ const DatasetSchema = new Schema({
     type: Object
   },
 
+  syncSchedule: {
+    cronString: {
+      type: String
+    },
+    timezone: {
+      type: String
+    }
+  },
+  syncNextTime: {
+    type: Date
+  },
+
   // abandoned
   externalReadUrl: {
     type: String
@@ -100,6 +112,7 @@ const DatasetSchema = new Schema({
 
 try {
   DatasetSchema.index({ teamId: 1 });
+  DatasetSchema.index({ syncSchedule: 1, syncNextTime: -1 });
 } catch (error) {
   console.log(error);
 }

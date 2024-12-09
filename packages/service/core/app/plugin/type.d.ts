@@ -13,7 +13,7 @@ export type SystemPluginConfigSchemaType = {
   hasTokenFee: boolean;
   isActive: boolean;
   pluginOrder: number;
-  inputConfig: SystemPluginTemplateItemType['inputConfig'];
+  inputConfig?: SystemPluginTemplateItemType['inputConfig'];
 
   customConfig?: {
     name: string;

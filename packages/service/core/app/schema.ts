@@ -121,6 +121,6 @@ const AppSchema = new Schema({
 
 AppSchema.index({ teamId: 1, updateTime: -1 });
 AppSchema.index({ teamId: 1, type: 1 });
-AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
+AppSchema.index({ scheduledTriggerConfig: 1, scheduledTriggerNextTime: -1 });
 
 export const MongoApp = getMongoModel<AppType>(AppCollectionName, AppSchema);

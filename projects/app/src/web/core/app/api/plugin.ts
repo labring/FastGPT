@@ -14,6 +14,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
 import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -41,8 +43,11 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
 export const getSystemPlugTemplates = (data: GetSystemPluginTemplatesBody) =>
   POST<NodeTemplateListItemType[]>('/core/app/plugin/getSystemPluginTemplates', data);
 
-export const getPluginGroups = () =>
-  GET<PluginGroupSchemaType[]>('/core/app/plugin/getPluginGroups');
+export const getPluginGroups = () => {
+  return useSystemStore.getState()?.feConfigs?.isPlus
+    ? GET<PluginGroupSchemaType[]>('/proApi/core/app/plugin/getPluginGroups')
+    : Promise.resolve([defaultGroup]);
+};
 
 export const getSystemPluginPaths = (parentId: ParentIdType) => {
   if (!parentId) return Promise.resolve<ParentTreePathItemType[]>([]);

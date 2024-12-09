@@ -12,12 +12,14 @@ import { TimerIdEnum } from '@fastgpt/service/common/system/timerLock/constants'
 import { addHours } from 'date-fns';
 import { getScheduleTriggerApp } from '@/service/core/app/utils';
 
+// Try to run train every minute
 const setTrainingQueueCron = () => {
   setCron('*/1 * * * *', () => {
     startTrainingQueue();
   });
 };
 
+// Clear tmp upload files every ten minutes
 const setClearTmpUploadFilesCron = () => {
   // Clear tmp upload files every ten minutes
   setCron('*/10 * * * *', () => {
@@ -61,6 +63,7 @@ const clearInvalidDataCron = () => {
   });
 };
 
+// Run app timer trigger every hour
 const scheduleTriggerAppCron = () => {
   setCron('0 */1 * * *', async () => {
     if (

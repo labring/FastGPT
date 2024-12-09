@@ -115,7 +115,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         borderRadius={'50%'}
         overflow={'hidden'}
         cursor={'pointer'}
-        onClick={() => router.push('/account')}
+        onClick={() => router.push('/account/info')}
       >
         <Avatar w={'2rem'} h={'2rem'} src={userInfo?.avatar} borderRadius={'50%'} />
       </Box>
