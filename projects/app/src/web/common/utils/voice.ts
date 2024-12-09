@@ -103,7 +103,7 @@ export const useAudioPlay = (
   const cancelAudio = useCallback(() => {
     try {
       window.speechSynthesis?.cancel();
-      audioController.current.abort('');
+      !audioController.current.signal.aborted && audioController.current.abort();
     } catch (error) {}
     if (audioRef.current) {
       audioRef.current.pause();
