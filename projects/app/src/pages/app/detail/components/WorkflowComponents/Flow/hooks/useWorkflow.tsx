@@ -672,7 +672,7 @@ export const useWorkflow = () => {
 export const useLoopNode = () => {
   const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
   const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
-  const { onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
     const { childNodes, loopNode } = nodes.reduce(

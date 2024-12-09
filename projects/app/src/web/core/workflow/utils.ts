@@ -634,7 +634,7 @@ export const compareSnapshot = (
             selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
             // set to arrayAny for loopInputArray to skip valueType comparison
-            valueType: input.key === NodeInputKeyEnum.loopInputArray ? 'arrayAny' : input.valueType,
+            // valueType: input.key === NodeInputKeyEnum.loopInputArray ? 'arrayAny' : input.valueType,
             value: input.value ?? undefined
           })),
           outputs: node.data.outputs.map((item: FlowNodeOutputItemType) => ({

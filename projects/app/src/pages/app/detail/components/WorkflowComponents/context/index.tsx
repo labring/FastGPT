@@ -831,7 +831,7 @@ const WorkflowContextProvider = ({
   const undo = useMemoizedFn(() => {
     if (past.length > 1) {
       forbiddenSaveSnapshot.current = true;
-
+      // Current version is the first one, so we need to reset the second one
       const firstPast = past[1];
       resetSnapshot(firstPast);
 
