@@ -48,7 +48,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
-        link: '/account',
+        link: '/account/info',
         activeLink: [
           '/account/bill',
           '/account/info',
