@@ -118,7 +118,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isPc } = useSystem();
   const { toast } = useToast();
-  const router = useRouter();
 
   const {
     isOpen: isOpenConversionModal,

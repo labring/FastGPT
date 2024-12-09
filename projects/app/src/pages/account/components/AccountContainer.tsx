@@ -161,6 +161,7 @@ const AccountContainer = ({
             <Box mb={3}>
               <LightRowTabs<TabEnum>
                 m={'auto'}
+                w={'100%'}
                 size={isPc ? 'md' : 'sm'}
                 list={tabList.map((item) => ({
                   value: item.value,
