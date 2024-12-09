@@ -32,9 +32,10 @@ export const useI18nLng = () => {
     });
 
     const currentLng = i18n?.language;
-    await i18n?.changeLanguage?.(lang);
+    if (!currentLng) return;
 
-    if (currentLng !== lang && currentLng) {
+    await i18n?.changeLanguage?.(lang);
+    if (currentLng !== lang) {
       window?.location?.reload?.();
     }
   };
