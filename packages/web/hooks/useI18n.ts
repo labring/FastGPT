@@ -34,7 +34,7 @@ export const useI18nLng = () => {
     const currentLng = i18n?.language;
     await i18n?.changeLanguage?.(lang);
 
-    if (currentLng !== lang) {
+    if (currentLng !== lang && currentLng) {
       window?.location?.reload?.();
     }
   };

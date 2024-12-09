@@ -2,7 +2,6 @@ import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
   compareSnapshot,
-  simplifyWorkflowNodes,
   storeEdgesRenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -833,10 +832,10 @@ const WorkflowContextProvider = ({
     if (past.length > 1) {
       forbiddenSaveSnapshot.current = true;
 
-      const firstPast = past[0];
+      const firstPast = past[1];
       resetSnapshot(firstPast);
 
-      setFuture((future) => [firstPast, ...future]);
+      setFuture((future) => [past[0], ...future]);
       setPast((past) => past.slice(1));
     }
   });
@@ -937,10 +936,10 @@ const WorkflowContextProvider = ({
       if (isInit && past.length === 0) {
         setPast([
           {
+            nodes: nodes,
+            edges: edges,
             title: t(`app:app.version_initial`),
             isSaved: true,
-            nodes: simplifyWorkflowNodes(nodes),
-            edges,
             chatConfig: e.chatConfig || appDetail.chatConfig
           }
         ]);
