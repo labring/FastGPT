@@ -1,5 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { StoreNodeItemType } from '../type/node';
 import { StoreEdgeItemType } from '../type/edge';
@@ -279,6 +279,27 @@ export const getReferenceVariableValue = ({
   return value;
 };
 
+export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTypeEnum) => {
+  if (!valueType) return val;
+  // Value type check, If valueType invalid, return undefined
+  if (valueType.startsWith('array') && !Array.isArray(val)) return undefined;
+  if (valueType === WorkflowIOValueTypeEnum.boolean && typeof val !== 'boolean') return undefined;
+  if (valueType === WorkflowIOValueTypeEnum.number && typeof val !== 'number') return undefined;
+  if (valueType === WorkflowIOValueTypeEnum.string && typeof val !== 'string') return undefined;
+  if (
+    [
+      WorkflowIOValueTypeEnum.object,
+      WorkflowIOValueTypeEnum.chatHistory,
+      WorkflowIOValueTypeEnum.datasetQuote,
+      WorkflowIOValueTypeEnum.selectApp,
+      WorkflowIOValueTypeEnum.selectDataset
+    ].includes(valueType) &&
+    typeof val !== 'object'
+  )
+    return undefined;
+
+  return val;
+};
 // replace {{$xx.xx$}} variables for text
 export function replaceEditorVariable({
   text,
@@ -308,7 +329,7 @@ export function replaceEditorVariable({
       if (!node) return;
 
       const output = node.outputs.find((output) => output.id === id);
-      if (output) return output.value;
+      if (output) return formatVariableValByType(output.value, output.valueType);
 
       const input = node.inputs.find((input) => input.key === id);
       if (input) return getReferenceVariableValue({ value: input.value, nodes, variables });
