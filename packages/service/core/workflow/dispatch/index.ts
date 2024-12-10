@@ -184,7 +184,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ...getSystemVariable(data),
     ...variables
   };
-  variables = formatVariables(data.chatConfig, variables);
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
@@ -712,17 +711,6 @@ const getSystemVariable = ({
     histories,
     cTime: getSystemTime(user.timezone)
   };
-};
-// 格式化全局变量数据类型，类型不一致的结果全部设置成 undefined
-const formatVariables = (
-  chatConfig: AppChatConfigType,
-  variables: Record<string, any>
-): Record<string, any> => {
-  const configVariables = chatConfig?.variables || [];
-  for (const item of configVariables) {
-    variables[item.key] = formatVariableValByType(variables[item.key], item.valueType);
-  }
-  return variables;
 };
 
 /* Merge consecutive text messages into one */
