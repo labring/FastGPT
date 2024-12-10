@@ -687,26 +687,24 @@ const RenderBody = ({
           <RenderForm nodeId={nodeId} input={formBody} variables={variables} />
         )}
         {typeInput?.value === ContentTypes.json && (
-          <JSONEditor
+          <PromptEditor
             bg={'white'}
-            defaultHeight={200}
-            resize
+            showOpenModal={false}
+            variableLabels={variables}
+            minH={200}
             value={jsonBody.value}
-            placeholder={t('common:core.module.template.http body placeholder')}
+            placeholder={t('workflow:http_body_placeholder')}
             onChange={(e) => {
-              startSts(() => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: jsonBody.key,
-                  value: {
-                    ...jsonBody,
-                    value: e
-                  }
-                });
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: jsonBody.key,
+                value: {
+                  ...jsonBody,
+                  value: e
+                }
               });
             }}
-            variables={variables}
           />
         )}
         {(typeInput?.value === ContentTypes.xml || typeInput?.value === ContentTypes.raw) && (
@@ -714,16 +712,14 @@ const RenderBody = ({
             value={jsonBody.value}
             placeholder={t('common:textarea_variable_picker_tip')}
             onChange={(e) => {
-              startSts(() => {
-                onChangeNode({
-                  nodeId,
-                  type: 'updateInput',
-                  key: jsonBody.key,
-                  value: {
-                    ...jsonBody,
-                    value: e
-                  }
-                });
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: jsonBody.key,
+                value: {
+                  ...jsonBody,
+                  value: e
+                }
               });
             }}
             showOpenModal={false}

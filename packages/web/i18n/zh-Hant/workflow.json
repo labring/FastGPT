@@ -64,6 +64,7 @@
   "full_response_data": "完整回應資料",
   "greater_than": "大於",
   "greater_than_or_equal_to": "大於或等於",
+  "http_body_placeholder": "與 APIFox 類似的語法，可透過 / 來啟動變數選擇。\n字串變數均需加雙引號，其他類型變數無需加雙引號。\n請嚴格檢查是否符合 JSON 格式。",
   "http_extract_output": "輸出欄位擷取",
   "http_extract_output_description": "可以透過 JSONPath 語法來擷取回應值中的指定欄位",
   "http_raw_response_description": "HTTP 請求的原始回應。僅接受字串或 JSON 類型回應資料。",
