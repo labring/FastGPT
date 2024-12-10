@@ -126,17 +126,40 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 ## 四、常见模型问题
 
-### 报错 - 模型响应为空
+### 报错 - 模型响应为空/模型报错
 
 该错误是由于 stream 模式下，oneapi 直接结束了流请求，并且未返回任何内容导致。
 
 4.8.10 版本新增了错误日志，报错时，会在日志中打印出实际发送的 Body 参数，可以复制该参数后，通过 curl 向 oneapi 发起请求测试。
 
-由于 oneapi 在 stream 模式下，无法正确捕获错误，可以设置成 `stream=false` 后进行测试。可能的问题：
+由于 oneapi 在 stream 模式下，无法正确捕获错误，有时候可以设置成 `stream=false` 来获取到精确的错误。
+
+可能的报错问题：
 
 1. 国内模型命中风控
 2. 不支持的模型参数：只保留 messages 和必要参数来测试，删除其他参数测试。
 3. 参数不符合模型要求：例如有的模型 temperature 不支持 0，有些不支持两位小数。max_tokens 超出，上下文超长等。
+4. 模型部署有问题，stream 模式不兼容。
+
+测试示例如下，可复制报错日志中的请求体进行测试：
+
+```bash
+curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "xxx",
+  "temperature": 0.01,
+  "max_tokens": 1000,
+  "stream": true,
+  "messages": [
+    {
+      "role": "user",
+      "content": " 你是饿"
+    }
+  ]
+}'
+```
 
 ### 如何测试模型是否支持工具调用
 
