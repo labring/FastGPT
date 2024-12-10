@@ -43,6 +43,7 @@
   "select_file": "Upload File",
   "select_file_img": "Upload file / image",
   "select_img": "Upload Image",
+  "source_cronJob": "Scheduled execution",
   "stream_output": "Stream Output",
   "unsupported_file_type": "Unsupported file types",
   "upload": "Upload",

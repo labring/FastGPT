@@ -10,6 +10,7 @@ import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getScheduleTriggerApp } from '@/service/core/app/utils';
 
 async function handler(
   req: ApiRequestProps<PostPublishAppProps>,
@@ -52,12 +53,17 @@ async function handler(
         updateTime: new Date(),
         version: 'v2',
         // 只有发布才会更新定时器
-        ...(isPublish && {
-          scheduledTriggerConfig: chatConfig?.scheduledTriggerConfig,
-          scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig?.cronString
-            ? getNextTimeByCronStringAndTimezone(chatConfig.scheduledTriggerConfig)
-            : null
-        }),
+        ...(isPublish &&
+          (chatConfig?.scheduledTriggerConfig?.cronString
+            ? {
+                $set: {
+                  scheduledTriggerConfig: chatConfig.scheduledTriggerConfig,
+                  scheduledTriggerNextTime: getNextTimeByCronStringAndTimezone(
+                    chatConfig.scheduledTriggerConfig
+                  )
+                }
+              }
+            : { $unset: { scheduledTriggerConfig: '', scheduledTriggerNextTime: '' } })),
         'pluginData.nodeVersion': _id
       },
       {
@@ -65,6 +71,8 @@ async function handler(
       }
     );
   });
+
+  await getScheduleTriggerApp();
 
   return {};
 }
