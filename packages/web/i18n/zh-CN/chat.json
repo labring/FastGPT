@@ -43,6 +43,7 @@
   "select_file": "上传文件",
   "select_file_img": "上传文件/图片",
   "select_img": "上传图片",
+  "source_cronJob": "定时执行",
   "stream_output": "流输出",
   "unsupported_file_type": "不支持的文件类型",
   "upload": "上传",
