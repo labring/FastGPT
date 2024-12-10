@@ -72,8 +72,6 @@ async function handler(
     );
   });
 
-  await getScheduleTriggerApp();
-
   return {};
 }
 
