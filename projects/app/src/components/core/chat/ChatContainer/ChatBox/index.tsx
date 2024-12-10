@@ -58,7 +58,7 @@ import dynamic from 'next/dynamic';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 import { useContextSelector } from 'use-context-selector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useCreation, useMemoizedFn, useThrottleFn } from 'ahooks';
+import { useCreation, useDebounceEffect, useMemoizedFn, useThrottleFn } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
@@ -380,10 +380,11 @@ const ChatBox = ({
         async ({ variables = {} }) => {
           if (!onStartChat) return;
           if (isChatting) {
-            toast({
-              title: t('chat:is_chatting'),
-              status: 'warning'
-            });
+            !hideInUI &&
+              toast({
+                title: t('chat:is_chatting'),
+                status: 'warning'
+              });
             return;
           }
 
@@ -834,27 +835,33 @@ const ChatBox = ({
   }, [isReady, resetInputVal, sendPrompt]);
 
   // Auto send prompt
-  useEffect(() => {
-    if (
-      isReady &&
-      chatBoxData?.app?.chatConfig?.autoExecute?.open &&
-      chatStarted &&
-      chatRecords.length === 0 &&
-      isChatRecordsLoaded
-    ) {
-      sendPrompt({
-        text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
-        hideInUI: true
-      });
+  useDebounceEffect(
+    () => {
+      if (
+        isReady &&
+        chatBoxData?.app?.chatConfig?.autoExecute?.open &&
+        chatStarted &&
+        chatRecords.length === 0 &&
+        isChatRecordsLoaded
+      ) {
+        sendPrompt({
+          text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',
+          hideInUI: true
+        });
+      }
+    },
+    [
+      isReady,
+      chatStarted,
+      chatRecords.length,
+      isChatRecordsLoaded,
+      sendPrompt,
+      chatBoxData?.app?.chatConfig?.autoExecute
+    ],
+    {
+      wait: 500
     }
-  }, [
-    isReady,
-    chatStarted,
-    chatRecords.length,
-    isChatRecordsLoaded,
-    sendPrompt,
-    chatBoxData?.app?.chatConfig?.autoExecute
-  ]);
+  );
 
   // output data
   useImperativeHandle(ChatBoxRef, () => ({
