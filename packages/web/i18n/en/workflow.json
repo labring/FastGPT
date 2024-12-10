@@ -64,6 +64,7 @@
   "full_response_data": "Full Response Data",
   "greater_than": "Greater Than",
   "greater_than_or_equal_to": "Greater Than or Equal To",
+  "http_body_placeholder": "Similar syntax to APIFox, variable selection can be activated via /. \nString variables need to be enclosed in double quotes, other types of variables do not need to be enclosed in double quotes. \nPlease strictly check whether it conforms to JSON format.",
   "http_extract_output": "Output field extraction",
   "http_extract_output_description": "Specified fields in the response value can be extracted through JSONPath syntax",
   "http_raw_response_description": "Raw HTTP response. Only accepts string or JSON type response data.",

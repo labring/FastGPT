@@ -10,6 +10,7 @@
   "Variable_name": "变量名",
   "add_new_input": "新增输入",
   "add_new_output": "新增输出",
+  "http_body_placeholder": "与 APIFox 类似的语法，可通过 / 来激活变量选择。字符串变量均需加双引号，其他类型变量无需加双引号。请严格检查是否符合 JSON 格式。",
   "append_application_reply_to_history_as_new_context": "将该应用回复内容拼接到历史记录中，作为新的上下文返回",
   "application_call": "应用调用",
   "assigned_reply": "指定回复",
