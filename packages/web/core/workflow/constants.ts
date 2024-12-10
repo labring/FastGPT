@@ -74,7 +74,7 @@ export const systemPluginTemplateList: TGroupType[] = [
 ];
 export const defaultGroup: PluginGroupSchemaType = {
   groupId: 'systemPlugin',
-  groupAvatar: 'common/navbar/pluginLight',
+  groupAvatar: 'core/app/type/pluginLight',
   groupName: i18nT('common:core.module.template.System Plugin'),
   groupOrder: 0,
   groupTypes: systemPluginTemplateList
