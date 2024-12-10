@@ -166,7 +166,8 @@ export async function createOneCollection({
   metadata = {},
   session,
   tags,
-  createTime
+  createTime,
+  updateTime
 }: CreateOneCollectionParams) {
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
@@ -197,7 +198,9 @@ export async function createOneCollection({
         rawTextLength,
         hashRawText,
         tags: collectionTags,
-        createTime
+
+        createTime,
+        updateTime
       }
     ],
     { session }

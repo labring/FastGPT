@@ -82,7 +82,8 @@ export const DatasetCollectionTypeMap = {
 
 export enum DatasetCollectionSyncResultEnum {
   sameRaw = 'sameRaw',
-  success = 'success'
+  success = 'success',
+  failed = 'failed'
 }
 export const DatasetCollectionSyncResultMap = {
   [DatasetCollectionSyncResultEnum.sameRaw]: {
@@ -90,6 +91,9 @@ export const DatasetCollectionSyncResultMap = {
   },
   [DatasetCollectionSyncResultEnum.success]: {
     label: i18nT('common:core.dataset.collection.sync.result.success')
+  },
+  [DatasetCollectionSyncResultEnum.failed]: {
+    label: i18nT('dataset:sync_collection_failed')
   }
 };
 

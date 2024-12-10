@@ -163,6 +163,10 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     ...sourceReadType
   });
 
+  if (!rawText) {
+    return DatasetCollectionSyncResultEnum.failed;
+  }
+
   // Check if the original text is the same: skip if same
   const hashRawText = hashStr(rawText);
   if (collection.hashRawText && hashRawText === collection.hashRawText) {
@@ -193,6 +197,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
 
         tags: collection.tags,
         createTime: collection.createTime,
+        updateTime: new Date(),
 
         parentId: collection.parentId,
         trainingType: collection.trainingType,

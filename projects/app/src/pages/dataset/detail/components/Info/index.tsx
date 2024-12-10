@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Flex, Input } from '@chakra-ui/react';
+import { Box, Flex, Switch, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -33,6 +33,8 @@ import EditAPIDatasetInfoModal, {
   EditAPIDatasetInfoFormType
 } from './components/EditApiServiceModal';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
@@ -52,7 +54,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { datasetModelList, vectorModelList } = useSystemStore();
+  const { feConfigs, datasetModelList, vectorModelList } = useSystemStore();
   const { ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -62,6 +64,10 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     content: t('dataset:confirm_to_rebuild_embedding_tip'),
     type: 'delete'
   });
+  const { openConfirm: onOpenConfirmSyncSchedule, ConfirmModal: ConfirmSyncScheduleModal } =
+    useConfirm({
+      title: t('common:common.confirm.Common Tip')
+    });
 
   const { File } = useSelectFile({
     fileType: '.jpg,.png',
@@ -132,6 +138,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     reset(datasetDetail);
   }, [datasetDetail, datasetDetail._id, reset]);
 
+  const isTraining = rebuildingCount > 0 || trainingCount > 0;
+
   return (
     <Box w={'100%'} h={'100%'} p={6}>
       <Box>
@@ -177,7 +185,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <MyDivider my={4} h={'2px'} maxW={'500px'} />
 
-      <Box overflow={'hidden'}>
+      <Box>
         <Flex w={'100%'} flexDir={'column'}>
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
             {t('common:core.dataset.Dataset ID')}
@@ -186,16 +194,23 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Flex>
 
         <Box mt={5} w={'100%'}>
-          <FormLabel fontSize={'mini'} fontWeight={'500'}>
-            {t('common:core.ai.model.Vector Model')}
-          </FormLabel>
+          <Flex alignItems={'center'} fontSize={'mini'}>
+            <FormLabel fontWeight={'500'} flex={'1 0 0'}>
+              {t('common:core.ai.model.Vector Model')}
+            </FormLabel>
+            <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
+              <Box>
+                {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
+              </Box>
+            </MyTooltip>
+          </Flex>
           <Box pt={2}>
             <AIModelSelector
               w={'100%'}
               value={vectorModel.model}
               fontSize={'mini'}
               disableTip={
-                rebuildingCount > 0 || trainingCount > 0
+                isTraining
                   ? t(
                       'dataset:the_knowledge_base_has_indexes_that_are_being_trained_or_being_rebuilt'
                     )
@@ -216,13 +231,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             />
           </Box>
         </Box>
-
-        <Flex mt={2} w={'100%'} alignItems={'center'}>
-          <FormLabel flex={1} fontSize={'mini'} w={0} fontWeight={'500'}>
-            {t('common:core.Max Token')}
-          </FormLabel>
-          <Box fontSize={'mini'}>{vectorModel.maxToken}</Box>
-        </Flex>
 
         <Box pt={5}>
           <FormLabel fontSize={'mini'} fontWeight={'500'}>
@@ -247,7 +255,34 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Box>
         </Box>
 
-        {/* <MyDivider my={4} h={'2px'} maxW={'500px'} /> */}
+        {feConfigs?.isPlus && (
+          <Flex alignItems={'center'} pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:sync_schedule')}
+            </FormLabel>
+            <QuestionTip ml={1} label={t('dataset:sync_schedule_tip')} />
+            <Box flex={1} />
+            <Switch
+              isChecked={!!datasetDetail.autoSync}
+              onChange={(e) => {
+                e.preventDefault();
+                const autoSync = e.target.checked;
+                const text = autoSync ? t('dataset:open_auto_sync') : t('dataset:close_auto_sync');
+
+                onOpenConfirmSyncSchedule(
+                  async () => {
+                    return updateDataset({
+                      id: datasetId,
+                      autoSync
+                    });
+                  },
+                  undefined,
+                  text
+                )();
+              }}
+            />
+          </Flex>
+        )}
 
         {datasetDetail.type === DatasetTypeEnum.externalFile && (
           <>
@@ -330,6 +365,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       <File onSelect={onSelectFile} />
       <ConfirmDelModal />
       <ConfirmRebuildModal countDown={10} />
+      <ConfirmSyncScheduleModal />
       {editedDataset && (
         <EditResourceModal
           {...editedDataset}
