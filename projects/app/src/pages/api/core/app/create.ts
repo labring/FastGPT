@@ -130,7 +130,8 @@ export const onCreateApp = async ({
             chatConfig,
             versionName: name,
             username,
-            avatar: userAvatar
+            avatar: userAvatar,
+            isPublish: true
           }
         ],
         { session }

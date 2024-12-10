@@ -97,9 +97,10 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                   appName: appDetail.name
                 })}
               </MyBox>
-              <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
               {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
                 <>
+                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+
                   <MyBox
                     display={'flex'}
                     size={'md'}
@@ -113,25 +114,28 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                     <MyIcon name={'core/dataset/tag'} w={'16px'} mr={2} />
                     <Box fontSize={'sm'}>{t('app:Team_Tags')}</Box>
                   </MyBox>
-                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
                 </>
               )}
 
               {appDetail.permission.isOwner && (
-                <MyBox
-                  display={'flex'}
-                  size={'md'}
-                  px={1}
-                  py={1.5}
-                  rounded={'4px'}
-                  color={'red.600'}
-                  _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
-                  cursor={'pointer'}
-                  onClick={onDelApp}
-                >
-                  <MyIcon name={'delete'} w={'16px'} mr={2} />
-                  <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
-                </MyBox>
+                <>
+                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
+
+                  <MyBox
+                    display={'flex'}
+                    size={'md'}
+                    px={1}
+                    py={1.5}
+                    rounded={'4px'}
+                    color={'red.600'}
+                    _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+                    cursor={'pointer'}
+                    onClick={onDelApp}
+                  >
+                    <MyIcon name={'delete'} w={'16px'} mr={2} />
+                    <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
+                  </MyBox>
+                </>
               )}
             </Box>
           )}
