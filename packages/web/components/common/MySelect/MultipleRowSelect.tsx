@@ -104,7 +104,7 @@ export const MultipleRowSelect = ({
   );
 
   const onOpenSelect = useCallback(() => {
-    setCloneValue(value);
+    setCloneValue(Array.isArray(value) ? value : []);
     onOpen();
   }, [value, onOpen]);
 
