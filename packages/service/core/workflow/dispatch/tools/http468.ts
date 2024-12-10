@@ -24,6 +24,7 @@ import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { createFileToken } from '../../../../support/permission/controller';
 import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
+import json5 from 'json5';
 
 type PropsArrType = {
   key: string;
@@ -103,8 +104,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     [NodeInputKeyEnum.addInputParam]: concatVariables,
     ...concatVariables
   };
-  httpReqUrl = replaceVariable(httpReqUrl, allVariables);
-
   const replaceStringVariables = (text: string) => {
     return replaceVariable(
       replaceEditorVariable({
@@ -115,6 +114,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       allVariables
     );
   };
+
+  httpReqUrl = replaceStringVariables(httpReqUrl);
 
   // parse header
   const headers = await (() => {
@@ -175,9 +176,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
-        httpJsonBody = replaceVariable(httpJsonBody, allVariables);
+        httpJsonBody = replaceStringVariables(httpJsonBody);
         // Json body, parse and return
-        const jsonParse = JSON.parse(httpJsonBody);
+        const jsonParse = json5.parse(
+          httpJsonBody.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null')
+        );
         const removeSignJson = removeUndefinedSign(jsonParse);
         return removeSignJson;
       }
@@ -195,7 +198,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Object.fromEntries(requestBody);
     } else if (typeof requestBody === 'string') {
       try {
-        return JSON.parse(requestBody);
+        return json5.parse(requestBody);
       } catch {
         return { content: requestBody };
       }

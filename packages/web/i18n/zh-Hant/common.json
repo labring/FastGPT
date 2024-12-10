@@ -751,7 +751,6 @@
   "core.module.template.config_params": "可以設定應用程式的系統參數",
   "core.module.template.empty_plugin": "空白外掛程式",
   "core.module.template.empty_workflow": "空白工作流程",
-  "core.module.template.http body placeholder": "與 Apifox 相同的語法",
   "core.module.template.self_input": "外掛程式輸入",
   "core.module.template.self_output": "外掛程式輸出",
   "core.module.template.system_config": "系統設定",
