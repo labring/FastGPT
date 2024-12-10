@@ -33,6 +33,7 @@ export enum ChatSourceEnum {
   online = 'online',
   share = 'share',
   api = 'api',
+  cronJob = 'cronJob',
   team = 'team',
   feishu = 'feishu',
   official_account = 'official_account',
@@ -51,6 +52,9 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.api]: {
     name: i18nT('common:core.chat.logs.api')
+  },
+  [ChatSourceEnum.cronJob]: {
+    name: i18nT('chat:source_cronJob')
   },
   [ChatSourceEnum.team]: {
     name: i18nT('common:core.chat.logs.team')
