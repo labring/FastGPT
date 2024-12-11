@@ -42,7 +42,7 @@ export const cronString2Fields = (cronString?: string) => {
 };
 
 export const cronString2Label = (
-  cronString: string,
+  cronString = '',
   t: any // i18nT
 ) => {
   const cronField = cronString2Fields(cronString);

@@ -165,7 +165,8 @@ export async function pushDataListToTrainingQueue({
           a: item.a,
           chunkIndex: item.chunkIndex ?? 0,
           weight: weight ?? 0,
-          indexes: item.indexes
+          indexes: item.indexes,
+          retryCount: 5
         })),
         {
           session,

@@ -29,6 +29,16 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
     onOpen: onOpenAiPointsModal
   } = useDisclosure();
 
+  const avatarSize = useMemo(() => {
+    const size = {
+      sm: '1rem',
+      md: '1.2rem',
+      lg: '1.4rem'
+    };
+    //@ts-ignore
+    return props.size ? size[props.size] : size['md'];
+  }, [props.size]);
+
   const avatarList = list.map((item) => {
     const modelData =
       llmModelList.find((model) => model.model === item.value) ||
@@ -43,7 +53,7 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
             mr={2}
             src={modelData?.avatar || HUGGING_FACE_ICON}
             fallbackSrc={HUGGING_FACE_ICON}
-            w={'18px'}
+            w={avatarSize}
           />
           <Box>{item.label}</Box>
         </Flex>
@@ -56,14 +66,14 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
       ? avatarList.concat({
           label: (
             <Flex alignItems={'center'}>
-              <Avatar borderRadius={'0'} mr={2} src={LOGO_ICON} w={'18px'} />
+              <Avatar borderRadius={'0'} mr={2} src={LOGO_ICON} w={avatarSize} />
               <Box>{t('common:support.user.Price')}</Box>
             </Flex>
           ),
           value: 'price'
         })
       : avatarList;
-  }, [feConfigs.show_pay, avatarList, t]);
+  }, [feConfigs.show_pay, avatarList, avatarSize, t]);
 
   const onSelect = useCallback(
     (e: string) => {
@@ -73,7 +83,7 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
       }
       return onchange?.(e);
     },
-    [onchange, router]
+    [onOpenAiPointsModal, onchange]
   );
 
   return (

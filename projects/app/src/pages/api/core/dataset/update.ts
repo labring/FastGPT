@@ -9,7 +9,11 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -22,6 +26,8 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { addDays } from 'date-fns';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -51,7 +57,8 @@ async function handler(
     websiteConfig,
     externalReadUrl,
     apiServer,
-    status
+    status,
+    autoSync
   } = req.body;
 
   if (!id) {
@@ -101,7 +108,7 @@ async function handler(
     agentModel: agentModel?.model
   });
 
-  const onUpdate = async (session?: ClientSession) => {
+  const onUpdate = async (session: ClientSession) => {
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -117,14 +124,21 @@ async function handler(
         ...(!!apiServer?.authorization && {
           'apiServer.authorization': apiServer.authorization
         }),
-        ...(isMove && { inheritPermission: true })
+        ...(isMove && { inheritPermission: true }),
+        ...(typeof autoSync === 'boolean' && { autoSync })
       },
       { session }
     );
+    await updateSyncSchedule({
+      teamId: dataset.teamId,
+      datasetId: dataset._id,
+      autoSync,
+      session
+    });
   };
 
-  if (isMove) {
-    await mongoSessionRun(async (session) => {
+  await mongoSessionRun(async (session) => {
+    if (isMove) {
       if (isFolder && dataset.inheritPermission) {
         const parentClbsAndGroups = await getResourceClbsAndGroups({
           teamId: dataset.teamId,
@@ -149,17 +163,16 @@ async function handler(
           collaborators: parentClbsAndGroups,
           session
         });
-        return onUpdate(session);
       }
       return onUpdate(session);
-    });
-  } else {
-    return onUpdate();
-  }
+    } else {
+      return onUpdate(session);
+    }
+  });
 }
 export default NextAPI(handler);
 
-async function updateTraining({
+const updateTraining = async ({
   teamId,
   datasetId,
   agentModel
@@ -167,7 +180,7 @@ async function updateTraining({
   teamId: string;
   datasetId: string;
   agentModel?: string;
-}) {
+}) => {
   if (!agentModel) return;
 
   await MongoDatasetTraining.updateMany(
@@ -184,4 +197,48 @@ async function updateTraining({
       }
     }
   );
-}
+};
+
+const updateSyncSchedule = async ({
+  teamId,
+  datasetId,
+  autoSync,
+  session
+}: {
+  teamId: string;
+  datasetId: string;
+  autoSync?: boolean;
+  session: ClientSession;
+}) => {
+  if (typeof autoSync !== 'boolean') return;
+
+  // Update all collection nextSyncTime
+  if (autoSync) {
+    await MongoDatasetCollection.updateMany(
+      {
+        teamId,
+        datasetId,
+        type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
+      },
+      {
+        $set: {
+          nextSyncTime: addDays(new Date(), 1)
+        }
+      },
+      { session }
+    );
+  } else {
+    await MongoDatasetCollection.updateMany(
+      {
+        teamId,
+        datasetId
+      },
+      {
+        $unset: {
+          nextSyncTime: 1
+        }
+      },
+      { session }
+    );
+  }
+};
