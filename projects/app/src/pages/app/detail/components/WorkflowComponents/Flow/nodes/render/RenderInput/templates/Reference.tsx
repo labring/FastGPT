@@ -254,12 +254,12 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
-  useEffect(() => {
-    const validList = formatList.filter((item) => item.nodeName && item.outputName);
-    if (validList.length !== value?.length) {
-      onSelect(validList.map((item) => item.rawValue));
-    }
-  }, [formatList, onSelect, value]);
+  // useEffect(() => {
+  //   const validList = formatList.filter((item) => item.nodeName && item.outputName);
+  //   if (validList.length !== value?.length) {
+  //     onSelect(validList.map((item) => item.rawValue));
+  //   }
+  // }, [formatList, onSelect, value]);
 
   const ArraySelector = useMemo(() => {
     return (
