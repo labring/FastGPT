@@ -117,7 +117,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
 
   const formatDatasets = myDatasets
     .map((dataset) => {
-      const { Per, privateDataset } = (() => {
+      const Per = (() => {
         const getPer = (datasetId: string) => {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
@@ -127,19 +127,12 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               .filter((item) => String(item.resourceId) === datasetId && !!item.groupId)
               .map((item) => item.permission)
           );
-
-          const clbCount = perList.filter(
-            (item) => String(item.resourceId) === String(dataset._id)
-          ).length;
-
-          return {
-            Per: new DatasetPermission({
-              per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
-              isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
-            }),
-            privateDataset: dataset.type === 'folder' ? clbCount <= 1 : clbCount === 0
-          };
+          return new DatasetPermission({
+            per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
+            isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
+          });
         };
+
         // inherit
         if (
           dataset.inheritPermission &&
@@ -150,6 +143,21 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         } else {
           return getPer(String(dataset._id));
         }
+      })();
+      const getClbCount = (datasetId: string) => {
+        return perList.filter((item) => String(item.resourceId) === String(datasetId)).length;
+      };
+      const privateDataset = (() => {
+        if (
+          dataset.type !== DatasetTypeEnum.folder &&
+          dataset.parentId &&
+          dataset.inheritPermission
+        ) {
+          return getClbCount(String(dataset.parentId)) <= 1;
+        }
+
+        const clbCount = getClbCount(dataset._id);
+        return dataset.type === DatasetTypeEnum.folder ? clbCount <= 1 : clbCount === 0;
       })();
 
       return {

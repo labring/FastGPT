@@ -146,7 +146,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   // Add app permission and filter apps by read permission
   const formatApps = myApps
     .map((app) => {
-      const { Per, privateApp } = (() => {
+      const Per = (() => {
         const getPer = (appId: string) => {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
@@ -156,19 +156,10 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               .filter((item) => String(item.resourceId) === appId && !!item.groupId)
               .map((item) => item.permission)
           );
-
-          // Count app collaborators
-          const clbCount = perList.filter(
-            (item) => String(item.resourceId) === String(app._id)
-          ).length;
-
-          return {
-            Per: new AppPermission({
-              per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
-              isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
-            }),
-            privateApp: AppFolderTypeList.includes(app.type) ? clbCount <= 1 : clbCount === 0
-          };
+          return new AppPermission({
+            per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
+            isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
+          });
         };
 
         // Inherit app
@@ -177,6 +168,17 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
         } else {
           return getPer(String(app._id));
         }
+      })();
+      const getClbCount = (appId: string) => {
+        return perList.filter((item) => String(item.resourceId) === String(appId)).length;
+      };
+      const privateApp = (() => {
+        if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
+          return getClbCount(app.parentId) <= 1;
+        }
+
+        const clbCount = getClbCount(app._id);
+        return AppFolderTypeList.includes(app.type) ? clbCount <= 1 : clbCount === 0;
       })();
 
       return {
