@@ -127,29 +127,33 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               .filter((item) => String(item.resourceId) === datasetId && !!item.groupId)
               .map((item) => item.permission)
           );
-
-          const clbCount = perList.filter(
-            (item) => String(item.resourceId) === String(dataset._id)
-          ).length;
-
-          return {
-            Per: new DatasetPermission({
-              per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
-              isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
-            }),
-            privateDataset: dataset.type === 'folder' ? clbCount <= 1 : clbCount === 0
-          };
+          return new DatasetPermission({
+            per: tmbPer ?? groupPer ?? DatasetDefaultPermissionVal,
+            isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
+          });
         };
+        const getClbCount = (datasetId: string) => {
+          return perList.filter((item) => String(item.resourceId) === String(datasetId)).length;
+        };
+
         // inherit
         if (
           dataset.inheritPermission &&
           dataset.parentId &&
           dataset.type !== DatasetTypeEnum.folder
         ) {
-          return getPer(String(dataset.parentId));
-        } else {
-          return getPer(String(dataset._id));
+          return {
+            Per: getPer(String(dataset.parentId)),
+            privateDataset: getClbCount(String(dataset.parentId)) <= 1
+          };
         }
+        return {
+          Per: getPer(String(dataset._id)),
+          privateDataset:
+            dataset.type === DatasetTypeEnum.folder
+              ? getClbCount(String(dataset._id)) <= 1
+              : getClbCount(String(dataset._id)) === 0
+        };
       })();
 
       return {

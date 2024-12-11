@@ -157,26 +157,30 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               .map((item) => item.permission)
           );
 
-          // Count app collaborators
-          const clbCount = perList.filter(
-            (item) => String(item.resourceId) === String(app._id)
-          ).length;
-
-          return {
-            Per: new AppPermission({
-              per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
-              isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
-            }),
-            privateApp: AppFolderTypeList.includes(app.type) ? clbCount <= 1 : clbCount === 0
-          };
+          return new AppPermission({
+            per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
+            isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
+          });
         };
 
-        // Inherit app
-        if (app.inheritPermission && app.parentId && !AppFolderTypeList.includes(app.type)) {
-          return getPer(String(app.parentId));
-        } else {
-          return getPer(String(app._id));
+        const getClbCount = (appId: string) => {
+          return perList.filter((item) => String(item.resourceId) === String(appId)).length;
+        };
+
+        // Inherit app, check parent folder clb
+        if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
+          return {
+            Per: getPer(String(app.parentId)),
+            privateApp: getClbCount(String(app.parentId)) <= 1
+          };
         }
+
+        return {
+          Per: getPer(String(app._id)),
+          privateApp: AppFolderTypeList.includes(app.type)
+            ? getClbCount(String(app._id)) <= 1
+            : getClbCount(String(app._id)) === 0
+        };
       })();
 
       return {
