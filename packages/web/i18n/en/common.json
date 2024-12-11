@@ -1145,6 +1145,7 @@
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
   "unit.character": "Character",
   "unit.minute": "Minute",
+  "unit.seconds": "Second",
   "unusable_variable": "No Usable Variables",
   "upload_file_error": "File Upload Failed",
   "user.Account": "Account",
