@@ -1,4 +1,7 @@
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 import {
@@ -24,6 +27,7 @@ import { getLLMModel, getVectorModel } from '../../ai/model';
 import { pushDataListToTrainingQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { addDays } from 'date-fns';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -72,6 +76,17 @@ export const createCollectionAndInsertData = async ({
 
       hashRawText: hashStr(rawText),
       rawTextLength: rawText.length,
+      nextSyncTime: (() => {
+        if (!dataset.autoSync) return undefined;
+        if (
+          [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
+            createCollectionParams.type
+          )
+        ) {
+          return addDays(new Date(), 1);
+        }
+        return undefined;
+      })(),
       session
     });
 
@@ -155,10 +170,8 @@ export async function createOneCollection({
 
   fileId,
   rawLink,
-
   externalFileId,
   externalFileUrl,
-
   apiFileId,
 
   hashRawText,
@@ -166,7 +179,10 @@ export async function createOneCollection({
   metadata = {},
   session,
   tags,
-  createTime
+
+  createTime,
+  updateTime,
+  nextSyncTime
 }: CreateOneCollectionParams) {
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
@@ -197,7 +213,10 @@ export async function createOneCollection({
         rawTextLength,
         hashRawText,
         tags: collectionTags,
-        createTime
+
+        createTime,
+        updateTime,
+        nextSyncTime
       }
     ],
     { session }

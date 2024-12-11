@@ -34,8 +34,7 @@ export type DatasetSchemaType = {
   inheritPermission: boolean;
   apiServer?: APIFileServer;
 
-  syncSchedule?: { cronString: string; timezone: string };
-  syncNextTime?: Date;
+  autoSync?: boolean;
 
   // abandon
   externalReadUrl?: string;
@@ -65,11 +64,13 @@ export type DatasetCollectionSchemaType = {
   fileId?: string; // local file id
   rawLink?: string; // link url
   externalFileId?: string; //external file id
+  apiFileId?: string; // api file id
+  externalFileUrl?: string; // external import url
+
+  nextSyncTime?: Date;
 
   rawTextLength?: number;
   hashRawText?: string;
-  externalFileUrl?: string; // external import url
-  apiFileId?: string; // api file id
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections

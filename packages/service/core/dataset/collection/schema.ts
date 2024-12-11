@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { TrainingTypeMap, DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
@@ -10,100 +10,95 @@ import {
 
 export const DatasetColCollectionName = 'dataset_collections';
 
-const DatasetCollectionSchema = new Schema(
-  {
-    parentId: {
-      type: Schema.Types.ObjectId,
-      ref: DatasetColCollectionName,
-      default: null
-    },
-    teamId: {
-      type: Schema.Types.ObjectId,
-      ref: TeamCollectionName,
-      required: true
-    },
-    tmbId: {
-      type: Schema.Types.ObjectId,
-      ref: TeamMemberCollectionName,
-      required: true
-    },
-    datasetId: {
-      type: Schema.Types.ObjectId,
-      ref: DatasetCollectionName,
-      required: true
-    },
-    type: {
-      type: String,
-      enum: Object.keys(DatasetCollectionTypeMap),
-      required: true
-    },
-    name: {
-      type: String,
-      required: true
-    },
-    createTime: {
-      type: Date,
-      default: () => new Date()
-    },
-    updateTime: {
-      type: Date,
-      default: () => new Date()
-    },
-    forbid: {
-      type: Boolean,
-      default: false
-    },
-
-    // chunk filed
-    trainingType: {
-      type: String,
-      enum: Object.keys(TrainingTypeMap)
-    },
-    chunkSize: {
-      type: Number,
-      required: true
-    },
-    chunkSplitter: {
-      type: String
-    },
-    qaPrompt: {
-      type: String
-    },
-    ocrParse: Boolean,
-
-    tags: {
-      type: [String],
-      default: []
-    },
-
-    // local file collection
-    fileId: {
-      type: Schema.Types.ObjectId,
-      ref: 'dataset.files'
-    },
-    // web link collection
-    rawLink: String,
-    // api collection
-    apiFileId: String,
-    // external collection
-    externalFileId: String,
-    externalFileUrl: String, // external import url
-
-    // metadata
-    rawTextLength: Number,
-    hashRawText: String,
-    metadata: {
-      type: Object,
-      default: {}
-    }
+const DatasetCollectionSchema = new Schema({
+  parentId: {
+    type: Schema.Types.ObjectId,
+    ref: DatasetColCollectionName,
+    default: null
   },
-  {
-    // Auto update updateTime
-    timestamps: {
-      updatedAt: 'updateTime'
-    }
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
+    required: true
+  },
+  datasetId: {
+    type: Schema.Types.ObjectId,
+    ref: DatasetCollectionName,
+    required: true
+  },
+  type: {
+    type: String,
+    enum: Object.keys(DatasetCollectionTypeMap),
+    required: true
+  },
+  name: {
+    type: String,
+    required: true
+  },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
+  updateTime: {
+    type: Date,
+    default: () => new Date()
+  },
+  forbid: {
+    type: Boolean,
+    default: false
+  },
+
+  // chunk filed
+  trainingType: {
+    type: String,
+    enum: Object.keys(TrainingTypeMap)
+  },
+  chunkSize: {
+    type: Number,
+    required: true
+  },
+  chunkSplitter: {
+    type: String
+  },
+  qaPrompt: {
+    type: String
+  },
+  ocrParse: Boolean,
+
+  tags: {
+    type: [String],
+    default: []
+  },
+
+  // local file collection
+  fileId: {
+    type: Schema.Types.ObjectId,
+    ref: 'dataset.files'
+  },
+  // web link collection
+  rawLink: String,
+  // api collection
+  apiFileId: String,
+  // external collection
+  externalFileId: String,
+  externalFileUrl: String, // external import url
+
+  // next sync time
+  nextSyncTime: Date,
+
+  // metadata
+  rawTextLength: Number,
+  hashRawText: String,
+  metadata: {
+    type: Object,
+    default: {}
   }
-);
+});
 
 try {
   // auth file
@@ -121,6 +116,16 @@ try {
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, tags: 1 });
   // create time filter
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
+
+  // next sync time filter
+  DatasetCollectionSchema.index(
+    { type: 1, nextSyncTime: -1 },
+    {
+      partialFilterExpression: {
+        nextSyncTime: { $exists: true }
+      }
+    }
+  );
 
   // Get collection by external file id
   DatasetCollectionSchema.index(
