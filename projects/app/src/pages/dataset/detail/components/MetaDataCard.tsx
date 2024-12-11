@@ -38,8 +38,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
 
-    const webSelector =
-      collection?.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector;
+    const webSelector = collection?.metadata?.webPageSelector;
 
     return [
       {
