@@ -146,7 +146,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   // Add app permission and filter apps by read permission
   const formatApps = myApps
     .map((app) => {
-      const Per = (() => {
+      const { Per, privateApp } = (() => {
         const getPer = (appId: string) => {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
@@ -156,29 +156,31 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
               .filter((item) => String(item.resourceId) === appId && !!item.groupId)
               .map((item) => item.permission)
           );
+
           return new AppPermission({
             per: tmbPer ?? groupPer ?? AppDefaultPermissionVal,
             isOwner: String(app.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
 
-        // Inherit app
-        if (app.inheritPermission && app.parentId && !AppFolderTypeList.includes(app.type)) {
-          return getPer(String(app.parentId));
-        } else {
-          return getPer(String(app._id));
-        }
-      })();
-      const getClbCount = (appId: string) => {
-        return perList.filter((item) => String(item.resourceId) === String(appId)).length;
-      };
-      const privateApp = (() => {
+        const getClbCount = (appId: string) => {
+          return perList.filter((item) => String(item.resourceId) === String(appId)).length;
+        };
+
+        // Inherit app, check parent folder clb
         if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
-          return getClbCount(app.parentId) <= 1;
+          return {
+            Per: getPer(String(app.parentId)),
+            privateApp: getClbCount(String(app.parentId)) <= 1
+          };
         }
 
-        const clbCount = getClbCount(app._id);
-        return AppFolderTypeList.includes(app.type) ? clbCount <= 1 : clbCount === 0;
+        return {
+          Per: getPer(String(app._id)),
+          privateApp: AppFolderTypeList.includes(app.type)
+            ? getClbCount(String(app._id)) <= 1
+            : getClbCount(String(app._id)) === 0
+        };
       })();
 
       return {

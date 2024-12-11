@@ -117,7 +117,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
 
   const formatDatasets = myDatasets
     .map((dataset) => {
-      const Per = (() => {
+      const { Per, privateDataset } = (() => {
         const getPer = (datasetId: string) => {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
@@ -132,6 +132,9 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
             isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
+        const getClbCount = (datasetId: string) => {
+          return perList.filter((item) => String(item.resourceId) === String(datasetId)).length;
+        };
 
         // inherit
         if (
@@ -139,25 +142,18 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           dataset.parentId &&
           dataset.type !== DatasetTypeEnum.folder
         ) {
-          return getPer(String(dataset.parentId));
-        } else {
-          return getPer(String(dataset._id));
+          return {
+            Per: getPer(String(dataset.parentId)),
+            privateDataset: getClbCount(String(dataset.parentId)) <= 1
+          };
         }
-      })();
-      const getClbCount = (datasetId: string) => {
-        return perList.filter((item) => String(item.resourceId) === String(datasetId)).length;
-      };
-      const privateDataset = (() => {
-        if (
-          dataset.type !== DatasetTypeEnum.folder &&
-          dataset.parentId &&
-          dataset.inheritPermission
-        ) {
-          return getClbCount(String(dataset.parentId)) <= 1;
-        }
-
-        const clbCount = getClbCount(dataset._id);
-        return dataset.type === DatasetTypeEnum.folder ? clbCount <= 1 : clbCount === 0;
+        return {
+          Per: getPer(String(dataset._id)),
+          privateDataset:
+            dataset.type === DatasetTypeEnum.folder
+              ? getClbCount(String(dataset._id)) <= 1
+              : getClbCount(String(dataset._id)) === 0
+        };
       })();
 
       return {
