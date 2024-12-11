@@ -20,7 +20,7 @@ function MemberTable() {
     type: 'delete'
   });
 
-  const { members, groups, refetchMembers, refetchGroups } = useContextSelector(
+  const { members, groups, orgs, refetchMembers, refetchGroups, refetchOrgs } = useContextSelector(
     TeamContext,
     (v) => v
   );

@@ -14,6 +14,13 @@ export enum TeamErrEnum {
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
+  orgNameEmpty = 'orgNameEmpty',
+  orgOwnerNotExist = 'orgOwnerNotExist',
+  orgNotExist = 'orgNotExist',
+  orgParentNotExist = 'orgParentNotExist',
+  deletingOrgWithChildren = 'deletingOrgWithChildren',
+  deletingRootOrg = 'deletingRootOrg',
+  orgNameDuplicate = 'orgNameDuplicate',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
   userNotActive = 'userNotActive'
 }

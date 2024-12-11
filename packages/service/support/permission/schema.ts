@@ -6,6 +6,7 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MemberGroupCollectionName } from './memberGroup/memberGroupSchema';
+import { OrgCollectionName } from '@fastgpt/global/support/user/team/org/constant';
 const { Schema } = connectionMongo;
 
 export const ResourcePermissionCollectionName = 'resource_permissions';
@@ -22,6 +23,10 @@ export const ResourcePermissionSchema = new Schema({
   groupId: {
     type: Schema.Types.ObjectId,
     ref: MemberGroupCollectionName
+  },
+  orgId: {
+    type: Schema.Types.ObjectId,
+    ref: OrgCollectionName
   },
   resourceType: {
     type: String,
@@ -64,6 +69,23 @@ try {
       unique: true,
       partialFilterExpression: {
         groupId: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceId: 1,
+      orgId: 1
+    },
+    {
+      unique: true,
+      partialFilterExpression: {
+        orgId: {
           $exists: true
         }
       }
