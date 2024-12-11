@@ -18,6 +18,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
 import { llmCompletionsBodyFormat } from '../../../ai/utils';
+import { addLog } from '../../../../common/system/log';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -65,7 +66,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   return {
     [NodeOutputKeyEnum.cqResult]: result.value,
     [DispatchNodeResponseKeyEnum.skipHandleId]: agents
-      .filter((item) => item.key !== arg?.type)
+      .filter((item) => item.key !== result.key)
       .map((item) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
@@ -141,6 +142,10 @@ const completions = async ({
     agents.find((item) => answer.includes(item.key))?.key ||
     agents.find((item) => answer.includes(item.value))?.key ||
     '';
+
+  if (!id) {
+    addLog.warn('Classify error', { answer });
+  }
 
   return {
     tokens: await countMessagesTokens(messages),
