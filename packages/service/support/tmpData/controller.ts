@@ -24,7 +24,7 @@ export async function getTmpData<T extends TmpDataEnum>({
   }).lean()) as TmpDataSchema<TmpDataType<T>> | null;
 }
 
-export async function setTmpData<T extends TmpDataEnum>({
+export function setTmpData<T extends TmpDataEnum>({
   type,
   metadata,
   data
@@ -33,7 +33,7 @@ export async function setTmpData<T extends TmpDataEnum>({
   metadata: TmpDataMetadata<T>;
   data: TmpDataType<T>;
 }) {
-  return await MongoTmpData.updateOne(
+  return MongoTmpData.updateOne(
     {
       dataId: getDataId(type, metadata)
     },
@@ -43,7 +43,8 @@ export async function setTmpData<T extends TmpDataEnum>({
       expireAt: addMilliseconds(Date.now(), TmpDataExpireTime[type])
     },
     {
-      upsert: true
+      upsert: true,
+      new: true
     }
   );
 }

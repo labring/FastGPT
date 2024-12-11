@@ -99,4 +99,4 @@ async function handler(req: NextApiRequest) {
   };
 }
 
-export default NextAPI(useReqFrequencyLimit(1, 2), handler);
+export default NextAPI(useReqFrequencyLimit(1, 15), handler);

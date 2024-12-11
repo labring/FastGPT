@@ -873,6 +873,7 @@
   "error.fileNotFound": "文件找不到了~",
   "error.inheritPermissionError": "权限继承错误",
   "error.missingParams": "参数缺失",
+  "error.too_many_request": "请求太频繁了，请稍后重试",
   "error.upload_file_error_filename": "{{name}} 上传失败",
   "error.username_empty": "账号不能为空",
   "extraction_results": "提取结果",
@@ -1179,7 +1180,6 @@
   "user.password_message": "密码最少 4 位最多 60 位",
   "user.team.Balance": "团队余额",
   "user.team.Check Team": "切换",
-
   "user.team.Invite Member": "邀请成员",
   "user.team.Invite Member Tips": "对方可查阅或使用团队内的其他资源",
   "user.team.Leave Team": "离开团队",
@@ -1192,13 +1192,10 @@
   "user.team.Processing invitations Tips": "你有 {{amount}} 个需要处理的团队邀请",
   "user.team.Remove Member Confirm Tip": "确认将 {{username}} 移出团队？",
   "user.team.Select Team": "团队选择",
-
   "user.team.Switch Team Failed": "切换团队异常",
   "user.team.Tags Async": "保存",
-
   "user.team.Team Tags Async": "标签同步",
   "user.team.Team Tags Async Success": "链接报错成功，标签信息更新",
-
   "user.team.invite.Accept Confirm": "确认加入该团队？",
   "user.team.invite.Accepted": "已加入团队",
   "user.team.invite.Deal Width Footer Tip": "处理完会自动关闭噢~",

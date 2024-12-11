@@ -873,6 +873,7 @@
   "error.fileNotFound": "找不到檔案",
   "error.inheritPermissionError": "繼承權限錯誤",
   "error.missingParams": "參數不足",
+  "error.too_many_request": "請求太頻繁了，請稍後重試",
   "error.upload_file_error_filename": "{{name}} 上傳失敗",
   "error.username_empty": "帳號不能為空",
   "extraction_results": "提取結果",
