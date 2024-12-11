@@ -4,10 +4,9 @@ import {
   Flex,
   Textarea,
   ModalFooter,
-  Stack,
-  FormLabel,
   HStack,
-  Icon
+  Icon,
+  ModalBody
 } from '@chakra-ui/react';
 import MyIcon from '../../Icon/index';
 
@@ -16,15 +15,13 @@ import { useTranslation } from 'next-i18next';
 import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import MyModal from '../../MyModal';
 
-export const SYSTEM_PROMPT_QUESTION_GUIDE = `Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3'].`;
-
 const CustomLightTip = () => {
   const { t } = useTranslation();
 
   return (
-    <HStack px="3" py="1" color="primary.600" bgColor="primary.50" borderRadius="md">
-      <Icon name="common/info" w="1rem" />
-      <Box>
+    <HStack px="3" py="2" bgColor="primary.50" borderRadius="md" fontSize={'sm'}>
+      <Icon name="common/info" w="1rem" color={'primary.600'} />
+      <Box color="primary.600">
         {t('common:core.app.QG.Custom prompt tip1')}
         <Box as="span" color={'yellow.500'} fontWeight="500" display="inline">
           {t('common:core.app.QG.Custom prompt tip2')}
@@ -35,12 +32,24 @@ const CustomLightTip = () => {
   );
 };
 
+const FixBox = ({ children }: { children: React.ReactNode }) => {
+  return (
+    <Box px={3} py={2} fontSize="sm" whiteSpace="pre-wrap">
+      <Box bg="yellow.100" px={1} py={0.5} borderRadius="sm">
+        {children}
+      </Box>
+    </Box>
+  );
+};
+
 const CustomPromptEditor = ({
   defaultValue,
+  footerPrompt,
   onChange,
   onClose
 }: {
   defaultValue: string;
+  footerPrompt?: string;
   onChange: (e: string) => void;
   onClose: () => void;
 }) => {
@@ -53,7 +62,7 @@ const CustomPromptEditor = ({
     const textarea = ref.current;
     if (!textarea) return;
 
-    textarea.style.height = 'auto';
+    textarea.style.height = '22px';
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, []);
 
@@ -69,63 +78,50 @@ const CustomPromptEditor = ({
       onClose={onClose}
       iconSrc="modal/edit"
       title={t('app:core.dataset.import.Custom prompt')}
-      maxW={['90vw', '878px']}
       w={'100%'}
       isCentered
     >
-      <Box py={6} px={8}>
-        <Stack spacing={4}>
-          <FormLabel color={'myGray.600'} fontWeight={'medium'}>
-            <CustomLightTip />
-          </FormLabel>
-          <Flex justifyContent={'space-between'} alignItems={'center'}>
-            <FormLabel color={'myGray.600'} fontWeight={'bold'} fontSize={'md'}>
-              {t('common:core.ai.Prompt')}
-            </FormLabel>
+      <ModalBody>
+        <CustomLightTip />
 
-            <Flex
-              alignItems={'center'}
-              cursor={'pointer'}
-              onClick={() => setValue(defaultPrompt || '')}
-            >
-              <MyIcon name={'common/retryLight'} w={'14px'} h={'14px'} color={'myGray.600'} />
-              <Box ml={1} color={'myGray.600'}>
-                {t('common:common.Reset')}
-              </Box>
-            </Flex>
-          </Flex>
-          <Box
-            border="1px solid"
-            borderColor="borderColor.base"
-            borderRadius="md"
-            bg={'myGray.50'}
-            minH="320px"
-          >
-            <Textarea
-              ref={ref}
-              fontSize={'sm'}
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-              }}
-              resize="none"
-              overflow="hidden"
-              p={3}
-              bg="transparent"
-              border="none"
-              _focus={{
-                border: 'none',
-                boxShadow: 'none'
-              }}
-            />
-            <Box px={3} py={2} fontSize="sm" whiteSpace="pre-wrap">
-              <Box as="span" bg="yellow.100" px={1} py={0.5} borderRadius="sm">
-                {SYSTEM_PROMPT_QUESTION_GUIDE}
-              </Box>
-            </Box>
+        <HStack my={3} justifyContent={'space-between'}>
+          <Box fontWeight={'bold'} color={'myGray.600'}>
+            {t('common:core.ai.Prompt')}
           </Box>
-        </Stack>
-      </Box>
+
+          <Button
+            variant={'grayGhost'}
+            size={'sm'}
+            leftIcon={<MyIcon name={'common/retryLight'} w={'14px'} />}
+            px={2}
+            onClick={() => setValue(defaultPrompt || '')}
+          >
+            {t('common:common.Reset')}
+          </Button>
+        </HStack>
+
+        <Box border="1px solid" borderColor="borderColor.base" borderRadius="md" bg={'myGray.50'}>
+          <Textarea
+            ref={ref}
+            fontSize={'sm'}
+            value={value}
+            placeholder={t('common:prompt_input_placeholder')}
+            onChange={(e) => {
+              setValue(e.target.value);
+            }}
+            resize="none"
+            overflow="hidden"
+            p={3}
+            bg="transparent"
+            border="none"
+            _focus={{
+              border: 'none',
+              boxShadow: 'none'
+            }}
+          />
+          {footerPrompt && <FixBox>{footerPrompt}</FixBox>}
+        </Box>
+      </ModalBody>
       <ModalFooter>
         <Flex gap={3}>
           <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>

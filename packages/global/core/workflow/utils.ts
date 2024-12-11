@@ -78,9 +78,14 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const variables: VariableItemType[] =
     guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value ?? [];
 
+  // Adapt old version
+  const questionGuideVal = guideModules?.inputs?.find(
+    (item) => item.key === NodeInputKeyEnum.questionGuide
+  )?.value;
   const questionGuide: AppQGConfigType =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ??
-    defaultQGConfig;
+    typeof questionGuideVal === 'boolean'
+      ? { ...defaultQGConfig, open: questionGuideVal }
+      : questionGuideVal ?? defaultQGConfig;
 
   const ttsConfig: AppTTSConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??

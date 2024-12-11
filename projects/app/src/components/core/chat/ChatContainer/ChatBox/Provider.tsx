@@ -2,7 +2,6 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
-  AppAutoExecuteConfigType,
   AppFileSelectConfigType,
   AppQGConfigType,
   AppTTSConfigType,
@@ -13,7 +12,6 @@ import {
 import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   defaultAppSelectFileConfig,
-  defaultAutoExecuteConfig,
   defaultChatInputGuideConfig,
   defaultQGConfig,
   defaultTTSConfig,
@@ -149,10 +147,16 @@ const Provider = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.variables ?? []
   );
-  const questionGuide = useContextSelector(
-    ChatItemContext,
-    (v) => v.chatBoxData?.app?.chatConfig?.questionGuide ?? defaultQGConfig
-  );
+  const questionGuide = useContextSelector(ChatItemContext, (v) => {
+    const val = v.chatBoxData?.app?.chatConfig?.questionGuide;
+    if (typeof val === 'boolean') {
+      return {
+        ...defaultQGConfig,
+        open: val
+      };
+    }
+    return v.chatBoxData?.app?.chatConfig?.questionGuide ?? defaultQGConfig;
+  });
   const ttsConfig = useContextSelector(
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.ttsConfig ?? defaultTTSConfig

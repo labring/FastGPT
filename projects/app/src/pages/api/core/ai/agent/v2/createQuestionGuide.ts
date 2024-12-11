@@ -9,13 +9,12 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-
-export const SYSTEM_PROMPT_QUESTION_GUIDE = `Please strictly follow the format rules: \nReturn the questions in JSON format: ["question1", "question2", "question3"]`;
+import { PROMPT_QUESTION_GUIDE_FOOTER } from '@fastgpt/global/core/ai/prompt/agent';
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   appId: string;
   chatId: string;
-  questionGuide: {
+  questionGuide?: {
     open: boolean;
     model?: string;
     customPrompt?: string;
@@ -34,8 +33,13 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   ]);
 
   // Auth app and get questionGuide config
-  const { chatConfig } = await getAppLatestVersion(appId);
-  const questionGuide = inputQuestionGuide || chatConfig.questionGuide;
+  const questionGuide = await (async () => {
+    if (inputQuestionGuide) {
+      return inputQuestionGuide;
+    }
+    const { chatConfig } = await getAppLatestVersion(appId);
+    return chatConfig.questionGuide;
+  })();
 
   // Get histories
   const { histories } = await getChatItems({
@@ -49,14 +53,10 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
 
   const qgModel = questionGuide?.model || global.llmModels[0].model;
 
-  const customPromptWithFixed = questionGuide?.customPrompt
-    ? questionGuide.customPrompt + '\n' + SYSTEM_PROMPT_QUESTION_GUIDE
-    : undefined;
-
   const { result, tokens } = await createQuestionGuide({
     messages,
     model: qgModel,
-    customPrompt: customPromptWithFixed
+    customPrompt: questionGuide?.customPrompt
   });
 
   jsonRes(res, {

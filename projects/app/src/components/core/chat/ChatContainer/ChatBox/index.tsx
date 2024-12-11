@@ -335,6 +335,7 @@ const ChatBox = ({
 
   // create question guide
   const createQuestionGuide = useCallback(async () => {
+    console.log(questionGuide, '--');
     if (!questionGuide.open || chatController.current?.signal?.aborted) return;
     try {
       const abortSignal = new AbortController();
@@ -356,7 +357,7 @@ const ChatBox = ({
         }, 100);
       }
     } catch (error) {}
-  }, [questionGuide, appId, outLinkAuthData, scrollToBottom]);
+  }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
   const abortRequest = useMemoizedFn((signal: string = 'stop') => {

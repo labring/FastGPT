@@ -13,6 +13,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
+import { PROMPT_QUESTION_GUIDE_FOOTER } from '@fastgpt/global/core/ai/prompt/agent';
 
 // question generator config
 const QGConfig = ({
@@ -33,7 +34,6 @@ const QGConfig = ({
   } = useDisclosure();
 
   const isOpenQG = value.open;
-  const model = value?.model;
   const customPrompt = value.customPrompt;
 
   const formLabel = isOpenQG
@@ -64,7 +64,7 @@ const QGConfig = ({
       <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
-      <MyTooltip label={t('app:core.app.QG.Switch')}>
+      <MyTooltip label={t('app:config_question_guide')}>
         <Button
           variant={'transparentBase'}
           size={'sm'}
@@ -75,20 +75,23 @@ const QGConfig = ({
           {formLabel}
         </Button>
       </MyTooltip>
-      <QGConfigModal
-        isOpen={isOpen}
-        onClose={onClose}
-        value={value}
-        onChange={onChange}
-        onOpenCustomPrompt={onOpenCustomPrompt}
-        llmModelList={llmModelList}
-        LabelStyles={LabelStyles}
-        onChangeModel={onChangeModel}
-      />
+
+      {isOpen && (
+        <QGConfigModal
+          onClose={onClose}
+          value={value}
+          onChange={onChange}
+          onOpenCustomPrompt={onOpenCustomPrompt}
+          llmModelList={llmModelList}
+          LabelStyles={LabelStyles}
+          onChangeModel={onChangeModel}
+        />
+      )}
 
       {isOpenCustomPrompt && (
         <CustomPromptEditor
           defaultValue={customPrompt || ''}
+          footerPrompt={PROMPT_QUESTION_GUIDE_FOOTER}
           onChange={(e) => {
             onChange({
               ...value,
@@ -105,7 +108,6 @@ const QGConfig = ({
 export default QGConfig;
 
 const QGConfigModal = ({
-  isOpen,
   onClose,
   value,
   onChange,
@@ -114,7 +116,6 @@ const QGConfigModal = ({
   LabelStyles,
   onChangeModel
 }: {
-  isOpen: boolean;
   onClose: () => void;
   value: AppQGConfigType;
   onChange: (e: AppQGConfigType) => void;
@@ -130,11 +131,11 @@ const QGConfigModal = ({
 
   return (
     <MyModal
-      width="500px"
       title={t('common:core.chat.Question Guide')}
       iconSrc="core/chat/QGFill"
-      isOpen={isOpen}
+      isOpen
       onClose={onClose}
+      width="500px"
     >
       <ModalBody px={[5, 10]} py={[4, 8]} pb={[4, 12]}>
         <Flex justifyContent={'space-between'} alignItems={'center'}>
@@ -142,20 +143,10 @@ const QGConfigModal = ({
           <Switch
             isChecked={isOpenQG}
             onChange={(e) => {
-              const checked = e.target.checked;
-              if (checked) {
-                onChange({
-                  ...value,
-                  open: checked,
-                  model: value.model || defaultQGConfig.model,
-                  customPrompt: value.customPrompt || defaultQGConfig.customPrompt
-                });
-              } else {
-                onChange({
-                  ...value,
-                  open: checked
-                });
-              }
+              onChange({
+                ...value,
+                open: e.target.checked
+              });
             }}
           />
         </Flex>
@@ -189,24 +180,23 @@ const QGConfigModal = ({
                 border={'1px'}
                 borderColor={'borderColor.base'}
                 borderRadius={'md'}
-                maxH={'140px'}
-                minH={'100px'}
+                maxH={'200px'}
                 overflow={'hidden'}
+                px={3}
+                py={2}
                 _hover={{
                   '& .mask': {
                     display: 'block'
                   }
                 }}
               >
-                <Box px={3} py={2} height={'140px'}>
-                  {customPrompt}
-                </Box>
+                <Box fontSize={'sm'}>{customPrompt}</Box>
                 <Box
                   display={'none'}
                   className="mask"
                   position={'absolute'}
                   inset={0}
-                  height={'140px'}
+                  height={'100%'}
                   pointerEvents={'none'}
                   background={
                     'linear-gradient(182deg, rgba(255, 255, 255, 0.00) 1.76%, #FFF 84.07%)'
