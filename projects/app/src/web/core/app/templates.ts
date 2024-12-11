@@ -58,10 +58,12 @@ export const emptyTemplates: Record<
           },
           {
             key: 'questionGuide',
-            valueType: WorkflowIOValueTypeEnum.boolean,
+            valueType: WorkflowIOValueTypeEnum.object,
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: 'core.app.Question Guide',
-            value: false
+            value: {
+              open: false
+            }
           },
           {
             key: 'tts',
@@ -285,10 +287,12 @@ export const emptyTemplates: Record<
           },
           {
             key: 'questionGuide',
-            valueType: 'boolean',
+            valueType: 'any',
             renderTypeList: ['hidden'],
             label: 'core.app.Question Guide',
-            value: false
+            value: {
+              open: false
+            }
           },
           {
             key: 'tts',

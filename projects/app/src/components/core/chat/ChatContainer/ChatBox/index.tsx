@@ -335,7 +335,7 @@ const ChatBox = ({
 
   // create question guide
   const createQuestionGuide = useCallback(async () => {
-    if (!questionGuide || chatController.current?.signal?.aborted) return;
+    if (!questionGuide.open || chatController.current?.signal?.aborted) return;
     try {
       const abortSignal = new AbortController();
       questionGuideController.current = abortSignal;
@@ -344,6 +344,7 @@ const ChatBox = ({
         {
           appId,
           chatId,
+          questionGuide,
           ...outLinkAuthData
         },
         abortSignal

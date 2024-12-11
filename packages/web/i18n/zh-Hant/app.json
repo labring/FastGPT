@@ -171,5 +171,7 @@
   "workflow.user_file_input": "檔案連結",
   "workflow.user_file_input_desc": "使用者上傳的檔案和圖片連結",
   "workflow.user_select": "使用者選擇",
-  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線"
+  "workflow.user_select_tip": "這個模組可以設定多個選項，供對話時選擇。不同選項可以導向不同的工作流程支線",
+  "core.dataset.import.Custom prompt": "自訂提示詞",
+  "core.app.QG.Switch": "開啟猜你想問"
 }

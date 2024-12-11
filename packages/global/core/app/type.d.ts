@@ -97,7 +97,7 @@ export type AppChatConfigType = {
   welcomeText?: string;
   variables?: VariableItemType[];
   autoExecute?: AppAutoExecuteConfigType;
-  questionGuide?: boolean;
+  questionGuide?: AppQGConfigType;
   ttsConfig?: AppTTSConfigType;
   whisperConfig?: AppWhisperConfigType;
   scheduledTriggerConfig?: AppScheduledTriggerConfigType;
@@ -148,6 +148,14 @@ export type AppWhisperConfigType = {
   autoSend: boolean;
   autoTTSResponse: boolean;
 };
+
+// question guide
+export type AppQGConfigType = {
+  open: boolean;
+  model?: string;
+  customPrompt?: string;
+};
+
 // question guide text
 export type ChatInputGuideConfigType = {
   open: boolean;

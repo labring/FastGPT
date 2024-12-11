@@ -171,5 +171,7 @@
   "workflow.user_file_input": "File Link",
   "workflow.user_file_input_desc": "Links to documents and images uploaded by users.",
   "workflow.user_select": "User Selection",
-  "workflow.user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches."
+  "workflow.user_select_tip": "This module can configure multiple options for selection during the dialogue. Different options can lead to different workflow branches.",
+  "core.dataset.import.Custom prompt": "Custom Prompt",
+  "core.app.QG.Switch": "Enable Question Guide"
 }

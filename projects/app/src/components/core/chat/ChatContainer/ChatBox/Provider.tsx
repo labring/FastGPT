@@ -4,6 +4,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
   AppAutoExecuteConfigType,
   AppFileSelectConfigType,
+  AppQGConfigType,
   AppTTSConfigType,
   AppWhisperConfigType,
   ChatInputGuideConfigType,
@@ -14,6 +15,7 @@ import {
   defaultAppSelectFileConfig,
   defaultAutoExecuteConfig,
   defaultChatInputGuideConfig,
+  defaultQGConfig,
   defaultTTSConfig,
   defaultWhisperConfig
 } from '@fastgpt/global/core/app/constants';
@@ -37,7 +39,7 @@ type useChatStoreType = ChatProviderProps & {
   welcomeText: string;
   variableList: VariableItemType[];
   allVariableList: VariableItemType[];
-  questionGuide: boolean;
+  questionGuide: AppQGConfigType;
   ttsConfig: AppTTSConfigType;
   whisperConfig: AppWhisperConfigType;
   autoTTSResponse: boolean;
@@ -72,7 +74,11 @@ type useChatStoreType = ChatProviderProps & {
 export const ChatBoxContext = createContext<useChatStoreType>({
   welcomeText: '',
   variableList: [],
-  questionGuide: false,
+  questionGuide: {
+    open: false,
+    model: undefined,
+    customPrompt: undefined
+  },
   ttsConfig: {
     type: 'none',
     model: undefined,
@@ -145,7 +151,7 @@ const Provider = ({
   );
   const questionGuide = useContextSelector(
     ChatItemContext,
-    (v) => v.chatBoxData?.app?.chatConfig?.questionGuide ?? false
+    (v) => v.chatBoxData?.app?.chatConfig?.questionGuide ?? defaultQGConfig
   );
   const ttsConfig = useContextSelector(
     ChatItemContext,

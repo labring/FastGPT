@@ -502,7 +502,9 @@
     "chatConfig": {
       "welcomeText": "",
       "variables": [],
-      "questionGuide": false,
+      "questionGuide": {
+        "open": false
+      },
       "ttsConfig": {
         "type": "web"
       },

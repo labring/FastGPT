@@ -40,7 +40,7 @@ const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSe
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const ToolSelectModal = dynamic(() => import('./components/ToolSelectModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
-const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
+const QGConfig = dynamic(() => import('@/components/core/app/QGConfig'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
 const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
@@ -425,14 +425,14 @@ const EditForm = ({
 
         {/* question guide */}
         <Box {...BoxStyles}>
-          <QGSwitch
-            isChecked={appForm.chatConfig.questionGuide}
+          <QGConfig
+            value={appForm.chatConfig.questionGuide}
             onChange={(e) => {
               setAppForm((state) => ({
                 ...state,
                 chatConfig: {
                   ...state.chatConfig,
-                  questionGuide: e.target.checked
+                  questionGuide: e
                 }
               }));
             }}
