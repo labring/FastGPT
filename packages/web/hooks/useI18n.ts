@@ -43,7 +43,7 @@ export const useI18nLng = () => {
     setLang(lang);
 
     await i18n?.changeLanguage?.(lang);
-    if (prevLang !== lang) {
+    if (prevLang && prevLang !== lang) {
       window?.location?.reload?.();
     }
   };
