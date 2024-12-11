@@ -874,6 +874,7 @@
   "error.fileNotFound": "File not found~",
   "error.inheritPermissionError": "Inherit permission Error",
   "error.missingParams": "Insufficient parameters",
+  "error.too_many_request": "Too many request",
   "error.upload_file_error_filename": "{{name}} Upload Failed",
   "error.username_empty": "Account cannot be empty",
   "extraction_results": "Extraction Results",

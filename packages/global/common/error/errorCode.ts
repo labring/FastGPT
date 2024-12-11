@@ -72,7 +72,7 @@ export const ERROR_RESPONSE: Record<
   [ERROR_ENUM.tooManyRequest]: {
     code: 429,
     statusText: ERROR_ENUM.tooManyRequest,
-    message: 'Too many request',
+    message: i18nT('common:error.too_many_request'),
     data: null
   },
   [ERROR_ENUM.insufficientQuota]: {
