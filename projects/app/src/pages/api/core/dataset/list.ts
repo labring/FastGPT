@@ -74,6 +74,16 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
   );
 
   const findDatasetQuery = (() => {
+    // Filter apps by permission, if not owner, only get apps that I have permission to access
+    const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
+    const datasetPerQuery = teamPer.isOwner
+      ? {}
+      : parentId
+        ? {
+            $or: [idList, parseParentIdInMongo(parentId)]
+          }
+        : idList;
+
     const searchMatch = searchKey
       ? {
           $or: [
@@ -82,21 +92,17 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           ]
         }
       : {};
-    // Filter apps by permission, if not owner, only get apps that I have permission to access
-    const appIdQuery = teamPer.isOwner
-      ? {}
-      : { _id: { $in: myPerList.map((item) => item.resourceId) } };
 
     if (searchKey) {
       return {
-        ...appIdQuery,
+        ...datasetPerQuery,
         teamId,
         ...searchMatch
       };
     }
 
     return {
-      ...appIdQuery,
+      ...datasetPerQuery,
       teamId,
       ...(type ? (Array.isArray(type) ? { type: { $in: type } } : { type }) : {}),
       ...parseParentIdInMongo(parentId)
@@ -122,7 +128,9 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
               .map((item) => item.permission)
           );
 
-          const clbCount = perList.filter((item) => String(item.resourceId) === datasetId).length;
+          const clbCount = perList.filter(
+            (item) => String(item.resourceId) === String(dataset._id)
+          ).length;
 
           return {
             Per: new DatasetPermission({
@@ -133,8 +141,12 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           };
         };
         // inherit
-        if (dataset.inheritPermission && parentId && dataset.type !== DatasetTypeEnum.folder) {
-          return getPer(String(parentId));
+        if (
+          dataset.inheritPermission &&
+          dataset.parentId &&
+          dataset.type !== DatasetTypeEnum.folder
+        ) {
+          return getPer(String(dataset.parentId));
         } else {
           return getPer(String(dataset._id));
         }
@@ -148,21 +160,19 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const data = await Promise.all(
-    formatDatasets.map<DatasetListItemType>((item) => ({
-      _id: item._id,
-      avatar: item.avatar,
-      name: item.name,
-      intro: item.intro,
-      type: item.type,
-      permission: item.permission,
-      vectorModel: getVectorModel(item.vectorModel),
-      inheritPermission: item.inheritPermission,
-      tmbId: item.tmbId,
-      updateTime: item.updateTime,
-      private: item.privateDataset
-    }))
-  );
+  const data = formatDatasets.map<DatasetListItemType>((item) => ({
+    _id: item._id,
+    avatar: item.avatar,
+    name: item.name,
+    intro: item.intro,
+    type: item.type,
+    permission: item.permission,
+    vectorModel: getVectorModel(item.vectorModel),
+    inheritPermission: item.inheritPermission,
+    tmbId: item.tmbId,
+    updateTime: item.updateTime,
+    private: item.privateDataset
+  }));
 
   return data;
 }
