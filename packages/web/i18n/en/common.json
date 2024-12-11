@@ -57,6 +57,7 @@
   "code_error.error_code.504": "Gateway Timeout",
   "code_error.error_code[429]": "Requests are too frequent",
   "code_error.error_message.403": "Credential Error",
+  "code_error.error_message.429": "Too many request",
   "code_error.error_message.510": "Insufficient Account Balance",
   "code_error.error_message.511": "Unauthorized to Operate This Model",
   "code_error.error_message.513": "Unauthorized to Read This File",

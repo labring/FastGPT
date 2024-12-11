@@ -89,7 +89,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   removeFilesByPaths(filePaths);
 }
 
-export default NextAPI(useReqFrequencyLimit(1, 2), handler);
+export default NextAPI(useReqFrequencyLimit(1, 1), handler);
 
 export const config = {
   api: {

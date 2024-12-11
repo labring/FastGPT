@@ -61,6 +61,7 @@
   "code_error.error_message.511": "無權操作此模型",
   "code_error.error_message.513": "無權讀取此檔案",
   "code_error.error_message.514": "API 金鑰無效",
+  "code_error.error_message[429]": "請求太頻繁了，請稍後重試",
   "code_error.openapi_error.api_key_not_exist": "API 金鑰不存在",
   "code_error.openapi_error.exceed_limit": "最多 10 組 API 金鑰",
   "code_error.openapi_error.un_auth": "無權操作此 API 金鑰",
