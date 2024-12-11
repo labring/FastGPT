@@ -51,6 +51,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType &
 
   createTime?: Date;
   updateTime?: Date;
+  nextSyncTime?: Date;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {

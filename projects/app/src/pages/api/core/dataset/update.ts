@@ -9,7 +9,11 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -127,7 +131,7 @@ async function handler(
     );
     await updateSyncSchedule({
       teamId: dataset.teamId,
-      datasetId: id,
+      datasetId: dataset._id,
       autoSync,
       session
     });
@@ -213,7 +217,8 @@ const updateSyncSchedule = async ({
     await MongoDatasetCollection.updateMany(
       {
         teamId,
-        datasetId
+        datasetId,
+        type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
       },
       {
         $set: {

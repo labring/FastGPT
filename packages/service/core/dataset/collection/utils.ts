@@ -182,9 +182,15 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       createCollectionParams: {
         teamId: collection.teamId,
         tmbId: collection.tmbId,
-        datasetId: collection.datasetId._id,
         name: collection.name,
+        datasetId: collection.datasetId._id,
+        parentId: collection.parentId,
         type: collection.type,
+
+        trainingType: collection.trainingType,
+        chunkSize: collection.chunkSize,
+        chunkSplitter: collection.chunkSplitter,
+        qaPrompt: collection.qaPrompt,
 
         fileId: collection.fileId,
         rawLink: collection.rawLink,
@@ -192,19 +198,14 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         externalFileUrl: collection.externalFileUrl,
         apiFileId: collection.apiFileId,
 
-        rawTextLength: rawText.length,
         hashRawText,
+        rawTextLength: rawText.length,
+
+        metadata: collection.metadata,
 
         tags: collection.tags,
         createTime: collection.createTime,
-        updateTime: new Date(),
-
-        parentId: collection.parentId,
-        trainingType: collection.trainingType,
-        chunkSize: collection.chunkSize,
-        chunkSplitter: collection.chunkSplitter,
-        qaPrompt: collection.qaPrompt,
-        metadata: collection.metadata
+        updateTime: new Date()
       }
     });
 

@@ -118,7 +118,14 @@ try {
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, createTime: 1 });
 
   // next sync time filter
-  DatasetCollectionSchema.index({ nextSyncTime: -1 });
+  DatasetCollectionSchema.index(
+    { type: 1, nextSyncTime: -1 },
+    {
+      partialFilterExpression: {
+        nextSyncTime: { $exists: true }
+      }
+    }
+  );
 
   // Get collection by external file id
   DatasetCollectionSchema.index(
