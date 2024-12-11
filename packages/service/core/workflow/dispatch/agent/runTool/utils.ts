@@ -59,12 +59,14 @@ export const initToolNodes = (
   entryNodeIds: string[],
   startParams?: Record<string, any>
 ) => {
-  nodes.forEach((node) => {
+  return nodes.map((node) => {
     if (entryNodeIds.includes(node.nodeId)) {
-      node.isEntry = true;
+      const newNode = { ...node, isEntry: true };
       if (startParams) {
-        node.inputs = updateToolInputValue({ params: startParams, inputs: node.inputs });
+        newNode.inputs = updateToolInputValue({ params: startParams, inputs: [...node.inputs] });
       }
+      return newNode;
     }
+    return node;
   });
 };
