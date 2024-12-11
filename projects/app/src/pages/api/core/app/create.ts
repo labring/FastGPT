@@ -35,12 +35,12 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
   }
 
   // 凭证校验
-  const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
-  if (parentId) {
-    // if it is not a root app
-    // check the parent folder permission
-    await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true });
-  }
+  const [{ teamId, tmbId }] = await Promise.all([
+    authUserPer({ req, authToken: true, per: WritePermissionVal }),
+    ...(parentId
+      ? [authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })]
+      : [])
+  ]);
 
   // 上限校验
   await checkTeamAppLimit(teamId);
