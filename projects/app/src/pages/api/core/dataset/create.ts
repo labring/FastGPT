@@ -9,6 +9,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -29,12 +30,25 @@ async function handler(
   } = req.body;
 
   // auth
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
+  const [{ teamId, tmbId }] = await Promise.all([
+    authUserPer({
+      req,
+      authToken: true,
+      authApiKey: true,
+      per: WritePermissionVal
+    }),
+    ...(parentId
+      ? [
+          authDataset({
+            req,
+            datasetId: parentId,
+            authToken: true,
+            authApiKey: true,
+            per: WritePermissionVal
+          })
+        ]
+      : [])
+  ]);
 
   // check model valid
   const vectorModelStore = getVectorModel(vectorModel);
