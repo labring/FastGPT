@@ -119,6 +119,7 @@ export const storeNode2FlowNode = ({
 
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value ?? templateInput.value,
+          valueType: storeInput.valueType ?? templateInput.valueType,
           label: storeInput.label ?? templateInput.label
         };
       })
@@ -148,7 +149,8 @@ export const storeNode2FlowNode = ({
 
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
-          value: storeOutput.value ?? templateOutput.value
+          value: storeOutput.value ?? templateOutput.value,
+          valueType: storeOutput.valueType ?? templateOutput.valueType
         };
       })
       .concat(

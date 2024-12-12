@@ -6,7 +6,7 @@ import { ComponentRef as ChatComponentRef } from '@/components/core/chat/ChatCon
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { defaultChatData } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 type ChatBoxDataType = {
@@ -29,7 +29,10 @@ type ChatItemContextType = {
   variablesForm: UseFormReturn<ChatBoxInputFormType, any>;
   pluginRunTab: PluginRunBoxTabEnum;
   setPluginRunTab: React.Dispatch<React.SetStateAction<PluginRunBoxTabEnum>>;
-  resetVariables: (props?: { variables?: Record<string, any> }) => void;
+  resetVariables: (props?: {
+    variables?: Record<string, any>;
+    variableList?: VariableItemType[];
+  }) => void;
   clearChatRecords: () => void;
   chatBoxData: ChatBoxDataType;
   setChatBoxData: React.Dispatch<React.SetStateAction<ChatBoxDataType>>;
@@ -44,7 +47,10 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   setPluginRunTab: function (value: React.SetStateAction<PluginRunBoxTabEnum>): void {
     throw new Error('Function not implemented.');
   },
-  resetVariables: function (props?: { variables?: Record<string, any> }): void {
+  resetVariables: function (props?: {
+    variables?: Record<string, any>;
+    variableList?: VariableItemType[];
+  }): void {
     throw new Error('Function not implemented.');
   },
   clearChatRecords: function (): void {
@@ -69,27 +75,21 @@ const ChatItemContextProvider = ({ children }: { children: ReactNode }) => {
   const [pluginRunTab, setPluginRunTab] = useState<PluginRunBoxTabEnum>(PluginRunBoxTabEnum.input);
 
   const resetVariables = useCallback(
-    (props?: { variables?: Record<string, any> }) => {
-      const { variables = {} } = props || {};
+    (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
+      const { variables, variableList = [] } = props || {};
 
-      // Reset to empty input
-      const data = variablesForm.getValues();
-
-      // Reset the old variables to empty
-      const resetVariables: Record<string, any> = {};
-      for (const key in data.variables) {
-        resetVariables[key] = (() => {
-          if (Array.isArray(data.variables[key])) {
-            return [];
-          }
-          return '';
-        })();
+      let newVariableValue: Record<string, any> = {};
+      if (variables) {
+        variableList.forEach((item) => {
+          newVariableValue[item.key] = variables[item.key];
+        });
+      } else {
+        variableList.forEach((item) => {
+          newVariableValue[item.key] = item.defaultValue;
+        });
       }
 
-      variablesForm.setValue('variables', {
-        ...resetVariables,
-        ...variables
-      });
+      variablesForm.setValue('variables', newVariableValue);
     },
     [variablesForm]
   );

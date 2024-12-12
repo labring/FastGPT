@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -10,7 +10,6 @@ import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getScheduleTriggerApp } from '@/service/core/app/utils';
 
 async function handler(
   req: ApiRequestProps<PostPublishAppProps>,

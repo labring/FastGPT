@@ -48,7 +48,8 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
 
       setChatBoxData(res);
       resetVariables({
-        variables: res.variables
+        variables: res.variables,
+        variableList: res.app?.chatConfig?.variables
       });
 
       return res;

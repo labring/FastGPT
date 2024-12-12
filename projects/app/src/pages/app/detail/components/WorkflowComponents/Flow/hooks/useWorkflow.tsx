@@ -10,8 +10,6 @@ import {
   NodePositionChange,
   XYPosition,
   useReactFlow,
-  getNodesBounds,
-  Rect,
   NodeRemoveChange,
   NodeSelectionChange,
   EdgeRemoveChange
@@ -26,15 +24,12 @@ import { WorkflowContext } from '../../context';
 import { THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
-import {
-  Input_Template_Node_Height,
-  Input_Template_Node_Width
-} from '@fastgpt/global/core/workflow/template/input';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';
 import { WorkflowEventContext } from '../../context/workflowEventContext';
+import { WorkflowStatusContext } from '../../context/workflowStatusContext';
 
 /* 
   Compute helper lines for snapping nodes to each other
@@ -282,17 +277,21 @@ export const useWorkflow = () => {
   const edges = useContextSelector(WorkflowNodeEdgeContext, (state) => state.edges);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
   const onEdgesChange = useContextSelector(WorkflowNodeEdgeContext, (v) => v.onEdgesChange);
-  const { setConnectingEdge, nodeList, onChangeNode, pushPastSnapshot } = useContextSelector(
-    WorkflowContext,
-    (v) => v
-  );
+
+  const setConnectingEdge = useContextSelector(WorkflowContext, (v) => v.setConnectingEdge);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const pushPastSnapshot = useContextSelector(WorkflowContext, (v) => v.pushPastSnapshot);
+
   const setHoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverEdgeId);
   const setMenu = useContextSelector(WorkflowEventContext, (v) => v.setMenu);
+  const resetParentNodeSizeAndPosition = useContextSelector(
+    WorkflowStatusContext,
+    (v) => v.resetParentNodeSizeAndPosition
+  );
 
   const { getIntersectingNodes } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
-
-  const { resetParentNodeSizeAndPosition } = useLoopNode();
 
   /* helper line */
   const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
@@ -666,73 +665,6 @@ export const useWorkflow = () => {
     onNodeDragStop,
     onPaneContextMenu,
     onPaneClick
-  };
-};
-
-export const useLoopNode = () => {
-  const nodes = useContextSelector(WorkflowInitContext, (state) => state.nodes);
-  const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
-  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
-  const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
-    const { childNodes, loopNode } = nodes.reduce(
-      (acc, node) => {
-        if (node.data.parentNodeId === parentId) {
-          acc.childNodes.push(node);
-        }
-        if (node.id === parentId) {
-          acc.loopNode = node;
-        }
-        return acc;
-      },
-      { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
-    );
-
-    if (!loopNode) return;
-
-    const rect = getNodesBounds(childNodes);
-    // Calculate parent node size with minimum width/height constraints
-    const width = Math.max(rect.width + 80, 840);
-    const height = Math.max(rect.height + 80, 600);
-
-    const offsetHeight =
-      loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
-        ?.value ?? 83;
-
-    // Update parentNode size and position
-    onChangeNode({
-      nodeId: parentId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.nodeWidth,
-      value: {
-        ...Input_Template_Node_Width,
-        value: width
-      }
-    });
-    onChangeNode({
-      nodeId: parentId,
-      type: 'updateInput',
-      key: NodeInputKeyEnum.nodeHeight,
-      value: {
-        ...Input_Template_Node_Height,
-        value: height
-      }
-    });
-    // Update parentNode position
-    onNodesChange([
-      {
-        id: parentId,
-        type: 'position',
-        position: {
-          x: rect.x - 70,
-          y: rect.y - offsetHeight - 240
-        }
-      }
-    ]);
-  });
-
-  return {
-    resetParentNodeSizeAndPosition
   };
 };
 

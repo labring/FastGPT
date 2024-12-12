@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Textarea } from '@chakra-ui/react';
@@ -121,21 +121,7 @@ const VariableInput = ({
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
 
-  const { setValue, handleSubmit: handleSubmitChat } = variablesForm;
-
-  const defaultValues = useMemo(() => {
-    return variableList.reduce((acc: Record<string, any>, item) => {
-      acc[item.key] = item.defaultValue;
-      return acc;
-    }, {});
-  }, [variableList]);
-
-  useEffect(() => {
-    const values = variablesForm.getValues('variables');
-    // If form is not empty, do not reset the variables
-    if (Object.values(values).filter(Boolean).length > 0) return;
-    setValue('variables', defaultValues);
-  }, [defaultValues, setValue, variablesForm]);
+  const { handleSubmit: handleSubmitChat } = variablesForm;
 
   return (
     <Box py={3}>

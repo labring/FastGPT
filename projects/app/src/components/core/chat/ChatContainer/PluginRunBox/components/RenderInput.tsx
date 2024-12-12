@@ -110,17 +110,15 @@ const RenderInput = () => {
         return;
       }
 
-      const defaultFormValues = formatPluginInputs.reduce(
-        (acc, input) => {
-          acc[input.key] = input.defaultValue;
-          return acc;
-        },
-        {} as Record<string, any>
-      );
-
       reset({
         files: [],
-        variables: defaultFormValues
+        variables: formatPluginInputs.reduce(
+          (acc, input) => {
+            acc[input.key] = input.defaultValue;
+            return acc;
+          },
+          {} as Record<string, any>
+        )
       });
       return;
     }
@@ -164,7 +162,7 @@ const RenderInput = () => {
       files: historyFileList
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [histories]);
+  }, [histories, formatPluginInputs]);
 
   const [uploading, setUploading] = useState(false);
 

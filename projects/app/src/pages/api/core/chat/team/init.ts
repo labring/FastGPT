@@ -50,7 +50,7 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
       appId,
       title: chat?.title,
       userAvatar: team?.avatar,
-      variables: chat?.variables || {},
+      variables: chat?.variables,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

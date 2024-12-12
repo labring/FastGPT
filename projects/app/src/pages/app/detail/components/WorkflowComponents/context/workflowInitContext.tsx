@@ -1,7 +1,7 @@
 import { createContext } from 'use-context-selector';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
-import { useMemoizedFn } from 'ahooks';
+import { useCreation, useMemoizedFn } from 'ahooks';
 import React, { Dispatch, SetStateAction, ReactNode, useEffect, useMemo } from 'react';
 import { Edge, EdgeChange, Node, NodeChange, useEdgesState, useNodesState } from 'reactflow';
 
@@ -50,7 +50,7 @@ const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const getNodes = useMemoizedFn(() => nodes);
   const nodeListString = JSON.stringify(nodes.map((node) => node.data));
-  const nodeList = useMemo(
+  const nodeList = useCreation(
     () => JSON.parse(nodeListString) as FlowNodeItemType[],
     [nodeListString]
   );
@@ -73,7 +73,7 @@ const WorkflowInitContextProvider = ({ children }: { children: ReactNode }) => {
           : item
       )
     );
-  }, [edges.length]);
+  }, [nodeList, edges.length]);
 
   const actionContextValue = useMemo(
     () => ({
