@@ -194,7 +194,7 @@ const Navbar = ({ unread }: { unread: number }) => {
               color={'myGray.500'}
               height={'48px'}
             >
-              <Avatar src={item.avatar} borderRadius={'md'} />
+              <Avatar src={item.avatar} borderRadius={'md'} width={'26px'} height={'26px'} />
             </Link>
           </MyTooltip>
         ))}
