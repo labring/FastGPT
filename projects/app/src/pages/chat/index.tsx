@@ -74,7 +74,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
       // reset chat variables
       resetVariables({
-        variables: res.variables
+        variables: res.variables,
+        variableList: res.app?.chatConfig?.variables
       });
     },
     {

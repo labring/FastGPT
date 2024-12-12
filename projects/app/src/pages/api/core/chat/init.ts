@@ -52,7 +52,7 @@ async function handler(
     appId,
     title: chat?.title,
     userAvatar: undefined,
-    variables: chat?.variables || {},
+    variables: chat?.variables,
     app: {
       chatConfig: getAppChatConfig({
         chatConfig,

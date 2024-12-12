@@ -38,6 +38,7 @@ async function handler(
       type: AppTypeEnum.workflow,
       modules: app.modules,
       edges: app.edges,
+      chatConfig: app.chatConfig,
       teamId: app.teamId,
       tmbId
     });
