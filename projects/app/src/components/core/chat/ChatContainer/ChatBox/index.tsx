@@ -805,7 +805,7 @@ const ChatBox = ({
     setQuestionGuide([]);
     setValue('chatStarted', false);
     abortRequest('leave');
-  }, [abortRequest, setValue]);
+  }, [chatId, appId, abortRequest, setValue]);
 
   // Add listener
   useEffect(() => {

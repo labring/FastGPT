@@ -172,7 +172,6 @@ const RenderPluginInput = ({
       return (
         <Textarea
           value={value}
-          defaultValue={input.defaultValue}
           onChange={onChange}
           isDisabled={isDisabled}
           placeholder={t(input.placeholder as any)}
@@ -192,7 +191,6 @@ const RenderPluginInput = ({
           isInvalid={isInvalid}
           value={value}
           onChange={onChange}
-          defaultValue={input.defaultValue}
         />
       );
     }
@@ -203,7 +201,6 @@ const RenderPluginInput = ({
           onChange={onChange}
           isDisabled={isDisabled}
           isInvalid={isInvalid}
-          defaultChecked={!!input.defaultValue}
         />
       );
     }
@@ -216,7 +213,6 @@ const RenderPluginInput = ({
         value={value}
         onChange={onChange}
         isInvalid={isInvalid}
-        defaultValue={input.defaultValue}
       />
     );
   })();

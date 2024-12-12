@@ -251,6 +251,7 @@ export const getReferenceVariableValue = ({
       return variables[outputId];
     }
 
+    // 避免 value 刚好就是二个元素的字符串数组
     const node = nodes.find((node) => node.nodeId === sourceNodeId);
     if (!node) {
       return value;

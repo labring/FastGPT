@@ -43,7 +43,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       title: chat?.title,
       //@ts-ignore
       userAvatar: tmb?.userId?.avatar,
-      variables: chat?.variables || {},
+      variables: chat?.variables,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,

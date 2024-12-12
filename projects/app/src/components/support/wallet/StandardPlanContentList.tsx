@@ -2,12 +2,15 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { Box, Flex, Grid, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
-import { getAiPointUsageCardRoute } from '@/web/support/wallet/sub/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import dynamic from 'next/dynamic';
+
+const AiPointsModal = dynamic(() =>
+  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+);
 
 const StandardPlanContentList = ({
   level,
@@ -18,7 +21,12 @@ const StandardPlanContentList = ({
 }) => {
   const { t } = useTranslation();
   const { subPlans } = useSystemStore();
-  const router = useRouter();
+
+  const {
+    isOpen: isOpenAiPointsModal,
+    onClose: onCloseAiPointsModal,
+    onOpen: onOpenAiPointsModal
+  } = useDisclosure();
 
   const planContent = useMemo(() => {
     const plan = subPlans?.standard?.[level];
@@ -95,9 +103,7 @@ const StandardPlanContentList = ({
           <QuestionTip
             ml={1}
             label={t('common:support.wallet.subscription.AI points click to read tip')}
-            onClick={() => {
-              router.push(getAiPointUsageCardRoute());
-            }}
+            onClick={onOpenAiPointsModal}
           ></QuestionTip>
         </Flex>
       </Flex>
@@ -121,6 +127,7 @@ const StandardPlanContentList = ({
           <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
         </Flex>
       )}
+      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
     </Grid>
   ) : null;
 };

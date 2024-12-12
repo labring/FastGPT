@@ -115,7 +115,10 @@ export const useReference = ({
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const { onChangeNode, nodeList } = useContextSelector(WorkflowContext, (v) => v);
+
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
   const isArray = item.valueType?.includes('array') ?? false;
 
   const onSelect = useCallback(
@@ -254,22 +257,25 @@ const MultipleReferenceSelector = ({
     });
   }, [getSelectValue, value]);
 
-  // useEffect(() => {
-  //   const validList = formatList.filter((item) => item.nodeName && item.outputName);
-  //   if (validList.length !== value?.length) {
-  //     onSelect(validList.map((item) => item.rawValue));
-  //   }
-  // }, [formatList, onSelect, value]);
+  useEffect(() => {
+    // Adapt array type from old version
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+      // @ts-ignore
+      onSelect([value]);
+    }
+  }, [formatList, onSelect, value]);
+
+  const invalidList = useMemo(() => {
+    return formatList.filter((item) => item.nodeName && item.outputName);
+  }, [formatList]);
 
   const ArraySelector = useMemo(() => {
     return (
       <MultipleRowArraySelect
         label={
-          formatList.length > 0 ? (
+          invalidList.length > 0 ? (
             <Grid py={3} gridTemplateColumns={'1fr 1fr'} gap={2} fontSize={'sm'}>
-              {formatList.map(({ nodeName, outputName }, index) => {
-                if (!nodeName || !outputName) return null;
-
+              {invalidList.map(({ nodeName, outputName }, index) => {
                 return (
                   <Flex
                     alignItems={'center'}
@@ -325,7 +331,7 @@ const MultipleReferenceSelector = ({
         popDirection={popDirection}
       />
     );
-  }, [formatList, list, onSelect, placeholder, popDirection, value]);
+  }, [invalidList, list, onSelect, placeholder, popDirection, value]);
 
   return ArraySelector;
 };

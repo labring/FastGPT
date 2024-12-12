@@ -193,6 +193,18 @@ export const MultipleRowArraySelect = ({
     ref: ref,
     handler: onClose
   });
+  const onChange = useCallback(
+    (val: any[][]) => {
+      // Filter invalid value
+      const validList = val.filter((item) => {
+        const listItem = list.find((v) => v.value === item[0]);
+        if (!listItem) return false;
+        return listItem.children?.some((v) => v.value === item[1]);
+      });
+      onSelect(validList);
+    },
+    [onSelect]
+  );
 
   const RenderList = useCallback(
     ({ index, list }: { index: number; list: MultipleSelectProps['list'] }) => {
@@ -213,9 +225,9 @@ export const MultipleRowArraySelect = ({
           const newValue = [parentValue, item.value];
 
           if (newValues.some((v) => v[0] === parentValue && v[1] === item.value)) {
-            onSelect(newValues.filter((v) => !(v[0] === parentValue && v[1] === item.value)));
+            onChange(newValues.filter((v) => !(v[0] === parentValue && v[1] === item.value)));
           } else {
-            onSelect([...newValues, newValue]);
+            onChange([...newValues, newValue]);
           }
         }
       };
