@@ -121,7 +121,16 @@ const VariableInput = ({
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
 
-  const { handleSubmit: handleSubmitChat } = variablesForm;
+  const { getValues, setValue, handleSubmit: handleSubmitChat } = variablesForm;
+
+  useEffect(() => {
+    variableList.forEach((item) => {
+      const val = getValues(`variables.${item.key}`);
+      if (item.defaultValue !== undefined && (val === undefined || val === null || val === '')) {
+        setValue(`variables.${item.key}`, item.defaultValue);
+      }
+    });
+  }, [variableList]);
 
   return (
     <Box py={3}>
