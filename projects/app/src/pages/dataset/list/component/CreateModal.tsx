@@ -26,7 +26,9 @@ import { getDocPath } from '@/web/common/system/doc';
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
   | DatasetTypeEnum.apiDataset
-  | DatasetTypeEnum.websiteDataset;
+  | DatasetTypeEnum.websiteDataset
+  | DatasetTypeEnum.feishu
+  | DatasetTypeEnum.yuque;
 
 const CreateModal = ({
   onClose,
@@ -47,7 +49,9 @@ const CreateModal = ({
     return {
       [DatasetTypeEnum.dataset]: t('dataset:common_dataset'),
       [DatasetTypeEnum.apiDataset]: t('dataset:api_file'),
-      [DatasetTypeEnum.websiteDataset]: t('dataset:website_dataset')
+      [DatasetTypeEnum.websiteDataset]: t('dataset:website_dataset'),
+      [DatasetTypeEnum.feishu]: t('dataset:feishu_dataset'),
+      [DatasetTypeEnum.yuque]: t('dataset:yuque_dataset')
     };
   }, [t]);
 
@@ -55,7 +59,9 @@ const CreateModal = ({
     return {
       [DatasetTypeEnum.dataset]: 'core/dataset/commonDatasetColor',
       [DatasetTypeEnum.apiDataset]: 'core/dataset/externalDatasetColor',
-      [DatasetTypeEnum.websiteDataset]: 'core/dataset/websiteDatasetColor'
+      [DatasetTypeEnum.websiteDataset]: 'core/dataset/websiteDatasetColor',
+      [DatasetTypeEnum.feishu]: 'core/dataset/feishuDatasetColor',
+      [DatasetTypeEnum.yuque]: 'core/dataset/yuqueDatasetColor'
     };
   }, []);
 
@@ -276,6 +282,99 @@ const CreateModal = ({
                 placeholder={t('dataset:request_headers')}
                 maxLength={200}
                 {...register('apiServer.authorization')}
+              />
+            </Flex>
+          </>
+        )}
+        {type === DatasetTypeEnum.feishu && (
+          <>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                App ID
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={'App ID'}
+                maxLength={200}
+                {...register('feishuServer.appId', { required: true })}
+              />
+            </Flex>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                App Secret
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={'App Secret'}
+                maxLength={200}
+                {...register('feishuServer.appSecret', { required: true })}
+              />
+            </Flex>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                Folder Token
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={'Folder Token'}
+                maxLength={200}
+                {...register('feishuServer.folderToken', { required: true })}
+              />
+            </Flex>
+          </>
+        )}
+        {type === DatasetTypeEnum.yuque && (
+          <>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                User ID
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={'Token'}
+                maxLength={200}
+                {...register('yuqueServer.userId', { required: true })}
+              />
+            </Flex>
+            <Flex mt={6}>
+              <Flex
+                alignItems={'center'}
+                flex={['', '0 0 110px']}
+                color={'myGray.900'}
+                fontWeight={500}
+                fontSize={'sm'}
+              >
+                Token
+              </Flex>
+              <Input
+                bg={'myWhite.600'}
+                placeholder={'Token'}
+                maxLength={200}
+                {...register('yuqueServer.token', { required: true })}
               />
             </Flex>
           </>

@@ -57,6 +57,8 @@ async function handler(
     websiteConfig,
     externalReadUrl,
     apiServer,
+    yuqueServer,
+    feishuServer,
     status,
     autoSync
   } = req.body;
@@ -124,8 +126,14 @@ async function handler(
         ...(!!apiServer?.authorization && {
           'apiServer.authorization': apiServer.authorization
         }),
-        ...(isMove && { inheritPermission: true }),
-        ...(typeof autoSync === 'boolean' && { autoSync })
+        ...(!!yuqueServer?.userId && { 'yuqueServer.userId': yuqueServer.userId }),
+        ...(!!yuqueServer?.token && { 'yuqueServer.token': yuqueServer.token }),
+        ...(!!feishuServer?.appId && { 'feishuServer.appId': feishuServer.appId }),
+        ...(!!feishuServer?.appSecret && { 'feishuServer.appSecret': feishuServer.appSecret }),
+        ...(!!feishuServer?.folderToken && {
+          'feishuServer.folderToken': feishuServer.folderToken
+        }),
+        ...(isMove && { inheritPermission: true })
       },
       { session }
     );

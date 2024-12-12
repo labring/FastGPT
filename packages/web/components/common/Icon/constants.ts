@@ -169,6 +169,9 @@ export const iconPaths = {
     import('./icons/core/dataset/externalDatasetColor.svg'),
   'core/dataset/externalDatasetOutline': () =>
     import('./icons/core/dataset/externalDatasetOutline.svg'),
+  'core/dataset/feishuDatasetColor': () => import('./icons/core/dataset/feishuDatasetColor.svg'),
+  'core/dataset/feishuDatasetOutline': () =>
+    import('./icons/core/dataset/feishuDatasetOutline.svg'),
   'core/dataset/fileCollection': () => import('./icons/core/dataset/fileCollection.svg'),
   'core/dataset/fullTextRecall': () => import('./icons/core/dataset/fullTextRecall.svg'),
   'core/dataset/manualCollection': () => import('./icons/core/dataset/manualCollection.svg'),
@@ -182,6 +185,8 @@ export const iconPaths = {
   'core/dataset/websiteDatasetColor': () => import('./icons/core/dataset/websiteDatasetColor.svg'),
   'core/dataset/websiteDatasetOutline': () =>
     import('./icons/core/dataset/websiteDatasetOutline.svg'),
+  'core/dataset/yuqueDatasetColor': () => import('./icons/core/dataset/yuqueDatasetColor.svg'),
+  'core/dataset/yuqueDatasetOutline': () => import('./icons/core/dataset/yuqueDatasetOutline.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),

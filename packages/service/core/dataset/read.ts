@@ -9,6 +9,7 @@ import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { APIFileServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from './apiDataset/api';
+import { POST } from '../../common/api/plusRequest';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -48,14 +49,17 @@ export const readFileRawTextByUrl = async ({
 */
 export const readDatasetSourceRawText = async ({
   teamId,
+  tmbId,
   type,
   sourceId,
   isQAImport,
   selector,
   externalFileId,
+  datasetId,
   apiServer
 }: {
   teamId: string;
+  tmbId?: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
 
@@ -63,6 +67,7 @@ export const readDatasetSourceRawText = async ({
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
   apiServer?: APIFileServer; // api dataset
+  datasetId: string;
 }): Promise<string> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
@@ -88,16 +93,39 @@ export const readDatasetSourceRawText = async ({
     });
     return rawText;
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
-    if (!apiServer) return Promise.reject('apiServer not found');
-    const rawText = await readApiServerFileContent({
-      apiServer,
-      apiFileId: sourceId,
-      teamId
-    });
-    return rawText;
+    if (apiServer) {
+      const rawText = await readApiServerFileContent({
+        apiServer,
+        apiFileId: sourceId,
+        teamId
+      });
+      return rawText;
+    } else {
+      const rawText = await readSystemApiServerFileContent({
+        datasetId,
+        apiFileId: sourceId,
+        tmbId
+      });
+      return rawText;
+    }
   }
-
   return '';
+};
+
+export const readSystemApiServerFileContent = async ({
+  datasetId,
+  apiFileId,
+  tmbId
+}: {
+  datasetId: string;
+  apiFileId: string;
+  tmbId?: string;
+}) => {
+  return await POST<string>(`/core/dataset/systemApiDataset/content`, {
+    datasetId,
+    apiFileId,
+    tmbId
+  });
 };
 
 export const readApiServerFileContent = async ({

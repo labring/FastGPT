@@ -10,7 +10,10 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CreateCollectionResponse } from '@/global/core/dataset/api';
-import { readApiServerFileContent } from '@fastgpt/service/core/dataset/read';
+import {
+  readApiServerFileContent,
+  readSystemApiServerFileContent
+} from '@fastgpt/service/core/dataset/read';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
@@ -34,12 +37,6 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   });
 
   const apiServer = dataset.apiServer;
-  if (!apiServer) {
-    return Promise.reject('Api server not found');
-  }
-  if (!apiFileId) {
-    return Promise.reject('ApiFileId not found');
-  }
 
   // Auth same apiFileId
   const storeCol = await MongoDatasetCollection.findOne(
@@ -55,11 +52,17 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     return Promise.reject(DatasetErrEnum.sameApiCollection);
   }
 
-  const content = await readApiServerFileContent({
-    apiServer,
-    apiFileId,
-    teamId
-  });
+  const content = apiServer
+    ? await readApiServerFileContent({
+        apiServer,
+        apiFileId,
+        teamId
+      })
+    : await readSystemApiServerFileContent({
+        apiFileId,
+        datasetId: dataset._id,
+        tmbId
+      });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,

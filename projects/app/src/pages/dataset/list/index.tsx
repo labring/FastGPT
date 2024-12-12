@@ -64,7 +64,12 @@ const Dataset = () => {
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
-      if (!feConfigs?.isPlus && e === DatasetTypeEnum.websiteDataset) {
+      if (
+        !feConfigs?.isPlus &&
+        (e === DatasetTypeEnum.websiteDataset ||
+          e === DatasetTypeEnum.feishu ||
+          e === DatasetTypeEnum.yuque)
+      ) {
         return toast({
           status: 'warning',
           title: t('common:common.system.Commercial version function')
@@ -168,6 +173,18 @@ const Dataset = () => {
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
+                        },
+                        {
+                          icon: 'core/dataset/feishuDatasetColor',
+                          label: t('dataset:feishu_dataset'),
+                          description: t('dataset:feishu_dataset_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                        },
+                        {
+                          icon: 'core/dataset/yuqueDatasetColor',
+                          label: t('dataset:yuque_dataset'),
+                          description: t('dataset:yuque_dataset_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
                         }
                       ]
                     },
