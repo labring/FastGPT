@@ -3,7 +3,6 @@
   When the childNodes of loopFlow change, it automatically calculates the rectangular width, height, and position of the childNodes, 
   thereby further updating the width and height properties of the loop node.
 */
-
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Background, NodeProps } from 'reactflow';
@@ -31,8 +30,8 @@ import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
-import { useLoopNode } from '../../hooks/useWorkflow';
 import { useSize } from 'ahooks';
+import { WorkflowStatusContext } from '../../../context/workflowStatusContext';
 
 const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -40,8 +39,10 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
-
-  const { resetParentNodeSizeAndPosition } = useLoopNode();
+  const resetParentNodeSizeAndPosition = useContextSelector(
+    WorkflowStatusContext,
+    (v) => v.resetParentNodeSizeAndPosition
+  );
 
   const {
     nodeWidth,
@@ -50,11 +51,11 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     loopNodeInputHeight = Input_Template_LOOP_NODE_OFFSET
   } = useMemo(() => {
     return {
-      nodeWidth: Number(
-        inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value?.toFixed(0)
+      nodeWidth: Math.round(
+        Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeWidth)?.value) || 500
       ),
-      nodeHeight: Number(
-        inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value?.toFixed(0)
+      nodeHeight: Math.round(
+        Number(inputs.find((input) => input.key === NodeInputKeyEnum.nodeHeight)?.value) || 500
       ),
       loopInputArray: inputs.find((input) => input.key === NodeInputKeyEnum.loopInputArray),
       loopNodeInputHeight: inputs.find(
@@ -113,7 +114,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return JSON.stringify(
       nodeList.filter((node) => node.parentNodeId === nodeId).map((node) => node.nodeId)
     );
-  }, [nodeId, nodeList]);
+  }, [nodeId, nodeList.length]);
   useEffect(() => {
     onChangeNode({
       nodeId,
@@ -148,39 +149,54 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     }, 50);
   }, [size?.height]);
 
-  const Render = useMemo(() => {
+  const RenderInputDom = useMemo(() => {
     return (
-      <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
-        <Container position={'relative'} flex={1}>
-          <IOTitle text={t('common:common.Input')} />
-          <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
-            <RenderInput nodeId={nodeId} flowInputList={inputs} />
-          </Box>
-          <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
-            {t('workflow:loop_body')}
-          </FormLabel>
-          <Box
-            flex={1}
-            position={'relative'}
-            border={'base'}
-            bg={'myGray.100'}
-            rounded={'8px'}
-            {...(!isFolded && {
-              minW: nodeWidth,
-              minH: nodeHeight
-            })}
-          >
-            <Background />
-          </Box>
-        </Container>
-        <Container>
-          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-        </Container>
-      </NodeCard>
+      <Box mb={6} maxW={'500px'} ref={inputBoxRef}>
+        <RenderInput nodeId={nodeId} flowInputList={inputs} />
+      </Box>
     );
-  }, [selected, isFolded, nodeWidth, nodeHeight, data, t, nodeId, inputs, outputs]);
+  }, [inputs, nodeId]);
+  const RenderChildrenNodes = useMemo(() => {
+    return (
+      <>
+        <FormLabel required fontWeight={'medium'} mb={3} color={'myGray.600'}>
+          {t('workflow:loop_body')}
+        </FormLabel>
+        <Box
+          flex={1}
+          position={'relative'}
+          border={'base'}
+          bg={'myGray.100'}
+          rounded={'8px'}
+          {...(!isFolded && {
+            minW: nodeWidth,
+            minH: nodeHeight
+          })}
+        >
+          <Background />
+        </Box>
+      </>
+    );
+  }, [isFolded, nodeHeight, nodeWidth, t]);
 
-  return Render;
+  const MemoRenderOutput = useMemo(() => {
+    return (
+      <Container>
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+      </Container>
+    );
+  }, [nodeId, outputs]);
+
+  return (
+    <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
+      <Container position={'relative'} flex={1}>
+        <IOTitle text={t('common:common.Input')} />
+        {RenderInputDom}
+        {RenderChildrenNodes}
+      </Container>
+      {MemoRenderOutput}
+    </NodeCard>
+  );
 };
 
 export default React.memo(NodeLoop);
