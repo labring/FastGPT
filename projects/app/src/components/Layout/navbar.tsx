@@ -121,44 +121,55 @@ const Navbar = ({ unread }: { unread: number }) => {
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
-        {navbarList.map((item) => (
-          <Box
-            key={item.link}
-            {...itemStyles}
-            {...(item.activeLink.includes(router.pathname)
-              ? {
-                  color: 'primary.600',
-                  bg: 'white',
-                  boxShadow:
-                    '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)'
-                }
-              : {
-                  color: 'myGray.500',
-                  bg: 'transparent',
-                  _hover: {
-                    bg: isSecondNavbarPage ? 'white' : 'rgba(255,255,255,0.9)'
+        {navbarList.map((item) => {
+          const isActive = item.activeLink.includes(router.pathname);
+          return (
+            <Box
+              key={item.link}
+              {...itemStyles}
+              {...(isActive
+                ? {
+                    bg: 'white',
+                    boxShadow:
+                      '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)'
                   }
-                })}
-            {...(item.link !== router.asPath
-              ? {
-                  onClick: () => router.push(item.link)
-                }
-              : {})}
-          >
-            <MyIcon
-              name={
-                item.activeLink.includes(router.pathname)
-                  ? (item.activeIcon as any)
-                  : (item.icon as any)
-              }
-              width={'20px'}
-              height={'20px'}
-            />
-            <Box fontSize={'12px'} transform={'scale(0.9)'} mt={'5px'} lineHeight={1}>
-              {item.label}
+                : {
+                    bg: 'transparent',
+                    _hover: {
+                      bg: isSecondNavbarPage ? 'white' : 'rgba(255,255,255,0.9)'
+                    }
+                  })}
+              {...(item.link !== router.asPath
+                ? {
+                    onClick: () => router.push(item.link)
+                  }
+                : {})}
+            >
+              <MyIcon
+                {...(isActive
+                  ? {
+                      name: item.activeIcon as any,
+                      color: 'primary.600'
+                    }
+                  : {
+                      name: item.icon as any,
+                      color: 'myGray.400'
+                    })}
+                width={'20px'}
+                height={'20px'}
+              />
+              <Box
+                fontSize={'12px'}
+                transform={'scale(0.9)'}
+                mt={'5px'}
+                lineHeight={1}
+                color={isActive ? 'primary.700' : 'myGray.500'}
+              >
+                {item.label}
+              </Box>
             </Box>
-          </Box>
-        ))}
+          );
+        })}
       </Box>
 
       {unread > 0 && (
@@ -191,10 +202,10 @@ const Navbar = ({ unread }: { unread: number }) => {
               {...itemStyles}
               {...hoverStyle}
               mt={0}
-              color={'myGray.500'}
+              color={'myGray.400'}
               height={'48px'}
             >
-              <Avatar src={item.avatar} borderRadius={'md'} />
+              <Avatar src={item.avatar} borderRadius={'md'} width={'26px'} height={'26px'} />
             </Link>
           </MyTooltip>
         ))}
@@ -208,7 +219,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...itemStyles}
             {...hoverStyle}
             mt={0}
-            color={'myGray.500'}
+            color={'myGray.400'}
             height={'48px'}
           >
             <MyIcon name={'common/gitInlight'} width={'26px'} height={'26px'} />
