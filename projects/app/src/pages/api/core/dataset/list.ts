@@ -82,7 +82,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         ? {
             $or: [idList, parseParentIdInMongo(parentId)]
           }
-        : idList;
+        : { $or: [idList, { parentId: null }] };
 
     const searchMatch = searchKey
       ? {
