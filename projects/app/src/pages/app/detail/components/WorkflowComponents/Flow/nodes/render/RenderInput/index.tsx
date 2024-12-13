@@ -85,14 +85,19 @@ type Props = {
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
   const { feConfigs } = useSystemStore();
 
-  const filterInputs = useMemo(() => {
+  const filterProInputs = useMemo(() => {
     return flowInputList.filter((input) => {
       if (input.isPro && !feConfigs?.isPlus) return false;
+      return true;
+    });
+  }, [feConfigs?.isPlus, flowInputList]);
 
+  const filterInputs = useMemo(() => {
+    return filterProInputs.filter((input) => {
       const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
       const isDynamic = !!input.canEdit;
 
-      if (renderType === FlowNodeInputTypeEnum.hidden && !isDynamic) return false;
+      if (renderType === FlowNodeInputTypeEnum.hidden || isDynamic) return false;
 
       return true;
     });
@@ -111,7 +116,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
           const Component = RenderList.find((item) => item.types.includes(renderType))?.Component;
 
           if (!Component) return null;
-          return <Component inputs={filterInputs} item={input} nodeId={nodeId} />;
+          return <Component inputs={filterProInputs} item={input} nodeId={nodeId} />;
         })();
 
         return (
