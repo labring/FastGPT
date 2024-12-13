@@ -23,14 +23,14 @@
           {
             "key": "welcomeText",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "label": "core.app.Welcome Text",
             "value": "你好，我可以为你翻译各种语言，请告诉我你需要翻译成什么语言？"
           },
           {
             "key": "variables",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "WorkflowIOValueTypeEnum.any",
+            "valueType": "any",
             "label": "core.app.Chat Variable",
             "value": [
               {
@@ -53,7 +53,7 @@
           },
           {
             "key": "questionGuide",
-            "valueType": "WorkflowIOValueTypeEnum.boolean",
+            "valueType": "boolean",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "core.app.Question Guide",
             "value": false
@@ -61,7 +61,7 @@
           {
             "key": "tts",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "WorkflowIOValueTypeEnum.any",
+            "valueType": "any",
             "label": "",
             "value": {
               "type": "web"
@@ -70,7 +70,7 @@
           {
             "key": "whisper",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "WorkflowIOValueTypeEnum.any",
+            "valueType": "any",
             "label": "",
             "value": {
               "open": false,
@@ -81,7 +81,7 @@
           {
             "key": "scheduleTrigger",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "WorkflowIOValueTypeEnum.any",
+            "valueType": "any",
             "label": "",
             "value": null
           }
@@ -103,7 +103,7 @@
           {
             "key": "userChatInput",
             "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "label": "用户问题",
             "required": true,
             "toolDescription": "用户问题"
@@ -114,7 +114,7 @@
             "id": "userChatInput",
             "key": "userChatInput",
             "label": "core.module.input.label.user question",
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "type": "FlowNodeOutputTypeEnum.static"
           }
         ]
@@ -139,7 +139,7 @@
               "FlowNodeInputTypeEnum.reference"
             ],
             "label": "core.module.input.label.aiModel",
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "value": "gpt-3.5-turbo"
           },
           {
@@ -147,7 +147,7 @@
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
             "value": 0,
-            "valueType": "WorkflowIOValueTypeEnum.number",
+            "valueType": "number",
             "min": 0,
             "max": 10,
             "step": 1
@@ -157,7 +157,7 @@
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
             "value": 2000,
-            "valueType": "WorkflowIOValueTypeEnum.number",
+            "valueType": "number",
             "min": 100,
             "max": 4000,
             "step": 50
@@ -167,25 +167,25 @@
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
             "value": true,
-            "valueType": "WorkflowIOValueTypeEnum.boolean"
+            "valueType": "boolean"
           },
           {
             "key": "quoteTemplate",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
-            "valueType": "WorkflowIOValueTypeEnum.string"
+            "valueType": "string"
           },
           {
             "key": "quotePrompt",
             "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
             "label": "",
-            "valueType": "WorkflowIOValueTypeEnum.string"
+            "valueType": "string"
           },
           {
             "key": "systemPrompt",
             "renderTypeList": ["FlowNodeInputTypeEnum.textarea", "FlowNodeInputTypeEnum.reference"],
             "max": 3000,
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "label": "core.ai.Prompt",
             "description": "core.app.tip.systemPromptTip",
             "placeholder": "core.app.tip.chatNodeSystemPromptTip",
@@ -197,7 +197,7 @@
               "FlowNodeInputTypeEnum.numberInput",
               "FlowNodeInputTypeEnum.reference"
             ],
-            "valueType": "WorkflowIOValueTypeEnum.chatHistory",
+            "valueType": "chatHistory",
             "label": "core.module.input.label.chat history",
             "required": true,
             "min": 0,
@@ -207,7 +207,7 @@
           {
             "key": "userChatInput",
             "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "label": "用户问题",
             "required": true,
             "toolDescription": "用户问题",
@@ -219,7 +219,7 @@
             "label": "",
             "debugLabel": "知识库引用",
             "description": "",
-            "valueType": "WorkflowIOValueTypeEnum.datasetQuote"
+            "valueType": "datasetQuote"
           }
         ],
         "outputs": [
@@ -228,7 +228,7 @@
             "key": "history",
             "label": "core.module.output.label.New context",
             "description": "core.module.output.description.New context",
-            "valueType": "WorkflowIOValueTypeEnum.chatHistory",
+            "valueType": "chatHistory",
             "type": "FlowNodeOutputTypeEnum.static"
           },
           {
@@ -236,7 +236,7 @@
             "key": "answerText",
             "label": "core.module.output.label.Ai response content",
             "description": "core.module.output.description.Ai response content",
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "type": "FlowNodeOutputTypeEnum.static"
           }
         ]
