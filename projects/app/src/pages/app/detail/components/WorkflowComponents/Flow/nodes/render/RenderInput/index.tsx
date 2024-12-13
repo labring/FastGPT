@@ -88,12 +88,6 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
   const filterInputs = useMemo(() => {
     return flowInputList.filter((input) => {
       if (input.isPro && !feConfigs?.isPlus) return false;
-
-      const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
-      const isDynamic = !!input.canEdit;
-
-      if (renderType === FlowNodeInputTypeEnum.hidden && !isDynamic) return false;
-
       return true;
     });
   }, [feConfigs?.isPlus, flowInputList]);
@@ -102,6 +96,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
     <>
       {filterInputs.map((input) => {
         const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
+        const isDynamic = !!input.canEdit;
 
         const RenderComponent = (() => {
           if (renderType === FlowNodeInputTypeEnum.custom && CustomComponent?.[input.key]) {
@@ -114,7 +109,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
           return <Component inputs={filterInputs} item={input} nodeId={nodeId} />;
         })();
 
-        return (
+        return renderType !== FlowNodeInputTypeEnum.hidden && !isDynamic ? (
           <Box key={input.key} _notLast={{ mb }} position={'relative'}>
             {!!input.label && !hideLabelTypeList.includes(renderType) && (
               <InputLabel nodeId={nodeId} input={input} />
@@ -125,7 +120,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
               </Box>
             )}
           </Box>
-        );
+        ) : null;
       })}
     </>
   );
