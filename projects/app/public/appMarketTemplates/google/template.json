@@ -178,7 +178,7 @@
             "key": "NodeOutputKeyEnum.answerText",
             "label": "core.module.output.label.Ai response content",
             "description": "core.module.output.description.Ai response content",
-            "valueType": "WorkflowIOValueTypeEnum.string",
+            "valueType": "string",
             "type": "FlowNodeOutputTypeEnum.static"
           }
         ]
