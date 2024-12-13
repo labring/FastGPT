@@ -184,8 +184,9 @@ export const MultipleRowArraySelect = ({
 
   const [navigationPath, setNavigationPath] = useState<string[]>([]);
 
+  // Make sure the value is an array of arrays
   const formatValue = useMemo(() => {
-    return Array.isArray(value) ? value : [];
+    return Array.isArray(value) ? value.filter((v) => Array.isArray(v)) : [];
   }, [value]);
 
   // Close when clicking outside
