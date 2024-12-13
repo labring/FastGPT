@@ -170,7 +170,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                     });
 
                     const formatUrl = `${url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`;
-                    router.replace(formatUrl, '_self');
+                    window.open(formatUrl, '_self');
                   }}
                 >
                   {feConfigs.sso.title}
