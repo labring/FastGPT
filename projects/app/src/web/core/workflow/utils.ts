@@ -328,7 +328,7 @@ export const filterWorkflowNodeOutputsByType = (
       valueType === WorkflowIOValueTypeEnum.arrayAny ||
       !output.valueType ||
       output.valueType === WorkflowIOValueTypeEnum.any ||
-      validTypeMap[valueType].includes(output.valueType)
+      validTypeMap[valueType]?.includes(output.valueType)
   );
 };
 
