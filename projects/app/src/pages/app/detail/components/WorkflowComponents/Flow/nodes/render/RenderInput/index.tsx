@@ -90,10 +90,9 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
       if (input.isPro && !feConfigs?.isPlus) return false;
 
       const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
-      if (renderType === FlowNodeInputTypeEnum.hidden) return false;
-
       const isDynamic = !!input.canEdit;
-      if (isDynamic) return false;
+
+      if (renderType === FlowNodeInputTypeEnum.hidden && !isDynamic) return false;
 
       return true;
     });
