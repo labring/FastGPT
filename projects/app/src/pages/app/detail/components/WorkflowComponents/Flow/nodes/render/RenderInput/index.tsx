@@ -86,7 +86,10 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
   const { feConfigs } = useSystemStore();
 
   const filterProInputs = useMemo(() => {
-    return flowInputList.filter((input) => input.isPro && !feConfigs?.isPlus);
+    return flowInputList.filter((input) => {
+      if (input.isPro && !feConfigs?.isPlus) return false;
+      return true;
+    });
   }, [feConfigs?.isPlus, flowInputList]);
 
   const filterInputs = useMemo(() => {
