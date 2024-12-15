@@ -41,7 +41,8 @@ const MyNumberInput = (props: Props) => {
           ? register(name, {
               required: props.isRequired,
               min: props.min,
-              max: props.max
+              max: props.max,
+              valueAsNumber: true
             })
           : {})}
       />
