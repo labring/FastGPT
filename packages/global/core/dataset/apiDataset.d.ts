@@ -23,13 +23,13 @@ export type APIFileReadResponse = {
   url: string;
 };
 
-export type feishuServer = {
+export type FeishuServer = {
   appId: string;
   appSecret: string;
   folderToken: string;
 };
 
-export type yuqueServer = {
+export type YuqueServer = {
   userId: string;
   token: string;
 };

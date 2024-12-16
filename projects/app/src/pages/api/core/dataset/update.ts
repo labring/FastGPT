@@ -133,7 +133,8 @@ async function handler(
         ...(!!feishuServer?.folderToken && {
           'feishuServer.folderToken': feishuServer.folderToken
         }),
-        ...(isMove && { inheritPermission: true })
+        ...(isMove && { inheritPermission: true }),
+        ...(typeof autoSync === 'boolean' && { autoSync })
       },
       { session }
     );

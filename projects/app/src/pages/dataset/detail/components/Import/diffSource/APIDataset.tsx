@@ -6,11 +6,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { Box, Button, Checkbox, Flex } from '@chakra-ui/react';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  getApiDatasetFileList,
-  getApiDatasetFileListExistId,
-  getSystemApiDatasetFileList
-} from '@/web/core/dataset/api';
+import { getApiDatasetFileList, getApiDatasetFileListExistId } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
@@ -60,15 +56,7 @@ const CustomAPIFileInput = () => {
 
   const { data: fileList = [], loading } = useRequest2(
     async () => {
-      if (datasetDetail.apiServer) {
-        return getApiDatasetFileList({
-          datasetId: datasetDetail._id,
-          parentId: parent?.parentId,
-          searchKey: searchKey
-        });
-      }
-
-      return getSystemApiDatasetFileList({
+      return getApiDatasetFileList({
         datasetId: datasetDetail._id,
         parentId: parent?.parentId,
         searchKey: searchKey
@@ -101,32 +89,10 @@ const CustomAPIFileInput = () => {
 
         for (const file of files) {
           if (file.type === 'folder') {
-            let folderFiles: APIFileItem[] = [];
-            if (datasetDetail.apiServer) {
-              folderFiles = await getApiDatasetFileList({
-                datasetId: datasetDetail._id,
-                parentId: file?.id
-              });
-            } else {
-              if (datasetDetail.yuqueServer) {
-                // Yuque
-                if (typeof file.id === 'number') {
-                  folderFiles = await getSystemApiDatasetFileList({
-                    datasetId: datasetDetail._id,
-                    parentId: file?.id
-                  }).then((res) => res.filter((item) => item.type === 'file'));
-                } else {
-                  const uuid = file.id.split('-')[2];
-                  folderFiles = fileList.filter((item) => item.parentId === uuid);
-                }
-              } else {
-                // Feishu
-                folderFiles = await getSystemApiDatasetFileList({
-                  datasetId: datasetDetail._id,
-                  parentId: file?.id
-                });
-              }
-            }
+            const folderFiles = await getApiDatasetFileList({
+              datasetId: datasetDetail._id,
+              parentId: file?.id
+            });
 
             const subFiles = await getFilesRecursively(folderFiles);
             allFiles.push(...subFiles);
@@ -163,18 +129,6 @@ const CustomAPIFileInput = () => {
   const handleItemClick = useCallback(
     (item: APIFileItem) => {
       if (item.type === 'folder') {
-        if (
-          typeof item.id === 'string' &&
-          item.id.split('-').length === 3 &&
-          datasetDetail.yuqueServer
-        ) {
-          setPaths((state) => [
-            ...state,
-            { parentId: item.id.split('-')[2], parentName: item.name }
-          ]);
-          return setParentUuid(item.id.split('-')[2]);
-        }
-
         setPaths((state) => [...state, { parentId: item.id, parentName: item.name }]);
         return setParent({
           parentId: item.id,
@@ -189,7 +143,7 @@ const CustomAPIFileInput = () => {
         setSelectFiles((state) => [...state, item]);
       }
     },
-    [selectFiles, setSelectFiles]
+    [selectFiles]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -210,15 +164,6 @@ const CustomAPIFileInput = () => {
             paths={paths}
             onClick={(parentId) => {
               const index = paths.findIndex((item) => item.parentId === parentId);
-
-              // Yuque
-              if (datasetDetail.yuqueServer) {
-                if (index > 0) {
-                  setParentUuid(parentId);
-                } else {
-                  setParentUuid('');
-                }
-              }
 
               setParent(paths[index]);
               setPaths(paths.slice(0, index + 1));
@@ -260,61 +205,55 @@ const CustomAPIFileInput = () => {
               />
               {t('common:Select_all')}
             </Flex>
-            {fileList
-              .filter((item) => {
-                if (!datasetDetail.yuqueServer || typeof item.id === 'number') return true;
+            {fileList.map((item) => {
+              const isFolder = item.type === 'folder';
+              const isExists = existIdList.includes(item.id);
+              const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
 
-                return item.parentId === parentUuid;
-              })
-              .map((item) => {
-                const isFolder = item.type === 'folder';
-                const isExists = existIdList.includes(item.id);
-                const isChecked = isExists || selectFiles.some((file) => file.id === item.id);
-
-                return (
-                  <Flex
-                    key={item.id}
-                    py={3}
-                    _hover={{ bg: 'primary.50' }}
-                    pl={7}
-                    cursor={'pointer'}
-                    onClick={(e) => {
+              return (
+                <Flex
+                  key={item.id}
+                  py={3}
+                  _hover={{ bg: 'primary.50' }}
+                  pl={7}
+                  cursor={'pointer'}
+                  onClick={(e) => {
+                    if (isExists) return;
+                    if (!(e.target as HTMLElement).closest('.checkbox')) {
+                      handleItemClick(item);
+                    }
+                  }}
+                >
+                  <Checkbox
+                    className="checkbox"
+                    mr={2.5}
+                    isChecked={isChecked}
+                    isDisabled={isExists}
+                    onChange={(e) => {
+                      e.stopPropagation();
                       if (isExists) return;
-                      if (!(e.target as HTMLElement).closest('.checkbox')) {
-                        handleItemClick(item);
+                      if (isChecked) {
+                        setSelectFiles((state) => state.filter((file) => file.id !== item.id));
+                      } else {
+                        setSelectFiles((state) => [...state, item]);
                       }
                     }}
-                  >
-                    <Checkbox
-                      className="checkbox"
-                      mr={2.5}
-                      isChecked={isChecked}
-                      isDisabled={isExists}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        if (isExists) return;
-                        if (isChecked) {
-                          setSelectFiles((state) => state.filter((file) => file.id !== item.id));
-                        } else {
-                          setSelectFiles((state) => [...state, item]);
-                        }
-                      }}
-                    />
-                    <MyIcon
-                      name={
-                        !isFolder
-                          ? (getSourceNameIcon({ sourceName: item.name }) as any)
-                          : 'common/folderFill'
-                      }
-                      w={'18px'}
-                      mr={1.5}
-                    />
-                    <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
-                      {item.name}
-                    </Box>
-                  </Flex>
-                );
-              })}
+                  />
+                  <MyIcon
+                    name={
+                      !isFolder
+                        ? (getSourceNameIcon({ sourceName: item.name }) as any)
+                        : 'common/folderFill'
+                    }
+                    w={'18px'}
+                    mr={1.5}
+                  />
+                  <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
+                    {item.name}
+                  </Box>
+                </Flex>
+              );
+            })}
           </Box>
         </Box>
 

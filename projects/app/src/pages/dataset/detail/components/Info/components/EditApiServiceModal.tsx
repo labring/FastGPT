@@ -5,13 +5,13 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { APIFileServer, feishuServer, yuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 
 export type EditAPIDatasetInfoFormType = {
   id: string;
   apiServer?: APIFileServer;
-  yuqueServer?: yuqueServer;
-  feishuServer?: feishuServer;
+  yuqueServer?: YuqueServer;
+  feishuServer?: FeishuServer;
 };
 
 const EditAPIDatasetInfoModal = ({

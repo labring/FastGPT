@@ -149,6 +149,8 @@ async function handler(
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
       const apiServer = collection.datasetId.apiServer;
+      const feishuServer = collection.datasetId.feishuServer;
+      const yuqueServer = collection.datasetId.yuqueServer;
 
       if (apiServer) {
         return useApiDatasetRequest({ apiServer }).getFilePreviewUrl({
@@ -156,10 +158,11 @@ async function handler(
         });
       }
 
-      return await POST<string>(`/core/dataset/systemApiDataset/read`, {
+      return await POST<string>(`/core/dataset/systemApiDataset`, {
+        type: 'read',
         apiFileId: collection.apiFileId,
-        datasetId: collection.datasetId._id,
-        tmbId: collection.datasetId.tmbId
+        feishuServer,
+        yuqueServer
       });
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {

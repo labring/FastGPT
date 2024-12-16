@@ -2,7 +2,7 @@ import {
   PushDatasetDataChunkProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api';
-import { APIFileServer, feishuServer, yuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import {
   DatasetSearchModeEnum,
   DatasetSourceReadTypeEnum,
@@ -27,8 +27,8 @@ export type CreateDatasetParams = {
   vectorModel?: string;
   agentModel?: string;
   apiServer?: APIFileServer;
-  feishuServer?: feishuServer;
-  yuqueServer?: yuqueServer;
+  feishuServer?: FeishuServer;
+  yuqueServer?: YuqueServer;
 };
 
 export type RebuildEmbeddingProps = {

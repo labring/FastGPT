@@ -83,7 +83,6 @@ async function handler(
 
   const rawText = await readDatasetSourceRawText({
     teamId: collection.teamId,
-    datasetId: collection.datasetId._id,
     ...sourceReadType
   });
 

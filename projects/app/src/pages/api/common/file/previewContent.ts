@@ -29,7 +29,7 @@ async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiRe
     throw new Error('fileId is empty');
   }
 
-  const { teamId, apiServer, tmbId } = await (async () => {
+  const { teamId, apiServer, feishuServer, yuqueServer } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
       const res = await authCollectionFile({
         req,
@@ -51,20 +51,21 @@ async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiRe
     });
     return {
       teamId: dataset.teamId,
-      tmbId: dataset.tmbId,
-      apiServer: dataset.apiServer
+      apiServer: dataset.apiServer,
+      feishuServer: dataset.feishuServer,
+      yuqueServer: dataset.yuqueServer
     };
   })();
 
   const rawText = await readDatasetSourceRawText({
     teamId,
-    tmbId,
     type,
     sourceId,
     isQAImport,
     selector,
     apiServer,
-    datasetId,
+    feishuServer,
+    yuqueServer,
     externalFileId
   });
 

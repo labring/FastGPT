@@ -1,4 +1,6 @@
+import { getFeishuAndYuqueDatasetFileList } from '@/service/core/dataset/apiDataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -26,11 +28,21 @@ async function handler(req: NextApiRequest) {
   });
 
   const apiServer = dataset.apiServer;
-  if (!apiServer) {
-    return Promise.reject('apiServer is required');
+  const feishuServer = dataset.feishuServer;
+  const yuqueServer = dataset.yuqueServer;
+
+  if (apiServer) {
+    return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
+  }
+  if (feishuServer || yuqueServer) {
+    return getFeishuAndYuqueDatasetFileList({
+      feishuServer,
+      yuqueServer,
+      parentId
+    });
   }
 
-  return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
+  return Promise.reject(DatasetErrEnum.noApiServer);
 }
 
 export default NextAPI(handler);

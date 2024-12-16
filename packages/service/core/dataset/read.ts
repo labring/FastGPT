@@ -7,7 +7,7 @@ import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
-import { APIFileServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from './apiDataset/api';
 import { POST } from '../../common/api/plusRequest';
 
@@ -49,17 +49,16 @@ export const readFileRawTextByUrl = async ({
 */
 export const readDatasetSourceRawText = async ({
   teamId,
-  tmbId,
   type,
   sourceId,
   isQAImport,
   selector,
   externalFileId,
-  datasetId,
-  apiServer
+  apiServer,
+  feishuServer,
+  yuqueServer
 }: {
   teamId: string;
-  tmbId?: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
 
@@ -67,7 +66,8 @@ export const readDatasetSourceRawText = async ({
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
   apiServer?: APIFileServer; // api dataset
-  datasetId: string;
+  feishuServer?: FeishuServer; // feishu dataset
+  yuqueServer?: YuqueServer; // yuque dataset
 }): Promise<string> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
@@ -102,9 +102,9 @@ export const readDatasetSourceRawText = async ({
       return rawText;
     } else {
       const rawText = await readSystemApiServerFileContent({
-        datasetId,
         apiFileId: sourceId,
-        tmbId
+        feishuServer,
+        yuqueServer
       });
       return rawText;
     }
@@ -113,18 +113,19 @@ export const readDatasetSourceRawText = async ({
 };
 
 export const readSystemApiServerFileContent = async ({
-  datasetId,
   apiFileId,
-  tmbId
+  feishuServer,
+  yuqueServer
 }: {
-  datasetId: string;
   apiFileId: string;
-  tmbId?: string;
+  feishuServer?: FeishuServer;
+  yuqueServer?: YuqueServer;
 }) => {
-  return await POST<string>(`/core/dataset/systemApiDataset/content`, {
-    datasetId,
-    apiFileId,
-    tmbId
+  return await POST<string>(`/core/dataset/systemApiDataset`, {
+    type: 'content',
+    feishuServer,
+    yuqueServer,
+    apiFileId
   });
 };
 

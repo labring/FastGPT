@@ -37,6 +37,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   });
 
   const apiServer = dataset.apiServer;
+  const feishuServer = dataset.feishuServer;
+  const yuqueServer = dataset.yuqueServer;
 
   // Auth same apiFileId
   const storeCol = await MongoDatasetCollection.findOne(
@@ -60,8 +62,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       })
     : await readSystemApiServerFileContent({
         apiFileId,
-        datasetId: dataset._id,
-        tmbId
+        feishuServer,
+        yuqueServer
       });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({

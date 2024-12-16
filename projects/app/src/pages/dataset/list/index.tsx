@@ -66,9 +66,7 @@ const Dataset = () => {
     (e: CreateDatasetType) => {
       if (
         !feConfigs?.isPlus &&
-        (e === DatasetTypeEnum.websiteDataset ||
-          e === DatasetTypeEnum.feishu ||
-          e === DatasetTypeEnum.yuque)
+        [DatasetTypeEnum.websiteDataset, DatasetTypeEnum.feishu, DatasetTypeEnum.yuque].includes(e)
       ) {
         return toast({
           status: 'warning',

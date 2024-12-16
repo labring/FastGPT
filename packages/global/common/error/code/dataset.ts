@@ -12,7 +12,8 @@ export enum DatasetErrEnum {
   unLinkCollection = 'unLinkCollection',
   invalidVectorModelOrQAModel = 'invalidVectorModelOrQAModel',
   notSupportSync = 'notSupportSync',
-  sameApiCollection = 'sameApiCollection'
+  sameApiCollection = 'sameApiCollection',
+  noApiServer = 'noApiServer'
 }
 const datasetErr = [
   {

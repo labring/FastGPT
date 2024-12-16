@@ -50,7 +50,7 @@ async function handler(
     throw new Error('chunkSize is too large, should be less than 30000');
   }
 
-  const { teamId, apiServer, tmbId } = await (async () => {
+  const { teamId, apiServer, feishuServer, yuqueServer } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
       const res = await authCollectionFile({
         req,
@@ -72,21 +72,22 @@ async function handler(
     });
     return {
       teamId: dataset.teamId,
-      tmbId: dataset.tmbId,
-      apiServer: dataset.apiServer
+      apiServer: dataset.apiServer,
+      feishuServer: dataset.feishuServer,
+      yuqueServer: dataset.yuqueServer
     };
   })();
 
   const rawText = await readDatasetSourceRawText({
     teamId,
-    tmbId,
     type,
     sourceId,
     selector,
     isQAImport,
     apiServer,
-    externalFileId,
-    datasetId
+    feishuServer,
+    yuqueServer,
+    externalFileId
   });
 
   return rawText2Chunks({
