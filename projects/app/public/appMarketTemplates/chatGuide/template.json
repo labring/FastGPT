@@ -19,73 +19,7 @@
           "y": -490.7611729549753
         },
         "version": "481",
-        "inputs": [
-          {
-            "key": "welcomeText",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "string",
-            "label": "core.app.Welcome Text",
-            "value": "你好，我可以为你翻译各种语言，请告诉我你需要翻译成什么语言？"
-          },
-          {
-            "key": "variables",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "core.app.Chat Variable",
-            "value": [
-              {
-                "id": "myb3xk",
-                "key": "language",
-                "label": "目标语言",
-                "type": "select",
-                "required": true,
-                "maxLen": 50,
-                "enums": [
-                  {
-                    "value": "中文"
-                  },
-                  {
-                    "value": "英文"
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "key": "questionGuide",
-            "valueType": "boolean",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "label": "core.app.Question Guide",
-            "value": false
-          },
-          {
-            "key": "tts",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": {
-              "type": "web"
-            }
-          },
-          {
-            "key": "whisper",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": {
-              "open": false,
-              "autoSend": false,
-              "autoTTSResponse": false
-            }
-          },
-          {
-            "key": "scheduleTrigger",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": null
-          }
-        ],
+        "inputs": [],
         "outputs": []
       },
       {

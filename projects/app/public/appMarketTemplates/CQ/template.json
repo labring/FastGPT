@@ -18,56 +18,7 @@
           "y": -486.7611729549753
         },
         "version": "481",
-        "inputs": [
-          {
-            "key": "welcomeText",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "string",
-            "label": "core.app.Welcome Text",
-            "value": "你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]"
-          },
-          {
-            "key": "variables",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "core.app.Chat Variable",
-            "value": []
-          },
-          {
-            "key": "questionGuide",
-            "valueType": "boolean",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "label": "core.app.Question Guide",
-            "value": true
-          },
-          {
-            "key": "tts",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": {
-              "type": "web"
-            }
-          },
-          {
-            "key": "whisper",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": {
-              "open": false,
-              "autoSend": false,
-              "autoTTSResponse": false
-            }
-          },
-          {
-            "key": "scheduleTrigger",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": null
-          }
-        ],
+        "inputs": [],
         "outputs": []
       },
       {
@@ -84,7 +35,7 @@
         "inputs": [
           {
             "key": "userChatInput",
-            "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+            "renderTypeList": ["reference", "textarea"],
             "valueType": "string",
             "label": "用户问题",
             "required": true,
@@ -116,17 +67,14 @@
         "inputs": [
           {
             "key": "model",
-            "renderTypeList": [
-              "FlowNodeInputTypeEnum.settingLLMModel",
-              "FlowNodeInputTypeEnum.reference"
-            ],
+            "renderTypeList": ["settingLLMModel", "reference"],
             "label": "core.module.input.label.aiModel",
             "valueType": "string",
             "value": "gpt-4o-mini"
           },
           {
             "key": "temperature",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "value": 3,
             "valueType": "number",
@@ -136,7 +84,7 @@
           },
           {
             "key": "maxToken",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "value": 1950,
             "valueType": "number",
@@ -146,26 +94,26 @@
           },
           {
             "key": "isResponseAnswerText",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "value": true,
             "valueType": "boolean"
           },
           {
             "key": "quoteTemplate",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "string"
           },
           {
             "key": "quotePrompt",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "string"
           },
           {
             "key": "systemPrompt",
-            "renderTypeList": ["FlowNodeInputTypeEnum.textarea", "FlowNodeInputTypeEnum.reference"],
+            "renderTypeList": ["textarea", "reference"],
             "max": 3000,
             "valueType": "string",
             "label": "core.ai.Prompt",
@@ -175,10 +123,7 @@
           },
           {
             "key": "history",
-            "renderTypeList": [
-              "FlowNodeInputTypeEnum.numberInput",
-              "FlowNodeInputTypeEnum.reference"
-            ],
+            "renderTypeList": ["numberInput", "reference"],
             "valueType": "chatHistory",
             "label": "core.module.input.label.chat history",
             "required": true,
@@ -188,7 +133,7 @@
           },
           {
             "key": "userChatInput",
-            "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+            "renderTypeList": ["reference", "textarea"],
             "valueType": "string",
             "label": "用户问题",
             "required": true,
@@ -197,7 +142,7 @@
           },
           {
             "key": "quoteQA",
-            "renderTypeList": ["FlowNodeInputTypeEnum.settingDatasetQuotePrompt"],
+            "renderTypeList": ["settingDatasetQuotePrompt"],
             "label": "",
             "debugLabel": "知识库引用",
             "description": "",
@@ -239,10 +184,7 @@
         "inputs": [
           {
             "key": "model",
-            "renderTypeList": [
-              "FlowNodeInputTypeEnum.selectLLMModel",
-              "FlowNodeInputTypeEnum.reference"
-            ],
+            "renderTypeList": ["selectLLMModel", "reference"],
             "label": "core.module.input.label.aiModel",
             "required": true,
             "valueType": "string",
@@ -251,7 +193,7 @@
           },
           {
             "key": "systemPrompt",
-            "renderTypeList": ["FlowNodeInputTypeEnum.textarea", "FlowNodeInputTypeEnum.reference"],
+            "renderTypeList": ["textarea", "reference"],
             "max": 3000,
             "valueType": "string",
             "label": "core.module.input.label.Background",
@@ -261,10 +203,7 @@
           },
           {
             "key": "history",
-            "renderTypeList": [
-              "FlowNodeInputTypeEnum.numberInput",
-              "FlowNodeInputTypeEnum.reference"
-            ],
+            "renderTypeList": ["numberInput", "reference"],
             "valueType": "chatHistory",
             "label": "core.module.input.label.chat history",
             "required": true,
@@ -274,7 +213,7 @@
           },
           {
             "key": "userChatInput",
-            "renderTypeList": ["FlowNodeInputTypeEnum.reference", "FlowNodeInputTypeEnum.textarea"],
+            "renderTypeList": ["reference", "textarea"],
             "valueType": "string",
             "label": "用户问题",
             "required": true,
@@ -282,7 +221,7 @@
           },
           {
             "key": "agents",
-            "renderTypeList": ["FlowNodeInputTypeEnum.custom"],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "label": "",
             "value": [
@@ -325,7 +264,7 @@
         "inputs": [
           {
             "key": "text",
-            "renderTypeList": ["FlowNodeInputTypeEnum.textarea", "FlowNodeInputTypeEnum.reference"],
+            "renderTypeList": ["textarea", "reference"],
             "valueType": "string",
             "label": "core.module.input.label.Response content",
             "description": "core.module.input.description.Response content",
@@ -351,10 +290,7 @@
         "inputs": [
           {
             "key": "datasets",
-            "renderTypeList": [
-              "FlowNodeInputTypeEnum.selectDataset",
-              "FlowNodeInputTypeEnum.reference"
-            ],
+            "renderTypeList": ["selectDataset", "reference"],
             "label": "core.module.input.label.Select dataset",
             "value": [],
             "valueType": "selectDataset",
@@ -363,55 +299,55 @@
           },
           {
             "key": "similarity",
-            "renderTypeList": ["FlowNodeInputTypeEnum.selectDatasetParamsModal"],
+            "renderTypeList": ["selectDatasetParamsModal"],
             "label": "",
             "value": 0.4,
             "valueType": "number"
           },
           {
             "key": "limit",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "value": 1500,
             "valueType": "number"
           },
           {
             "key": "searchMode",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "string",
             "value": "embedding"
           },
           {
             "key": "usingReRank",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
             "value": false
           },
           {
             "key": "datasetSearchUsingExtensionQuery",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "boolean",
             "value": true
           },
           {
             "key": "datasetSearchExtensionModel",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "string"
           },
           {
             "key": "datasetSearchExtensionBg",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+            "renderTypeList": ["hidden"],
             "label": "",
             "valueType": "string",
             "value": ""
           },
           {
             "key": "userChatInput",
-            "renderTypeList": ["reference", "FlowNodeInputTypeEnum.textarea"],
+            "renderTypeList": ["reference", "textarea"],
             "valueType": "string",
             "label": "用户问题",
             "required": true,

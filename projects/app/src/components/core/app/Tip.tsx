@@ -29,7 +29,7 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
     [FnTypeEnum.nextQuestion]: {
       icon: '/imgs/app/nextQuestion-icon.svg',
       title: t('common:core.app.Question Guide'),
-      desc: t('common:core.app.Question Guide Tip'),
+      desc: t('app:question_guide_tip'),
       imgUrl: '/imgs/app/nextQuestion.svg'
     },
     [FnTypeEnum.tts]: {

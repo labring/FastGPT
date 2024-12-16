@@ -201,7 +201,7 @@ weight: 708
 - /imgs/model/qwen.svg - 通义千问
 - /imgs/model/sparkDesk.svg - 讯飞星火
 - /imgs/model/yi.svg - 零一万物
-- 
+- /imgs/model/hunyuan.svg - 腾讯混元
 
 ## 特殊模型
 

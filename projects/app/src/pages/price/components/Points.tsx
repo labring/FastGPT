@@ -142,7 +142,7 @@ export const AiPointsTable = () => {
               {whisperModel?.charsPointsPrice +
                 t('common:support.wallet.subscription.point') +
                 ' / 60' +
-                t('common:unit.minute')}
+                t('common:unit.seconds')}
             </Box>
           </Flex>
         </Box>
