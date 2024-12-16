@@ -1,8 +1,10 @@
 import { RunCodeDto, RunCodeResponse } from 'src/sandbox/dto/create-sandbox.dto';
 import IsolatedVM, { ExternalCopy, Isolate, Reference } from 'isolated-vm';
+
 import { countToken } from './jsFn/tiktoken';
 import { timeDelay } from './jsFn/delay';
 import { strToBase64 } from './jsFn/str2Base64';
+import { createHmac } from './jsFn/crypto';
 
 const CustomLogStr = 'CUSTOM_LOG';
 
@@ -42,7 +44,8 @@ function registerSystemFn(jail: IsolatedVM.Reference<Record<string | number | sy
   return Promise.all([
     jail.set('global_delay', new Reference(timeDelay)),
     jail.set('countToken', countToken),
-    jail.set('strToBase64', strToBase64)
+    jail.set('strToBase64', strToBase64),
+    jail.set('createHmac', createHmac)
   ]);
 }
 

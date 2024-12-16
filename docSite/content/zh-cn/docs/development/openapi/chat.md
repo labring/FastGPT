@@ -866,6 +866,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 
 ### 清空所有历史记录
 
+仅会情况通过 API Key 创建的对话历史记录，不会清空在线使用、分享链接等其他来源的对话历史记录。
+
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
