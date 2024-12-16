@@ -42,6 +42,16 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           }
         ]
       : []),
+    ...(feConfigs?.oauth?.dingtalk
+      ? [
+          {
+            label: t('common:support.user.login.Dingtalk'),
+            provider: OAuthEnum.dingtalk,
+            icon: 'common/dingtalkFill',
+            redirectUrl: `https://login.dingtalk.com/oauth2/auth?client_id=${feConfigs?.oauth?.dingtalk}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=openid&prompt=consent`
+          }
+        ]
+      : []),
     ...(feConfigs?.oauth?.google
       ? [
           {

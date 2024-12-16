@@ -91,6 +91,7 @@ export const iconPaths = {
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
   'common/warn': () => import('./icons/common/warn.svg'),
   'common/wechatFill': () => import('./icons/common/wechatFill.svg'),
+  'common/dingtalkFill': () => import('./icons/common/dingtalkFill.svg'),
   configmap: () => import('./icons/configmap.svg'),
   copy: () => import('./icons/copy.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
