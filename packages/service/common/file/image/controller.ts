@@ -35,7 +35,7 @@ export async function uploadMongoImg({
     shareId
   });
 
-  return `${process.env.FE_DOMAIN || ''}${imageBaseUrl}${String(_id)}.${extension}`;
+  return `${process.env.FE_DOMAIN || ''}${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
 
 export async function readMongoImg({ id }: { id: string }) {
