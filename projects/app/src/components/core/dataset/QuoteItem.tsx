@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
+import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -173,8 +174,8 @@ const QuoteItem = ({
         </Flex>
 
         <Box flex={'1 0 0'}>
-          <Box color={'black'}>{quoteItem.q}</Box>
-          <Box color={'myGray.600'}>{quoteItem.a}</Box>
+          <Markdown source={quoteItem.q} />
+          <Markdown source={quoteItem.a} />
         </Box>
 
         <Flex
