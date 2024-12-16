@@ -8,15 +8,20 @@ import { NextAPI } from '@/service/middleware/entry';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   appId: string;
   chatId: string;
+  questionGuide?: {
+    open: boolean;
+    model?: string;
+    customPrompt?: string;
+  };
 };
 
 async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: NextApiResponse<any>) {
-  const { appId, chatId } = req.body;
-
+  const { appId, chatId, questionGuide: inputQuestionGuide } = req.body;
   const [{ tmbId, teamId }] = await Promise.all([
     authChatCrud({
       req,
@@ -27,6 +32,13 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   ]);
 
   // Auth app and get questionGuide config
+  const questionGuide = await (async () => {
+    if (inputQuestionGuide) {
+      return inputQuestionGuide;
+    }
+    const { chatConfig } = await getAppLatestVersion(appId);
+    return chatConfig.questionGuide;
+  })();
 
   // Get histories
   const { histories } = await getChatItems({
@@ -38,15 +50,12 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
 
-  const qgModel = global.llmModels[0];
+  const qgModel = questionGuide?.model || global.llmModels[0].model;
 
   const { result, tokens } = await createQuestionGuide({
     messages,
-    model: qgModel.model
-  });
-
-  jsonRes(res, {
-    data: result
+    model: qgModel,
+    customPrompt: questionGuide?.customPrompt
   });
 
   pushQuestionGuideUsage({
@@ -54,6 +63,8 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
     teamId,
     tmbId
   });
+
+  return result;
 }
 
 export default NextAPI(handler);

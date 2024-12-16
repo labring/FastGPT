@@ -18,56 +18,7 @@
           "y": -486.7611729549753
         },
         "version": "481",
-        "inputs": [
-          {
-            "key": "welcomeText",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "string",
-            "label": "core.app.Welcome Text",
-            "value": "你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]"
-          },
-          {
-            "key": "variables",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "core.app.Chat Variable",
-            "value": []
-          },
-          {
-            "key": "questionGuide",
-            "valueType": "boolean",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "label": "core.app.Question Guide",
-            "value": false
-          },
-          {
-            "key": "tts",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": {
-              "type": "web"
-            }
-          },
-          {
-            "key": "whisper",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": {
-              "open": false,
-              "autoSend": false,
-              "autoTTSResponse": false
-            }
-          },
-          {
-            "key": "scheduleTrigger",
-            "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
-            "valueType": "any",
-            "label": "",
-            "value": null
-          }
-        ],
+        "inputs": [],
         "outputs": []
       },
       {

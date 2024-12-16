@@ -11,7 +11,7 @@ export const AppCollectionName = 'apps';
 export const chatConfigType = {
   welcomeText: String,
   variables: Array,
-  questionGuide: Boolean,
+  questionGuide: Object,
   ttsConfig: Object,
   whisperConfig: Object,
   scheduledTriggerConfig: Object,

@@ -30,7 +30,7 @@ export const compareSimpleAppSnapshot = (
       {
         welcomeText: appForm1.chatConfig?.welcomeText || '',
         variables: appForm1.chatConfig?.variables || [],
-        questionGuide: appForm1.chatConfig?.questionGuide || false,
+        questionGuide: appForm1.chatConfig?.questionGuide || undefined,
         ttsConfig: appForm1.chatConfig?.ttsConfig || undefined,
         whisperConfig: appForm1.chatConfig?.whisperConfig || undefined,
         chatInputGuide: appForm1.chatConfig?.chatInputGuide || undefined,
@@ -39,7 +39,7 @@ export const compareSimpleAppSnapshot = (
       {
         welcomeText: appForm2.chatConfig?.welcomeText || '',
         variables: appForm2.chatConfig?.variables || [],
-        questionGuide: appForm2.chatConfig?.questionGuide || false,
+        questionGuide: appForm2.chatConfig?.questionGuide || undefined,
         ttsConfig: appForm2.chatConfig?.ttsConfig || undefined,
         whisperConfig: appForm2.chatConfig?.whisperConfig || undefined,
         chatInputGuide: appForm2.chatConfig?.chatInputGuide || undefined,
