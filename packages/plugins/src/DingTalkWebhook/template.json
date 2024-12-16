@@ -1,8 +1,8 @@
 {
   "author": "",
   "version": "4816",
-  "name": "钉钉机器人 webhook",
-  "avatar": "/appMarketTemplates/plugin-dingtalk/avatar.svg",
+  "name": "钉钉 webhook",
+  "avatar": "plugins/dingding",
   "intro": "向钉钉机器人发起 webhook 请求。",
   "courseUrl": "https://open.dingtalk.com/document/robots/custom-robot-access",
   "showStatus": false,
@@ -19,8 +19,8 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 535.7465806305546,
-          "y": -201.26482361861054
+          "x": 557.4542421888484,
+          "y": -131.2827008898969
         },
         "version": "481",
         "inputs": [
@@ -43,25 +43,49 @@
             "renderTypeList": ["input"],
             "required": true,
             "canEdit": true,
-            "value": ""
+            "value": "",
+            "list": []
           },
           {
-            "key": "发送的消息",
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
             "valueType": "string",
-            "label": "发送的消息",
-            "renderTypeList": ["reference"],
-            "required": true,
-            "description": "",
             "canEdit": true,
-            "value": "",
-            "editField": {
-              "key": true
-            },
-            "dynamicParamDefaultValue": {
-              "inputType": "reference",
-              "valueType": "string",
-              "required": true
-            }
+            "key": "加签值",
+            "label": "加签值",
+            "description": "钉钉机器人加签值",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "发送的消息",
+            "label": "发送的消息",
+            "description": "发送的消息",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "发送的消息"
           }
         ],
         "outputs": [
@@ -73,11 +97,18 @@
             "type": "static"
           },
           {
-            "id": "p0m68Dv5KaIp",
-            "key": "发送的消息",
+            "id": "srcret",
             "valueType": "string",
+            "key": "加签值",
+            "label": "加签值",
+            "type": "hidden"
+          },
+          {
+            "id": "发送的消息",
+            "valueType": "string",
+            "key": "发送的消息",
             "label": "发送的消息",
-            "type": "static"
+            "type": "hidden"
           }
         ]
       },
@@ -89,8 +120,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1776.027569211593,
-          "y": -58.264823618610535
+          "x": 2420.0305926489386,
+          "y": -106.28270088989689
         },
         "version": "481",
         "inputs": [],
@@ -104,8 +135,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1069.7228495148624,
-          "y": -392.26482361861054
+          "x": 1645.779103978597,
+          "y": -431.7827008898969
         },
         "version": "481",
         "inputs": [
@@ -170,7 +201,7 @@
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "{{url}}",
+            "value": "{{$a5qdMS7ECNYE.qLUQfhG0ILRX$}}",
             "debugLabel": "",
             "toolDescription": ""
           },
@@ -200,7 +231,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\r\n    \"msgtype\": \"text\",\r\n    \"text\": {\r\n        \"content\": \"{{text}}\"\r\n    }\r\n}",
+            "value": "{\r\n    \"msgtype\": \"text\",\r\n    \"text\": {\r\n        \"content\": \"{{$pluginInput.发送的消息$}}\"\r\n    }\r\n}",
             "label": "",
             "required": false,
             "debugLabel": "",
@@ -225,74 +256,6 @@
             "required": false,
             "debugLabel": "",
             "toolDescription": ""
-          },
-          {
-            "key": "text",
-            "valueType": "string",
-            "label": "text",
-            "renderTypeList": ["reference"],
-            "description": "",
-            "canEdit": true,
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "value": ["pluginInput", "p0m68Dv5KaIp"],
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            }
-          },
-          {
-            "key": "url",
-            "valueType": "string",
-            "label": "url",
-            "renderTypeList": ["reference"],
-            "description": "",
-            "canEdit": true,
-            "editField": {
-              "key": true,
-              "valueType": true
-            },
-            "value": ["pluginInput", "mv52BrPVE6bm"],
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            }
           }
         ],
         "outputs": [
@@ -339,21 +302,235 @@
         "version": "4811",
         "inputs": [],
         "outputs": []
+      },
+      {
+        "nodeId": "a5qdMS7ECNYE",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1106.1011901190363,
+          "y": -407.7827008898969
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": ["hidden"],
+            "label": "",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": ["custom"],
+            "label": "",
+            "value": "function main({url, secret}){\n    const {sign,timestamp} = createHmac('sha256',secret)\n\n    return {\n        result: `${url}&timestamp=${timestamp}&sign=${sign}`\n    }\n}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "url",
+            "label": "url",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "mv52BrPVE6bm"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "secret",
+            "label": "secret",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": ["pluginInput", "srcret"]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          }
+        ]
       }
     ],
     "edges": [
-      {
-        "source": "pluginInput",
-        "target": "rKBYGQuYefae",
-        "sourceHandle": "pluginInput-source-right",
-        "targetHandle": "rKBYGQuYefae-target-left"
-      },
       {
         "source": "rKBYGQuYefae",
         "target": "pluginOutput",
         "sourceHandle": "rKBYGQuYefae-source-right",
         "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "a5qdMS7ECNYE",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "a5qdMS7ECNYE-target-left"
+      },
+      {
+        "source": "a5qdMS7ECNYE",
+        "target": "rKBYGQuYefae",
+        "sourceHandle": "a5qdMS7ECNYE-source-right",
+        "targetHandle": "rKBYGQuYefae-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "6710a5619c45325525326719"
+    }
   }
 }

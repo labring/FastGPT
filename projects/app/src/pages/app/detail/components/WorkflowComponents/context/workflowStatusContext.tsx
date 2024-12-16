@@ -73,7 +73,7 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
       if (isSaved || !leaveSaveSign.current) return;
       console.log('Leave auto save');
       const data = flowData2StoreData();
-      if (!data) return;
+      if (!data || data.nodes.length === 0) return;
       await onSaveApp({
         ...data,
         isPublish: false,
