@@ -9,6 +9,7 @@ export enum UsageSourceEnum {
   share = 'share',
   wecom = 'wecom',
   feishu = 'feishu',
+  dingtalk = 'dingtalk',
   official_account = 'official_account'
 }
 
@@ -39,5 +40,8 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.wecom]: {
     label: i18nT('user:usage.wecom')
+  },
+  [UsageSourceEnum.dingtalk]: {
+    label: i18nT('user:usage.dingtalk')
   }
 };
