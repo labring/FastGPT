@@ -85,3 +85,17 @@ function main({input}){
 ```
 
 ![alt text](/imgs/image-2.png)
+
+### createHmac 加密
+
+与 node 中 crypto 的 createHmac 方法一致。
+
+```js
+function main({secret}){
+    const {sign,timestamp} = createHmac('sha256',secret)
+
+    return {
+        sign,timestamp
+    }
+}
+```

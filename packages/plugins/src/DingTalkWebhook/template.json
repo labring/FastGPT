@@ -1,8 +1,8 @@
 {
   "author": "",
   "version": "4816",
-  "name": "钉钉机器人 webhook",
-  "avatar": "/appMarketTemplates/plugin-dingtalk/avatar.svg",
+  "name": "钉钉 webhook",
+  "avatar": "plugins/dingding",
   "intro": "向钉钉机器人发起 webhook 请求。",
   "courseUrl": "https://open.dingtalk.com/document/robots/custom-robot-access",
   "showStatus": false,
@@ -43,15 +43,16 @@
             "renderTypeList": ["input"],
             "required": true,
             "canEdit": true,
-            "value": ""
+            "value": "",
+            "list": []
           },
           {
             "key": "发送的消息",
             "valueType": "string",
             "label": "发送的消息",
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "required": true,
-            "description": "",
+            "description": "发送的消息",
             "canEdit": true,
             "value": "",
             "editField": {
@@ -61,7 +62,10 @@
               "inputType": "reference",
               "valueType": "string",
               "required": true
-            }
+            },
+            "list": [],
+            "defaultValue": "",
+            "toolDescription": "发送的消息"
           }
         ],
         "outputs": [
@@ -354,6 +358,30 @@
         "sourceHandle": "rKBYGQuYefae-source-right",
         "targetHandle": "pluginOutput-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "6710a5619c45325525326719"
+    }
   }
 }

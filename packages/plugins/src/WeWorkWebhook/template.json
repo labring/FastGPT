@@ -1,9 +1,9 @@
 {
   "author": "",
   "version": "4816",
-  "name": "企业微信机器人 webhook",
-  "avatar": "/appMarketTemplates/plugin-wework/avatar.svg",
-  "intro": "向企业微信机器人发起 webhook 请求。",
+  "name": "企业微信 webhook",
+  "avatar": "plugins/qiwei",
+  "intro": "向企业微信机器人发起 webhook 请求。只能内部群使用。",
   "courseUrl": "https://developer.work.weixin.qq.com/document/path/91770",
   "showStatus": false,
   "weight": 10,
@@ -19,7 +19,7 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 535.7465806305546,
+          "x": 537.6357458754286,
           "y": -201.26482361861054
         },
         "version": "481",
@@ -49,9 +49,9 @@
             "key": "发送的消息",
             "valueType": "string",
             "label": "发送的消息",
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "required": true,
-            "description": "",
+            "description": "发送的消息",
             "canEdit": true,
             "value": "",
             "editField": {
@@ -61,7 +61,10 @@
               "inputType": "reference",
               "valueType": "string",
               "required": true
-            }
+            },
+            "list": [],
+            "defaultValue": "",
+            "toolDescription": "发送的消息"
           }
         ],
         "outputs": [
@@ -354,6 +357,30 @@
         "sourceHandle": "rKBYGQuYefae-source-right",
         "targetHandle": "pluginOutput-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "6710a5619c45325525326719"
+    }
   }
 }
