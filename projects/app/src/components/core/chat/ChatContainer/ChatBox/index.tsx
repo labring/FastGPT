@@ -335,7 +335,6 @@ const ChatBox = ({
 
   // create question guide
   const createQuestionGuide = useCallback(async () => {
-    console.log(questionGuide, '--');
     if (!questionGuide.open || chatController.current?.signal?.aborted) return;
     try {
       const abortSignal = new AbortController();

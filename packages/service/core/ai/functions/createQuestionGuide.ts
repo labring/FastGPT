@@ -18,7 +18,10 @@ export async function createQuestionGuide({
   messages: ChatCompletionMessageParam[];
   model: string;
   customPrompt?: string;
-}) {
+}): Promise<{
+  result: string[];
+  tokens: number;
+}> {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {

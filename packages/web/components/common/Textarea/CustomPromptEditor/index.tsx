@@ -12,7 +12,6 @@ import MyIcon from '../../Icon/index';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { defaultQGConfig } from '@fastgpt/global/core/app/constants';
 import MyModal from '../../MyModal';
 
 const CustomLightTip = () => {
@@ -34,8 +33,12 @@ const CustomLightTip = () => {
 
 const FixBox = ({ children }: { children: React.ReactNode }) => {
   return (
-    <Box px={3} py={2} fontSize="sm" whiteSpace="pre-wrap">
-      <Box bg="yellow.100" px={1} py={0.5} borderRadius="sm">
+    <Box>
+      <Box
+        bg="yellow.100"
+        as="span" // 改为 inline 元素
+        display="inline" // 确保是行内显示
+      >
         {children}
       </Box>
     </Box>
@@ -43,20 +46,21 @@ const FixBox = ({ children }: { children: React.ReactNode }) => {
 };
 
 const CustomPromptEditor = ({
-  defaultValue,
+  defaultValue = '',
+  defaultPrompt,
   footerPrompt,
   onChange,
   onClose
 }: {
-  defaultValue: string;
+  defaultValue?: string;
+  defaultPrompt: string;
   footerPrompt?: string;
   onChange: (e: string) => void;
   onClose: () => void;
 }) => {
   const ref = useRef<HTMLTextAreaElement>(null);
   const { t } = useTranslation();
-  const [value, setValue] = useState(defaultValue);
-  const defaultPrompt = defaultQGConfig.customPrompt;
+  const [value, setValue] = useState(defaultValue || defaultPrompt);
 
   const adjustHeight = useCallback(() => {
     const textarea = ref.current;
@@ -79,9 +83,10 @@ const CustomPromptEditor = ({
       iconSrc="modal/edit"
       title={t('app:core.dataset.import.Custom prompt')}
       w={'100%'}
+      h={'85vh'}
       isCentered
     >
-      <ModalBody>
+      <ModalBody flex={'1 0 0'} display={'flex'} flexDirection={'column'}>
         <CustomLightTip />
 
         <HStack my={3} justifyContent={'space-between'}>
@@ -94,26 +99,33 @@ const CustomPromptEditor = ({
             size={'sm'}
             leftIcon={<MyIcon name={'common/retryLight'} w={'14px'} />}
             px={2}
-            onClick={() => setValue(defaultPrompt || '')}
+            onClick={() => setValue(defaultPrompt)}
           >
             {t('common:common.Reset')}
           </Button>
         </HStack>
 
-        <Box border="1px solid" borderColor="borderColor.base" borderRadius="md" bg={'myGray.50'}>
+        <Box
+          flex={'1 0 0'}
+          overflow={'auto'}
+          border="1px solid"
+          borderColor="borderColor.base"
+          borderRadius="md"
+          bg={'myGray.50'}
+          whiteSpace="pre-wrap"
+          fontSize="sm"
+          p={3}
+        >
           <Textarea
             ref={ref}
-            fontSize={'sm'}
             value={value}
             placeholder={t('common:prompt_input_placeholder')}
-            onChange={(e) => {
-              setValue(e.target.value);
-            }}
+            onChange={(e) => setValue(e.target.value)}
             resize="none"
-            overflow="hidden"
-            p={3}
             bg="transparent"
             border="none"
+            p={0}
+            mb={2}
             _focus={{
               border: 'none',
               boxShadow: 'none'
@@ -130,7 +142,7 @@ const CustomPromptEditor = ({
           <Button
             fontWeight={'medium'}
             onClick={() => {
-              onChange(value);
+              onChange(value.replace(defaultValue, ''));
               onClose();
             }}
             w={20}

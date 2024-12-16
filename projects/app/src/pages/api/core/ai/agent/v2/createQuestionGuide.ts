@@ -9,7 +9,6 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { PROMPT_QUESTION_GUIDE_FOOTER } from '@fastgpt/global/core/ai/prompt/agent';
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   appId: string;
@@ -59,15 +58,13 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
     customPrompt: questionGuide?.customPrompt
   });
 
-  jsonRes(res, {
-    data: result
-  });
-
   pushQuestionGuideUsage({
     tokens,
     teamId,
     tmbId
   });
+
+  return result;
 }
 
 export default NextAPI(handler);

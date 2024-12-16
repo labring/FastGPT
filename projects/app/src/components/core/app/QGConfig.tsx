@@ -2,7 +2,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, ModalBody, useDisclosure, Switch, BoxProps } from '@chakra-ui/react';
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -13,7 +13,10 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
-import { PROMPT_QUESTION_GUIDE_FOOTER } from '@fastgpt/global/core/ai/prompt/agent';
+import {
+  PROMPT_QUESTION_GUIDE,
+  PROMPT_QUESTION_GUIDE_FOOTER
+} from '@fastgpt/global/core/ai/prompt/agent';
 
 // question generator config
 const QGConfig = ({
@@ -25,38 +28,12 @@ const QGConfig = ({
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { llmModelList } = useSystemStore();
-
-  const {
-    isOpen: isOpenCustomPrompt,
-    onOpen: onOpenCustomPrompt,
-    onClose: onCloseCustomPrompt
-  } = useDisclosure();
 
   const isOpenQG = value.open;
-  const customPrompt = value.customPrompt;
 
   const formLabel = isOpenQG
     ? t('common:core.app.whisper.Open')
     : t('common:core.app.whisper.Close');
-
-  const onChangeModel = useCallback(
-    (model: string) => {
-      onChange({
-        ...value,
-        model
-      });
-    },
-    [onChange, value]
-  );
-
-  const LabelStyles: BoxProps = {
-    display: 'flex',
-    alignItems: 'center',
-    fontSize: 'sm',
-    color: 'myGray.900',
-    width: ['6rem', '8rem']
-  };
 
   return (
     <Flex alignItems={'center'}>
@@ -76,21 +53,132 @@ const QGConfig = ({
         </Button>
       </MyTooltip>
 
-      {isOpen && (
-        <QGConfigModal
-          onClose={onClose}
-          value={value}
-          onChange={onChange}
-          onOpenCustomPrompt={onOpenCustomPrompt}
-          llmModelList={llmModelList}
-          LabelStyles={LabelStyles}
-          onChangeModel={onChangeModel}
-        />
-      )}
+      {isOpen && <QGConfigModal value={value} onChange={onChange} onClose={onClose} />}
+    </Flex>
+  );
+};
 
+export default QGConfig;
+
+const LabelStyles: BoxProps = {
+  display: 'flex',
+  alignItems: 'center',
+  fontSize: 'sm',
+  color: 'myGray.900',
+  width: ['6rem', '8rem']
+};
+const QGConfigModal = ({
+  value,
+  onClose,
+  onChange
+}: {
+  value: AppQGConfigType;
+  onChange: (e: AppQGConfigType) => void;
+  onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+  const { llmModelList } = useSystemStore();
+
+  const customPrompt = value.customPrompt;
+  const isOpenQG = value.open;
+  const model = value?.model || llmModelList?.[0]?.model;
+
+  const {
+    isOpen: isOpenCustomPrompt,
+    onOpen: onOpenCustomPrompt,
+    onClose: onCloseCustomPrompt
+  } = useDisclosure();
+
+  return (
+    <>
+      <MyModal
+        title={t('common:core.chat.Question Guide')}
+        iconSrc="core/chat/QGFill"
+        isOpen
+        onClose={onClose}
+        width="500px"
+      >
+        <ModalBody px={[5, 10]} py={[4, 8]} pb={[4, 12]}>
+          <Flex justifyContent={'space-between'} alignItems={'center'}>
+            <FormLabel flex={'0 0 100px'}>{t('app:core.app.QG.Switch')}</FormLabel>
+            <Switch
+              isChecked={isOpenQG}
+              onChange={(e) => {
+                onChange({
+                  ...value,
+                  open: e.target.checked
+                });
+              }}
+            />
+          </Flex>
+          {isOpenQG && (
+            <>
+              <Flex alignItems={'center'} mt={4}>
+                <Box {...LabelStyles} mr={2}>
+                  {t('common:core.ai.Model')}
+                </Box>
+                <Box flex={'1 0 0'}>
+                  <AIModelSelector
+                    width={'100%'}
+                    value={model}
+                    list={llmModelList.map((item) => ({
+                      value: item.model,
+                      label: item.name
+                    }))}
+                    onchange={(e) => {
+                      onChange({
+                        ...value,
+                        model: e
+                      });
+                    }}
+                  />
+                </Box>
+              </Flex>
+
+              <Box mt={4}>
+                <Flex alignItems={'center'} mb={1}>
+                  <FormLabel>{t('app:core.dataset.import.Custom prompt')}</FormLabel>
+                  <QuestionTip ml={1} label={t('common:core.app.QG.Custom prompt tip')} />
+                  <Box flex={1} />
+                  <Button
+                    size="xs"
+                    variant={'transparentBase'}
+                    leftIcon={<MyIcon name={'edit'} w={'14px'} />}
+                    onClick={onOpenCustomPrompt}
+                  >
+                    {t('common:common.Edit')}
+                  </Button>
+                </Flex>
+                <Box
+                  position={'relative'}
+                  bg={'myGray.50'}
+                  border={'1px'}
+                  borderColor={'borderColor.base'}
+                  borderRadius={'md'}
+                  maxH={'200px'}
+                  overflow={'auto'}
+                  px={3}
+                  py={2}
+                  fontSize={'sm'}
+                  textAlign={'justify'}
+                  whiteSpace={'pre-wrap'}
+                  _hover={{
+                    '& .mask': {
+                      display: 'block'
+                    }
+                  }}
+                >
+                  {customPrompt || PROMPT_QUESTION_GUIDE}
+                </Box>
+              </Box>
+            </>
+          )}
+        </ModalBody>
+      </MyModal>
       {isOpenCustomPrompt && (
         <CustomPromptEditor
-          defaultValue={customPrompt || ''}
+          defaultValue={customPrompt}
+          defaultPrompt={PROMPT_QUESTION_GUIDE}
           footerPrompt={PROMPT_QUESTION_GUIDE_FOOTER}
           onChange={(e) => {
             onChange({
@@ -101,126 +189,6 @@ const QGConfig = ({
           onClose={onCloseCustomPrompt}
         />
       )}
-    </Flex>
-  );
-};
-
-export default QGConfig;
-
-const QGConfigModal = ({
-  onClose,
-  value,
-  onChange,
-  onOpenCustomPrompt,
-  llmModelList,
-  LabelStyles,
-  onChangeModel
-}: {
-  onClose: () => void;
-  value: AppQGConfigType;
-  onChange: (e: AppQGConfigType) => void;
-  onOpenCustomPrompt: () => void;
-  llmModelList: any[];
-  LabelStyles: BoxProps;
-  onChangeModel: (model: string) => void;
-}) => {
-  const { t } = useTranslation();
-  const isOpenQG = value.open;
-  const model = value?.model;
-  const customPrompt = value.customPrompt;
-
-  return (
-    <MyModal
-      title={t('common:core.chat.Question Guide')}
-      iconSrc="core/chat/QGFill"
-      isOpen
-      onClose={onClose}
-      width="500px"
-    >
-      <ModalBody px={[5, 10]} py={[4, 8]} pb={[4, 12]}>
-        <Flex justifyContent={'space-between'} alignItems={'center'}>
-          <FormLabel flex={'0 0 100px'}>{t('app:core.app.QG.Switch')}</FormLabel>
-          <Switch
-            isChecked={isOpenQG}
-            onChange={(e) => {
-              onChange({
-                ...value,
-                open: e.target.checked
-              });
-            }}
-          />
-        </Flex>
-        {isOpenQG && (
-          <>
-            <Flex alignItems={'center'} mt={4}>
-              <Box {...LabelStyles} mr={2}>
-                {t('common:core.ai.Model')}
-              </Box>
-              <Box flex={'1 0 0'}>
-                <AIModelSelector
-                  width={'100%'}
-                  value={model}
-                  list={llmModelList.map((item) => ({
-                    value: item.model,
-                    label: item.name
-                  }))}
-                  onchange={onChangeModel}
-                />
-              </Box>
-            </Flex>
-
-            <Box mt={4}>
-              <Flex alignItems={'center'} mb={1}>
-                <FormLabel>{t('app:core.dataset.import.Custom prompt')}</FormLabel>
-                <QuestionTip ml={1} label={t('common:core.app.QG.Custom prompt tip')} />
-              </Flex>
-              <Box
-                position={'relative'}
-                bg={'myGray.50'}
-                border={'1px'}
-                borderColor={'borderColor.base'}
-                borderRadius={'md'}
-                maxH={'200px'}
-                overflow={'hidden'}
-                px={3}
-                py={2}
-                _hover={{
-                  '& .mask': {
-                    display: 'block'
-                  }
-                }}
-              >
-                <Box fontSize={'sm'}>{customPrompt}</Box>
-                <Box
-                  display={'none'}
-                  className="mask"
-                  position={'absolute'}
-                  inset={0}
-                  height={'100%'}
-                  pointerEvents={'none'}
-                  background={
-                    'linear-gradient(182deg, rgba(255, 255, 255, 0.00) 1.76%, #FFF 84.07%)'
-                  }
-                >
-                  <Button
-                    size="xs"
-                    variant={'whiteBase'}
-                    leftIcon={<MyIcon name={'edit'} w={'13px'} />}
-                    color={'black'}
-                    position={'absolute'}
-                    right={2}
-                    bottom={2}
-                    pointerEvents={'auto'}
-                    onClick={onOpenCustomPrompt}
-                  >
-                    {t('app:core.dataset.import.Custom prompt')}
-                  </Button>
-                </Box>
-              </Box>
-            </Box>
-          </>
-        )}
-      </ModalBody>
-    </MyModal>
+    </>
   );
 };
