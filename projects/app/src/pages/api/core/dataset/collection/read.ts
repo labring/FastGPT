@@ -12,6 +12,7 @@ import { AIChatItemType, ChatHistoryItemResType } from '@fastgpt/global/core/cha
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
 
 export type readCollectionSourceQuery = {};
 
@@ -148,11 +149,25 @@ async function handler(
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
       const apiServer = collection.datasetId.apiServer;
-      if (!apiServer) return Promise.reject('apiServer not found');
+      const feishuServer = collection.datasetId.feishuServer;
+      const yuqueServer = collection.datasetId.yuqueServer;
 
-      return useApiDatasetRequest({ apiServer }).getFilePreviewUrl({
-        apiFileId: collection.apiFileId
-      });
+      if (apiServer) {
+        return useApiDatasetRequest({ apiServer }).getFilePreviewUrl({
+          apiFileId: collection.apiFileId
+        });
+      }
+
+      if (feishuServer || yuqueServer) {
+        return POST<string>(`/core/dataset/systemApiDataset`, {
+          type: 'read',
+          apiFileId: collection.apiFileId,
+          feishuServer,
+          yuqueServer
+        });
+      }
+
+      return '';
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.datasetId.externalReadUrl) {

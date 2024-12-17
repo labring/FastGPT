@@ -26,7 +26,9 @@ async function handler(
     avatar,
     vectorModel = global.vectorModels[0].model,
     agentModel = getDatasetModel().model,
-    apiServer
+    apiServer,
+    feishuServer,
+    yuqueServer
   } = req.body;
 
   // auth
@@ -70,7 +72,9 @@ async function handler(
     agentModel,
     avatar,
     type,
-    apiServer
+    apiServer,
+    feishuServer,
+    yuqueServer
   });
 
   return _id;
