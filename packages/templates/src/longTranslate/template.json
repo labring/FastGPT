@@ -2,7 +2,7 @@
   "name": "长文翻译专家",
   "intro": "使用专有名称知识库协助翻译,更适合长文本的翻译机器人",
   "author": "",
-  "avatar": "/appMarketTemplates/TranslateRobot/avatar.svg",
+  "avatar": "core/app/templates/TranslateRobot",
   "tags": ["office-services"],
   "type": "advanced",
   "workflow": {

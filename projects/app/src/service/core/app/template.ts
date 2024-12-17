@@ -1,32 +1,11 @@
 import { isProduction } from '@fastgpt/global/common/system/constants';
-import { readdirSync, readFileSync } from 'fs';
-import path from 'path';
+import { getCommunityTemplates } from '@fastgpt/templates/register';
 
 // Get template from memory or file system
 const loadTemplateMarketItems = async () => {
   if (isProduction && global.appMarketTemplates) return global.appMarketTemplates;
 
-  const templatesDir = path.join(process.cwd(), 'public', 'appMarketTemplates');
-  const templateNames = readdirSync(templatesDir);
-
-  global.appMarketTemplates = templateNames.map((name) => {
-    try {
-      const filePath = path.join(templatesDir, name, 'template.json');
-      const fileContent = readFileSync(filePath, 'utf-8');
-      const data = JSON.parse(fileContent);
-      return {
-        id: name,
-        ...data
-      };
-    } catch (error) {
-      console.error(`Error fetching template ${name}:`, error);
-      return null;
-    }
-  });
-
-  global.appMarketTemplates.sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0));
-
-  return global.appMarketTemplates;
+  return getCommunityTemplates();
 };
 
 export const getTemplateMarketItemDetail = async (id: string) => {
