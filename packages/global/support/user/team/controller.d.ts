@@ -12,6 +12,7 @@ export type CreateTeamProps = {
   avatar?: string;
   defaultTeam?: boolean;
   lafAccount?: LafAccountType;
+  memberName?: string;
 };
 export type UpdateTeamProps = {
   name?: string;
