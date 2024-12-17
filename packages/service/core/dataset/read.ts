@@ -93,52 +93,45 @@ export const readDatasetSourceRawText = async ({
     });
     return rawText;
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
-    if (apiServer) {
-      const rawText = await readApiServerFileContent({
-        apiServer,
-        apiFileId: sourceId,
-        teamId
-      });
-      return rawText;
-    } else {
-      const rawText = await readSystemApiServerFileContent({
-        apiFileId: sourceId,
-        feishuServer,
-        yuqueServer
-      });
-      return rawText;
-    }
+    const rawText = await readApiServerFileContent({
+      apiServer,
+      feishuServer,
+      yuqueServer,
+      apiFileId: sourceId,
+      teamId
+    });
+    return rawText;
   }
   return '';
 };
 
-export const readSystemApiServerFileContent = async ({
-  apiFileId,
-  feishuServer,
-  yuqueServer
-}: {
-  apiFileId: string;
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
-}) => {
-  return await POST<string>(`/core/dataset/systemApiDataset`, {
-    type: 'content',
-    feishuServer,
-    yuqueServer,
-    apiFileId
-  });
-};
-
 export const readApiServerFileContent = async ({
   apiServer,
+  feishuServer,
+  yuqueServer,
   apiFileId,
   teamId
 }: {
-  apiServer: APIFileServer;
+  apiServer?: APIFileServer;
+  feishuServer?: FeishuServer;
+  yuqueServer?: YuqueServer;
   apiFileId: string;
   teamId: string;
 }) => {
-  return useApiDatasetRequest({ apiServer }).getFileContent({ teamId, apiFileId });
+  if (apiServer) {
+    return useApiDatasetRequest({ apiServer }).getFileContent({ teamId, apiFileId });
+  }
+
+  if (feishuServer || yuqueServer) {
+    return POST<string>(`/core/dataset/systemApiDataset`, {
+      type: 'content',
+      feishuServer,
+      yuqueServer,
+      apiFileId
+    });
+  }
+
+  return Promise.reject('No apiServer or feishuServer or yuqueServer');
 };
 
 export const rawText2Chunks = ({

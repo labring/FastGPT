@@ -10,10 +10,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CreateCollectionResponse } from '@/global/core/dataset/api';
-import {
-  readApiServerFileContent,
-  readSystemApiServerFileContent
-} from '@fastgpt/service/core/dataset/read';
+import { readApiServerFileContent } from '@fastgpt/service/core/dataset/read';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
@@ -54,17 +51,13 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     return Promise.reject(DatasetErrEnum.sameApiCollection);
   }
 
-  const content = apiServer
-    ? await readApiServerFileContent({
-        apiServer,
-        apiFileId,
-        teamId
-      })
-    : await readSystemApiServerFileContent({
-        apiFileId,
-        feishuServer,
-        yuqueServer
-      });
+  const content = await readApiServerFileContent({
+    apiServer,
+    feishuServer,
+    yuqueServer,
+    apiFileId,
+    teamId
+  });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,

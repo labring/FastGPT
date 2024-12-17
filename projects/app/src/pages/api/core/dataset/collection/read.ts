@@ -158,7 +158,7 @@ async function handler(
         });
       }
 
-      return await POST<string>(`/core/dataset/systemApiDataset`, {
+      return POST<string>(`/core/dataset/systemApiDataset`, {
         type: 'read',
         apiFileId: collection.apiFileId,
         feishuServer,
