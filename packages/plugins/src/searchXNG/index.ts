@@ -16,25 +16,18 @@ interface SearchResult {
 
 type Response = Promise<{
   result: string;
+  error?: Record<string, any>;
 }>;
 
 const main = async (props: Props, retry = 3): Response => {
   const { query, url } = props;
 
   if (!query) {
-    return {
-      result: JSON.stringify({
-        error: '缺少查询参数'
-      })
-    };
+    return Promise.reject('缺少查询参数');
   }
 
   if (!url) {
-    return {
-      result: JSON.stringify({
-        error: '缺少url'
-      })
-    };
+    return Promise.reject('缺少url');
   }
 
   try {
@@ -65,9 +58,10 @@ const main = async (props: Props, retry = 3): Response => {
     if (retry <= 0) {
       addLog.warn('Search XNG error', { error });
       return {
-        result: JSON.stringify({
-          error: getErrText(error, 'Failed to fetch data from Search XNG')
-        })
+        result: '',
+        error: {
+          message: getErrText(error, 'Failed to fetch data from Search XNG')
+        }
       };
     }
 
