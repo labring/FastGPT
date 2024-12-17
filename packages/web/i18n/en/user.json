@@ -26,6 +26,7 @@
   "login.error": "Login Error",
   "login.password_condition": "Password can be up to 60 characters",
   "login.success": "Login Successful",
+  "login.Dingtalk": "DingTalk Login",
   "manage_team": "Manage team",
   "name": "Name",
   "notification.Bind Notification Pipe Hint": "Please bind a notification receiving account to ensure you receive notifications such as plan expiration reminders, ensuring your service runs smoothly.",
@@ -114,6 +115,7 @@
   "team.no_collaborators": "No Collaborators",
   "team.write_role_member": "",
   "usage.feishu": "Feishu",
+  "usage.dingtalk": "DingTalk",
   "usage.official_account": "Official Account",
   "usage.share": "Share Link",
   "usage.wecom": "WeCom"

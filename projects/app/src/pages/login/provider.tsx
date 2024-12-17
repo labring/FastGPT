@@ -79,12 +79,8 @@ const provider = () => {
       return;
     }
 
-    if (
-      !code ||
-      !loginStore ||
-      (loginStore.provider !== OAuthEnum.sso && (!loginStore.state || !state))
-    )
-      return;
+    console.log('SSO', { loginStore, code, state });
+    if (!code || !loginStore) return;
 
     if (isOauthLogging) return;
 

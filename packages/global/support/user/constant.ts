@@ -16,5 +16,6 @@ export enum OAuthEnum {
   google = 'google',
   wechat = 'wechat',
   microsoft = 'microsoft',
+  dingtalk = 'dingtalk',
   sso = 'sso'
 }
