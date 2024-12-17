@@ -158,12 +158,16 @@ async function handler(
         });
       }
 
-      return POST<string>(`/core/dataset/systemApiDataset`, {
-        type: 'read',
-        apiFileId: collection.apiFileId,
-        feishuServer,
-        yuqueServer
-      });
+      if (feishuServer || yuqueServer) {
+        return POST<string>(`/core/dataset/systemApiDataset`, {
+          type: 'read',
+          apiFileId: collection.apiFileId,
+          feishuServer,
+          yuqueServer
+        });
+      }
+
+      return '';
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.datasetId.externalReadUrl) {
