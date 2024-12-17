@@ -256,6 +256,7 @@ export const iconPaths = {
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
   'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
+  'core/workflow/template/searxng': () => import('./icons/core/workflow/template/searxng.svg'),
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
