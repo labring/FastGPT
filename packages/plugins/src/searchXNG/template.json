@@ -84,8 +84,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1759.5180706702588,
-          "y": -60.56127656499825
+          "x": 1763.7518709731714,
+          "y": -55.56127656499825
         },
         "version": "481",
         "inputs": [
@@ -97,6 +97,17 @@
             "label": "result",
             "description": " 检索结果",
             "value": ["hjnVuJAOwyXV", "lEyy5QqyIBrK"]
+          },
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "object",
+            "canEdit": true,
+            "key": "error",
+            "label": "error",
+            "isToolOutput": true,
+            "description": "请求错误",
+            "required": true,
+            "value": ["hjnVuJAOwyXV", "error"]
           }
         ],
         "outputs": []
@@ -376,6 +387,8 @@
       }
     ],
     "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
       "questionGuide": false,
       "ttsConfig": {
         "type": "web"
@@ -395,8 +408,7 @@
         "open": false,
         "defaultPrompt": ""
       },
-      "variables": [],
-      "welcomeText": ""
+      "_id": "67611a5eed7efa452a6e50c5"
     }
   }
 }

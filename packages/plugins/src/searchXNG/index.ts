@@ -57,12 +57,7 @@ const main = async (props: Props, retry = 3): Response => {
     console.log(error);
     if (retry <= 0) {
       addLog.warn('Search XNG error', { error });
-      return {
-        result: '',
-        error: {
-          message: getErrText(error, 'Failed to fetch data from Search XNG')
-        }
-      };
+      return Promise.reject('Failed to fetch data from Search XNG');
     }
 
     await delay(Math.random() * 5000);
