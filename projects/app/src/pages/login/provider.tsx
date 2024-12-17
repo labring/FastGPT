@@ -43,7 +43,18 @@ const provider = () => {
           type: loginStore?.provider as `${OAuthEnum}`,
           code,
           callbackUrl: `${location.origin}/login/provider`,
-          inviterId: localStorage.getItem('inviterId') || undefined
+          inviterId: localStorage.getItem('inviterId') || undefined,
+          bd_vid: sessionStorage.getItem('bd_vid') || undefined,
+          fastgpt_sem: (() => {
+            try {
+              return sessionStorage.getItem('fastgpt_sem')
+                ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
+                : undefined;
+            } catch {
+              return undefined;
+            }
+          })(),
+          sourceDomain: sessionStorage.getItem('sourceDomain') || undefined
         });
 
         if (!res) {
