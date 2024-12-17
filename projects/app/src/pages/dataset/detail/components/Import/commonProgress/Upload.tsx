@@ -177,8 +177,7 @@ const Upload = () => {
         router.replace({
           query: {
             datasetId: datasetDetail._id,
-            currentTab: retrainNewCollectionId.current ? TabEnum.dataCard : TabEnum.collectionCard,
-            collectionId: retrainNewCollectionId.current
+            currentTab: TabEnum.collectionCard
           }
         });
       },

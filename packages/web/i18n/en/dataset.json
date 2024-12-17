@@ -25,6 +25,7 @@
   "dataset.Unsupported operation": "dataset.Unsupported operation",
   "dataset.no_collections": "No datasets available",
   "dataset.no_tags": "No tags available",
+  "edit_dataset_config": "Edit knowledge base configuration",
   "error.collectionNotFound": "Collection not found~",
   "external_file": "External File Library",
   "external_file_dataset_desc": "Import files from an external file library to build a Dataset. The files will not be stored again.",
