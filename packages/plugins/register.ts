@@ -27,7 +27,8 @@ const packagePluginList = [
   'wiki',
   'databaseConnection',
   'Doc2X',
-  'Doc2X/PDF2text'
+  'Doc2X/PDF2text',
+  'searchXNG'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
