@@ -9,13 +9,11 @@ async function handler(
   req: ApiRequestProps<OutLinkOffiAccountBody, OutLinkOffiAccountQuery>,
   res: ApiResponseType<any>
 ): Promise<any> {
-  const { token, type } = req.query;
+  const { token } = req.query;
   const result = await plusRequest({
+    method: req.method,
     url: `support/outLink/offiaccount/${token}`,
-    params: {
-      ...req.query,
-      type
-    },
+    params: req.query,
     data: req.body
   });
 

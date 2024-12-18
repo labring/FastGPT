@@ -10,7 +10,6 @@ import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import CloseIcon from '@fastgpt/web/components/common/Icon/close';
-import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { PcHeader } from '@/pages/chat/components/ChatHeader';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
@@ -22,6 +21,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
+const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
 
 type Props = {
   appId: string;
@@ -148,10 +148,12 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         )}
 
         {/* Chat container */}
-        <Box pt={2} flex={'1 0 0'}>
+        <Box pt={2} flex={'1 0 0'} h={0}>
           {isPlugin ? (
-            <Box px={5} pt={2} h={'100%'}>
-              <PluginRunBox appId={appId} chatId={chatId} />
+            <Box h={'100%'} overflow={'auto'}>
+              <Box px={5} py={2}>
+                <PluginRunBox appId={appId} chatId={chatId} />
+              </Box>
             </Box>
           ) : (
             <ChatBox

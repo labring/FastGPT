@@ -72,6 +72,7 @@ const ChatSchema = new Schema({
     type: Object,
     default: {}
   },
+  pluginInputs: Array,
   metadata: {
     //For special storage
     type: Object,
