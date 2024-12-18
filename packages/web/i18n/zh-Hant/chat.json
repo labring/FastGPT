@@ -33,6 +33,7 @@
   "multiple_AI_conversations": "多組 AI 對話",
   "new_input_guide_lexicon": "新增詞彙庫",
   "no_workflow_response": "無工作流程資料",
+  "not_query": "缺少查詢內容",
   "not_select_file": "尚未選取檔案",
   "plugins_output": "外掛程式輸出",
   "question_tip": "由上至下，各個模組的回應順序",

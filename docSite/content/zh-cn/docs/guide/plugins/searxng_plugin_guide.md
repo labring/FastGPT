@@ -7,54 +7,50 @@ toc: true
 weight: 303
 ---
 
-1. # 创建应用
+[SearXNG](https://github.com/searxng/searxng)是一款免费的互联网元搜索引擎，它汇总了来自各种搜索服务和数据库的结果。它不会跟踪或分析用户。用户可以自行部署它进行使用。本文介绍 Searxng 的部署以及接入 FastGPT 插件。
 
-https://hzh.sealos.run/
 
-在 Sealos 上部署 SearXNG 实例：
+## 1. 部署应用
 
-![](/imgs/searxng_plugin_guide1.png)
+这里介绍在 Sealos 中部署 SearXNG 的方法。Docker 部署，可以直接参考 [SearXNG 官方教程](https://github.com/searxng/searxng)。
 
-### 基础配置
+点击打开 [Sealos 北京区](https://bja.sealos.run/)，点击应用部署，并新建一个应用：
 
-在应用管理中部署镜像实例
+| 打开应用部署 | 点击新建应用 |
+| --- | --- |
+| ![](/imgs/searxng_plugin_guide1.png) | ![alt text](/imgs/image-45.png) |
 
-配置 CPU 和内存（可按需调整）
+## 2. 部署配置
 
-确保开启公网访问
+把下面参数，填入配置中：
 
-![](/imgs/searxng_plugin_guide2.png)
+* 镜像名: searxng/searxng:latest
+* CPU: 0.2
+* 内存: 512M
+* 容器暴露端口: 8080
+* 开启公网访问
+* 点击高级配置，填写环境变量和配置文件
 
-![](/imgs/searxng_plugin_guide3.png)
+![alt text](/imgs/image-50.png)
 
-### 环境变量设置
+**环境变量**
 
-```Bash
-BASE_URL=https://pnesddlhqgog.sealoshzh.site
-INSTANCE_NAME=searxng
-AUTOCOMPLETE=google
+填下面两个内容，主要是为了减小并发，不然内存占用非常大。
+
+```
+UWSGI_WORKERS=4
+UWSGI_THREADS=4
 ```
 
-### 配置文件注意事项
+**配置文件**
 
-注意事项：
+新增一个配置文件，文件名：`/etc/searx/settings.yml`
+文件内容：
 
-1. instance_name 设置实例名称
-2. base_url 设置为 Sealos 分配的公网地址
-3. secret_key 需要 SHA-256 哈希值，可通过以下命令生成：
-
-```Bash
-openssl rand -hex 32
-```
-
-1. 为了配置的调整，如用更多的引擎，可以参考https://github.com/searxng/searxng/blob/master/searx/settings.yml
-
-![](/imgs/searxng_plugin_guide4.png)
-
-```Bash
+```txt
 general:
   debug: false
-  instance_name: "名称"
+  instance_name: "searxng"
   privacypolicy_url: false
   donation_url: false
   contact_url: false
@@ -81,7 +77,7 @@ search:
 server:
   port: 8080
   bind_address: "0.0.0.0"
-  base_url: "https://example.site/"
+  base_url: false
   limiter: false
   public_instance: false
   secret_key: "example"
@@ -122,12 +118,6 @@ engines:
   - name: bing
     engine: bing
     shortcut: bi
-    timeout: 10.0
-    
-  - name: mojeek
-    engine: mojeek
-    shortcut: mj
-    timeout: 10.0
 
 doi_resolvers:
   oadoi.org: 'https://oadoi.org/'
@@ -140,29 +130,29 @@ doi_resolvers:
 default_doi_resolver: 'oadoi.org'
 ```
 
-1. # 设置调用
+国内目前只有 Bing 引擎可以正常用，所以上面的配置只配置了 bing 引擎。如果在海外部署，可以使用[Sealos 新加坡可用区](https://cloud.sealos.io/)，并配置其他搜索引擎，可以参考[SearXNG 默认配置文件](https://github.com/searxng/searxng/blob/master/searx/settings.yml), 从里面复制一些 engine 配置。例如：
 
-进入自己sealos部署的实例：
+```
+  - name: duckduckgo
+    engine: duckduckgo
+    shortcut: ddg
 
-![](/imgs/searxng_plugin_guide5.png)
+  - name: google
+    engine: google
+    shortcut: go
+```
 
-设置配置：
+## 3. FastGPT 使用
 
-![](/imgs/searxng_plugin_guide6.png)
+复制 Sealos 部署后提供的公网地址，填入 FastGPT 的 SearXNG 插件的 URL 中。
 
-1. # 插件使用
+| 复制公网地址| 填入 URL |
+| --- | --- |
+| ![alt text](/imgs/image-48.png) | ![alt text](/imgs/image-49.png) |
 
-### 参数说明
+## 返回格式
 
-query: 搜索关键词（必填）
-
-url: SearXNG 实例地址（必填，填入 Sealos 部署后得到的 URL）
-
-![](/imgs/searxng_plugin_guide7.png)
-
-### 返回格式
-
-1. 成功时返回搜索结果数组：
+* 成功时返回搜索结果数组：
 
 ```Bash
 {
@@ -170,13 +160,19 @@ url: SearXNG 实例地址（必填，填入 Sealos 部署后得到的 URL）
 }
 ```
 
-1. 失败时通过 Promise.reject 返回错误信息：
+* 失败时通过 Promise.reject 可能返回错误信息：
 
 ```Bash
-// 可能的错误信息：
 - "缺少查询参数"
 - "缺少url"
 - "Failed to fetch data from Search XNG"
 ```
 
 一般问题来源于参数缺失与服务部署，如有更多问题可在用户群提问。
+
+## FAQ
+
+### 无搜索结果
+
+1. 先直接打开外网地址，测试是否可以正常搜索。
+2. 检查是否有超时的搜索引擎，通过 API 调用时不会返回结果。

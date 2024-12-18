@@ -1,7 +1,6 @@
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '@fastgpt/service/common/system/log';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import * as cheerio from 'cheerio';
+import { i18nT } from '../../../web/i18n/utils';
 
 type Props = {
   query: string;
@@ -23,17 +22,16 @@ const main = async (props: Props, retry = 3): Response => {
   const { query, url } = props;
 
   if (!query) {
-    return Promise.reject('缺少查询参数');
+    return Promise.reject(i18nT('chat:not_query'));
   }
 
   if (!url) {
-    return Promise.reject('缺少url');
+    return Promise.reject('Can not find url');
   }
 
   try {
-    const response = await fetch(`${url}?q=${encodeURIComponent(query)}`);
+    const response = await fetch(`${url}?q=${encodeURIComponent(query)}&language=auto`);
     const html = await response.text();
-
     const $ = cheerio.load(html, {
       xml: false,
       decodeEntities: true
@@ -56,11 +54,11 @@ const main = async (props: Props, retry = 3): Response => {
   } catch (error) {
     console.log(error);
     if (retry <= 0) {
-      addLog.warn('Search XNG error', { error });
+      console.log('Search XNG error', { error });
       return Promise.reject('Failed to fetch data from Search XNG');
     }
 
-    await delay(Math.random() * 5000);
+    await delay(Math.random() * 2000);
     return main(props, retry - 1);
   }
 };
