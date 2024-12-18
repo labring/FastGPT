@@ -16,6 +16,7 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
 import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
 import { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { FlowNodeInputItemType } from '../workflow/type/io';
 
 export type ChatSchema = {
   _id: string;
@@ -35,6 +36,7 @@ export type ChatSchema = {
   variableList?: VariableItemType[];
   welcomeText?: string;
   variables: Record<string, any>;
+  pluginInputs?: FlowNodeInputItemType[];
   metadata?: Record<string, any>;
 };
 

@@ -29,13 +29,12 @@ import {
 } from '@/web/core/dataset/api/collaborator';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
-import EditAPIDatasetInfoModal, {
-  EditAPIDatasetInfoFormType
-} from './components/EditApiServiceModal';
+import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
+const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -326,6 +325,56 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </Box>
           </>
         )}
+
+        {datasetDetail.type === DatasetTypeEnum.yuque && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:yuque_dataset_config')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      yuqueServer: datasetDetail.yuqueServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>{datasetDetail.yuqueServer?.userId}</Box>
+            </Box>
+          </>
+        )}
+
+        {datasetDetail.type === DatasetTypeEnum.feishu && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:feishu_dataset_config')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      feishuServer: datasetDetail.feishuServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>{datasetDetail.feishuServer?.folderToken}</Box>
+            </Box>
+          </>
+        )}
       </Box>
 
       {datasetDetail.permission.hasManagePer && (
@@ -384,12 +433,14 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       {editedAPIDataset && (
         <EditAPIDatasetInfoModal
           {...editedAPIDataset}
-          title={t('common:dataset.Edit API Service')}
+          title={t('dataset:edit_dataset_config')}
           onClose={() => setEditedAPIDataset(undefined)}
           onEdit={(data) =>
             updateDataset({
               id: datasetId,
-              apiServer: data.apiServer
+              apiServer: data.apiServer,
+              yuqueServer: data.yuqueServer,
+              feishuServer: data.feishuServer
             })
           }
         />

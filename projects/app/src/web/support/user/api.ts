@@ -9,7 +9,10 @@ import type {
   OauthLoginProps,
   PostLoginProps
 } from '@fastgpt/global/support/user/api.d';
-import { GetWXLoginQRResponse } from '@fastgpt/global/support/user/login/api.d';
+import {
+  AccountRegisterBody,
+  GetWXLoginQRResponse
+} from '@fastgpt/global/support/user/login/api.d';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -33,16 +36,7 @@ export const postRegister = ({
   inviterId,
   bd_vid,
   fastgpt_sem
-}: {
-  username: string;
-  code: string;
-  password: string;
-  inviterId?: string;
-  bd_vid?: string;
-  fastgpt_sem?: {
-    keyword: string;
-  };
-}) =>
+}: AccountRegisterBody) =>
   POST<ResLogin>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
     code,

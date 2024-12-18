@@ -126,7 +126,6 @@ const Workflow = () => {
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
         </>
 
-        <ContextMenu />
         <ReactFlow
           ref={reactFlowWrapper}
           fitView
@@ -162,6 +161,7 @@ const Workflow = () => {
             : {})}
           onNodeDragStop={onNodeDragStop}
         >
+          <ContextMenu />
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>

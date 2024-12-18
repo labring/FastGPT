@@ -34,12 +34,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   });
 
   const apiServer = dataset.apiServer;
-  if (!apiServer) {
-    return Promise.reject('Api server not found');
-  }
-  if (!apiFileId) {
-    return Promise.reject('ApiFileId not found');
-  }
+  const feishuServer = dataset.feishuServer;
+  const yuqueServer = dataset.yuqueServer;
 
   // Auth same apiFileId
   const storeCol = await MongoDatasetCollection.findOne(
@@ -57,6 +53,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
 
   const content = await readApiServerFileContent({
     apiServer,
+    feishuServer,
+    yuqueServer,
     apiFileId,
     teamId
   });

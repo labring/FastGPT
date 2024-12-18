@@ -10,7 +10,7 @@ import {
 } from './constants';
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
-import { APIFileServer } from './apiDataset';
+import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -33,6 +33,8 @@ export type DatasetSchemaType = {
   };
   inheritPermission: boolean;
   apiServer?: APIFileServer;
+  feishuServer?: FeishuServer;
+  yuqueServer?: YuqueServer;
 
   autoSync?: boolean;
 

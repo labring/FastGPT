@@ -10,6 +10,7 @@ import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type Props = {
   chatId: string;
@@ -62,6 +63,9 @@ export async function saveChat({
       systemConfigNode: getGuideModule(nodes),
       isPublicFetch: false
     });
+    const pluginInputs = nodes?.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
+    )?.inputs;
 
     await mongoSessionRun(async (session) => {
       const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
@@ -89,6 +93,7 @@ export async function saveChat({
             variableList,
             welcomeText,
             variables: variables || {},
+            pluginInputs,
             title: newTitle,
             source,
             shareId,

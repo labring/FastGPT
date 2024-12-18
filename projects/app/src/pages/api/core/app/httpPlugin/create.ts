@@ -8,6 +8,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { onCreateApp, type CreateAppBody } from '../create';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 export type createHttpPluginQuery = {};
 
@@ -28,7 +29,11 @@ async function handler(
     return Promise.reject('缺少参数');
   }
 
-  const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
+  const { teamId, tmbId, userId } = await authUserPer({
+    req,
+    authToken: true,
+    per: WritePermissionVal
+  });
 
   await mongoSessionRun(async (session) => {
     // create http plugin folder
@@ -60,6 +65,13 @@ async function handler(
         session
       });
     }
+  });
+
+  pushTrack.createApp({
+    type: AppTypeEnum.httpPlugin,
+    uid: userId,
+    teamId,
+    tmbId
   });
 
   return {};

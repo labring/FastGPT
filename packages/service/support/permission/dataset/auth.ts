@@ -172,7 +172,7 @@ export async function authDatasetCollection({
     collection: CollectionWithDatasetType;
   }
 > {
-  const { teamId, tmbId, isRoot: isRootFromHeader } = await parseHeaderCert(props);
+  const { teamId, tmbId, userId, isRoot: isRootFromHeader } = await parseHeaderCert(props);
   const collection = await getCollectionWithDataset(collectionId);
 
   if (!collection) {
@@ -187,6 +187,7 @@ export async function authDatasetCollection({
   });
 
   return {
+    userId,
     teamId,
     tmbId,
     collection,

@@ -49,23 +49,26 @@ const CustomAPIFileInput = () => {
     parentId: '',
     parentName: ''
   });
+  const [parentUuid, setParentUuid] = useState<string>('');
+  const [paths, setPaths] = useState<ParentTreePathItemType[]>([]);
+
   const [searchKey, setSearchKey] = useState('');
 
   const { data: fileList = [], loading } = useRequest2(
-    async () =>
-      datasetDetail?.apiServer
-        ? getApiDatasetFileList({
-            datasetId: datasetDetail._id,
-            parentId: parent?.parentId,
-            searchKey: searchKey
-          })
-        : [],
+    async () => {
+      return getApiDatasetFileList({
+        datasetId: datasetDetail._id,
+        parentId: parent?.parentId,
+        searchKey: searchKey
+      });
+    },
     {
       refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey],
       throttleWait: 500,
       manual: false
     }
   );
+
   const { data: existIdList = [] } = useRequest2(
     () => getApiDatasetFileListExistId({ datasetId: datasetDetail._id }),
     {
@@ -90,6 +93,7 @@ const CustomAPIFileInput = () => {
               datasetId: datasetDetail._id,
               parentId: file?.id
             });
+
             const subFiles = await getFilesRecursively(folderFiles);
             allFiles.push(...subFiles);
           } else {
@@ -125,6 +129,7 @@ const CustomAPIFileInput = () => {
   const handleItemClick = useCallback(
     (item: APIFileItem) => {
       if (item.type === 'folder') {
+        setPaths((state) => [...state, { parentId: item.id, parentName: item.name }]);
         return setParent({
           parentId: item.id,
           parentName: item.name
@@ -138,7 +143,7 @@ const CustomAPIFileInput = () => {
         setSelectFiles((state) => [...state, item]);
       }
     },
-    [selectFiles, setSelectFiles]
+    [selectFiles]
   );
 
   const handleSelectAll = useCallback(() => {
@@ -151,8 +156,6 @@ const CustomAPIFileInput = () => {
     }
   }, [fileList, selectFiles]);
 
-  const paths = useMemo(() => [parent || { parentId: '', parentName: '' }], [parent]);
-
   return (
     <MyBox isLoading={loading} position="relative" h="full">
       <Flex flexDirection={'column'} h="full">
@@ -160,21 +163,21 @@ const CustomAPIFileInput = () => {
           <FolderPath
             paths={paths}
             onClick={(parentId) => {
-              if (parentId !== parent?.parentId) {
-                setParent({
-                  parentId,
-                  parentName: ''
-                });
-              }
+              const index = paths.findIndex((item) => item.parentId === parentId);
+
+              setParent(paths[index]);
+              setPaths(paths.slice(0, index + 1));
             }}
           />
-          <Box w={'240px'}>
-            <SearchInput
-              value={searchKey}
-              onChange={(e) => setSearchKey(e.target.value)}
-              placeholder={t('common:core.workflow.template.Search')}
-            />
-          </Box>
+          {datasetDetail.apiServer && (
+            <Box w={'240px'}>
+              <SearchInput
+                value={searchKey}
+                onChange={(e) => setSearchKey(e.target.value)}
+                placeholder={t('common:core.workflow.template.Search')}
+              />
+            </Box>
+          )}
         </Flex>
         <Box flex={1} overflowY="auto" mb={16}>
           <Box ml={2} mt={3}>

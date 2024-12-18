@@ -25,6 +25,7 @@
   "dataset.Unsupported operation": "操作不支持",
   "dataset.no_collections": "暂无数据集",
   "dataset.no_tags": "暂无标签",
+  "edit_dataset_config": "编辑知识库配置",
   "error.collectionNotFound": "集合找不到了~",
   "external_file": "外部文件库",
   "external_file_dataset_desc": "可以从外部文件库导入文件构建知识库，文件不会进行二次存储",
@@ -32,6 +33,9 @@
   "external_read_url": "外部预览地址",
   "external_read_url_tip": "可以配置你文件库的阅读地址。便于对用户进行阅读鉴权操作。目前可以使用 {{fileId}} 变量来指代外部文件 ID。",
   "external_url": "文件访问 URL",
+  "feishu_dataset": "飞书知识库",
+  "feishu_dataset_config": "配置飞书知识库",
+  "feishu_dataset_desc": "可通过配置飞书文档权限，使用飞书文档构建知识库，文档不会进行二次存储",
   "file_model_function_tip": "用于增强索引和 QA 生成",
   "filename": "文件名",
   "folder_dataset": "文件夹",
@@ -69,5 +73,8 @@
   "training_mode": "处理方式",
   "vector_model_max_tokens_tip": "每个分块数据，最大长度为 3000 tokens",
   "website_dataset": "Web 站点同步",
-  "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库"
+  "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
+  "yuque_dataset": "语雀知识库",
+  "yuque_dataset_config": "配置语雀知识库",
+  "yuque_dataset_desc": "可通过配置语雀文档权限，使用语雀文档构建知识库，文档不会进行二次存储"
 }

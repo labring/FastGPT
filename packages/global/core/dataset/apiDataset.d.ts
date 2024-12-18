@@ -22,3 +22,14 @@ export type APIFileContentResponse = {
 export type APIFileReadResponse = {
   url: string;
 };
+
+export type FeishuServer = {
+  appId: string;
+  appSecret: string;
+  folderToken: string;
+};
+
+export type YuqueServer = {
+  userId: string;
+  token: string;
+};

@@ -91,6 +91,7 @@ export const iconPaths = {
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
   'common/warn': () => import('./icons/common/warn.svg'),
   'common/wechatFill': () => import('./icons/common/wechatFill.svg'),
+  'common/dingtalkFill': () => import('./icons/common/dingtalkFill.svg'),
   configmap: () => import('./icons/configmap.svg'),
   copy: () => import('./icons/copy.svg'),
   'core/app/aiFill': () => import('./icons/core/app/aiFill.svg'),
@@ -169,6 +170,9 @@ export const iconPaths = {
     import('./icons/core/dataset/externalDatasetColor.svg'),
   'core/dataset/externalDatasetOutline': () =>
     import('./icons/core/dataset/externalDatasetOutline.svg'),
+  'core/dataset/feishuDatasetColor': () => import('./icons/core/dataset/feishuDatasetColor.svg'),
+  'core/dataset/feishuDatasetOutline': () =>
+    import('./icons/core/dataset/feishuDatasetOutline.svg'),
   'core/dataset/fileCollection': () => import('./icons/core/dataset/fileCollection.svg'),
   'core/dataset/fullTextRecall': () => import('./icons/core/dataset/fullTextRecall.svg'),
   'core/dataset/manualCollection': () => import('./icons/core/dataset/manualCollection.svg'),
@@ -182,6 +186,8 @@ export const iconPaths = {
   'core/dataset/websiteDatasetColor': () => import('./icons/core/dataset/websiteDatasetColor.svg'),
   'core/dataset/websiteDatasetOutline': () =>
     import('./icons/core/dataset/websiteDatasetOutline.svg'),
+  'core/dataset/yuqueDatasetColor': () => import('./icons/core/dataset/yuqueDatasetColor.svg'),
+  'core/dataset/yuqueDatasetOutline': () => import('./icons/core/dataset/yuqueDatasetOutline.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
   'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),
@@ -250,6 +256,7 @@ export const iconPaths = {
   'core/workflow/template/formInput': () => import('./icons/core/workflow/template/formInput.svg'),
   'core/workflow/template/getTime': () => import('./icons/core/workflow/template/getTime.svg'),
   'core/workflow/template/google': () => import('./icons/core/workflow/template/google.svg'),
+  'core/workflow/template/searxng': () => import('./icons/core/workflow/template/searxng.svg'),
   'core/workflow/template/httpRequest': () =>
     import('./icons/core/workflow/template/httpRequest.svg'),
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),

@@ -43,6 +43,10 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
 
   // get app and history
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+  const pluginInputs =
+    chat?.pluginInputs ??
+    nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
+    [];
 
   jsonRes<InitChatResponse>(res, {
     data: {
@@ -64,9 +68,7 @@ async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResp
         avatar: app.avatar,
         intro: app.intro,
         type: app.type,
-        pluginInputs:
-          app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
-            ?.inputs ?? []
+        pluginInputs
       }
     }
   });

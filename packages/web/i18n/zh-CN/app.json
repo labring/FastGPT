@@ -82,6 +82,7 @@
   "month.unit": "号",
   "move.hint": "移动后，所选应用/文件夹将继承新文件夹的权限设置，原先的权限设置失效。",
   "move_app": "移动应用",
+  "node_not_intro": "这个节点没有介绍",
   "not_json_file": "请选择JSON文件",
   "open_auto_execute": "启用自动执行",
   "open_vision_function_tip": "有图示开关的模型即拥有图片识别能力。若开启，模型会解析文件链接里的图片，并自动解析用户问题中的图片（用户问题≤500字时生效）。",

@@ -25,6 +25,7 @@
   "dataset.Unsupported operation": "dataset.Unsupported operation",
   "dataset.no_collections": "No datasets available",
   "dataset.no_tags": "No tags available",
+  "edit_dataset_config": "Edit knowledge base configuration",
   "error.collectionNotFound": "Collection not found~",
   "external_file": "External File Library",
   "external_file_dataset_desc": "Import files from an external file library to build a Dataset. The files will not be stored again.",
@@ -32,6 +33,9 @@
   "external_read_url": "External Preview URL",
   "external_read_url_tip": "Configure the reading URL of your file library for user authentication. Use the {{fileId}} variable to refer to the external file ID.",
   "external_url": "File Access URL",
+  "feishu_dataset": "Feishu Dataset",
+  "feishu_dataset_config": "Feishu Dataset Config",
+  "feishu_dataset_desc": "Can build a dataset using Feishu documents by configuring permissions, without secondary storage",
   "file_model_function_tip": "Enhances indexing and QA generation",
   "filename": "Filename",
   "folder_dataset": "Folder",
@@ -69,5 +73,8 @@
   "training_mode": "Chunk mode",
   "vector_model_max_tokens_tip": "Each chunk of data has a maximum length of 3000 tokens",
   "website_dataset": "Website Sync",
-  "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link."
+  "website_dataset_desc": "Website sync allows you to build a Dataset directly using a web link.",
+  "yuque_dataset": "Yuque Dataset",
+  "yuque_dataset_config": "Yuque Dataset Config",
+  "yuque_dataset_desc": "Can build a dataset using Yuque documents by configuring permissions, without secondary storage"
 }

@@ -37,6 +37,8 @@ export const getUsageSourceByPublishChannel = (publishchannel: PublishChannelEnu
       return UsageSourceEnum.wecom;
     case PublishChannelEnum.officialAccount:
       return UsageSourceEnum.official_account;
+    case PublishChannelEnum.dingtalk:
+      return UsageSourceEnum.dingtalk;
     default:
       return UsageSourceEnum.fastgpt;
   }

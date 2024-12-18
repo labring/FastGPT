@@ -16,6 +16,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
 const FeiShu = dynamic(() => import('./FeiShu'));
+const DingTalk = dynamic(() => import('./DingTalk'));
 // const Wecom = dynamic(() => import('./Wecom'));
 const OffiAccount = dynamic(() => import('./OffiAccount'));
 
@@ -46,6 +47,13 @@ const OutLink = () => {
       title: t('publish:feishu_bot'),
       desc: t('publish:feishu_bot_desc'),
       value: PublishChannelEnum.feishu,
+      isProFn: true
+    },
+    {
+      icon: 'common/dingtalkFill',
+      title: t('publish:dingtalk.bot'),
+      desc: t('publish:dingtalk.bot_desc'),
+      value: PublishChannelEnum.dingtalk,
       isProFn: true
     },
     // {
@@ -114,6 +122,7 @@ const OutLink = () => {
         )}
         {linkType === PublishChannelEnum.apikey && <API appId={appId} />}
         {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
+        {linkType === PublishChannelEnum.dingtalk && <DingTalk appId={appId} />}
         {/* {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />} */}
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
       </Flex>

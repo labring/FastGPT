@@ -10,6 +10,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -26,11 +27,13 @@ async function handler(
     avatar,
     vectorModel = global.vectorModels[0].model,
     agentModel = getDatasetModel().model,
-    apiServer
+    apiServer,
+    feishuServer,
+    yuqueServer
   } = req.body;
 
   // auth
-  const [{ teamId, tmbId }] = await Promise.all([
+  const [{ teamId, tmbId, userId }] = await Promise.all([
     authUserPer({
       req,
       authToken: true,
@@ -70,7 +73,16 @@ async function handler(
     agentModel,
     avatar,
     type,
-    apiServer
+    apiServer,
+    feishuServer,
+    yuqueServer
+  });
+
+  pushTrack.createDataset({
+    type,
+    teamId,
+    tmbId,
+    uid: userId
   });
 
   return _id;
