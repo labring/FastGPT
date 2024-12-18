@@ -9,9 +9,11 @@ import { UseFormReturn, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const InvoiceHeaderSingleForm = ({
-  inputForm
+  inputForm,
+  required = false
 }: {
   inputForm: UseFormReturn<TeamInvoiceHeaderType, any>;
+  required?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -38,11 +40,11 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>{t('account_bill:organization_name')}</FormLabel>
+          <FormLabel required={required}>{t('account_bill:organization_name')}</FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:organization_name')}
-            {...register('teamName', { required: true })}
+            {...register('teamName', { required })}
           />
         </Flex>
         <Flex
@@ -50,11 +52,14 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>{t('account_bill:unit_code')}</FormLabel>
+          <FormLabel required={required}>{t('account_bill:unit_code')}</FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:unit_code')}
-            {...register('unifiedCreditCode', { required: true })}
+            {...register('unifiedCreditCode', {
+              required,
+              pattern: { value: /^[A-Z0-9]{18}$/, message: t('account_bill:unit_code_void') }
+            })}
           />
         </Flex>
         <Flex
@@ -62,11 +67,13 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:company_address')}</FormLabel>
+          <FormLabel required={!!needSpecialInvoice && required}>
+            {t('account_bill:company_address')}
+          </FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:company_address')}
-            {...register('companyAddress', { required: !!needSpecialInvoice })}
+            {...register('companyAddress', { required: !!needSpecialInvoice && required })}
           />
         </Flex>
         <Flex
@@ -74,11 +81,13 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:company_phone')}</FormLabel>
+          <FormLabel required={!!needSpecialInvoice && required}>
+            {t('account_bill:company_phone')}
+          </FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:company_phone')}
-            {...register('companyPhone', { required: !!needSpecialInvoice })}
+            {...register('companyPhone', { required: !!needSpecialInvoice && required })}
           />
         </Flex>
         <Flex
@@ -86,11 +95,13 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:bank_name')}</FormLabel>
+          <FormLabel required={!!needSpecialInvoice && required}>
+            {t('account_bill:bank_name')}
+          </FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:bank_name')}
-            {...register('bankName', { required: !!needSpecialInvoice })}
+            {...register('bankName', { required: !!needSpecialInvoice && required })}
           />
         </Flex>
         <Flex
@@ -98,11 +109,13 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required={!!needSpecialInvoice}>{t('account_bill:bank_account')}</FormLabel>
+          <FormLabel required={!!needSpecialInvoice && required}>
+            {t('account_bill:bank_account')}
+          </FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:bank_account')}
-            {...register('bankAccount', { required: !!needSpecialInvoice })}
+            {...register('bankAccount', { required: !!needSpecialInvoice && required })}
           />
         </Flex>
         <Flex
@@ -110,7 +123,7 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>{t('account_bill:need_special_invoice')}</FormLabel>
+          <FormLabel required={required}>{t('account_bill:need_special_invoice')}</FormLabel>
           {/* @ts-ignore */}
           <RadioGroup
             value={`${needSpecialInvoice}`}
@@ -137,12 +150,31 @@ export const InvoiceHeaderSingleForm = ({
           alignItems={['flex-start', 'center']}
           flexDir={['column', 'row']}
         >
-          <FormLabel required>{t('account_bill:email_address')}</FormLabel>
+          <FormLabel required={required}>{t('account_bill:contact_phone')}</FormLabel>
+          <Input
+            {...styles}
+            placeholder={t('account_bill:contact_phone')}
+            {...register('contactPhone', {
+              required,
+              pattern: {
+                value:
+                  /^(?:\+?\d{1,3}[- ]?)?(?:\(\d{1,4}\)|\d{1,4})?[- ]?\d{1,4}[- ]?\d{1,4}[- ]?\d{1,9}$/,
+                message: t('account_bill:contact_phone_void')
+              }
+            })}
+          />
+        </Flex>
+        <Flex
+          justify={'space-between'}
+          alignItems={['flex-start', 'center']}
+          flexDir={['column', 'row']}
+        >
+          <FormLabel required={required}>{t('account_bill:email_address')}</FormLabel>
           <Input
             {...styles}
             placeholder={t('account_bill:email_address')}
             {...register('emailAddress', {
-              required: true,
+              required,
               pattern: {
                 value: /(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
                 message: t('user:password.email_phone_error')
@@ -165,7 +197,8 @@ const InvoiceHeaderForm = () => {
       bankName: '',
       bankAccount: '',
       needSpecialInvoice: false,
-      emailAddress: ''
+      emailAddress: '',
+      contactPhone: ''
     }
   });
 

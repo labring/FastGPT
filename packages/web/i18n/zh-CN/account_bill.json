@@ -11,6 +11,8 @@
   "confirm": "确认",
   "default_header": "默认抬头",
   "detail": "详情",
+  "contact_phone": "联系电话",
+  "contact_phone_void": "联系电话格式错误",
   "email_address": "邮箱地址",
   "extra_ai_points": "额外 AI 积分",
   "extra_dataset_size": "额外知识库容量",
@@ -45,6 +47,7 @@
   "time": "时间",
   "type": "类型",
   "unit_code": "统一信用代码",
+  "unit_code_void": "统一信用代码格式错误",
   "update": "更新",
   "yes": "是",
   "yuan": "{{amount}}元"
