@@ -34,10 +34,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     per: OwnerPermissionVal
   });
 
-  // await onDelOneApp({
-  //   teamId,
-  //   appId
-  // });
+  await onDelOneApp({
+    teamId,
+    appId
+  });
 
   // Tracks
   pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });
