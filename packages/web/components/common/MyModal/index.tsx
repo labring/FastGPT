@@ -50,6 +50,8 @@ const MyModal = ({
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
       blockScrollOnMount={false}
+      allowPinchZoom
+      scrollBehavior={'inside'}
       closeOnOverlayClick={closeOnOverlayClick}
     >
       <ModalOverlay />
