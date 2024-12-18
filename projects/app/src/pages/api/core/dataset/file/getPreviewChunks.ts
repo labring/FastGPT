@@ -50,7 +50,7 @@ async function handler(
     throw new Error('chunkSize is too large, should be less than 30000');
   }
 
-  const { teamId, apiServer } = await (async () => {
+  const { teamId, apiServer, feishuServer, yuqueServer } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
       const res = await authCollectionFile({
         req,
@@ -72,7 +72,9 @@ async function handler(
     });
     return {
       teamId: dataset.teamId,
-      apiServer: dataset.apiServer
+      apiServer: dataset.apiServer,
+      feishuServer: dataset.feishuServer,
+      yuqueServer: dataset.yuqueServer
     };
   })();
 
@@ -83,6 +85,8 @@ async function handler(
     selector,
     isQAImport,
     apiServer,
+    feishuServer,
+    yuqueServer,
     externalFileId
   });
 

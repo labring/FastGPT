@@ -45,16 +45,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest2(
     async ({ username, password, code }: RegisterType) => {
-      const fastgpt_sem = (() => {
-        try {
-          return sessionStorage.getItem('fastgpt_sem')
-            ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
-            : undefined;
-        } catch {
-          return undefined;
-        }
-      })();
-
       loginSuccess(
         await postRegister({
           username,
@@ -62,7 +52,16 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           password,
           inviterId: localStorage.getItem('inviterId') || undefined,
           bd_vid: sessionStorage.getItem('bd_vid') || undefined,
-          fastgpt_sem: fastgpt_sem
+          fastgpt_sem: (() => {
+            try {
+              return sessionStorage.getItem('fastgpt_sem')
+                ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
+                : undefined;
+            } catch {
+              return undefined;
+            }
+          })(),
+          sourceDomain: sessionStorage.getItem('sourceDomain') || undefined
         })
       );
 

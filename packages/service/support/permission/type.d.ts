@@ -24,6 +24,7 @@ type authModeType = {
 export type AuthModeType = RequireAtLeastOne<authModeType, 'authApiKey' | 'authRoot' | 'authToken'>;
 
 export type AuthResponseType<T extends Permission = Permission> = {
+  userId: string;
   teamId: string;
   tmbId: string;
   authType?: `${AuthUserTypeEnum}`;

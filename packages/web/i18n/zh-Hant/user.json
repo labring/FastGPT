@@ -26,6 +26,7 @@
   "login.error": "登入失敗",
   "login.password_condition": "密碼最多可輸入 60 個字元",
   "login.success": "登入成功",
+  "login.Dingtalk": "釘釘登入",
   "manage_team": "管理團隊",
   "name": "名稱",
   "notification.Bind Notification Pipe Hint": "請綁定通知接收帳號，以確保您能正常接收方案到期提醒等通知，保障您的服務正常運作。",
@@ -114,6 +115,7 @@
   "team.no_collaborators": "目前沒有協作者",
   "team.write_role_member": "可寫入權限",
   "usage.feishu": "飛書",
+  "usage.dingtalk": "釘釘",
   "usage.official_account": "公眾號",
   "usage.share": "分享連結",
   "usage.wecom": "企業微信"

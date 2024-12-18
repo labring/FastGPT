@@ -121,6 +121,19 @@ export const DatasetPageContextProvider = ({
               baseUrl: data.apiServer.baseUrl,
               authorization: ''
             }
+          : undefined,
+        yuqueServer: data.yuqueServer
+          ? {
+              userId: data.yuqueServer.userId,
+              token: ''
+            }
+          : undefined,
+        feishuServer: data.feishuServer
+          ? {
+              appId: data.feishuServer.appId,
+              appSecret: '',
+              folderToken: data.feishuServer.folderToken
+            }
           : undefined
       }));
     }

@@ -386,7 +386,9 @@ const Header = ({}: {}) => {
             />
           )}
           {/* apiDataset */}
-          {datasetDetail?.type === DatasetTypeEnum.apiDataset && (
+          {(datasetDetail?.type === DatasetTypeEnum.apiDataset ||
+            datasetDetail?.type === DatasetTypeEnum.feishu ||
+            datasetDetail?.type === DatasetTypeEnum.yuque) && (
             <Flex
               px={3.5}
               py={2}

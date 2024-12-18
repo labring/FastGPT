@@ -26,6 +26,7 @@
   "login.error": "登录异常",
   "login.password_condition": "密码最多 60 位",
   "login.success": "登录成功",
+  "login.Dingtalk": "钉钉登录",
   "manage_team": "管理团队",
   "name": "名称",
   "notification.Bind Notification Pipe Hint": "请绑定通知接收账号，以确保您能正常接收套餐过期提醒等通知，保障您的服务正常运行。",
@@ -114,6 +115,7 @@
   "team.no_collaborators": "暂无协作者",
   "team.write_role_member": "可写权限",
   "usage.feishu": "飞书",
+  "usage.dingtalk": "钉钉",
   "usage.official_account": "公众号",
   "usage.share": "分享链接",
   "usage.wecom": "企业微信"

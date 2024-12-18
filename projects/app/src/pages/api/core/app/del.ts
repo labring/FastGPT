@@ -16,6 +16,8 @@ import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -25,12 +27,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // Auth owner (folder owner, can delete all apps in the folder)
-  const { teamId } = await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
+  const { teamId, tmbId, userId, app } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: OwnerPermissionVal
+  });
 
   await onDelOneApp({
     teamId,
     appId
   });
+
+  // Tracks
+  pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });
 }
 
 export default NextAPI(handler);

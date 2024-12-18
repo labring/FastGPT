@@ -6,7 +6,7 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 import { useRouter } from 'next/router';
-import { Dispatch, useRef } from 'react';
+import { Dispatch, useMemo, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -39,6 +39,16 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             provider: OAuthEnum.wechat,
             icon: 'common/wechatFill',
             pageType: LoginPageTypeEnum.wechat
+          }
+        ]
+      : []),
+    ...(feConfigs?.oauth?.dingtalk
+      ? [
+          {
+            label: t('user:login.Dingtalk'),
+            provider: OAuthEnum.dingtalk,
+            icon: 'common/dingtalkFill',
+            redirectUrl: `https://login.dingtalk.com/oauth2/auth?client_id=${feConfigs?.oauth?.dingtalk}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=openid&prompt=consent`
           }
         ]
       : []),
@@ -85,8 +95,10 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       : [])
   ];
 
-  const show_oauth =
-    !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0);
+  const show_oauth = useMemo(
+    () => !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0),
+    [feConfigs?.sso?.url, oAuthList.length]
+  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

@@ -6,6 +6,7 @@ import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password } = req.body as PostLoginProps;
@@ -45,6 +46,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   MongoUser.findByIdAndUpdate(user._id, {
     lastLoginTmbId: userDetail.team.tmbId
+  });
+
+  pushTrack.login({
+    type: 'password',
+    uid: user._id,
+    teamId: userDetail.team.teamId,
+    tmbId: userDetail.team.tmbId
   });
 
   const token = createJWT({

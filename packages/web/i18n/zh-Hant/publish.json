@@ -35,5 +35,11 @@
   "wecom.bot_desc": "透過 API 直接連結企業微信聊天機器人",
   "wecom.create_modal_title": "建立企業微信聊天機器人",
   "wecom.edit_modal_title": "編輯企業微信聊天機器人",
-  "wecom.title": "發布至企業微信聊天機器人"
+  "wecom.title": "發布至企業微信聊天機器人",
+  "dingtalk.bot": "釘釘聊天機器人",
+  "dingtalk.bot_desc": "透過 API 直接連結釘釘聊天機器人",
+  "dingtalk.create_modal_title": "建立釘釘聊天機器人",
+  "dingtalk.edit_modal_title": "編輯釘釘聊天機器人",
+  "dingtalk.title": "發布至釘釘聊天機器人",
+  "dingtalk.api": "釘釘 API"
 }

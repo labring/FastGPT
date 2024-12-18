@@ -42,8 +42,7 @@ import {
   filterWorkflowEdges,
   checkNodeRunStatus,
   textAdaptGptResponse,
-  replaceEditorVariable,
-  formatVariableValByType
+  replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';

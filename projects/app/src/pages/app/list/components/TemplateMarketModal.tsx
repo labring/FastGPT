@@ -33,6 +33,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import SearchInput from '../../../../../../../packages/web/components/common/Input/SearchInput/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -98,6 +99,13 @@ const TemplateMarketModal = ({
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig
+      }).then((res) => {
+        webPushTrack.useAppTemplate({
+          id,
+          name: templateDetail.name
+        });
+
+        return res;
       });
     },
     {
