@@ -282,7 +282,7 @@ const NodeCard = (props: Props) => {
                 </MyTooltip>
               )}
             </Flex>
-            {intro && <NodeIntro nodeId={nodeId} intro={intro} />}
+            <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
         )}
         <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
@@ -580,7 +580,7 @@ const NodeIntro = React.memo(function NodeIntro({
       <>
         <Flex alignItems={'center'}>
           <Box fontSize={'sm'} color={'myGray.500'} flex={'1 0 0'}>
-            {t(intro as any)}
+            {t(intro as any) || t('app:node_not_intro')}
           </Box>
           {NodeIsTool && (
             <Flex

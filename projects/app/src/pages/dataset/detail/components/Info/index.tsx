@@ -29,13 +29,12 @@ import {
 } from '@/web/core/dataset/api/collaborator';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
-import EditAPIDatasetInfoModal, {
-  EditAPIDatasetInfoFormType
-} from './components/EditApiServiceModal';
+import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
+const EditAPIDatasetInfoModal = dynamic(() => import('./components/EditApiServiceModal'));
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -434,7 +433,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       {editedAPIDataset && (
         <EditAPIDatasetInfoModal
           {...editedAPIDataset}
-          title={t('common:dataset.Edit API Service')}
+          title={t('dataset:edit_dataset_config')}
           onClose={() => setEditedAPIDataset(undefined)}
           onEdit={(data) =>
             updateDataset({

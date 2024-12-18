@@ -33,6 +33,7 @@
   "multiple_AI_conversations": "Multiple AI Conversations",
   "new_input_guide_lexicon": "New Lexicon",
   "no_workflow_response": "No workflow data",
+  "not_query": "Missing query content",
   "not_select_file": "No file selected",
   "plugins_output": "Plugin Output",
   "question_tip": "From top to bottom, the response order of each module",

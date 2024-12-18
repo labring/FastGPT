@@ -66,7 +66,9 @@ async function handler(
       return {
         type: DatasetSourceReadTypeEnum.apiFile,
         sourceId: collection.apiFileId,
-        apiServer: collection.datasetId.apiServer
+        apiServer: collection.datasetId.apiServer,
+        feishuServer: collection.datasetId.feishuServer,
+        yuqueServer: collection.datasetId.yuqueServer
       };
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {

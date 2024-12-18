@@ -82,6 +82,7 @@
   "month.unit": "Day",
   "move.hint": "After moving, the selected application/folder will inherit the permission settings of the new folder, and the original permission settings will become invalid.",
   "move_app": "Move Application",
+  "node_not_intro": "This node is not introduced",
   "not_json_file": "Please select a JSON file",
   "open_auto_execute": "Enable automatic execution",
   "open_vision_function_tip": "Models with icon switches have image recognition capabilities. \nAfter being turned on, the model will parse the pictures in the file link and automatically parse the pictures in the user's question (user question ≤ 500 words).",

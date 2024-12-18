@@ -25,6 +25,7 @@
   "dataset.Unsupported operation": "操作不支持",
   "dataset.no_collections": "尚無資料集",
   "dataset.no_tags": "尚無標籤",
+  "edit_dataset_config": "編輯知識庫配置",
   "error.collectionNotFound": "找不到集合",
   "external_file": "外部檔案庫",
   "external_file_dataset_desc": "可以從外部檔案庫匯入檔案建立資料集，檔案不會進行二次儲存",

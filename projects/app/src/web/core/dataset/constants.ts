@@ -65,3 +65,13 @@ export enum ImportProcessWayEnum {
   auto = 'auto',
   custom = 'custom'
 }
+
+export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
+  [DatasetTypeEnum.folder]: '',
+  [DatasetTypeEnum.dataset]: '',
+  [DatasetTypeEnum.apiDataset]: '/docs/guide/knowledge_base/api_dataset/',
+  [DatasetTypeEnum.websiteDataset]: '/docs/guide/knowledge_base/websync/',
+  [DatasetTypeEnum.feishu]: '/docs/guide/knowledge_base/lark_dataset/',
+  [DatasetTypeEnum.yuque]: '/docs/guide/knowledge_base/yuque_dataset/',
+  [DatasetTypeEnum.externalFile]: ''
+};
