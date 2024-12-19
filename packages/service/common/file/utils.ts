@@ -1,4 +1,4 @@
-import { isProduction } from '../system/constants';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 import fs from 'fs';
 import path from 'path';
 
