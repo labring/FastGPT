@@ -97,6 +97,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       bankName: '',
       bankAccount: '',
       needSpecialInvoice: false,
+      contactPhone: '',
       emailAddress: ''
     }
   });
@@ -117,7 +118,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       isOpen={true}
       isCentered
       iconSrc="/imgs/modal/invoice.svg"
-      minHeight={'42.25rem'}
+      minHeight={isOpenSettleModal ? '46.4rem' : '42.25rem'}
       w={'43rem'}
       onClose={onClose}
       isLoading={isLoading}
@@ -235,7 +236,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
           </Box>
           <MyBox isLoading={isLoadingHeader}>
             <Flex justify={'center'}>
-              <InvoiceHeaderSingleForm inputForm={inputForm} />
+              <InvoiceHeaderSingleForm inputForm={inputForm} required />
             </Flex>
           </MyBox>
           <Flex

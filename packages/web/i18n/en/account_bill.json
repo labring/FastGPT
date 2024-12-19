@@ -9,6 +9,8 @@
   "company_phone": "Company phone number",
   "completed": "Completed",
   "confirm": "confirm",
+  "contact_phone": "Contact phone number",
+  "contact_phone_void": "Contact phone number format error",
   "default_header": "Default header",
   "detail": "Details",
   "email_address": "Email address",
@@ -45,6 +47,7 @@
   "time": "time",
   "type": "type",
   "unit_code": "unified credit code",
+  "unit_code_void": "Unified credit code format error",
   "update": "renew",
   "yes": "yes",
   "yuan": "¥{{amount}}"
