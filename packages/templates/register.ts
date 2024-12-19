@@ -1,4 +1,6 @@
-const templateList = [
+import { PluginSourceEnum } from '../global/core/plugin/constants';
+
+export const templateList = [
   'animalLife',
   'chatGuide',
   'Chinese',
@@ -22,7 +24,8 @@ export const getCommunityTemplates = () => {
     const config = require(`./src/${name}/template.json`);
     return {
       ...config,
-      id: name
+      templateId: `${PluginSourceEnum.community}-${name}`,
+      isActive: true
     };
   });
 

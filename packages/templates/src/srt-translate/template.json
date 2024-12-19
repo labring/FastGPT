@@ -5,6 +5,10 @@
   "avatar": "core/app/templates/TranslateRobot",
   "tags": ["office-services"],
   "type": "advanced",
+  "userGuide": {
+    "type": "link",
+    "content": "https://mp.weixin.qq.com/s/uztciEVvumNWNlct0IeJ-w"
+  },
   "workflow": {
     "nodes": [
       {

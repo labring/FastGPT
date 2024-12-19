@@ -5,6 +5,10 @@
   "avatar": "core/app/templates/githubIssue",
   "tags": ["office-services"],
   "type": "advanced",
+  "userGuide": {
+    "type": "link",
+    "content": "https://mp.weixin.qq.com/s/CBrwSn1jQZO7ybsMSx5GnQ"
+  },
   "workflow": {
     "nodes": [
       {

@@ -1,5 +1,5 @@
-import { TemplateMarketListItemType } from '../global/core/workflow/type';
+import { SystemTemplateSchemaType } from '../service/core/app/templates/type';
 
 declare global {
-  var appMarketTemplates: TemplateMarketListItemType[];
+  var appMarketTemplates: SystemTemplateSchemaType[];
 }

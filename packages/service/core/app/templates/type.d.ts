@@ -6,11 +6,20 @@ export type SystemTemplateSchemaType = {
   intro: string;
   avatar: string;
   tags: string[];
-  type: AppTypeEnum;
-  isActive: boolean;
-  userGuide: {
+  type: string;
+  author?: string;
+  isActive?: boolean;
+  userGuide?: {
     type: 'markdown' | 'link';
     content: string;
   };
-  workflow: string;
+  isQuickTemplate?: boolean;
+  order?: number;
+  workflow?: WorkflowTemplateBasicType;
+};
+
+export type TemplateTypeSchemaType = {
+  typeName: string;
+  typeId: string;
+  typeOrder: number;
 };

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react';
-import { Box, Flex, Button, ModalFooter, ModalBody, Input, Grid, Card } from '@chakra-ui/react';
+import { Box, Flex, Button, ModalBody, Input, Grid, Card } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -74,8 +74,12 @@ const CreateModal = ({
   const { data: templateList = [] } = useRequest2(getTemplateMarketItemList, {
     manual: false
   });
+  console.log('templateList', templateList);
   const filterTemplates = useMemo(() => {
-    return templateList.filter((item) => item.type === type).slice(0, 3);
+    if (templateList.every((item) => item.isQuickTemplate === undefined)) {
+      return templateList.filter((item) => item.type === type).slice(0, 3);
+    }
+    return templateList.filter((item) => item.isQuickTemplate && item.type === type);
   }, [templateList, type]);
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
@@ -205,7 +209,9 @@ const CreateModal = ({
         </Flex>
         <Grid
           userSelect={'none'}
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
+          gridTemplateColumns={
+            filterTemplates.length > 0 ? ['repeat(1,1fr)', 'repeat(2,1fr)'] : '1fr'
+          }
           gridGap={[2, 4]}
         >
           <Card
@@ -233,7 +239,7 @@ const CreateModal = ({
           </Card>
           {filterTemplates.map((item) => (
             <Card
-              key={item.id}
+              key={item.templateId}
               p={4}
               borderRadius={'md'}
               borderWidth={'1px'}
@@ -271,17 +277,17 @@ const CreateModal = ({
                   h={'full'}
                   left={0}
                   right={0}
-                  bottom={0}
+                  bottom={1}
                   height={'40px'}
                   bg={'white'}
                   zIndex={1}
                 >
                   <Button
                     variant={'whiteBase'}
-                    h={'1.75rem'}
-                    borderRadius={'xl'}
+                    h={6}
+                    borderRadius={'sm'}
                     w={'40%'}
-                    onClick={handleSubmit((data) => onclickCreate(data, item.id))}
+                    onClick={handleSubmit((data) => onclickCreate(data, item.templateId))}
                   >
                     {t('app:templateMarket.Use')}
                   </Button>

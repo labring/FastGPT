@@ -5,6 +5,10 @@
   "avatar": "core/app/templates/chinese",
   "tags": ["roleplay"],
   "type": "advanced",
+  "userGuide": {
+    "type": "link",
+    "content": "https://mp.weixin.qq.com/s/T90-uZqGovYR90fST0o80Q"
+  },
   "workflow": {
     "nodes": [
       {

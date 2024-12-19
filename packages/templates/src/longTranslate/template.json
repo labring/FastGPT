@@ -1,10 +1,14 @@
 {
   "name": "长文翻译专家",
-  "intro": "使用专有名称知识库协助翻译,更适合长文本的翻译机器人",
+  "intro": "使用专有名词知识库协助翻译,更适合长文本的翻译机器人",
   "author": "",
   "avatar": "core/app/templates/TranslateRobot",
   "tags": ["office-services"],
   "type": "advanced",
+  "userGuide": {
+    "type": "link",
+    "content": "https://mp.weixin.qq.com/s/2kXdaSLOImhH1DTaFU8qXA"
+  },
   "workflow": {
     "nodes": [
       {
