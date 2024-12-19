@@ -74,7 +74,7 @@ const CreateModal = ({
   const { data: templateList = [] } = useRequest2(getTemplateMarketItemList, {
     manual: false
   });
-  console.log('templateList', templateList);
+
   const filterTemplates = useMemo(() => {
     if (templateList.every((item) => item.isQuickTemplate === undefined)) {
       return templateList.filter((item) => item.type === type).slice(0, 3);
