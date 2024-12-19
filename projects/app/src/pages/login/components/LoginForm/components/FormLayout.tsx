@@ -6,7 +6,7 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 import { useRouter } from 'next/router';
-import { Dispatch, useMemo, useRef } from 'react';
+import { Dispatch, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -100,6 +100,26 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     [feConfigs?.sso?.url, oAuthList.length]
   );
 
+  const formatUrl = useMemo(() => {
+    if (feConfigs?.sso?.url) {
+      return `${feConfigs.sso.url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`;
+    }
+    return '';
+  }, [feConfigs.sso, redirectUri]);
+
+  useEffect(() => {
+    if (formatUrl && feConfigs?.sso?.autoLogin) {
+      setLoginStore({
+        provider: OAuthEnum.sso,
+        lastRoute,
+        state: state.current
+      });
+
+      window.open(formatUrl, '_self');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feConfigs.sso]);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex alignItems={'center'} justify={'space-between'}>
@@ -167,8 +187,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                   borderRadius={'sm'}
                   leftIcon={<MyImage alt="" src={feConfigs.sso.icon as any} w="20px" />}
                   onClick={() => {
-                    const url = feConfigs.sso?.url;
-                    if (!url) {
+                    if (!formatUrl) {
                       toast({
                         title: 'SSO URL is not set',
                         status: 'error'
@@ -181,7 +200,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                       state: state.current
                     });
 
-                    const formatUrl = `${url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`;
                     window.open(formatUrl, '_self');
                   }}
                 >
