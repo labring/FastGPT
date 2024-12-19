@@ -45,6 +45,7 @@
   "support_wallet_bill_tag_invoice": "bill invoice",
   "support_wallet_invoicing": "Invoicing",
   "time": "time",
+  "total_amount": "lump sum",
   "type": "type",
   "unit_code": "unified credit code",
   "unit_code_void": "Unified credit code format error",

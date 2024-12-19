@@ -6,7 +6,7 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 import { useRouter } from 'next/router';
-import { Dispatch, useEffect, useMemo, useRef } from 'react';
+import { Dispatch, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -23,7 +23,6 @@ interface Props {
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { toast } = useToast();
 
   const { setLoginStore, feConfigs } = useSystemStore();
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
@@ -100,25 +99,23 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     [feConfigs?.sso?.url, oAuthList.length]
   );
 
-  const formatUrl = useMemo(() => {
-    if (feConfigs?.sso?.url) {
-      return `${feConfigs.sso.url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`;
-    }
-    return '';
-  }, [feConfigs.sso, redirectUri]);
+  const onClickSso = useCallback(() => {
+    if (!feConfigs?.sso?.url) return;
+    setLoginStore({
+      provider: OAuthEnum.sso,
+      lastRoute,
+      state: state.current
+    });
+    const url = `${feConfigs.sso.url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`;
+
+    window.open(url, '_self');
+  }, [feConfigs?.sso?.url, lastRoute, redirectUri, setLoginStore]);
 
   useEffect(() => {
-    if (formatUrl && feConfigs?.sso?.autoLogin) {
-      setLoginStore({
-        provider: OAuthEnum.sso,
-        lastRoute,
-        state: state.current
-      });
-
-      window.open(formatUrl, '_self');
+    if (feConfigs?.sso?.autoLogin) {
+      onClickSso();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [feConfigs.sso]);
+  }, [feConfigs?.sso?.autoLogin]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -186,22 +183,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                   h={'40px'}
                   borderRadius={'sm'}
                   leftIcon={<MyImage alt="" src={feConfigs.sso.icon as any} w="20px" />}
-                  onClick={() => {
-                    if (!formatUrl) {
-                      toast({
-                        title: 'SSO URL is not set',
-                        status: 'error'
-                      });
-                      return;
-                    }
-                    setLoginStore({
-                      provider: OAuthEnum.sso,
-                      lastRoute,
-                      state: state.current
-                    });
-
-                    window.open(formatUrl, '_self');
-                  }}
+                  onClick={onClickSso}
                 >
                   {feConfigs.sso.title}
                 </Button>
