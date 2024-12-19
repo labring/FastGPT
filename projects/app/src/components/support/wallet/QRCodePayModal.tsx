@@ -6,12 +6,15 @@ import { checkBalancePayResult } from '@/web/support/wallet/bill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 export type QRPayProps = {
   readPrice: number;
   codeUrl: string;
   billId: string;
 };
+
+const qrCodeSize = 168;
 
 const QRCodePayModal = ({
   tip,
@@ -31,8 +34,8 @@ const QRCodePayModal = ({
       if (dom.current && window.QRCode && !dom.current.innerHTML) {
         new window.QRCode(dom.current, {
           text: codeUrl,
-          width: 128,
-          height: 128,
+          width: qrCodeSize,
+          height: qrCodeSize,
           colorDark: '#000000',
           colorLight: '#ffffff',
           correctLevel: window.QRCode.CorrectLevel.H
@@ -74,14 +77,10 @@ const QRCodePayModal = ({
 
   return (
     <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
-      <ModalBody textAlign={'center'} py={6} whiteSpace={'pre-wrap'}>
-        {tip && (
-          <Box fontSize={'sm'} whiteSpace={'pre'} mb={3}>
-            {tip}
-          </Box>
-        )}
-        <Box ref={dom} id={'payQRCode'} display={'inline-block'} h={'128px'}></Box>
-        <Box mt={3} textAlign={'center'}>
+      <ModalBody textAlign={'center'} pb={10} whiteSpace={'pre-wrap'}>
+        {tip && <LightTip text={tip} mb={8} textAlign={'left'} />}
+        <Box ref={dom} id={'payQRCode'} display={'inline-block'} h={`${qrCodeSize}px`}></Box>
+        <Box mt={5} textAlign={'center'}>
           {t('common:pay.wechat', { price: readPrice })}
         </Box>
       </ModalBody>
