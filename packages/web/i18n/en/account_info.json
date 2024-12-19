@@ -77,7 +77,7 @@
   "usage_balance_notice": "Due to the system upgrade, the original \"automatic renewal and deduction from balance\" mode has been cancelled, and the balance recharge entrance has been closed. \nYour balance can be used to purchase points",
   "user_account": "Username",
   "user_team_team_name": "Team",
-  "verification_code_required": "Verification code cannot be empty",
+  "verification_code": "Verification code",
   "you_can_convert": "you can redeem",
   "yuan": "Yuan"
 }

@@ -1,14 +1,5 @@
-import React, { useCallback } from 'react';
-import {
-  ModalBody,
-  Box,
-  Flex,
-  Input,
-  ModalFooter,
-  Button,
-  HStack,
-  useDisclosure
-} from '@chakra-ui/react';
+import React from 'react';
+import { ModalBody, Box, Flex, Input, ModalFooter, Button, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -89,7 +80,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
               ></Input>
             </Flex>
             <Flex mt="6" alignItems="center" position={'relative'}>
-              <Box flex={'0 0 70px'}>{t('account_info:verification_code_required')}</Box>
+              <Box flex={'0 0 70px'}>{t('account_info:verification_code')}</Box>
               <Input
                 flex={1}
                 bg={'myGray.50'}

@@ -77,7 +77,7 @@
   "usage_balance_notice": "由於系統升級，原「自動續費從餘額扣款」模式取消，餘額儲值入口關閉。\n您的餘額可用於購買積分",
   "user_account": "帳號",
   "user_team_team_name": "團隊名",
-  "verification_code_required": "驗證碼不能為空",
+  "verification_code": "驗證碼",
   "you_can_convert": "您可以兌換",
   "yuan": "元"
 }
