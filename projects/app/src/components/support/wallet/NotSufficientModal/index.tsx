@@ -21,7 +21,7 @@ const NotSufficientModal = () => {
         </Button>
         <Button
           onClick={() => {
-            router.push('/account');
+            router.push('/account/info');
             onClose();
           }}
         >

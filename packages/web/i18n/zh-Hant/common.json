@@ -923,7 +923,7 @@
   "pay.package_tip.buy": "您購買的方案等級低於目前方案，該方案將在目前方案過期後生效。\n您可在帳戶 - 個人資訊 - 方案詳細資訊中檢視方案使用情況。",
   "pay.package_tip.renewal": "您正在續約方案。您可在帳戶 - 個人資訊 - 方案詳細資訊中檢視方案使用情況。",
   "pay.package_tip.upgrade": "您購買的方案等級高於目前方案，該方案將立即生效，目前方案將延後生效。您可在帳戶 - 個人資訊 - 方案詳細資訊中檢視方案使用情況。",
-  "pay.wechat": "請使用微信掃碼支付：{{price}} 元\n請勿關閉此頁面",
+  "pay.wechat": "請微信掃碼付款: {{price}}元\n\n付款完成前，請勿關閉頁面",
   "pay.yuan": "{{amount}} 元",
   "permission.Collaborator": "協作者",
   "permission.Default permission": "預設權限",

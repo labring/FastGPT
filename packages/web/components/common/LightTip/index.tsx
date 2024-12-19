@@ -8,9 +8,17 @@ const LightTip = ({
   text: string;
 } & StackProps) => {
   return (
-    <HStack px="3" py="1" color="primary.600" bgColor="primary.50" borderRadius="md" {...props}>
+    <HStack
+      px="3"
+      py="1"
+      color="primary.600"
+      bgColor="primary.50"
+      borderRadius="md"
+      fontSize={'sm'}
+      {...props}
+    >
       <Icon name="common/info" w="1rem" />
-      <Box fontSize={'sm'}>{text}</Box>
+      <Box>{text}</Box>
     </HStack>
   );
 };
