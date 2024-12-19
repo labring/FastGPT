@@ -45,6 +45,7 @@
   "support_wallet_bill_tag_invoice": "帳單發票",
   "support_wallet_invoicing": "開票",
   "time": "時間",
+  "total_amount": "總金額",
   "type": "類型",
   "unit_code": "統一信用代碼",
   "unit_code_void": "統一信用代碼格式錯誤",

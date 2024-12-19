@@ -57,8 +57,7 @@ export const InvoiceHeaderSingleForm = ({
             {...styles}
             placeholder={t('account_bill:unit_code')}
             {...register('unifiedCreditCode', {
-              required,
-              pattern: { value: /^[A-Z0-9]{18}$/, message: t('account_bill:unit_code_void') }
+              required
             })}
           />
         </Flex>
@@ -157,8 +156,7 @@ export const InvoiceHeaderSingleForm = ({
             {...register('contactPhone', {
               required,
               pattern: {
-                value:
-                  /^(?:\+?\d{1,3}[- ]?)?(?:\(\d{1,4}\)|\d{1,4})?[- ]?\d{1,4}[- ]?\d{1,4}[- ]?\d{1,9}$/,
+                value: /^[1]{1}[0-9]{10}$/,
                 message: t('account_bill:contact_phone_void')
               }
             })}
