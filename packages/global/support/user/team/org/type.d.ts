@@ -8,16 +8,17 @@ type OrgSchemaType = {
   path: string;
   name: string;
   avatar: string;
+  description: string | undefined;
   updateTime: Date;
 };
 
 type OrgMemberSchemaType = {
-  orgId: string | undefined;
+  orgId: string;
   tmbId: string;
   role: `${OrgMemberRole}`;
 };
 
 type OrgType = OrgSchemaType & {
-  members: OrgMemberSchemaType[] | undefined;
+  members: OrgMemberSchemaType[];
   permission: TeamPermission | undefined;
 };

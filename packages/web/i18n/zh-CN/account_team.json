@@ -2,6 +2,7 @@
   "total_team_members": "共 {{amount}} 名成员",
   "member": "成员",
   "group": "群组",
+  "org": "组织",
   "permission": "权限",
   "user_name": "用户名",
   "member_group": "所属成员组",
