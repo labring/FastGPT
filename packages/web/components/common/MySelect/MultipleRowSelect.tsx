@@ -1,5 +1,16 @@
-import React, { useRef, useCallback, useState, useMemo } from 'react';
-import { Button, useDisclosure, Box, Flex, useOutsideClick, Checkbox } from '@chakra-ui/react';
+import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import {
+  Button,
+  useDisclosure,
+  Box,
+  Flex,
+  useOutsideClick,
+  Checkbox,
+  css,
+  Menu,
+  MenuButton,
+  MenuList
+} from '@chakra-ui/react';
 import { ListItemType, MultipleArraySelectProps, MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
 import { useTranslation } from 'next-i18next';
@@ -14,18 +25,31 @@ export const MultipleRowSelect = ({
   maxH = 300,
   onSelect,
   popDirection = 'bottom',
-  styles,
+  ButtonProps,
   changeOnEverySelect = false
 }: MultipleSelectProps) => {
   const { t } = useTranslation();
-  const ref = useRef<HTMLDivElement>(null);
+  const ButtonRef = useRef<HTMLButtonElement>(null);
+
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [cloneValue, setCloneValue] = useState(value);
 
-  useOutsideClick({
-    ref: ref,
-    handler: onClose
-  });
+  const MenuRef = useRef<(HTMLDivElement | null)[]>([]);
+  const SelectedItemRef = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      for (let i = 0; i < MenuRef.current.length; i++) {
+        const menu = MenuRef.current[i];
+        const selectedItem = SelectedItemRef.current[i];
+        if (menu && selectedItem) {
+          menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+        }
+      }
+    }
+  }, [isOpen]);
+
+  const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
 
   const RenderList = useCallback(
     ({ index, list }: { index: number; list: MultipleSelectProps['list'] }) => {
@@ -37,11 +61,14 @@ export const MultipleRowSelect = ({
       return (
         <>
           <Box
+            ref={(ref) => {
+              MenuRef.current[index] = ref;
+            }}
             className="nowheel"
             flex={'1 0 auto'}
-            // width={0}
             px={2}
             borderLeft={index !== 0 ? 'base' : 'none'}
+            minW={index !== 0 ? minWidth : 'auto'}
             maxH={`${maxH}px`}
             overflowY={'auto'}
             whiteSpace={'nowrap'}
@@ -49,13 +76,17 @@ export const MultipleRowSelect = ({
             {list.map((item) => (
               <Flex
                 key={item.value}
+                ref={(ref) => {
+                  if (item.value === selectedValue) {
+                    SelectedItemRef.current[index] = ref;
+                  }
+                }}
                 py={2}
                 cursor={'pointer'}
                 px={2}
                 borderRadius={'md'}
                 _hover={{
-                  bg: 'primary.50',
-                  color: 'primary.600'
+                  bg: 'primary.50'
                 }}
                 onClick={() => {
                   const newValue = [...cloneValue];
@@ -81,6 +112,7 @@ export const MultipleRowSelect = ({
                 }}
                 {...(item.value === selectedValue
                   ? {
+                      bg: 'primary.50',
                       color: 'primary.600'
                     }
                   : {})}
@@ -109,60 +141,73 @@ export const MultipleRowSelect = ({
   }, [value, onOpen]);
 
   return (
-    <Box ref={ref} position={'relative'}>
-      <Button
-        justifyContent={'space-between'}
-        width={'100%'}
-        variant={'whitePrimaryOutline'}
-        size={'lg'}
-        fontSize={'sm'}
-        px={3}
-        outline={'none'}
-        rightIcon={<MyIcon name={'core/chat/chevronDown'} w="1rem" color={'myGray.500'} />}
-        _active={{
-          transform: 'none'
-        }}
-        {...(isOpen
-          ? {
-              borderColor: 'primary.600',
-              color: 'primary.700',
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
-            }
-          : {
-              borderColor: 'myGray.200',
-              boxShadow: 'none'
-            })}
-        {...styles}
-        onClick={() => (isOpen ? onClose() : onOpenSelect())}
+    <Box
+      css={css({
+        '& div': {
+          width: 'auto !important'
+        }
+      })}
+    >
+      <Menu
+        autoSelect={false}
+        isOpen={isOpen}
+        onOpen={onOpenSelect}
+        onClose={onClose}
+        strategy={'fixed'}
+        matchWidth
       >
-        <Box>{label ?? placeholder}</Box>
-      </Button>
-      {isOpen && (
-        <Box
-          position={'absolute'}
-          {...(popDirection === 'top'
+        <MenuButton
+          as={Button}
+          ref={ButtonRef}
+          width={'100%'}
+          px={3}
+          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          variant={'whitePrimaryOutline'}
+          size={'lg'}
+          fontSize={'sm'}
+          textAlign={'left'}
+          _active={{
+            transform: 'none'
+          }}
+          {...(isOpen
             ? {
-                transform: 'translateY(-105%)',
-                top: '0'
+                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                borderColor: 'primary.600',
+                color: 'primary.700'
               }
-            : {
-                transform: 'translateY(105%)',
-                bottom: '0'
-              })}
-          py={2}
-          bg={'white'}
-          border={'1px solid #fff'}
-          boxShadow={'5'}
-          borderRadius={'md'}
-          zIndex={1}
-          minW={'100%'}
-          w={'max-content'}
+            : {})}
+          {...ButtonProps}
         >
-          <Flex>
-            <RenderList list={list} index={0} />
-          </Flex>
-        </Box>
-      )}
+          <Box>{label ?? placeholder}</Box>
+        </MenuButton>
+        <MenuList
+          className={ButtonProps?.className}
+          minW={(() => {
+            const w = ButtonRef.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+
+            const width = ButtonProps?.width;
+            return Array.isArray(width)
+              ? width.map((item) => `${item} !important`)
+              : `${width} !important`;
+          })()}
+          w={'auto'}
+          px={'6px'}
+          py={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={
+            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+          }
+          zIndex={99}
+          maxH={'40vh'}
+          overflowY={'auto'}
+          display={'flex'}
+        >
+          <RenderList list={list} index={0} />
+        </MenuList>
+      </Menu>
     </Box>
   );
 };
@@ -176,7 +221,7 @@ export const MultipleRowArraySelect = ({
   maxH = 300,
   onSelect,
   popDirection = 'bottom',
-  styles
+  ButtonProps
 }: MultipleArraySelectProps) => {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
@@ -318,7 +363,7 @@ export const MultipleRowArraySelect = ({
               borderColor: 'myGray.200',
               boxShadow: 'none'
             })}
-        {...styles}
+        {...ButtonProps}
         onClick={() => (isOpen ? onClose() : onOpenSelect())}
         className="nowheel"
       >
@@ -343,7 +388,7 @@ export const MultipleRowArraySelect = ({
           border={'1px solid #fff'}
           boxShadow={'5'}
           borderRadius={'md'}
-          zIndex={1}
+          zIndex={1000}
           minW={'100%'}
           w={'max-content'}
         >

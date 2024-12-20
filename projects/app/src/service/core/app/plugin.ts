@@ -1,4 +1,5 @@
-import { FastGPTProUrl, isProduction } from '@fastgpt/service/common/system/constants';
+import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 import { cloneDeep } from 'lodash';
 import { getCommunityCb, getCommunityPlugins } from '@fastgpt/plugins/register';
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';

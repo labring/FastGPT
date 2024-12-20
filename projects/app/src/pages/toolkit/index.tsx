@@ -1,4 +1,4 @@
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { getPluginGroups, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import { Box, Flex, Grid, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
