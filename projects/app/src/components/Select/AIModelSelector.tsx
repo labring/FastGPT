@@ -205,6 +205,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
           list={selectorList}
           onSelect={onSelect}
           value={value}
+          rowMinWidth="160px"
           ButtonProps={{
             isDisabled: !!disableTip
           }}
