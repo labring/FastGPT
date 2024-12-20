@@ -12,8 +12,11 @@ export const getOrgList = () => GET<OrgType[]>('/proApi/support/user/team/org/li
 export const postCreateOrg = (data: postCreateOrgData) =>
   POST('/proApi/support/user/team/org/create', data);
 
-export const deleteGroup = (orgId: string) =>
+export const deleteOrg = (orgId: string) =>
   DELETE('/proApi/support/user/team/org/delete', { orgId });
+
+export const putMoveOrg = (orgId: string, parentId: string) =>
+  PUT('/proApi/support/user/team/org/move', { orgId, parentId });
 
 export const putUpdateOrg = (data: putUpdateOrgData) =>
   PUT('/proApi/support/user/team/org/update', data);

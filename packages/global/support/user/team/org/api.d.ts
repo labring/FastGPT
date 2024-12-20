@@ -3,6 +3,7 @@ import { OrgMemberRole } from './constant';
 type postCreateOrgData = {
   name: string;
   parentId: string;
+  description?: string;
   avatar?: string;
 };
 
@@ -24,5 +25,5 @@ type putUpdateOrgData = {
   orgId: string;
   name?: string;
   avatar?: string;
-  parentId?: string;
+  description?: string;
 };

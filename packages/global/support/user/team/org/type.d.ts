@@ -7,7 +7,7 @@ type OrgSchemaType = {
   teamId: string;
   path: string;
   name: string;
-  avatar: string;
+  avatar: string | undefined;
   description: string | undefined;
   updateTime: Date;
 };
