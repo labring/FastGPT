@@ -1,7 +1,10 @@
+import type { ModelProviderIdType } from './provider';
+
 export type LLMModelItemType = {
+  provider: ModelProviderIdType;
   model: string;
   name: string;
-  avatar?: string;
+  avatar?: string; // model icon, from provider
   maxContext: number;
   maxResponse: number;
   quoteMaxToken: number;
@@ -31,6 +34,7 @@ export type LLMModelItemType = {
 };
 
 export type VectorModelItemType = {
+  provider: ModelProviderIdType;
   model: string; // model name
   name: string; // show name
   avatar?: string;
