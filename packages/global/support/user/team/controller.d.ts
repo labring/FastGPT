@@ -1,6 +1,6 @@
 import { PermissionValueType } from '../../permission/type';
 import { TeamMemberRoleEnum } from './constant';
-import { LafAccountType, TeamMemberSchema } from './type';
+import { LafAccountType, TeamMemberSchema, WorkflowVariableType } from './type';
 
 export type AuthTeamRoleProps = {
   teamId: string;
@@ -19,6 +19,8 @@ export type UpdateTeamProps = {
   avatar?: string;
   teamDomain?: string;
   lafAccount?: null | LafAccountType;
+  openaiAccount?: null | OpenaiAccountType;
+  workflowVariables?: WorkflowVariableType[];
 };
 
 /* ------------- member ----------- */
