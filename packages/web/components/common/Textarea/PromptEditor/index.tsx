@@ -5,13 +5,18 @@ import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import { EditorState, type LexicalEditor } from 'lexical';
-import { EditorVariableLabelPickerType, EditorVariablePickerType } from './type.d';
+import {
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType,
+  EditorWorkflowVariableType
+} from './type.d';
 import { useCallback } from 'react';
 
 const PromptEditor = ({
   showOpenModal = true,
   variables = [],
   variableLabels = [],
+  workflowVariables = [],
   value,
   onChange,
   onBlur,
@@ -25,6 +30,7 @@ const PromptEditor = ({
   showOpenModal?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
+  workflowVariables?: EditorWorkflowVariableType[];
   value?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
@@ -60,6 +66,7 @@ const PromptEditor = ({
         onOpenModal={onOpen}
         variables={variables}
         variableLabels={variableLabels}
+        workflowVariables={workflowVariables}
         minH={minH}
         maxH={maxH}
         maxLength={maxLength}
@@ -78,6 +85,7 @@ const PromptEditor = ({
             showOpenModal={false}
             variables={variables}
             variableLabels={variableLabels}
+            workflowVariables={workflowVariables}
             value={value}
             onChange={onChangeInput}
             onBlur={onBlurInput}

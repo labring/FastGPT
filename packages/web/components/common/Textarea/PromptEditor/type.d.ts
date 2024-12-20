@@ -21,3 +21,8 @@ export type EditorVariableLabelPickerType = {
     avatar?: string;
   };
 };
+
+export type EditorWorkflowVariableType = {
+  key: string;
+  name: string;
+};

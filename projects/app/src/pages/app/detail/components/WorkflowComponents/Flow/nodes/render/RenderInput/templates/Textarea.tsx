@@ -8,6 +8,7 @@ import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { getEditorVariables } from '../../../../../utils';
 import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -16,6 +17,8 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const { feConfigs } = useSystemStore();
 
   // get variable
   const variables = useCreation(() => {
@@ -28,8 +31,16 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     });
   }, [nodeId, nodeList, edges, appDetail, t]);
 
+  const workflowVariables = useMemo(() => {
+    return feConfigs?.workflowVariables?.map((item) => ({
+      key: item.key,
+      name: item.name
+    }));
+  }, [feConfigs?.workflowVariables]);
+
   const onChange = useCallback(
     (e: string) => {
+      console.log('e', e);
       onChangeNode({
         nodeId,
         type: 'updateInput',
@@ -48,6 +59,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       <PromptEditor
         variableLabels={variables}
         variables={variables}
+        workflowVariables={workflowVariables}
         title={t(item.label as any)}
         maxLength={item.maxLength}
         minH={100}
@@ -57,7 +69,16 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         onChange={onChange}
       />
     );
-  }, [item.label, item.maxLength, item.placeholder, item.value, onChange, t, variables]);
+  }, [
+    item.label,
+    item.maxLength,
+    item.placeholder,
+    item.value,
+    onChange,
+    workflowVariables,
+    t,
+    variables
+  ]);
 
   return Render;
 };
