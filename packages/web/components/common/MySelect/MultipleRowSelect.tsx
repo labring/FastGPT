@@ -96,7 +96,7 @@ export const MultipleRowSelect = ({
                 _notLast={{ mb: 1 }}
                 cursor={'pointer'}
                 px={1.5}
-                borderRadius={'md'}
+                borderRadius={'sm'}
                 _hover={{
                   bg: 'primary.50'
                 }}
