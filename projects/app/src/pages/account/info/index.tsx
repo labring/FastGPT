@@ -44,7 +44,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '../components/AccountContainer';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useRouter } from 'next/router';
 import TeamSelector from '../components/TeamSelector';
 

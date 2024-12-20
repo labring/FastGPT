@@ -3,7 +3,7 @@ import ApiKeyTable from '@/components/support/apikey/Table';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import AccountContainer, { TabEnum } from './components/AccountContainer';
-import { serviceSideProps } from '../../web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 const ApiKey = () => {
   const { t } = useTranslation();
