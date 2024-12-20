@@ -31,7 +31,6 @@ const ThirdParty = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
-
   const { isOpen: isOpenLaf, onClose: onCloseLaf, onOpen: onOpenLaf } = useDisclosure();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
 
@@ -43,7 +42,7 @@ const ThirdParty = () => {
 
   const defaultAccountList: ThirdPartyAccountType[] = [
     {
-      name: 'laf 账号',
+      name: t('account_thirdParty:laf_account'),
       icon: 'support/account/laf',
       intro: t('common:support.user.Laf account intro'),
       onClick: onOpenLaf,
@@ -151,7 +150,15 @@ const ThirdParty = () => {
                 _hover={{
                   borderColor: 'primary.600'
                 }}
-                onClick={item.onClick}
+                onClick={
+                  isOwner
+                    ? item.onClick
+                    : () =>
+                        toast({
+                          title: t('account_thirdParty:error.no_permission'),
+                          status: 'warning'
+                        })
+                }
                 position={'relative'}
               >
                 <Flex>

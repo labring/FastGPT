@@ -1,6 +1,8 @@
 {
   "configured": "已配置",
+  "error.no_permission": "请联系管理员配置",
   "get_usage_failed": "获取使用量失败",
+  "laf_account": "laf 账号",
   "no_intro": "暂无说明",
   "not_configured": "未配置",
   "open_api_notice": "可以填写 OpenAI/OneAPI 的相关密钥。如果你填写了该内容，在线上平台使用【 AI 对话】、【问题分类】和【内容提取】将会走你填写的 Key，不会计费。请注意你的 Key 是否有访问对应模型的权限。 GPT 模型可以选择 FastAI 。",

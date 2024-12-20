@@ -1,6 +1,6 @@
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useState } from 'react';
+import React from 'react';
 import { ThirdPartyAccountType } from '../index';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
