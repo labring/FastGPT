@@ -24,10 +24,12 @@ export const MultipleRowSelect = ({
   emptyTip,
   maxH = 300,
   onSelect,
-  popDirection = 'bottom',
   ButtonProps,
-  changeOnEverySelect = false
-}: MultipleSelectProps) => {
+  changeOnEverySelect = false,
+  rowMinWidth = 'autp'
+}: MultipleSelectProps & {
+  rowMinWidth?: string;
+}) => {
   const { t } = useTranslation();
   const ButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -58,6 +60,15 @@ export const MultipleRowSelect = ({
       const children = list[selectedIndex]?.children || [];
       const hasChildren = list.some((item) => item.children && item.children?.length > 0);
 
+      // Store current scroll position before update
+      const currentScrollTop = MenuRef.current[index]?.scrollTop;
+      // Use useEffect to restore scroll position after render
+      useEffect(() => {
+        if (currentScrollTop !== undefined && MenuRef.current[index]) {
+          MenuRef.current[index]!.scrollTop = currentScrollTop;
+        }
+      }, [cloneValue, currentScrollTop]);
+
       return (
         <>
           <Box
@@ -68,7 +79,7 @@ export const MultipleRowSelect = ({
             flex={'1 0 auto'}
             px={2}
             borderLeft={index !== 0 ? 'base' : 'none'}
-            minW={index !== 0 ? minWidth : 'auto'}
+            minW={index !== 0 ? minWidth : rowMinWidth}
             maxH={`${maxH}px`}
             overflowY={'auto'}
             whiteSpace={'nowrap'}
@@ -81,10 +92,11 @@ export const MultipleRowSelect = ({
                     SelectedItemRef.current[index] = ref;
                   }
                 }}
-                py={2}
+                py={1.5}
+                _notLast={{ mb: 1 }}
                 cursor={'pointer'}
-                px={2}
-                borderRadius={'md'}
+                px={1.5}
+                borderRadius={'sm'}
                 _hover={{
                   bg: 'primary.50'
                 }}
@@ -194,7 +206,6 @@ export const MultipleRowSelect = ({
               : `${width} !important`;
           })()}
           w={'auto'}
-          px={'6px'}
           py={'6px'}
           border={'1px solid #fff'}
           boxShadow={
@@ -204,6 +215,7 @@ export const MultipleRowSelect = ({
           maxH={'40vh'}
           overflowY={'auto'}
           display={'flex'}
+          userSelect={'none'}
         >
           <RenderList list={list} index={0} />
         </MenuList>
