@@ -66,7 +66,7 @@ const WorkflowVariableModal = ({
             bg={'myGray.50'}
             placeholder={t('account_thirdParty:value_placeholder')}
             flex={1}
-            {...register('value', { required: true })}
+            {...register('value')}
           />
         </Flex>
       </ModalBody>

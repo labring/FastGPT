@@ -21,6 +21,7 @@ import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
 import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
+import { TeamSchema } from 'support/user/team/type';
 
 /* workflow props */
 export type ChatDispatchProps = {
@@ -28,6 +29,7 @@ export type ChatDispatchProps = {
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
   user: UserModelSchema;
+  team: TeamSchema;
 
   runningAppInfo: {
     id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)

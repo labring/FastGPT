@@ -43,7 +43,7 @@ export const runToolWithFunctionCall = async (
     requestOrigin,
     runtimeNodes,
     runtimeEdges,
-    user,
+    team,
     stream,
     workflowStreamResponse,
     params: { temperature, maxToken, aiChatVision }
@@ -221,7 +221,7 @@ export const runToolWithFunctionCall = async (
     getEmptyResponseTip
   } = await createChatCompletion({
     body: requestBody,
-    userKey: user.openaiAccount,
+    userKey: team.openaiAccount,
     options: {
       headers: {
         Accept: 'application/json, text/plain, */*'

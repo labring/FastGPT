@@ -38,7 +38,6 @@ const ThirdParty = () => {
   const [workflowVariable, setWorkflowVariable] = useState<ThirdPartyAccountType>();
 
   const { userInfo } = useUserStore();
-  console.log(userInfo?.team.workflowVariables);
 
   const isOwner = userInfo?.team.role === TeamMemberRoleEnum.owner;
 

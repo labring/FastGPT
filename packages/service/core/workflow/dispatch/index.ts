@@ -42,7 +42,8 @@ import {
   filterWorkflowEdges,
   checkNodeRunStatus,
   textAdaptGptResponse,
-  replaceEditorVariable
+  replaceEditorVariable,
+  replaceWorkflowVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -127,6 +128,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     histories = [],
     variables = {},
     user,
+    team,
     stream = false,
     ...props
   } = data;
@@ -182,6 +184,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ...getSystemVariable(data),
     ...variables
   };
+
+  const workflowVariables = (team.workflowVariables || []).reduce<Record<string, string>>(
+    (acc: Record<string, string>, item: { key: string; value: string }) => {
+      if (!item?.key || !item?.value) return acc;
+      acc[item.key] = String(item.value);
+      return acc;
+    },
+    {}
+  );
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
@@ -509,6 +520,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         variables
       });
 
+      // replace {{system.xxxxxx}} variables
+      value = replaceWorkflowVariable(value, workflowVariables);
+
       // Dynamic input is stored in the dynamic key
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
         params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
@@ -544,6 +558,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       variables,
       histories,
       user,
+      team,
       stream,
       node,
       runtimeNodes,
