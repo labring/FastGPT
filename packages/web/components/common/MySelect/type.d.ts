@@ -1,3 +1,5 @@
+import { ButtonProps } from '@chakra-ui/react';
+
 type ListItemType = {
   alias?: string;
   label: string | React.ReactNode;
@@ -12,9 +14,9 @@ export type MultipleSelectProps = {
   emptyTip?: string;
   maxH?: number;
   onSelect: (val: any[]) => void;
-  styles?: ButtonProps;
   popDirection?: 'top' | 'bottom';
   changeOnEverySelect?: boolean;
+  ButtonProps?: ButtonProps;
 };
 export type MultipleArraySelectProps = Omit<MultipleSelectProps, 'value'> & {
   value?: any[][];

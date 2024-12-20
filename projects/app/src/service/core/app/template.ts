@@ -1,4 +1,4 @@
-import { isProduction } from '@fastgpt/service/common/system/constants';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 import { readdirSync, readFileSync } from 'fs';
 import path from 'path';
 

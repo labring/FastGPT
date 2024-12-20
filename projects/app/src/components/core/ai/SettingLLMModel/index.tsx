@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, Button, css, useDisclosure } from '@chakra-ui/react';
@@ -10,6 +10,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useMount } from 'ahooks';
+import { getModelFromList } from '@fastgpt/global/core/ai/model';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -29,15 +30,19 @@ const SettingLLMModel = ({
 
   const model = defaultData.model;
 
-  const modelList = llmModelList.filter((model) => {
-    if (!llmModelType) return true;
-    const filterField = llmModelTypeFilterMap[llmModelType];
-    if (!filterField) return true;
-    //@ts-ignore
-    return !!model[filterField];
-  });
+  const modelList = useMemo(
+    () =>
+      llmModelList.filter((modelData) => {
+        if (!llmModelType) return true;
+        const filterField = llmModelTypeFilterMap[llmModelType];
+        if (!filterField) return true;
+        //@ts-ignore
+        return !!modelData[filterField];
+      }),
+    [llmModelList, llmModelType]
+  );
 
-  const selectedModel = modelList.find((item) => item.model === model) || modelList[0];
+  const selectedModel = useMemo(() => getModelFromList(modelList, model), [modelList, model]);
 
   const {
     isOpen: isOpenAIChatSetting,
