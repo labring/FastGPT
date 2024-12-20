@@ -65,7 +65,7 @@ try {
   // timer task. clear dead team
   // UsageSchema.index({ teamId: 1, time: -1 }, { background: true });
 
-  UsageSchema.index({ time: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
+  UsageSchema.index({ time: 1 }, { background: true, expireAfterSeconds: 720 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);
 }
