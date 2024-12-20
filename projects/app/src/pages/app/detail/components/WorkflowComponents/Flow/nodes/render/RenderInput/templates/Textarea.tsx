@@ -40,7 +40,6 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
 
   const onChange = useCallback(
     (e: string) => {
-      console.log('e', e);
       onChangeNode({
         nodeId,
         type: 'updateInput',
