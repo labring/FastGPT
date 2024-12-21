@@ -6,7 +6,7 @@ export const serviceSideProps = async (content: any, ns: I18nNsType = []) => {
   const extraLng = content.req?.cookies?.NEXT_LOCALE ? undefined : content.locales;
 
   // Device size
-  const deviceSize = content.req?.cookies?.NEXT_DEVICE_SIZE || 'pc';
+  const deviceSize = content.req?.cookies?.NEXT_DEVICE_SIZE || null;
 
   return {
     ...(await serverSideTranslations(lang, ['common', ...ns], null, extraLng)),
