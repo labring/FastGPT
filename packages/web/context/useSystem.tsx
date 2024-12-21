@@ -23,7 +23,7 @@ const SystemStoreContextProvider = ({
   device
 }: {
   children: ReactNode;
-  device?: 'pc' | 'mobile';
+  device?: 'pc' | 'mobile' | null;
 }) => {
   const [isPc] = useMediaQuery('(min-width: 900px)');
 
