@@ -31,7 +31,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import InputSlider from '../../../../../../../packages/web/components/common/MySlider/InputSlider';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 
 const AiPointsModal = dynamic(() =>
   import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
