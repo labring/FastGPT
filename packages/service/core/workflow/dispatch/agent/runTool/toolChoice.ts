@@ -94,7 +94,7 @@ export const runToolWithToolChoice = async (
     stream,
     user,
     workflowStreamResponse,
-    params: { temperature = 0, maxToken = 4000, aiChatVision }
+    params: { temperature, maxToken, aiChatVision }
   } = workflowProps;
 
   if (maxRunToolTimes <= 0 && response) {

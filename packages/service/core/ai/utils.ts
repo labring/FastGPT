@@ -12,10 +12,12 @@ export const computedMaxToken = async ({
   model,
   filterMessages = []
 }: {
-  maxToken: number;
+  maxToken?: number;
   model: LLMModelItemType;
   filterMessages: ChatCompletionMessageParam[];
 }) => {
+  if (maxToken === undefined) return;
+
   maxToken = Math.min(maxToken, model.maxResponse);
   const tokensLimit = model.maxContext;
 
@@ -63,12 +65,13 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
 
   const requestBody: T = {
     ...body,
-    temperature: body.temperature
-      ? computedTemperature({
-          model: modelData,
-          temperature: body.temperature
-        })
-      : undefined,
+    temperature:
+      typeof body.temperature === 'number'
+        ? computedTemperature({
+            model: modelData,
+            temperature: body.temperature
+          })
+        : undefined,
     ...modelData?.defaultConfig
   };
 
