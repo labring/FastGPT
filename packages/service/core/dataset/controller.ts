@@ -76,6 +76,12 @@ export async function delDatasetRelevantData({
 
   const datasetIds = datasets.map((item) => item._id);
 
+  // delete training data
+  await MongoDatasetTraining.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  });
+
   // Get _id, teamId, fileId, metadata.relatedImgId for all collections
   const collections = await MongoDatasetCollection.find(
     {
@@ -86,32 +92,18 @@ export async function delDatasetRelevantData({
     { session }
   ).lean();
 
-  // delete training data
-  await MongoDatasetTraining.deleteMany(
-    {
-      teamId,
-      datasetId: { $in: datasetIds }
-    },
-    { session }
-  );
-  console.log('delete training finish');
-
   // image and file
   await delCollectionRelatedSource({ collections, session });
-  console.log('delete image and file finish');
-  // delete dataset.datas
-  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }, { session });
-  console.log('delete dataset.datas finish');
+
   // delete collections
-  await MongoDatasetCollection.deleteMany(
-    {
-      teamId,
-      datasetId: { $in: datasetIds }
-    },
-    { session }
-  );
-  console.log('delete collections finish');
+  await MongoDatasetCollection.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  }).session(session);
+
+  // delete dataset.datas(Not need session)
+  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } });
+
   // no session delete: delete files, vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
-  console.log('delete vector data finish');
 }
