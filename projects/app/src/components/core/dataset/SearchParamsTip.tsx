@@ -62,8 +62,8 @@ const SearchParamsTip = ({
         <Thead>
           <Tr bg={'transparent !important'}>
             <Th fontSize={'mini'}>{t('common:core.dataset.search.search mode')}</Th>
-            <Th fontSize={'mini'}>{t('common:core.dataset.search.Max Tokens')}</Th>
-            <Th fontSize={'mini'}>{t('common:core.dataset.search.Min Similarity')}</Th>
+            <Th fontSize={'mini'}>{t('app:max_quote_tokens')}</Th>
+            <Th fontSize={'mini'}>{t('app:min_similarity')}</Th>
             {hasReRankModel && <Th fontSize={'mini'}>{t('common:core.dataset.search.ReRank')}</Th>}
             <Th fontSize={'mini'}>{t('common:core.module.template.Query extension')}</Th>
             {hasEmptyResponseMode && (
