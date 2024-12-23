@@ -25,18 +25,20 @@ const SystemStoreContextProvider = ({
   children: ReactNode;
   device?: 'pc' | 'mobile' | null;
 }) => {
-  const [isPc] = useMediaQuery('(min-width: 900px)');
-
+  const [isPc] = useMediaQuery('(min-width: 900px)', {
+    fallback: device === 'pc'
+  });
   useEffect(() => {
     setSize(isPc ? 'pc' : 'mobile');
   }, [isPc]);
 
   const contextValue = useMemo(
     () => ({
-      isPc: device ? device === 'pc' : isPc
+      isPc
     }),
-    [device, isPc]
+    [isPc]
   );
+
   return (
     <useSystemStoreContext.Provider value={contextValue}>{children}</useSystemStoreContext.Provider>
   );

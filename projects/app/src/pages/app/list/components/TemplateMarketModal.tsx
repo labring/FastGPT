@@ -30,7 +30,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import SearchInput from '../../../../../../../packages/web/components/common/Input/SearchInput/index';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
