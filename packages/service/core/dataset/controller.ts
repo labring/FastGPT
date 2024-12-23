@@ -82,21 +82,22 @@ export async function delDatasetRelevantData({
       teamId,
       datasetId: { $in: datasetIds }
     },
-    '_id teamId datasetId fileId metadata'
+    '_id teamId datasetId fileId metadata',
+    { session }
   ).lean();
-
+  console.log('Delete dataset collections', collections);
   // delete training data
   await MongoDatasetTraining.deleteMany({
     teamId,
     datasetId: { $in: datasetIds }
   });
-
+  console.log('delete training finish');
   // image and file
   await delCollectionRelatedSource({ collections, session });
-
+  console.log('delete image and file finish');
   // delete dataset.datas
   await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } }, { session });
-
+  console.log('delete dataset.datas finish');
   // delete collections
   await MongoDatasetCollection.deleteMany(
     {
@@ -105,7 +106,8 @@ export async function delDatasetRelevantData({
     },
     { session }
   );
-
+  console.log('delete collections finish');
   // no session delete: delete files, vector data
   await deleteDatasetDataVector({ teamId, datasetIds });
+  console.log('delete vector data finish');
 }
