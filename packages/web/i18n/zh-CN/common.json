@@ -268,7 +268,6 @@
   "core.ai.model.Dataset Agent Model": "文本理解模型",
   "core.ai.model.Vector Model": "索引模型",
   "core.ai.model.doc_index_and_dialog": "文档索引 & 对话索引",
-  "core.app.Ai response": "返回 AI 内容",
   "core.app.Api request": "API 访问",
   "core.app.Api request desc": "通过 API 接入到已有系统中，或企微、飞书等",
   "core.app.App intro": "应用介绍",

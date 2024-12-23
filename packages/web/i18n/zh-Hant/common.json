@@ -269,7 +269,6 @@
   "core.ai.model.Dataset Agent Model": "檔案處理模型",
   "core.ai.model.Vector Model": "索引模型",
   "core.ai.model.doc_index_and_dialog": "文件索引與對話索引",
-  "core.app.Ai response": "AI 回應",
   "core.app.Api request": "API 存取",
   "core.app.Api request desc": "透過 API 整合到現有系統中，或整合到企業微信、飛書等",
   "core.app.App intro": "應用程式介紹",

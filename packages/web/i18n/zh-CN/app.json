@@ -107,6 +107,8 @@
   "search_app": "搜索应用",
   "setting_app": "应用配置",
   "setting_plugin": "插件配置",
+  "stream_response": "流输出",
+  "stream_response_tip": "关闭该开关，可以强制模型使用非流模式，并且不会直接进行内容输出。可以在 AI 回复的输出中，获取本次模型输出的内容进行二次处理。",
   "template.hard_strict": "严格问答模板",
   "template.hard_strict_des": "在问答模板基础上，对模型的回答做更严格的要求。",
   "template.qa_template": "问答模板",

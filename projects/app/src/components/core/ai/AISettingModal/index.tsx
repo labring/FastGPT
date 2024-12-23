@@ -84,7 +84,7 @@ const AIChatSettingsModal = ({
     alignItems: 'center',
     fontSize: 'sm',
     color: 'myGray.900',
-    width: '6rem'
+    width: '7rem'
   };
 
   const {
@@ -240,11 +240,8 @@ const AIChatSettingsModal = ({
         {showResponseAnswerText && (
           <Flex mt={5} alignItems={'center'}>
             <Box {...LabelStyles}>
-              {t('common:core.app.Ai response')}
-              <QuestionTip
-                ml={1}
-                label={t('common:core.module.template.AI response switch tip')}
-              ></QuestionTip>
+              {t('app:stream_response')}
+              <QuestionTip ml={1} label={t('app:stream_response_tip')}></QuestionTip>
             </Box>
             <Box flex={1}>
               <Switch
