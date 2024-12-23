@@ -1,5 +1,5 @@
-import { ErrType } from '../errorCode';
 import { i18nT } from '../../../../web/i18n/utils';
+import type { ErrType } from '../errorCode';
 /* team: 500000 */
 export enum TeamErrEnum {
   teamOverSize = 'teamOverSize',
@@ -16,11 +16,15 @@ export enum TeamErrEnum {
   groupNotExist = 'groupNotExist',
   orgNameEmpty = 'orgNameEmpty',
   orgOwnerNotExist = 'orgOwnerNotExist',
+  orgMemberNotExist = 'orgMemberNotExist',
+  orgMemberExist = 'orgMemberExist',
   orgNotExist = 'orgNotExist',
   orgParentNotExist = 'orgParentNotExist',
   deletingOrgWithChildren = 'deletingOrgWithChildren',
   deletingRootOrg = 'deletingRootOrg',
   updatingRootOrg = 'updatingRootOrg',
+  deletingOwner = 'deletingOwner',
+  movingOwner = 'movingOwner',
   orgNameDuplicate = 'orgNameDuplicate',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
   userNotActive = 'userNotActive'
@@ -82,14 +86,17 @@ const teamErr = [
   }
 ];
 
-export default teamErr.reduce((acc, cur, index) => {
-  return {
-    ...acc,
-    [cur.statusText]: {
-      code: 500000 + index,
-      statusText: cur.statusText,
-      message: cur.message,
-      data: null
-    }
-  };
-}, {} as ErrType<`${TeamErrEnum}`>);
+export default teamErr.reduce(
+  (acc, cur, index) => {
+    return {
+      ...acc,
+      [cur.statusText]: {
+        code: 500000 + index,
+        statusText: cur.statusText,
+        message: cur.message,
+        data: null
+      }
+    };
+  },
+  {} as ErrType<`${TeamErrEnum}`>
+);

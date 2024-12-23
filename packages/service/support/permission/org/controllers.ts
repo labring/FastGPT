@@ -1,13 +1,13 @@
 import { MongoOrgMemberModel } from './orgMemberSchema';
 import { MongoOrgModel } from './orgSchema';
 import { OrgMemberRole } from '@fastgpt/global/support/user/team/org/constant';
-import { AuthModeType, AuthResponseType } from '../type';
+import type { AuthModeType, AuthResponseType } from '../type';
 import { parseHeaderCert } from '../controller';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
-import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { ClientSession } from 'mongoose';
+import type { ClientSession } from 'mongoose';
 
 // if role1 > role2, return 1
 // if role1 < role2, return -1
@@ -160,7 +160,7 @@ export const authOrgMember = async ({
     };
   }
 
-  let targetRole = OrgMemberRole[role];
+  const targetRole = OrgMemberRole[role];
   for (const orgRole of orgRoles) {
     if (!orgRole || checkOrgRole(orgRole, targetRole)) {
       return Promise.reject(TeamErrEnum.unAuthTeam);

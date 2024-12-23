@@ -1,10 +1,11 @@
-import { OrgMemberRole } from './constant';
+import type { OrgMemberRole } from './constant';
 
 type postCreateOrgData = {
   name: string;
   parentId: string;
   description?: string;
   avatar?: string;
+  ownerTmbId?: string;
 };
 
 type putUpdateOrgMembersData = {
@@ -26,4 +27,15 @@ type putUpdateOrgData = {
   name?: string;
   avatar?: string;
   description?: string;
+};
+
+type putMoveOrgData = {
+  orgId: string;
+  parentId: string;
+};
+
+type putMoveOrgMemberData = {
+  orgId: string;
+  tmbId: string;
+  newOrgId: string;
 };

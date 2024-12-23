@@ -1,17 +1,17 @@
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { HStack, Input, ModalBody, ModalFooter, Button, Textarea } from '@chakra-ui/react';
+import { postCreateOrg, putUpdateOrg } from '@/web/support/user/team/org/api';
+import { Button, HStack, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import { postCreateOrg, putUpdateOrg } from '@/web/support/user/team/org/api';
 import { useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {
   avatar?: string;

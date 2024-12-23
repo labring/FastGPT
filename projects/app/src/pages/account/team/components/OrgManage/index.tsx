@@ -1,4 +1,5 @@
-import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
+import { deleteOrg } from '@/web/support/user/team/org/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
   Breadcrumb,
@@ -8,52 +9,35 @@ import {
   HStack,
   Table,
   TableContainer,
+  Tag,
   Tbody,
   Td,
   Text,
   Th,
   Thead,
-  Tag,
   Tr,
-  useDisclosure,
-  VStack
+  VStack,
+  useDisclosure
 } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../context';
-import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
+import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useUserStore } from '@/web/support/user/useUserStore';
+import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
+import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { IconNameType } from '@fastgpt/web/components/common/Icon/type';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { useContextSelector } from 'use-context-selector';
+import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
+import { TeamContext } from '../context';
+import IconButton from './IconButton';
 import OrgInfoModal from './OrgInfoModal';
-import { deleteOrg } from '@/web/support/user/team/org/api';
-
-function IconButton({ name, onClick }: { name: IconNameType; onClick: () => void }) {
-  return (
-    <MyIcon
-      name={name}
-      w={'1rem'}
-      transition={'background 0.1s'}
-      cursor={'pointer'}
-      p="1"
-      rounded={'sm'}
-      _hover={{
-        bg: 'myGray.05',
-        color: 'primary.600'
-      }}
-      onClick={onClick}
-    />
-  );
-}
+import OrgMoveModal from './OrgMoveModal';
 
 function ActionButton({
   icon,
@@ -110,7 +94,7 @@ function MemberTable() {
 
   const currentPath = useMemo<{ path: string; parents: OrgType[] }>(
     () => ({
-      path: currentOrg ? currentOrg.path + '/' + currentOrg._id : '',
+      path: currentOrg ? `${currentOrg.path}/${currentOrg._id}` : '',
       parents: currentOrg
         ? currentOrg.path
             .split('/')
@@ -282,7 +266,7 @@ function MemberTable() {
               src={
                 currentOrg?.path === ''
                   ? userInfo?.team.avatar
-                  : currentOrg?.avatar ?? DEFAULT_ORG_AVATAR
+                  : (currentOrg?.avatar ?? DEFAULT_ORG_AVATAR)
               }
               w={'16px'}
               h={'16px'}
@@ -291,7 +275,9 @@ function MemberTable() {
             <Text fontWeight={500} fontSize={'14px'} color={'myGray.900'} lineHeight={'20px'}>
               {currentOrg?.path === '' ? userInfo?.team.teamName : currentOrg?.name}
             </Text>
-            <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
+            {currentOrg?.path !== '' && (
+              <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
+            )}
           </HStack>
           <Text fontSize={12} lineHeight={'16px'} w={'full'}>
             {currentOrg?.description ?? t('common:common.no_intro')}
@@ -350,6 +336,7 @@ function MemberTable() {
           refetchMembers();
         }}
       />
+      <OrgMoveModal orgs={orgs} team={userInfo?.team!} />
       <ConfirmDeleteOrgModal />
     </VStack>
   );
