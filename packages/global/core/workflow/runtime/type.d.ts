@@ -201,13 +201,14 @@ export type DispatchNodeResultType<T = {}> = {
 export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
-  [NodeInputKeyEnum.aiChatTemperature]: number;
-  [NodeInputKeyEnum.aiChatMaxToken]: number;
+  [NodeInputKeyEnum.aiChatTemperature]?: number;
+  [NodeInputKeyEnum.aiChatMaxToken]?: number;
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
+  [NodeInputKeyEnum.aiChatVision]?: boolean;
+
   [NodeInputKeyEnum.aiChatQuoteRole]?: AiChatQuoteRoleType;
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
-  [NodeInputKeyEnum.aiChatVision]?: boolean;
 
   [NodeInputKeyEnum.stringQuoteText]?: string;
   [NodeInputKeyEnum.fileUrlList]?: string[];

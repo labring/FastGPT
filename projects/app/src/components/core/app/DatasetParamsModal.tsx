@@ -30,6 +30,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
+import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -224,19 +225,12 @@ const DatasetParamsModal = ({
           <Box pt={5}>
             {limit !== undefined && (
               <Box display={['block', 'flex']}>
-                <Flex flex={'0 0 120px'} mb={[8, 0]}>
-                  <FormLabel>{t('common:core.dataset.search.Max Tokens')}</FormLabel>
-                  <QuestionTip
-                    ml={1}
-                    label={t('common:core.dataset.search.Max Tokens Tips')}
-                  ></QuestionTip>
+                <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
+                  <FormLabel>{t('app:max_quote_tokens')}</FormLabel>
+                  <QuestionTip label={t('app:max_quote_tokens_tips')} />
                 </Flex>
-                <Box flex={1} mx={4}>
-                  <MySlider
-                    markList={[
-                      { label: '100', value: 100 },
-                      { label: maxTokens, value: maxTokens }
-                    ]}
+                <Box flex={'1 0 0'}>
+                  <InputSlider
                     min={100}
                     max={maxTokens}
                     step={maxTokenStep}
@@ -249,21 +243,14 @@ const DatasetParamsModal = ({
                 </Box>
               </Box>
             )}
-            <Box display={['block', 'flex']} mt={10}>
-              <Flex flex={'0 0 120px'} mb={[8, 0]}>
-                <FormLabel>{t('common:core.dataset.search.Min Similarity')}</FormLabel>
-                <QuestionTip
-                  ml={1}
-                  label={t('common:core.dataset.search.Min Similarity Tips')}
-                ></QuestionTip>
+            <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
+              <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
+                <FormLabel>{t('app:min_similarity')}</FormLabel>
+                <QuestionTip label={t('app:min_similarity_tip')} />
               </Flex>
-              <Box flex={1} mx={4}>
+              <Box flex={'1 0 0'}>
                 {showSimilarity ? (
-                  <MySlider
-                    markList={[
-                      { label: '0', value: 0 },
-                      { label: '1', value: 1 }
-                    ]}
+                  <InputSlider
                     min={0}
                     max={1}
                     step={0.01}

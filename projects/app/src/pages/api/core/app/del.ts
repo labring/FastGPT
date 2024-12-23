@@ -16,8 +16,8 @@ import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
-import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -77,34 +77,31 @@ export const onDelOneApp = async ({
         },
         { session }
       );
+
       // 删除分享链接
-      await MongoOutLink.deleteMany(
-        {
-          appId
-        },
-        { session }
-      );
+      await MongoOutLink.deleteMany({
+        appId
+      }).session(session);
+      // Openapi
+      await MongoOpenApi.deleteMany({
+        appId
+      }).session(session);
+
       // delete version
-      await MongoAppVersion.deleteMany(
-        {
-          appId
-        },
-        { session }
-      );
-      await MongoChatInputGuide.deleteMany(
-        {
-          appId
-        },
-        { session }
-      );
-      await MongoResourcePermission.deleteMany(
-        {
-          resourceType: PerResourceTypeEnum.app,
-          teamId,
-          resourceId: appId
-        },
-        { session }
-      );
+      await MongoAppVersion.deleteMany({
+        appId
+      }).session(session);
+
+      await MongoChatInputGuide.deleteMany({
+        appId
+      }).session(session);
+
+      await MongoResourcePermission.deleteMany({
+        resourceType: PerResourceTypeEnum.app,
+        teamId,
+        resourceId: appId
+      }).session(session);
+
       // delete app
       await MongoApp.deleteOne(
         {
