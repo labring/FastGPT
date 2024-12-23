@@ -129,7 +129,7 @@ const AIChatSettingsModal = ({
       }
       w={'500px'}
     >
-      <ModalBody overflowY={'auto'}>
+      <ModalBody overflowY={'auto'} overflowX={'hidden'}>
         <Flex alignItems={'center'}>
           <Box {...LabelStyles} w={'5rem'}>
             {t('common:core.ai.Model')}
