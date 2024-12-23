@@ -31,12 +31,12 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     });
   }, [nodeId, nodeList, edges, appDetail, t]);
 
-  const workflowVariables = useMemo(() => {
-    return feConfigs?.workflowVariables?.map((item) => ({
+  const externalProviderWorkflowVariables = useMemo(() => {
+    return feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
       key: item.key,
       name: item.name
     }));
-  }, [feConfigs?.workflowVariables]);
+  }, [feConfigs?.externalProviderWorkflowVariables]);
 
   const onChange = useCallback(
     (e: string) => {
@@ -58,7 +58,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       <PromptEditor
         variableLabels={variables}
         variables={variables}
-        workflowVariables={workflowVariables}
+        externalProviderWorkflowVariables={externalProviderWorkflowVariables}
         title={t(item.label as any)}
         maxLength={item.maxLength}
         minH={100}
@@ -68,16 +68,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         onChange={onChange}
       />
     );
-  }, [
-    item.label,
-    item.maxLength,
-    item.placeholder,
-    item.value,
-    onChange,
-    workflowVariables,
-    t,
-    variables
-  ]);
+  }, [item.label, item.maxLength, item.placeholder, item.value, onChange, t, variables]);
 
   return Render;
 };

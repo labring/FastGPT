@@ -60,6 +60,10 @@ import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatc
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { TeamSchema } from '@fastgpt/global/support/user/team/type';
+import {
+  TeamExternalProviderConfigType,
+  UserExternalProviderConfigType
+} from '@fastgpt/global/core/workflow/runtime/type';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -81,8 +85,8 @@ export type Props = ChatCompletionCreateParams &
 type AuthResponseType = {
   teamId: string;
   tmbId: string;
-  user: UserModelSchema;
-  team: TeamSchema;
+  user: UserExternalProviderConfigType;
+  team: TeamExternalProviderConfigType;
   app: AppSchema;
   responseDetail?: boolean;
   showNodeStatus?: boolean;

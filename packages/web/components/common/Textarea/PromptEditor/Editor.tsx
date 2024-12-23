@@ -45,7 +45,7 @@ export default function Editor({
   onOpenModal,
   variables,
   variableLabels,
-  workflowVariables,
+  externalProviderWorkflowVariables,
   onChange,
   onBlur,
   value,
@@ -59,7 +59,7 @@ export default function Editor({
   onOpenModal?: () => void;
   variables: EditorVariablePickerType[];
   variableLabels: EditorVariableLabelPickerType[];
-  workflowVariables: EditorWorkflowVariableType[];
+  externalProviderWorkflowVariables: EditorWorkflowVariableType[];
   onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
@@ -146,7 +146,7 @@ export default function Editor({
         />
         <VariableLabelPlugin variables={variableLabels} />
         <VariablePlugin variables={variables} />
-        <WorkflowVariablePlugin variables={workflowVariables} />
+        <WorkflowVariablePlugin variables={externalProviderWorkflowVariables} />
         <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />

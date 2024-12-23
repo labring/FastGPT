@@ -21,15 +21,29 @@ import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
 import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
-import { TeamSchema } from 'support/user/team/type';
+import {
+  ExternalWorkflowVariableType,
+  LafAccountType,
+  OpenaiAccountType
+} from '../../../support/user/team/type';
+
+export type UserExternalProviderConfigType = {
+  timezone: string;
+};
+
+export type TeamExternalProviderConfigType = {
+  lafAccount?: LafAccountType;
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariables?: ExternalWorkflowVariableType[];
+};
 
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
-  user: UserModelSchema;
-  team: TeamSchema;
+  user: UserExternalProviderConfigType;
+  team: TeamExternalProviderConfigType;
 
   runningAppInfo: {
     id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)

@@ -353,18 +353,6 @@ export function replaceEditorVariable({
   return text || '';
 }
 
-export function replaceWorkflowVariable(text: any, obj: Record<string, string>) {
-  if (typeof text !== 'string') return text;
-
-  for (const key in obj) {
-    const val = obj[key];
-    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-    text = text.replace(new RegExp(`(${key})`, 'g'), formatVal);
-  }
-  return text || '';
-}
-
 export const textAdaptGptResponse = ({
   text,
   model = '',

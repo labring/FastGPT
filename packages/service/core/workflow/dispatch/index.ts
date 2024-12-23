@@ -42,8 +42,7 @@ import {
   filterWorkflowEdges,
   checkNodeRunStatus,
   textAdaptGptResponse,
-  replaceEditorVariable,
-  replaceWorkflowVariable
+  replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
@@ -152,7 +151,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(variables)
+      newVariables: removeSystemVariable(variables, team.externalWorkflowVariables)
     };
   }
 
@@ -180,19 +179,21 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     sendStreamTimerSign();
   }
 
+  const externalWorkflowVariables = (team.externalWorkflowVariables || []).reduce<
+    Record<string, string>
+  >((acc: Record<string, string>, item: { key: string; value: string }) => {
+    if (!item?.key || !item?.value) return acc;
+
+    const key = item.key.replace(/^\{\{(.*)\}\}$/, '$1');
+    acc[key] = String(item.value);
+    return acc;
+  }, {});
+
   variables = {
     ...getSystemVariable(data),
-    ...variables
+    ...variables,
+    ...externalWorkflowVariables
   };
-
-  const workflowVariables = (team.workflowVariables || []).reduce<Record<string, string>>(
-    (acc: Record<string, string>, item: { key: string; value: string }) => {
-      if (!item?.key || !item?.value) return acc;
-      acc[item.key] = String(item.value);
-      return acc;
-    },
-    {}
-  );
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
@@ -504,7 +505,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
 
       // replace {{xx}} variables
-      let value = replaceVariable(input.value, variables);
+      let value = replaceVariable(input.value, { ...variables, ...externalWorkflowVariables });
 
       // replace {{$xx.xx$}} variables
       value = replaceEditorVariable({
@@ -519,9 +520,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodes: runtimeNodes,
         variables
       });
-
-      // replace {{system.xxxxxx}} variables
-      value = replaceWorkflowVariable(value, workflowVariables);
 
       // Dynamic input is stored in the dynamic key
       if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
@@ -692,7 +690,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.assistantResponses]:
         mergeAssistantResponseAnswerText(chatAssistantResponse),
       [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
-      newVariables: removeSystemVariable(variables)
+      newVariables: removeSystemVariable(variables, team.externalWorkflowVariables)
     };
   } catch (error) {
     return Promise.reject(error);

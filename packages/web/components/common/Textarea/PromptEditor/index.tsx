@@ -16,7 +16,7 @@ const PromptEditor = ({
   showOpenModal = true,
   variables = [],
   variableLabels = [],
-  workflowVariables = [],
+  externalProviderWorkflowVariables = [],
   value,
   onChange,
   onBlur,
@@ -30,7 +30,7 @@ const PromptEditor = ({
   showOpenModal?: boolean;
   variables?: EditorVariablePickerType[];
   variableLabels?: EditorVariableLabelPickerType[];
-  workflowVariables?: EditorWorkflowVariableType[];
+  externalProviderWorkflowVariables?: EditorWorkflowVariableType[];
   value?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
@@ -66,7 +66,7 @@ const PromptEditor = ({
         onOpenModal={onOpen}
         variables={variables}
         variableLabels={variableLabels}
-        workflowVariables={workflowVariables}
+        externalProviderWorkflowVariables={externalProviderWorkflowVariables}
         minH={minH}
         maxH={maxH}
         maxLength={maxLength}
@@ -85,7 +85,7 @@ const PromptEditor = ({
             showOpenModal={false}
             variables={variables}
             variableLabels={variableLabels}
-            workflowVariables={workflowVariables}
+            externalProviderWorkflowVariables={externalProviderWorkflowVariables}
             value={value}
             onChange={onChangeInput}
             onBlur={onBlurInput}

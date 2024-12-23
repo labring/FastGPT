@@ -36,7 +36,7 @@ export default function VariableLabelPlugin({
     const matches = REGEX.exec(text);
     if (!matches) return null;
     // if (variableKeys.indexOf(matches[4]) === -1) return null;
-    const hashtagLength = matches[0].length;
+    const hashtagLength = matches[4].length + 6;
     const startOffset = matches.index;
     const endOffset = startOffset + hashtagLength;
     return {

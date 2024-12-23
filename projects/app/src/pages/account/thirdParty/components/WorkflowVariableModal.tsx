@@ -6,8 +6,8 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { putUpdateTeam } from '@/web/support/user/team/api';
-import { WorkflowVariableType } from '@fastgpt/global/support/user/team/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { ExternalWorkflowVariableType } from '@fastgpt/global/support/user/team/type';
 
 const WorkflowVariableModal = ({
   defaultData,
@@ -19,7 +19,7 @@ const WorkflowVariableModal = ({
   const { t } = useTranslation();
   const { userInfo, initUserInfo } = useUserStore();
 
-  const workflowVariables = userInfo?.team.workflowVariables || [];
+  const externalWorkflowVariables = userInfo?.team.externalWorkflowVariables || [];
 
   const { register, handleSubmit } = useForm({
     defaultValues: {
@@ -29,15 +29,18 @@ const WorkflowVariableModal = ({
   });
 
   const { runAsync: onSubmit, loading } = useRequest2(
-    async (data: WorkflowVariableType) => {
+    async (data: ExternalWorkflowVariableType) => {
+      console.log('data', data);
       if (!userInfo?.team.teamId) return;
-      if (workflowVariables.find((item) => item.key === data.key)) {
+      if (externalWorkflowVariables.find((item) => item.key === data.key)) {
         return putUpdateTeam({
-          workflowVariables: workflowVariables.map((item) => (item.key === data.key ? data : item))
+          externalWorkflowVariables: externalWorkflowVariables.map((item) =>
+            item.key === data.key ? data : item
+          )
         });
       }
       return putUpdateTeam({
-        workflowVariables: [...workflowVariables, data]
+        externalWorkflowVariables: [...externalWorkflowVariables, data]
       });
     },
     {

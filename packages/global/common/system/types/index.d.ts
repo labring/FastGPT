@@ -18,7 +18,7 @@ export type NavbarItemType = {
   isActive: boolean;
 };
 
-export type ThirdPartyVariableType = {
+export type ExternalProviderWorkflowVarType = {
   name: string;
   key: string;
   intro: string;
@@ -93,7 +93,7 @@ export type FastGPTFeConfigsType = {
   uploadFileMaxSize?: number;
   lafEnv?: string;
   navbarItems?: NavbarItemType[];
-  workflowVariables?: ThirdPartyVariableType[];
+  externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
 };
 
 export type SystemEnvType = {

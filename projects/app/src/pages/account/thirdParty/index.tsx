@@ -59,27 +59,27 @@ const ThirdParty = () => {
       value: userInfo?.team.openaiAccount?.key
     }
   ];
-
   const getWorkflowVariables = useCallback(async (): Promise<ThirdPartyAccountType[]> => {
     return Promise.all(
-      (feConfigs?.workflowVariables || []).map(async (item) => {
-        const workflowVariable = userInfo?.team.workflowVariables?.find(
+      (feConfigs?.externalProviderWorkflowVariables || []).map(async (item) => {
+        const workflowVariable = userInfo?.team.externalWorkflowVariables?.find(
           (variable) => variable.key === item.key
         );
 
-        let usage;
-        if (workflowVariable?.value && item.url) {
+        const usage = await (async () => {
+          if (!workflowVariable?.value || !item.url) return [0, -1];
           try {
             const response = await axios.get(item.url, {
               headers: {
                 Authorization: workflowVariable.value
               }
             });
-            usage = response.data.usage;
+            return response.data.usage;
           } catch (err) {
             console.log(err);
+            return [0, -1];
           }
-        }
+        })();
 
         const account = {
           key: item.key,
@@ -98,15 +98,26 @@ const ThirdParty = () => {
         };
       })
     );
-  }, [feConfigs?.workflowVariables, t, userInfo?.team.workflowVariables]);
+  }, [feConfigs?.externalProviderWorkflowVariables, t, userInfo?.team.externalWorkflowVariables]);
 
   useEffect(() => {
-    getWorkflowVariables().then(setWorkflowVariables);
+    const loadWorkflowVariables = async () => {
+      try {
+        const variables = await getWorkflowVariables();
+        setExternalWorkflowVariables(variables);
+      } catch (err) {
+        console.error('Failed to load workflow variables:', err);
+      }
+    };
+
+    loadWorkflowVariables();
   }, [getWorkflowVariables]);
 
-  const [workflowVariables, setWorkflowVariables] = useState<ThirdPartyAccountType[]>([]);
+  const [externalWorkflowVariables, setExternalWorkflowVariables] = useState<
+    ThirdPartyAccountType[]
+  >([]);
 
-  const accountList = [...defaultAccountList, ...workflowVariables];
+  const accountList = [...defaultAccountList, ...externalWorkflowVariables];
 
   return (
     <AccountContainer>

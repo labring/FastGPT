@@ -43,7 +43,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     defaultTeam: tmb.defaultTeam,
     lafAccount: tmb.teamId.lafAccount,
     openaiAccount: tmb.teamId.openaiAccount,
-    workflowVariables: tmb.teamId.workflowVariables,
+    externalWorkflowVariables: tmb.teamId.externalWorkflowVariables,
     permission: new TeamPermission({
       per: Per ?? TeamDefaultPermissionVal,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
@@ -150,7 +150,7 @@ export async function updateTeam({
   teamDomain,
   lafAccount,
   openaiAccount,
-  workflowVariables
+  externalWorkflowVariables
 }: UpdateTeamProps & { teamId: string }) {
   // auth key
   if (openaiAccount?.key) {
@@ -168,25 +168,23 @@ export async function updateTeam({
       messages: [{ role: 'user', content: 'hi' }]
     });
     if (response?.choices?.[0]?.message?.content === undefined) {
-      throw new Error('Key response is empty');
+      return Promise.reject('Key response is empty');
     }
   }
 
   return mongoSessionRun(async (session) => {
-    await MongoTeam.findByIdAndUpdate(
-      teamId,
-      {
-        name,
-        avatar,
-        teamDomain,
-        lafAccount,
-        openaiAccount,
-        workflowVariables
-      },
-      { session }
-    );
+    const updateObj: any = {};
 
-    // update default group
+    if (name !== undefined) updateObj.name = name;
+    if (avatar !== undefined) updateObj.avatar = avatar;
+    if (teamDomain !== undefined) updateObj.teamDomain = teamDomain;
+    if (lafAccount !== undefined) updateObj.lafAccount = lafAccount;
+    if (openaiAccount !== undefined) updateObj.openaiAccount = openaiAccount;
+    if (externalWorkflowVariables !== undefined)
+      updateObj.externalWorkflowVariables = externalWorkflowVariables;
+
+    await MongoTeam.findByIdAndUpdate(teamId, updateObj, { session });
+
     if (avatar) {
       await MongoMemberGroupModel.updateOne(
         {
