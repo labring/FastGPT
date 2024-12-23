@@ -71,8 +71,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     chatConfig,
     params: {
       model,
-      temperature = 0,
-      maxToken = 4000,
+      temperature,
+      maxToken,
       history = 6,
       quoteQA,
       userChatInput,

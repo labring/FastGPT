@@ -3,7 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
-import AISettingModal from '@/components/core/ai/AISettingModal';
+import AISettingModal, { AIChatSettingsModalProps } from '@/components/core/ai/AISettingModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -17,7 +17,12 @@ type Props = {
   bg?: string;
 };
 
-const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onChange }: Props) => {
+const SettingLLMModel = ({
+  llmModelType = LLMModelTypeEnum.all,
+  defaultData,
+  onChange,
+  ...props
+}: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 
@@ -95,6 +100,7 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
           }}
           defaultData={defaultData}
           llmModels={modelList}
+          {...props}
         />
       )}
     </Box>

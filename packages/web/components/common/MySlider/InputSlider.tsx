@@ -7,13 +7,15 @@ const InputSlider = ({
   value,
   max = 100,
   min = 0,
-  step = 1
+  step = 1,
+  isDisabled
 }: {
-  value: number;
+  value?: number;
   onChange: (index: number) => void;
   max: number;
   min: number;
   step?: number;
+  isDisabled?: boolean;
 }) => {
   const markList = useMemo(() => {
     const valLen = max - min;
@@ -36,6 +38,7 @@ const InputSlider = ({
         value={value}
         focusThumbOnChange={false}
         onChange={onChange}
+        isDisabled={isDisabled}
       >
         <SliderTrack bg={'myGray.100'} h={'4px'} />
         {markList.map((val, i) => (
@@ -67,6 +70,7 @@ const InputSlider = ({
         max={max}
         step={step}
         value={value}
+        isDisabled={isDisabled}
         onChange={(e) => onChange(e ?? min)}
       />
     </HStack>

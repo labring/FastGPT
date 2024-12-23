@@ -54,7 +54,7 @@ export const runToolWithPromptCall = async (
     user,
     stream,
     workflowStreamResponse,
-    params: { temperature = 0, maxToken = 4000, aiChatVision }
+    params: { temperature, maxToken, aiChatVision }
   } = workflowProps;
 
   if (interactiveEntryToolParams) {

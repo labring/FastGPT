@@ -32,10 +32,8 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
   const llmModelData: SettingAIDataType = useMemo(
     () => ({
       model: inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value ?? '',
-      maxToken:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value ?? 2048,
-      temperature:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value ?? 1,
+      maxToken: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatMaxToken)?.value,
+      temperature: inputs.find((input) => input.key === NodeInputKeyEnum.aiChatTemperature)?.value,
       isResponseAnswerText: inputs.find(
         (input) => input.key === NodeInputKeyEnum.aiChatIsResponseText
       )?.value,
