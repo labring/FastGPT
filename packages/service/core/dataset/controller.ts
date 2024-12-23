@@ -85,13 +85,17 @@ export async function delDatasetRelevantData({
     '_id teamId datasetId fileId metadata',
     { session }
   ).lean();
-  console.log('Delete dataset collections', collections);
+
   // delete training data
-  await MongoDatasetTraining.deleteMany({
-    teamId,
-    datasetId: { $in: datasetIds }
-  });
+  await MongoDatasetTraining.deleteMany(
+    {
+      teamId,
+      datasetId: { $in: datasetIds }
+    },
+    { session }
+  );
   console.log('delete training finish');
+
   // image and file
   await delCollectionRelatedSource({ collections, session });
   console.log('delete image and file finish');
