@@ -150,7 +150,7 @@ export async function updateTeam({
   teamDomain,
   lafAccount,
   openaiAccount,
-  externalWorkflowVariables
+  externalWorkflowVariable
 }: UpdateTeamProps & { teamId: string }) {
   // auth key
   if (openaiAccount?.key) {
@@ -180,8 +180,12 @@ export async function updateTeam({
     if (teamDomain !== undefined) updateObj.teamDomain = teamDomain;
     if (lafAccount !== undefined) updateObj.lafAccount = lafAccount;
     if (openaiAccount !== undefined) updateObj.openaiAccount = openaiAccount;
-    if (externalWorkflowVariables !== undefined)
-      updateObj.externalWorkflowVariables = externalWorkflowVariables;
+    if (externalWorkflowVariable !== undefined) {
+      updateObj.$set = {
+        [`externalWorkflowVariables.${externalWorkflowVariable.key}`]:
+          externalWorkflowVariable.value
+      };
+    }
 
     await MongoTeam.findByIdAndUpdate(teamId, updateObj, { session });
 

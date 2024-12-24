@@ -126,8 +126,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     runtimeEdges = [],
     histories = [],
     variables = {},
-    user,
-    team,
+    timezone,
+    externalProvider,
     stream = false,
     ...props
   } = data;
@@ -151,7 +151,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(variables, team.externalWorkflowVariables)
+      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
     };
   }
 
@@ -179,13 +179,12 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     sendStreamTimerSign();
   }
 
-  const externalWorkflowVariables = (team.externalWorkflowVariables || []).reduce<
-    Record<string, string>
-  >((acc: Record<string, string>, item: { key: string; value: string }) => {
-    if (!item?.key || !item?.value) return acc;
-
-    const key = item.key.replace(/^\{\{(.*)\}\}$/, '$1');
-    acc[key] = String(item.value);
+  const externalWorkflowVariables = Object.entries(
+    externalProvider.externalWorkflowVariables || {}
+  ).reduce<Record<string, string>>((acc, [key, value]) => {
+    if (!key || !value) return acc;
+    const cleanKey = key.replace(/^\{\{(.*)\}\}$/, '$1');
+    acc[cleanKey] = String(value);
     return acc;
   }, {});
 
@@ -505,7 +504,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
 
       // replace {{xx}} variables
-      let value = replaceVariable(input.value, { ...variables, ...externalWorkflowVariables });
+      let value = replaceVariable(input.value, variables);
 
       // replace {{$xx.xx$}} variables
       value = replaceEditorVariable({
@@ -555,8 +554,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       res,
       variables,
       histories,
-      user,
-      team,
+      timezone,
+      externalProvider,
       stream,
       node,
       runtimeNodes,
@@ -690,7 +689,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.assistantResponses]:
         mergeAssistantResponseAnswerText(chatAssistantResponse),
       [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
-      newVariables: removeSystemVariable(variables, team.externalWorkflowVariables)
+      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
     };
   } catch (error) {
     return Promise.reject(error);
@@ -699,7 +698,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
 /* get system variable */
 const getSystemVariable = ({
-  user,
+  timezone,
   runningAppInfo,
   chatId,
   responseChatItemId,
@@ -720,7 +719,7 @@ const getSystemVariable = ({
     chatId,
     responseChatItemId,
     histories,
-    cTime: getSystemTime(user.timezone)
+    cTime: getSystemTime(timezone)
   };
 };
 

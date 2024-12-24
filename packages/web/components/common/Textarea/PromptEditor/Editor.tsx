@@ -21,11 +21,7 @@ import { VariableNode } from './plugins/VariablePlugin/node';
 import { EditorState, LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
-import {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType,
-  EditorWorkflowVariableType
-} from './type.d';
+import { EditorVariableLabelPickerType, EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import FocusPlugin from './plugins/FocusPlugin';
 import { textToEditorState } from './utils';
@@ -34,8 +30,6 @@ import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
 import VariableLabelPlugin from './plugins/VariableLabelPlugin';
 import { useDeepCompareEffect } from 'ahooks';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
-import WorkflowVariablePlugin from './plugins/WorkflowVariablePlugin';
-import { WorkflowVariableNode } from './plugins/WorkflowVariablePlugin/node';
 
 export default function Editor({
   minH = 200,
@@ -45,7 +39,6 @@ export default function Editor({
   onOpenModal,
   variables,
   variableLabels,
-  externalProviderWorkflowVariables,
   onChange,
   onBlur,
   value,
@@ -59,7 +52,6 @@ export default function Editor({
   onOpenModal?: () => void;
   variables: EditorVariablePickerType[];
   variableLabels: EditorVariableLabelPickerType[];
-  externalProviderWorkflowVariables: EditorWorkflowVariableType[];
   onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
@@ -73,7 +65,7 @@ export default function Editor({
 
   const initialConfig = {
     namespace: 'promptEditor',
-    nodes: [VariableNode, VariableLabelNode, WorkflowVariableNode],
+    nodes: [VariableNode, VariableLabelNode],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
@@ -146,7 +138,6 @@ export default function Editor({
         />
         <VariableLabelPlugin variables={variableLabels} />
         <VariablePlugin variables={variables} />
-        <WorkflowVariablePlugin variables={externalProviderWorkflowVariables} />
         <VariableLabelPickerPlugin variables={variableLabels} isFocus={focus} />
         <VariablePickerPlugin variables={variableLabels.length > 0 ? [] : variables} />
         <OnBlurPlugin onBlur={onBlur} />

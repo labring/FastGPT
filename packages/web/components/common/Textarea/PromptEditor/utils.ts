@@ -11,11 +11,9 @@ import type { EntityMatch } from '@lexical/text';
 import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
 import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
-import { WorkflowVariableNode } from './plugins/WorkflowVariablePlugin/node';
+import { VariableNode } from './plugins/VariablePlugin/node';
 
-export function registerLexicalTextEntity<
-  T extends TextNode | VariableLabelNode | WorkflowVariableNode
->(
+export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
   editor: LexicalEditor,
   getMatch: (text: string) => null | EntityMatch,
   targetNode: Klass<T>,
@@ -25,9 +23,7 @@ export function registerLexicalTextEntity<
     return node instanceof targetNode;
   };
 
-  const replaceWithSimpleText = (
-    node: TextNode | VariableLabelNode | WorkflowVariableNode
-  ): void => {
+  const replaceWithSimpleText = (node: TextNode | VariableLabelNode | VariableNode): void => {
     const textNode = $createTextNode(node.getTextContent());
     textNode.setFormat(node.getFormat());
     node.replace(textNode);
@@ -233,7 +229,7 @@ export function editorStateToText(editor: LexicalEditor) {
         paragraphText.push(child.text);
       } else if (child.type === 'variableLabel') {
         paragraphText.push(child.variableKey);
-      } else if (child.type === 'workflowVariable') {
+      } else if (child.type === 'Variable') {
         paragraphText.push(child.variableKey);
       }
     });

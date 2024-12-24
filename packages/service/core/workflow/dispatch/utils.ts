@@ -14,8 +14,6 @@ import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { ExternalProviderWorkflowVarType } from '@fastgpt/global/common/system/types';
-import { ExternalWorkflowVariableType } from '@fastgpt/global/support/user/team/type';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -145,7 +143,7 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 /* remove system variable */
 export const removeSystemVariable = (
   variables: Record<string, any>,
-  externalProviderWorkflowVariables?: ExternalWorkflowVariableType[]
+  externalProviderWorkflowVariables?: Record<string, string>
 ) => {
   const copyVariables = { ...variables };
   delete copyVariables.userId;
@@ -157,8 +155,7 @@ export const removeSystemVariable = (
 
   // delete external provider workflow variables
   if (externalProviderWorkflowVariables) {
-    externalProviderWorkflowVariables.forEach((item) => {
-      const key = item.key.replace(/^\{\{(.*)\}\}$/, '$1');
+    Object.keys(externalProviderWorkflowVariables).forEach((key) => {
       delete copyVariables[key];
     });
   }

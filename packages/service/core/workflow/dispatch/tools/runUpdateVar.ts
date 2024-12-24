@@ -19,7 +19,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variables, runtimeNodes, workflowStreamResponse, team } = props;
+  const { params, variables, runtimeNodes, workflowStreamResponse, externalProvider } = props;
 
   const { updateList } = params;
   const nodeIds = runtimeNodes.map((node) => node.nodeId);
@@ -80,7 +80,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
   workflowStreamResponse?.({
     event: SseResponseEventEnum.updateVariables,
-    data: removeSystemVariable(variables, team.externalWorkflowVariables)
+    data: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
   });
 
   return {

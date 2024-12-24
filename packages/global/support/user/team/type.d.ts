@@ -18,7 +18,7 @@ export type TeamSchema = {
   };
   lafAccount?: LafAccountType;
   openaiAccount?: OpenaiAccountType;
-  externalWorkflowVariables?: ExternalWorkflowVariableType[];
+  externalWorkflowVariables?: Record<string, string>;
   notificationAccount?: string;
 };
 
@@ -70,7 +70,7 @@ export type TeamTmbItemType = {
   status: `${TeamMemberStatusEnum}`;
   lafAccount?: LafAccountType;
   openaiAccount?: OpenaiAccountType;
-  externalWorkflowVariables?: ExternalWorkflowVariableType[];
+  externalWorkflowVariables?: Record<string, string>;
   notificationAccount?: string;
   permission: TeamPermission;
 };
@@ -100,11 +100,6 @@ export type LafAccountType = {
 export type OpenaiAccountType = {
   key: string;
   baseUrl: string;
-};
-
-export type ExternalWorkflowVariableType = {
-  key: string;
-  value: string;
 };
 
 export type TeamInvoiceHeaderType = {

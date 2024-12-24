@@ -1,4 +1,3 @@
-import { serviceSideProps } from '@/web/common/utils/i18n';
 import AccountContainer from '../components/AccountContainer';
 import { Box, Flex, Grid, Progress, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import WorkflowVariableModal from './components/WorkflowVariableModal';
 import axios from 'axios';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
@@ -62,16 +62,16 @@ const ThirdParty = () => {
   const getWorkflowVariables = useCallback(async (): Promise<ThirdPartyAccountType[]> => {
     return Promise.all(
       (feConfigs?.externalProviderWorkflowVariables || []).map(async (item) => {
-        const workflowVariable = userInfo?.team.externalWorkflowVariables?.find(
-          (variable) => variable.key === item.key
-        );
+        const teamExternalWorkflowVariables = userInfo?.team.externalWorkflowVariables || {};
+
+        const workflowVariable = teamExternalWorkflowVariables[item.key];
 
         const usage = await (async () => {
-          if (!workflowVariable?.value || !item.url) return [0, -1];
+          if (!workflowVariable || !item.url) return [0, -1];
           try {
             const response = await axios.get(item.url, {
               headers: {
-                Authorization: workflowVariable.value
+                Authorization: workflowVariable
               }
             });
             return response.data.usage;
@@ -84,7 +84,7 @@ const ThirdParty = () => {
         const account = {
           key: item.key,
           name: item.name,
-          value: workflowVariable?.value,
+          value: workflowVariable,
           icon: 'common/variable',
           iconColor: 'primary.600',
           intro: item.intro || t('account_thirdParty:no_intro')

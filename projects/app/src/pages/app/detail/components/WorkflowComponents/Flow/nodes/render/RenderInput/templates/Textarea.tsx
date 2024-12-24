@@ -32,10 +32,12 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   }, [nodeId, nodeList, edges, appDetail, t]);
 
   const externalProviderWorkflowVariables = useMemo(() => {
-    return feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
-      key: item.key,
-      name: item.name
-    }));
+    return (
+      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+        key: item.key.replace(/[{}]/g, ''),
+        label: item.name
+      })) || []
+    );
   }, [feConfigs?.externalProviderWorkflowVariables]);
 
   const onChange = useCallback(
@@ -57,8 +59,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     return (
       <PromptEditor
         variableLabels={variables}
-        variables={variables}
-        externalProviderWorkflowVariables={externalProviderWorkflowVariables}
+        variables={[...variables, ...externalProviderWorkflowVariables]}
         title={t(item.label as any)}
         maxLength={item.maxLength}
         minH={100}

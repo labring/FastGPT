@@ -1,7 +1,7 @@
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
-export default function WorkflowVariable({ variableLabel }: { variableLabel: string }) {
+export default function Variable({ variableLabel }: { variableLabel: string }) {
   const { t } = useTranslation();
 
   return (

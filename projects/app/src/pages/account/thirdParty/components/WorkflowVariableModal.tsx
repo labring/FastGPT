@@ -7,7 +7,6 @@ import { useForm } from 'react-hook-form';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { putUpdateTeam } from '@/web/support/user/team/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { ExternalWorkflowVariableType } from '@fastgpt/global/support/user/team/type';
 
 const WorkflowVariableModal = ({
   defaultData,
@@ -19,8 +18,6 @@ const WorkflowVariableModal = ({
   const { t } = useTranslation();
   const { userInfo, initUserInfo } = useUserStore();
 
-  const externalWorkflowVariables = userInfo?.team.externalWorkflowVariables || [];
-
   const { register, handleSubmit } = useForm({
     defaultValues: {
       value: defaultData.value || '',
@@ -29,18 +26,11 @@ const WorkflowVariableModal = ({
   });
 
   const { runAsync: onSubmit, loading } = useRequest2(
-    async (data: ExternalWorkflowVariableType) => {
-      console.log('data', data);
+    async (data: { key: string; value: string }) => {
       if (!userInfo?.team.teamId) return;
-      if (externalWorkflowVariables.find((item) => item.key === data.key)) {
-        return putUpdateTeam({
-          externalWorkflowVariables: externalWorkflowVariables.map((item) =>
-            item.key === data.key ? data : item
-          )
-        });
-      }
-      return putUpdateTeam({
-        externalWorkflowVariables: [...externalWorkflowVariables, data]
+
+      await putUpdateTeam({
+        externalWorkflowVariable: data
       });
     },
     {

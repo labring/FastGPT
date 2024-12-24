@@ -54,13 +54,8 @@ const TeamSchema = new Schema({
     }
   },
   externalWorkflowVariables: {
-    type: [
-      {
-        key: String,
-        value: String
-      }
-    ],
-    default: []
+    type: Object,
+    default: {}
   },
   notificationAccount: {
     type: String,

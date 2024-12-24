@@ -10,9 +10,9 @@ import {
   Spread,
   TextFormatType
 } from 'lexical';
-import WorkflowVariable from './components/WorkflowVariable';
+import Variable from './components/Variable';
 
-export type SerializedWorkflowVariableNode = Spread<
+export type SerializedVariableNode = Spread<
   {
     variableKey: string;
     variableLabel: string;
@@ -21,20 +21,15 @@ export type SerializedWorkflowVariableNode = Spread<
   SerializedLexicalNode
 >;
 
-export class WorkflowVariableNode extends DecoratorNode<JSX.Element> {
+export class VariableNode extends DecoratorNode<JSX.Element> {
   __format: number | TextFormatType;
   __variableKey: string;
   __variableLabel: string;
   static getType(): string {
-    return 'workflowVariable';
+    return 'Variable';
   }
-  static clone(node: WorkflowVariableNode): WorkflowVariableNode {
-    return new WorkflowVariableNode(
-      node.__variableKey,
-      node.__variableLabel,
-      node.__format,
-      node.__key
-    );
+  static clone(node: VariableNode): VariableNode {
+    return new VariableNode(node.__variableKey, node.__variableLabel, node.__format, node.__key);
   }
   constructor(
     variableKey: string,
@@ -48,11 +43,8 @@ export class WorkflowVariableNode extends DecoratorNode<JSX.Element> {
     this.__variableLabel = variableLabel;
   }
 
-  static importJSON(serializedNode: SerializedWorkflowVariableNode): WorkflowVariableNode {
-    const node = $createWorkflowVariableNode(
-      serializedNode.variableKey,
-      serializedNode.variableLabel
-    );
+  static importJSON(serializedNode: SerializedVariableNode): VariableNode {
+    const node = $createVariableNode(serializedNode.variableKey, serializedNode.variableLabel);
     node.setFormat(serializedNode.format);
     return node;
   }
@@ -65,10 +57,10 @@ export class WorkflowVariableNode extends DecoratorNode<JSX.Element> {
     return this.__format;
   }
 
-  exportJSON(): SerializedWorkflowVariableNode {
+  exportJSON(): SerializedVariableNode {
     return {
       format: this.__format || 0,
-      type: 'workflowVariable',
+      type: 'Variable',
       version: 1,
       variableKey: this.getVariableKey(),
       variableLabel: this.__variableLabel
@@ -98,19 +90,16 @@ export class WorkflowVariableNode extends DecoratorNode<JSX.Element> {
     return `${this.__variableKey}`;
   }
   decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
-    return <WorkflowVariable variableLabel={this.__variableLabel} />;
+    return <Variable variableLabel={this.__variableLabel} />;
   }
 }
 
-export function $createWorkflowVariableNode(
-  variableKey: string,
-  variableLabel: string
-): WorkflowVariableNode {
-  return new WorkflowVariableNode(variableKey, variableLabel);
+export function $createVariableNode(variableKey: string, variableLabel: string): VariableNode {
+  return new VariableNode(variableKey, variableLabel);
 }
 
-export function $isWorkflowVariableNode(
-  node: WorkflowVariableNode | LexicalNode | null | undefined
-): node is WorkflowVariableNode {
-  return node instanceof WorkflowVariableNode;
+export function $isVariableNode(
+  node: VariableNode | LexicalNode | null | undefined
+): node is VariableNode {
+  return node instanceof VariableNode;
 }

@@ -1,14 +1,13 @@
-import {
-  TeamExternalProviderConfigType,
-  UserExternalProviderConfigType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 import { MongoTeamMember } from '../../user/team/teamMemberSchema';
 import { checkTeamAIPoints } from '../teamLimit';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 type tmbType = {
-  teamId: TeamExternalProviderConfigType & { _id: string };
-  userId: UserExternalProviderConfigType;
+  teamId: ExternalProviderType & { _id: string };
+  userId: {
+    timezone: string;
+  };
 };
 
 export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
@@ -21,7 +20,7 @@ export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
   await checkTeamAIPoints(tmb.teamId._id);
 
   return {
-    user: tmb.userId,
-    team: tmb.teamId
+    timezone: tmb.userId.timezone,
+    externalProvider: tmb.teamId
   };
 }
