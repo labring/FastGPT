@@ -183,7 +183,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     externalProvider.externalWorkflowVariables || {}
   ).reduce<Record<string, string>>((acc, [key, value]) => {
     if (!key || !value) return acc;
-    acc[key] = String(value);
+    acc[key] = value;
     return acc;
   }, {});
 
