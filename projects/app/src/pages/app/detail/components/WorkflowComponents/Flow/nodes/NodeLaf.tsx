@@ -54,8 +54,8 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
   const { userInfo, initUserInfo } = useUserStore();
 
-  const token = userInfo?.team.lafAccount?.token;
-  const appid = userInfo?.team.lafAccount?.appid;
+  const token = userInfo?.team?.lafAccount?.token;
+  const appid = userInfo?.team?.lafAccount?.appid;
 
   const {
     data: lafData,
@@ -322,7 +322,7 @@ const ConfigLaf = () => {
       </Button>
 
       {isOpenLafConfig && feConfigs?.lafEnv && (
-        <LafAccountModal defaultData={userInfo?.team.lafAccount} onClose={onCloseLafConfig} />
+        <LafAccountModal defaultData={userInfo?.team?.lafAccount} onClose={onCloseLafConfig} />
       )}
     </Center>
   ) : (

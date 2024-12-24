@@ -24,7 +24,7 @@ export type ExternalProviderWorkflowVarType = {
   intro: string;
   isOpen: boolean;
   url?: string;
-  value?: string;
+  // value?: string;
 };
 
 /* fastgpt main */

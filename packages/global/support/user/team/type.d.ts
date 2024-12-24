@@ -4,6 +4,12 @@ import { LafAccountType } from './type';
 import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
 import { TeamPermission } from '../../permission/user/controller';
 
+export type ThirdPartyAccountType = {
+  lafAccount?: LafAccountType;
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariables?: Record<string, string>;
+};
+
 export type TeamSchema = {
   _id: string;
   name: string;
@@ -16,11 +22,8 @@ export type TeamSchema = {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
   };
-  lafAccount?: LafAccountType;
-  openaiAccount?: OpenaiAccountType;
-  externalWorkflowVariables?: Record<string, string>;
   notificationAccount?: string;
-};
+} & ThirdPartyAccountType;
 
 export type tagsType = {
   label: string;
@@ -68,12 +71,9 @@ export type TeamTmbItemType = {
   defaultTeam: boolean;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-  lafAccount?: LafAccountType;
-  openaiAccount?: OpenaiAccountType;
-  externalWorkflowVariables?: Record<string, string>;
   notificationAccount?: string;
   permission: TeamPermission;
-};
+} & ThirdPartyAccountType;
 
 export type TeamMemberItemType = {
   userId: string;
@@ -92,8 +92,8 @@ export type TeamTagItemType = {
 };
 
 export type LafAccountType = {
-  token: string;
   appid: string;
+  token: string;
   pat: string;
 };
 
