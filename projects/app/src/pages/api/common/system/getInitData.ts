@@ -1,11 +1,8 @@
 import type { NextApiResponse } from 'next';
-import { connectToDatabase } from '@/service/mongo';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: ApiRequestProps<{}, { bufferId?: string }>, res: NextApiResponse) {
-  await connectToDatabase();
-
   const { bufferId } = req.query;
 
   // If bufferId is the same as the current bufferId, return directly
