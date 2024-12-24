@@ -15,6 +15,7 @@ import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/use
 import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
+import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
@@ -41,6 +42,8 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
     lafAccount: tmb.teamId.lafAccount,
+    openaiAccount: tmb.teamId.openaiAccount,
+    externalWorkflowVariables: tmb.teamId.externalWorkflowVariables,
     permission: new TeamPermission({
       per: Per ?? TeamDefaultPermissionVal,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
@@ -145,21 +148,47 @@ export async function updateTeam({
   name,
   avatar,
   teamDomain,
-  lafAccount
+  lafAccount,
+  openaiAccount,
+  externalWorkflowVariable
 }: UpdateTeamProps & { teamId: string }) {
-  return mongoSessionRun(async (session) => {
-    await MongoTeam.findByIdAndUpdate(
-      teamId,
-      {
-        name,
-        avatar,
-        teamDomain,
-        lafAccount
-      },
-      { session }
-    );
+  // auth key
+  if (openaiAccount?.key) {
+    console.log('auth user openai key', openaiAccount?.key);
+    const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
+    openaiAccount.baseUrl = baseUrl;
 
-    // update default group
+    const ai = getAIApi({
+      userKey: openaiAccount
+    });
+
+    const response = await ai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'hi' }]
+    });
+    if (response?.choices?.[0]?.message?.content === undefined) {
+      return Promise.reject('Key response is empty');
+    }
+  }
+
+  return mongoSessionRun(async (session) => {
+    const updateObj: any = {};
+
+    if (name !== undefined) updateObj.name = name;
+    if (avatar !== undefined) updateObj.avatar = avatar;
+    if (teamDomain !== undefined) updateObj.teamDomain = teamDomain;
+    if (lafAccount !== undefined) updateObj.lafAccount = lafAccount;
+    if (openaiAccount !== undefined) updateObj.openaiAccount = openaiAccount;
+    if (externalWorkflowVariable !== undefined) {
+      updateObj.$set = {
+        [`externalWorkflowVariables.${externalWorkflowVariable.key}`]:
+          externalWorkflowVariable.value
+      };
+    }
+
+    await MongoTeam.findByIdAndUpdate(teamId, updateObj, { session });
+
     if (avatar) {
       await MongoMemberGroupModel.updateOne(
         {

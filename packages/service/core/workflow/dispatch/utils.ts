@@ -141,13 +141,24 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
 };
 
 /* remove system variable */
-export const removeSystemVariable = (variables: Record<string, any>) => {
+export const removeSystemVariable = (
+  variables: Record<string, any>,
+  externalProviderWorkflowVariables?: Record<string, string>
+) => {
   const copyVariables = { ...variables };
+  delete copyVariables.userId;
   delete copyVariables.appId;
   delete copyVariables.chatId;
   delete copyVariables.responseChatItemId;
   delete copyVariables.histories;
   delete copyVariables.cTime;
+
+  // delete external provider workflow variables
+  if (externalProviderWorkflowVariables) {
+    Object.keys(externalProviderWorkflowVariables).forEach((key) => {
+      delete copyVariables[key];
+    });
+  }
 
   return copyVariables;
 };

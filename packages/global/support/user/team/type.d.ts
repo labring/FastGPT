@@ -16,7 +16,9 @@ export type TeamSchema = {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
   };
-  lafAccount: LafAccountType;
+  lafAccount?: LafAccountType;
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariables?: Record<string, string>;
   notificationAccount?: string;
 };
 
@@ -67,6 +69,8 @@ export type TeamTmbItemType = {
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   lafAccount?: LafAccountType;
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariables?: Record<string, string>;
   notificationAccount?: string;
   permission: TeamPermission;
 };
@@ -91,6 +95,11 @@ export type LafAccountType = {
   token: string;
   appid: string;
   pat: string;
+};
+
+export type OpenaiAccountType = {
+  key: string;
+  baseUrl: string;
 };
 
 export type TeamInvoiceHeaderType = {

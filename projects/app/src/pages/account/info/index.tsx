@@ -38,10 +38,8 @@ import { formatTime2YMD } from '@fastgpt/global/common/string/time';
 import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
 
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '../components/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
@@ -52,8 +50,6 @@ const StandDetailModal = dynamic(() => import('./components/standardDetailModal'
 const ConversionModal = dynamic(() => import('./components/ConversionModal'));
 const UpdatePswModal = dynamic(() => import('./components/UpdatePswModal'));
 const UpdateNotification = dynamic(() => import('./components/UpdateNotificationModal'));
-const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
-const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const ModelPriceModal = dynamic(() =>
@@ -144,8 +140,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     async (data: UserType) => {
       await updateUserInfo({
         avatar: data.avatar,
-        timezone: data.timezone,
-        openaiAccount: data.openaiAccount
+        timezone: data.timezone
       });
       reset(data);
       toast({
@@ -600,24 +595,6 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
-  const { isOpen: isOpenLaf, onClose: onCloseLaf, onOpen: onOpenLaf } = useDisclosure();
-  const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
-
-  const onclickSave = useCallback(
-    async (data: UserType) => {
-      await updateUserInfo({
-        avatar: data.avatar,
-        timezone: data.timezone,
-        openaiAccount: data.openaiAccount
-      });
-      reset(data);
-      toast({
-        title: t('account_info:update_success_tip'),
-        status: 'success'
-      });
-    },
-    [reset, t, toast, updateUserInfo]
-  );
 
   const buttonStyles = useRef<FlexProps>({
     bg: 'white',
@@ -673,36 +650,6 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
                 </Box>
               </Flex>
             ))}
-
-        {feConfigs?.lafEnv && userInfo?.team.role === TeamMemberRoleEnum.owner && (
-          <Flex {...buttonStyles.current} onClick={onOpenLaf}>
-            <MyImage src="/imgs/workflow/laf.png" w={'18px'} alt="laf" />
-            <Box ml={2} flex={1}>
-              {'laf' + t('account_info:account_duplicate')}
-            </Box>
-            <Box
-              w={'9px'}
-              h={'9px'}
-              borderRadius={'50%'}
-              bg={userInfo?.team.lafAccount?.token ? '#67c13b' : 'myGray.500'}
-            />
-          </Flex>
-        )}
-
-        {feConfigs?.show_openai_account && (
-          <Flex {...buttonStyles.current} onClick={onOpenOpenai}>
-            <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {'OpenAI / OneAPI' + t('account_info:account_duplicate')}
-            </Box>
-            <Box
-              w={'9px'}
-              h={'9px'}
-              borderRadius={'50%'}
-              bg={userInfo?.openaiAccount?.key ? '#67c13b' : 'myGray.500'}
-            />
-          </Flex>
-        )}
         {feConfigs?.concatMd && (
           <Button
             variant={'whiteBase'}
@@ -716,22 +663,6 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Button>
         )}
       </Grid>
-
-      {isOpenLaf && userInfo && (
-        <LafAccountModal defaultData={userInfo?.team.lafAccount} onClose={onCloseLaf} />
-      )}
-      {isOpenOpenai && userInfo && (
-        <OpenAIAccountModal
-          defaultData={userInfo?.openaiAccount}
-          onSuccess={(data) =>
-            onclickSave({
-              ...userInfo,
-              openaiAccount: data
-            })
-          }
-          onClose={onCloseOpenai}
-        />
-      )}
     </Box>
   );
 };

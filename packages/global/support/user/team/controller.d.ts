@@ -18,7 +18,9 @@ export type UpdateTeamProps = {
   name?: string;
   avatar?: string;
   teamDomain?: string;
-  lafAccount?: null | LafAccountType;
+  lafAccount?: LafAccountType;
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariable?: Record<string, string>;
 };
 
 /* ------------- member ----------- */
