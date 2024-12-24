@@ -3,41 +3,51 @@ import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/rea
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import type { UserType } from '@fastgpt/global/support/user/type.d';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { putUpdateTeam } from '@/web/support/user/team/api';
 
 const OpenAIAccountModal = ({
   defaultData,
-  onSuccess,
   onClose
 }: {
-  defaultData: UserType['openaiAccount'];
-  onSuccess: (e: UserType['openaiAccount']) => Promise<any>;
+  defaultData?: OpenaiAccountType;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
+  const { userInfo, initUserInfo } = useUserStore();
   const { register, handleSubmit } = useForm({
     defaultValues: defaultData
   });
 
-  const { mutate: onSubmit, isLoading } = useRequest({
-    mutationFn: async (data: UserType['openaiAccount']) => onSuccess(data),
-    onSuccess(res) {
-      onClose();
+  const { runAsync: onSubmit, loading } = useRequest2(
+    async (data: OpenaiAccountType) => {
+      if (!userInfo?.team.teamId) return;
+      return putUpdateTeam({
+        openaiAccount: data
+      });
     },
-    errorToast: t('account_info:openai_account_setting_exception')
-  });
+    {
+      onSuccess: () => {
+        initUserInfo();
+        onClose();
+      },
+      successToast: t('common:common.Update Success'),
+      errorToast: t('common:common.Update Failed')
+    }
+  );
 
   return (
     <MyModal
       isOpen
       onClose={onClose}
       iconSrc="common/openai"
-      title={t('account_info:openai_account_configuration')}
+      title={t('account_thirdParty:openai_account_configuration')}
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          {t('account_info:open_api_notice')}
+          {t('account_thirdParty:open_api_notice')}
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>
@@ -48,16 +58,16 @@ const OpenAIAccountModal = ({
           <Input
             flex={1}
             {...register('baseUrl')}
-            placeholder={t('account_info:request_address_notice')}
-          ></Input>
+            placeholder={t('account_thirdParty:request_address_notice')}
+          />
         </Flex>
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          {t('account_info:cancel')}
+          {t('common:common.Cancel')}
         </Button>
-        <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>
-          {t('account_info:confirm')}
+        <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

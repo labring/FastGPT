@@ -4,7 +4,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -37,7 +37,7 @@ async function handler(
   ]);
 
   // auth balance
-  const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+  const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
   /* start process */
   const { flowUsages, flowResponses, debugResponse, newVariables } = await dispatchWorkFlow({
@@ -50,7 +50,8 @@ async function handler(
       tmbId
     },
     uid: tmbId,
-    user,
+    timezone,
+    externalProvider,
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,

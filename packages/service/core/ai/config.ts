@@ -1,4 +1,3 @@
-import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import OpenAI from '@fastgpt/global/core/ai';
 import {
   ChatCompletionCreateParamsNonStreaming,
@@ -7,13 +6,11 @@ import {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
 import { i18nT } from '../../../web/i18n/utils';
+import { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 export const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
-export const getAIApi = (props?: {
-  userKey?: UserModelSchema['openaiAccount'];
-  timeout?: number;
-}) => {
+export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number }) => {
   const { userKey, timeout } = props || {};
 
   const baseUrl =
@@ -29,7 +26,7 @@ export const getAIApi = (props?: {
   });
 };
 
-export const getAxiosConfig = (props?: { userKey?: UserModelSchema['openaiAccount'] }) => {
+export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   const { userKey } = props || {};
 
   const baseUrl =
@@ -57,7 +54,7 @@ export const createChatCompletion = async <T extends CompletionsBodyType>({
   options
 }: {
   body: T;
-  userKey?: UserModelSchema['openaiAccount'];
+  userKey?: OpenaiAccountType;
   timeout?: number;
   options?: OpenAI.RequestOptions;
 }): Promise<{

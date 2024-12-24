@@ -35,7 +35,7 @@ type ActionProps = Props & { cqModel: LLMModelItemType };
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
-    user,
+    externalProvider,
     node: { nodeId, name },
     histories,
     params: { model, history = 6, agents, userChatInput }
@@ -69,7 +69,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       .filter((item) => item.key !== result.key)
       .map((item) => getHandleId(nodeId, 'source', item.key)),
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
       tokens,
@@ -80,7 +80,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
-        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
         tokens
       }
@@ -90,7 +90,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
 const completions = async ({
   cqModel,
-  user,
+  externalProvider,
   histories,
   params: { agents, systemPrompt = '', userChatInput }
 }: ActionProps) => {
@@ -131,7 +131,7 @@ const completions = async ({
       },
       cqModel
     ),
-    userKey: user.openaiAccount
+    userKey: externalProvider.openaiAccount
   });
   const answer = data.choices?.[0].message?.content || '';
 

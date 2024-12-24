@@ -47,6 +47,16 @@ const TeamSchema = new Schema({
       type: String
     }
   },
+  openaiAccount: {
+    type: {
+      key: String,
+      baseUrl: String
+    }
+  },
+  externalWorkflowVariables: {
+    type: Object,
+    default: {}
+  },
   notificationAccount: {
     type: String,
     required: false
