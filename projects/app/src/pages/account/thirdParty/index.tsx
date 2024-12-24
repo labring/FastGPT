@@ -13,6 +13,7 @@ import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { GET } from '@/web/common/api/request';
 import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
@@ -76,7 +77,7 @@ const ThirdParty = () => {
     ]
   );
 
-  const { data: workflowVariables = [] } = useRequest2(
+  const { data: workflowVariables = [], loading } = useRequest2(
     async (): Promise<ThirdPartyAccountType[]> => {
       return Promise.all(
         (feConfigs?.externalProviderWorkflowVariables || []).map(async (item) => {
@@ -124,7 +125,7 @@ const ThirdParty = () => {
 
   return (
     <AccountContainer>
-      <Box px={[4, 8]} py={[4, 6]} bg={'white'} h={'full'}>
+      <MyBox isLoading={loading} px={[4, 8]} py={[4, 6]} bg={'white'} h={'full'}>
         <Flex>
           <MyIcon name={'common/thirdParty'} w={'24px'} color={'myGray.900'} />
           <Box ml={3}>
@@ -233,7 +234,7 @@ const ThirdParty = () => {
               </Flex>
             ))}
         </Grid>
-      </Box>
+      </MyBox>
 
       {isOpenLaf && userInfo && (
         <LafAccountModal defaultData={userInfo?.team?.lafAccount} onClose={onCloseLaf} />
