@@ -17,11 +17,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  getTemplateMarketItemDetail,
-  getTemplateMarketItemList,
-  getTemplateTagList
-} from '@/web/core/app/api/template';
+import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
 import { postCreateApp } from '@/web/core/app/api';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -34,7 +30,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput/index'
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
-import { SystemTemplateSchemaType } from '@fastgpt/service/core/app/templates/type';
+import { AppTemplateSchemaType } from '@fastgpt/service/core/app/templates/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
 
@@ -55,21 +51,22 @@ const TemplateMarketModal = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { data: templateTags = [] } = useRequest2(getTemplateTagList, {
-    manual: false
-  });
-
-  const allTags = [recommendTag, ...templateTags];
+  const { data: templateTags = [] } = useRequest2(
+    () => getTemplateTagList().then((res) => [recommendTag, ...res]),
+    {
+      manual: false
+    }
+  );
 
   const { parentId } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const [currentTag, setCurrentTag] = useState(allTags[0]?.typeId);
+  const [currentTag, setCurrentTag] = useState(templateTags[0]?.typeId);
   const [currentAppType, setCurrentAppType] = useState<TemplateAppType>(defaultType);
   const [currentSearch, setCurrentSearch] = useState('');
 
-  const [currentTemplate, setCurrentTemplate] = useState<SystemTemplateSchemaType | null>(null);
+  const [currentTemplate, setCurrentTemplate] = useState<AppTemplateSchemaType | null>(null);
 
   const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
     getTemplateMarketItemList,
@@ -79,26 +76,19 @@ const TemplateMarketModal = ({
   );
 
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
-    async (id: string) => {
-      console.log('id', id);
-      const templateDetail = await getTemplateMarketItemDetail({ templateId: id });
-
-      if (!templateDetail) {
-        return Promise.reject(new Error('Template not found'));
-      }
-
+    async (template: AppTemplateSchemaType) => {
       return postCreateApp({
         parentId,
-        avatar: templateDetail.avatar,
-        name: templateDetail.name,
-        type: templateDetail.type,
-        modules: templateDetail.workflow.nodes || [],
-        edges: templateDetail.workflow.edges || [],
-        chatConfig: templateDetail.workflow.chatConfig
+        avatar: template.avatar,
+        name: template.name,
+        type: template.type as AppTypeEnum,
+        modules: template.workflow.nodes || [],
+        edges: template.workflow.edges || [],
+        chatConfig: template.workflow.chatConfig
       }).then((res) => {
         webPushTrack.useAppTemplate({
-          id,
-          name: templateDetail.name
+          id: res,
+          name: template.name
         });
 
         return res;
@@ -118,7 +108,7 @@ const TemplateMarketModal = ({
     async () => {
       let firstVisibleTitle: any = null;
 
-      allTags
+      templateTags
         .map((type) => type.typeId)
         .forEach((type: string) => {
           const element = document.getElementById(type);
@@ -145,7 +135,7 @@ const TemplateMarketModal = ({
   );
 
   const TemplateCard = useCallback(
-    ({ item }: { item: SystemTemplateSchemaType }) => {
+    ({ item }: { item: AppTemplateSchemaType }) => {
       const { t } = useTranslation();
 
       return (
@@ -231,7 +221,7 @@ const TemplateMarketModal = ({
                 variant={'whiteBase'}
                 h={6}
                 rounded={'sm'}
-                onClick={() => onUseTemplate(item.templateId)}
+                onClick={() => onUseTemplate(item)}
               >
                 {t('app:templateMarket.Use')}
               </Button>
@@ -327,7 +317,7 @@ const TemplateMarketModal = ({
           >
             {isPc && (
               <Flex pl={5} flexDirection={'column'} gap={3}>
-                {allTags.map((item) => {
+                {templateTags.map((item) => {
                   return (
                     <Box
                       key={item.typeId}
@@ -419,7 +409,7 @@ const TemplateMarketModal = ({
                 </>
               ) : (
                 <>
-                  {allTags.map((item) => {
+                  {templateTags.map((item) => {
                     const currentTemplates = templateList
                       ?.filter((template) => template.tags.includes(item.typeId))
                       .filter((template) => {
@@ -476,7 +466,7 @@ const GuideModal = ({
   template,
   onClose
 }: {
-  template: SystemTemplateSchemaType;
+  template: AppTemplateSchemaType;
   onClose: () => void;
 }) => {
   return (

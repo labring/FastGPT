@@ -87,6 +87,9 @@ importers:
       axios:
         specifier: ^1.5.1
         version: 1.7.2
+      cheerio:
+        specifier: 1.0.0-rc.12
+        version: 1.0.0-rc.12
       duck-duck-scrape:
         specifier: ^2.2.5
         version: 2.2.5
@@ -267,7 +270,14 @@ importers:
         specifier: ^5.0.4
         version: 5.0.5
 
-  packages/templates: {}
+  packages/templates:
+    devDependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../global
+      '@fastgpt/service':
+        specifier: workspace:*
+        version: link:../service
 
   packages/web:
     dependencies:

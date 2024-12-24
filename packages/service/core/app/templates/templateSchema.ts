@@ -1,10 +1,10 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import { SystemTemplateSchemaType } from './type';
+import { AppTemplateSchemaType } from './type';
 const { Schema } = connectionMongo;
 
-export const collectionName = 'app_system_templates';
+export const collectionName = 'app_templates';
 
-const SystemTemplateSchema = new Schema({
+const AppTemplateSchema = new Schema({
   templateId: {
     type: String,
     required: true
@@ -35,16 +35,17 @@ const SystemTemplateSchema = new Schema({
     type: Boolean
   },
   order: {
-    type: Number
+    type: Number,
+    default: -1
   },
   workflow: {
     type: Object
   }
 });
 
-SystemTemplateSchema.index({ templateId: 1 });
+AppTemplateSchema.index({ templateId: 1 });
 
-export const MongoSystemTemplate = getMongoModel<SystemTemplateSchemaType>(
+export const MongoAppTemplate = getMongoModel<AppTemplateSchemaType>(
   collectionName,
-  SystemTemplateSchema
+  AppTemplateSchema
 );

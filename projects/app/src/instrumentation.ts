@@ -10,7 +10,7 @@ export async function register() {
       const [
         { connectMongo },
         { systemStartCb },
-        { initGlobalVariables, getInitConfig, initSystemPlugins, initSystemTemplates },
+        { initGlobalVariables, getInitConfig, initSystemPlugins, initAppTemplates },
         { initVectorStore },
         { initRootUser },
         { getSystemPluginCb },
@@ -42,7 +42,7 @@ export async function register() {
         initVectorStore(),
         initRootUser(),
         initSystemPlugins(),
-        initSystemTemplates()
+        initAppTemplates()
       ]);
 
       getSystemPluginCb();

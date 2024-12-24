@@ -184,7 +184,7 @@ export async function initSystemPlugins() {
   }
 }
 
-export async function initSystemTemplates() {
+export async function initAppTemplates() {
   try {
     await Promise.all(
       defaultTemplateTypes.map((templateType) => {

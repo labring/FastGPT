@@ -1,5 +1,5 @@
-import { SystemTemplateSchemaType } from '../service/core/app/templates/type';
+import { AppTemplateSchemaType } from '../service/core/app/templates/type';
 
 declare global {
-  var appMarketTemplates: SystemTemplateSchemaType[];
+  var appMarketTemplates: AppTemplateSchemaType[];
 }

@@ -9,7 +9,7 @@ import {
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { WorkerNameEnum, WorkerPool } from './worker/utils';
 import { Worker } from 'worker_threads';
-import { SystemTemplateSchemaType } from 'core/app/templates/type';
+import { AppTemplateSchemaType } from './core/app/templates/type';
 
 declare global {
   var systemInitBufferId: string | undefined;
@@ -25,5 +25,5 @@ declare global {
   var reRankModels: ReRankModelItemType[];
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
-  var appMarketTemplates: SystemTemplateSchemaType[];
+  var appMarketTemplates: AppTemplateSchemaType[];
 }

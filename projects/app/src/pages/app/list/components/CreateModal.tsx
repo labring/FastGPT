@@ -20,11 +20,9 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getTemplateMarketItemDetail,
-  getTemplateMarketItemList
-} from '@/web/core/app/api/template';
+import { getTemplateMarketItemList } from '@/web/core/app/api/template';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { AppTemplateSchemaType } from '@fastgpt/service/core/app/templates/type';
 
 type FormType = {
   avatar: string;
@@ -118,8 +116,8 @@ const CreateModal = ({
   );
 
   const { runAsync: onclickCreate, loading: isCreating } = useRequest2(
-    async (data: FormType, templateId?: string) => {
-      if (!templateId) {
+    async (data: FormType, template?: AppTemplateSchemaType) => {
+      if (!template) {
         return postCreateApp({
           parentId,
           avatar: data.avatar,
@@ -131,16 +129,14 @@ const CreateModal = ({
         });
       }
 
-      const templateDetail = await getTemplateMarketItemDetail({ templateId: templateId });
-
       return postCreateApp({
         parentId,
-        avatar: data.avatar || templateDetail.avatar,
+        avatar: data.avatar || template.avatar,
         name: data.name,
-        type: templateDetail.type,
-        modules: templateDetail.workflow.nodes || [],
-        edges: templateDetail.workflow.edges || [],
-        chatConfig: templateDetail.workflow.chatConfig
+        type: template.type as AppTypeEnum,
+        modules: template.workflow.nodes || [],
+        edges: template.workflow.edges || [],
+        chatConfig: template.workflow.chatConfig
       });
     },
     {
@@ -287,7 +283,7 @@ const CreateModal = ({
                     h={6}
                     borderRadius={'sm'}
                     w={'40%'}
-                    onClick={handleSubmit((data) => onclickCreate(data, item.templateId))}
+                    onClick={handleSubmit((data) => onclickCreate(data, item))}
                   >
                     {t('app:templateMarket.Use')}
                   </Button>

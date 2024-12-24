@@ -3,5 +3,8 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "@fastgpt/global": "workspace:*",
+    "@fastgpt/service": "workspace:*"
+  }
 }

@@ -1,6 +1,6 @@
 import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 
-export type SystemTemplateSchemaType = {
+export type AppTemplateSchemaType = {
   templateId: string;
   name: string;
   intro: string;
@@ -15,7 +15,7 @@ export type SystemTemplateSchemaType = {
   };
   isQuickTemplate?: boolean;
   order?: number;
-  workflow?: WorkflowTemplateBasicType;
+  workflow: WorkflowTemplateBasicType;
 };
 
 export type TemplateTypeSchemaType = {
