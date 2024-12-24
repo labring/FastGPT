@@ -52,8 +52,7 @@ export async function getInitConfig() {
     getSystemVersion(),
 
     // abandon
-    getSystemPlugin(),
-    getSystemPluginV1()
+    getSystemPlugin()
   ]);
 }
 
@@ -79,7 +78,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   // load config
-  const [dbConfig, fileConfig] = await Promise.all([
+  const [{ config: dbConfig, configId }, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);
@@ -106,7 +105,9 @@ export async function initSystemConfig() {
   };
 
   // set config
+  global.systemInitBufferId = configId;
   initFastGPTConfig(config);
+
   console.log({
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
@@ -161,32 +162,6 @@ function getSystemPlugin() {
   fileTemplates.sort((a, b) => (b.weight || 0) - (a.weight || 0));
 
   global.communityPlugins = fileTemplates;
-}
-function getSystemPluginV1() {
-  if (global.communityPluginsV1 && global.communityPluginsV1.length > 0) return;
-
-  const basePath =
-    process.env.NODE_ENV === 'development'
-      ? 'data/pluginTemplates/v1'
-      : '/app/data/pluginTemplates/v1';
-  // read data/pluginTemplates directory, get all json file
-  const files = readdirSync(basePath);
-  // filter json file
-  const filterFiles = files.filter((item) => item.endsWith('.json'));
-
-  // read json file
-  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
-    const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
-    return {
-      ...JSON.parse(content),
-      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
-      source: PluginSourceEnum.community
-    };
-  });
-
-  fileTemplates.sort((a, b) => b.weight - a.weight);
-
-  global.communityPluginsV1 = fileTemplates;
 }
 
 export async function initSystemPlugins() {

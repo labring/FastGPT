@@ -8,11 +8,12 @@ import type {
   LLMModelItemType,
   ReRankModelItemType,
   VectorModelItemType,
-  WhisperModelType
+  STTModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { InitDateResponse } from '@/global/common/api/systemRes';
 import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import { defaultWhisperModel } from '@fastgpt/global/core/ai/model';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -35,6 +36,7 @@ type State = {
   isNotSufficientModal: boolean;
   setIsNotSufficientModal: (val: boolean) => void;
 
+  initDataBufferId?: string;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
@@ -43,7 +45,7 @@ type State = {
   vectorModelList: VectorModelItemType[];
   audioSpeechModelList: AudioSpeechModelType[];
   reRankModelList: ReRankModelItemType[];
-  whisperModel?: WhisperModelType;
+  whisperModel: STTModelType;
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
   setAppType: (e?: string) => void;
@@ -110,6 +112,7 @@ export const useSystemStore = create<State>()(
           });
         },
 
+        initDataBufferId: undefined,
         feConfigs: {},
         subPlans: undefined,
         systemVersion: '0.0.0',
@@ -118,26 +121,38 @@ export const useSystemStore = create<State>()(
         vectorModelList: [],
         audioSpeechModelList: [],
         reRankModelList: [],
-        whisperModel: undefined,
+        whisperModel: defaultWhisperModel,
         initStaticData(res) {
           set((state) => {
-            state.feConfigs = res.feConfigs || {};
-            state.subPlans = res.subPlans;
-            state.systemVersion = res.systemVersion;
+            state.initDataBufferId = res.bufferId;
+
+            state.feConfigs = res.feConfigs ?? state.feConfigs;
+            state.subPlans = res.subPlans ?? state.subPlans;
+            state.systemVersion = res.systemVersion ?? state.systemVersion;
 
             state.llmModelList = res.llmModels ?? state.llmModelList;
             state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
             state.vectorModelList = res.vectorModels ?? state.vectorModelList;
             state.audioSpeechModelList = res.audioSpeechModels ?? state.audioSpeechModelList;
             state.reRankModelList = res.reRankModels ?? state.reRankModelList;
-            state.whisperModel = res.whisperModel;
+            state.whisperModel = res.whisperModel ?? state.whisperModel;
           });
         }
       })),
       {
         name: 'globalStore',
         partialize: (state) => ({
-          loginStore: state.loginStore
+          loginStore: state.loginStore,
+          initDataBufferId: state.initDataBufferId,
+          feConfigs: state.feConfigs,
+          subPlans: state.subPlans,
+          systemVersion: state.systemVersion,
+          llmModelList: state.llmModelList,
+          datasetModelList: state.datasetModelList,
+          vectorModelList: state.vectorModelList,
+          audioSpeechModelList: state.audioSpeechModelList,
+          reRankModelList: state.reRankModelList,
+          whisperModel: state.whisperModel
         })
       }
     )

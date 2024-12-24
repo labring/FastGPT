@@ -33,8 +33,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 
-const AiPointsModal = dynamic(() =>
-  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+const ModelPriceModal = dynamic(() =>
+  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 const FlexItemStyles: FlexProps = {
@@ -328,7 +328,7 @@ const AIChatSettingsModal = ({
         </Button>
       </ModalFooter>
 
-      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
+      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </MyModal>
   );
 };

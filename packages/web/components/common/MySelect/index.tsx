@@ -110,7 +110,7 @@ const MySelect = <T = any,>(
           px={3}
           rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
           variant={'whitePrimaryOutline'}
-          size={'lg'}
+          size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
           _active={{

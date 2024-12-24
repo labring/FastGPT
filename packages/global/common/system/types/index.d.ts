@@ -5,7 +5,7 @@ import type {
   LLMModelItemType,
   VectorModelItemType,
   AudioSpeechModels,
-  WhisperModelType,
+  STTModelType,
   ReRankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
@@ -27,7 +27,7 @@ export type FastGPTConfigFileType = {
   vectorModels: VectorModelItemType[];
   reRankModels: ReRankModelItemType[];
   audioSpeechModels: AudioSpeechModelType[];
-  whisperModel: WhisperModelType;
+  whisperModel: STTModelType;
 };
 
 export type FastGPTFeConfigsType = {

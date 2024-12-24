@@ -12,8 +12,8 @@ import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
 import MultipleRowSelect from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
 
-const AiPointsModal = dynamic(() =>
-  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+const ModelPriceModal = dynamic(() =>
+  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 type Props = SelectProps & {
@@ -103,7 +103,7 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
         />
       </MyTooltip>
 
-      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
+      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Box>
   );
 };
@@ -212,7 +212,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
         />
       </MyTooltip>
 
-      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
+      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Box>
   );
 };

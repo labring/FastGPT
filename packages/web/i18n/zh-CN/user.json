@@ -22,7 +22,6 @@
   "delete.failed": "删除失败",
   "delete.success": "删除成功",
   "has_chosen": "已选择",
-  "individuation": "个性化",
   "login.error": "登录异常",
   "login.password_condition": "密码最多 60 位",
   "login.success": "登录成功",

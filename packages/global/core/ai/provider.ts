@@ -5,6 +5,7 @@ export type ModelProviderIdType =
   | 'Claude'
   | 'Gemini'
   | 'MistralAI'
+  | 'Groq'
   | 'Qwen'
   | 'Doubao'
   | 'ChatGLM'
@@ -44,7 +45,12 @@ export const ModelProviderList: ModelProviderType[] = [
   {
     id: 'MistralAI',
     name: 'MistralAI',
-    avatar: 'model/huggingface'
+    avatar: 'model/mistral'
+  },
+  {
+    id: 'Groq',
+    name: 'Groq',
+    avatar: 'model/groq'
   },
   {
     id: 'Qwen',
@@ -113,7 +119,7 @@ export const ModelProviderList: ModelProviderType[] = [
   }
 ];
 export const ModelProviderMap = Object.fromEntries(
-  ModelProviderList.map((item) => [item.id, item])
+  ModelProviderList.map((item, index) => [item.id, { ...item, order: index }])
 );
 
 export const getModelProvider = (provider: ModelProviderIdType) => {

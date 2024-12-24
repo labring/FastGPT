@@ -61,7 +61,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo && !!feConfigs.isPlus,
-    refetchInterval: 10000
+    refetchInterval: 30000
   });
   const unread = data?.unReadCount || 0;
   const importantInforms = data?.importantInforms || [];

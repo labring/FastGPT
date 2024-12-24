@@ -28,7 +28,7 @@ const Individuation = () => {
       });
       reset(data);
       toast({
-        title: t('account_individuation:update_data_success'),
+        title: t('account_setting:update_data_success'),
         status: 'success'
       });
     },
@@ -39,19 +39,19 @@ const Individuation = () => {
     <AccountContainer>
       <Box py={[3, '28px']} px={['5vw', '64px']}>
         <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
-          <MyIcon mr={2} name={'support/user/individuation'} w={'20px'} />
-          {t('account_individuation:personalization')}
+          <MyIcon mr={2} name={'common/settingLight'} w={'20px'} />
+          {t('common:common.Setting')}
         </Flex>
 
         <Card mt={6} px={[3, 10]} py={[3, 7]} fontSize={'sm'}>
           <Flex alignItems={'center'} w={['85%', '350px']}>
-            <Box flex={'0 0 80px'}>{t('account_individuation:language')}:&nbsp;</Box>
+            <Box flex={'0 0 80px'}>{t('account_setting:language')}:&nbsp;</Box>
             <Box flex={'1 0 0'}>
               <I18nLngSelector />
             </Box>
           </Flex>
           <Flex mt={6} alignItems={'center'} w={['85%', '350px']}>
-            <Box flex={'0 0 80px'}>{t('account_individuation:timezone')}:&nbsp;</Box>
+            <Box flex={'0 0 80px'}>{t('account_setting:timezone')}:&nbsp;</Box>
             <TimezoneSelect
               value={userInfo?.timezone}
               onChange={(e) => {
@@ -69,7 +69,7 @@ const Individuation = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_individuation']))
+      ...(await serviceSideProps(content, ['account', 'account_setting']))
     }
   };
 }

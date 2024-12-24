@@ -2,7 +2,7 @@ import { FastGPTFeConfigsType, SystemEnvType } from '@fastgpt/global/common/syst
 import {
   AudioSpeechModelType,
   ReRankModelItemType,
-  WhisperModelType,
+  STTModelType,
   VectorModelItemType,
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.d';
@@ -12,6 +12,7 @@ import { Worker } from 'worker_threads';
 import { TemplateMarketItemType } from '@fastgpt/global/core/workflow/type';
 
 declare global {
+  var systemInitBufferId: string | undefined;
   var systemVersion: string;
   var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
@@ -20,7 +21,7 @@ declare global {
   var llmModels: LLMModelItemType[];
   var vectorModels: VectorModelItemType[];
   var audioSpeechModels: AudioSpeechModelType[];
-  var whisperModel: WhisperModelType;
+  var whisperModel: STTModelType;
   var reRankModels: ReRankModelItemType[];
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;
