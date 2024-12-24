@@ -71,7 +71,7 @@ const AccountContainer = ({
         ]
       : []),
     {
-      icon: 'model/provider',
+      icon: 'common/model',
       label: t('account:model_provider'),
       value: TabEnum.model
     },
