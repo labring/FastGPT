@@ -39,7 +39,7 @@ export const getScheduleTriggerApp = async () => {
         if (!app.scheduledTriggerConfig) return;
         // random delay 0 ~ 60s
         await delay(Math.floor(Math.random() * 60 * 1000));
-        const { user, team } = await getUserChatInfoAndAuthTeamPoints(app.tmbId);
+        const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(app.tmbId);
 
         // Get app latest version
         const { nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
@@ -57,8 +57,8 @@ export const getScheduleTriggerApp = async () => {
         const { flowUsages, assistantResponses, flowResponses } = await retryFn(() => {
           return dispatchWorkFlow({
             chatId,
-            user,
-            team,
+            timezone,
+            externalProvider,
             mode: 'chat',
             runningAppInfo: {
               id: String(app._id),

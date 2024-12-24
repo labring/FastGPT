@@ -37,7 +37,7 @@ async function handler(
   ]);
 
   // auth balance
-  const { user, team } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+  const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
   /* start process */
   const { flowUsages, flowResponses, debugResponse, newVariables } = await dispatchWorkFlow({
@@ -50,8 +50,8 @@ async function handler(
       tmbId
     },
     uid: tmbId,
-    user,
-    team,
+    timezone,
+    externalProvider,
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,
