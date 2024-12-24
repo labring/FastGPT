@@ -39,7 +39,7 @@ function checkMaxQuantity({ url, maxQuantity }: { url: string; maxQuantity?: num
 
     if (item) {
       if (item.amount >= maxQuantity) {
-        item.sign?.abort?.();
+        !item.sign?.signal?.aborted && item.sign?.abort?.();
         maxQuantityMap[url] = {
           amount: 1,
           sign: controller

@@ -41,14 +41,15 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     role: tmb.role,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
-    lafAccount: tmb.teamId.lafAccount,
-    openaiAccount: tmb.teamId.openaiAccount,
-    externalWorkflowVariables: tmb.teamId.externalWorkflowVariables,
     permission: new TeamPermission({
       per: Per ?? TeamDefaultPermissionVal,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
     }),
-    notificationAccount: tmb.teamId.notificationAccount
+    notificationAccount: tmb.teamId.notificationAccount,
+
+    lafAccount: tmb.teamId.lafAccount,
+    openaiAccount: tmb.teamId.openaiAccount,
+    externalWorkflowVariables: tmb.teamId.externalWorkflowVariables
   };
 }
 
@@ -152,7 +153,7 @@ export async function updateTeam({
   openaiAccount,
   externalWorkflowVariable
 }: UpdateTeamProps & { teamId: string }) {
-  // auth key
+  // auth openai key
   if (openaiAccount?.key) {
     console.log('auth user openai key', openaiAccount?.key);
     const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
@@ -173,22 +174,62 @@ export async function updateTeam({
   }
 
   return mongoSessionRun(async (session) => {
-    const updateObj: any = {};
+    const unsetObj = (() => {
+      const obj: Record<string, 1> = {};
+      if (lafAccount?.pat === '') {
+        obj.lafAccount = 1;
+      }
+      if (openaiAccount?.key === '') {
+        obj.openaiAccount = 1;
+      }
+      if (externalWorkflowVariable) {
+        if (externalWorkflowVariable.value === '') {
+          obj[`externalWorkflowVariables.${externalWorkflowVariable.key}`] = 1;
+        }
+      }
 
-    if (name !== undefined) updateObj.name = name;
-    if (avatar !== undefined) updateObj.avatar = avatar;
-    if (teamDomain !== undefined) updateObj.teamDomain = teamDomain;
-    if (lafAccount !== undefined) updateObj.lafAccount = lafAccount;
-    if (openaiAccount !== undefined) updateObj.openaiAccount = openaiAccount;
-    if (externalWorkflowVariable !== undefined) {
-      updateObj.$set = {
-        [`externalWorkflowVariables.${externalWorkflowVariable.key}`]:
-          externalWorkflowVariable.value
+      if (Object.keys(obj).length === 0) {
+        return undefined;
+      }
+      return {
+        $unset: obj
       };
-    }
+    })();
+    const setObj = (() => {
+      const obj: Record<string, any> = {};
+      if (lafAccount?.pat && lafAccount?.appid) {
+        obj.lafAccount = lafAccount;
+      }
+      if (openaiAccount?.key && openaiAccount?.baseUrl) {
+        obj.openaiAccount = openaiAccount;
+      }
+      if (externalWorkflowVariable) {
+        if (externalWorkflowVariable.value !== '') {
+          obj[`externalWorkflowVariables.${externalWorkflowVariable.key}`] =
+            externalWorkflowVariable.value;
+        }
+      }
+      if (Object.keys(obj).length === 0) {
+        return undefined;
+      }
+      return obj;
+    })();
 
-    await MongoTeam.findByIdAndUpdate(teamId, updateObj, { session });
+    await MongoTeam.findByIdAndUpdate(
+      teamId,
+      {
+        $set: {
+          ...(name ? { name } : {}),
+          ...(avatar ? { avatar } : {}),
+          ...(teamDomain ? { teamDomain } : {}),
+          ...setObj
+        },
+        ...unsetObj
+      },
+      { session }
+    );
 
+    // Update member group avatar
     if (avatar) {
       await MongoMemberGroupModel.updateOne(
         {

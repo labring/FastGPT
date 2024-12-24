@@ -85,14 +85,14 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   return {
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: totalPoints,
+      totalPoints,
       loopInput: loopInputArray,
       loopResult: outputValueArr,
       loopDetail: loopDetail
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
-        totalPoints: totalPoints,
+        totalPoints,
         moduleName: name
       }
     ],

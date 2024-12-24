@@ -13,7 +13,8 @@
   "third_party_account.configured": "已配置",
   "third_party_account.not_configured": "未配置",
   "third_party_account_desc": "管理员可以在这里配置第三方账号或变量，该账号将被团队所有人使用",
-  "unavailable": "无法获取",
+  "unavailable": "获取使用量异常",
   "usage": "使用量:",
-  "value_placeholder": "请输入该变量的值"
+  "value_not_return_tip": "参数配置后，不会再次返回前端，无需泄露给其他成员",
+  "value_placeholder": "输入参数值。输入空值表示删除该配置。"
 }

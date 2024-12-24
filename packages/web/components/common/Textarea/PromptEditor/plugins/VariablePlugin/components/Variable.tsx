@@ -9,21 +9,18 @@ export default function Variable({ variableLabel }: { variableLabel: string }) {
       <Box
         display="inline-flex"
         alignItems="center"
-        m={'2px'}
+        mx={'2px'}
         rounded={'4px'}
         px={1.5}
         py={'1px'}
-        bg={variableLabel ? 'primary.50' : 'red.50'}
-        color={variableLabel ? 'myGray.900' : 'red.600'}
+        {...(variableLabel
+          ? { bg: 'primary.50', color: 'primary.600' }
+          : { bg: 'red.50', color: 'red.600' })}
       >
         {variableLabel ? (
-          <Flex alignItems={'center'} color={'myGray.600'}>
-            {variableLabel}
-          </Flex>
+          <Flex alignItems={'center'}>{variableLabel}</Flex>
         ) : (
-          <>
-            <Box>{t('common:invalid_variable')}</Box>
-          </>
+          <Box>{t('common:invalid_variable')}</Box>
         )}
       </Box>
     </>

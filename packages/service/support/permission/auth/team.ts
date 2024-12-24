@@ -21,6 +21,9 @@ export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
 
   return {
     timezone: tmb.userId.timezone,
-    externalProvider: tmb.teamId
+    externalProvider: {
+      openaiAccount: tmb.teamId.openaiAccount,
+      externalWorkflowVariables: tmb.teamId.externalWorkflowVariables
+    }
   };
 }

@@ -20,7 +20,7 @@ const WorkflowVariableModal = ({
 
   const { register, handleSubmit } = useForm({
     defaultValues: {
-      value: defaultData.value || '',
+      value: '',
       key: defaultData.key || ''
     }
   });
@@ -62,6 +62,9 @@ const WorkflowVariableModal = ({
             {...register('value')}
           />
         </Flex>
+        <Box mt={1} color={'myGray.500'} fontSize={'xs'}>
+          {t('account_thirdParty:value_not_return_tip')}
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
