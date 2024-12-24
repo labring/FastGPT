@@ -1,13 +1,13 @@
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { OrgMemberRole } from '@fastgpt/global/support/user/team/org/constant';
+import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import type { ClientSession } from 'mongoose';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
+import { parseHeaderCert } from '../controller';
+import type { AuthModeType, AuthResponseType } from '../type';
 import { MongoOrgMemberModel } from './orgMemberSchema';
 import { MongoOrgModel } from './orgSchema';
-import { OrgMemberRole } from '@fastgpt/global/support/user/team/org/constant';
-import type { AuthModeType, AuthResponseType } from '../type';
-import { parseHeaderCert } from '../controller';
-import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import { getTmbInfoByTmbId } from '../../user/team/controller';
-import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import type { ClientSession } from 'mongoose';
 
 // if role1 > role2, return 1
 // if role1 < role2, return -1
@@ -90,7 +90,7 @@ export const getOrgMemberRole = async ({
   } else {
     return role;
   }
-  if (role == OrgMemberRole.owner) {
+  if (role === OrgMemberRole.owner) {
     return role;
   }
   // Check the parent orgs
@@ -114,7 +114,8 @@ export const getOrgMemberRole = async ({
     if (parentRole === OrgMemberRole.owner) {
       role = parentRole;
       break;
-    } else if (parentRole === OrgMemberRole.admin && role === OrgMemberRole.member) {
+    }
+    if (parentRole === OrgMemberRole.admin && role === OrgMemberRole.member) {
       role = parentRole;
     }
   }

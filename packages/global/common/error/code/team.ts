@@ -19,6 +19,8 @@ export enum TeamErrEnum {
   orgMemberNotExist = 'orgMemberNotExist',
   orgMemberExist = 'orgMemberExist',
   orgNotExist = 'orgNotExist',
+  orgMoveSameParent = 'orgMoveSameParent',
+  orgMoveToChildren = 'orgMoveToChildren',
   orgParentNotExist = 'orgParentNotExist',
   deletingOrgWithChildren = 'deletingOrgWithChildren',
   deletingRootOrg = 'deletingRootOrg',

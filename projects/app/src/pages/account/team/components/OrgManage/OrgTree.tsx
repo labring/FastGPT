@@ -26,12 +26,14 @@ function OrgTreeNode({
   const [isExpanded, toggleIsExpanded] = useToggle(false);
 
   return (
-    <VStack alignItems={'start'} w="full">
+    <VStack alignItems={'start'} w="full" gap={'8px'}>
       <HStack
         w="full"
-        pl={`${indent}rem`}
-        _hover={{ bgColor: 'gray.100' }}
+        _hover={{ bgColor: selectedOrg === org ? 'blue.200' : 'gray.100' }}
         borderRadius="4px"
+        boxSizing="border-box"
+        py="4px"
+        pl={`calc(${indent}rem + 4px)`}
         transition={'background 0.1s'}
         {...(selectedOrg === org ? { bgColor: 'blue.100' } : {})}
       >
@@ -48,20 +50,18 @@ function OrgTreeNode({
           <Text>{org.name}</Text>
         </HStack>
       </HStack>
-      {isExpanded && children.length > 0 && (
-        <VStack w="full">
-          {children.map((child) => (
-            <OrgTreeNode
-              key={child._id}
-              org={child}
-              indent={indent + 1}
-              list={list}
-              selectedOrg={selectedOrg}
-              selectOrg={selectOrg}
-            />
-          ))}
-        </VStack>
-      )}
+      {isExpanded &&
+        children.length > 0 &&
+        children.map((child) => (
+          <OrgTreeNode
+            key={child._id}
+            org={child}
+            indent={indent + 1}
+            list={list}
+            selectedOrg={selectedOrg}
+            selectOrg={selectOrg}
+          />
+        ))}
     </VStack>
   );
 }
@@ -69,23 +69,31 @@ function OrgTreeNode({
 function OrgTree({
   orgs,
   teamName,
-  teamAvatar
-}: { orgs: OrgType[]; teamAvatar: string; teamName: string }) {
+  teamAvatar,
+  selectedOrg,
+  selectOrg
+}: {
+  orgs: OrgType[];
+  teamAvatar: string;
+  teamName: string;
+  selectedOrg?: OrgType;
+  selectOrg?: (org: OrgType | undefined) => void;
+}) {
   const root = orgs[0];
   if (!root) return null;
   const children = useMemo(
     () => orgs.filter((item) => item.path === `${root.path}/${root._id}`),
     [root, orgs]
   );
-  const [selectedOrg, selectOrg] = useState<OrgType>();
   return (
-    <VStack alignItems={'start'}>
+    <VStack alignItems={'start'} gap={'8px'}>
       <HStack
         w="full"
         onClick={() => selectOrg?.(root)}
         cursor="pointer"
-        _hover={{ bgColor: 'gray.100' }}
+        _hover={{ bgColor: selectedOrg === root ? 'blue.200' : 'gray.100' }}
         borderRadius="4px"
+        p="4px"
         transition={'background 0.1s'}
         {...(selectedOrg === root ? { bgColor: 'blue.100' } : {})}
       >

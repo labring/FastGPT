@@ -30,8 +30,10 @@
   "create_sub_org": "创建子组织",
   "edit_org_info": "编辑组织信息",
   "move_org": "移动组织",
+  "move_member": "移动成员",
   "delete_org": "删除组织",
   "confirm_delete_org": "确认删除组织？",
+  "confirm_delete_member": "确认删除成员？",
 
   "transfer_ownership": "转让所有者",
   "delete": "删除",

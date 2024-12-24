@@ -1,13 +1,13 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { OrgMemberCollectionName } from './orgMemberSchema';
-import { ResourcePermissionCollectionName } from '../schema';
-import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { OrgCollectionName } from '@fastgpt/global/support/user/team/org/constant';
+import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
+import { ResourcePermissionCollectionName } from '../schema';
+import { OrgMemberCollectionName } from './orgMemberSchema';
 const { Schema } = connectionMongo;
 
 function requiredStringPath(this: OrgSchemaType) {
-  return typeof this.path === 'string' ? false : true;
+  return typeof this.path !== 'string';
 }
 
 export const OrgSchema = new Schema(

@@ -1,4 +1,4 @@
-import { deleteOrg } from '@/web/support/user/team/org/api';
+import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
@@ -22,21 +22,19 @@ import {
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
 import { TeamContext } from '../context';
 import IconButton from './IconButton';
 import OrgInfoModal from './OrgInfoModal';
+import OrgMemberModal from './OrgMemberModal';
 import OrgMoveModal from './OrgMoveModal';
 
 function ActionButton({
@@ -105,12 +103,38 @@ function MemberTable() {
     [orgs, currentOrg]
   );
 
+  const orgList = useMemo(
+    () =>
+      orgs
+        .filter((org) => org.path === currentPath.path)
+        .map((org) => {
+          // calc org members count
+          let count = org.members.length;
+          for (const item of orgs.filter((item) =>
+            item.path.startsWith(`${org.path}/${org._id}`)
+          )) {
+            count += item.members.length;
+          }
+
+          return { ...org, count };
+        }),
+    [orgs, currentPath]
+  );
+
   const [editOrg, setEditOrg] = useState<OrgType | undefined>();
+  const [editMemberOrgId, setEditMemberOrgId] = useState<string | undefined>();
+  const [movingOrg, setMovingOrg] = useState<OrgType | undefined>();
+  const [movingTmb, setMovingTmb] = useState<{ tmbId: string; orgId: string } | undefined>();
   const [createOrgParentId, setCreateOrgParentId] = useState<string | undefined>();
 
   const { ConfirmModal: ConfirmDeleteOrgModal, openConfirm: openDeleteOrgModal } = useConfirm({
     type: 'delete',
     content: t('account_team:confirm_delete_org')
+  });
+
+  const { ConfirmModal: ConfirmDeleteMember, openConfirm: openDeleteMemberModal } = useConfirm({
+    type: 'delete',
+    content: t('account_team:confirm_delete_member')
   });
 
   const { runAsync: deleteOrgReq } = useRequest2(deleteOrg, {
@@ -119,8 +143,16 @@ function MemberTable() {
       refetchMembers();
     }
   });
+  const { runAsync: deleteMemberReq } = useRequest2(deleteOrgMember, {
+    onSuccess: () => {
+      refetchOrgs();
+      refetchMembers();
+    }
+  });
 
   const deleteOrgHandler = (orgId: string) => openDeleteOrgModal(() => deleteOrgReq(orgId))();
+  const deleteMemberHandler = (orgId: string, tmbId: string) =>
+    openDeleteMemberModal(() => deleteMemberReq(orgId, tmbId))();
 
   return (
     <VStack>
@@ -152,60 +184,53 @@ function MemberTable() {
               </Tr>
             </Thead>
             <Tbody>
-              {orgs
-                .filter((org) => org.path === currentPath.path)
-                .map((org) => (
-                  <Tr key={org._id} overflow={'unset'}>
-                    <Td>
-                      <HStack w="fit-content" cursor={'pointer'} onClick={() => setCurrentOrg(org)}>
-                        <MemberTag name={org.name} avatar={org.avatar ?? DEFAULT_ORG_AVATAR} />
-                        <Tag size="sm">{org.members.length}</Tag>
-                        <MyIcon
-                          name="core/chat/chevronRight"
-                          w={'12px'}
-                          h={'12px'}
-                          color={'myGray.400'}
-                        />
-                      </HStack>
-                    </Td>
-
-                    <Td w={'6rem'}>
-                      <MyMenu
-                        trigger="click"
-                        Button={
-                          <MyIcon name="more" w={'1rem'} cursor={'pointer'} p="1" rounded={'sm'} />
-                        }
-                        menuList={[
-                          {
-                            children: [
-                              {
-                                icon: 'edit',
-                                label: t('account_team:edit_info'),
-                                onClick: () => {
-                                  setEditOrg(org);
-                                }
-                              },
-                              {
-                                icon: 'common/file/move',
-                                label: t('common:Move'),
-                                onClick: () => {
-                                  // TODO
-                                  console.log(org._id);
-                                }
-                              },
-                              {
-                                icon: 'delete',
-                                label: t('account_team:delete'),
-                                type: 'danger',
-                                onClick: () => deleteOrgHandler(org._id)
-                              }
-                            ]
-                          }
-                        ]}
+              {orgList.map((org) => (
+                <Tr key={org._id} overflow={'unset'}>
+                  <Td>
+                    <HStack w="fit-content" cursor={'pointer'} onClick={() => setCurrentOrg(org)}>
+                      <MemberTag name={org.name} avatar={org.avatar ?? DEFAULT_ORG_AVATAR} />
+                      <Tag size="sm">{org.count}</Tag>
+                      <MyIcon
+                        name="core/chat/chevronRight"
+                        w={'12px'}
+                        h={'12px'}
+                        color={'myGray.400'}
                       />
-                    </Td>
-                  </Tr>
-                ))}
+                    </HStack>
+                  </Td>
+
+                  <Td w={'6rem'}>
+                    <MyMenu
+                      trigger="click"
+                      Button={
+                        <MyIcon name="more" w={'1rem'} cursor={'pointer'} p="1" rounded={'sm'} />
+                      }
+                      menuList={[
+                        {
+                          children: [
+                            {
+                              icon: 'edit',
+                              label: t('account_team:edit_info'),
+                              onClick: () => setEditOrg(org)
+                            },
+                            {
+                              icon: 'common/file/move',
+                              label: t('common:Move'),
+                              onClick: () => setMovingOrg(org)
+                            },
+                            {
+                              icon: 'delete',
+                              label: t('account_team:delete'),
+                              type: 'danger',
+                              onClick: () => deleteOrgHandler(org._id)
+                            }
+                          ]
+                        }
+                      ]}
+                    />
+                  </Td>
+                </Tr>
+              ))}
               {currentOrg?.members.map((member) => {
                 const memberInfo = members.find((m) => m.tmbId === member.tmbId);
                 if (!memberInfo) return null;
@@ -215,43 +240,46 @@ function MemberTable() {
                       <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
                     </Td>
                     <Td w={'6rem'}>
-                      <MyMenu
-                        trigger={'click'}
-                        Button={
-                          <MyIcon name="more" w={'1rem'} cursor={'pointer'} p="1" rounded={'sm'} />
-                        }
-                        menuList={[
-                          {
-                            children: [
-                              {
-                                icon: 'edit',
-                                label: t('account_team:remark'),
-                                onClick: () => {
-                                  // TODO
-                                  console.log(member.tmbId);
-                                }
-                              },
-                              {
-                                icon: 'common/file/move',
-                                label: t('common:Move'),
-                                onClick: () => {
-                                  // TODO
-                                  console.log(member.tmbId);
-                                }
-                              },
-                              {
-                                icon: 'delete',
-                                label: t('account_team:delete'),
-                                type: 'danger',
-                                onClick: () => {
-                                  // TODO
-                                  console.log(member.tmbId);
-                                }
-                              }
-                            ]
+                      {member.role !== 'owner' && (
+                        <MyMenu
+                          trigger={'click'}
+                          Button={
+                            <MyIcon
+                              name="more"
+                              w={'1rem'}
+                              cursor={'pointer'}
+                              p="1"
+                              rounded={'sm'}
+                            />
                           }
-                        ]}
-                      />
+                          menuList={[
+                            {
+                              children: [
+                                // {
+                                //   icon: 'edit',
+                                //   label: t('account_team:remark'),
+                                //   onClick: () => {
+                                //     // TODO
+                                //     console.log(member.tmbId);
+                                //   }
+                                // },
+                                {
+                                  icon: 'common/file/move',
+                                  label: t('common:Move'),
+                                  onClick: () =>
+                                    setMovingTmb({ tmbId: member.tmbId, orgId: currentOrg!._id })
+                                },
+                                {
+                                  icon: 'delete',
+                                  label: t('account_team:delete'),
+                                  type: 'danger',
+                                  onClick: () => deleteMemberHandler(currentOrg!._id, member.tmbId)
+                                }
+                              ]
+                            }
+                          ]}
+                        />
+                      )}
                     </Td>
                   </Tr>
                 );
@@ -299,20 +327,14 @@ function MemberTable() {
             <ActionButton
               icon="common/administrator"
               text={t('account_team:manage_member')}
-              onClick={() => {
-                // TODO
-                console.log('manage member');
-              }}
+              onClick={() => setEditMemberOrgId(currentOrg?._id)}
             />
             {currentOrg?.path !== '' && (
               <>
                 <ActionButton
                   icon="common/file/move"
                   text={t('account_team:move_org')}
-                  onClick={() => {
-                    // TODO
-                    console.log('move org');
-                  }}
+                  onClick={() => setMovingOrg(currentOrg)}
                 />
                 <ActionButton
                   icon="delete"
@@ -336,8 +358,23 @@ function MemberTable() {
           refetchMembers();
         }}
       />
-      <OrgMoveModal orgs={orgs} team={userInfo?.team!} />
+      <OrgMoveModal
+        orgs={orgs}
+        team={userInfo?.team!}
+        movingOrg={movingOrg}
+        movingTmb={movingTmb}
+        onClose={() => {
+          setMovingOrg(undefined);
+          setMovingTmb(undefined);
+        }}
+        onSuccess={() => {
+          refetchOrgs();
+          refetchMembers();
+        }}
+      />
+      <OrgMemberModal editOrgId={editMemberOrgId} onClose={() => setEditMemberOrgId(undefined)} />
       <ConfirmDeleteOrgModal />
+      <ConfirmDeleteMember />
     </VStack>
   );
 }

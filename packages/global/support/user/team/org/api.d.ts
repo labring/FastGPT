@@ -5,7 +5,6 @@ type postCreateOrgData = {
   parentId: string;
   description?: string;
   avatar?: string;
-  ownerTmbId?: string;
 };
 
 type putUpdateOrgMembersData = {

@@ -1,6 +1,6 @@
-import { OrgMemberRole } from './constant';
+import type { TeamPermission } from 'support/permission/user/controller';
 import { ResourcePermissionType } from '../type';
-import { TeamPermission } from 'support/permission/user/controller';
+import type { OrgMemberRole } from './constant';
 
 type OrgSchemaType = {
   _id: string;

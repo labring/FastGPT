@@ -48,7 +48,6 @@ function OrgInfoModal({
     setValue('name', editOrg?.name ?? '');
     setValue('avatar', editOrg?.avatar);
     setValue('description', editOrg?.description);
-    console.log(editOrg);
   }, [editOrg, setValue]);
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
