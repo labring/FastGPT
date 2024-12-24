@@ -910,7 +910,7 @@
   "model_ernie": "文心一言",
   "model_hunyuan": "腾讯混元",
   "model_moonshot": "月之暗面",
-  "model_other": "自定义",
+  "model_other": "其他",
   "model_qwen": "阿里千问",
   "model_sparkdesk": "讯飞星火",
   "model_yi": "零一万物",

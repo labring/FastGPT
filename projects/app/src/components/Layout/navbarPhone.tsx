@@ -55,9 +55,10 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
           '/account/team',
           '/account/usage',
           '/account/apikey',
-          '/account/individuation',
+          '/account/setting',
           '/account/inform',
-          '/account/promotion'
+          '/account/promotion',
+          '/account/model'
         ],
         unread
       }
