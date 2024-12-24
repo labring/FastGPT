@@ -2,7 +2,7 @@ import { FastGPTFeConfigsType, SystemEnvType } from '@fastgpt/global/common/syst
 import {
   AudioSpeechModelType,
   ReRankModelItemType,
-  WhisperModelType,
+  STTModelType,
   VectorModelItemType,
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.d';
@@ -20,7 +20,7 @@ declare global {
   var llmModels: LLMModelItemType[];
   var vectorModels: VectorModelItemType[];
   var audioSpeechModels: AudioSpeechModelType[];
-  var whisperModel: WhisperModelType;
+  var whisperModel: STTModelType;
   var reRankModels: ReRankModelItemType[];
 
   var workerPoll: Record<WorkerNameEnum, WorkerPool>;

@@ -39,8 +39,6 @@ export const computedTemperature = ({
   model: LLMModelItemType;
   temperature: number;
 }) => {
-  if (temperature < 1) return temperature;
-
   temperature = +(model.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
 

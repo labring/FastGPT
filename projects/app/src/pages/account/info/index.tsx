@@ -55,8 +55,9 @@ const UpdateNotification = dynamic(() => import('./components/UpdateNotification
 const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
-const AiPointsModal = dynamic(() =>
-  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+
+const ModelPriceModal = dynamic(() =>
+  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 const Info = () => {
@@ -583,7 +584,7 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
-      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
+      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Box>
   ) : null;
 };

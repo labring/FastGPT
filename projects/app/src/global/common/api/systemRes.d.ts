@@ -2,7 +2,7 @@ import type {
   LLMModelItemType,
   VectorModelItemType,
   AudioSpeechModels,
-  WhisperModelType,
+  STTModelType,
   ReRankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 
@@ -14,7 +14,7 @@ export type InitDateResponse = {
   vectorModels: VectorModelItemType[];
   audioSpeechModels: AudioSpeechModels[];
   reRankModels: ReRankModelItemType[];
-  whisperModel: WhisperModelType;
+  whisperModel: STTModelType;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;

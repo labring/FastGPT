@@ -113,7 +113,7 @@ export const ModelProviderList: ModelProviderType[] = [
   }
 ];
 export const ModelProviderMap = Object.fromEntries(
-  ModelProviderList.map((item) => [item.id, item])
+  ModelProviderList.map((item, index) => [item.id, { ...item, order: index }])
 );
 
 export const getModelProvider = (provider: ModelProviderIdType) => {

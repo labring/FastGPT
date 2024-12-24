@@ -8,11 +8,12 @@ import type {
   LLMModelItemType,
   ReRankModelItemType,
   VectorModelItemType,
-  WhisperModelType
+  STTModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { InitDateResponse } from '@/global/common/api/systemRes';
 import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import { defaultWhisperModel } from '@fastgpt/global/core/ai/model';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -43,7 +44,7 @@ type State = {
   vectorModelList: VectorModelItemType[];
   audioSpeechModelList: AudioSpeechModelType[];
   reRankModelList: ReRankModelItemType[];
-  whisperModel?: WhisperModelType;
+  whisperModel: STTModelType;
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
   setAppType: (e?: string) => void;
@@ -118,7 +119,7 @@ export const useSystemStore = create<State>()(
         vectorModelList: [],
         audioSpeechModelList: [],
         reRankModelList: [],
-        whisperModel: undefined,
+        whisperModel: defaultWhisperModel,
         initStaticData(res) {
           set((state) => {
             state.feConfigs = res.feConfigs || {};
