@@ -183,8 +183,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     externalProvider.externalWorkflowVariables || {}
   ).reduce<Record<string, string>>((acc, [key, value]) => {
     if (!key || !value) return acc;
-    const cleanKey = key.replace(/^\{\{(.*)\}\}$/, '$1');
-    acc[cleanKey] = String(value);
+    acc[key] = String(value);
     return acc;
   }, {});
 

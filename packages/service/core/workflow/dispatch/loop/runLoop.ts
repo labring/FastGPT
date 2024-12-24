@@ -22,7 +22,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     params,
     runtimeEdges,
     runtimeNodes,
-    externalProvider,
     node: { name }
   } = props;
   const { loopInputArray = [], childrenNodeIdList = [] } = params;
@@ -93,7 +92,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
-        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: totalPoints,
         moduleName: name
       }
     ],

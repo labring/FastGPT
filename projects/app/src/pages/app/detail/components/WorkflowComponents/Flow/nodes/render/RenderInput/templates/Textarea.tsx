@@ -34,7 +34,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const externalProviderWorkflowVariables = useMemo(() => {
     return (
       feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
-        key: item.key.replace(/[{}]/g, ''),
+        key: item.key,
         label: item.name
       })) || []
     );
@@ -69,7 +69,16 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         onChange={onChange}
       />
     );
-  }, [item.label, item.maxLength, item.placeholder, item.value, onChange, t, variables]);
+  }, [
+    externalProviderWorkflowVariables,
+    item.label,
+    item.maxLength,
+    item.placeholder,
+    item.value,
+    onChange,
+    t,
+    variables
+  ]);
 
   return Render;
 };
