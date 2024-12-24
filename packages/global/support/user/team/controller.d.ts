@@ -20,7 +20,7 @@ export type UpdateTeamProps = {
   teamDomain?: string;
   lafAccount?: LafAccountType;
   openaiAccount?: OpenaiAccountType;
-  externalWorkflowVariable?: Record<string, string>;
+  externalWorkflowVariable?: { key: string; value: string };
 };
 
 /* ------------- member ----------- */

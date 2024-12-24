@@ -6,11 +6,13 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import dynamic from 'next/dynamic';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useMemo } from 'react';
 import WorkflowVariableModal from './components/WorkflowVariableModal';
-import axios from 'axios';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { GET } from '@/web/common/api/request';
+import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
@@ -23,8 +25,11 @@ export type ThirdPartyAccountType = {
   intro: string;
   onClick?: () => void;
   isOpen?: boolean;
-  value?: string;
-  usage?: [number, number];
+  active: boolean;
+  usage?: {
+    used: number;
+    total: number;
+  };
 };
 
 const ThirdParty = () => {
@@ -38,86 +43,84 @@ const ThirdParty = () => {
 
   const { userInfo } = useUserStore();
 
-  const isOwner = userInfo?.team.role === TeamMemberRoleEnum.owner;
+  const isOwner = userInfo?.team?.role === TeamMemberRoleEnum.owner;
 
-  const defaultAccountList: ThirdPartyAccountType[] = [
-    {
-      name: t('account_thirdParty:laf_account'),
-      icon: 'support/account/laf',
-      intro: t('common:support.user.Laf account intro'),
-      onClick: onOpenLaf,
-      isOpen: !!feConfigs?.lafEnv,
-      value: userInfo?.team.lafAccount?.token
+  const defaultAccountList: ThirdPartyAccountType[] = useMemo(
+    () => [
+      {
+        name: t('account_thirdParty:laf_account'),
+        icon: 'support/account/laf',
+        intro: t('common:support.user.Laf account intro'),
+        onClick: onOpenLaf,
+        isOpen: !!feConfigs?.lafEnv,
+        active: !!userInfo?.team?.lafAccount?.appid
+      },
+      {
+        name: t('account_thirdParty:openai_account_configuration'),
+        iconColor: 'black',
+        icon: 'common/openai',
+        intro: t('account_thirdParty:open_api_notice'),
+        onClick: onOpenOpenai,
+        isOpen: feConfigs?.show_openai_account,
+        active: userInfo?.team?.openaiAccount?.key !== undefined
+      }
+    ],
+    [
+      feConfigs?.lafEnv,
+      feConfigs?.show_openai_account,
+      onOpenLaf,
+      onOpenOpenai,
+      t,
+      userInfo?.team?.lafAccount?.appid,
+      userInfo?.team?.openaiAccount?.key
+    ]
+  );
+
+  const { data: workflowVariables = [] } = useRequest2(
+    async (): Promise<ThirdPartyAccountType[]> => {
+      return Promise.all(
+        (feConfigs?.externalProviderWorkflowVariables || []).map(async (item) => {
+          const usage = await (async () => {
+            try {
+              return await GET<checkUsageResponse>('/support/user/team/thirtdParty/checkUsage', {
+                key: item.key
+              });
+            } catch (err) {
+              return;
+            }
+          })();
+
+          const account = {
+            key: item.key,
+            name: item.name,
+            active: userInfo?.team?.externalWorkflowVariables?.[item.key] !== undefined,
+            icon: 'common/variable',
+            iconColor: 'primary.600',
+            intro: item.intro || t('account_thirdParty:no_intro')
+          };
+
+          return {
+            ...account,
+            usage,
+            onClick: () => setWorkflowVariable(account),
+            isOpen: item.isOpen
+          };
+        })
+      );
     },
     {
-      name: t('account_thirdParty:openai_account_configuration'),
-      iconColor: 'black',
-      icon: 'common/openai',
-      intro: t('account_thirdParty:open_api_notice'),
-      onClick: onOpenOpenai,
-      isOpen: feConfigs?.show_openai_account,
-      value: userInfo?.team.openaiAccount?.key
+      manual: false,
+      refreshDeps: [
+        feConfigs?.externalProviderWorkflowVariables,
+        userInfo?.team?.externalWorkflowVariables
+      ]
     }
-  ];
-  const getWorkflowVariables = useCallback(async (): Promise<ThirdPartyAccountType[]> => {
-    return Promise.all(
-      (feConfigs?.externalProviderWorkflowVariables || []).map(async (item) => {
-        const teamExternalWorkflowVariables = userInfo?.team.externalWorkflowVariables || {};
+  );
 
-        const workflowVariable = teamExternalWorkflowVariables[item.key];
-
-        const usage = await (async () => {
-          if (!workflowVariable || !item.url) return [0, -1];
-          try {
-            const response = await axios.get(item.url, {
-              headers: {
-                Authorization: workflowVariable
-              }
-            });
-            return response.data.usage;
-          } catch (err) {
-            console.log(err);
-            return [0, -1];
-          }
-        })();
-
-        const account = {
-          key: item.key,
-          name: item.name,
-          value: workflowVariable,
-          icon: 'common/variable',
-          iconColor: 'primary.600',
-          intro: item.intro || t('account_thirdParty:no_intro')
-        };
-
-        return {
-          ...account,
-          usage: usage || [0, -1],
-          onClick: () => setWorkflowVariable(account),
-          isOpen: item.isOpen
-        };
-      })
-    );
-  }, [feConfigs?.externalProviderWorkflowVariables, t, userInfo?.team.externalWorkflowVariables]);
-
-  useEffect(() => {
-    const loadWorkflowVariables = async () => {
-      try {
-        const variables = await getWorkflowVariables();
-        setExternalWorkflowVariables(variables);
-      } catch (err) {
-        console.error('Failed to load workflow variables:', err);
-      }
-    };
-
-    loadWorkflowVariables();
-  }, [getWorkflowVariables]);
-
-  const [externalWorkflowVariables, setExternalWorkflowVariables] = useState<
-    ThirdPartyAccountType[]
-  >([]);
-
-  const accountList = [...defaultAccountList, ...externalWorkflowVariables];
+  const accountList = useMemo(
+    () => [...defaultAccountList, ...workflowVariables],
+    [defaultAccountList, workflowVariables]
+  );
 
   return (
     <AccountContainer>
@@ -149,8 +152,9 @@ const ThirdParty = () => {
           {accountList
             .filter((item) => item.isOpen)
             .map((item) => (
-              <Box
+              <Flex
                 key={item.name}
+                flexDirection={'column'}
                 border={'1px solid'}
                 borderColor={'myGray.200'}
                 pt={4}
@@ -178,71 +182,64 @@ const ThirdParty = () => {
                     {item.name}
                   </Box>
                   <Box
-                    color={!!item.value ? 'green.600' : 'myGray.700'}
-                    bg={!!item.value ? 'green.50' : 'myGray.100'}
+                    color={item.active ? 'green.600' : 'myGray.700'}
+                    bg={item.active ? 'green.50' : 'myGray.100'}
                     px={2}
                     py={1}
                     borderRadius={'sm'}
                     fontSize={'10px'}
                   >
-                    {!!item.value
+                    {item.active
                       ? t('account_thirdParty:configured')
                       : t('account_thirdParty:not_configured')}
                   </Box>
                 </Flex>
                 <Box
+                  className="textEllipsis2"
                   mt={3}
                   fontSize={'mini'}
                   color={'myGray.500'}
                   lineHeight={'18px'}
-                  maxHeight={'36px'}
-                  overflow={'hidden'}
-                  textOverflow={'ellipsis'}
-                  display={'-webkit-box'}
-                  sx={{
-                    WebkitLineClamp: '2',
-                    WebkitBoxOrient: 'vertical'
-                  }}
                 >
                   {item.intro}
                 </Box>
-                {item.usage && (
-                  <Box position={'absolute'} bottom={0} w={'full'} pr={10}>
+                <Box flex={1} />
+                {item.active && item.usage && (
+                  <Box w={'full'} mb={4}>
                     <Flex fontSize={'mini'} color={'myGray.500'}>
                       <Box>{t('account_thirdParty:usage')}</Box>
-                      {item.value ? (
-                        item.usage[1] > 0 ? (
-                          <Box ml={1}>
-                            {item.usage[0]}/{item.usage[1]}
-                          </Box>
-                        ) : (
-                          <Box ml={1}>{t('account_thirdParty:unavailable')}</Box>
-                        )
+                      {item.usage?.total ? (
+                        <Box ml={1}>
+                          {item.usage.used}/{item.usage.total}
+                        </Box>
                       ) : (
-                        <Box ml={1}>--</Box>
+                        <Box ml={1}>{t('account_thirdParty:unavailable')}</Box>
                       )}
                     </Flex>
-                    <Box mt={1} mb={3} w={'full'}>
+                    <Box mt={1} w={'full'}>
                       <Progress
                         size={'sm'}
-                        value={(item.usage[0] / item.usage[1]) * 100}
+                        value={(item.usage.used / item.usage.total) * 100}
                         colorScheme={'blue'}
                         borderRadius={'md'}
                         borderWidth={'1px'}
-                        borderColor={'borderColor.low'}
+                        borderColor={'low'}
+                        isAnimated
+                        hasStripe
                       />
                     </Box>
                   </Box>
                 )}
-              </Box>
+              </Flex>
             ))}
         </Grid>
       </Box>
+
       {isOpenLaf && userInfo && (
-        <LafAccountModal defaultData={userInfo?.team.lafAccount} onClose={onCloseLaf} />
+        <LafAccountModal defaultData={userInfo?.team?.lafAccount} onClose={onCloseLaf} />
       )}
       {isOpenOpenai && userInfo && (
-        <OpenAIAccountModal defaultData={userInfo?.team.openaiAccount} onClose={onCloseOpenai} />
+        <OpenAIAccountModal defaultData={userInfo?.team?.openaiAccount} onClose={onCloseOpenai} />
       )}
       {workflowVariable && (
         <WorkflowVariableModal

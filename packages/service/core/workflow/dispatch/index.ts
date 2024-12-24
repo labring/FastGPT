@@ -179,18 +179,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     sendStreamTimerSign();
   }
 
-  const externalWorkflowVariables = Object.entries(
-    externalProvider.externalWorkflowVariables || {}
-  ).reduce<Record<string, string>>((acc, [key, value]) => {
-    if (!key || !value) return acc;
-    acc[key] = value;
-    return acc;
-  }, {});
-
   variables = {
     ...getSystemVariable(data),
-    ...variables,
-    ...externalWorkflowVariables
+    ...externalProvider.externalWorkflowVariables,
+    ...variables
   };
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database

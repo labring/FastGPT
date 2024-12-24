@@ -73,6 +73,11 @@ const AccountContainer = ({
         ]
       : []),
     {
+      icon: 'common/thirdParty',
+      label: t('account:third_party'),
+      value: TabEnum.thirdParty
+    },
+    {
       icon: 'common/model',
       label: t('account:model_provider'),
       value: TabEnum.model
@@ -86,11 +91,6 @@ const AccountContainer = ({
           }
         ]
       : []),
-    {
-      icon: 'common/thirdParty',
-      label: t('account:third_party'),
-      value: TabEnum.thirdParty
-    },
     ...(userInfo?.team?.permission.hasManagePer
       ? [
           {

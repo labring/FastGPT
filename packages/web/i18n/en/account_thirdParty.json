@@ -9,7 +9,8 @@
   "request_address_notice": "Request address, default is openai official. \nThe forwarding address can be filled in, but \\\"v1\\\" is not automatically completed.",
   "third_party_account": "Third-party account",
   "third_party_account_desc": "The administrator can configure third-party accounts or variables here, and the account will be used by all team members.",
-  "unavailable": "Unable to retrieve",
+  "unavailable": "Get usage exception",
   "usage": "Usage",
-  "value_placeholder": "Please enter the value of the variable"
+  "value_not_return_tip": "After the parameters are configured, they will not return to the front end again and do not need to be leaked to other members.",
+  "value_placeholder": "Enter parameter values. \nEntering a null value means deleting the configuration."
 }
