@@ -10,6 +10,7 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 
 export type InitDateResponse = {
+  bufferId?: string;
   llmModels: LLMModelItemType[];
   vectorModels: VectorModelItemType[];
   audioSpeechModels: AudioSpeechModels[];

@@ -4,7 +4,12 @@ import { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { FastGPTProUrl } from '../constants';
 
 export const getFastGPTConfigFromDB = async () => {
-  if (!FastGPTProUrl) return {} as FastGPTConfigFileType;
+  if (!FastGPTProUrl) {
+    return {
+      config: {} as FastGPTConfigFileType,
+      configId: undefined
+    };
+  }
 
   const res = await MongoSystemConfigs.findOne({
     type: SystemConfigsTypeEnum.fastgpt
@@ -14,5 +19,8 @@ export const getFastGPTConfigFromDB = async () => {
 
   const config = res?.value || {};
 
-  return config as FastGPTConfigFileType;
+  return {
+    configId: res ? String(res._id) : undefined,
+    config: config as FastGPTConfigFileType
+  };
 };
