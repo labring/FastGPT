@@ -5,6 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export const useInitApp = () => {
   const router = useRouter();
@@ -41,8 +42,6 @@ export const useInitApp = () => {
   });
 
   useMount(() => {
-    initFetch();
-
     const errorTrack = (event: ErrorEvent) => {
       window.umami?.track(TrackEventName.windowError, {
         device: {
@@ -60,6 +59,11 @@ export const useInitApp = () => {
     return () => {
       window.removeEventListener('error', errorTrack);
     };
+  });
+
+  useRequest2(initFetch, {
+    manual: false,
+    pollingInterval: 300000
   });
 
   useEffect(() => {

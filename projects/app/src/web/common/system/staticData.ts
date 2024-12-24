@@ -10,7 +10,7 @@ export const clientInitData = async (
   feConfigs: FastGPTFeConfigsType;
 }> => {
   try {
-    const res = await getSystemInitData();
+    const res = await getSystemInitData(useSystemStore.getState().initDataBufferId);
     useSystemStore.getState().initStaticData(res);
 
     return {

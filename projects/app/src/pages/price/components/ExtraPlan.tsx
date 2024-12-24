@@ -109,7 +109,7 @@ const ExtraPlan = () => {
 
   return (
     <Flex
-      mt={['40px', '200px']}
+      mt={['40px', '100px']}
       flexDirection={'column'}
       alignItems={'center'}
       position={'relative'}

@@ -57,13 +57,15 @@ export type ReRankModelItemType = {
 };
 
 export type AudioSpeechModelType = {
+  provider: ModelProviderIdType;
   model: string;
   name: string;
   charsPointsPrice: number;
   voices: { label: string; value: string; bufferId: string }[];
 };
 
-export type WhisperModelType = {
+export type STTModelType = {
+  provider: ModelProviderIdType;
   model: string;
   name: string;
   charsPointsPrice: number; // 60s = n points

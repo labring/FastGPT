@@ -41,7 +41,7 @@ const FAQ = () => {
 
   return (
     <Flex
-      mt={['40px', '200px']}
+      mt={['40px', '100px']}
       pb={'10vh'}
       flexDirection={'column'}
       alignItems={'center'}

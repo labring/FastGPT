@@ -1,15 +1,15 @@
 import React from 'react';
-import { Box, Flex, Grid, Link, ModalBody } from '@chakra-ui/react';
+import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import ModelTable from '@/components/core/ai/ModelTable';
 
 const Points = () => {
   const { t } = useTranslation();
 
   return (
     <Flex
-      mt={['40px', '200px']}
+      mt={['40px', '100px']}
       flexDirection={'column'}
       alignItems={'center'}
       position={'relative'}
@@ -17,10 +17,12 @@ const Points = () => {
       <Box id="point-card" fontWeight={'bold'} fontSize={['24px', '36px']} color={'myGray.900'}>
         {t('common:support.wallet.subscription.Ai points')}
       </Box>
-      <Link href="https://tiktokenizer.vercel.app/" target="_blank" mb={['30px', 14]}>
+      <Link href="https://tiktokenizer.vercel.app/" target="_blank" mb={['30px', 10]}>
         {t('common:support.wallet.subscription.token_compute')}
       </Link>
-      <AiPointsTable />
+      <Box p={5} w={'100%'} h={'666px'} bg={'white'} borderRadius={'lg'} boxShadow={'md'}>
+        <ModelTable />
+      </Box>
     </Flex>
   );
 };
@@ -148,26 +150,5 @@ export const AiPointsTable = () => {
         </Box>
       </Box>
     </Grid>
-  );
-};
-
-export const AiPointsModal = ({ onClose }: { onClose: () => void }) => {
-  const { t } = useTranslation();
-
-  return (
-    <MyModal
-      isCentered
-      iconSrc="/imgs/modal/bill.svg"
-      title={t('common:support.wallet.subscription.Ai points')}
-      isOpen
-      onClose={onClose}
-      w={'100%'}
-      maxW={'90vw'}
-      maxH={'90vh'}
-    >
-      <ModalBody>
-        <AiPointsTable />
-      </ModalBody>
-    </MyModal>
   );
 };

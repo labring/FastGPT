@@ -8,8 +8,8 @@ import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dynamic from 'next/dynamic';
 
-const AiPointsModal = dynamic(() =>
-  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+const ModelPriceModal = dynamic(() =>
+  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 const StandardPlanContentList = ({
@@ -127,7 +127,7 @@ const StandardPlanContentList = ({
           <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
         </Flex>
       )}
-      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
+      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Grid>
   ) : null;
 };
