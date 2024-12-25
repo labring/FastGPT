@@ -226,8 +226,8 @@ const DatasetParamsModal = ({
             {limit !== undefined && (
               <Box display={['block', 'flex']}>
                 <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
-                  <FormLabel>{t('app:max_quote_tokens')}</FormLabel>
-                  <QuestionTip label={t('app:max_quote_tokens_tips')} />
+                  <FormLabel>{t('common:max_quote_tokens')}</FormLabel>
+                  <QuestionTip label={t('common:max_quote_tokens_tips')} />
                 </Flex>
                 <Box flex={'1 0 0'}>
                   <InputSlider
@@ -245,8 +245,8 @@ const DatasetParamsModal = ({
             )}
             <Box display={['block', 'flex']} mt={[6, 10]} mb={4}>
               <Flex flex={'0 0 120px'} alignItems={'center'} mb={[5, 0]}>
-                <FormLabel>{t('app:min_similarity')}</FormLabel>
-                <QuestionTip label={t('app:min_similarity_tip')} />
+                <FormLabel>{t('common:min_similarity')}</FormLabel>
+                <QuestionTip label={t('common:min_similarity_tip')} />
               </Flex>
               <Box flex={'1 0 0'}>
                 {showSimilarity ? (

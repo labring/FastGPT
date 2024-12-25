@@ -100,7 +100,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetCollectionParams>) {
     const collectionTags = await createOrGetCollectionTags({
       tags,
       teamId,
-      datasetId: collection.datasetId._id,
+      datasetId: collection.datasetId,
       session
     });
 

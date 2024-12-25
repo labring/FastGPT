@@ -31,7 +31,7 @@ async function handler(
   const queryReg = new RegExp(`${replaceRegChars(searchText)}`, 'i');
   const match = {
     teamId,
-    datasetId: collection.datasetId._id,
+    datasetId: collection.datasetId,
     collectionId,
     ...(searchText.trim()
       ? {

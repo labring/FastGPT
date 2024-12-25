@@ -10,17 +10,17 @@ import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
 import {
   PermissionValueType,
-  ResourcePermissionType,
-  ResourcePerWithGroup,
-  ResourcePerWithTmbWithUser
+  ResourcePermissionType
 } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
+import { UserModelSchema } from '@fastgpt/global/support/user/type';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -160,32 +160,33 @@ export const getClbsAndGroupsWithInfo = async ({
   teamId: string;
 }) =>
   Promise.all([
-    (await MongoResourcePermission.find({
+    MongoResourcePermission.find({
       teamId,
       resourceId,
       resourceType,
       tmbId: {
         $exists: true
       }
-    }).populate({
-      path: 'tmbId',
-      select: 'name userId',
-      populate: {
-        path: 'userId',
-        select: 'avatar'
-      }
-    })) as ResourcePerWithTmbWithUser[],
-    (await MongoResourcePermission.find({
+    })
+      .populate<{ tmb: TeamMemberSchema & { user: UserModelSchema } }>({
+        path: 'tmb',
+        select: 'name userId',
+        populate: {
+          path: 'user',
+          select: 'avatar'
+        }
+      })
+      .lean(),
+    MongoResourcePermission.find({
       teamId,
       resourceId,
       resourceType,
       groupId: {
         $exists: true
       }
-    }).populate({
-      path: 'groupId',
-      select: 'name avatar'
-    })) as ResourcePerWithGroup[]
+    })
+      .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
+      .lean()
   ]);
 
 export const delResourcePermissionById = (id: string) => {

@@ -1,5 +1,6 @@
+import { UserModelSchema } from '../user/type';
 import { RequireOnlyOne } from '../../common/type/utils';
-import { TeamMemberWithUserSchema } from '../user/team/type';
+import { TeamMemberSchema } from '../user/team/type';
 import { AuthUserTypeEnum, PermissionKeyEnum, PerResourceTypeEnum } from './constant';
 import { MemberGroupSchemaType } from './memberGroup/type';
 
@@ -31,11 +32,7 @@ export type ResourcePermissionType = {
 }>;
 
 export type ResourcePerWithTmbWithUser = Omit<ResourcePermissionType, 'tmbId'> & {
-  tmbId: TeamMemberWithUserSchema;
-};
-
-export type ResourcePerWithGroup = Omit<ResourcePermissionType, 'groupId'> & {
-  groupId: MemberGroupSchemaType;
+  tmbId: TeamMemberSchema & { user: UserModelSchema };
 };
 
 export type PermissionSchemaType = {

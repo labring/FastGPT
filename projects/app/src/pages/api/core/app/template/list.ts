@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
@@ -19,7 +19,7 @@ async function handler(
 
   const { isQuickTemplate = false, type = 'all' } = req.query;
 
-  const templateMarketItems: AppTemplateSchemaType[] = await getAppTemplatesAndLoadThem();
+  const templateMarketItems = await getAppTemplatesAndLoadThem();
 
   let filteredItems = templateMarketItems.filter((item) => {
     if (!item.isActive) return false;
@@ -28,10 +28,10 @@ async function handler(
   });
 
   if (isQuickTemplate) {
-    if (filteredItems.every((item) => item.isQuickTemplate === undefined)) {
-      filteredItems = filteredItems.slice(0, 3);
-    } else {
+    if (filteredItems.some((item) => item.isQuickTemplate !== undefined)) {
       filteredItems = filteredItems.filter((item) => item.isQuickTemplate);
+    } else {
+      filteredItems = filteredItems.slice(0, 3);
     }
   }
 

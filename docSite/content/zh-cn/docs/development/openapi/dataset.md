@@ -1424,7 +1424,11 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
     "limit": 5000,
     "similarity": 0,
     "searchMode": "embedding",
-    "usingReRank": false
+    "usingReRank": false,
+
+    "datasetSearchUsingExtensionQuery": true,
+    "datasetSearchExtensionModel": "gpt-4o-mini",
+    "datasetSearchExtensionBg": ""
 }'
 ```
 
@@ -1441,6 +1445,9 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 - similarity - 最低相关度（0~1，可选）
 - searchMode - 搜索模式：embedding | fullTextRecall | mixedRecall
 - usingReRank - 使用重排
+- datasetSearchUsingExtensionQuery - 使用问题优化
+- datasetSearchExtensionModel - 问题优化模型
+- datasetSearchExtensionBg - 问题优化背景描述
 {{% /alert %}}
 
 {{< /markdownify >}}
