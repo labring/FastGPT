@@ -42,6 +42,19 @@ const TeamMemberSchema = new Schema({
   }
 });
 
+TeamMemberSchema.virtual('team', {
+  ref: TeamCollectionName,
+  localField: 'teamId',
+  foreignField: '_id',
+  justOne: true
+});
+TeamMemberSchema.virtual('user', {
+  ref: userCollectionName,
+  localField: 'userId',
+  foreignField: '_id',
+  justOne: true
+});
+
 try {
   TeamMemberSchema.index({ teamId: 1 }, { background: true });
   TeamMemberSchema.index({ userId: 1 }, { background: true });

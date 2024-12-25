@@ -47,16 +47,9 @@ export type TeamMemberSchema = {
   defaultTeam: boolean;
 };
 
-export type TeamMemberWithUserSchema = Omit<TeamMemberSchema, 'userId'> & {
-  userId: UserModelSchema;
-};
-
-export type TeamMemberWithTeamSchema = Omit<TeamMemberSchema, 'teamId'> & {
-  teamId: TeamSchema;
-};
-
-export type TeamMemberWithTeamAndUserSchema = Omit<TeamMemberWithTeamSchema, 'userId'> & {
-  userId: UserModelSchema;
+export type TeamMemberWithTeamAndUserSchema = TeamMemberSchema & {
+  team: TeamSchema;
+  user: UserModelSchema;
 };
 
 export type TeamTmbItemType = {

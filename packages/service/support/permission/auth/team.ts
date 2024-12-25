@@ -1,29 +1,24 @@
-import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 import { MongoTeamMember } from '../../user/team/teamMemberSchema';
 import { checkTeamAIPoints } from '../teamLimit';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
-
-type tmbType = {
-  teamId: ExternalProviderType & { _id: string };
-  userId: {
-    timezone: string;
-  };
-};
+import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { TeamSchema } from '@fastgpt/global/support/user/team/type';
 
 export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
-  const tmb = (await MongoTeamMember.findById(tmbId, 'teamId userId')
-    .populate('userId', 'timezone')
-    .populate('teamId', 'openaiAccount externalWorkflowVariables')) as tmbType;
+  const tmb = await MongoTeamMember.findById(tmbId, 'userId teamId')
+    .populate<{ user: UserModelSchema }>('user', 'timezone')
+    .populate<{ team: TeamSchema }>('team', 'openaiAccount externalWorkflowVariables')
+    .lean();
 
   if (!tmb) return Promise.reject(UserErrEnum.unAuthUser);
 
-  await checkTeamAIPoints(tmb.teamId._id);
+  await checkTeamAIPoints(tmb.team._id);
 
   return {
-    timezone: tmb.userId.timezone,
+    timezone: tmb.user.timezone,
     externalProvider: {
-      openaiAccount: tmb.teamId.openaiAccount,
-      externalWorkflowVariables: tmb.teamId.externalWorkflowVariables
+      openaiAccount: tmb.team.openaiAccount,
+      externalWorkflowVariables: tmb.team.externalWorkflowVariables
     }
   };
 }

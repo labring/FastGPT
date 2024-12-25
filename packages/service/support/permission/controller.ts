@@ -19,7 +19,6 @@ import { addMinutes } from 'date-fns';
 import { getGroupsByTmbId } from './memberGroup/controllers';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 /** get resource permission for a team member
@@ -167,14 +166,16 @@ export const getClbsAndGroupsWithInfo = async ({
       tmbId: {
         $exists: true
       }
-    }).populate({
-      path: 'tmbId',
-      select: 'name userId',
-      populate: {
-        path: 'userId',
-        select: 'avatar'
-      }
-    })) as ResourcePerWithTmbWithUser[],
+    })
+      .populate({
+        path: 'tmbId',
+        select: 'name userId',
+        populate: {
+          path: 'user',
+          select: 'avatar'
+        }
+      })
+      .lean()) as ResourcePerWithTmbWithUser[],
     (await MongoResourcePermission.find({
       teamId,
       resourceId,
@@ -182,10 +183,12 @@ export const getClbsAndGroupsWithInfo = async ({
       groupId: {
         $exists: true
       }
-    }).populate({
-      path: 'groupId',
-      select: 'name avatar'
-    })) as ResourcePerWithGroup[]
+    })
+      .populate({
+        path: 'groupId',
+        select: 'name avatar'
+      })
+      .lean()) as ResourcePerWithGroup[]
   ]);
 
 export const delResourcePermissionById = (id: string) => {
