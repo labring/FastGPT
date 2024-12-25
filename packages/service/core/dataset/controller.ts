@@ -49,9 +49,9 @@ export async function findDatasetAndAllChildren({
 }
 
 export async function getCollectionWithDataset(collectionId: string) {
-  const data = (await MongoDatasetCollection.findById(collectionId)
-    .populate('datasetId')
-    .lean()) as CollectionWithDatasetType;
+  const data = await MongoDatasetCollection.findById(collectionId)
+    .populate<{ dataset: DatasetSchemaType }>('dataset')
+    .lean();
   if (!data) {
     return Promise.reject('Collection is not exist');
   }

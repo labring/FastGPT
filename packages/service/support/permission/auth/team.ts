@@ -6,8 +6,16 @@ import { TeamSchema } from '@fastgpt/global/support/user/team/type';
 
 export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
   const tmb = await MongoTeamMember.findById(tmbId, 'userId teamId')
-    .populate<{ user: UserModelSchema }>('user', 'timezone')
-    .populate<{ team: TeamSchema }>('team', 'openaiAccount externalWorkflowVariables')
+    .populate<{ user: UserModelSchema; team: TeamSchema }>([
+      {
+        path: 'user',
+        select: 'timezone'
+      },
+      {
+        path: 'team',
+        select: 'openaiAccount externalWorkflowVariables'
+      }
+    ])
     .lean();
 
   if (!tmb) return Promise.reject(UserErrEnum.unAuthUser);

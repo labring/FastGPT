@@ -181,7 +181,7 @@ export async function authDatasetCollection({
 
   const { dataset } = await authDatasetByTmbId({
     tmbId,
-    datasetId: collection.datasetId._id,
+    datasetId: collection.datasetId,
     per,
     isRoot: isRootFromHeader
   });
