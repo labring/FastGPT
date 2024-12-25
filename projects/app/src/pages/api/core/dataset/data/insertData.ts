@@ -45,7 +45,7 @@ async function handler(req: NextApiRequest) {
   // auth collection and get dataset
   const [
     {
-      datasetId: { _id: datasetId, vectorModel }
+      dataset: { _id: datasetId, vectorModel }
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 

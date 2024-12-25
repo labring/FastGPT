@@ -133,11 +133,8 @@ export type DatasetTrainingSchemaType = {
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 
-export type CollectionWithDatasetType = Omit<DatasetCollectionSchemaType, 'datasetId'> & {
-  datasetId: DatasetSchemaType;
-};
-export type DatasetDataWithCollectionType = Omit<DatasetDataSchemaType, 'collectionId'> & {
-  collectionId: DatasetCollectionSchemaType;
+export type CollectionWithDatasetType = DatasetCollectionSchemaType & {
+  dataset: DatasetSchemaType;
 };
 
 /* ================= dataset ===================== */

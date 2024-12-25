@@ -1,4 +1,4 @@
-import { TeamTmbItemType, TeamMemberWithTeamSchema } from '@fastgpt/global/support/user/team/type';
+import { TeamSchema, TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { ClientSession, Types } from '../../../common/mongo';
 import {
   TeamMemberRoleEnum,
@@ -18,26 +18,26 @@ import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/consta
 import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
-  const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
+  const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
   if (!tmb) {
     return Promise.reject('member not exist');
   }
 
   const Per = await getResourcePermission({
     resourceType: PerResourceTypeEnum.team,
-    teamId: tmb.teamId._id,
+    teamId: tmb.teamId,
     tmbId: tmb._id
   });
 
   return {
     userId: String(tmb.userId),
-    teamId: String(tmb.teamId._id),
-    teamName: tmb.teamId.name,
+    teamId: String(tmb.teamId),
+    teamName: tmb.team.name,
     memberName: tmb.name,
-    avatar: tmb.teamId.avatar,
-    balance: tmb.teamId.balance,
+    avatar: tmb.team.avatar,
+    balance: tmb.team.balance,
     tmbId: String(tmb._id),
-    teamDomain: tmb.teamId?.teamDomain,
+    teamDomain: tmb.team?.teamDomain,
     role: tmb.role,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
@@ -45,11 +45,11 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
       per: Per ?? TeamDefaultPermissionVal,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
     }),
-    notificationAccount: tmb.teamId.notificationAccount,
+    notificationAccount: tmb.team.notificationAccount,
 
-    lafAccount: tmb.teamId.lafAccount,
-    openaiAccount: tmb.teamId.openaiAccount,
-    externalWorkflowVariables: tmb.teamId.externalWorkflowVariables
+    lafAccount: tmb.team.lafAccount,
+    openaiAccount: tmb.team.openaiAccount,
+    externalWorkflowVariables: tmb.team.externalWorkflowVariables
   };
 }
 

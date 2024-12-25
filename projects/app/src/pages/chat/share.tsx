@@ -16,7 +16,6 @@ import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
-import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { connectToDatabase } from '@/service/mongo';
 import NextHead from '@/components/common/NextHead';
@@ -37,6 +36,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
+import { AppSchema } from '@fastgpt/global/core/app/type';
 
 const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
 
@@ -361,15 +361,14 @@ export async function getServerSideProps(context: any) {
   const app = await (async () => {
     try {
       await connectToDatabase();
-      const app = (await MongoOutLink.findOne(
+      return MongoOutLink.findOne(
         {
           shareId
         },
         'appId showRawSource showNodeStatus'
       )
-        .populate('appId', 'name avatar intro')
-        .lean()) as OutLinkWithAppType;
-      return app;
+        .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
+        .lean();
     } catch (error) {
       addLog.error('getServerSideProps', error);
       return undefined;
@@ -378,10 +377,10 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appId: String(app?.appId?._id) ?? '',
-      appName: app?.appId?.name ?? 'AI',
-      appAvatar: app?.appId?.avatar ?? '',
-      appIntro: app?.appId?.intro ?? 'AI',
+      appId: String(app?.appId) ?? '',
+      appName: app?.associatedApp?.name ?? 'AI',
+      appAvatar: app?.associatedApp?.avatar ?? '',
+      appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',

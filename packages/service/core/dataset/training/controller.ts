@@ -34,7 +34,7 @@ export const pushDataListToTrainingQueueByCollectionId = async ({
   session?: ClientSession;
 } & PushDatasetDataProps) => {
   const {
-    datasetId: { _id: datasetId, agentModel, vectorModel }
+    dataset: { _id: datasetId, agentModel, vectorModel }
   } = await getCollectionWithDataset(collectionId);
   return pushDataListToTrainingQueue({
     ...props,

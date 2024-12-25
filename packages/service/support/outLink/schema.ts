@@ -83,6 +83,13 @@ const OutLinkSchema = new Schema({
   }
 });
 
+OutLinkSchema.virtual('associatedApp', {
+  ref: AppCollectionName,
+  localField: 'appId',
+  foreignField: '_id',
+  justOne: true
+});
+
 try {
   OutLinkSchema.index({ shareId: -1 });
 } catch (error) {

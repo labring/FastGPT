@@ -4,7 +4,6 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';

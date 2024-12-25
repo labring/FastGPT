@@ -158,11 +158,11 @@ const InputDataModal = ({
 
   const maxToken = useMemo(() => {
     const vectorModel =
-      vectorModelList.find((item) => item.model === collection.datasetId.vectorModel) ||
+      vectorModelList.find((item) => item.model === collection.dataset.vectorModel) ||
       vectorModelList[0];
 
     return vectorModel?.maxToken || 3000;
-  }, [collection.datasetId.vectorModel, vectorModelList]);
+  }, [collection.dataset.vectorModel, vectorModelList]);
 
   // import new data
   const { mutate: sureImportData, isLoading: isImporting } = useRequest({

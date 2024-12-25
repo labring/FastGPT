@@ -12,7 +12,7 @@ import {
   ModalOverlay
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -36,13 +36,15 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
-import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
+import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
-const recommendTag = {
+const recommendTag: TemplateTypeSchemaType = {
   typeId: AppTemplateTypeEnum.recommendation,
-  typeName: 'app:templateMarket.templateTags.Recommendation'
+  typeName: i18nT('app:templateMarket.templateTags.Recommendation'),
+  typeOrder: 0
 };
 
 const TemplateMarketModal = ({
@@ -55,18 +57,11 @@ const TemplateMarketModal = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { data: templateTags = [] } = useRequest2(
-    () => getTemplateTagList().then((res) => [recommendTag, ...res]),
-    {
-      manual: false
-    }
-  );
-
   const { parentId } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const [currentTag, setCurrentTag] = useState(templateTags[0]?.typeId);
+  const [currentTag, setCurrentTag] = useState(AppTemplateTypeEnum.recommendation);
   const [currentAppType, setCurrentAppType] = useState<TemplateAppType>(defaultType);
   const [currentSearch, setCurrentSearch] = useState('');
 
@@ -75,9 +70,29 @@ const TemplateMarketModal = ({
   const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
     () => getTemplateMarketItemList({ type: currentAppType }),
     {
+      manual: false,
+      refreshDeps: [currentAppType]
+    }
+  );
+
+  const { data: templateTags = [], loading: isLoadingTags } = useRequest2(
+    () => getTemplateTagList().then((res) => [recommendTag, ...res]),
+    {
       manual: false
     }
   );
+  // Batch by tags
+  const filterTemplateTags = useMemo(() => {
+    return templateTags
+      .map((tag) => {
+        const templates = templateList.filter((template) => template.tags.includes(tag.typeId));
+        return {
+          ...tag,
+          templates
+        };
+      })
+      .filter((item) => item.templates.length > 0);
+  }, [templateList, templateTags]);
 
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
     async (template: AppTemplateSchemaType) => {
@@ -113,9 +128,9 @@ const TemplateMarketModal = ({
     async () => {
       let firstVisibleTitle: any = null;
 
-      templateTags
+      filterTemplateTags
         .map((type) => type.typeId)
-        .forEach((type: string) => {
+        .forEach((type) => {
           const element = document.getElementById(type);
           if (!element) return;
 
@@ -135,7 +150,8 @@ const TemplateMarketModal = ({
       }
     },
     {
-      throttleWait: 100
+      throttleWait: 100,
+      refreshDeps: [filterTemplateTags.length]
     }
   );
 
@@ -238,10 +254,12 @@ const TemplateMarketModal = ({
     [feConfigs.systemTitle, onUseTemplate]
   );
 
+  const isLoading = isLoadingTags || isLoadingTemplates || isCreating;
+
   return (
     <Modal
       isOpen={true}
-      onClose={() => onClose && onClose()}
+      onClose={onClose}
       autoFocus={false}
       blockScrollOnMount={false}
       closeOnOverlayClick={false}
@@ -270,11 +288,11 @@ const TemplateMarketModal = ({
 
           <Box flex={'1'} />
 
-          <MySelect
+          <MySelect<TemplateAppType>
             h={'8'}
             value={currentAppType}
             onchange={(value) => {
-              setCurrentAppType(value as AppTypeEnum | 'all');
+              setCurrentAppType(value);
             }}
             bg={'myGray.100'}
             minW={'7rem'}
@@ -309,20 +327,19 @@ const TemplateMarketModal = ({
             </Box>
           )}
         </ModalHeader>
-        <MyBox isLoading={isCreating || isLoadingTemplates} flex={'1 0 0'} overflow={'overlay'}>
+        <MyBox isLoading={isLoading} flex={'1 0 0'} h="0">
           <ModalBody
             h={'100%'}
             display={'flex'}
             bg={'myGray.100'}
             overflow={'auto'}
             gap={5}
-            onScroll={handleScroll}
             px={0}
             pt={5}
           >
             {isPc && (
               <Flex pl={5} flexDirection={'column'} gap={3}>
-                {templateTags.map((item) => {
+                {filterTemplateTags.map((item) => {
                   return (
                     <Box
                       key={item.typeId}
@@ -377,7 +394,15 @@ const TemplateMarketModal = ({
               </Flex>
             )}
 
-            <Box pl={[3, 0]} pr={[3, 5]} pt={1} flex={'1'} h={'100%'} overflow={'auto'}>
+            <Box
+              pl={[3, 0]}
+              pr={[3, 5]}
+              pt={1}
+              flex={'1'}
+              h={'100%'}
+              overflow={'auto'}
+              onScroll={handleScroll}
+            >
               {currentSearch ? (
                 <>
                   <Box fontSize={'lg'} color={'myGray.900'} mb={4}>
@@ -414,13 +439,7 @@ const TemplateMarketModal = ({
                 </>
               ) : (
                 <>
-                  {templateTags.map((item) => {
-                    const currentTemplates = templateList?.filter((template) =>
-                      template.tags.includes(item.typeId)
-                    );
-
-                    if (currentTemplates.length === 0) return null;
-
+                  {filterTemplateTags.map((item) => {
                     return (
                       <Box key={item.typeId}>
                         <Box
@@ -444,7 +463,7 @@ const TemplateMarketModal = ({
                           alignItems={'stretch'}
                           pb={5}
                         >
-                          {currentTemplates.map((item) => (
+                          {item.templates.map((item) => (
                             <TemplateCard key={item.templateId} item={item} />
                           ))}
                         </Grid>
