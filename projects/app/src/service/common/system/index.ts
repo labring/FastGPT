@@ -165,7 +165,7 @@ function getSystemPlugin() {
   global.communityPlugins = fileTemplates;
 }
 
-export async function initSystemPlugins() {
+export async function initSystemPluginGroups() {
   try {
     const { groupOrder, ...restDefaultGroup } = defaultGroup;
     await MongoPluginGroups.updateOne(
@@ -184,7 +184,7 @@ export async function initSystemPlugins() {
   }
 }
 
-export async function initAppTemplates() {
+export async function initAppTemplateTypes() {
   try {
     await Promise.all(
       defaultTemplateTypes.map((templateType) => {

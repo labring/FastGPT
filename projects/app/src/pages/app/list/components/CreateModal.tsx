@@ -20,9 +20,12 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getTemplateMarketItemList } from '@/web/core/app/api/template';
+import {
+  getTemplateMarketItemDetail,
+  getTemplateMarketItemList
+} from '@/web/core/app/api/template';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { AppTemplateSchemaType } from '@fastgpt/service/core/app/templates/type';
+import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 
 type FormType = {
   avatar: string;
@@ -68,17 +71,12 @@ const CreateModal = ({
     }
   });
   const typeData = typeMap.current[type];
-
-  const { data: templateList = [] } = useRequest2(getTemplateMarketItemList, {
-    manual: false
-  });
-
-  const filterTemplates = useMemo(() => {
-    if (templateList.every((item) => item.isQuickTemplate === undefined)) {
-      return templateList.filter((item) => item.type === type).slice(0, 3);
+  const { data: templateList = [] } = useRequest2(
+    () => getTemplateMarketItemList({ isQuickTemplate: true, type }),
+    {
+      manual: false
     }
-    return templateList.filter((item) => item.isQuickTemplate && item.type === type);
-  }, [templateList, type]);
+  );
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -129,14 +127,15 @@ const CreateModal = ({
         });
       }
 
+      const templateDetail = await getTemplateMarketItemDetail(template.templateId);
       return postCreateApp({
         parentId,
         avatar: data.avatar || template.avatar,
         name: data.name,
         type: template.type as AppTypeEnum,
-        modules: template.workflow.nodes || [],
-        edges: template.workflow.edges || [],
-        chatConfig: template.workflow.chatConfig
+        modules: templateDetail.workflow.nodes || [],
+        edges: templateDetail.workflow.edges || [],
+        chatConfig: templateDetail.workflow.chatConfig
       });
     },
     {
@@ -205,9 +204,7 @@ const CreateModal = ({
         </Flex>
         <Grid
           userSelect={'none'}
-          gridTemplateColumns={
-            filterTemplates.length > 0 ? ['repeat(1,1fr)', 'repeat(2,1fr)'] : '1fr'
-          }
+          gridTemplateColumns={templateList.length > 0 ? ['repeat(1,1fr)', 'repeat(2,1fr)'] : '1fr'}
           gridGap={[2, 4]}
         >
           <Card
@@ -233,7 +230,7 @@ const CreateModal = ({
               {typeData.emptyCreateText}
             </Box>
           </Card>
-          {filterTemplates.map((item) => (
+          {templateList.map((item) => (
             <Card
               key={item.templateId}
               p={4}

@@ -17,7 +17,11 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import AppTypeTag from './TypeTag';
 import { AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
+import {
+  getTemplateMarketItemDetail,
+  getTemplateMarketItemList,
+  getTemplateTagList
+} from '@/web/core/app/api/template';
 import { postCreateApp } from '@/web/core/app/api';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -30,9 +34,9 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput/index'
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
-import { AppTemplateSchemaType } from '@fastgpt/service/core/app/templates/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
+import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -69,7 +73,7 @@ const TemplateMarketModal = ({
   const [currentTemplate, setCurrentTemplate] = useState<AppTemplateSchemaType | null>(null);
 
   const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
-    getTemplateMarketItemList,
+    () => getTemplateMarketItemList({ type: currentAppType }),
     {
       manual: false
     }
@@ -77,14 +81,15 @@ const TemplateMarketModal = ({
 
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
     async (template: AppTemplateSchemaType) => {
+      const templateDetail = await getTemplateMarketItemDetail(template.templateId);
       return postCreateApp({
         parentId,
         avatar: template.avatar,
         name: template.name,
         type: template.type as AppTypeEnum,
-        modules: template.workflow.nodes || [],
-        edges: template.workflow.edges || [],
-        chatConfig: template.workflow.chatConfig
+        modules: templateDetail.workflow.nodes || [],
+        edges: templateDetail.workflow.edges || [],
+        chatConfig: templateDetail.workflow.chatConfig
       }).then((res) => {
         webPushTrack.useAppTemplate({
           id: res,
@@ -410,12 +415,9 @@ const TemplateMarketModal = ({
               ) : (
                 <>
                   {templateTags.map((item) => {
-                    const currentTemplates = templateList
-                      ?.filter((template) => template.tags.includes(item.typeId))
-                      .filter((template) => {
-                        if (currentAppType === 'all') return true;
-                        return template.type === currentAppType;
-                      });
+                    const currentTemplates = templateList?.filter((template) =>
+                      template.tags.includes(item.typeId)
+                    );
 
                     if (currentTemplates.length === 0) return null;
 

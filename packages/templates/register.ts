@@ -5,14 +5,9 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 
 export const getTemplateNameList = () => {
-  const projectRoot = path.resolve(process.cwd(), '../..');
-  const templatesPath = path.join(
-    projectRoot,
-    projectRoot.includes('FastGPT') ? '' : 'FastGPT',
-    'packages',
-    'templates',
-    'src'
-  );
+  const currentFileUrl = new URL(import.meta.url);
+  const templatesPath = path.join(path.dirname(currentFileUrl.pathname), 'src');
+
   return {
     templateNames: fs.readdirSync(templatesPath),
     templatesPath

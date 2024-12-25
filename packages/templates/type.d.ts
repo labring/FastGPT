@@ -1,5 +1,5 @@
-import { AppTemplateSchemaType } from '../service/core/app/templates/type';
+import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 
 declare global {
-  var appMarketTemplates: AppTemplateSchemaType[];
+  var appTemplates: AppTemplateSchemaType[];
 }
