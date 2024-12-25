@@ -1,11 +1,17 @@
+import { ListParams } from '@/pages/api/core/app/template/list';
 import { GET } from '@/web/common/api/request';
-import {
-  TemplateMarketItemType,
-  TemplateMarketListItemType
-} from '@fastgpt/global/core/workflow/type';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 
-export const getTemplateMarketItemList = () =>
-  GET<TemplateMarketListItemType[]>('/core/app/template/list');
+export const getTemplateMarketItemList = (data: ListParams) =>
+  GET<AppTemplateSchemaType[]>(`/core/app/template/list`, data);
 
-export const getTemplateMarketItemDetail = (data: { templateId: string }) =>
-  GET<TemplateMarketItemType>(`/core/app/template/detail`, data);
+export const getTemplateMarketItemDetail = (templateId: string) =>
+  GET<AppTemplateSchemaType>(`/core/app/template/detail?templateId=${templateId}`);
+
+export const getTemplateTagList = () => {
+  return useSystemStore.getState()?.feConfigs?.isPlus
+    ? GET<TemplateTypeSchemaType[]>('/proApi/core/app/template/getTemplateTypes')
+    : Promise.resolve(defaultTemplateTypes);
+};

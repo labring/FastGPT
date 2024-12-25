@@ -1,6 +1,8 @@
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { i18nT } from '../../i18n/utils';
 import type { PluginGroupSchemaType, TGroupType } from '../../../service/core/app/plugin/type';
+import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
+import { TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 
 export const workflowNodeTemplateList = [
   {
@@ -79,3 +81,31 @@ export const defaultGroup: PluginGroupSchemaType = {
   groupOrder: 0,
   groupTypes: systemPluginTemplateList
 };
+
+export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
+  {
+    typeName: i18nT('common:app.templateMarket.templateTags.Writing'),
+    typeId: AppTemplateTypeEnum.writing,
+    typeOrder: 0
+  },
+  {
+    typeName: i18nT('common:app.templateMarket.templateTags.Image_generation'),
+    typeId: AppTemplateTypeEnum.imageGeneration,
+    typeOrder: 1
+  },
+  {
+    typeName: i18nT('common:app.templateMarket.templateTags.Web_search'),
+    typeId: AppTemplateTypeEnum.webSearch,
+    typeOrder: 2
+  },
+  {
+    typeName: i18nT('common:app.templateMarket.templateTags.Roleplay'),
+    typeId: AppTemplateTypeEnum.roleplay,
+    typeOrder: 3
+  },
+  {
+    typeName: i18nT('common:app.templateMarket.templateTags.Office_services'),
+    typeId: AppTemplateTypeEnum.officeServices,
+    typeOrder: 4
+  }
+];

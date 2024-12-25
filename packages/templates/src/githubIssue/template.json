@@ -2,9 +2,13 @@
   "name": "GitHub Issue 总结机器人",
   "intro": "定时获取GitHub Issue信息,使用AI进行总结,并推送到飞书群中",
   "author": "",
-  "avatar": "/appMarketTemplates/githubIssue/avatar.svg",
+  "avatar": "core/app/templates/githubIssue",
   "tags": ["office-services"],
   "type": "advanced",
+  "userGuide": {
+    "type": "link",
+    "content": "https://mp.weixin.qq.com/s/CBrwSn1jQZO7ybsMSx5GnQ"
+  },
   "workflow": {
     "nodes": [
       {
