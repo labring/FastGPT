@@ -72,7 +72,10 @@ function MemberTable() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { orgs, refetchOrgs, members, refetchMembers } = useContextSelector(TeamContext, (v) => v);
+  const { orgs, refetchOrgs, members, refetchMembers, initOrg, isLoading } = useContextSelector(
+    TeamContext,
+    (v) => v
+  );
   const [currentOrg, setCurrentOrg] = useState<OrgType | undefined>();
 
   // Set current org by hash
@@ -81,8 +84,11 @@ function MemberTable() {
       const hash = window.location.hash.substring(1);
       const initialOrg = orgs.find((org) => org._id === hash) || orgs[0];
       setCurrentOrg(initialOrg);
+    } else if (!isLoading) {
+      console.log('initOrg');
+      initOrg();
     }
-  }, [orgs]);
+  }, [orgs, initOrg, isLoading]);
   // Update hash when current org changes
   useEffect(() => {
     if (currentOrg) {
@@ -294,7 +300,7 @@ function MemberTable() {
               src={
                 currentOrg?.path === ''
                   ? userInfo?.team.avatar
-                  : (currentOrg?.avatar ?? DEFAULT_ORG_AVATAR)
+                  : currentOrg?.avatar ?? DEFAULT_ORG_AVATAR
               }
               w={'16px'}
               h={'16px'}
