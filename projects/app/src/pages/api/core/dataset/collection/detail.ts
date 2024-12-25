@@ -37,7 +37,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
     ...collection,
     ...getCollectionSourceData(collection),
     tags: await collectionTagsToTagLabel({
-      datasetId: collection.datasetId._id,
+      datasetId: collection.datasetId,
       tags: collection.tags
     }),
     permission,

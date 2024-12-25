@@ -1,4 +1,4 @@
-import { CollectionWithDatasetType, DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
 import { delCollectionRelatedSource } from './collection/controller';

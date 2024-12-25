@@ -32,7 +32,8 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   _id: '',
   teamId: '',
   tmbId: '',
-  datasetId: {
+  datasetId: '',
+  dataset: {
     _id: '',
     parentId: '',
     userId: '',
