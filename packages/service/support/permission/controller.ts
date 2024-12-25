@@ -10,7 +10,8 @@ import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
 import {
   PermissionValueType,
-  ResourcePermissionType
+  ResourcePermissionType,
+  ResourcePerWithOrg
 } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
@@ -186,7 +187,15 @@ export const getClbsAndGroupsWithInfo = async ({
       }
     })
       .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
-      .lean()
+      .lean(),
+    (await MongoResourcePermission.find({
+      teamId,
+      resourceId,
+      resourceType,
+      orgId: {
+        $exists: true
+      }
+    }).populate({ path: 'orgId', select: 'name avatar' })) as ResourcePerWithOrg[]
   ]);
 
 export const delResourcePermissionById = (id: string) => {
@@ -196,6 +205,7 @@ export const delResourcePermission = ({
   session,
   tmbId,
   groupId,
+  orgId,
   ...props
 }: {
   resourceType: PerResourceTypeEnum;
@@ -204,15 +214,18 @@ export const delResourcePermission = ({
   session?: ClientSession;
   tmbId?: string;
   groupId?: string;
+  orgId?: string;
 }) => {
-  // tmbId or groupId only one and not both
-  if (!!tmbId === !!groupId) {
+  // tmbId, groupId, orgId 三选一
+  if (!tmbId && !groupId && !orgId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
+
   return MongoResourcePermission.deleteOne(
     {
       ...(tmbId ? { tmbId } : {}),
       ...(groupId ? { groupId } : {}),
+      ...(orgId ? { orgId } : {}),
       ...props
     },
     { session }
@@ -250,7 +263,7 @@ export function authJWT(token: string) {
   }>((resolve, reject) => {
     const key = process.env.TOKEN_KEY as string;
 
-    jwt.verify(token, key, function (err, decoded: any) {
+    jwt.verify(token, key, (err, decoded: any) => {
       if (err || !decoded?.userId) {
         reject(ERROR_ENUM.unAuthorization);
         return;
@@ -436,7 +449,7 @@ export const authFileToken = (token?: string) =>
     }
     const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
 
-    jwt.verify(token, key, function (err, decoded: any) {
+    jwt.verify(token, key, (err, decoded: any) => {
       if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.fileId) {
         reject(ERROR_ENUM.unAuthFile);
         return;

@@ -1,6 +1,6 @@
-import { RequireOnlyOne } from '../../common/type/utils';
+import type { RequireOnlyOne } from '../../common/type/utils';
 import {
-  UpdateClbPermissionProps,
+  type UpdateClbPermissionProps,
   UpdatePermissionBody
 } from '../../support/permission/collaborator';
 import { PermissionValueType } from '../../support/permission/type';
@@ -14,4 +14,5 @@ export type AppCollaboratorDeleteParams = {
 } & RequireOnlyOne<{
   tmbId: string;
   groupId: string;
+  orgId: string;
 }>;

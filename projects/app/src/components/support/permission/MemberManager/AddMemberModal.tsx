@@ -1,27 +1,28 @@
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { ChevronDownIcon } from '@chakra-ui/icons';
 import {
-  Flex,
   Box,
-  ModalBody,
-  Checkbox,
-  ModalFooter,
   Button,
+  Checkbox,
+  Flex,
   Grid,
-  HStack
+  HStack,
+  ModalBody,
+  ModalFooter
 } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useContextSelector } from 'use-context-selector';
+import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
+import { useContextSelector } from 'use-context-selector';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import { CollaboratorContext } from './context';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { ChevronDownIcon } from '@chakra-ui/icons';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 
 export type AddModalPropsType = {
   onClose: () => void;
@@ -30,16 +31,24 @@ export type AddModalPropsType = {
 
 function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
   const { t } = useTranslation();
-  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups } = useUserStore();
+  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups, loadAndGetOrgs, myOrgs } =
+    useUserStore();
 
   const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList, permission } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
 
-  const { data: [members = [], groups = []] = [], loading: loadingMembersAndGroups } = useRequest2(
+  const {
+    data: [members = [], groups = [], orgs = []] = [],
+    loading: loadingMembersAndGroups
+  } = useRequest2(
     async () => {
       if (!userInfo?.team?.teamId) return [[], []];
-      return await Promise.all([loadAndGetTeamMembers(true), loadAndGetGroups(true)]);
+      return await Promise.all([
+        loadAndGetTeamMembers(true),
+        loadAndGetGroups(true),
+        loadAndGetOrgs(true)
+      ]);
     },
     {
       manual: false,
@@ -65,8 +74,20 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
     });
   }, [groups, searchText, myGroups, mode, permission]);
 
+  const filterOrgs = useMemo(() => {
+    if (mode !== 'all') return [];
+    return orgs.filter((item) => {
+      if (item.path === '') return false; // exclude root org
+      if (!permission.isOwner && myOrgs.find((i) => String(i._id) !== String(item._id)))
+        return false;
+      if (!searchText) return true;
+      return item.name.includes(searchText);
+    });
+  }, [orgs, searchText, myOrgs, mode, permission]);
+
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
+  const [selectedOrgIdList, setSelectedOrgIdList] = useState<string[]>([]);
   const [selectedPermission, setSelectedPermission] = useState(permissionList['read'].value);
   const perLabel = useMemo(() => {
     return getPerLabelList(selectedPermission).join('、');
@@ -77,6 +98,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
       onUpdateCollaborators({
         members: selectedMemberIdList,
         groups: selectedGroupIdList,
+        orgs: selectedOrgIdList,
         permission: selectedPermission
       }),
     {
@@ -115,6 +137,48 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
             />
 
             <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
+              {filterOrgs.map((org) => {
+                const onChange = () => {
+                  setSelectedOrgIdList((state) => {
+                    if (state.includes(org._id)) {
+                      return state.filter((v) => v !== org._id);
+                    }
+                    return [...state, org._id];
+                  });
+                };
+                const collaborator = collaboratorList.find((v) => v.orgId === org._id);
+                return (
+                  <HStack
+                    justifyContent="space-between"
+                    key={org._id}
+                    py="2"
+                    px="3"
+                    borderRadius="sm"
+                    alignItems="center"
+                    _hover={{
+                      bgColor: 'myGray.50',
+                      cursor: 'pointer',
+                      ...(!selectedOrgIdList.includes(org._id)
+                        ? { svg: { color: 'myGray.50' } }
+                        : {})
+                    }}
+                    onClick={onChange}
+                  >
+                    <Checkbox isChecked={selectedOrgIdList.includes(org._id)} />
+                    <MyAvatar
+                      src={org.avatar || DEFAULT_ORG_AVATAR}
+                      w="1.5rem"
+                      borderRadius={'50%'}
+                    />
+                    <Box ml="2" w="full">
+                      {org.name}
+                    </Box>
+                    {!!collaborator && (
+                      <PermissionTags permission={collaborator.permission.value} />
+                    )}
+                  </HStack>
+                );
+              })}
               {filterGroups.map((group) => {
                 const onChange = () => {
                   setSelectedGroupIdList((state) => {
@@ -199,9 +263,43 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
           <Flex p="4" flexDirection="column">
             <Box>
               {t('user:has_chosen') + ': '}{' '}
-              {selectedMemberIdList.length + selectedGroupIdList.length}
+              {selectedMemberIdList.length + selectedGroupIdList.length + selectedOrgIdList.length}
             </Box>
             <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
+              {selectedOrgIdList.map((orgId) => {
+                const org = orgs.find((v) => String(v._id) === orgId);
+                return (
+                  <HStack
+                    justifyContent="space-between"
+                    key={orgId}
+                    py="2"
+                    px="3"
+                    borderRadius="sm"
+                    alignItems="center"
+                    _hover={{
+                      bgColor: 'myGray.50',
+                      cursor: 'pointer',
+                      ...(!selectedOrgIdList.includes(orgId) ? { svg: { color: 'myGray.50' } } : {})
+                    }}
+                    onClick={() =>
+                      setSelectedOrgIdList(selectedOrgIdList.filter((v) => v !== orgId))
+                    }
+                  >
+                    <MyAvatar src={org?.avatar} w="1.5rem" borderRadius={'50%'} />
+                    <Box w="full" ml="2">
+                      {org?.name}
+                    </Box>
+                    <MyIcon
+                      name="common/closeLight"
+                      w="16px"
+                      cursor={'pointer'}
+                      _hover={{
+                        color: 'red.600'
+                      }}
+                    />
+                  </HStack>
+                );
+              })}
               {selectedGroupIdList.map((groupId) => {
                 const onChange = () => {
                   setSelectedGroupIdList((state) => {
