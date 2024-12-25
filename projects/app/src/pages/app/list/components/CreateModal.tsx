@@ -71,7 +71,7 @@ const CreateModal = ({
     }
   });
   const typeData = typeMap.current[type];
-  const { data: templateList = [] } = useRequest2(
+  const { data: templateList = [], loading: isRequestTemplates } = useRequest2(
     () => getTemplateMarketItemList({ isQuickTemplate: true, type }),
     {
       manual: false
@@ -114,8 +114,8 @@ const CreateModal = ({
   );
 
   const { runAsync: onclickCreate, loading: isCreating } = useRequest2(
-    async (data: FormType, template?: AppTemplateSchemaType) => {
-      if (!template) {
+    async (data: FormType, templateId?: string) => {
+      if (!templateId) {
         return postCreateApp({
           parentId,
           avatar: data.avatar,
@@ -127,12 +127,12 @@ const CreateModal = ({
         });
       }
 
-      const templateDetail = await getTemplateMarketItemDetail(template.templateId);
+      const templateDetail = await getTemplateMarketItemDetail(templateId);
       return postCreateApp({
         parentId,
-        avatar: data.avatar || template.avatar,
+        avatar: data.avatar || templateDetail.avatar,
         name: data.name,
-        type: template.type as AppTypeEnum,
+        type: templateDetail.type as AppTypeEnum,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig
@@ -157,7 +157,7 @@ const CreateModal = ({
       onClose={onClose}
       isCentered={!isPc}
       maxW={['90vw', '40rem']}
-      isLoading={isCreating}
+      isLoading={isCreating || isRequestTemplates}
     >
       <ModalBody px={9} pb={8}>
         <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -280,7 +280,7 @@ const CreateModal = ({
                     h={6}
                     borderRadius={'sm'}
                     w={'40%'}
-                    onClick={handleSubmit((data) => onclickCreate(data, item))}
+                    onClick={handleSubmit((data) => onclickCreate(data, item.templateId))}
                   >
                     {t('app:templateMarket.Use')}
                   </Button>

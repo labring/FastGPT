@@ -1,5 +1,5 @@
 import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type/node';
-import { AppTypeEnum } from './constants';
+import { AppTemplateTypeEnum, AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import {
   NodeInputKeyEnum,
@@ -206,6 +206,6 @@ export type AppTemplateSchemaType = {
 
 export type TemplateTypeSchemaType = {
   typeName: string;
-  typeId: string;
+  typeId: AppTemplateTypeEnum;
   typeOrder: number;
 };
