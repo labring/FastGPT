@@ -495,11 +495,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
 
       // replace {{xx}} variables
-      let value = replaceVariable(input.value, variables);
+      // let value = replaceVariable(input.value, variables);
 
       // replace {{$xx.xx$}} variables
-      value = replaceEditorVariable({
-        text: value,
+      let value = replaceEditorVariable({
+        text: input.value,
         nodes: runtimeNodes,
         variables
       });

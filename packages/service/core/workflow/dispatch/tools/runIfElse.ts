@@ -53,8 +53,8 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
     [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
 
-    [VariableConditionEnum.equalTo]: () => String(inputValue) === value,
-    [VariableConditionEnum.notEqual]: () => String(inputValue) !== value,
+    [VariableConditionEnum.equalTo]: () => String(inputValue).trim() === value.trim(),
+    [VariableConditionEnum.notEqual]: () => String(inputValue).trim() !== value.trim(),
 
     // number
     [VariableConditionEnum.greaterThan]: () => Number(inputValue) > Number(value),
@@ -67,8 +67,8 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
     [VariableConditionEnum.notInclude]: () => !isInclude(inputValue, value),
 
     // string
-    [VariableConditionEnum.startWith]: () => inputValue?.startsWith(value),
-    [VariableConditionEnum.endWith]: () => inputValue?.endsWith(value),
+    [VariableConditionEnum.startWith]: () => inputValue?.trim()?.startsWith(value),
+    [VariableConditionEnum.endWith]: () => inputValue?.trim()?.endsWith(value),
     [VariableConditionEnum.reg]: () => {
       if (typeof inputValue !== 'string' || !value) return false;
       if (value.startsWith('/')) {
@@ -79,7 +79,7 @@ function checkCondition(condition: VariableConditionEnum, inputValue: any, value
       }
 
       const reg = new RegExp(value, 'g');
-      const result = reg.test(inputValue);
+      const result = reg.test(inputValue.trim());
 
       return result;
     },

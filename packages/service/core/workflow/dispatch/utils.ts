@@ -14,6 +14,7 @@ import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import json5 from 'json5';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -116,11 +117,18 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     return Boolean(value);
   }
   try {
-    if (type === WorkflowIOValueTypeEnum.datasetQuote && !Array.isArray(value)) {
-      return JSON.parse(value);
-    }
-    if (type === WorkflowIOValueTypeEnum.selectDataset && !Array.isArray(value)) {
-      return JSON.parse(value);
+    if (
+      type &&
+      [
+        WorkflowIOValueTypeEnum.object,
+        WorkflowIOValueTypeEnum.chatHistory,
+        WorkflowIOValueTypeEnum.datasetQuote,
+        WorkflowIOValueTypeEnum.selectApp,
+        WorkflowIOValueTypeEnum.selectDataset
+      ].includes(type) &&
+      typeof value !== 'object'
+    ) {
+      return json5.parse(value);
     }
   } catch (error) {
     return value;
