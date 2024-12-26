@@ -37,7 +37,9 @@ export const pushChatUsage = ({
       moduleName: item.moduleName,
       amount: item.totalPoints || 0,
       model: item.model,
-      tokens: item.tokens
+      tokens: item.tokens,
+      inputTokens: item.inputTokens,
+      outputTokens: item.outputTokens
     }))
   });
   addLog.info(`finish completions`, {

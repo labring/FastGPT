@@ -107,7 +107,9 @@ export type DispatchNodeResponseType = {
   mergeSignId?: string;
 
   // bill
-  tokens?: number;
+  tokens?: number; // deprecated
+  inputTokens?: number;
+  outputTokens?: number;
   model?: string;
   contextTotalLen?: number;
   totalPoints?: number;

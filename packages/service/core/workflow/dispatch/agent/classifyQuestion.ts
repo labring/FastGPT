@@ -49,7 +49,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await completions({
+  const { arg, inputTokens, outputTokens } = await completions({
     ...props,
     histories: chatHistories,
     cqModel
@@ -59,7 +59,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: cqModel.model,
-    tokens,
+    inputTokens: inputTokens,
+    outputTokens: outputTokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -72,7 +73,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
-      tokens,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -82,7 +84,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
         moduleName: name,
         totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        tokens
+        inputTokens: inputTokens,
+        outputTokens: outputTokens
       }
     ]
   };
@@ -148,7 +151,8 @@ const completions = async ({
   }
 
   return {
-    tokens: await countMessagesTokens(messages),
+    inputTokens: data.usage?.prompt_tokens || 0,
+    outputTokens: data.usage?.completion_tokens || 0,
     arg: { type: id }
   };
 };

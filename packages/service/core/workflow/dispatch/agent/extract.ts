@@ -59,7 +59,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await (async () => {
+  const { arg, inputTokens, outputTokens } = await (async () => {
     if (extractModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -114,7 +114,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: extractModel.model,
-    tokens,
+    inputTokens: inputTokens,
+    outputTokens: outputTokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -126,7 +127,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
-      tokens,
+      inputTokens,
+      outputTokens,
       extractDescription: description,
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
@@ -136,7 +138,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         moduleName: name,
         totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        tokens
+        inputTokens,
+        outputTokens
       }
     ]
   };
@@ -249,15 +252,18 @@ const toolChoice = async (props: ActionProps) => {
     }
   })();
 
-  const completeMessages: ChatCompletionMessageParam[] = [
-    ...filterMessages,
+  const AIMessages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       tool_calls: response.choices?.[0]?.message?.tool_calls
     }
   ];
+
+  const inputTokens = await countGptMessagesTokens(filterMessages, tools);
+  const outputTokens = await countGptMessagesTokens(AIMessages);
   return {
-    tokens: await countGptMessagesTokens(completeMessages, tools),
+    inputTokens,
+    outputTokens,
     arg
   };
 };
@@ -286,17 +292,21 @@ const functionCall = async (props: ActionProps) => {
 
   try {
     const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
-    const completeMessages: ChatCompletionMessageParam[] = [
-      ...filterMessages,
+
+    const AIMessages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         function_call: response.choices?.[0]?.message?.function_call
       }
     ];
 
+    const inputTokens = await countGptMessagesTokens(filterMessages, undefined, functions);
+    const outputTokens = await countGptMessagesTokens(AIMessages, undefined, functions);
+
     return {
       arg,
-      tokens: await countGptMessagesTokens(completeMessages, undefined, functions)
+      inputTokens,
+      outputTokens
     };
   } catch (error) {
     console.log(response.choices?.[0]?.message);
@@ -305,7 +315,8 @@ const functionCall = async (props: ActionProps) => {
 
     return {
       arg: {},
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 };
@@ -370,7 +381,8 @@ Human: ${content}`
   if (!jsonStr) {
     return {
       rawResponse: answer,
-      tokens: await countMessagesTokens(messages),
+      inputTokens: await countMessagesTokens(messages),
+      outputTokens: 0,
       arg: {}
     };
   }
@@ -378,7 +390,8 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      tokens: await countMessagesTokens(messages),
+      inputTokens: data.usage?.prompt_tokens || 0,
+      outputTokens: data.usage?.completion_tokens || 0,
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
@@ -386,7 +399,8 @@ Human: ${content}`
     console.log(error);
     return {
       rawResponse: answer,
-      tokens: await countMessagesTokens(messages),
+      inputTokens: await countMessagesTokens(messages),
+      outputTokens: 0,
       arg: {}
     };
   }
