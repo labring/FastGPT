@@ -100,12 +100,6 @@ const AIChatSettingsModal = ({
     setRefresh(!refresh);
   };
 
-  const {
-    isOpen: isOpenAiPointsModal,
-    onClose: onCloseAiPointsModal,
-    onOpen: onOpenAiPointsModal
-  } = useDisclosure();
-
   return (
     <MyModal
       isOpen
@@ -160,10 +154,11 @@ const AIChatSettingsModal = ({
                 <Th fontSize={'mini'} pb={2}>
                   <HStack spacing={1}>
                     <Box> {t('app:ai_point_price')}</Box>
-                    <QuestionTip
-                      label={t('app:look_ai_point_price')}
-                      onClick={onOpenAiPointsModal}
-                    />
+                    <ModelPriceModal>
+                      {({ onOpen }) => (
+                        <QuestionTip label={t('app:look_ai_point_price')} onClick={onOpen} />
+                      )}
+                    </ModelPriceModal>
                   </HStack>
                 </Th>
                 <Th fontSize={'mini'} pb={2}>
@@ -327,8 +322,6 @@ const AIChatSettingsModal = ({
           {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
-
-      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </MyModal>
   );
 };

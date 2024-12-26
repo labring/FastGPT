@@ -24,12 +24,6 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
   const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
 
-  const {
-    isOpen: isOpenAiPointsModal,
-    onClose: onCloseAiPointsModal,
-    onOpen: onOpenAiPointsModal
-  } = useDisclosure();
-
   const avatarSize = useMemo(() => {
     const size = {
       sm: '1rem',
@@ -74,17 +68,6 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
       : avatarList;
   }, [feConfigs.show_pay, avatarList, avatarSize, t]);
 
-  const onSelect = useCallback(
-    (e: string) => {
-      if (e === 'price') {
-        onOpenAiPointsModal();
-        return;
-      }
-      return onchange?.(e);
-    },
-    [onOpenAiPointsModal, onchange]
-  );
-
   return (
     <Box
       css={{
@@ -94,29 +77,31 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
       }}
     >
       <MyTooltip label={disableTip}>
-        <MySelect
-          className="nowheel"
-          isDisabled={!!disableTip}
-          list={expandList}
-          {...props}
-          onchange={onSelect}
-        />
+        <ModelPriceModal>
+          {({ onOpen }) => (
+            <MySelect
+              className="nowheel"
+              isDisabled={!!disableTip}
+              list={expandList}
+              {...props}
+              onchange={(e) => {
+                if (e === 'price') {
+                  onOpen();
+                  return;
+                }
+                return onchange?.(e);
+              }}
+            />
+          )}
+        </ModelPriceModal>
       </MyTooltip>
-
-      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Box>
   );
 };
 const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
-  const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
+  const { llmModelList, vectorModelList } = useSystemStore();
   const [value, setValue] = useState<string[]>([]);
-
-  const {
-    isOpen: isOpenAiPointsModal,
-    onClose: onCloseAiPointsModal,
-    onOpen: onOpenAiPointsModal
-  } = useDisclosure();
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -211,8 +196,6 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
           }}
         />
       </MyTooltip>
-
-      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Box>
   );
 };
