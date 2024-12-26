@@ -58,7 +58,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
    - [x] 支持手动输入，直接分段，QA 拆分导入
-   - [x] 支持 txt，md，html，pdf，docx，pptx，csv，xlsx (有需要更多可 PR file loader), 支持 url 读取、CSV 批量导入
+   - [x] 支持 txt，md，html，pdf，docx，pptx，csv，xlsx (有需要更多可 PR file loader)，支持 url 读取、CSV 批量导入
    - [x] 混合检索 & 重排
    - [x] API 知识库
    - [ ] 自定义文件读取服务
