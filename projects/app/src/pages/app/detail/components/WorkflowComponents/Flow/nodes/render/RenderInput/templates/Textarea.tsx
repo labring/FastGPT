@@ -10,7 +10,7 @@ import { getEditorVariables } from '../../../../../utils';
 import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
+const TextareaRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
