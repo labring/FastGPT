@@ -11,4 +11,5 @@ export type DatasetCollaboratorDeleteParams = {
 } & RequireOnlyOne<{
   tmbId: string;
   groupId: string;
+  orgId: string;
 }>;
