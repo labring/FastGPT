@@ -15,7 +15,7 @@ weight: 706
 
 FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、Azure 、国内主流模型和本地模型等。
 
-可参考：[Sealos 快速部署 OneAPI](/docs/development/one-api)
+可参考：[Sealos 快速部署 OneAPI](/docs/development/modelconfig/one-api)
 
 
 ## 一键部署
@@ -163,4 +163,4 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### One API 使用
 
-[参考 OneAPI 使用步骤](/docs/development/one-api/)
+[参考 OneAPI 使用步骤](/docs/development/modelconfig/one-api/)

@@ -104,7 +104,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [快速开始本地开发](https://doc.tryfastgpt.ai/docs/development/intro/)
 * [部署 FastGPT](https://doc.tryfastgpt.ai/docs/development/sealos/)
 * [系统配置文件说明](https://doc.tryfastgpt.ai/docs/development/configuration/)
-* [多模型配置](https://doc.tryfastgpt.ai/docs/development/one-api/)
+* [多模型配置方案](https://doc.tryfastgpt.ai/docs/development/modelconfig/one-api/)
 * [版本更新/升级介绍](https://doc.tryfastgpt.ai/docs/development/upgrading/)
 * [OpenAPI API 文档](https://doc.tryfastgpt.ai/docs/development/openapi/)
 * [知识库结构详解](https://doc.tryfastgpt.ai/docs/guide/knowledge_base/rag/)
@@ -127,7 +127,6 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 我们正在寻找志同道合的小伙伴，加速 FastGPT 的发展。你可以通过 [FastGPT 2025 招聘](https://fael3z0zfze.feishu.cn/wiki/P7FOwEmPziVcaYkvVaacnVX1nvg)了解 FastGPT 的招聘信息。
 
-
 ## 💪 相关项目
 
 - [Laf：3 分钟快速接入三方应用](https://github.com/labring/laf)
@@ -139,19 +138,21 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 👀 其他
 
-- [保姆级 FastGPT 教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
-- [接入飞书](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
-- [接入企微](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
+## 🌿 第三方生态
+
+- [COW 个人微信/企微机器人](https://doc.tryfastgpt.ai/docs/use-cases/external-integration/onwechat/)
+- [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 🌿 第三方生态
+## 👀 其他
 
-- [COW 个人微信/企微机器人](https://doc.tryfastgpt.ai/docs/use-cases/external-integration/onwechat/)
+- [保姆级 FastGPT 教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.999.0.0)
+- [接入飞书](https://www.bilibili.com/video/BV1Su4y1r7R3/?spm_id_from=333.999.0.0)
+- [接入企微](https://www.bilibili.com/video/BV1Tp4y1n72T/?spm_id_from=333.999.0.0)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">

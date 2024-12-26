@@ -192,7 +192,7 @@ docker restart oneapi
 
 可以通过`ip:3001`访问OneAPI，默认账号为`root`密码为`123456`。
 
-在OneApi中添加合适的AI模型渠道。[点击查看相关教程](/docs/development/one-api/)
+在OneApi中添加合适的AI模型渠道。[点击查看相关教程](/docs/development/modelconfig/one-api/)
 
 ### 5. 访问 FastGPT
 

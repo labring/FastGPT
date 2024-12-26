@@ -109,7 +109,7 @@
   "publish_channel": "發布通道",
   "publish_success": "發布成功",
   "question_guide_tip": "對話結束後，會為你產生 3 個引導性問題。",
-  "saved_success": "儲存成功",
+  "saved_success": "保存成功！\n如需在外部使用該版本，請點擊“儲存並發布”",
   "search_app": "搜尋應用程式",
   "setting_app": "應用程式設定",
   "setting_plugin": "外掛設定",
