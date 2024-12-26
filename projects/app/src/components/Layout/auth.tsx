@@ -17,7 +17,7 @@ const unAuthPage: { [key: string]: boolean } = {
   '/price': true
 };
 
-const Auth = ({ children }: { children: JSX.Element }) => {
+const Auth = ({ children }: { children: JSX.Element | React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
