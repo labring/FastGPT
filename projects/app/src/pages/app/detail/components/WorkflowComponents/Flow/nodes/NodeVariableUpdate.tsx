@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import NodeCard from './render/NodeCard';
 import { NodeProps } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -35,6 +35,8 @@ import { useCreation, useMemoizedFn } from 'ahooks';
 import { getEditorVariables } from '../../utils';
 import { isArray } from 'lodash';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -67,7 +69,17 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
       t
     });
   }, [nodeId, nodeList, edges, appDetail, t]);
+  const { feConfigs } = useSystemStore();
+  const externalProviderWorkflowVariables = useMemo(() => {
+    return (
+      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+        key: item.key,
+        label: item.name
+      })) || []
+    );
+  }, [feConfigs?.externalProviderWorkflowVariables]);
 
+  // Node inputs
   const updateList = useMemo(
     () =>
       (inputs.find((input) => input.key === NodeInputKeyEnum.updateList)
@@ -104,7 +116,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
         (item) => item.renderType === updateItem.renderType
       );
 
-      const handleUpdate = (newValue?: ReferenceValueType | string) => {
+      const onUpdateNewValue = (newValue?: ReferenceValueType | string) => {
         if (typeof newValue === 'string') {
           onUpdateList(
             updateList.map((update, i) =>
@@ -134,7 +146,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       return {
                         ...update,
                         value: ['', ''],
-                        valueType,
+                        valueType: getRefData({
+                          variable: value as ReferenceItemValueType,
+                          nodeList,
+                          chatConfig: appDetail.chatConfig
+                        }).valueType,
                         variable: value as ReferenceItemValueType
                       };
                     }
@@ -206,7 +222,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     nodeId={nodeId}
                     variable={updateItem.value}
                     valueType={valueType}
-                    onSelect={handleUpdate}
+                    onSelect={onUpdateNewValue}
                   />
                 );
               }
@@ -218,9 +234,10 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   <Box w={'300px'}>
                     <PromptEditor
                       value={inputValue || ''}
-                      onChange={handleUpdate}
+                      onChange={onUpdateNewValue}
                       showOpenModal={false}
                       variableLabels={variables}
+                      variables={[...variables, ...externalProviderWorkflowVariables]}
                       minH={100}
                     />
                   </Box>
@@ -228,20 +245,18 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
               }
               if (valueType === WorkflowIOValueTypeEnum.number) {
                 return (
-                  <NumberInput value={Number(inputValue) || 0}>
-                    <NumberInputField bg="white" onChange={(e) => handleUpdate(e.target.value)} />
-                    <NumberInputStepper>
-                      <NumberIncrementStepper />
-                      <NumberDecrementStepper />
-                    </NumberInputStepper>
-                  </NumberInput>
+                  <MyNumberInput
+                    bg={'white'}
+                    value={Number(inputValue) || 0}
+                    onChange={(e) => onUpdateNewValue(String(e || 0))}
+                  />
                 );
               }
               if (valueType === WorkflowIOValueTypeEnum.boolean) {
                 return (
                   <Switch
                     defaultChecked={inputValue === 'true'}
-                    onChange={(e) => handleUpdate(String(e.target.checked))}
+                    onChange={(e) => onUpdateNewValue(String(e.target.checked))}
                   />
                 );
               }
@@ -250,9 +265,10 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                 <Box w={'300px'}>
                   <PromptEditor
                     value={inputValue || ''}
-                    onChange={handleUpdate}
+                    onChange={onUpdateNewValue}
                     showOpenModal={false}
                     variableLabels={variables}
+                    variables={[...variables, ...externalProviderWorkflowVariables]}
                     minH={100}
                   />
                 </Box>

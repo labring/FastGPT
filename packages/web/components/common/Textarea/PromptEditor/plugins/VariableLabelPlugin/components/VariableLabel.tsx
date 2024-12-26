@@ -23,9 +23,9 @@ export default function VariableLabel({
         mx={'2px'}
         rounded={'4px'}
         px={1.5}
-        transform={'translateY(3px)'}
         bg={parentLabel !== 'undefined' ? 'primary.50' : 'red.50'}
         color={parentLabel !== 'undefined' ? 'myGray.900' : 'red.600'}
+        transform={parentLabel !== 'undefined' ? 'translateY(3px)' : ''}
       >
         {parentLabel !== 'undefined' ? (
           <Flex alignItems={'center'} color={'myGray.600'} fontSize={'sm'}>
@@ -35,9 +35,7 @@ export default function VariableLabel({
             {childLabel}
           </Flex>
         ) : (
-          <>
-            <Box>{t('common:invalid_variable')}</Box>
-          </>
+          <Box>{t('common:invalid_variable')}</Box>
         )}
       </Box>
     </>
