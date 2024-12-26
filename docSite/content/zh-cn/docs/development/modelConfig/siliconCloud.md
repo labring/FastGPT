@@ -29,7 +29,7 @@ CHAT_API_KEY=sk-xxxxxx
 
 ## 3. 修改 FastGPT 配置文件
 
-我们选取 SiliconCloud 中的模型作为 FastGPT 配置。
+我们选取 SiliconCloud 中的模型作为 FastGPT 配置。 注意：ReRank 模型仍需配置一次 Api Key
 
 ```json
 {
