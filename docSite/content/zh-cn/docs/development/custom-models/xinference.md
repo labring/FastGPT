@@ -102,7 +102,7 @@ xinference launch -n qwen-chat -s 14 -f pytorch
 
 ## 将本地模型接入 One API
 
-One API 的部署和接入请参考[这里](/docs/development/one-api/)。
+One API 的部署和接入请参考[这里](/docs/development/modelconfig/one-api/)。
 
 为 qwen1.5-chat 添加一个渠道，这里的 Base URL 需要填 Xinference 服务的端点，并且注册 qwen-chat (模型的 UID) 。
 
