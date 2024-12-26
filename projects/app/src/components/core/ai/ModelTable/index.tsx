@@ -159,6 +159,19 @@ const ModelTable = () => {
     search
   ]);
 
+  const filterProviderList = useMemo(() => {
+    const allProviderIds: string[] = [
+      ...llmModelList,
+      ...vectorModelList,
+      ...audioSpeechModelList,
+      whisperModel
+    ].map((model) => model.provider);
+
+    return providerList.current.filter(
+      (item) => allProviderIds.includes(item.value) || item.value === ''
+    );
+  }, [audioSpeechModelList, llmModelList, vectorModelList, whisperModel]);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex>
@@ -171,7 +184,7 @@ const ModelTable = () => {
             bg={'myGray.50'}
             value={provider}
             onchange={setProvider}
-            list={providerList.current}
+            list={filterProviderList}
           />
         </HStack>
         <HStack flexShrink={0} ml={6}>
