@@ -281,8 +281,8 @@ const EditForm = ({
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={1}>
               <MyIcon name={'core/app/toolCall'} w={'20px'} />
-              <FormLabel ml={2}>{appT('plugin_dispatch')}</FormLabel>
-              <QuestionTip ml={1} label={appT('plugin_dispatch_tip')} />
+              <FormLabel ml={2}>{t('common:core.app.Tool call')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:plugin_dispatch_tip')} />
             </Flex>
             <Button
               variant={'transparentBase'}

@@ -17,6 +17,7 @@ export const iconPaths = {
   'common/addUser': () => import('./icons/common/addUser.svg'),
   'common/administrator': () => import('./icons/common/administrator.svg'),
   'common/arrowLeft': () => import('./icons/common/arrowLeft.svg'),
+  'common/arrowRight': () => import('./icons/common/arrowRight.svg'),
   'common/backFill': () => import('./icons/common/backFill.svg'),
   'common/backLight': () => import('./icons/common/backLight.svg'),
   'common/billing': () => import('./icons/common/billing.svg'),

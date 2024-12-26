@@ -1,8 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Button, Card, Flex, FlexProps, ModalBody } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type {
+  FlowNodeItemType,
+  FlowNodeTemplateType
+} from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -29,6 +32,8 @@ import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import Markdown from '@/components/Markdown';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -136,6 +141,7 @@ const NodeCard = (props: Props) => {
   } = useConfirm({
     content: t('workflow:Confirm_sync_node')
   });
+
   const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
 
   const { runAsync: onClickSyncVersion } = useRequest2(
@@ -152,6 +158,7 @@ const NodeCard = (props: Props) => {
       refreshDeps: [node, nodeId, onResetNode]
     }
   );
+  const [currentNode, setCurrentNode] = useState<FlowNodeTemplateType | null>(null);
 
   /* Node header */
   const Header = useMemo(() => {
@@ -166,7 +173,7 @@ const NodeCard = (props: Props) => {
             <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
             {/* avatar and name */}
-            <Flex alignItems={'center'} mb={intro ? 1 : 0}>
+            <Flex alignItems={'center'} mb={1}>
               {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
                 <Flex
                   alignItems={'center'}
@@ -271,13 +278,20 @@ const NodeCard = (props: Props) => {
               {!!nodeTemplate?.diagram && node?.courseUrl && (
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
-              {node?.courseUrl && !hasNewVersion && (
+              {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
                 <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
                   <MyIconButton
                     ml={1}
                     icon="book"
                     color={'primary.600'}
-                    onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
+                    onClick={() => {
+                      if (node?.courseUrl) {
+                        window.open(getDocPath(node.courseUrl || ''), '_blank');
+                      }
+                      if (nodeTemplate?.userGuide) {
+                        setCurrentNode(nodeTemplate);
+                      }
+                    }}
                   />
                 </MyTooltip>
               )}
@@ -287,10 +301,14 @@ const NodeCard = (props: Props) => {
         )}
         <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
         <ConfirmSyncModal />
+        {currentNode && (
+          <NodeUserGuideModal currentNode={currentNode} onClose={() => setCurrentNode(null)} />
+        )}
       </Box>
     );
   }, [
     node?.flowNodeType,
+    node?.courseUrl,
     showToolHandle,
     nodeId,
     isFolded,
@@ -300,12 +318,12 @@ const NodeCard = (props: Props) => {
     hasNewVersion,
     onOpenConfirmSync,
     onClickSyncVersion,
-    nodeTemplate?.diagram,
-    node?.courseUrl,
+    nodeTemplate,
     intro,
     menuForbid,
     nodeList,
     ConfirmSyncModal,
+    currentNode,
     onChangeNode,
     onOpenCustomTitleModal,
     toast
@@ -616,6 +634,30 @@ const NodeIntro = React.memo(function NodeIntro({
 
   return Render;
 });
+
+const NodeUserGuideModal = ({
+  currentNode,
+  onClose
+}: {
+  currentNode: FlowNodeTemplateType;
+  onClose: () => void;
+}) => {
+  return (
+    <MyModal
+      isOpen
+      iconSrc={currentNode.avatar}
+      title={currentNode.name}
+      onClose={onClose}
+      minW={'600px'}
+    >
+      <ModalBody>
+        <Box border={'base'} borderRadius={'10px'} p={4} minH={'500px'}>
+          <Markdown source={currentNode.userGuide} />
+        </Box>
+      </ModalBody>
+    </MyModal>
+  );
+};
 
 const NodeDebugResponse = React.memo(function NodeDebugResponse({
   nodeId,

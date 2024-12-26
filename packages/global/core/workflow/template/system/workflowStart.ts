@@ -30,7 +30,6 @@ export const WorkflowStart: FlowNodeTemplateType = {
   intro: '',
   forbidDelete: true,
   unique: true,
-  courseUrl: '/docs/guide/workbench/workflow/input/',
   version: '481',
   inputs: [{ ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }],
   outputs: [

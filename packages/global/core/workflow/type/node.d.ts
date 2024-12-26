@@ -69,6 +69,7 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
 
   diagram?: string; // diagram url
   courseUrl?: string; // course url
+  userGuide?: string; // user guide
 };
 
 export type NodeTemplateListItemType = {

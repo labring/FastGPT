@@ -240,7 +240,7 @@ const Button = defineStyleConfig({
     },
     grayDanger: {
       bg: 'myGray.150',
-      color: 'myGray.900',
+      color: 'myGray.600',
       _hover: {
         color: 'red.600',
         background: 'red.1',
