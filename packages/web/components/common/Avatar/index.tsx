@@ -28,4 +28,4 @@ const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
   );
 };
 
-export default Avatar;
+export default React.memo(Avatar);
