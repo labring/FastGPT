@@ -61,7 +61,7 @@ const TemplateMarketModal = ({
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const [currentTag, setCurrentTag] = useState(AppTemplateTypeEnum.recommendation);
+  const [currentTag, setCurrentTag] = useState<string>(AppTemplateTypeEnum.recommendation);
   const [currentAppType, setCurrentAppType] = useState<TemplateAppType>(defaultType);
   const [currentSearch, setCurrentSearch] = useState('');
 
