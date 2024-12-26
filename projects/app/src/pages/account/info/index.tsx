@@ -584,9 +584,20 @@ const PlanUsage = () => {
   ) : null;
 };
 
+const ButtonStyles = {
+  bg: 'white',
+  py: 3,
+  px: 6,
+  border: 'sm',
+  borderWidth: '1.5px',
+  borderRadius: 'md',
+  display: 'flex',
+  alignItems: 'center',
+  cursor: 'pointer',
+  userSelect: 'none' as any,
+  fontSize: 'sm'
+};
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
-  const theme = useTheme();
-  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -596,37 +607,15 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
     defaultValues: userInfo as UserType
   });
 
-  const buttonStyles = useRef<FlexProps>({
-    bg: 'white',
-    py: 3,
-    px: 6,
-    border: theme.borders.sm,
-    borderWidth: '1.5px',
-    borderRadius: 'md',
-    alignItems: 'center',
-    cursor: 'pointer',
-    userSelect: 'none',
-    fontSize: 'sm'
-  });
-
   return (
     <Box>
       <Grid gridGap={4} mt={3}>
         {feConfigs?.docUrl && (
           <Link
-            bg={'white'}
             href={getDocPath('/docs/intro')}
             target="_blank"
-            display={'flex'}
-            py={3}
-            px={6}
-            border={theme.borders.sm}
-            borderWidth={'1.5px'}
-            borderRadius={'md'}
-            alignItems={'center'}
-            userSelect={'none'}
             textDecoration={'none !important'}
-            fontSize={'sm'}
+            {...ButtonStyles}
           >
             <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
@@ -639,11 +628,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
           feConfigs?.navbarItems
             ?.filter((item) => item.isActive)
             .map((item) => (
-              <Flex
-                key={item.id}
-                {...buttonStyles.current}
-                onClick={() => window.open(item.url, '_blank')}
-              >
+              <Flex key={item.id} {...ButtonStyles} onClick={() => window.open(item.url, '_blank')}>
                 <Avatar src={item.avatar} w={'18px'} />
                 <Box ml={2} flex={1}>
                   {item.name}
@@ -651,16 +636,12 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
               </Flex>
             ))}
         {feConfigs?.concatMd && (
-          <Button
-            variant={'whiteBase'}
-            justifyContent={'flex-start'}
-            leftIcon={<MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />}
-            onClick={onOpenContact}
-            h={'48px'}
-            fontSize={'sm'}
-          >
-            {t('account_info:contact_us')}
-          </Button>
+          <Flex onClick={onOpenContact} {...ButtonStyles}>
+            <MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />
+            <Box ml={2} flex={1}>
+              {t('account_info:contact_us')}
+            </Box>
+          </Flex>
         )}
       </Grid>
     </Box>
