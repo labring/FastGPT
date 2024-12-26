@@ -8,8 +8,6 @@ import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 
 export const getOrgList = () => GET<OrgType[]>('/proApi/support/user/team/org/list');
 
-export const getInitOrg = () => GET('/proApi/support/user/team/org/init');
-
 export const postCreateOrg = (data: postCreateOrgData) =>
   POST('/proApi/support/user/team/org/create', data);
 

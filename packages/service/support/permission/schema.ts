@@ -56,6 +56,12 @@ ResourcePermissionSchema.virtual('group', {
   foreignField: '_id',
   justOne: true
 });
+ResourcePermissionSchema.virtual('org', {
+  ref: OrgCollectionName,
+  localField: 'orgId',
+  foreignField: '_id',
+  justOne: true
+});
 
 try {
   ResourcePermissionSchema.index(

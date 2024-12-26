@@ -19,7 +19,6 @@ import {
   VStack,
   useDisclosure
 } from '@chakra-ui/react';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -72,23 +71,18 @@ function MemberTable() {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { orgs, refetchOrgs, members, refetchMembers, initOrg, isLoading } = useContextSelector(
+  const { orgs, refetchOrgs, members, refetchMembers, isLoading } = useContextSelector(
     TeamContext,
     (v) => v
   );
-  const [currentOrg, setCurrentOrg] = useState<OrgType | undefined>();
+  const [currentOrg, setCurrentOrg] = useState<OrgType>();
 
   // Set current org by hash
   useEffect(() => {
-    if (orgs.length > 0) {
-      const hash = window.location.hash.substring(1);
-      const initialOrg = orgs.find((org) => org._id === hash) || orgs[0];
-      setCurrentOrg(initialOrg);
-    } else if (!isLoading) {
-      console.log('initOrg');
-      initOrg();
-    }
-  }, [orgs, initOrg, isLoading]);
+    const hash = window.location.hash.substring(1);
+    const initialOrg = orgs.find((org) => org._id === hash) || orgs[0];
+    setCurrentOrg(initialOrg);
+  }, [orgs, isLoading]);
   // Update hash when current org changes
   useEffect(() => {
     if (currentOrg) {
@@ -194,7 +188,7 @@ function MemberTable() {
                 <Tr key={org._id} overflow={'unset'}>
                   <Td>
                     <HStack w="fit-content" cursor={'pointer'} onClick={() => setCurrentOrg(org)}>
-                      <MemberTag name={org.name} avatar={org.avatar ?? DEFAULT_ORG_AVATAR} />
+                      <MemberTag name={org.name} avatar={org.avatar} />
                       <Tag size="sm">{org.count}</Tag>
                       <MyIcon
                         name="core/chat/chevronRight"
@@ -246,46 +240,38 @@ function MemberTable() {
                       <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
                     </Td>
                     <Td w={'6rem'}>
-                      {member.role !== 'owner' && (
-                        <MyMenu
-                          trigger={'click'}
-                          Button={
-                            <MyIcon
-                              name="more"
-                              w={'1rem'}
-                              cursor={'pointer'}
-                              p="1"
-                              rounded={'sm'}
-                            />
+                      <MyMenu
+                        trigger={'click'}
+                        Button={
+                          <MyIcon name="more" w={'1rem'} cursor={'pointer'} p="1" rounded={'sm'} />
+                        }
+                        menuList={[
+                          {
+                            children: [
+                              // {
+                              //   icon: 'edit',
+                              //   label: t('account_team:remark'),
+                              //   onClick: () => {
+                              //     // TODO
+                              //     console.log(member.tmbId);
+                              //   }
+                              // },
+                              {
+                                icon: 'common/file/move',
+                                label: t('common:Move'),
+                                onClick: () =>
+                                  setMovingTmb({ tmbId: member.tmbId, orgId: currentOrg!._id })
+                              },
+                              {
+                                icon: 'delete',
+                                label: t('account_team:delete'),
+                                type: 'danger',
+                                onClick: () => deleteMemberHandler(currentOrg!._id, member.tmbId)
+                              }
+                            ]
                           }
-                          menuList={[
-                            {
-                              children: [
-                                // {
-                                //   icon: 'edit',
-                                //   label: t('account_team:remark'),
-                                //   onClick: () => {
-                                //     // TODO
-                                //     console.log(member.tmbId);
-                                //   }
-                                // },
-                                {
-                                  icon: 'common/file/move',
-                                  label: t('common:Move'),
-                                  onClick: () =>
-                                    setMovingTmb({ tmbId: member.tmbId, orgId: currentOrg!._id })
-                                },
-                                {
-                                  icon: 'delete',
-                                  label: t('account_team:delete'),
-                                  type: 'danger',
-                                  onClick: () => deleteMemberHandler(currentOrg!._id, member.tmbId)
-                                }
-                              ]
-                            }
-                          ]}
-                        />
-                      )}
+                        ]}
+                      />
                     </Td>
                   </Tr>
                 );
@@ -297,11 +283,7 @@ function MemberTable() {
         <VStack w={'220px'} alignItems={'start'}>
           <HStack gap={'6px'}>
             <Avatar
-              src={
-                currentOrg?.path === ''
-                  ? userInfo?.team.avatar
-                  : currentOrg?.avatar ?? DEFAULT_ORG_AVATAR
-              }
+              src={currentOrg?.path === '' ? userInfo?.team.avatar : currentOrg?.avatar}
               w={'16px'}
               h={'16px'}
               rounded={'20%'}

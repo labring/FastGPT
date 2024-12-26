@@ -1,7 +1,7 @@
 import { putMoveOrg, putMoveOrgMember } from '@/web/support/user/team/org/api';
-import { Button, Modal, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import type { TeamMemberItemType, TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';

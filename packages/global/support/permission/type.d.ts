@@ -37,10 +37,6 @@ export type ResourcePerWithTmbWithUser = Omit<ResourcePermissionType, 'tmbId'> &
   tmbId: TeamMemberSchema & { user: UserModelSchema };
 };
 
-export type ResourcePerWithOrg = Omit<ResourcePermissionType, 'orgId'> & {
-  orgId: OrgSchemaType;
-};
-
 export type PermissionSchemaType = {
   defaultPermission: PermissionValueType;
   inheritPermission: boolean;

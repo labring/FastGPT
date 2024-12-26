@@ -1,6 +1,5 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Flex, ModalBody, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -66,15 +65,7 @@ function ManageModal({ onClose }: ManageModalProps) {
                   >
                     <Td border="none">
                       <Flex alignItems="center">
-                        <Avatar
-                          src={
-                            item.avatar ||
-                            (item.orgId === undefined ? undefined : DEFAULT_ORG_AVATAR)
-                          }
-                          rounded={'50%'}
-                          w="24px"
-                          mr={2}
-                        />
+                        <Avatar src={item.avatar} rounded={'50%'} w="24px" mr={2} />
                         {item.name === DefaultGroupName ? userInfo?.team.teamName : item.name}
                       </Flex>
                     </Td>

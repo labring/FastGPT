@@ -1,12 +1,20 @@
-import { OrgCollectionName, OrgMemberRole } from '@fastgpt/global/support/user/team/org/constant';
+import { OrgCollectionName } from '@fastgpt/global/support/user/team/org/constant';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 import { OrgMemberSchemaType } from '@fastgpt/global/support/user/team/org/type';
 const { Schema } = connectionMongo;
 
 export const OrgMemberCollectionName = 'team_org_members';
 
 export const OrgMemberSchema = new Schema({
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName,
+    required: true
+  },
   orgId: {
     type: Schema.Types.ObjectId,
     ref: OrgCollectionName,
@@ -16,18 +24,19 @@ export const OrgMemberSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
     required: true
-  },
-  role: {
-    type: String,
-    enum: Object.values(OrgMemberRole),
-    required: true,
-    default: OrgMemberRole.member
   }
+  // role: {
+  //   type: String,
+  //   enum: Object.values(OrgMemberRole),
+  //   required: true,
+  //   default: OrgMemberRole.member
+  // }
 });
 
 try {
   OrgMemberSchema.index(
     {
+      teamId: 1,
       orgId: 1,
       tmbId: 1
     },
@@ -36,6 +45,7 @@ try {
     }
   );
   OrgMemberSchema.index({
+    teamId: 1,
     tmbId: 1
   });
 } catch (error) {

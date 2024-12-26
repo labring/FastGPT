@@ -14,20 +14,13 @@ export enum TeamErrEnum {
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
-  orgNameEmpty = 'orgNameEmpty',
-  orgOwnerNotExist = 'orgOwnerNotExist',
   orgMemberNotExist = 'orgMemberNotExist',
-  orgMemberExist = 'orgMemberExist',
+  orgMemberDuplicated = 'orgMemberDuplicated',
   orgNotExist = 'orgNotExist',
-  orgMoveSameParent = 'orgMoveSameParent',
-  orgMoveToChildren = 'orgMoveToChildren',
   orgParentNotExist = 'orgParentNotExist',
-  deletingOrgWithChildren = 'deletingOrgWithChildren',
-  deletingRootOrg = 'deletingRootOrg',
-  updatingRootOrg = 'updatingRootOrg',
-  deletingOwner = 'deletingOwner',
-  movingOwner = 'movingOwner',
-  orgNameDuplicate = 'orgNameDuplicate',
+  cannotMoveToSubPath = 'cannotMoveToSubPath',
+  cannotModifyRootOrg = 'cannotModifyRootOrg',
+  cannotDeleteNonEmptyOrg = 'cannotDeleteNonEmptyOrg',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
   userNotActive = 'userNotActive'
 }
@@ -85,20 +78,45 @@ const teamErr = [
   {
     statusText: TeamErrEnum.userNotActive,
     message: i18nT('common:code_error.team_error.user_not_active')
+  },
+  {
+    statusText: TeamErrEnum.orgMemberNotExist,
+    message: i18nT('common:code_error.team_error.org_member_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.orgMemberDuplicated,
+    message: i18nT('common:code_error.team_error.org_member_duplicated')
+  },
+  {
+    statusText: TeamErrEnum.orgNotExist,
+    message: i18nT('common:code_error.team_error.org_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.orgParentNotExist,
+    message: i18nT('common:code_error.team_error.org_parent_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.cannotMoveToSubPath,
+    message: i18nT('common:code_error.team_error.cannot_move_to_sub_path')
+  },
+  {
+    statusText: TeamErrEnum.cannotModifyRootOrg,
+    message: i18nT('common:code_error.team_error.cannot_modify_root_org')
+  },
+  {
+    statusText: TeamErrEnum.cannotDeleteNonEmptyOrg,
+    message: i18nT('common:code_error.team_error.cannot_delete_non_empty_org')
   }
 ];
 
-export default teamErr.reduce(
-  (acc, cur, index) => {
-    return {
-      ...acc,
-      [cur.statusText]: {
-        code: 500000 + index,
-        statusText: cur.statusText,
-        message: cur.message,
-        data: null
-      }
-    };
-  },
-  {} as ErrType<`${TeamErrEnum}`>
-);
+export default teamErr.reduce((acc, cur, index) => {
+  return {
+    ...acc,
+    [cur.statusText]: {
+      code: 500000 + index,
+      statusText: cur.statusText,
+      message: cur.message,
+      data: null
+    }
+  };
+}, {} as ErrType<`${TeamErrEnum}`>);

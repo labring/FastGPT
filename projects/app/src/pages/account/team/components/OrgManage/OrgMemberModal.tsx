@@ -1,5 +1,4 @@
 import { putUpdateOrgMembers } from '@/web/support/user/team/org/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
   Button,
@@ -12,15 +11,12 @@ import {
 } from '@chakra-ui/react';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
-import type { OrgMemberRole } from '@fastgpt/global/support/user/team/org/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import Tag from '@fastgpt/web/components/common/Tag';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
@@ -49,8 +45,6 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
   // 2. Owner/Admin can manage members
   // 3. Owner can add/remove admins
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
-  const { toast } = useToast();
   const [hoveredMemberId, setHoveredMemberId] = useState<string | undefined>(undefined);
   const {
     members: allMembers,
@@ -61,9 +55,7 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
 
   const org = useMemo(() => orgs.find((item) => item._id === editOrgId), [editOrgId, orgs]);
 
-  const [members, setMembers] = useState<{ tmbId: string; role: `${OrgMemberRole}` }[]>(
-    org?.members || []
-  );
+  const [members, setMembers] = useState<{ tmbId: string }[]>(org?.members || []);
 
   useEffect(() => {
     setMembers(org?.members || []);
@@ -96,51 +88,11 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
     return members.find((item) => item.tmbId === memberId);
   };
 
-  const myRole = useMemo(() => {
-    if (userInfo?.team.permission.hasManagePer) {
-      return 'owner';
-    }
-    return members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? 'member';
-  }, [members, userInfo]);
-
   const handleToggleSelect = (memberId: string) => {
-    if (
-      myRole === 'owner' &&
-      memberId === org?.members.find((item) => item.role === 'owner')?.tmbId
-    ) {
-      toast({
-        title: t('user:team.group.toast.can_not_delete_owner'),
-        status: 'error'
-      });
-      return;
-    }
-
-    if (
-      myRole === 'admin' &&
-      org?.members.find((item) => String(item.tmbId) === memberId)?.role !== 'member'
-    ) {
-      return;
-    }
-
     if (isSelected(memberId)) {
       setMembers(members.filter((item) => item.tmbId !== memberId));
     } else {
-      setMembers([...members, { tmbId: memberId, role: 'member' }]);
-    }
-  };
-
-  const handleToggleAdmin = (memberId: string) => {
-    if (myRole === 'owner' && isSelected(memberId)) {
-      const oldRole = members.find((item) => item.tmbId === memberId)?.role;
-      if (oldRole === 'admin') {
-        setMembers(
-          members.map((item) => (item.tmbId === memberId ? { ...item, role: 'member' } : item))
-        );
-      } else {
-        setMembers(
-          members.map((item) => (item.tmbId === memberId ? { ...item, role: 'admin' } : item))
-        );
-      }
+      setMembers([...members, { tmbId: memberId }]);
     }
   };
 
@@ -214,7 +166,7 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
                     py="2"
                     px={3}
                     borderRadius={'md'}
-                    key={member.tmbId + member.role}
+                    key={member.tmbId}
                     _hover={{ bg: 'myGray.50' }}
                     _notLast={{ mb: 2 }}
                   >
@@ -228,58 +180,13 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
                         {allMembers.find((item) => item.tmbId === member.tmbId)?.memberName}
                       </Box>
                     </HStack>
-                    <Box mr="auto">
-                      {(() => {
-                        if (member.role === 'owner') {
-                          return (
-                            <Tag ml={2} colorSchema="gray">
-                              {t('user:team.group.role.owner')}
-                            </Tag>
-                          );
-                        }
-                        if (member.role === 'admin') {
-                          return (
-                            <Tag ml={2} mr="auto">
-                              {t('user:team.group.role.admin')}
-                              {myRole === 'owner' && (
-                                <MyIcon
-                                  ml={1}
-                                  name={'common/closeLight'}
-                                  w={'1rem'}
-                                  cursor={'pointer'}
-                                  _hover={{ color: 'red.600' }}
-                                  onClick={() => handleToggleAdmin(member.tmbId)}
-                                />
-                              )}
-                            </Tag>
-                          );
-                        }
-                        if (member.role === 'member') {
-                          return (
-                            myRole === 'owner' &&
-                            hoveredMemberId === member.tmbId && (
-                              <Tag
-                                ml={2}
-                                colorSchema="yellow"
-                                cursor={'pointer'}
-                                onClick={() => handleToggleAdmin(member.tmbId)}
-                              >
-                                {t('user:team.group.set_as_admin')}
-                              </Tag>
-                            )
-                          );
-                        }
-                      })()}
-                    </Box>
-                    {(myRole === 'owner' || (myRole === 'admin' && member.role === 'member')) && (
-                      <MyIcon
-                        name={'common/closeLight'}
-                        w={'1rem'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'red.600' }}
-                        onClick={() => handleToggleSelect(member.tmbId)}
-                      />
-                    )}
+                    <MyIcon
+                      name={'common/closeLight'}
+                      w={'1rem'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'red.600' }}
+                      onClick={() => handleToggleSelect(member.tmbId)}
+                    />
                   </HStack>
                 );
               })}

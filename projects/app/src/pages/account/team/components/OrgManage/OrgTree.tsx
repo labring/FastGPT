@@ -1,5 +1,4 @@
 import { Box, HStack, Text, VStack } from '@chakra-ui/react';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToggle } from 'ahooks';
@@ -46,7 +45,7 @@ function OrgTreeNode({
           <Box w={'1rem'} h={'1rem'} m="1" />
         )}
         <HStack onClick={() => selectOrg?.(org)} cursor="pointer">
-          <Avatar src={org.avatar || DEFAULT_ORG_AVATAR} w="20px" h="20px" rounded={'50%'} />
+          <Avatar src={org.avatar} w="20px" h="20px" rounded={'50%'} />
           <Text>{org.name}</Text>
         </HStack>
       </HStack>

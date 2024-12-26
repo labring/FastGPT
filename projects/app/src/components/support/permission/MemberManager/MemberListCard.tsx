@@ -1,6 +1,5 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, type BoxProps, Flex } from '@chakra-ui/react';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -37,13 +36,7 @@ const MemberListCard = ({ tagStyle, ...props }: MemberListCardProps) => {
                 colorSchema="white"
                 {...tagStyle}
               >
-                <Avatar
-                  src={
-                    member.avatar || (member.orgId !== undefined ? DEFAULT_ORG_AVATAR : undefined)
-                  }
-                  w="1.25rem"
-                  rounded={'50%'}
-                />
+                <Avatar src={member.avatar} w="1.25rem" rounded={'50%'} />
                 <Box fontSize={'sm'} ml={1}>
                   {member.name === DefaultGroupName ? userInfo?.team.teamName : member.name}
                 </Box>

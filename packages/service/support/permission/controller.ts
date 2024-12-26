@@ -10,8 +10,7 @@ import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
 import {
   PermissionValueType,
-  ResourcePermissionType,
-  ResourcePerWithOrg
+  ResourcePermissionType
 } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
@@ -22,6 +21,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -188,14 +188,16 @@ export const getClbsAndGroupsWithInfo = async ({
     })
       .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
       .lean(),
-    (await MongoResourcePermission.find({
+    MongoResourcePermission.find({
       teamId,
       resourceId,
       resourceType,
       orgId: {
         $exists: true
       }
-    }).populate({ path: 'orgId', select: 'name avatar' })) as ResourcePerWithOrg[]
+    })
+      .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
+      .lean()
   ]);
 
 export const delResourcePermissionById = (id: string) => {
@@ -216,7 +218,7 @@ export const delResourcePermission = ({
   groupId?: string;
   orgId?: string;
 }) => {
-  // tmbId, groupId, orgId 三选一
+  // either tmbId or groupId or orgId must be provided
   if (!tmbId && !groupId && !orgId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }

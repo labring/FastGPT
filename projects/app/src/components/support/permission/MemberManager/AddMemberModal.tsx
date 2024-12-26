@@ -10,7 +10,6 @@ import {
   ModalBody,
   ModalFooter
 } from '@chakra-ui/react';
-import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -38,23 +37,21 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
 
-  const {
-    data: [members = [], groups = [], orgs = []] = [],
-    loading: loadingMembersAndGroups
-  } = useRequest2(
-    async () => {
-      if (!userInfo?.team?.teamId) return [[], []];
-      return await Promise.all([
-        loadAndGetTeamMembers(true),
-        loadAndGetGroups(true),
-        loadAndGetOrgs(true)
-      ]);
-    },
-    {
-      manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
-    }
-  );
+  const { data: [members = [], groups = [], orgs = []] = [], loading: loadingMembersAndGroups } =
+    useRequest2(
+      async () => {
+        if (!userInfo?.team?.teamId) return [[], []];
+        return Promise.all([
+          loadAndGetTeamMembers(true),
+          loadAndGetGroups(true),
+          loadAndGetOrgs(true)
+        ]);
+      },
+      {
+        manual: false,
+        refreshDeps: [userInfo?.team?.teamId]
+      }
+    );
 
   const filterMembers = useMemo(() => {
     return members.filter((item) => {
@@ -165,11 +162,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
                     onClick={onChange}
                   >
                     <Checkbox isChecked={selectedOrgIdList.includes(org._id)} />
-                    <MyAvatar
-                      src={org.avatar || DEFAULT_ORG_AVATAR}
-                      w="1.5rem"
-                      borderRadius={'50%'}
-                    />
+                    <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
                     <Box ml="2" w="full">
                       {org.name}
                     </Box>
@@ -262,7 +255,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
           </Flex>
           <Flex p="4" flexDirection="column">
             <Box>
-              {t('user:has_chosen') + ': '}{' '}
+              {`${t('user:has_chosen')}: `}
               {selectedMemberIdList.length + selectedGroupIdList.length + selectedOrgIdList.length}
             </Box>
             <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">

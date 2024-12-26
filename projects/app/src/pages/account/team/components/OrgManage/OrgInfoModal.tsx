@@ -54,7 +54,7 @@ function OrgInfoModal({
     (data: OrgFormType, parentId: string) => {
       return postCreateOrg({
         name: data.name,
-        avatar: data.avatar,
+        avatar: data.avatar !== DEFAULT_ORG_AVATAR ? data.avatar : undefined,
         parentId,
         description: data.description
       });

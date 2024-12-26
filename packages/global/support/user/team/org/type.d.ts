@@ -1,24 +1,24 @@
 import type { TeamPermission } from 'support/permission/user/controller';
 import { ResourcePermissionType } from '../type';
-import type { OrgMemberRole } from './constant';
 
 type OrgSchemaType = {
   _id: string;
   teamId: string;
   path: string;
   name: string;
-  avatar: string | undefined;
-  description: string | undefined;
+  avatar?: string;
+  description?: string;
   updateTime: Date;
 };
 
 type OrgMemberSchemaType = {
+  teamId: string;
   orgId: string;
   tmbId: string;
-  role: `${OrgMemberRole}`;
 };
 
-type OrgType = OrgSchemaType & {
+type OrgType = Omit<OrgSchemaType, 'avatar'> & {
+  avatar: string;
   members: OrgMemberSchemaType[];
-  permission: TeamPermission | undefined;
+  permission?: TeamPermission;
 };

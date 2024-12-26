@@ -19,18 +19,14 @@ export const OrgSchema = new Schema(
     },
     path: {
       type: String,
-      required: requiredStringPath
+      required: requiredStringPath // allow empty string, but not null
     },
     name: {
       type: String,
       required: true
     },
-    avatar: {
-      type: String
-    },
-    description: {
-      type: String
-    },
+    avatar: String,
+    description: String,
     updateTime: {
       type: Date,
       default: () => new Date()
@@ -60,14 +56,12 @@ try {
   OrgSchema.index(
     {
       teamId: 1,
-      path: 1,
-      name: 1
+      path: 1
     },
     {
       unique: true
     }
   );
-  OrgSchema.index({ path: 1 });
 } catch (error) {
   console.log(error);
 }

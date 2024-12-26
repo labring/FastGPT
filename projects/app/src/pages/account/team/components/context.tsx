@@ -9,7 +9,7 @@ import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/suppor
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { getGroupList } from '@/web/support/user/team/group/api';
-import { getInitOrg, getOrgList } from '@/web/support/user/team/org/api';
+import { getOrgList } from '@/web/support/user/team/org/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { OrgType } from '@fastgpt/global/support/user/team/org/type';
 
@@ -28,7 +28,6 @@ type TeamModalContextType = {
   refetchTeams: () => void;
   refetchGroups: () => void;
   refetchOrgs: () => void;
-  initOrg: () => void;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
   teamSize: number;
@@ -56,9 +55,6 @@ export const TeamContext = createContext<TeamModalContextType>({
     throw new Error('Function not implemented.');
   },
   refetchOrgs: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  initOrg: function (): void {
     throw new Error('Function not implemented.');
   },
 
@@ -128,10 +124,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshDeps: [userInfo?.team?.teamId]
   });
 
-  const { runAsync: initOrg } = useRequest2(getInitOrg, {
-    onSuccess: refetchOrgs
-  });
-
   const isLoading =
     isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups || isLoadingOrgs;
 
@@ -151,7 +143,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refetchGroups,
     orgs,
     refetchOrgs,
-    initOrg,
     teamSize: members.length
   };
 
