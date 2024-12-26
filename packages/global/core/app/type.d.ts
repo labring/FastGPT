@@ -197,7 +197,8 @@ export type AppTemplateSchemaType = {
   isActive?: boolean;
   userGuide?: {
     type: 'markdown' | 'link';
-    content: string;
+    content?: string;
+    link?: string;
   };
   isQuickTemplate?: boolean;
   order?: number;

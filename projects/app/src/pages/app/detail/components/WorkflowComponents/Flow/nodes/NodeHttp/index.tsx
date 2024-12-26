@@ -50,6 +50,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 const defaultFormBody = {
@@ -87,6 +88,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
+  const { feConfigs } = useSystemStore();
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
 
   const requestMethods = inputs.find(
@@ -168,6 +170,15 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     });
   }, [nodeId, nodeList, edges, appDetail, t]);
 
+  const externalProviderWorkflowVariables = useMemo(() => {
+    return (
+      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+        key: item.key,
+        label: item.name
+      })) || []
+    );
+  }, [feConfigs?.externalProviderWorkflowVariables]);
+
   return (
     <Box>
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
@@ -235,7 +246,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
             }
             value={requestUrl?.value || ''}
             variableLabels={variables}
-            variables={variables}
+            variables={externalProviderWorkflowVariables}
             onBlur={onBlurUrl}
             onChange={onChangeUrl}
             minH={40}
@@ -263,6 +274,7 @@ export function RenderHttpProps({
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const { feConfigs } = useSystemStore();
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
   const params = inputs.find((item) => item.key === NodeInputKeyEnum.httpParams);
@@ -276,6 +288,15 @@ export function RenderHttpProps({
   const headersLength = headers?.value?.length || 0;
 
   // get variable
+  const externalProviderWorkflowVariables = useMemo(() => {
+    return (
+      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+        key: item.key,
+        label: item.name
+      })) || []
+    );
+  }, [feConfigs?.externalProviderWorkflowVariables]);
+
   const variables = useCreation(() => {
     return getEditorVariables({
       nodeId,
@@ -298,13 +319,15 @@ export function RenderHttpProps({
         params,
         headers,
         jsonBody,
-        variables
+        variables,
+        externalProviderWorkflowVariables
       }),
-    [headers, jsonBody, params, variables]
+    [externalProviderWorkflowVariables, headers, jsonBody, params, variables]
   );
 
   const Render = useMemo(() => {
-    const { params, headers, jsonBody, variables } = JSON.parse(stringifyVariables);
+    const { params, headers, jsonBody, variables, externalProviderWorkflowVariables } =
+      JSON.parse(stringifyVariables);
     return (
       <Box>
         <Flex alignItems={'center'} mb={2} fontWeight={'medium'} color={'myGray.600'}>
@@ -347,18 +370,31 @@ export function RenderHttpProps({
             headers &&
             jsonBody &&
             {
-              [TabEnum.params]: <RenderForm nodeId={nodeId} input={params} variables={variables} />,
+              [TabEnum.params]: (
+                <RenderForm
+                  nodeId={nodeId}
+                  input={params}
+                  variables={variables}
+                  externalProviderWorkflowVariables={externalProviderWorkflowVariables}
+                />
+              ),
               [TabEnum.body]: (
                 <RenderBody
                   nodeId={nodeId}
                   variables={variables}
+                  externalProviderWorkflowVariables={externalProviderWorkflowVariables}
                   jsonBody={jsonBody}
                   formBody={formBody}
                   typeInput={contentType}
                 />
               ),
               [TabEnum.headers]: (
-                <RenderForm nodeId={nodeId} input={headers} variables={variables} />
+                <RenderForm
+                  nodeId={nodeId}
+                  input={headers}
+                  variables={variables}
+                  externalProviderWorkflowVariables={externalProviderWorkflowVariables}
+                />
               )
             }[selectedTab]}
         </Box>
@@ -436,11 +472,16 @@ const RenderHttpTimeout = ({
 const RenderForm = ({
   nodeId,
   input,
-  variables
+  variables,
+  externalProviderWorkflowVariables
 }: {
   nodeId: string;
   input: FlowNodeInputItemType;
   variables: EditorVariableLabelPickerType[];
+  externalProviderWorkflowVariables: {
+    key: string;
+    label: string;
+  }[];
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -547,7 +588,7 @@ const RenderForm = ({
                       placeholder={t('common:textarea_variable_picker_tip')}
                       value={item.key}
                       variableLabels={variables}
-                      variables={variables}
+                      variables={externalProviderWorkflowVariables}
                       onBlur={(val) => {
                         handleKeyChange(index, val);
 
@@ -565,7 +606,7 @@ const RenderForm = ({
                       <HttpInput
                         placeholder={t('common:textarea_variable_picker_tip')}
                         value={item.value}
-                        variables={variables}
+                        variables={externalProviderWorkflowVariables}
                         variableLabels={variables}
                         onBlur={(val) => {
                           setList((prevList) =>
@@ -597,7 +638,16 @@ const RenderForm = ({
         </TableContainer>
       </Box>
     );
-  }, [handleAddNewProps, handleKeyChange, input.key, list, t, updateTrigger, variables]);
+  }, [
+    externalProviderWorkflowVariables,
+    handleAddNewProps,
+    handleKeyChange,
+    input.key,
+    list,
+    t,
+    updateTrigger,
+    variables
+  ]);
 
   return Render;
 };
@@ -606,13 +656,18 @@ const RenderBody = ({
   jsonBody,
   formBody,
   typeInput,
-  variables
+  variables,
+  externalProviderWorkflowVariables
 }: {
   nodeId: string;
   jsonBody: FlowNodeInputItemType;
   formBody: FlowNodeInputItemType;
   typeInput: FlowNodeInputItemType | undefined;
   variables: EditorVariableLabelPickerType[];
+  externalProviderWorkflowVariables: {
+    key: string;
+    label: string;
+  }[];
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
@@ -684,7 +739,12 @@ const RenderBody = ({
         </Flex>
         {(typeInput?.value === ContentTypes.formData ||
           typeInput?.value === ContentTypes.xWwwFormUrlencoded) && (
-          <RenderForm nodeId={nodeId} input={formBody} variables={variables} />
+          <RenderForm
+            nodeId={nodeId}
+            input={formBody}
+            variables={variables}
+            externalProviderWorkflowVariables={externalProviderWorkflowVariables}
+          />
         )}
         {typeInput?.value === ContentTypes.json && (
           <PromptEditor
@@ -729,7 +789,16 @@ const RenderBody = ({
         )}
       </Box>
     );
-  }, [typeInput?.value, t, nodeId, formBody, variables, jsonBody, onChangeNode]);
+  }, [
+    typeInput?.value,
+    nodeId,
+    formBody,
+    variables,
+    externalProviderWorkflowVariables,
+    jsonBody,
+    t,
+    onChangeNode
+  ]);
   return Render;
 };
 
