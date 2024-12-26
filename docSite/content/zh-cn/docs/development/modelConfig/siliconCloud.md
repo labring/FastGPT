@@ -29,7 +29,9 @@ CHAT_API_KEY=sk-xxxxxx
 
 ## 3. 修改 FastGPT 配置文件
 
-我们选取 SiliconCloud 中的模型作为 FastGPT 配置。 注意：ReRank 模型仍需配置一次 Api Key
+我们选取 SiliconCloud 中的模型作为 FastGPT 配置。这里配置了 `Qwen2.5 72b` 的纯语言和视觉模型；选择 `bge-m3` 作为向量模型；选择 `bge-reranker-v2-m3` 作为重排模型。选择 `fish-speech-1.5` 作为语音模型；选择 `SenseVoiceSmall` 作为语音输入模型。
+
+注意：ReRank 模型仍需配置一次 Api Key
 
 ```json
 {
