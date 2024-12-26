@@ -1,5 +1,5 @@
-import { useDebounceEffect, useMemoizedFn } from 'ahooks';
-import React, { ReactNode, useMemo, useRef, useState } from 'react';
+import { useDebounceEffect, useLockFn, useMemoizedFn } from 'ahooks';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowInitContext, WorkflowNodeEdgeContext } from './workflowInitContext';
 import { WorkflowContext } from '.';
@@ -14,6 +14,7 @@ import {
   Input_Template_Node_Height,
   Input_Template_Node_Width
 } from '@fastgpt/global/core/workflow/template/input';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 type WorkflowStatusContextType = {
   isSaved: boolean;
@@ -67,20 +68,28 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
   // Lead check before unload
   const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
+  const autoSaveFn = useLockFn(async () => {
+    if (isSaved || !leaveSaveSign.current) return;
+    console.log('Leave auto save');
+    const data = flowData2StoreData();
+    if (!data || data.nodes.length === 0) return;
+    await onSaveApp({
+      ...data,
+      isPublish: false,
+      chatConfig: appDetail.chatConfig,
+      autoSave: true
+    });
+  });
+  useEffect(() => {
+    return () => {
+      if (isProduction) {
+        autoSaveFn();
+      }
+    };
+  }, []);
   useBeforeunload({
     tip: t('common:core.common.tip.leave page'),
-    callback: async () => {
-      if (isSaved || !leaveSaveSign.current) return;
-      console.log('Leave auto save');
-      const data = flowData2StoreData();
-      if (!data || data.nodes.length === 0) return;
-      await onSaveApp({
-        ...data,
-        isPublish: false,
-        versionName: t('app:unusual_leave_auto_save'),
-        chatConfig: appDetail.chatConfig
-      });
-    }
+    callback: autoSaveFn
   });
 
   const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);

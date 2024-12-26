@@ -76,10 +76,12 @@ const Header = ({
   const { runAsync: onClickSave, loading } = useRequest2(
     async ({
       isPublish,
-      versionName = formatTime2YMDHMS(new Date())
+      versionName = formatTime2YMDHMS(new Date()),
+      autoSave
     }: {
       isPublish?: boolean;
       versionName?: string;
+      autoSave?: boolean;
     }) => {
       const { nodes, edges } = form2AppWorkflow(appForm, t);
       await onSaveApp({
@@ -87,7 +89,8 @@ const Header = ({
         edges,
         chatConfig: appForm.chatConfig,
         isPublish,
-        versionName
+        versionName,
+        autoSave
       });
       setPast((prevPast) =>
         prevPast.map((item, index) =>
@@ -157,7 +160,7 @@ const Header = ({
     if (isSaved) return;
     try {
       console.log('Leave auto save');
-      return onClickSave({ isPublish: false, versionName: t('app:auto_save') });
+      return onClickSave({ isPublish: false, autoSave: true });
     } catch (error) {
       console.error(error);
     }
