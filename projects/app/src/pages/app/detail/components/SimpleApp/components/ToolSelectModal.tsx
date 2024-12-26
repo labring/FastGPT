@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -12,10 +12,7 @@ import {
   Button,
   css,
   Flex,
-  Grid,
-  HStack,
-  ModalBody,
-  ModalFooter
+  Grid
 } from '@chakra-ui/react';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -33,25 +30,29 @@ import {
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { Controller, useForm } from 'react-hook-form';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import RenderPluginInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/renderPluginInput';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { workflowStartNodeId } from '@/web/core/app/constants';
+import ConfigToolModal from './ConfigToolModal';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
+  chatConfig: AppSimpleEditFormType['chatConfig'];
+  selectedModel: LLMModelItemType;
   onAddTool: (tool: FlowNodeTemplateType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
@@ -146,20 +147,6 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       h={['90vh', '80vh']}
     >
       {/* Header: row and search */}
-      {/* <Flex
-        mx={[3, 6]}
-        px={3}
-        mt={6}
-        py={1.5}
-        bg={'primary.50'}
-        color={'primary.600'}
-        borderRadius={'sm'}
-      >
-        <MyIcon name={'common/info'} w={'14px'} />
-        <Box fontSize={'mini'} fontWeight={'medium'} ml={1}>
-          {t('app:simple_tool_tip')}
-        </Box>
-      </Flex> */}
       <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
         <FillRowTabs
           list={[
@@ -188,7 +175,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
-            placeholder={t('common:plugin.Search plugin')}
+            placeholder={
+              templateType === TemplateTypeEnum.systemPlugin
+                ? t('common:plugin.Search plugin')
+                : t('app:search_app')
+            }
           />
         </Box>
       </Box>
@@ -208,9 +199,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         <RenderList
           templates={templates}
           type={templateType}
-          isLoadingData={isLoading}
           setParentId={onUpdateParentId}
-          showCost={templateType === TemplateTypeEnum.systemPlugin}
           {...props}
         />
       </MyBox>
@@ -223,56 +212,94 @@ export default React.memo(ToolSelectModal);
 const RenderList = React.memo(function RenderList({
   templates,
   type,
-  selectedTools,
-  isLoadingData,
   onAddTool,
   onRemoveTool,
   setParentId,
-  showCost
+  selectedTools,
+  chatConfig,
+  selectedModel
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
-  isLoadingData: boolean;
   setParentId: (parentId: ParentIdType) => any;
-  showCost?: boolean;
 }) {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
-
-  const {
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors }
-  } = useForm();
-
-  useEffect(() => {
-    if (configTool) {
-      const defaultValues = configTool.inputs.reduce(
-        (acc, input) => {
-          acc[input.key] = input.defaultValue;
-          return acc;
-        },
-        {} as Record<string, any>
-      );
-      reset(defaultValues);
-    }
-  }, [configTool, reset]);
+  const { toast } = useToast();
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {
       const res = await getPreviewPluginNode({ appId: template.id });
+      const toolInputs = res.inputs.filter((input) => !childAppSystemKey.includes(input.key));
+
+      // 是否开启文件上传
+      const canUploadFile =
+        chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
+
+      // 只有一个文件上传
+      const oneFileInput =
+        toolInputs.filter((input) =>
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+        ).length === 1;
+
+      const directAdd = toolInputs.every(
+        (input) =>
+          input.toolDescription ||
+          // 模型选择
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
+          // 文件上传
+          (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+            canUploadFile &&
+            !input.required &&
+            oneFileInput)
+      );
+
+      const filtered = !toolInputs.every((input) => {
+        if (
+          // 变量引用
+          input.renderTypeList.every((item) => item === FlowNodeInputTypeEnum.reference) ||
+          // 知识库选择 & 动态外部数据
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
+          // 文件上传
+          (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
+            !(canUploadFile && !input.required && oneFileInput))
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      const defaultForm = {
+        ...res,
+        inputs: res.inputs.map((input) => {
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
+            return {
+              ...input,
+              value: selectedModel.model
+            };
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+            return {
+              ...input,
+              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
+            };
+          }
+          return input;
+        })
+      };
 
       // All input is tool params
-      if (
-        res.inputs.every((input) => childAppSystemKey.includes(input.key) || input.toolDescription)
-      ) {
-        onAddTool(res);
+      if (directAdd) {
+        onAddTool(defaultForm);
+      } else if (filtered) {
+        toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
+        });
       } else {
-        reset();
-        setConfigTool(res);
+        setConfigTool(defaultForm);
       }
     },
     {
@@ -320,7 +347,7 @@ const RenderList = React.memo(function RenderList({
     })();
 
     return data.filter(({ list }) => list.length > 0);
-  }, [templates]);
+  }, [pluginGroups, templates, type]);
 
   const gridStyle = useMemo(() => {
     if (type === TemplateTypeEnum.teamPlugin) {
@@ -497,79 +524,11 @@ const RenderList = React.memo(function RenderList({
       </Accordion>
 
       {!!configTool && (
-        <MyModal
-          isOpen
-          isCentered
-          title={t('common:core.app.ToolCall.Parameter setting')}
-          iconSrc="core/app/toolCall"
-          overflow={'auto'}
-        >
-          <ModalBody>
-            <HStack mb={4} spacing={1} fontSize={'sm'}>
-              <MyIcon name={'common/info'} w={'1.25rem'} />
-              <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
-              {configTool.courseUrl && (
-                <Box
-                  cursor={'pointer'}
-                  color={'primary.500'}
-                  onClick={() => window.open(configTool.courseUrl, '_blank')}
-                >
-                  {t('app:workflow.Input guide')}
-                </Box>
-              )}
-            </HStack>
-            {configTool.inputs
-              .filter((item) => !item.toolDescription && !childAppSystemKey.includes(item.key))
-              .map((input) => {
-                return (
-                  <Controller
-                    key={input.key}
-                    control={control}
-                    name={input.key}
-                    rules={{
-                      validate: (value) => {
-                        if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                          return value !== undefined;
-                        }
-                        return !!value;
-                      }
-                    }}
-                    render={({ field: { onChange, value } }) => {
-                      return (
-                        <RenderPluginInput
-                          value={value}
-                          isInvalid={errors && Object.keys(errors).includes(input.key)}
-                          onChange={onChange}
-                          input={input}
-                          setUploading={() => {}}
-                        />
-                      );
-                    }}
-                  />
-                );
-              })}
-          </ModalBody>
-          <ModalFooter gap={6}>
-            <Button onClick={onCloseConfigTool} variant={'whiteBase'}>
-              {t('common:common.Cancel')}
-            </Button>
-            <Button
-              variant={'primary'}
-              onClick={handleSubmit((data) => {
-                onAddTool({
-                  ...configTool,
-                  inputs: configTool.inputs.map((input) => ({
-                    ...input,
-                    value: data[input.key] ?? input.value
-                  }))
-                });
-                onCloseConfigTool();
-              })}
-            >
-              {t('common:common.Confirm')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
+        <ConfigToolModal
+          configTool={configTool}
+          onCloseConfigTool={onCloseConfigTool}
+          onAddTool={onAddTool}
+        />
       )}
     </Box>
   );

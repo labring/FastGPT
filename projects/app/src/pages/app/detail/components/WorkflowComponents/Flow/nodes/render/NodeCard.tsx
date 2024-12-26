@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Button, Card, Flex, FlexProps, ModalBody } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
@@ -32,8 +32,7 @@ import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import Markdown from '@/components/Markdown';
+import ToolGuideModal from '../../../../SimpleApp/components/ToolGuideModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -302,7 +301,7 @@ const NodeCard = (props: Props) => {
         <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
         <ConfirmSyncModal />
         {currentNode && (
-          <NodeUserGuideModal currentNode={currentNode} onClose={() => setCurrentNode(null)} />
+          <ToolGuideModal currentTool={currentNode} onClose={() => setCurrentNode(null)} />
         )}
       </Box>
     );
@@ -634,30 +633,6 @@ const NodeIntro = React.memo(function NodeIntro({
 
   return Render;
 });
-
-const NodeUserGuideModal = ({
-  currentNode,
-  onClose
-}: {
-  currentNode: FlowNodeTemplateType;
-  onClose: () => void;
-}) => {
-  return (
-    <MyModal
-      isOpen
-      iconSrc={currentNode.avatar}
-      title={currentNode.name}
-      onClose={onClose}
-      minW={'600px'}
-    >
-      <ModalBody>
-        <Box border={'base'} borderRadius={'10px'} p={4} minH={'500px'}>
-          <Markdown source={currentNode.userGuide} />
-        </Box>
-      </ModalBody>
-    </MyModal>
-  );
-};
 
 const NodeDebugResponse = React.memo(function NodeDebugResponse({
   nodeId,

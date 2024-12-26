@@ -1,4 +1,4 @@
-import React, { useMemo, useTransition } from 'react';
+import React, { useMemo, useState, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -28,13 +28,15 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { workflowSystemVariables } from '@/web/core/app/utils';
-import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
+import ConfigToolModal from './components/ConfigToolModal';
+import { childAppSystemKey } from './components/ToolSelectModal';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -70,7 +72,10 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { appT } = useI18n();
+
+  const [configTool, setConfigTool] = useState<
+    AppSimpleEditFormType['selectedTools'][number] | null
+  >(null);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -315,8 +320,24 @@ const EditForm = ({
                     ...hoverDeleteStyles,
                     borderColor: 'primary.300'
                   }}
+                  cursor={'pointer'}
+                  onClick={() => {
+                    if (
+                      item.inputs
+                        .filter((input) => !childAppSystemKey.includes(input.key))
+                        .every(
+                          (input) =>
+                            input.toolDescription ||
+                            input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
+                            input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+                        )
+                    ) {
+                      return;
+                    }
+                    setConfigTool(item);
+                  }}
                 >
-                  <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'sm'} />
+                  <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
                   <Box
                     ml={2}
                     flex={'1 0 0'}
@@ -328,7 +349,8 @@ const EditForm = ({
                     {item.name}
                   </Box>
                   <DeleteIcon
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setAppForm((state) => ({
                         ...state,
                         selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
@@ -497,6 +519,8 @@ const EditForm = ({
       {isOpenToolsSelect && (
         <ToolSelectModal
           selectedTools={appForm.selectedTools}
+          chatConfig={appForm.chatConfig}
+          selectedModel={selectedModel}
           onAddTool={(e) => {
             setAppForm((state) => ({
               ...state,
@@ -510,6 +534,20 @@ const EditForm = ({
             }));
           }}
           onClose={onCloseToolsSelect}
+        />
+      )}
+      {configTool && (
+        <ConfigToolModal
+          configTool={configTool}
+          onCloseConfigTool={() => setConfigTool(null)}
+          onAddTool={(e) => {
+            setAppForm((state) => ({
+              ...state,
+              selectedTools: state.selectedTools.map((item) =>
+                item.pluginId === configTool.pluginId ? e : item
+              )
+            }));
+          }}
         />
       )}
     </>

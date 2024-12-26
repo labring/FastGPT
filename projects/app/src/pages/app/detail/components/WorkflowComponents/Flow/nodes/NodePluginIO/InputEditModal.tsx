@@ -190,6 +190,19 @@ const FieldEditModal = ({
         }
       }
 
+      if (data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam) {
+        if (
+          !data.customInputConfig?.selectValueTypeList ||
+          !data.customInputConfig?.selectValueTypeList.length
+        ) {
+          toast({
+            status: 'warning',
+            title: t('common:core.module.edit.Field Value Type Cannot Be Empty')
+          });
+          return;
+        }
+      }
+
       // Get toolDescription and removes the types of some unusable tools
       if (data.toolDescription && data.renderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
         data.toolDescription = data.description;

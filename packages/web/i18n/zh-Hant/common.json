@@ -684,6 +684,7 @@
   "core.module.Variable": "全域變數",
   "core.module.Variable Setting": "變數設定",
   "core.module.edit.Field Name Cannot Be Empty": "欄位名稱不能為空",
+  "core.module.edit.Field Value Type Cannot Be Empty": "可選數據類型不能為空",
   "core.module.extract.Add field": "新增欄位",
   "core.module.extract.Enum Description": "列舉此欄位可能的值，每行一個",
   "core.module.extract.Enum Value": "列舉值",
