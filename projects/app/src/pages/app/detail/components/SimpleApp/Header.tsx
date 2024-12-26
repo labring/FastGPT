@@ -167,7 +167,7 @@ const Header = ({
   });
   useEffect(() => {
     return () => {
-      if (isProduction) {
+      if (!isProduction) {
         onLeaveAutoSave();
       }
     };
