@@ -17,4 +17,4 @@ const MyBox = ({ text, isLoading, children, size, ...props }: Props, ref: any) =
   );
 };
 
-export default forwardRef(MyBox);
+export default React.memo(forwardRef(MyBox));

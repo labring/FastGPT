@@ -9,9 +9,9 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  useDisclosure
 } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
@@ -26,6 +26,9 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import dynamic from 'next/dynamic';
+
+const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = () => {
   const { t } = useTranslation();
@@ -156,6 +159,19 @@ const ModelTable = () => {
     search
   ]);
 
+  const filterProviderList = useMemo(() => {
+    const allProviderIds: string[] = [
+      ...llmModelList,
+      ...vectorModelList,
+      ...audioSpeechModelList,
+      whisperModel
+    ].map((model) => model.provider);
+
+    return providerList.current.filter(
+      (item) => allProviderIds.includes(item.value) || item.value === ''
+    );
+  }, [audioSpeechModelList, llmModelList, vectorModelList, whisperModel]);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Flex>
@@ -168,7 +184,7 @@ const ModelTable = () => {
             bg={'myGray.50'}
             value={provider}
             onchange={setProvider}
-            list={providerList.current}
+            list={filterProviderList}
           />
         </HStack>
         <HStack flexShrink={0} ml={6}>
@@ -228,24 +244,34 @@ const ModelTable = () => {
 
 export default ModelTable;
 
-export const ModelPriceModal = ({ onClose }: { onClose: () => void }) => {
+export const ModelPriceModal = ({
+  children
+}: {
+  children: ({ onOpen }: { onOpen: () => void }) => React.ReactNode;
+}) => {
   const { t } = useTranslation();
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
-    <MyModal
-      isCentered
-      iconSrc="/imgs/modal/bill.svg"
-      title={t('common:support.wallet.subscription.Ai points')}
-      isOpen
-      onClose={onClose}
-      w={'100%'}
-      h={'100%'}
-      maxW={'90vw'}
-      maxH={'90vh'}
-    >
-      <ModalBody flex={'1 0 0'}>
-        <ModelTable />
-      </ModalBody>
-    </MyModal>
+    <>
+      {children({ onOpen })}
+      {isOpen && (
+        <MyModal
+          isCentered
+          iconSrc="/imgs/modal/bill.svg"
+          title={t('common:support.wallet.subscription.Ai points')}
+          isOpen
+          onClose={onClose}
+          w={'100%'}
+          h={'100%'}
+          maxW={'90vw'}
+          maxH={'90vh'}
+        >
+          <ModalBody flex={'1 0 0'}>
+            <ModelTable />
+          </ModalBody>
+        </MyModal>
+      )}
+    </>
   );
 };

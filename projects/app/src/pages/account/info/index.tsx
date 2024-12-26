@@ -348,11 +348,6 @@ const PlanUsage = () => {
     onClose: onCloseStandardModal,
     onOpen: onOpenStandardModal
   } = useDisclosure();
-  const {
-    isOpen: isOpenAiPointsModal,
-    onClose: onCloseAiPointsModal,
-    onOpen: onOpenAiPointsModal
-  } = useDisclosure();
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
@@ -438,9 +433,13 @@ const PlanUsage = () => {
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('account_info:package_and_usage')}
         </Flex>
-        <Button ml={4} size={'sm'} onClick={onOpenAiPointsModal}>
-          {t('account_info:billing_standard')}
-        </Button>
+        <ModelPriceModal>
+          {({ onOpen }) => (
+            <Button ml={4} size={'sm'} onClick={onOpen}>
+              {t('account_info:billing_standard')}
+            </Button>
+          )}
+        </ModelPriceModal>
         <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
         </Button>
@@ -579,7 +578,6 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
-      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Box>
   ) : null;
 };
