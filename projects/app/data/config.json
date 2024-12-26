@@ -80,7 +80,9 @@
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
       "defaultConfig": {
-        "temperature": 1
+        "temperature": 1,
+        "max_tokens": null,
+        "stream": false
       }
     },
     {
@@ -105,7 +107,9 @@
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
       "defaultConfig": {
-        "temperature": 1
+        "temperature": 1,
+        "max_tokens": null,
+        "stream": false
       }
     }
   ],
