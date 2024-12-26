@@ -222,14 +222,15 @@ const TemplateMarketModal = ({
               zIndex={1}
               gap={2}
             >
-              {item.userGuide && (
+              {((item.userGuide?.type === 'markdown' && item.userGuide?.content) ||
+                (item.userGuide?.type === 'link' && item.userGuide?.link)) && (
                 <Button
                   variant={'whiteBase'}
                   h={6}
                   rounded={'sm'}
                   onClick={() => {
                     if (item.userGuide?.type === 'link') {
-                      window.open(item.userGuide.content);
+                      window.open(item.userGuide.link);
                     } else if (item.userGuide?.type === 'markdown') {
                       setCurrentTemplate(item);
                     }
