@@ -152,7 +152,6 @@
   "type.Plugin": "外掛",
   "type.Simple bot": "簡易應用程式",
   "type.Workflow bot": "工作流程",
-  "unusual_leave_auto_save": "異常離開，自動儲存",
   "upload_file_max_amount": "最大檔案數量",
   "upload_file_max_amount_tip": "單輪對話中最大上傳檔案數量",
   "variable.select type_desc": "可以為工作流程定義全域變數，常用於暫存。賦值的方式包括：\n1. 從對話頁面的 query 參數取得。\n2. 透過 API 的 variables 物件傳遞。\n3. 透過【變數更新】節點進行賦值。",
