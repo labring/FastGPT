@@ -392,7 +392,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     ...body,
                     datasetId
                   }),
-                onDelOneCollaborator: async ({ groupId, tmbId }) => {
+                onDelOneCollaborator: async ({ groupId, tmbId, orgId }) => {
                   if (tmbId) {
                     return deleteDatasetCollaborators({
                       datasetId,
@@ -402,6 +402,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     return deleteDatasetCollaborators({
                       datasetId,
                       groupId
+                    });
+                  } else if (orgId) {
+                    return deleteDatasetCollaborators({
+                      datasetId,
+                      orgId
                     });
                   }
                 }
