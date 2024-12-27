@@ -11,6 +11,7 @@ export const startMongoWatch = async () => {
   reloadConfigWatch();
   refetchSystemPlugins();
   createDatasetTrainingMongoWatch();
+  refetchAppTemplates();
 };
 
 const reloadConfigWatch = () => {
