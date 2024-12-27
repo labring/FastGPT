@@ -94,6 +94,7 @@ async function initHttp(teamId?: string): Promise<any> {
         await MongoAppVersion.create(
           [
             {
+              tmbId: plugin.tmbId,
               appId: newPluginId,
               nodes: item.modules,
               edges: item.edges
@@ -166,6 +167,7 @@ async function initPlugin(teamId?: string): Promise<any> {
       await MongoAppVersion.create(
         [
           {
+            tmbId: plugin.tmbId,
             appId: newPluginId,
             nodes: plugin.modules,
             edges: plugin.edges
