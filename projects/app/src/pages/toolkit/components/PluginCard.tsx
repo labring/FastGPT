@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
-import ToolGuideModal from '@/pages/app/detail/components/SimpleApp/components/ToolGuideModal';
+import { useGuideBox } from '@/web/common/hooks/useGuideBox';
 
 const PluginCard = ({
   item,
@@ -19,12 +19,16 @@ const PluginCard = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const [currentPlugin, setCurrentPlugin] = useState<NodeTemplateListItemType | null>(null);
-
   const type = groups.reduce<string | undefined>((acc, group) => {
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
     return foundType ? foundType.typeName : acc;
   }, undefined);
+
+  const { GuideModal } = useGuideBox({
+    title: item.name,
+    iconSrc: item.avatar,
+    text: item.instructions
+  });
 
   return (
     <MyBox
@@ -82,27 +86,21 @@ const PluginCard = ({
       <Flex w={'full'} fontSize={'mini'}>
         <Flex flex={1}>
           {item.instructions && (
-            <ToolGuideModal
-              currentTool={{
-                name: item.name,
-                avatar: item.avatar,
-                userGuide: item.instructions
-              }}
-            >
-              {({ onOpen }) => (
+            <GuideModal>
+              {({ onClick }) => (
                 <Flex
                   color={'primary.700'}
                   alignItems={'center'}
                   gap={1}
                   cursor={'pointer'}
-                  onClick={onOpen}
+                  onClick={onClick}
                   _hover={{ bg: 'myGray.100' }}
                 >
                   <MyIcon name={'book'} w={'14px'} />
                   {t('app:plugin.Instructions')}
                 </Flex>
               )}
-            </ToolGuideModal>
+            </GuideModal>
           )}
         </Flex>
         <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>

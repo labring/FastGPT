@@ -296,6 +296,7 @@ const RenderList = React.memo(function RenderList({
           return input;
         })
       };
+      console.log(defaultForm);
 
       if (directAdd) {
         onAddTool(defaultForm);

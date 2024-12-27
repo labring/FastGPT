@@ -36,7 +36,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import ToolGuideModal from '../../detail/components/SimpleApp/components/ToolGuideModal';
+import { useGuideBox } from '@/web/common/hooks/useGuideBox';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -156,6 +156,13 @@ const TemplateMarketModal = ({
     ({ item }: { item: AppTemplateSchemaType }) => {
       const { t } = useTranslation();
 
+      const { GuideModal } = useGuideBox({
+        title: item.name,
+        iconSrc: item.avatar,
+        text: item.userGuide?.content,
+        link: item.userGuide?.link
+      });
+
       return (
         <MyBox
           key={item.templateId}
@@ -221,30 +228,13 @@ const TemplateMarketModal = ({
             >
               {((item.userGuide?.type === 'markdown' && item.userGuide?.content) ||
                 (item.userGuide?.type === 'link' && item.userGuide?.link)) && (
-                <ToolGuideModal
-                  currentTool={{
-                    name: item.name,
-                    avatar: item.avatar,
-                    userGuide: item.userGuide?.content
-                  }}
-                >
-                  {({ onOpen }) => (
-                    <Button
-                      variant={'whiteBase'}
-                      h={6}
-                      rounded={'sm'}
-                      onClick={() => {
-                        if (item.userGuide?.type === 'link') {
-                          window.open(item.userGuide.link);
-                        } else if (item.userGuide?.type === 'markdown') {
-                          onOpen();
-                        }
-                      }}
-                    >
+                <GuideModal>
+                  {({ onClick }) => (
+                    <Button variant={'whiteBase'} h={6} rounded={'sm'} onClick={onClick}>
                       {t('app:templateMarket.template_guide')}
                     </Button>
                   )}
-                </ToolGuideModal>
+                </GuideModal>
               )}
               <Button
                 variant={'whiteBase'}

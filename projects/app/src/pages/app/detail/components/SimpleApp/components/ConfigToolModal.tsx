@@ -1,4 +1,4 @@
-import { Button, HStack, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import { Button, HStack, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
@@ -10,7 +10,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import RenderPluginInput from '@/components/core/chat/ChatContainer/PluginRunBox/components/renderPluginInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import ToolGuideModal from './ToolGuideModal';
+import { useGuideBox } from '@/web/common/hooks/useGuideBox';
 
 const ConfigToolModal = ({
   configTool,
@@ -39,6 +39,13 @@ const ConfigToolModal = ({
       : {}
   });
 
+  const { GuideModal } = useGuideBox({
+    title: configTool?.name,
+    iconSrc: configTool?.avatar,
+    text: configTool?.userGuide,
+    link: configTool?.courseUrl
+  });
+
   return (
     <MyModal
       isOpen
@@ -52,24 +59,13 @@ const ConfigToolModal = ({
           <MyIcon name={'common/info'} w={'1.25rem'} />
           <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
           {!!(configTool?.courseUrl || configTool?.userGuide) && (
-            <ToolGuideModal currentTool={configTool}>
-              {({ onOpen }) => (
-                <Box
-                  cursor={'pointer'}
-                  color={'primary.500'}
-                  onClick={() => {
-                    if (configTool.courseUrl) {
-                      window.open(configTool.courseUrl, '_blank');
-                    }
-                    if (configTool.userGuide) {
-                      onOpen();
-                    }
-                  }}
-                >
+            <GuideModal>
+              {({ onClick }) => (
+                <Box cursor={'pointer'} color={'primary.500'} onClick={onClick}>
                   {t('app:workflow.Input guide')}
                 </Box>
               )}
-            </ToolGuideModal>
+            </GuideModal>
           )}
         </HStack>
         {configTool.inputs

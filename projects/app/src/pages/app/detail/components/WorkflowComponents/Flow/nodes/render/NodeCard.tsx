@@ -2,10 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type {
-  FlowNodeItemType,
-  FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/node.d';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -27,12 +24,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
-import { getDocPath } from '@/web/common/system/doc';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import ToolGuideModal from '../../../../SimpleApp/components/ToolGuideModal';
+import { useGuideBox } from '@/web/common/hooks/useGuideBox';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -139,6 +135,13 @@ const NodeCard = (props: Props) => {
     ConfirmModal: ConfirmSyncModal
   } = useConfirm({
     content: t('workflow:Confirm_sync_node')
+  });
+
+  const { GuideModal } = useGuideBox({
+    title: nodeTemplate?.name,
+    iconSrc: nodeTemplate?.avatar,
+    text: nodeTemplate?.userGuide,
+    link: nodeTemplate?.courseUrl
   });
 
   const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
@@ -277,25 +280,13 @@ const NodeCard = (props: Props) => {
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
               {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
-                <ToolGuideModal currentTool={nodeTemplate!}>
-                  {({ onOpen }) => (
+                <GuideModal>
+                  {({ onClick }) => (
                     <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                      <MyIconButton
-                        ml={1}
-                        icon="book"
-                        color={'primary.600'}
-                        onClick={() => {
-                          if (node?.courseUrl) {
-                            window.open(getDocPath(node.courseUrl || ''), '_blank');
-                          }
-                          if (nodeTemplate?.userGuide) {
-                            onOpen();
-                          }
-                        }}
-                      />
+                      <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
                     </MyTooltip>
                   )}
-                </ToolGuideModal>
+                </GuideModal>
               )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
@@ -317,7 +308,9 @@ const NodeCard = (props: Props) => {
     hasNewVersion,
     onOpenConfirmSync,
     onClickSyncVersion,
-    nodeTemplate,
+    nodeTemplate?.diagram,
+    nodeTemplate?.userGuide,
+    GuideModal,
     intro,
     menuForbid,
     nodeList,
