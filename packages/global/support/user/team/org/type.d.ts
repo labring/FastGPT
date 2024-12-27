@@ -20,5 +20,4 @@ type OrgMemberSchemaType = {
 type OrgType = Omit<OrgSchemaType, 'avatar'> & {
   avatar: string;
   members: OrgMemberSchemaType[];
-  permission?: TeamPermission;
 };
