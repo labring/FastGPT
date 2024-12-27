@@ -687,6 +687,7 @@
   "core.module.Variable": "全局变量",
   "core.module.Variable Setting": "变量设置",
   "core.module.edit.Field Name Cannot Be Empty": "字段名不能为空",
+  "core.module.edit.Field Value Type Cannot Be Empty": "可选数据类型不能为空",
   "core.module.extract.Add field": "新增字段",
   "core.module.extract.Enum Description": "列举出该字段可能的值，每行一个",
   "core.module.extract.Enum Value": "枚举值",

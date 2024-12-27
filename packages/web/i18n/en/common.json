@@ -684,6 +684,7 @@
   "core.module.Variable": "Global Variable",
   "core.module.Variable Setting": "Variable Setting",
   "core.module.edit.Field Name Cannot Be Empty": "Field Name Cannot Be Empty",
+  "core.module.edit.Field Value Type Cannot Be Empty": "Optional data type cannot be empty.",
   "core.module.extract.Add field": "Add Field",
   "core.module.extract.Enum Description": "List the possible values of this field, one per line",
   "core.module.extract.Enum Value": "Enum Value",

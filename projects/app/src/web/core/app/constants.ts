@@ -56,3 +56,5 @@ export enum TTSTypeEnum {
   web = 'web',
   model = 'model'
 }
+
+export const workflowStartNodeId = 'workflowStartNodeId';

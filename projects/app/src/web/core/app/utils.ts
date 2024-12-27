@@ -39,6 +39,7 @@ import {
   Input_Template_File_Link_Prompt,
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
+import { workflowStartNodeId } from './constants';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -50,7 +51,6 @@ export function form2AppWorkflow(
 ): WorkflowType & {
   chatConfig: AppChatConfigType;
 } {
-  const workflowStartNodeId = 'workflowStartNodeId';
   const datasetNodeId = 'iKBoX2vIzETU';
   const aiChatNodeId = '7BdojPlukIQw';
 

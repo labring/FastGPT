@@ -34,10 +34,9 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput/index'
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import Markdown from '@/components/Markdown';
 import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -64,8 +63,6 @@ const TemplateMarketModal = ({
   const [currentTag, setCurrentTag] = useState<string>(AppTemplateTypeEnum.recommendation);
   const [currentAppType, setCurrentAppType] = useState<TemplateAppType>(defaultType);
   const [currentSearch, setCurrentSearch] = useState('');
-
-  const [currentTemplate, setCurrentTemplate] = useState<AppTemplateSchemaType | null>(null);
 
   const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
     () => getTemplateMarketItemList({ type: currentAppType }),
@@ -224,20 +221,18 @@ const TemplateMarketModal = ({
             >
               {((item.userGuide?.type === 'markdown' && item.userGuide?.content) ||
                 (item.userGuide?.type === 'link' && item.userGuide?.link)) && (
-                <Button
-                  variant={'whiteBase'}
-                  h={6}
-                  rounded={'sm'}
-                  onClick={() => {
-                    if (item.userGuide?.type === 'link') {
-                      window.open(item.userGuide.link);
-                    } else if (item.userGuide?.type === 'markdown') {
-                      setCurrentTemplate(item);
-                    }
-                  }}
+                <UseGuideModal
+                  title={item.name}
+                  iconSrc={item.avatar}
+                  text={item.userGuide?.content}
+                  link={item.userGuide?.link}
                 >
-                  {t('app:templateMarket.template_guide')}
-                </Button>
+                  {({ onClick }) => (
+                    <Button variant={'whiteBase'} h={6} rounded={'sm'} onClick={onClick}>
+                      {t('app:templateMarket.template_guide')}
+                    </Button>
+                  )}
+                </UseGuideModal>
               )}
               <Button
                 variant={'whiteBase'}
@@ -477,34 +472,7 @@ const TemplateMarketModal = ({
           </ModalBody>
         </MyBox>
       </ModalContent>
-      {currentTemplate && (
-        <GuideModal template={currentTemplate} onClose={() => setCurrentTemplate(null)} />
-      )}
     </Modal>
-  );
-};
-
-const GuideModal = ({
-  template,
-  onClose
-}: {
-  template: AppTemplateSchemaType;
-  onClose: () => void;
-}) => {
-  return (
-    <MyModal
-      isOpen
-      iconSrc={template.avatar}
-      title={template.name}
-      onClose={onClose}
-      minW={'600px'}
-    >
-      <ModalBody>
-        <Box border={'base'} borderRadius={'10px'} p={4} minH={'500px'}>
-          <Markdown source={template.userGuide?.content} />
-        </Box>
-      </ModalBody>
-    </MyModal>
   );
 };
 

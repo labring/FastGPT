@@ -351,12 +351,6 @@ const InputTypeConfig = ({
 
         {inputType === FlowNodeInputTypeEnum.addInputParam && (
           <>
-            {/* <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('common:core.module.Input Type')}
-              </FormLabel>
-              <Box fontSize={'14px'}>{t('workflow:only_the_reference_type_is_supported')}</Box>
-            </Flex> */}
             <Box>
               <HStack mb={1}>
                 <FormLabel fontWeight={'medium'}>{t('workflow:optional_value_type')}</FormLabel>

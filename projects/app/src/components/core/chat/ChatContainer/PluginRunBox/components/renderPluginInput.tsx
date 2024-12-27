@@ -1,4 +1,4 @@
-import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, Switch, Textarea, useDisclosure } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -20,6 +20,8 @@ import { isEqual } from 'lodash';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { PluginRunContext } from '../context';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -152,6 +154,7 @@ const RenderPluginInput = ({
 }) => {
   const { t } = useTranslation();
   const inputType = input.renderTypeList[0];
+  const { llmModelList } = useSystemStore();
 
   const render = (() => {
     if (inputType === FlowNodeInputTypeEnum.customVariable) {
@@ -167,7 +170,19 @@ const RenderPluginInput = ({
         <FileSelector onChange={onChange} input={input} setUploading={setUploading} value={value} />
       );
     }
-
+    if (inputType === FlowNodeInputTypeEnum.selectLLMModel) {
+      return (
+        <AIModelSelector
+          w={'100%'}
+          value={value}
+          list={llmModelList.map((item) => ({
+            value: item.model,
+            label: item.name
+          }))}
+          onchange={onChange}
+        />
+      );
+    }
     if (input.valueType === WorkflowIOValueTypeEnum.string) {
       return (
         <Textarea
