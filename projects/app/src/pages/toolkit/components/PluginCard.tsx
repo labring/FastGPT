@@ -1,14 +1,13 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex, HStack, ModalBody } from '@chakra-ui/react';
+import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import Markdown from '@/components/Markdown';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import ToolGuideModal from '@/pages/app/detail/components/SimpleApp/components/ToolGuideModal';
 
 const PluginCard = ({
   item,
@@ -83,49 +82,32 @@ const PluginCard = ({
       <Flex w={'full'} fontSize={'mini'}>
         <Flex flex={1}>
           {item.instructions && (
-            <Flex
-              color={'primary.700'}
-              alignItems={'center'}
-              gap={1}
-              cursor={'pointer'}
-              onClick={() => setCurrentPlugin(item)}
-              _hover={{ bg: 'myGray.100' }}
+            <ToolGuideModal
+              currentTool={{
+                name: item.name,
+                avatar: item.avatar,
+                userGuide: item.instructions
+              }}
             >
-              <MyIcon name={'book'} w={'14px'} />
-              {t('app:plugin.Instructions')}
-            </Flex>
+              {({ onOpen }) => (
+                <Flex
+                  color={'primary.700'}
+                  alignItems={'center'}
+                  gap={1}
+                  cursor={'pointer'}
+                  onClick={onOpen}
+                  _hover={{ bg: 'myGray.100' }}
+                >
+                  <MyIcon name={'book'} w={'14px'} />
+                  {t('app:plugin.Instructions')}
+                </Flex>
+              )}
+            </ToolGuideModal>
           )}
         </Flex>
         <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>
       </Flex>
-      {currentPlugin && (
-        <InstructionModal currentPlugin={currentPlugin} onClose={() => setCurrentPlugin(null)} />
-      )}
     </MyBox>
-  );
-};
-
-const InstructionModal = ({
-  currentPlugin,
-  onClose
-}: {
-  currentPlugin: NodeTemplateListItemType;
-  onClose: () => void;
-}) => {
-  return (
-    <MyModal
-      isOpen
-      iconSrc={currentPlugin.avatar}
-      title={currentPlugin.name}
-      onClose={onClose}
-      minW={'600px'}
-    >
-      <ModalBody>
-        <Box border={'base'} borderRadius={'10px'} p={4} minH={'500px'}>
-          <Markdown source={currentPlugin.instructions} />
-        </Box>
-      </ModalBody>
-    </MyModal>
   );
 };
 

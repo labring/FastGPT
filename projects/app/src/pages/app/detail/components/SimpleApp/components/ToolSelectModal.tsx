@@ -231,38 +231,42 @@ const RenderList = React.memo(function RenderList({
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
     async (template: NodeTemplateListItemType) => {
       const res = await getPreviewPluginNode({ appId: template.id });
+
       const toolInputs = res.inputs.filter((input) => !childAppSystemKey.includes(input.key));
 
-      // 是否开启文件上传
       const canUploadFile =
         chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
 
-      // 只有一个文件上传
       const oneFileInput =
         toolInputs.filter((input) =>
           input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
         ).length === 1;
 
+      // 判断是否可以直接添加工具,满足以下任一条件:
+      // 1. 有工具描述
+      // 2. 是模型选择类型
+      // 3. 是文件上传类型且:已开启文件上传、非必填、只有一个文件上传输入
       const directAdd = toolInputs.every(
         (input) =>
           input.toolDescription ||
-          // 模型选择
           input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
-          // 文件上传
           (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
             canUploadFile &&
             !input.required &&
             oneFileInput)
       );
 
+      // 检查是否需要过滤掉该工具
+      // 如果输入参数包含以下类型则过滤:
+      // 1. 变量引用类型
+      // 2. 知识库选择类型
+      // 3. 动态外部数据类型
+      // 4. 文件上传类型且:未开启上传或必填或不是唯一文件上传
       const filtered = !toolInputs.every((input) => {
         if (
-          // 变量引用
           input.renderTypeList.every((item) => item === FlowNodeInputTypeEnum.reference) ||
-          // 知识库选择 & 动态外部数据
           input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
           input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
-          // 文件上传
           (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
             !(canUploadFile && !input.required && oneFileInput))
         ) {
@@ -271,15 +275,18 @@ const RenderList = React.memo(function RenderList({
         return true;
       });
 
+      // 构建默认表单数据
       const defaultForm = {
         ...res,
         inputs: res.inputs.map((input) => {
+          // 如果是模型选择类型,使用当前选中的模型
           if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
             return {
               ...input,
               value: selectedModel.model
             };
           }
+          // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
           if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
             return {
               ...input,
@@ -290,7 +297,6 @@ const RenderList = React.memo(function RenderList({
         })
       };
 
-      // All input is tool params
       if (directAdd) {
         onAddTool(defaultForm);
       } else if (filtered) {

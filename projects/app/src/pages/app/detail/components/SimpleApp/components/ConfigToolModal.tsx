@@ -1,6 +1,6 @@
 import { Button, HStack, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
@@ -25,29 +25,19 @@ const ConfigToolModal = ({
 
   const {
     handleSubmit,
-    reset,
     control,
     formState: { errors }
-  } = useForm();
-
-  useEffect(() => {
-    if (configTool) {
-      const defaultValues = configTool.inputs.reduce(
-        (acc, input) => {
-          acc[input.key] = input.value || input.defaultValue;
-          return acc;
-        },
-        {} as Record<string, any>
-      );
-      reset(defaultValues);
-    }
-  }, [configTool, reset]);
-
-  const {
-    isOpen: isOpenUserGuideModal,
-    onOpen: onOpenUserGuideModal,
-    onClose: onCloseUserGuideModal
-  } = useDisclosure();
+  } = useForm({
+    defaultValues: configTool
+      ? configTool.inputs.reduce(
+          (acc, input) => {
+            acc[input.key] = input.value || input.defaultValue;
+            return acc;
+          },
+          {} as Record<string, any>
+        )
+      : {}
+  });
 
   return (
     <MyModal
@@ -62,20 +52,24 @@ const ConfigToolModal = ({
           <MyIcon name={'common/info'} w={'1.25rem'} />
           <Box flex={1}>{t('app:tool_input_param_tip')}</Box>
           {!!(configTool?.courseUrl || configTool?.userGuide) && (
-            <Box
-              cursor={'pointer'}
-              color={'primary.500'}
-              onClick={() => {
-                if (configTool.courseUrl) {
-                  window.open(configTool.courseUrl, '_blank');
-                }
-                if (configTool.userGuide) {
-                  onOpenUserGuideModal();
-                }
-              }}
-            >
-              {t('app:workflow.Input guide')}
-            </Box>
+            <ToolGuideModal currentTool={configTool}>
+              {({ onOpen }) => (
+                <Box
+                  cursor={'pointer'}
+                  color={'primary.500'}
+                  onClick={() => {
+                    if (configTool.courseUrl) {
+                      window.open(configTool.courseUrl, '_blank');
+                    }
+                    if (configTool.userGuide) {
+                      onOpen();
+                    }
+                  }}
+                >
+                  {t('app:workflow.Input guide')}
+                </Box>
+              )}
+            </ToolGuideModal>
           )}
         </HStack>
         {configTool.inputs
@@ -135,9 +129,6 @@ const ConfigToolModal = ({
           {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
-      {isOpenUserGuideModal && (
-        <ToolGuideModal currentTool={configTool} onClose={onCloseUserGuideModal} />
-      )}
     </MyModal>
   );
 };

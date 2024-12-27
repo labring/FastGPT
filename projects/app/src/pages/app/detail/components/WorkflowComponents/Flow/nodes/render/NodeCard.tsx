@@ -157,7 +157,6 @@ const NodeCard = (props: Props) => {
       refreshDeps: [node, nodeId, onResetNode]
     }
   );
-  const [currentNode, setCurrentNode] = useState<FlowNodeTemplateType | null>(null);
 
   /* Node header */
   const Header = useMemo(() => {
@@ -278,21 +277,25 @@ const NodeCard = (props: Props) => {
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
               {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
-                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                  <MyIconButton
-                    ml={1}
-                    icon="book"
-                    color={'primary.600'}
-                    onClick={() => {
-                      if (node?.courseUrl) {
-                        window.open(getDocPath(node.courseUrl || ''), '_blank');
-                      }
-                      if (nodeTemplate?.userGuide) {
-                        setCurrentNode(nodeTemplate);
-                      }
-                    }}
-                  />
-                </MyTooltip>
+                <ToolGuideModal currentTool={nodeTemplate!}>
+                  {({ onOpen }) => (
+                    <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+                      <MyIconButton
+                        ml={1}
+                        icon="book"
+                        color={'primary.600'}
+                        onClick={() => {
+                          if (node?.courseUrl) {
+                            window.open(getDocPath(node.courseUrl || ''), '_blank');
+                          }
+                          if (nodeTemplate?.userGuide) {
+                            onOpen();
+                          }
+                        }}
+                      />
+                    </MyTooltip>
+                  )}
+                </ToolGuideModal>
               )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
@@ -300,9 +303,6 @@ const NodeCard = (props: Props) => {
         )}
         <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
         <ConfirmSyncModal />
-        {currentNode && (
-          <ToolGuideModal currentTool={currentNode} onClose={() => setCurrentNode(null)} />
-        )}
       </Box>
     );
   }, [
@@ -322,7 +322,6 @@ const NodeCard = (props: Props) => {
     menuForbid,
     nodeList,
     ConfirmSyncModal,
-    currentNode,
     onChangeNode,
     onOpenCustomTitleModal,
     toast
