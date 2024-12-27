@@ -43,7 +43,7 @@ function OrgMoveModal({
   const handleConfirm = () => {
     if (!selectedOrg) return;
     if (movingTmb) {
-      moveTmb(movingTmb.orgId, movingTmb.tmbId, selectedOrg._id);
+      moveTmb({ orgId: movingTmb.orgId, tmbId: movingTmb.tmbId, newOrgId: selectedOrg._id });
     } else if (movingOrg) {
       moveOrg(movingOrg._id, selectedOrg._id);
     }

@@ -14,7 +14,7 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {
-  avatar?: string;
+  avatar: string;
   description?: string;
   name: string;
 };
@@ -39,14 +39,14 @@ function OrgInfoModal({
   const { register, handleSubmit, getValues, setValue } = useForm<OrgFormType>({
     defaultValues: {
       name: '',
-      avatar: undefined,
+      avatar: DEFAULT_ORG_AVATAR,
       description: undefined
     }
   });
 
   useEffect(() => {
     setValue('name', editOrg?.name ?? '');
-    setValue('avatar', editOrg?.avatar);
+    setValue('avatar', editOrg?.avatar || DEFAULT_ORG_AVATAR);
     setValue('description', editOrg?.description);
   }, [editOrg, setValue]);
 
@@ -54,7 +54,7 @@ function OrgInfoModal({
     (data: OrgFormType, parentId: string) => {
       return postCreateOrg({
         name: data.name,
-        avatar: data.avatar !== DEFAULT_ORG_AVATAR ? data.avatar : undefined,
+        avatar: data.avatar,
         parentId,
         description: data.description
       });

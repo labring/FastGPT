@@ -15,7 +15,7 @@ function OrgTreeNode({
   org: OrgType;
   list: OrgType[];
   selectedOrg?: OrgType;
-  selectOrg?: (org: OrgType | undefined) => void;
+  selectOrg?: (org?: OrgType) => void;
   indent?: number;
 }) {
   const children = useMemo(
@@ -76,7 +76,7 @@ function OrgTree({
   teamAvatar: string;
   teamName: string;
   selectedOrg?: OrgType;
-  selectOrg?: (org: OrgType | undefined) => void;
+  selectOrg?: (org?: OrgType) => void;
 }) {
   const root = orgs[0];
   if (!root) return null;

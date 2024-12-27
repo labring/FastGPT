@@ -9,7 +9,6 @@ import {
   ModalBody,
   ModalFooter
 } from '@chakra-ui/react';
-import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -45,7 +44,6 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
   // 2. Owner/Admin can manage members
   // 3. Owner can add/remove admins
   const { t } = useTranslation();
-  const [hoveredMemberId, setHoveredMemberId] = useState<string | undefined>(undefined);
   const {
     members: allMembers,
     orgs,
@@ -102,7 +100,7 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
       onClose={onClose}
       isOpen={!!editOrgId}
       title={t('user:team.group.manage_member')}
-      iconSrc={org?.avatar ?? DEFAULT_TEAM_AVATAR}
+      iconSrc={org?.avatar}
       iconColor="primary.600"
       minW="800px"
       h={'100%'}
@@ -160,8 +158,6 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
               {members.map((member) => {
                 return (
                   <HStack
-                    onMouseEnter={() => setHoveredMemberId(member.tmbId)}
-                    onMouseLeave={() => setHoveredMemberId(undefined)}
                     justifyContent="space-between"
                     py="2"
                     px={3}
