@@ -79,8 +79,13 @@ const PluginCard = ({
 
       <Flex w={'full'} fontSize={'mini'}>
         <Flex flex={1}>
-          {item.instructions && (
-            <UseGuideModal title={item.name} iconSrc={item.avatar} text={item.instructions}>
+          {(item.instructions || item.courseUrl) && (
+            <UseGuideModal
+              title={item.name}
+              iconSrc={item.avatar}
+              text={item.instructions}
+              link={item.courseUrl}
+            >
               {({ onClick }) => (
                 <Flex
                   color={'primary.700'}
