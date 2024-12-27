@@ -28,7 +28,7 @@ import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useGuideBox } from '@/web/common/hooks/useGuideBox';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -135,13 +135,6 @@ const NodeCard = (props: Props) => {
     ConfirmModal: ConfirmSyncModal
   } = useConfirm({
     content: t('workflow:Confirm_sync_node')
-  });
-
-  const { GuideModal } = useGuideBox({
-    title: nodeTemplate?.name,
-    iconSrc: nodeTemplate?.avatar,
-    text: nodeTemplate?.userGuide,
-    link: nodeTemplate?.courseUrl
   });
 
   const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
@@ -280,13 +273,18 @@ const NodeCard = (props: Props) => {
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
               {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
-                <GuideModal>
+                <UseGuideModal
+                  title={nodeTemplate?.name}
+                  iconSrc={nodeTemplate?.avatar}
+                  text={nodeTemplate?.userGuide}
+                  link={nodeTemplate?.courseUrl}
+                >
                   {({ onClick }) => (
                     <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
                       <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
                     </MyTooltip>
                   )}
-                </GuideModal>
+                </UseGuideModal>
               )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
@@ -310,7 +308,9 @@ const NodeCard = (props: Props) => {
     onClickSyncVersion,
     nodeTemplate?.diagram,
     nodeTemplate?.userGuide,
-    GuideModal,
+    nodeTemplate?.name,
+    nodeTemplate?.avatar,
+    nodeTemplate?.courseUrl,
     intro,
     menuForbid,
     nodeList,

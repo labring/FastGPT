@@ -36,7 +36,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { useGuideBox } from '@/web/common/hooks/useGuideBox';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -156,13 +156,6 @@ const TemplateMarketModal = ({
     ({ item }: { item: AppTemplateSchemaType }) => {
       const { t } = useTranslation();
 
-      const { GuideModal } = useGuideBox({
-        title: item.name,
-        iconSrc: item.avatar,
-        text: item.userGuide?.content,
-        link: item.userGuide?.link
-      });
-
       return (
         <MyBox
           key={item.templateId}
@@ -228,13 +221,18 @@ const TemplateMarketModal = ({
             >
               {((item.userGuide?.type === 'markdown' && item.userGuide?.content) ||
                 (item.userGuide?.type === 'link' && item.userGuide?.link)) && (
-                <GuideModal>
+                <UseGuideModal
+                  title={item.name}
+                  iconSrc={item.avatar}
+                  text={item.userGuide?.content}
+                  link={item.userGuide?.link}
+                >
                   {({ onClick }) => (
                     <Button variant={'whiteBase'} h={6} rounded={'sm'} onClick={onClick}>
                       {t('app:templateMarket.template_guide')}
                     </Button>
                   )}
-                </GuideModal>
+                </UseGuideModal>
               )}
               <Button
                 variant={'whiteBase'}

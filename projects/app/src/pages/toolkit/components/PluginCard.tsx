@@ -2,12 +2,12 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
-import { useGuideBox } from '@/web/common/hooks/useGuideBox';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 const PluginCard = ({
   item,
@@ -23,12 +23,6 @@ const PluginCard = ({
     const foundType = group.groupTypes.find((type) => type.typeId === item.templateType);
     return foundType ? foundType.typeName : acc;
   }, undefined);
-
-  const { GuideModal } = useGuideBox({
-    title: item.name,
-    iconSrc: item.avatar,
-    text: item.instructions
-  });
 
   return (
     <MyBox
@@ -86,7 +80,7 @@ const PluginCard = ({
       <Flex w={'full'} fontSize={'mini'}>
         <Flex flex={1}>
           {item.instructions && (
-            <GuideModal>
+            <UseGuideModal title={item.name} iconSrc={item.avatar} text={item.instructions}>
               {({ onClick }) => (
                 <Flex
                   color={'primary.700'}
@@ -100,7 +94,7 @@ const PluginCard = ({
                   {t('app:plugin.Instructions')}
                 </Flex>
               )}
-            </GuideModal>
+            </UseGuideModal>
           )}
         </Flex>
         <Box color={'myGray.500'}>{`by ${item.author || feConfigs.systemTitle}`}</Box>
