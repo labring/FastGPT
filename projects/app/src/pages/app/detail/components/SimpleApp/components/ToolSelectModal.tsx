@@ -186,13 +186,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       {/* route components */}
       {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
-          <FolderPath
-            paths={paths}
-            FirstPathDom={null}
-            onClick={() => {
-              onUpdateParentId(null);
-            }}
-          />
+          <FolderPath paths={paths} FirstPathDom={null} onClick={() => onUpdateParentId(null)} />
         </Flex>
       )}
       <MyBox isLoading={isLoading} mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
@@ -232,60 +226,80 @@ const RenderList = React.memo(function RenderList({
     async (template: NodeTemplateListItemType) => {
       const res = await getPreviewPluginNode({ appId: template.id });
 
-      const toolInputs = res.inputs.filter((input) => !childAppSystemKey.includes(input.key));
-
-      const canUploadFile =
-        chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
-
+      /* Invalid plugin check
+        1. Reference type. but not tool description;
+        2. Has dataset select
+        3. Has dynamic external data
+      */
       const oneFileInput =
-        toolInputs.filter((input) =>
+        res.inputs.filter((input) =>
           input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
         ).length === 1;
+      const canUploadFile =
+        chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
+      const invalidFileInput = oneFileInput && !!canUploadFile;
+      if (
+        res.inputs.some(
+          (input) =>
+            (input.renderTypeList.length === 1 &&
+              input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
+              !input.toolDescription) ||
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
+            (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !invalidFileInput)
+        )
+      ) {
+        return toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
+        });
+      }
 
       // 判断是否可以直接添加工具,满足以下任一条件:
       // 1. 有工具描述
       // 2. 是模型选择类型
       // 3. 是文件上传类型且:已开启文件上传、非必填、只有一个文件上传输入
-      const directAdd = toolInputs.every(
-        (input) =>
-          input.toolDescription ||
-          input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
-          (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-            canUploadFile &&
-            !input.required &&
-            oneFileInput)
-      );
-
-      // 检查是否需要过滤掉该工具
-      // 如果输入参数包含以下类型则过滤:
-      // 1. 变量引用类型
-      // 2. 知识库选择类型
-      // 3. 动态外部数据类型
-      // 4. 文件上传类型且:未开启上传或必填或不是唯一文件上传
-      const filtered = !toolInputs.every((input) => {
-        if (
-          input.renderTypeList.every((item) => item === FlowNodeInputTypeEnum.reference) ||
-          input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
-          input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
-          (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
-            !(canUploadFile && !input.required && oneFileInput))
-        ) {
+      const hasInputForm =
+        res.inputs.length > 0 &&
+        res.inputs.some((input) => {
+          if (input.toolDescription) {
+            return false;
+          }
+          if (input.key === NodeInputKeyEnum.forbidStream) {
+            return false;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.input)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.textarea)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.numberInput)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.switch)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.select)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.JSONEditor)) {
+            return true;
+          }
           return false;
-        }
-        return true;
-      });
+        });
 
       // 构建默认表单数据
       const defaultForm = {
         ...res,
         inputs: res.inputs.map((input) => {
           // 如果是模型选择类型,使用当前选中的模型
-          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
-            return {
-              ...input,
-              value: selectedModel.model
-            };
-          }
+          // if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
+          //   return {
+          //     ...input,
+          //     value: selectedModel.model
+          //   };
+          // }
           // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
           if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
             return {
@@ -296,17 +310,11 @@ const RenderList = React.memo(function RenderList({
           return input;
         })
       };
-      console.log(defaultForm);
 
-      if (directAdd) {
-        onAddTool(defaultForm);
-      } else if (filtered) {
-        toast({
-          title: t('app:simple_tool_tips'),
-          status: 'warning'
-        });
-      } else {
+      if (hasInputForm) {
         setConfigTool(defaultForm);
+      } else {
+        onAddTool(defaultForm);
       }
     },
     {

@@ -28,17 +28,22 @@ const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { s
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 
-const Markdown = ({
-  source = '',
-  showAnimation = false,
-  isDisabled = false,
-  forbidZhFormat = false
-}: {
+type Props = {
   source?: string;
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
-}) => {
+};
+const Markdown = (props: Props) => {
+  const source = props.source || '';
+
+  if (source.length < 200000) {
+    return <MarkdownRender {...props} />;
+  }
+
+  return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
+};
+const MarkdownRender = ({ source = '', showAnimation, isDisabled, forbidZhFormat }: Props) => {
   const components = useMemo<any>(
     () => ({
       img: Image,
