@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest) {
   // find all delete id
   const collections = await findCollectionAndChild({
     teamId,
-    datasetId: collection.datasetId._id,
+    datasetId: collection.datasetId,
     collectionId,
     fields: '_id teamId datasetId fileId metadata'
   });

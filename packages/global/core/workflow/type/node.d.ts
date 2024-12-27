@@ -69,6 +69,7 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
 
   diagram?: string; // diagram url
   courseUrl?: string; // course url
+  userGuide?: string; // user guide
 };
 
 export type NodeTemplateListItemType = {
@@ -87,6 +88,7 @@ export type NodeTemplateListItemType = {
   currentCost?: number; // 当前积分消耗
   hasTokenFee?: boolean; // 是否配置积分
   instructions?: string; // 使用说明
+  courseUrl?: string; // 教程链接
 };
 
 export type NodeTemplateListType = {

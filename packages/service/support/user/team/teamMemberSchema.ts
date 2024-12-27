@@ -3,7 +3,6 @@ const { Schema } = connectionMongo;
 import { TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import {
-  TeamMemberRoleMap,
   TeamMemberStatusMap,
   TeamMemberCollectionName,
   TeamCollectionName
@@ -40,6 +39,19 @@ const TeamMemberSchema = new Schema({
     type: Boolean,
     default: false
   }
+});
+
+TeamMemberSchema.virtual('team', {
+  ref: TeamCollectionName,
+  localField: 'teamId',
+  foreignField: '_id',
+  justOne: true
+});
+TeamMemberSchema.virtual('user', {
+  ref: userCollectionName,
+  localField: 'userId',
+  foreignField: '_id',
+  justOne: true
 });
 
 try {

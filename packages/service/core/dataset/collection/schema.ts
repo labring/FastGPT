@@ -100,6 +100,13 @@ const DatasetCollectionSchema = new Schema({
   }
 });
 
+DatasetCollectionSchema.virtual('dataset', {
+  ref: DatasetCollectionName,
+  localField: 'datasetId',
+  foreignField: '_id',
+  justOne: true
+});
+
 try {
   // auth file
   DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });

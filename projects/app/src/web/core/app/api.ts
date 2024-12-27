@@ -8,7 +8,7 @@ import { AppLogsListItemType } from '@/types/app';
 import { PagingData } from '@/types';
 
 /**
- * 获取模型列表
+ * 获取应用列表
  */
 export const getMyApps = (data?: ListAppBody) =>
   POST<AppListItemType[]>('/core/app/list', data, {
@@ -16,23 +16,23 @@ export const getMyApps = (data?: ListAppBody) =>
   });
 
 /**
- * 创建一个模型
+ * 创建一个应用
  */
 export const postCreateApp = (data: CreateAppBody) => POST<string>('/core/app/create', data);
 
 export const getMyAppsByTags = (data: {}) => POST(`/proApi/core/chat/team/getApps`, data);
 /**
- * 根据 ID 删除模型
+ * 根据 ID 删除应用
  */
 export const delAppById = (id: string) => DELETE(`/core/app/del?appId=${id}`);
 
 /**
- * 根据 ID 获取模型
+ * 根据 ID 获取应用
  */
 export const getAppDetailById = (id: string) => GET<AppDetailType>(`/core/app/detail?appId=${id}`);
 
 /**
- * 根据 ID 更新模型
+ * 根据 ID 更新应用
  */
 export const putAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/update?appId=${id}`, data);

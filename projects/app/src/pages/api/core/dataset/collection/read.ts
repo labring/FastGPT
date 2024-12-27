@@ -148,9 +148,9 @@ async function handler(
       return collection.rawLink;
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
-      const apiServer = collection.datasetId.apiServer;
-      const feishuServer = collection.datasetId.feishuServer;
-      const yuqueServer = collection.datasetId.yuqueServer;
+      const apiServer = collection.dataset.apiServer;
+      const feishuServer = collection.dataset.feishuServer;
+      const yuqueServer = collection.dataset.yuqueServer;
 
       if (apiServer) {
         return useApiDatasetRequest({ apiServer }).getFilePreviewUrl({
@@ -170,11 +170,8 @@ async function handler(
       return '';
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
-      if (collection.externalFileId && collection.datasetId.externalReadUrl) {
-        return collection.datasetId.externalReadUrl.replace(
-          '{{fileId}}',
-          collection.externalFileId
-        );
+      if (collection.externalFileId && collection.dataset.externalReadUrl) {
+        return collection.dataset.externalReadUrl.replace('{{fileId}}', collection.externalFileId);
       }
       if (collection.externalFileUrl) {
         return collection.externalFileUrl;

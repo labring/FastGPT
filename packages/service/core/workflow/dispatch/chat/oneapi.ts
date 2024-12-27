@@ -62,7 +62,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     res,
     requestOrigin,
     stream = false,
-    user,
+    externalProvider,
     histories,
     node: { name },
     query,
@@ -134,7 +134,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }),
     (() => {
       // censor model and system key
-      if (modelConstantsData.censor && !user.openaiAccount?.key) {
+      if (modelConstantsData.censor && !externalProvider.openaiAccount?.key) {
         return postTextCensor({
           text: `${systemPrompt}
             ${userChatInput}
@@ -170,7 +170,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   // console.log(JSON.stringify(requestBody, null, 2), '===');
   const { response, isStreamResponse, getEmptyResponseTip } = await createChatCompletion({
     body: requestBody,
-    userKey: user.openaiAccount,
+    userKey: externalProvider.openaiAccount,
     options: {
       headers: {
         Accept: 'application/json, text/plain, */*'
@@ -230,7 +230,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   return {
     answerText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       tokens,
       query: `${userChatInput}`,
@@ -245,7 +245,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
-        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
         tokens
       }

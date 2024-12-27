@@ -39,6 +39,19 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 
+ResourcePermissionSchema.virtual('tmb', {
+  ref: TeamMemberCollectionName,
+  localField: 'tmbId',
+  foreignField: '_id',
+  justOne: true
+});
+ResourcePermissionSchema.virtual('group', {
+  ref: MemberGroupCollectionName,
+  localField: 'groupId',
+  foreignField: '_id',
+  justOne: true
+});
+
 try {
   ResourcePermissionSchema.index(
     {

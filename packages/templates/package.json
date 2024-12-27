@@ -1,0 +1,10 @@
+{
+  "name": "@fastgpt/templates",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {},
+  "devDependencies": {
+    "@fastgpt/global": "workspace:*",
+    "@fastgpt/service": "workspace:*"
+  }
+}

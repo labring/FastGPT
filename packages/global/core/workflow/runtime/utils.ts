@@ -9,6 +9,7 @@ import { isValidReferenceValueFormat } from '../utils';
 import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
+import { replaceVariable } from '../../../common/string/tools';
 
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
@@ -316,6 +317,8 @@ export function replaceEditorVariable({
   variables: Record<string, any>; // global variables
 }) {
   if (typeof text !== 'string') return text;
+
+  text = replaceVariable(text, variables);
 
   const variablePattern = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
   const matches = [...text.matchAll(variablePattern)];

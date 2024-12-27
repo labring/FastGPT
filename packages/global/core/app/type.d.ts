@@ -13,6 +13,7 @@ import { StoreEdgeItemType } from '../workflow/type/edge';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
+import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 
 export type AppSchema = {
   _id: string;
@@ -183,4 +184,29 @@ export type SystemPluginListItemType = {
   _id: string;
   name: string;
   avatar: string;
+};
+
+export type AppTemplateSchemaType = {
+  templateId: string;
+  name: string;
+  intro: string;
+  avatar: string;
+  tags: string[];
+  type: string;
+  author?: string;
+  isActive?: boolean;
+  userGuide?: {
+    type: 'markdown' | 'link';
+    content?: string;
+    link?: string;
+  };
+  isQuickTemplate?: boolean;
+  order?: number;
+  workflow: WorkflowTemplateBasicType;
+};
+
+export type TemplateTypeSchemaType = {
+  typeName: string;
+  typeId: string;
+  typeOrder: number;
 };

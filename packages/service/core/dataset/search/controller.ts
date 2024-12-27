@@ -8,8 +8,8 @@ import { getVectorsByText } from '../../ai/embedding';
 import { getVectorModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import {
+  DatasetCollectionSchemaType,
   DatasetDataSchemaType,
-  DatasetDataWithCollectionType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
@@ -267,7 +267,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     });
 
     // get q and a
-    const dataList = (await MongoDatasetData.find(
+    const dataList = await MongoDatasetData.find(
       {
         teamId,
         datasetId: { $in: datasetIds },
@@ -276,8 +276,11 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       },
       'datasetId collectionId updateTime q a chunkIndex indexes'
     )
-      .populate('collectionId', 'name fileId rawLink externalFileId externalFileUrl')
-      .lean()) as DatasetDataWithCollectionType[];
+      .populate<{ collection: DatasetCollectionSchemaType }>(
+        'collection',
+        'name fileId rawLink externalFileId externalFileUrl'
+      )
+      .lean();
 
     // add score to data(It's already sorted. The first one is the one with the most points)
     const concatResults = dataList.map((data) => {
@@ -307,8 +310,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         a: data.a,
         chunkIndex: data.chunkIndex,
         datasetId: String(data.datasetId),
-        collectionId: String(data.collectionId?._id),
-        ...getCollectionSourceData(data.collectionId),
+        collectionId: String(data.collectionId),
+        ...getCollectionSourceData(data.collection),
         score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
       };
 

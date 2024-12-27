@@ -3,7 +3,6 @@ import { getResourcePermission, parseHeaderCert } from '../controller';
 import {
   CollectionWithDatasetType,
   DatasetDataItemType,
-  DatasetFileSchema,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
@@ -12,10 +11,6 @@ import { NullPermission, PerResourceTypeEnum } from '@fastgpt/global/support/per
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
-import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
-import { getFileById } from '../../../common/file/gridfs/controller';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
 import { AuthModeType, AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -181,7 +176,7 @@ export async function authDatasetCollection({
 
   const { dataset } = await authDatasetByTmbId({
     tmbId,
-    datasetId: collection.datasetId._id,
+    datasetId: collection.datasetId,
     per,
     isRoot: isRootFromHeader
   });

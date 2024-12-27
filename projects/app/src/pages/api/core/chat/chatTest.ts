@@ -10,7 +10,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
@@ -115,7 +115,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     const limit = getMaxHistoryLimitFromNodes(nodes);
-    const [{ histories }, chatDetail, { user }] = await Promise.all([
+    const [{ histories }, chatDetail, { timezone, externalProvider }] = await Promise.all([
       getChatItems({
         appId,
         chatId,
@@ -158,7 +158,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res,
       requestOrigin: req.headers.origin,
       mode: 'test',
-      user,
+      timezone,
+      externalProvider,
       uid: tmbId,
 
       runningAppInfo: {
@@ -204,7 +205,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
       const newTitle = isPlugin
-        ? variables.cTime ?? getSystemTime(user.timezone)
+        ? variables.cTime ?? getSystemTime(timezone)
         : getChatTitleFromChatMessage(userQuestion);
 
       const aiResponse: AIChatItemType & { dataId?: string } = {

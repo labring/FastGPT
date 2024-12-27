@@ -1,0 +1,20 @@
+{
+  "configured": "已配置",
+  "error.no_permission": "请联系管理员配置",
+  "get_usage_failed": "获取使用量失败",
+  "laf_account": "laf 账号",
+  "no_intro": "暂无说明",
+  "not_configured": "未配置",
+  "open_api_notice": "可以填写 OpenAI/OneAPI 的相关密钥。如果你填写了该内容，在线上平台使用【 AI 对话】、【问题分类】和【内容提取】将会走你填写的 Key，不会计费。请注意你的 Key 是否有访问对应模型的权限。 GPT 模型可以选择 FastAI 。",
+  "openai_account_configuration": "OpenAI/OneAPI 账号",
+  "openai_account_setting_exception": "设置 OpenAI 账号异常",
+  "request_address_notice": "请求地址，默认为 openai 官方。可填中转地址，未自动补全 \"v1\"",
+  "third_party_account": "第三方账号",
+  "third_party_account.configured": "已配置",
+  "third_party_account.not_configured": "未配置",
+  "third_party_account_desc": "管理员可以在这里配置第三方账号或变量，该账号将被团队所有人使用",
+  "unavailable": "获取使用量异常",
+  "usage": "使用量:",
+  "value_not_return_tip": "参数配置后，不会再次返回前端，无需泄露给其他成员",
+  "value_placeholder": "输入参数值。输入空值表示删除该配置。"
+}

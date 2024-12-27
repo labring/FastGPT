@@ -19,7 +19,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { params, variables, runtimeNodes, workflowStreamResponse, node } = props;
+  const { params, variables, runtimeNodes, workflowStreamResponse, externalProvider } = props;
 
   const { updateList } = params;
   const nodeIds = runtimeNodes.map((node) => node.nodeId);
@@ -41,15 +41,15 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     const value = (() => {
       // If first item is empty, it means it is a input value
       if (!item.value?.[0]) {
-        const formatValue = valueTypeFormat(item.value?.[1], item.valueType);
-
-        return typeof formatValue === 'string'
-          ? replaceEditorVariable({
-              text: formatValue,
-              nodes: runtimeNodes,
-              variables
-            })
-          : formatValue;
+        const val =
+          typeof item.value?.[1] === 'string'
+            ? replaceEditorVariable({
+                text: item.value?.[1],
+                nodes: runtimeNodes,
+                variables
+              })
+            : item.value?.[1];
+        return valueTypeFormat(val, item.valueType);
       } else {
         return getReferenceVariableValue({
           value: item.value,
@@ -80,7 +80,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
 
   workflowStreamResponse?.({
     event: SseResponseEventEnum.updateVariables,
-    data: removeSystemVariable(variables)
+    data: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
   });
 
   return {

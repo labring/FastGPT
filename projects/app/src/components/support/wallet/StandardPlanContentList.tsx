@@ -2,7 +2,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { Box, Flex, Grid, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -21,12 +21,6 @@ const StandardPlanContentList = ({
 }) => {
   const { t } = useTranslation();
   const { subPlans } = useSystemStore();
-
-  const {
-    isOpen: isOpenAiPointsModal,
-    onClose: onCloseAiPointsModal,
-    onOpen: onOpenAiPointsModal
-  } = useDisclosure();
 
   const planContent = useMemo(() => {
     const plan = subPlans?.standard?.[level];
@@ -100,11 +94,15 @@ const StandardPlanContentList = ({
               amount: planContent.totalPoints
             })}
           </Box>
-          <QuestionTip
-            ml={1}
-            label={t('common:support.wallet.subscription.AI points click to read tip')}
-            onClick={onOpenAiPointsModal}
-          ></QuestionTip>
+          <ModelPriceModal>
+            {({ onOpen }) => (
+              <QuestionTip
+                ml={1}
+                label={t('common:support.wallet.subscription.AI points click to read tip')}
+                onClick={onOpen}
+              />
+            )}
+          </ModelPriceModal>
         </Flex>
       </Flex>
       <Flex alignItems={'center'}>
@@ -127,7 +125,6 @@ const StandardPlanContentList = ({
           <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
         </Flex>
       )}
-      {isOpenAiPointsModal && <ModelPriceModal onClose={onCloseAiPointsModal} />}
     </Grid>
   ) : null;
 };

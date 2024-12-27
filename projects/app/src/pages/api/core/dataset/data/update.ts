@@ -12,7 +12,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   // auth data permission
   const {
     collection: {
-      datasetId: { vectorModel }
+      dataset: { vectorModel }
     },
     teamId,
     tmbId

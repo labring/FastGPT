@@ -15,4 +15,4 @@ const QuestionTip = ({ label, maxW, ...props }: Props) => {
   );
 };
 
-export default QuestionTip;
+export default React.memo(QuestionTip);

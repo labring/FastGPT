@@ -92,7 +92,7 @@ const TeamSelector = ({
         : []),
       ...teamList
     ];
-  }, [showManage, teamList, router]);
+  }, [showManage, t, teamList, router]);
 
   return (
     <Box w={'100%'}>

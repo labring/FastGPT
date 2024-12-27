@@ -55,8 +55,7 @@
             "maxFiles": 5,
             "canSelectFile": true,
             "canSelectImg": true,
-            "required": true,
-            "toolDescription": "部署的searXNG服务的链接"
+            "required": true
           }
         ],
         "outputs": [

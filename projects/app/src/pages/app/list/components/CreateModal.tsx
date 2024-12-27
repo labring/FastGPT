@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react';
-import { Box, Flex, Button, ModalFooter, ModalBody, Input, Grid, Card } from '@chakra-ui/react';
+import { Box, Flex, Button, ModalBody, Input, Grid, Card } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -25,6 +25,7 @@ import {
   getTemplateMarketItemList
 } from '@/web/core/app/api/template';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 
 type FormType = {
   avatar: string;
@@ -70,13 +71,12 @@ const CreateModal = ({
     }
   });
   const typeData = typeMap.current[type];
-
-  const { data: templateList = [] } = useRequest2(getTemplateMarketItemList, {
-    manual: false
-  });
-  const filterTemplates = useMemo(() => {
-    return templateList.filter((item) => item.type === type).slice(0, 3);
-  }, [templateList, type]);
+  const { data: templateList = [], loading: isRequestTemplates } = useRequest2(
+    () => getTemplateMarketItemList({ isQuickTemplate: true, type }),
+    {
+      manual: false
+    }
+  );
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -127,13 +127,12 @@ const CreateModal = ({
         });
       }
 
-      const templateDetail = await getTemplateMarketItemDetail({ templateId: templateId });
-
+      const templateDetail = await getTemplateMarketItemDetail(templateId);
       return postCreateApp({
         parentId,
         avatar: data.avatar || templateDetail.avatar,
         name: data.name,
-        type: templateDetail.type,
+        type: templateDetail.type as AppTypeEnum,
         modules: templateDetail.workflow.nodes || [],
         edges: templateDetail.workflow.edges || [],
         chatConfig: templateDetail.workflow.chatConfig
@@ -158,7 +157,7 @@ const CreateModal = ({
       onClose={onClose}
       isCentered={!isPc}
       maxW={['90vw', '40rem']}
-      isLoading={isCreating}
+      isLoading={isCreating || isRequestTemplates}
     >
       <ModalBody px={9} pb={8}>
         <Box color={'myGray.800'} fontWeight={'bold'}>
@@ -205,7 +204,7 @@ const CreateModal = ({
         </Flex>
         <Grid
           userSelect={'none'}
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
+          gridTemplateColumns={templateList.length > 0 ? ['repeat(1,1fr)', 'repeat(2,1fr)'] : '1fr'}
           gridGap={[2, 4]}
         >
           <Card
@@ -231,9 +230,9 @@ const CreateModal = ({
               {typeData.emptyCreateText}
             </Box>
           </Card>
-          {filterTemplates.map((item) => (
+          {templateList.map((item) => (
             <Card
-              key={item.id}
+              key={item.templateId}
               p={4}
               borderRadius={'md'}
               borderWidth={'1px'}
@@ -271,17 +270,17 @@ const CreateModal = ({
                   h={'full'}
                   left={0}
                   right={0}
-                  bottom={0}
+                  bottom={1}
                   height={'40px'}
                   bg={'white'}
                   zIndex={1}
                 >
                   <Button
                     variant={'whiteBase'}
-                    h={'1.75rem'}
-                    borderRadius={'xl'}
+                    h={6}
+                    borderRadius={'sm'}
                     w={'40%'}
-                    onClick={handleSubmit((data) => onclickCreate(data, item.id))}
+                    onClick={handleSubmit((data) => onclickCreate(data, item.templateId))}
                   >
                     {t('app:templateMarket.Use')}
                   </Button>

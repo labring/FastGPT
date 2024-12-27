@@ -46,7 +46,7 @@ const agentFunName = 'request_function';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
-    user,
+    externalProvider,
     node: { name },
     histories,
     params: { content, history = 6, model, description, extractKeys }
@@ -123,7 +123,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [NodeOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
-      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
       tokens,
@@ -134,7 +134,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
-        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+        totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
         tokens
       }
@@ -211,7 +211,7 @@ ${description ? `- ${description}` : ''}
 };
 
 const toolChoice = async (props: ActionProps) => {
-  const { user, extractModel } = props;
+  const { externalProvider, extractModel } = props;
 
   const { filterMessages, agentFunction } = await getFunctionCallSchema(props);
 
@@ -233,7 +233,7 @@ const toolChoice = async (props: ActionProps) => {
       },
       extractModel
     ),
-    userKey: user.openaiAccount
+    userKey: externalProvider.openaiAccount
   });
 
   const arg: Record<string, any> = (() => {
@@ -263,7 +263,7 @@ const toolChoice = async (props: ActionProps) => {
 };
 
 const functionCall = async (props: ActionProps) => {
-  const { user, extractModel } = props;
+  const { externalProvider, extractModel } = props;
 
   const { agentFunction, filterMessages } = await getFunctionCallSchema(props);
   const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
@@ -281,7 +281,7 @@ const functionCall = async (props: ActionProps) => {
       },
       extractModel
     ),
-    userKey: user.openaiAccount
+    userKey: externalProvider.openaiAccount
   });
 
   try {
@@ -312,7 +312,7 @@ const functionCall = async (props: ActionProps) => {
 
 const completions = async ({
   extractModel,
-  user,
+  externalProvider,
   histories,
   params: { content, extractKeys, description = 'No special requirements' }
 }: ActionProps) => {
@@ -360,7 +360,7 @@ Human: ${content}`
       },
       extractModel
     ),
-    userKey: user.openaiAccount
+    userKey: externalProvider.openaiAccount
   });
   const answer = data.choices?.[0].message?.content || '';
 

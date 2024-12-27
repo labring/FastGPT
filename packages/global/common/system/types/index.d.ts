@@ -18,6 +18,14 @@ export type NavbarItemType = {
   isActive: boolean;
 };
 
+export type ExternalProviderWorkflowVarType = {
+  name: string;
+  key: string;
+  intro: string;
+  isOpen: boolean;
+  url?: string;
+};
+
 /* fastgpt main */
 export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
@@ -84,6 +92,7 @@ export type FastGPTFeConfigsType = {
   uploadFileMaxSize?: number;
   lafEnv?: string;
   navbarItems?: NavbarItemType[];
+  externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
 };
 
 export type SystemEnvType = {
