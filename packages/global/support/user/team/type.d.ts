@@ -4,6 +4,12 @@ import { LafAccountType } from './type';
 import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
 import { TeamPermission } from '../../permission/user/controller';
 
+export type ThirdPartyAccountType = {
+  lafAccount?: LafAccountType;
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariables?: Record<string, string>;
+};
+
 export type TeamSchema = {
   _id: string;
   name: string;
@@ -16,9 +22,8 @@ export type TeamSchema = {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
   };
-  lafAccount: LafAccountType;
   notificationAccount?: string;
-};
+} & ThirdPartyAccountType;
 
 export type tagsType = {
   label: string;
@@ -42,16 +47,9 @@ export type TeamMemberSchema = {
   defaultTeam: boolean;
 };
 
-export type TeamMemberWithUserSchema = Omit<TeamMemberSchema, 'userId'> & {
-  userId: UserModelSchema;
-};
-
-export type TeamMemberWithTeamSchema = Omit<TeamMemberSchema, 'teamId'> & {
-  teamId: TeamSchema;
-};
-
-export type TeamMemberWithTeamAndUserSchema = Omit<TeamMemberWithTeamSchema, 'userId'> & {
-  userId: UserModelSchema;
+export type TeamMemberWithTeamAndUserSchema = TeamMemberSchema & {
+  team: TeamSchema;
+  user: UserModelSchema;
 };
 
 export type TeamTmbItemType = {
@@ -66,10 +64,9 @@ export type TeamTmbItemType = {
   defaultTeam: boolean;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-  lafAccount?: LafAccountType;
   notificationAccount?: string;
   permission: TeamPermission;
-};
+} & ThirdPartyAccountType;
 
 export type TeamMemberItemType = {
   userId: string;
@@ -88,9 +85,14 @@ export type TeamTagItemType = {
 };
 
 export type LafAccountType = {
-  token: string;
   appid: string;
+  token: string;
   pat: string;
+};
+
+export type OpenaiAccountType = {
+  key: string;
+  baseUrl: string;
 };
 
 export type TeamInvoiceHeaderType = {

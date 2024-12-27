@@ -83,11 +83,6 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   app: T;
 };
 
-// to handle MongoDB querying
-export type OutLinkWithAppType = Omit<OutLinkSchema, 'appId'> & {
-  appId: AppSchema;
-};
-
 // Edit the Outlink
 export type OutLinkEditType<T = undefined> = {
   _id?: string;

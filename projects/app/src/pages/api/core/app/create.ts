@@ -45,8 +45,9 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
 
   // 上限校验
   await checkTeamAppLimit(teamId);
-  const tmb = await MongoTeamMember.findById({ _id: tmbId });
-  const user = await MongoUser.findById({ _id: tmb?.userId });
+  const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId').populate<{
+    user: { avatar: string; username: string };
+  }>('user', 'avatar username');
 
   // 创建app
   const appId = await onCreateApp({
@@ -59,8 +60,8 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     chatConfig,
     teamId,
     tmbId,
-    userAvatar: user?.avatar,
-    username: user?.username
+    userAvatar: tmb?.user?.avatar,
+    username: tmb?.user?.username
   });
 
   pushTrack.createApp({
@@ -132,6 +133,7 @@ export const onCreateApp = async ({
       await MongoAppVersion.create(
         [
           {
+            tmbId,
             appId,
             nodes: modules,
             edges,

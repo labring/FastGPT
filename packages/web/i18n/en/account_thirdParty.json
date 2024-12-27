@@ -1,0 +1,16 @@
+{
+  "configured": "Configured",
+  "error.no_permission": "Please contact the administrator to configure",
+  "laf_account": "laf account",
+  "no_intro": "No explanation yet",
+  "not_configured": "Not configured",
+  "open_api_notice": "You can fill in the relevant key of OpenAI/OneAPI. \nIf you fill in this content, the online platform using [AI Dialogue], [Problem Classification] and [Content Extraction] will use the Key you filled in, and there will be no charge. \nPlease pay attention to whether your Key has permission to access the corresponding model. \nGPT models can choose FastAI.",
+  "openai_account_configuration": "OpenAI/OneAPI account",
+  "request_address_notice": "Request address, default is openai official. \nThe forwarding address can be filled in, but \\\"v1\\\" is not automatically completed.",
+  "third_party_account": "Third-party account",
+  "third_party_account_desc": "The administrator can configure third-party accounts or variables here, and the account will be used by all team members.",
+  "unavailable": "Get usage exception",
+  "usage": "Usage",
+  "value_not_return_tip": "After the parameters are configured, they will not return to the front end again and do not need to be leaked to other members.",
+  "value_placeholder": "Enter parameter values. \nEntering a null value means deleting the configuration."
+}

@@ -104,9 +104,6 @@ export const loadRequestMessages = async ({
 }) => {
   // Load image to base64
   const loadImageToBase64 = async (messages: ChatCompletionContentPart[]) => {
-    if (process.env.MULTIPLE_DATA_TO_BASE64 === 'false') {
-      return messages;
-    }
     return Promise.all(
       messages.map(async (item) => {
         if (item.type === 'image_url') {
@@ -125,7 +122,7 @@ export const loadRequestMessages = async ({
 
           try {
             // If imgUrl is a local path, load image from local, and set url to base64
-            if (imgUrl.startsWith('/')) {
+            if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
               addLog.debug('Load image from local server', {
                 baseUrl: serverRequestBaseUrl,
                 requestUrl: imgUrl

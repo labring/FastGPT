@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -24,11 +24,11 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useWorkflowUtils } from '../../hooks/useUtils';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
-import { getDocPath } from '@/web/common/system/doc';
 import { WorkflowNodeEdgeContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -136,6 +136,7 @@ const NodeCard = (props: Props) => {
   } = useConfirm({
     content: t('workflow:Confirm_sync_node')
   });
+
   const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
 
   const { runAsync: onClickSyncVersion } = useRequest2(
@@ -166,7 +167,7 @@ const NodeCard = (props: Props) => {
             <ToolTargetHandle show={showToolHandle} nodeId={nodeId} />
 
             {/* avatar and name */}
-            <Flex alignItems={'center'} mb={intro ? 1 : 0}>
+            <Flex alignItems={'center'} mb={1}>
               {node?.flowNodeType !== FlowNodeTypeEnum.stopTool && (
                 <Flex
                   alignItems={'center'}
@@ -271,15 +272,19 @@ const NodeCard = (props: Props) => {
               {!!nodeTemplate?.diagram && node?.courseUrl && (
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
-              {node?.courseUrl && !hasNewVersion && (
-                <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
-                  <MyIconButton
-                    ml={1}
-                    icon="book"
-                    color={'primary.600'}
-                    onClick={() => window.open(getDocPath(node.courseUrl || ''), '_blank')}
-                  />
-                </MyTooltip>
+              {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
+                <UseGuideModal
+                  title={nodeTemplate?.name}
+                  iconSrc={nodeTemplate?.avatar}
+                  text={nodeTemplate?.userGuide}
+                  link={nodeTemplate?.courseUrl}
+                >
+                  {({ onClick }) => (
+                    <MyTooltip label={t('workflow:Node.Open_Node_Course')}>
+                      <MyIconButton ml={1} icon="book" color={'primary.600'} onClick={onClick} />
+                    </MyTooltip>
+                  )}
+                </UseGuideModal>
               )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
@@ -291,6 +296,7 @@ const NodeCard = (props: Props) => {
     );
   }, [
     node?.flowNodeType,
+    node?.courseUrl,
     showToolHandle,
     nodeId,
     isFolded,
@@ -301,7 +307,10 @@ const NodeCard = (props: Props) => {
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
-    node?.courseUrl,
+    nodeTemplate?.userGuide,
+    nodeTemplate?.name,
+    nodeTemplate?.avatar,
+    nodeTemplate?.courseUrl,
     intro,
     menuForbid,
     nodeList,

@@ -1,6 +1,7 @@
 import 'i18next';
 import account_team from '../i18n/zh-CN/account_team.json';
 import account from '../i18n/zh-CN/account.json';
+import account_thirdParty from '../i18n/zh-CN/account_thirdParty.json';
 import account_promotion from '../i18n/zh-CN/account_promotion.json';
 import account_inform from '../i18n/zh-CN/account_inform.json';
 import account_setting from '../i18n/zh-CN/account_setting.json';
@@ -37,6 +38,7 @@ export interface I18nNamespaces {
   account_promotion: typeof account_promotion;
   account: typeof account;
   account_team: typeof account_team;
+  account_thirdParty: typeof account_thirdParty;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
@@ -69,6 +71,7 @@ declare module 'i18next' {
       'account_setting',
       'account_inform',
       'account_promotion',
+      'account_thirdParty',
       'account',
       'account_team'
     ];

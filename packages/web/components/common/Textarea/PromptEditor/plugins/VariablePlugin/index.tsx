@@ -5,8 +5,8 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { getHashtagRegexString } from './utils';
 import { registerLexicalTextEntity } from '../../utils';
-import { $createVariableNode, VariableNode } from './node';
 import { EditorVariablePickerType } from '../../type';
+import { $createVariableNode, VariableNode } from './node';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
@@ -22,7 +22,11 @@ export default function VariablePlugin({ variables }: { variables: EditorVariabl
   }, [variables]);
 
   const createVariableNode = useCallback((textNode: TextNode): VariableNode => {
-    return $createVariableNode(textNode.getTextContent());
+    const currentVariable = variables.find(
+      (item) => item.key === textNode.getTextContent().replace(/[{}]/g, '')
+    );
+    const variableLabel = currentVariable?.label;
+    return $createVariableNode(textNode.getTextContent(), variableLabel || '');
   }, []);
 
   const getVariableMatch = useCallback((text: string) => {

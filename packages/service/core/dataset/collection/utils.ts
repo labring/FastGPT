@@ -130,7 +130,7 @@ export const collectionTagsToTagLabel = async ({
 };
 
 export const syncCollection = async (collection: CollectionWithDatasetType) => {
-  const dataset = collection.datasetId;
+  const dataset = collection.dataset;
 
   if (
     collection.type !== DatasetCollectionTypeEnum.link &&
@@ -183,7 +183,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         teamId: collection.teamId,
         tmbId: collection.tmbId,
         name: collection.name,
-        datasetId: collection.datasetId._id,
+        datasetId: collection.datasetId,
         parentId: collection.parentId,
         type: collection.type,
 

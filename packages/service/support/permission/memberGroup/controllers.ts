@@ -66,46 +66,17 @@ export const getGroupsByTmbId = async ({
           },
           ...(role ? { role: { $in: role } } : {})
         })
-          .populate('groupId')
+          .populate<{ group: MemberGroupSchemaType }>('group')
           .lean()
-      ).map((item) => {
-        return {
-          ...(item.groupId as any as MemberGroupSchemaType)
-        };
-      }),
-
+      ).map((item) => item.group),
       role ? [] : getTeamDefaultGroup({ teamId })
     ])
   ).flat();
-
-export const getTmbByGroupId = async (groupId: string) => {
-  return (
-    await MongoGroupMemberModel.find({
-      groupId
-    })
-      .populate('tmbId')
-      .lean()
-  ).map((item) => {
-    return {
-      ...(item.tmbId as any as MemberGroupSchemaType)
-    };
-  });
-};
 
 export const getGroupMembersByGroupId = async (groupId: string) => {
   return await MongoGroupMemberModel.find({
     groupId
   }).lean();
-};
-
-export const getGroupMembersWithInfoByGroupId = async (groupId: string) => {
-  return (
-    await MongoGroupMemberModel.find({
-      groupId
-    })
-      .populate('tmbId')
-      .lean()
-  ).map((item) => item.tmbId) as any as TeamMemberSchema[]; // HACK: type casting
 };
 
 /**

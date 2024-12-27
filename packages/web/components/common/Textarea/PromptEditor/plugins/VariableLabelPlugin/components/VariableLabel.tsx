@@ -20,31 +20,22 @@ export default function VariableLabel({
       <Box
         display="inline-flex"
         alignItems="center"
-        m={'2px'}
+        mx={'2px'}
         rounded={'4px'}
         px={1.5}
-        py={'1px'}
         bg={parentLabel !== 'undefined' ? 'primary.50' : 'red.50'}
         color={parentLabel !== 'undefined' ? 'myGray.900' : 'red.600'}
+        transform={parentLabel !== 'undefined' ? 'translateY(3px)' : ''}
       >
         {parentLabel !== 'undefined' ? (
-          <Flex alignItems={'center'} color={'myGray.600'}>
-            <Avatar
-              src={nodeAvatar as any}
-              w={'1rem'}
-              mr={1}
-              borderRadius={'xs'}
-              display={'inline-flex'}
-              verticalAlign={'middle'}
-            />
+          <Flex alignItems={'center'} color={'myGray.600'} fontSize={'sm'}>
+            <Avatar src={nodeAvatar as any} w={'1rem'} mr={1} borderRadius={'xs'} />
             {parentLabel}
             <ChevronRightIcon color={'myGray.500'} />
             {childLabel}
           </Flex>
         ) : (
-          <>
-            <Box>{t('common:invalid_variable')}</Box>
-          </>
+          <Box>{t('common:invalid_variable')}</Box>
         )}
       </Box>
     </>

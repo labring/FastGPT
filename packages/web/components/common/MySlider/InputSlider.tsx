@@ -77,4 +77,4 @@ const InputSlider = ({
   );
 };
 
-export default InputSlider;
+export default React.memo(InputSlider);

@@ -24,11 +24,9 @@ import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import { addLog } from '../../../../../common/system/log';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { i18nT } from '../../../../../../web/i18n/utils';
 
 type ToolRunResponseType = {
   toolRunResponse: DispatchFlowResponse;
@@ -92,7 +90,7 @@ export const runToolWithToolChoice = async (
     runtimeNodes,
     runtimeEdges,
     stream,
-    user,
+    externalProvider,
     workflowStreamResponse,
     params: { temperature, maxToken, aiChatVision }
   } = workflowProps;
@@ -278,7 +276,7 @@ export const runToolWithToolChoice = async (
     getEmptyResponseTip
   } = await createChatCompletion({
     body: requestBody,
-    userKey: user.openaiAccount,
+    userKey: externalProvider.openaiAccount,
     options: {
       headers: {
         Accept: 'application/json, text/plain, */*'

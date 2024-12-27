@@ -1,9 +1,6 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type {
-  PushDatasetDataProps,
-  PushDatasetDataResponse
-} from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataProps } from '@fastgpt/global/core/dataset/api.d';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
@@ -42,9 +39,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     ...body,
     teamId,
     tmbId,
-    datasetId: collection.datasetId._id,
-    agentModel: collection.datasetId.agentModel,
-    vectorModel: collection.datasetId.vectorModel
+    datasetId: collection.datasetId,
+    agentModel: collection.dataset.agentModel,
+    vectorModel: collection.dataset.vectorModel
   });
 }
 

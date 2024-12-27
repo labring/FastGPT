@@ -46,7 +46,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     requestOrigin,
     chatConfig,
     runningAppInfo: { teamId },
-    user,
+    externalProvider,
     params: {
       model,
       systemPrompt,
@@ -153,7 +153,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   })();
 
   // censor model and system key
-  if (toolModel.censor && !user.openaiAccount?.key) {
+  if (toolModel.censor && !externalProvider.openaiAccount?.key) {
     await postTextCensor({
       text: `${systemPrompt}
           ${userChatInput}
@@ -228,7 +228,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     tokens: toolNodeTokens,
     modelType: ModelTypeEnum.llm
   });
-  const toolAIUsage = user.openaiAccount?.key ? 0 : totalPoints;
+  const toolAIUsage = externalProvider.openaiAccount?.key ? 0 : totalPoints;
 
   // flat child tool response
   const childToolResponse = dispatchFlowResponse.map((item) => item.flowResponses).flat();

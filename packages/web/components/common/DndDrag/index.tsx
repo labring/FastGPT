@@ -57,4 +57,4 @@ function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) 
   );
 }
 
-export default DndDrag;
+export default React.memo(DndDrag) as <T>(props: Props<T>) => React.ReactElement;
