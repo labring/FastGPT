@@ -450,6 +450,8 @@
   "core.chat.response.Extension model": "问题优化模型",
   "core.chat.response.Read complete response": "查看详情",
   "core.chat.response.Read complete response tips": "点击查看详细流程",
+  "core.chat.response.Tool call input tokens": "工具调用输入 tokens 消耗",
+  "core.chat.response.Tool call output tokens": "工具调用输出 tokens 消耗",
   "core.chat.response.Tool call tokens": "工具调用 tokens 消耗",
   "core.chat.response.context total length": "上下文总长度",
   "core.chat.response.loop_input": "输入数组",

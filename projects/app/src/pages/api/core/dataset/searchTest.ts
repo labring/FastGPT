@@ -81,7 +81,8 @@ async function handler(req: NextApiRequest) {
     ...(aiExtensionResult &&
       extensionModel && {
         extensionModel: extensionModel.name,
-        extensionTokens: aiExtensionResult.tokens
+        extensionInputTokens: aiExtensionResult.inputTokens,
+        extensionOutputTokens: aiExtensionResult.outputTokens
       })
   });
   if (apikey) {

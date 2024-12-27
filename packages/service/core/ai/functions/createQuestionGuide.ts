@@ -20,7 +20,8 @@ export async function createQuestionGuide({
   customPrompt?: string;
 }): Promise<{
   result: string[];
-  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
 }> {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
@@ -51,13 +52,15 @@ export async function createQuestionGuide({
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
 
-  const tokens = await countGptMessagesTokens(concatMessages);
+  const inputTokens = data.usage?.prompt_tokens || 0;
+  const outputTokens = data.usage?.completion_tokens || 0;
 
   if (start === -1 || end === -1) {
     addLog.warn('Create question guide error', { answer });
     return {
       result: [],
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 
@@ -69,14 +72,16 @@ export async function createQuestionGuide({
   try {
     return {
       result: json5.parse(jsonStr),
-      tokens
+      inputTokens,
+      outputTokens
     };
   } catch (error) {
     console.log(error);
 
     return {
       result: [],
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 }

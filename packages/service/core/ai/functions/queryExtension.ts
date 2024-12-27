@@ -121,7 +121,8 @@ export const queryExtension = async ({
   rawQuery: string;
   extensionQueries: string[];
   model: string;
-  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
 }> => {
   const systemFewShot = chatBg
     ? `Q: 对话背景。
@@ -166,7 +167,8 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: [],
       model,
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 
@@ -181,7 +183,8 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: Array.isArray(queries) ? queries : [],
       model,
-      tokens: await countGptMessagesTokens(messages)
+      inputTokens: result.usage?.prompt_tokens || 0,
+      outputTokens: result.usage?.completion_tokens || 0
     };
   } catch (error) {
     addLog.error(`Query extension error`, error);
@@ -189,7 +192,8 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: [],
       model,
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 };

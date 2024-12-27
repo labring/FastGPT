@@ -159,6 +159,8 @@ export type DispatchNodeResponseType = {
 
   // tool
   toolCallTokens?: number;
+  toolCallInputTokens?: number;
+  toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
 
