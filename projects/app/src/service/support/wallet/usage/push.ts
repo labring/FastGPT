@@ -37,7 +37,9 @@ export const pushChatUsage = ({
       moduleName: item.moduleName,
       amount: item.totalPoints || 0,
       model: item.model,
-      tokens: item.tokens
+      tokens: item.tokens,
+      inputTokens: item.inputTokens,
+      outputTokens: item.outputTokens
     }))
   });
   addLog.info(`finish completions`, {
@@ -88,7 +90,8 @@ export const pushGenerateVectorUsage = ({
   model,
   source = UsageSourceEnum.fastgpt,
   extensionModel,
-  extensionTokens
+  extensionInputTokens,
+  extensionOutputTokens
 }: {
   billId?: string;
   teamId: string;
@@ -98,7 +101,8 @@ export const pushGenerateVectorUsage = ({
   source?: UsageSourceEnum;
 
   extensionModel?: string;
-  extensionTokens?: number;
+  extensionInputTokens?: number;
+  extensionOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
     modelType: ModelTypeEnum.vector,
@@ -107,7 +111,7 @@ export const pushGenerateVectorUsage = ({
   });
 
   const { extensionTotalPoints, extensionModelName } = (() => {
-    if (!extensionModel || !extensionTokens)
+    if (!extensionModel || !extensionInputTokens)
       return {
         extensionTotalPoints: 0,
         extensionModelName: ''
@@ -115,7 +119,8 @@ export const pushGenerateVectorUsage = ({
     const { totalPoints, modelName } = formatModelChars2Points({
       modelType: ModelTypeEnum.llm,
       model: extensionModel,
-      tokens: extensionTokens
+      inputTokens: extensionInputTokens,
+      outputTokens: extensionOutputTokens
     });
     return {
       extensionTotalPoints: totalPoints,
@@ -155,7 +160,8 @@ export const pushGenerateVectorUsage = ({
                 moduleName: 'core.module.template.Query extension',
                 amount: extensionTotalPoints,
                 model: extensionModelName,
-                tokens: extensionTokens
+                inputTokens: extensionInputTokens,
+                outputTokens: extensionOutputTokens
               }
             ]
           : [])
@@ -166,17 +172,20 @@ export const pushGenerateVectorUsage = ({
 };
 
 export const pushQuestionGuideUsage = ({
-  tokens,
+  inputTokens,
+  outputTokens,
   teamId,
   tmbId
 }: {
-  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
   teamId: string;
   tmbId: string;
 }) => {
   const qgModel = global.llmModels[0];
   const { totalPoints, modelName } = formatModelChars2Points({
-    tokens,
+    inputTokens,
+    outputTokens,
     model: qgModel.model,
     modelType: ModelTypeEnum.llm
   });
@@ -192,7 +201,8 @@ export const pushQuestionGuideUsage = ({
         moduleName: 'core.app.Question Guide',
         amount: totalPoints,
         model: modelName,
-        tokens
+        inputTokens,
+        outputTokens
       }
     ]
   });

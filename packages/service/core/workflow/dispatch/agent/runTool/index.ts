@@ -165,6 +165,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     toolWorkflowInteractiveResponse,
     dispatchFlowResponse, // tool flow response
     toolNodeTokens,
+    toolNodeInputTokens,
+    toolNodeOutputTokens,
     completeMessages = [], // The actual message sent to AI(just save text)
     assistantResponses = [], // FastGPT system store assistant.value response
     runTimes
@@ -225,7 +227,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    tokens: toolNodeTokens,
+    inputTokens: toolNodeInputTokens,
+    outputTokens: toolNodeOutputTokens,
     modelType: ModelTypeEnum.llm
   });
   const toolAIUsage = externalProvider.openaiAccount?.key ? 0 : totalPoints;
@@ -255,6 +258,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       // 展示的积分消耗
       totalPoints: totalPointsUsage,
       toolCallTokens: toolNodeTokens,
+      toolCallInputTokens: toolNodeInputTokens,
+      toolCallOutputTokens: toolNodeOutputTokens,
       childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),
       model: modelName,
       query: userChatInput,
@@ -272,7 +277,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         moduleName: name,
         totalPoints: toolAIUsage,
         model: modelName,
-        tokens: toolNodeTokens
+        inputTokens: toolNodeInputTokens,
+        outputTokens: toolNodeOutputTokens
       },
       // 工具的消耗
       ...flatUsages

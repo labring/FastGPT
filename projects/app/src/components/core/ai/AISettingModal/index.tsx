@@ -28,7 +28,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { getWebLLMModel } from '@/web/common/system/utils';
+import { getWebLLMModel, getWebLLMModelPriceType } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
@@ -82,6 +82,7 @@ const AIChatSettingsModal = ({
   const useVision = watch('aiChatVision');
 
   const selectedModel = getWebLLMModel(model);
+  const isIOType = getWebLLMModelPriceType();
   const llmSupportVision = !!selectedModel?.vision;
 
   const tokenLimit = useMemo(() => {
@@ -174,11 +175,26 @@ const AIChatSettingsModal = ({
             </Thead>
             <Tbody>
               <Tr color={'myGray.900'}>
-                <Td pt={0} pb={2}>
-                  {t('common:support.wallet.Ai point every thousand tokens', {
-                    points: selectedModel?.charsPointsPrice || 0
-                  })}
-                </Td>
+                {!isIOType ? (
+                  <Td pt={0} pb={2}>
+                    {t('common:support.wallet.Ai point every thousand tokens', {
+                      points: selectedModel?.charsPointsPrice || 0
+                    })}
+                  </Td>
+                ) : (
+                  <Td pt={0} pb={2}>
+                    <Box>
+                      {t('common:support.wallet.Ai point every thousand tokens_input', {
+                        points: selectedModel?.inputPrice || 0
+                      })}
+                    </Box>
+                    <Box>
+                      {t('common:support.wallet.Ai point every thousand tokens_output', {
+                        points: selectedModel?.outputPrice || 0
+                      })}
+                    </Box>
+                  </Td>
+                )}
                 <Td pt={0} pb={2}>
                   {Math.round((selectedModel?.maxContext || 4096) / 1000)}K
                 </Td>

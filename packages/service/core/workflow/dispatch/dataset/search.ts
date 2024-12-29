@@ -146,12 +146,14 @@ export async function dispatchDatasetSearch(
   if (aiExtensionResult) {
     const { totalPoints, modelName } = formatModelChars2Points({
       model: aiExtensionResult.model,
-      tokens: aiExtensionResult.tokens,
+      inputTokens: aiExtensionResult.inputTokens,
+      outputTokens: aiExtensionResult.outputTokens,
       modelType: ModelTypeEnum.llm
     });
 
     responseData.totalPoints += totalPoints;
-    responseData.tokens = aiExtensionResult.tokens;
+    responseData.inputTokens = aiExtensionResult.inputTokens;
+    responseData.outputTokens = aiExtensionResult.outputTokens;
     responseData.extensionModel = modelName;
     responseData.extensionResult =
       aiExtensionResult.extensionQueries?.join('\n') ||
@@ -161,7 +163,8 @@ export async function dispatchDatasetSearch(
       totalPoints,
       moduleName: 'core.module.template.Query extension',
       model: modelName,
-      tokens: aiExtensionResult.tokens
+      inputTokens: aiExtensionResult.inputTokens,
+      outputTokens: aiExtensionResult.outputTokens
     });
   }
 

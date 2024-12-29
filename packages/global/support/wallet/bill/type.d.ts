@@ -23,10 +23,14 @@ export type BillSchemaType = {
 };
 
 export type ChatNodeUsageType = {
-  tokens?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   totalPoints: number;
   moduleName: string;
   model?: string;
+
+  // deprecated
+  tokens?: number;
 };
 
 export type InvoiceType = {

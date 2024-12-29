@@ -107,7 +107,9 @@ export type DispatchNodeResponseType = {
   mergeSignId?: string;
 
   // bill
-  tokens?: number;
+  tokens?: number; // deprecated
+  inputTokens?: number;
+  outputTokens?: number;
   model?: string;
   contextTotalLen?: number;
   totalPoints?: number;
@@ -157,6 +159,8 @@ export type DispatchNodeResponseType = {
 
   // tool
   toolCallTokens?: number;
+  toolCallInputTokens?: number;
+  toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
 

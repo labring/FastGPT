@@ -11,6 +11,8 @@ export type LLMModelItemType = {
   maxTemperature: number;
 
   charsPointsPrice: number; // 1k chars=n points
+  inputPrice?: number; // 1k tokens=n points
+  outputPrice?: number; // 1k tokens=n points
 
   censor?: boolean;
   vision?: boolean;
