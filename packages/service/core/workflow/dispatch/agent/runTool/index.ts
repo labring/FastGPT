@@ -275,8 +275,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       // 工具调用本身的积分消耗
       {
         moduleName: name,
-        totalPoints: toolAIUsage,
         model: modelName,
+        totalPoints: toolAIUsage,
         inputTokens: toolNodeInputTokens,
         outputTokens: toolNodeOutputTokens
       },

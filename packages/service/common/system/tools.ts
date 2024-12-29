@@ -15,6 +15,9 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   global.subPlans = config.subPlans;
 
   global.llmModels = config.llmModels;
+  global.llmModelPriceType = global.llmModels.some((item) => typeof item.inputPrice === 'number')
+    ? 'IO'
+    : 'Tokens';
   global.vectorModels = config.vectorModels;
   global.audioSpeechModels = config.audioSpeechModels;
   global.whisperModel = config.whisperModel;

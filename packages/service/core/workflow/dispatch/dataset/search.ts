@@ -120,14 +120,14 @@ export async function dispatchDatasetSearch(
   // vector
   const { totalPoints, modelName } = formatModelChars2Points({
     model: vectorModel.model,
-    tokens,
+    inputTokens: tokens,
     modelType: ModelTypeEnum.vector
   });
   const responseData: DispatchNodeResponseType & { totalPoints: number } = {
     totalPoints,
     query: concatQueries.join('\n'),
     model: modelName,
-    tokens,
+    inputTokens: tokens,
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
@@ -139,7 +139,7 @@ export async function dispatchDatasetSearch(
       totalPoints,
       moduleName: node.name,
       model: modelName,
-      tokens
+      inputTokens: tokens
     }
   ];
 

@@ -431,7 +431,7 @@ export const runToolWithToolChoice = async (
 
     // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
     const inputTokens = await countGptMessagesTokens(requestMessages, tools);
-    const outputTokens = await countGptMessagesTokens(assistantToolMsgParams, tools);
+    const outputTokens = await countGptMessagesTokens(assistantToolMsgParams);
 
     /* 
         ...
@@ -533,8 +533,8 @@ export const runToolWithToolChoice = async (
       content: answer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
-    const inputTokens = await countGptMessagesTokens(filterMessages, tools);
-    const outputTokens = await countGptMessagesTokens([gptAssistantResponse], tools);
+    const inputTokens = await countGptMessagesTokens(requestMessages, tools);
+    const outputTokens = await countGptMessagesTokens([gptAssistantResponse]);
 
     // concat tool assistant
     const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;

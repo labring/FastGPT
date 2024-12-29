@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
     pushGenerateVectorUsage({
       teamId,
       tmbId,
-      tokens,
+      inputTokens: tokens,
       model: vectorModel
     });
   } else {

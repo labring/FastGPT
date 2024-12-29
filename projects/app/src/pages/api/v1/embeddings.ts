@@ -57,7 +57,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { totalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    tokens,
+    inputTokens: tokens,
     model,
     billId,
     source: getUsageSourceByAuthType({ authType })

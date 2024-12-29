@@ -4,9 +4,7 @@ export const getLLMModel = (model?: string) => {
     global.llmModels[0]
   );
 };
-export const getLLMModelPriceType = () => {
-  return global.llmModels.some((item) => item.inputPrice || item.outputPrice);
-};
+
 export const getDatasetModel = (model?: string) => {
   return (
     global.llmModels

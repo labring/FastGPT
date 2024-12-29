@@ -74,7 +74,7 @@ async function handler(req: NextApiRequest) {
   const { totalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    tokens,
+    inputTokens: tokens,
     model: dataset.vectorModel,
     source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 

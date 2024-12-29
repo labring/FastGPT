@@ -288,7 +288,7 @@ export const runToolWithPromptCall = async (
       content: replaceAnswer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
-    const inputTokens = await countGptMessagesTokens(completeMessages, undefined);
+    const inputTokens = await countGptMessagesTokens(requestMessages);
     const outputTokens = await countGptMessagesTokens([gptAssistantResponse]);
 
     // concat tool assistant
@@ -373,17 +373,8 @@ export const runToolWithPromptCall = async (
     function_call: toolJson
   };
 
-  /* 
-    ...
-    user
-    assistant: tool data
-  */
-  const concatToolMessages = [
-    ...requestMessages,
-    assistantToolMsgParams
-  ] as ChatCompletionMessageParam[];
   // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
-  const inputTokens = await countGptMessagesTokens(concatToolMessages, undefined);
+  const inputTokens = await countGptMessagesTokens(requestMessages);
   const outputTokens = await countGptMessagesTokens([assistantToolMsgParams]);
 
   /* 

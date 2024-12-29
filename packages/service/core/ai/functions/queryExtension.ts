@@ -1,7 +1,7 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { createChatCompletion } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
+import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
 import { llmCompletionsBodyFormat } from '../utils';
@@ -183,8 +183,8 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: Array.isArray(queries) ? queries : [],
       model,
-      inputTokens: result.usage?.prompt_tokens || 0,
-      outputTokens: result.usage?.completion_tokens || 0
+      inputTokens: await countGptMessagesTokens(messages),
+      outputTokens: await countPromptTokens(answer)
     };
   } catch (error) {
     addLog.error(`Query extension error`, error);

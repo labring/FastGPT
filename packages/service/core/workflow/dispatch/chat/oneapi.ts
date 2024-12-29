@@ -15,7 +15,7 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { countMessagesTokens } from '../../../../common/string/tiktoken/index';
+import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
@@ -228,8 +228,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const completeMessages = [...requestMessages, ...AIMessages];
   const chatCompleteMessages = GPTMessages2Chats(completeMessages);
 
-  const inputTokens = await countMessagesTokens(GPTMessages2Chats(requestMessages));
-  const outputTokens = await countMessagesTokens(GPTMessages2Chats(AIMessages));
+  const inputTokens = await countGptMessagesTokens(requestMessages);
+  const outputTokens = await countGptMessagesTokens(AIMessages);
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
@@ -243,6 +243,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
+      tokens: inputTokens + outputTokens,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       query: `${userChatInput}`,

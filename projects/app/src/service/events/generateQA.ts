@@ -153,7 +153,8 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        tokens: await countGptMessagesTokens(messages),
+        inputTokens: await countGptMessagesTokens(messages),
+        outputTokens: await countGptMessagesTokens([{ role: 'assistant', content: answer }]),
         billId: data.billId,
         model: modelData.model
       });

@@ -89,7 +89,7 @@ async function handler(req: NextApiRequest) {
   pushGenerateVectorUsage({
     teamId,
     tmbId,
-    tokens,
+    inputTokens: tokens,
     model: vectorModelData.model
   });
 

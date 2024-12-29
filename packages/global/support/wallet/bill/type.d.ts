@@ -30,7 +30,7 @@ export type ChatNodeUsageType = {
   model?: string;
 
   // deprecated
-  tokens?: number;
+  // tokens?: number;
 };
 
 export type InvoiceType = {
