@@ -12,7 +12,10 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
-import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
+import {
+  countGptMessagesTokens,
+  countPromptTokens
+} from '@fastgpt/service/common/string/tiktoken/index';
 import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
@@ -154,7 +157,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
         teamId: data.teamId,
         tmbId: data.tmbId,
         inputTokens: await countGptMessagesTokens(messages),
-        outputTokens: await countGptMessagesTokens([{ role: 'assistant', content: answer }]),
+        outputTokens: await countPromptTokens(answer),
         billId: data.billId,
         model: modelData.model
       });
