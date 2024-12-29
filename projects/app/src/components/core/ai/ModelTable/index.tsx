@@ -27,6 +27,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
+import { getWebLLMModelPriceType } from '@/web/common/system/utils';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -55,12 +56,13 @@ const ModelTable = () => {
   const [search, setSearch] = useState('');
 
   const { llmModelList, audioSpeechModelList, vectorModelList, whisperModel } = useSystemStore();
+  const isIOType = getWebLLMModelPriceType();
 
   const modelList = useMemo(() => {
     const formatLLMModelList = llmModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.chat'),
-      priceLabel: llmModelList.some((item) => item.inputPrice || item.outputPrice) ? (
+      priceLabel: isIOType ? (
         <Box>
           <Flex>
             {`${t('common:common.Input')}:`}

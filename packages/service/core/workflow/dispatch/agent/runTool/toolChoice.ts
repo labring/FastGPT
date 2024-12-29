@@ -590,7 +590,8 @@ async function streamResponse({
           text: content
         })
       });
-    } else if (responseChoice?.tool_calls?.[0]) {
+    }
+    if (responseChoice?.tool_calls?.[0]) {
       const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
       // In a stream response, only one tool is returned at a time.  If have id, description is executing a tool
       if (toolCall.id || callingTool) {
