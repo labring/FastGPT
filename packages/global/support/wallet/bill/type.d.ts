@@ -28,9 +28,6 @@ export type ChatNodeUsageType = {
   totalPoints: number;
   moduleName: string;
   model?: string;
-
-  // deprecated
-  // tokens?: number;
 };
 
 export type InvoiceType = {
