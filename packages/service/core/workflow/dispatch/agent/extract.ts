@@ -3,7 +3,8 @@ import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import {
   countMessagesTokens,
-  countGptMessagesTokens
+  countGptMessagesTokens,
+  countPromptTokens
 } from '../../../../common/string/tiktoken/index';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatCompletion } from '../../../ai/config';
@@ -301,7 +302,7 @@ const functionCall = async (props: ActionProps) => {
     ];
 
     const inputTokens = await countGptMessagesTokens(filterMessages, undefined, functions);
-    const outputTokens = await countGptMessagesTokens(AIMessages, undefined, functions);
+    const outputTokens = await countGptMessagesTokens(AIMessages);
 
     return {
       arg,
@@ -382,7 +383,7 @@ Human: ${content}`
     return {
       rawResponse: answer,
       inputTokens: await countMessagesTokens(messages),
-      outputTokens: 0,
+      outputTokens: await countPromptTokens(answer),
       arg: {}
     };
   }
@@ -390,8 +391,8 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      inputTokens: data.usage?.prompt_tokens || 0,
-      outputTokens: data.usage?.completion_tokens || 0,
+      inputTokens: await countMessagesTokens(messages),
+      outputTokens: await countPromptTokens(answer),
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
@@ -400,7 +401,7 @@ Human: ${content}`
     return {
       rawResponse: answer,
       inputTokens: await countMessagesTokens(messages),
-      outputTokens: 0,
+      outputTokens: await countPromptTokens(answer),
       arg: {}
     };
   }
