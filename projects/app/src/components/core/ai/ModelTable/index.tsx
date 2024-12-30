@@ -60,14 +60,32 @@ const ModelTable = () => {
     const formatLLMModelList = llmModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.chat'),
-      priceLabel: (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
+      priceLabel:
+        typeof item.inputPrice === 'number' ? (
+          <Box>
+            <Flex>
+              {`${t('common:common.Input')}:`}
+              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
+                {item.inputPrice || 0}
+              </Box>
+              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+            </Flex>
+            <Flex>
+              {`${t('common:common.Output')}:`}
+              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
+                {item.outputPrice || 0}
+              </Box>
+              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+            </Flex>
           </Box>
-          {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ),
+        ) : (
+          <Flex color={'myGray.700'}>
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice}
+            </Box>
+            {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+          </Flex>
+        ),
       tagColor: 'blue'
     }));
     const formatVectorModelList = vectorModelList.map((item) => ({
@@ -149,13 +167,13 @@ const ModelTable = () => {
 
     return filterList;
   }, [
-    provider,
-    modelType,
     llmModelList,
     vectorModelList,
     audioSpeechModelList,
     whisperModel,
     t,
+    modelType,
+    provider,
     search
   ]);
 

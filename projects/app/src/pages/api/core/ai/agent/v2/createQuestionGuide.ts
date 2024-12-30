@@ -52,14 +52,15 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
 
   const qgModel = questionGuide?.model || global.llmModels[0].model;
 
-  const { result, tokens } = await createQuestionGuide({
+  const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,
     model: qgModel,
     customPrompt: questionGuide?.customPrompt
   });
 
   pushQuestionGuideUsage({
-    tokens,
+    inputTokens,
+    outputTokens,
     teamId,
     tmbId
   });

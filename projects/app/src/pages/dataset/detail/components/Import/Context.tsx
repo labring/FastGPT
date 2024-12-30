@@ -196,7 +196,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       chunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
       showChunkInput: false,
       showPromptInput: false,
-      charsPointsPrice: agentModel.charsPointsPrice,
+      charsPointsPrice: agentModel.charsPointsPrice || 0,
       priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
         price: agentModel.charsPointsPrice
       }),
@@ -211,7 +211,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       chunkSize: embeddingChunkSize,
       showChunkInput: true,
       showPromptInput: false,
-      charsPointsPrice: vectorModel.charsPointsPrice,
+      charsPointsPrice: vectorModel.charsPointsPrice || 0,
       priceTip: t('dataset:import.Embedding Estimated Price Tips', {
         price: vectorModel.charsPointsPrice
       }),
@@ -226,7 +226,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       chunkSize: qaChunkSize,
       showChunkInput: true,
       showPromptInput: true,
-      charsPointsPrice: agentModel.charsPointsPrice,
+      charsPointsPrice: agentModel.charsPointsPrice || 0,
       priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
         price: agentModel.charsPointsPrice
       }),

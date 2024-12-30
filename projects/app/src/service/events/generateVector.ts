@@ -111,7 +111,7 @@ export async function generateVector(): Promise<any> {
     pushGenerateVectorUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      tokens,
+      inputTokens: tokens,
       model: data.model,
       billId: data.billId
     });

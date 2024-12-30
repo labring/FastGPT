@@ -130,8 +130,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: plugin.name,
-        totalPoints: usagePoints,
-        tokens: 0
+        totalPoints: usagePoints
       }
     ],
     [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput
