@@ -27,7 +27,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
-import { getWebLLMModelPriceType } from '@/web/common/system/utils';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -56,37 +55,37 @@ const ModelTable = () => {
   const [search, setSearch] = useState('');
 
   const { llmModelList, audioSpeechModelList, vectorModelList, whisperModel } = useSystemStore();
-  const isIOType = getWebLLMModelPriceType();
 
   const modelList = useMemo(() => {
     const formatLLMModelList = llmModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.chat'),
-      priceLabel: isIOType ? (
-        <Box>
-          <Flex>
-            {`${t('common:common.Input')}:`}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-              {item.inputPrice || 0}
-            </Box>
-            {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          </Flex>
-          <Flex>
-            {`${t('common:common.Output')}:`}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-              {item.outputPrice || 0}
-            </Box>
-            {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          </Flex>
-        </Box>
-      ) : (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice}
+      priceLabel:
+        typeof item.inputPrice === 'number' ? (
+          <Box>
+            <Flex>
+              {`${t('common:common.Input')}:`}
+              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
+                {item.inputPrice || 0}
+              </Box>
+              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+            </Flex>
+            <Flex>
+              {`${t('common:common.Output')}:`}
+              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
+                {item.outputPrice || 0}
+              </Box>
+              {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+            </Flex>
           </Box>
-          {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-        </Flex>
-      ),
+        ) : (
+          <Flex color={'myGray.700'}>
+            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+              {item.charsPointsPrice}
+            </Box>
+            {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+          </Flex>
+        ),
       tagColor: 'blue'
     }));
     const formatVectorModelList = vectorModelList.map((item) => ({
@@ -168,13 +167,13 @@ const ModelTable = () => {
 
     return filterList;
   }, [
-    provider,
-    modelType,
     llmModelList,
     vectorModelList,
     audioSpeechModelList,
     whisperModel,
     t,
+    modelType,
+    provider,
     search
   ]);
 

@@ -22,7 +22,7 @@ export const formatModelChars2Points = ({
     };
   }
 
-  const isIOPriceType = modelType === ModelTypeEnum.llm && global.llmModelPriceType === 'IO';
+  const isIOPriceType = typeof modelData.inputPrice === 'number';
 
   const totalPoints = isIOPriceType
     ? (modelData.inputPrice || 0) * (inputTokens / multiple) +

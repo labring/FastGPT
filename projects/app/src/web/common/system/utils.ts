@@ -13,8 +13,3 @@ export const getWebLLMModel = (model?: string) => {
   const list = useSystemStore.getState().llmModelList;
   return list.find((item) => item.model === model || item.name === model) ?? list[0];
 };
-
-export const getWebLLMModelPriceType = () => {
-  const list = useSystemStore.getState().llmModelList;
-  return list.some((item) => item.inputPrice || item.outputPrice);
-};
