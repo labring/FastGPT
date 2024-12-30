@@ -44,6 +44,21 @@ function embedChatbot() {
 
   document.body.appendChild(iframe);
 
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      if (mutation.type === 'attributes' && mutation.attributeName === 'data-bot-src') {
+        const newBotSrc = script.getAttribute('data-bot-src');
+        if (newBotSrc) {
+          iframe.src = newBotSrc;
+        }
+      }
+    });
+  });
+  observer.observe(script, {
+    attributes: true,
+    attributeFilter: ['data-bot-src']
+  });
+
   let chatBtnDragged = false;
   let chatBtnDown = false;
   let chatBtnMouseX;
@@ -96,3 +111,4 @@ function embedChatbot() {
   document.body.appendChild(ChatBtn);
 }
 window.addEventListener('load', embedChatbot);
+
