@@ -36,6 +36,19 @@ import { MongoOrgMemberModel } from './orgMemberSchema';
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
   MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
 
+export const getOrgsWithParentByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
+  MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean().then((orgs) => {
+    const orgIds = new Set<string>();
+    for (const org of orgs) {
+      const orgId = String(org.orgId);
+      const parentIds = orgId.split('/').filter((id) => id);
+      for (const parentId of parentIds) {
+        orgIds.add(parentId);
+      }
+    }
+    return orgIds;
+  });
+
 export const getChildrenByOrg = async ({
   org,
   teamId,
