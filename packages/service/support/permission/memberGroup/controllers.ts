@@ -1,9 +1,6 @@
 import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { MongoGroupMemberModel } from './groupMemberSchema';
-import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '../schema';
-import { getGroupPer, parseHeaderCert } from '../controller';
+import { parseHeaderCert } from '../controller';
 import { MongoMemberGroupModel } from './memberGroupSchema';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { ClientSession } from 'mongoose';
@@ -77,46 +74,6 @@ export const getGroupMembersByGroupId = async (groupId: string) => {
   return await MongoGroupMemberModel.find({
     groupId
   }).lean();
-};
-
-/**
- * Get tmb's group permission: the maximum permission of the group
- * @param tmbId
- * @param resourceId
- * @param resourceType
- * @returns the maximum permission of the group
- */
-export const getGroupPermission = async ({
-  tmbId,
-  resourceId,
-  teamId,
-  resourceType
-}: {
-  tmbId: string;
-  teamId: string;
-} & (
-  | {
-      resourceId?: undefined;
-      resourceType: 'team';
-    }
-  | {
-      resourceId: string;
-      resourceType: Omit<PerResourceTypeEnum, 'team'>;
-    }
-)) => {
-  const groupIds = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
-  const groupPermissions = (
-    await MongoResourcePermission.find({
-      groupId: {
-        $in: groupIds
-      },
-      resourceType,
-      resourceId,
-      teamId
-    })
-  ).map((item) => item.permission);
-
-  return getGroupPer(groupPermissions);
 };
 
 // auth group member role
