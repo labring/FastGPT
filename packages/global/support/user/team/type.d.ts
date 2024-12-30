@@ -55,6 +55,7 @@ export type TeamMemberWithTeamAndUserSchema = TeamMemberSchema & {
 export type TeamTmbItemType = {
   userId: string;
   teamId: string;
+  teamAvatar?: string;
   teamName: string;
   memberName: string;
   avatar: string;

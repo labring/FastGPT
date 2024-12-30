@@ -4,86 +4,95 @@ import { postCreateOrg, putUpdateOrg } from '@/web/support/user/team/org/api';
 import { Button, HStack, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
-import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {
+  _id: string;
   avatar: string;
   description?: string;
   name: string;
+  path: string;
+  parentId?: string;
+};
+
+export const defaultOrgForm: OrgFormType = {
+  _id: '',
+  avatar: '',
+  description: '',
+  name: '',
+  path: ''
 };
 
 function OrgInfoModal({
   editOrg,
-  createOrgParentId: parentId,
   onClose,
   onSuccess
 }: {
-  editOrg?: OrgType;
-  createOrgParentId?: string;
+  editOrg: OrgFormType;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
-    fileType: '.jpg, .jpeg, .png',
-    multiple: false
-  });
 
-  const { register, handleSubmit, getValues, setValue } = useForm<OrgFormType>({
+  const isEdit = !!editOrg._id;
+
+  const { register, handleSubmit, setValue, watch } = useForm<OrgFormType>({
     defaultValues: {
-      name: '',
-      avatar: DEFAULT_ORG_AVATAR,
-      description: undefined
+      name: editOrg.name,
+      avatar: editOrg.avatar,
+      description: editOrg.description
     }
   });
-
-  useEffect(() => {
-    setValue('name', editOrg?.name ?? '');
-    setValue('avatar', editOrg?.avatar || DEFAULT_ORG_AVATAR);
-    setValue('description', editOrg?.description);
-  }, [editOrg, setValue]);
+  const avatar = watch('avatar');
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
-    (data: OrgFormType, parentId: string) => {
+    async (data: OrgFormType) => {
+      if (!editOrg.parentId) return;
       return postCreateOrg({
         name: data.name,
         avatar: data.avatar,
-        parentId,
+        parentId: editOrg.parentId,
         description: data.description
       });
     },
     {
+      successToast: t('common:common.Create Success'),
       onSuccess: () => {
         onClose();
-        onSuccess?.();
+        onSuccess();
       }
     }
   );
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
-    (data: OrgFormType, orgId: string) => {
+    async (data: OrgFormType) => {
+      if (!editOrg._id) return;
       return putUpdateOrg({
-        orgId,
+        orgId: editOrg._id,
         name: data.name,
         avatar: data.avatar,
         description: data.description
       });
     },
     {
+      successToast: t('common:common.Update Success'),
       onSuccess: () => {
         onClose();
-        onSuccess?.();
+        onSuccess();
       }
     }
   );
 
+  const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
+    fileType: '.jpg, .jpeg, .png',
+    multiple: false
+  });
   const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
     async (file: File[]) => {
       const src = await compressImgFileAndUpload({
@@ -101,20 +110,20 @@ function OrgInfoModal({
     }
   );
 
-  const isLoading = uploadingAvatar;
+  const isLoading = uploadingAvatar || isLoadingUpdate || isLoadingCreate;
 
   return (
     <MyModal
-      isOpen={!!(editOrg || parentId)}
+      isOpen
       onClose={onClose}
-      title={editOrg ? t('account_team:edit_org_info') : t('account_team:create_org')}
-      iconSrc={editOrg?.avatar || DEFAULT_ORG_AVATAR}
+      title={isEdit ? t('account_team:edit_org_info') : t('account_team:create_org')}
+      iconSrc={'modal/edit'}
     >
       <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
         <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
         <HStack>
           <Avatar
-            src={getValues('avatar') || DEFAULT_ORG_AVATAR}
+            src={avatar || DEFAULT_ORG_AVATAR}
             onClick={onOpenSelectAvatar}
             cursor={'pointer'}
             borderRadius={'md'}
@@ -132,14 +141,14 @@ function OrgInfoModal({
         <Button
           isLoading={isLoading}
           onClick={handleSubmit((data) => {
-            if (editOrg) {
-              onUpdate(data, editOrg._id);
-            } else if (parentId) {
-              onCreate(data, parentId);
+            if (isEdit) {
+              onUpdate(data);
+            } else {
+              onCreate(data);
             }
           })}
         >
-          {editOrg ? t('common:common.Save') : t('common:new_create')}
+          {isEdit ? t('common:common.Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
       <AvatarSelect onSelect={onSelectAvatar} />
@@ -147,4 +156,4 @@ function OrgInfoModal({
   );
 }
 
-export default OrgInfoModal;
+export default dynamic(() => Promise.resolve(OrgInfoModal), { ssr: false });
