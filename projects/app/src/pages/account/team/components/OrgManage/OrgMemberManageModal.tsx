@@ -18,9 +18,11 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
+import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import dynamic from 'next/dynamic';
 
 export type GroupFormType = {
   members: {
@@ -39,69 +41,67 @@ function CheckboxIcon({
   return <MyIcon name={name} w="12px" />;
 }
 
-function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId?: string }) {
-  // 1. Owner can not be deleted, toast
-  // 2. Owner/Admin can manage members
-  // 3. Owner can add/remove admins
+function OrgMemberManageModal({
+  currentOrg,
+  refetchOrgs,
+  onClose
+}: {
+  currentOrg: OrgType;
+  refetchOrgs: () => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
-  const {
-    members: allMembers,
-    orgs,
-    refetchOrgs,
-    refetchMembers
-  } = useContextSelector(TeamContext, (v) => v);
+  const allMembers = useContextSelector(TeamContext, (v) => v.members);
 
-  const org = useMemo(() => orgs.find((item) => item._id === editOrgId), [editOrgId, orgs]);
-
-  const [members, setMembers] = useState<{ tmbId: string }[]>(org?.members || []);
-
-  useEffect(() => {
-    setMembers(org?.members || []);
-  }, [org]);
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(
+    currentOrg.members.map((item) => item.tmbId)
+  );
 
   const [searchKey, setSearchKey] = useState('');
-  const filtered = useMemo(() => {
-    return [
-      ...allMembers.filter((member) => {
-        if (member.memberName.toLowerCase().includes(searchKey.toLowerCase())) return true;
-        return false;
-      })
-    ];
+  const filterMembers = useMemo(() => {
+    if (!searchKey) return allMembers;
+    const regx = new RegExp(searchKey, 'i');
+    return allMembers.filter((member) => regx.test(member.memberName));
   }, [searchKey, allMembers]);
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
-    async () => {
-      if (!editOrgId) return;
+    () => {
       return putUpdateOrgMembers({
-        orgId: editOrgId,
-        members
+        orgId: currentOrg._id,
+        members: selectedMembers.map((tmbId) => ({
+          tmbId
+        }))
       });
     },
     {
-      onSuccess: () => Promise.all([onClose(), refetchOrgs(), refetchMembers()])
+      successToast: t('common:common.Update Success'),
+      onSuccess() {
+        refetchOrgs();
+        onClose();
+      }
     }
   );
 
   const isSelected = (memberId: string) => {
-    return members.find((item) => item.tmbId === memberId);
+    return selectedMembers.find((tmbId) => tmbId === memberId);
   };
 
   const handleToggleSelect = (memberId: string) => {
     if (isSelected(memberId)) {
-      setMembers(members.filter((item) => item.tmbId !== memberId));
+      setSelectedMembers((state) => state.filter((tmbId) => tmbId !== memberId));
     } else {
-      setMembers([...members, { tmbId: memberId }]);
+      setSelectedMembers((state) => [...state, memberId]);
     }
   };
 
   const isLoading = isLoadingUpdate;
+
   return (
     <MyModal
       onClose={onClose}
-      isOpen={!!editOrgId}
+      isOpen
       title={t('user:team.group.manage_member')}
-      iconSrc={org?.avatar}
-      iconColor="primary.600"
+      iconSrc={currentOrg?.avatar}
       minW="800px"
       h={'100%'}
       isCentered
@@ -124,7 +124,7 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
               }}
             />
             <Flex flexDirection="column" mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
-              {filtered.map((member) => {
+              {filterMembers.map((member) => {
                 return (
                   <HStack
                     py="2"
@@ -153,35 +153,30 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
             </Flex>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
-            <Box mt={2}>{`${t('common:chosen')}:${members.length}`}</Box>
+            <Box mt={2}>{`${t('common:chosen')}:${selectedMembers.length}`}</Box>
             <Flex mt={3} flexDirection="column" flexGrow="1" overflow={'auto'} maxH={'400px'}>
-              {members.map((member) => {
+              {selectedMembers.map((tmbId) => {
+                const member = allMembers.find((item) => item.tmbId === tmbId)!;
                 return (
                   <HStack
                     justifyContent="space-between"
                     py="2"
                     px={3}
                     borderRadius={'md'}
-                    key={member.tmbId}
+                    key={tmbId}
                     _hover={{ bg: 'myGray.50' }}
                     _notLast={{ mb: 2 }}
                   >
                     <HStack>
-                      <Avatar
-                        src={allMembers.find((item) => item.tmbId === member.tmbId)?.avatar}
-                        w="1.5rem"
-                        borderRadius={'md'}
-                      />
-                      <Box>
-                        {allMembers.find((item) => item.tmbId === member.tmbId)?.memberName}
-                      </Box>
+                      <Avatar src={member?.avatar} w="1.5rem" borderRadius={'md'} />
+                      <Box>{member?.memberName}</Box>
                     </HStack>
                     <MyIcon
                       name={'common/closeLight'}
                       w={'1rem'}
                       cursor={'pointer'}
                       _hover={{ color: 'red.600' }}
-                      onClick={() => handleToggleSelect(member.tmbId)}
+                      onClick={() => handleToggleSelect(tmbId)}
                     />
                   </HStack>
                 );
@@ -199,4 +194,4 @@ function OrgMemberModal({ onClose, editOrgId }: { onClose: () => void; editOrgId
   );
 }
 
-export default OrgMemberModal;
+export default dynamic(() => Promise.resolve(OrgMemberManageModal), { ssr: false });

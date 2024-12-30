@@ -20,15 +20,9 @@ export type putUpdateOrgData = {
   description?: string;
 };
 
-export type putMoveOrgData = {
+export type putMoveOrgType = {
   orgId: string;
-  parentId: string;
-};
-
-export type putMoveOrgMemberData = {
-  orgId: string;
-  tmbId: string;
-  newOrgId: string;
+  targetOrgId: string;
 };
 
 // type putChnageOrgOwnerData = {

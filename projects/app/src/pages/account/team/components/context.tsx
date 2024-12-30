@@ -9,7 +9,6 @@ import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/suppor
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { getGroupList } from '@/web/support/user/team/group/api';
-import { getOrgList } from '@/web/support/user/team/org/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { OrgType } from '@fastgpt/global/support/user/team/org/type';
 
@@ -19,7 +18,6 @@ type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
   members: TeamMemberItemType[];
   groups: MemberGroupListType;
-  orgs: OrgType[];
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
   setEditTeamData: React.Dispatch<React.SetStateAction<EditTeamFormDataType | undefined>>;
@@ -27,7 +25,6 @@ type TeamModalContextType = {
   refetchMembers: () => void;
   refetchTeams: () => void;
   refetchGroups: () => void;
-  refetchOrgs: () => void;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
   teamSize: number;
@@ -37,7 +34,6 @@ export const TeamContext = createContext<TeamModalContextType>({
   myTeams: [],
   groups: [],
   members: [],
-  orgs: [],
   isLoading: false,
   onSwitchTeam: function (_teamId: string): void {
     throw new Error('Function not implemented.');
@@ -52,9 +48,6 @@ export const TeamContext = createContext<TeamModalContextType>({
     throw new Error('Function not implemented.');
   },
   refetchGroups: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  refetchOrgs: function (): void {
     throw new Error('Function not implemented.');
   },
 
@@ -115,17 +108,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshDeps: [userInfo?.team?.teamId]
   });
 
-  const {
-    data: orgs = [],
-    loading: isLoadingOrgs,
-    refresh: refetchOrgs
-  } = useRequest2(getOrgList, {
-    manual: false,
-    refreshDeps: [userInfo?.team?.teamId]
-  });
-
-  const isLoading =
-    isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups || isLoadingOrgs;
+  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups;
 
   const contextValue = {
     myTeams,
@@ -141,8 +124,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refetchMembers,
     groups,
     refetchGroups,
-    orgs,
-    refetchOrgs,
     teamSize: members.length
   };
 

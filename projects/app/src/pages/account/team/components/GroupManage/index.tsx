@@ -26,6 +26,7 @@ import MemberTag from '../../../../../components/support/user/team/Info/MemberTa
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import IconButton from '../OrgManage/IconButton';
 
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 
@@ -157,7 +158,7 @@ function MemberTable({
                 <Td>
                   {hasGroupManagePer(group) && group.name !== DefaultGroupName && (
                     <MyMenu
-                      Button={<MyIcon name={'edit'} cursor={'pointer'} w="1rem" />}
+                      Button={<IconButton name={'more'} />}
                       menuList={[
                         {
                           children: [

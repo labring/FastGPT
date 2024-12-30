@@ -142,7 +142,9 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       appId: appDetail._id
     });
 
-  const onDelCollaborator = async (props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>) =>
+  const onDelCollaborator = async (
+    props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
+  ) =>
     deleteAppCollaborators({
       appId: appDetail._id,
       ...props

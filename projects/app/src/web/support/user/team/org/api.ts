@@ -2,10 +2,10 @@ import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
 import type {
   postCreateOrgData,
   putUpdateOrgData,
-  putUpdateOrgMembersData,
-  putMoveOrgMemberData
+  putUpdateOrgMembersData
 } from '@fastgpt/global/support/user/team/org/api';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
 
 export const getOrgList = () => GET<OrgType[]>('/proApi/support/user/team/org/list');
 
@@ -18,11 +18,7 @@ export const deleteOrg = (orgId: string) =>
 export const deleteOrgMember = (orgId: string, tmbId: string) =>
   DELETE('/proApi/support/user/team/org/deleteMember', { orgId, tmbId });
 
-export const putMoveOrg = (orgId: string, parentId: string) =>
-  PUT('/proApi/support/user/team/org/move', { orgId, parentId });
-
-export const putMoveOrgMember = (data: putMoveOrgMemberData) =>
-  PUT('/proApi/support/user/team/org/moveMember', data);
+export const putMoveOrg = (data: putMoveOrgType) => PUT('/proApi/support/user/team/org/move', data);
 
 export const putUpdateOrg = (data: putUpdateOrgData) =>
   PUT('/proApi/support/user/team/org/update', data);
