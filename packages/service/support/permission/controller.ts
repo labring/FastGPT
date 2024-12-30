@@ -22,7 +22,7 @@ import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/member
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
-import { getOrgsByTmbId } from './org/controllers';
+import { getOrgsWithParentByTmbId } from './org/controllers';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -41,15 +41,15 @@ export const getResourcePermission = async ({
   teamId: string;
   tmbId: string;
 } & (
-  | {
+    | {
       resourceType: 'team';
       resourceId?: undefined;
     }
-  | {
+    | {
       resourceType: Omit<PerResourceTypeEnum, 'team'>;
       resourceId: string;
     }
-)): Promise<PermissionValueType | undefined> => {
+  )): Promise<PermissionValueType | undefined> => {
   // Personal permission has the highest priority
   const tmbPer = (
     await MongoResourcePermission.findOne(
@@ -69,40 +69,36 @@ export const getResourcePermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const groupIdList = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
+  const groupPer = await (async () => {
+    const groupIdList = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
 
-  if (groupIdList.length === 0) {
-    return undefined;
-  }
+    if (groupIdList.length === 0) {
+      return undefined;
+    }
 
-  // get the maximum permission of the group
-  const pers = (
-    await MongoResourcePermission.find(
-      {
-        teamId,
-        resourceType,
-        groupId: {
-          $in: groupIdList
+    // get the maximum permission of the group
+    const pers = (
+      await MongoResourcePermission.find(
+        {
+          teamId,
+          resourceType,
+          groupId: {
+            $in: groupIdList
+          },
+          resourceId
         },
-        resourceId
-      },
-      'permission'
-    ).lean()
-  ).map((item) => item.permission);
+        'permission'
+      ).lean()
+    ).map((item) => item.permission);
 
-  const groupPer = getGroupPer(pers);
+    return getGroupPer(pers);
+  })();
 
-  const orgIds = (await getOrgsByTmbId({ tmbId, teamId })).map((item) => String(item._id));
+  const orgIds = await getOrgsWithParentByTmbId({ tmbId, teamId }).then((item) => Array.from(item));
+
   if (orgIds.length === 0) {
     return groupPer;
   }
-  const allOrgIds = new Set(orgIds);
-  // put all org parent ids into the set
-  orgIds.forEach((id) => {
-    const arr = id.split('/');
-    arr.pop();
-    arr.forEach((i) => allOrgIds.add(i));
-  });
 
   // get the maximum permission of the org
   const orgPers = (
@@ -111,7 +107,7 @@ export const getResourcePermission = async ({
         teamId,
         resourceType,
         orgId: {
-          $in: Array.from(allOrgIds)
+          $in: Array.from(orgIds)
         },
         resourceId
       },
@@ -140,15 +136,15 @@ export async function getResourceAllClbs({
   teamId: string;
   session?: ClientSession;
 } & (
-  | {
+    | {
       resourceType: 'team';
       resourceId?: undefined;
     }
-  | {
+    | {
       resourceType: Omit<PerResourceTypeEnum, 'team'>;
       resourceId?: string | null;
     }
-)): Promise<ResourcePermissionType[]> {
+  )): Promise<ResourcePermissionType[]> {
   return MongoResourcePermission.find(
     {
       resourceType: resourceType,

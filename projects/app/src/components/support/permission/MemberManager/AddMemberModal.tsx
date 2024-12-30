@@ -75,7 +75,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
     if (mode !== 'all') return [];
     return orgs.filter((item) => {
       if (item.path === '') return false; // exclude root org
-      if (!permission.isOwner && myOrgs.find((i) => String(i._id) !== String(item._id)))
+      if (!permission.isOwner && !myOrgs.find((i) => String(i._id) === String(item._id)))
         return false;
       if (!searchText) return true;
       return item.name.includes(searchText);
