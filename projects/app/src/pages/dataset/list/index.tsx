@@ -257,7 +257,7 @@ const Dataset = () => {
                     permission,
                     datasetId: folderDetail._id
                   }),
-                onDelOneCollaborator: async ({ tmbId, groupId }) => {
+                onDelOneCollaborator: async ({ tmbId, groupId, orgId }) => {
                   if (tmbId) {
                     return deleteDatasetCollaborators({
                       datasetId: folderDetail._id,
@@ -267,6 +267,11 @@ const Dataset = () => {
                     return deleteDatasetCollaborators({
                       datasetId: folderDetail._id,
                       groupId
+                    });
+                  } else if (orgId) {
+                    return deleteDatasetCollaborators({
+                      datasetId: folderDetail._id,
+                      orgId
                     });
                   }
                 },

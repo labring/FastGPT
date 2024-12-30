@@ -21,6 +21,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -186,6 +187,16 @@ export const getClbsAndGroupsWithInfo = async ({
       }
     })
       .populate<{ group: MemberGroupSchemaType }>('group', 'name avatar')
+      .lean(),
+    MongoResourcePermission.find({
+      teamId,
+      resourceId,
+      resourceType,
+      orgId: {
+        $exists: true
+      }
+    })
+      .populate<{ org: OrgSchemaType }>({ path: 'org', select: 'name avatar' })
       .lean()
   ]);
 
@@ -196,6 +207,7 @@ export const delResourcePermission = ({
   session,
   tmbId,
   groupId,
+  orgId,
   ...props
 }: {
   resourceType: PerResourceTypeEnum;
@@ -204,15 +216,18 @@ export const delResourcePermission = ({
   session?: ClientSession;
   tmbId?: string;
   groupId?: string;
+  orgId?: string;
 }) => {
-  // tmbId or groupId only one and not both
-  if (!!tmbId === !!groupId) {
+  // either tmbId or groupId or orgId must be provided
+  if (!tmbId && !groupId && !orgId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
+
   return MongoResourcePermission.deleteOne(
     {
       ...(tmbId ? { tmbId } : {}),
       ...(groupId ? { groupId } : {}),
+      ...(orgId ? { orgId } : {}),
       ...props
     },
     { session }
@@ -250,7 +265,7 @@ export function authJWT(token: string) {
   }>((resolve, reject) => {
     const key = process.env.TOKEN_KEY as string;
 
-    jwt.verify(token, key, function (err, decoded: any) {
+    jwt.verify(token, key, (err, decoded: any) => {
       if (err || !decoded?.userId) {
         reject(ERROR_ENUM.unAuthorization);
         return;
@@ -436,7 +451,7 @@ export const authFileToken = (token?: string) =>
     }
     const key = (process.env.FILE_TOKEN_KEY as string) ?? 'filetoken';
 
-    jwt.verify(token, key, function (err, decoded: any) {
+    jwt.verify(token, key, (err, decoded: any) => {
       if (err || !decoded.bucketName || !decoded?.teamId || !decoded?.fileId) {
         reject(ERROR_ENUM.unAuthFile);
         return;

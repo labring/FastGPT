@@ -1,21 +1,24 @@
 import { useDisclosure } from '@chakra-ui/react';
-import {
+import type {
   CollaboratorItemType,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-import { PermissionListType, PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { ReactNode, useCallback } from 'react';
+import type {
+  PermissionListType,
+  PermissionValueType
+} from '@fastgpt/global/support/permission/type';
+import { type ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
-import MemberListCard, { MemberListCardProps } from './MemberListCard';
+import MemberListCard, { type MemberListCardProps } from './MemberListCard';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -24,7 +27,9 @@ export type MemberManagerInputPropsType = {
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
-  onDelOneCollaborator: (props: RequireOnlyOne<{ tmbId: string; groupId: string }>) => Promise<any>;
+  onDelOneCollaborator: (
+    props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
+  ) => Promise<any>;
   refreshDeps?: any[];
   mode?: 'member' | 'all';
 };
@@ -46,19 +51,19 @@ type CollaboratorContextType = MemberManagerPropsType & {};
 export const CollaboratorContext = createContext<CollaboratorContextType>({
   collaboratorList: [],
   permissionList: PermissionList,
-  onUpdateCollaborators: function () {
+  onUpdateCollaborators: () => {
     throw new Error('Function not implemented.');
   },
-  onDelOneCollaborator: function () {
+  onDelOneCollaborator: () => {
     throw new Error('Function not implemented.');
   },
-  getPerLabelList: function (): string[] {
+  getPerLabelList: (): string[] => {
     throw new Error('Function not implemented.');
   },
-  refetchCollaboratorList: function (): void {
+  refetchCollaboratorList: (): void => {
     throw new Error('Function not implemented.');
   },
-  onGetCollaboratorList: function (): Promise<CollaboratorItemType[]> {
+  onGetCollaboratorList: (): Promise<CollaboratorItemType[]> => {
     throw new Error('Function not implemented.');
   },
   isFetchingCollaborator: false,
@@ -88,7 +93,7 @@ const CollaboratorContextProvider = ({
     refetchCollaboratorList();
   };
   const onDelOneCollaboratorThen = async (
-    props: RequireOnlyOne<{ tmbId: string; groupId: string }>
+    props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
   ) => {
     await onDelOneCollaborator(props);
     refetchCollaboratorList();
