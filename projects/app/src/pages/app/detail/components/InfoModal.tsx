@@ -1,40 +1,40 @@
-import React, { useCallback } from 'react';
+import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
+import ResumeInherit from '@/components/support/permission/ResumeInheritText';
+import { AppContext } from '@/pages/app/detail/components/context';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
+import { useI18n } from '@/web/context/I18n';
+import { resumeInheritPer } from '@/web/core/app/api';
+import {
+  deleteAppCollaborators,
+  getCollaboratorList,
+  postUpdateAppCollaborators
+} from '@/web/core/app/api/collaborator';
 import {
   Box,
-  Flex,
   Button,
+  Flex,
   FormControl,
   Input,
-  Textarea,
+  ModalBody,
   ModalFooter,
-  ModalBody
+  Textarea
 } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
-import { AppSchema } from '@fastgpt/global/core/app/type.d';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
-import {
-  postUpdateAppCollaborators,
-  deleteAppCollaborators,
-  getCollaboratorList
-} from '@/web/core/app/api/collaborator';
-import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pages/app/detail/components/context';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import type { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { resumeInheritPer } from '@/web/core/app/api';
-import { useI18n } from '@/web/context/I18n';
-import ResumeInherit from '@/components/support/permission/ResumeInheritText';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
+import React, { useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { useContextSelector } from 'use-context-selector';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -126,20 +126,23 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const onUpdateCollaborators = ({
     members,
     groups,
+    orgs,
     permission
   }: {
     members?: string[];
     groups?: string[];
+    orgs?: string[];
     permission: PermissionValueType;
   }) =>
     postUpdateAppCollaborators({
       members,
       groups,
       permission,
+      orgs,
       appId: appDetail._id
     });
 
-  const onDelCollaborator = async (props: RequireOnlyOne<{ tmbId: string; groupId: string }>) =>
+  const onDelCollaborator = async (props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>) =>
     deleteAppCollaborators({
       appId: appDetail._id,
       ...props
@@ -211,7 +214,8 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                   onUpdateCollaborators({
                     permission: props.permission,
                     members: props.members,
-                    groups: props.groups
+                    groups: props.groups,
+                    orgs: props.orgs
                   })
                 }
                 onDelOneCollaborator={onDelCollaborator}
