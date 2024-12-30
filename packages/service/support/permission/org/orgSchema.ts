@@ -53,15 +53,10 @@ OrgSchema.virtual('permission', {
 });
 
 try {
-  OrgSchema.index(
-    {
-      teamId: 1,
-      path: 1
-    },
-    {
-      unique: true
-    }
-  );
+  OrgSchema.index({
+    teamId: 1,
+    path: 1
+  });
 } catch (error) {
   console.log(error);
 }

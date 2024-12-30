@@ -19,6 +19,7 @@ type State = {
   setSysMsgReadId: (id: string) => void;
 
   userInfo: UserType | null;
+  isTeamAdmin: boolean;
   initUserInfo: () => Promise<UserType>;
   setUserInfo: (user: UserType | null) => void;
   updateUserInfo: (user: UserUpdateParams) => Promise<void>;
@@ -50,6 +51,7 @@ export const useUserStore = create<State>()(
         },
 
         userInfo: null,
+        isTeamAdmin: false,
         async initUserInfo() {
           get().initTeamPlanStatus();
 
@@ -67,6 +69,7 @@ export const useUserStore = create<State>()(
         setUserInfo(user: UserType | null) {
           set((state) => {
             state.userInfo = user ? user : null;
+            state.isTeamAdmin = !!user?.team?.permission?.hasManagePer;
           });
         },
         async updateUserInfo(user: UserUpdateParams) {
