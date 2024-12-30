@@ -1,75 +1,69 @@
-import { putMoveOrg, putMoveOrgMember } from '@/web/support/user/team/org/api';
+import { putMoveOrg } from '@/web/support/user/team/org/api';
 import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import type { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import OrgTree from './OrgTree';
+import dynamic from 'next/dynamic';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 function OrgMoveModal({
   movingOrg,
-  movingTmb,
   orgs,
-  team,
   onClose,
   onSuccess
 }: {
-  movingOrg?: OrgType;
-  movingTmb?: { tmbId: string; orgId: string };
+  movingOrg: OrgType;
   orgs: OrgType[];
-  team: TeamTmbItemType;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const [selectedOrg, selectOrg] = useState<OrgType>();
+  const [selectedOrg, setSelectedOrg] = useState<OrgType>();
+  const { userInfo } = useUserStore();
+  const team = userInfo?.team!;
 
-  const { runAsync: moveOrg, loading: loadingOrg } = useRequest2(putMoveOrg, {
+  const { runAsync: onMoveOrg, loading } = useRequest2(putMoveOrg, {
     onSuccess: () => {
       onClose();
       onSuccess();
     }
   });
 
-  const { runAsync: moveTmb, loading: loadingTmb } = useRequest2(putMoveOrgMember, {
-    onSuccess: () => {
-      onClose();
-      onSuccess();
-    }
-  });
-
-  const handleConfirm = () => {
-    if (!selectedOrg) return;
-    if (movingTmb) {
-      moveTmb({ orgId: movingTmb.orgId, tmbId: movingTmb.tmbId, newOrgId: selectedOrg._id });
-    } else if (movingOrg) {
-      moveOrg(movingOrg._id, selectedOrg._id);
-    }
-  };
-
-  const loading = loadingOrg || loadingTmb;
+  const filterMovingOrgs = useMemo(
+    () => orgs.filter((org) => org._id !== movingOrg._id),
+    [movingOrg._id, orgs]
+  );
 
   return (
     <MyModal
-      isOpen={!!movingOrg || !!movingTmb}
+      isOpen
       onClose={onClose}
-      title={movingOrg ? t('account_team:move_org') : t('account_team:move_member')}
+      title={t('account_team:move_org')}
       iconSrc="common/file/move"
-      iconColor="blue.600"
+      iconColor="primary.600"
     >
       <ModalBody>
         <OrgTree
-          orgs={orgs}
-          teamName={team.teamName}
-          teamAvatar={team.avatar}
+          orgs={filterMovingOrgs}
           selectedOrg={selectedOrg}
-          selectOrg={selectOrg}
+          setSelectedOrg={setSelectedOrg}
         />
       </ModalBody>
       <ModalFooter>
-        <Button isDisabled={!selectedOrg} isLoading={loading} onClick={() => handleConfirm()}>
+        <Button
+          isDisabled={!selectedOrg}
+          isLoading={loading}
+          onClick={() => {
+            if (!selectedOrg) return;
+            return onMoveOrg({
+              orgId: movingOrg._id,
+              targetOrgId: selectedOrg._id
+            });
+          }}
+        >
           {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
@@ -77,4 +71,4 @@ function OrgMoveModal({
   );
 }
 
-export default OrgMoveModal;
+export default dynamic(() => Promise.resolve(OrgMoveModal), { ssr: false });
