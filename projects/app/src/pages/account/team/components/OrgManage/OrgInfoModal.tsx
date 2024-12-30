@@ -135,7 +135,11 @@ function OrgInfoModal({
           />
         </HStack>
         <FormLabel w="80px">{t('account_team:org_description')}</FormLabel>
-        <Textarea {...register('description')} placeholder={t('account_team:org_description')} />
+        <Textarea
+          bgColor="myGray.50"
+          {...register('description')}
+          placeholder={t('account_team:org_description')}
+        />
       </ModalBody>
       <ModalFooter alignItems="flex-end">
         <Button
