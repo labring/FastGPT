@@ -101,14 +101,8 @@ export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
 export const resumeInheritPer = (datasetId: string) =>
   GET(`/core/dataset/resumeInheritPermission`, { datasetId });
 
-export const changeOwner = (
-  data: {
-    ownerId: string;
-  } & RequireOnlyOne<{
-    datasetId: string;
-    collectionId: string;
-  }>
-) => POST(`/proApi/core/dataset/changeOwner`, data);
+export const changeOwner = (data: { ownerId: string; datasetId: string }) =>
+  POST(`/proApi/core/dataset/changeOwner`, data);
 
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
