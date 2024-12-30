@@ -15,9 +15,9 @@ import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { getGroupPer } from '@fastgpt/service/support/permission/controller';
+import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { getOrgsWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -49,14 +49,14 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     }),
     ...(parentId
       ? [
-        authApp({
-          req,
-          authToken: true,
-          authApiKey: true,
-          appId: parentId,
-          per: ReadPermissionVal
-        })
-      ]
+          authApp({
+            req,
+            authToken: true,
+            authApiKey: true,
+            appId: parentId,
+            per: ReadPermissionVal
+          })
+        ]
       : [])
   ]);
 
@@ -79,14 +79,17 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       });
       return map;
     }),
-    getOrgsWithParentByTmbId({
+    getOrgIdSetWithParentByTmbId({
       teamId,
       tmbId
     })
   ]);
   // Get my permissions
   const myPerList = perList.filter(
-    (item) => String(item.tmbId) === String(tmbId) || myGroupMap.has(String(item.groupId)) || myOrgSet.has(String(item.orgId))
+    (item) =>
+      String(item.tmbId) === String(tmbId) ||
+      myGroupMap.has(String(item.groupId)) ||
+      myOrgSet.has(String(item.orgId))
   );
 
   const findAppsQuery = (() => {
@@ -104,17 +107,17 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       ? {}
       : parentId
         ? {
-          $or: [idList, parseParentIdInMongo(parentId)]
-        }
+            $or: [idList, parseParentIdInMongo(parentId)]
+          }
         : { $or: [idList, { parentId: null }] };
 
     const searchMatch = searchKey
       ? {
-        $or: [
-          { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
-          { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
-        ]
-      }
+          $or: [
+            { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
+          ]
+        }
       : {};
 
     if (searchKey) {
@@ -156,9 +159,11 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === appId && !!item.tmbId
           )?.permission;
-          const groupPer = getGroupPer(
+          const groupPer = concatPer(
             myPerList
-              .filter((item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId))
+              .filter(
+                (item) => String(item.resourceId) === appId && (!!item.groupId || !!item.orgId)
+              )
               .map((item) => item.permission)
           );
 

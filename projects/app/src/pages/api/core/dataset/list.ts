@@ -17,8 +17,8 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { getGroupPer } from '@fastgpt/service/support/permission/controller';
-import { getOrgsWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { concatPer } from '@fastgpt/service/support/permission/controller';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -39,14 +39,14 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     }),
     ...(parentId
       ? [
-        authDataset({
-          req,
-          authToken: true,
-          authApiKey: true,
-          per: ReadPermissionVal,
-          datasetId: parentId
-        })
-      ]
+          authDataset({
+            req,
+            authToken: true,
+            authApiKey: true,
+            per: ReadPermissionVal,
+            datasetId: parentId
+          })
+        ]
       : [])
   ]);
 
@@ -69,13 +69,16 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       });
       return map;
     }),
-    getOrgsWithParentByTmbId({
+    getOrgIdSetWithParentByTmbId({
       teamId,
       tmbId
     })
   ]);
   const myPerList = perList.filter(
-    (item) => String(item.tmbId) === String(tmbId) || myGroupMap.has(String(item.groupId)) || myOrgSet.has(String(item.orgId))
+    (item) =>
+      String(item.tmbId) === String(tmbId) ||
+      myGroupMap.has(String(item.groupId)) ||
+      myOrgSet.has(String(item.orgId))
   );
 
   const findDatasetQuery = (() => {
@@ -85,17 +88,17 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       ? {}
       : parentId
         ? {
-          $or: [idList, parseParentIdInMongo(parentId)]
-        }
+            $or: [idList, parseParentIdInMongo(parentId)]
+          }
         : { $or: [idList, { parentId: null }] };
 
     const searchMatch = searchKey
       ? {
-        $or: [
-          { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
-          { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
-        ]
-      }
+          $or: [
+            { name: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } },
+            { intro: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } }
+          ]
+        }
       : {};
 
     if (searchKey) {
@@ -127,9 +130,11 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
-          const groupPer = getGroupPer(
+          const groupPer = concatPer(
             myPerList
-              .filter((item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId))
+              .filter(
+                (item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId)
+              )
               .map((item) => item.permission)
           );
           return new DatasetPermission({
