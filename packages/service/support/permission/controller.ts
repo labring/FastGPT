@@ -22,7 +22,7 @@ import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/member
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
-import { getOrgsWithParentByTmbId } from './org/controllers';
+import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -41,15 +41,15 @@ export const getResourcePermission = async ({
   teamId: string;
   tmbId: string;
 } & (
-    | {
+  | {
       resourceType: 'team';
       resourceId?: undefined;
     }
-    | {
+  | {
       resourceType: Omit<PerResourceTypeEnum, 'team'>;
       resourceId: string;
     }
-  )): Promise<PermissionValueType | undefined> => {
+)): Promise<PermissionValueType | undefined> => {
   // Personal permission has the highest priority
   const tmbPer = (
     await MongoResourcePermission.findOne(
@@ -69,61 +69,42 @@ export const getResourcePermission = async ({
   }
 
   // If there is no personal permission, get the group permission
-  const groupPer = await (async () => {
-    const groupIdList = (await getGroupsByTmbId({ tmbId, teamId })).map((item) => item._id);
-
-    if (groupIdList.length === 0) {
-      return undefined;
-    }
-
-    // get the maximum permission of the group
-    const pers = (
-      await MongoResourcePermission.find(
-        {
-          teamId,
-          resourceType,
-          groupId: {
-            $in: groupIdList
+  const [groupPers, orgPers] = await Promise.all([
+    getGroupsByTmbId({ tmbId, teamId })
+      .then((res) => res.map((item) => item._id))
+      .then((groupIdList) =>
+        MongoResourcePermission.find(
+          {
+            teamId,
+            resourceType,
+            groupId: {
+              $in: groupIdList
+            },
+            resourceId
           },
-          resourceId
-        },
-        'permission'
-      ).lean()
-    ).map((item) => item.permission);
+          'permission'
+        ).lean()
+      )
+      .then((perList) => perList.map((item) => item.permission)),
+    getOrgIdSetWithParentByTmbId({ tmbId, teamId })
+      .then((item) => Array.from(item))
+      .then((orgIds) =>
+        MongoResourcePermission.find(
+          {
+            teamId,
+            resourceType,
+            orgId: {
+              $in: Array.from(orgIds)
+            },
+            resourceId
+          },
+          'permission'
+        ).lean()
+      )
+      .then((perList) => perList.map((item) => item.permission))
+  ]);
 
-    return getGroupPer(pers);
-  })();
-
-  const orgIds = await getOrgsWithParentByTmbId({ tmbId, teamId }).then((item) => Array.from(item));
-
-  if (orgIds.length === 0) {
-    return groupPer;
-  }
-
-  // get the maximum permission of the org
-  const orgPers = (
-    await MongoResourcePermission.find(
-      {
-        teamId,
-        resourceType,
-        orgId: {
-          $in: Array.from(orgIds)
-        },
-        resourceId
-      },
-      'permission'
-    ).lean()
-  ).map((item) => item.permission);
-
-  const orgPer = getGroupPer(orgPers);
-
-  if (groupPer === undefined) {
-    return orgPer;
-  } else if (orgPer === undefined) {
-    return groupPer;
-  }
-
-  return new Permission().addPer(groupPer, orgPer).value;
+  return concatPer([...groupPers, ...orgPers]);
 };
 
 /* 仅取 members 不取 groups */
@@ -136,15 +117,15 @@ export async function getResourceAllClbs({
   teamId: string;
   session?: ClientSession;
 } & (
-    | {
+  | {
       resourceType: 'team';
       resourceId?: undefined;
     }
-    | {
+  | {
       resourceType: Omit<PerResourceTypeEnum, 'team'>;
       resourceId?: string | null;
     }
-  )): Promise<ResourcePermissionType[]> {
+)): Promise<ResourcePermissionType[]> {
   return MongoResourcePermission.find(
     {
       resourceType: resourceType,
@@ -497,10 +478,10 @@ export const authFileToken = (token?: string) =>
     });
   });
 
-export const getGroupPer = (groups: PermissionValueType[] = []) => {
-  if (groups.length === 0) {
+export const concatPer = (perList: PermissionValueType[] = []) => {
+  if (perList.length === 0) {
     return undefined;
   }
 
-  return new Permission().addPer(...groups).value;
+  return new Permission().addPer(...perList).value;
 };
