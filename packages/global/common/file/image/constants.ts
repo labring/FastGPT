@@ -8,6 +8,7 @@ export enum MongoImageTypeEnum {
   userAvatar = 'userAvatar',
   teamAvatar = 'teamAvatar',
   groupAvatar = 'groupAvatar',
+  orgAvatar = 'orgAvatar',
 
   chatImage = 'chatImage',
   collectionImage = 'collectionImage'
@@ -39,6 +40,10 @@ export const mongoImageTypeMap = {
   },
   [MongoImageTypeEnum.groupAvatar]: {
     label: 'groupAvatar',
+    unique: true
+  },
+  [MongoImageTypeEnum.orgAvatar]: {
+    label: 'orgAvatar',
     unique: true
   },
 

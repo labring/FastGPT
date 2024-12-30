@@ -16,6 +16,7 @@ import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupS
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
+import { createRootOrg } from '../../permission/org/controllers';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
@@ -132,7 +133,8 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    console.log('create default team and group', userId);
+    await createRootOrg({ teamId: tmb.teamId, session });
+    console.log('create default team, group and root org', userId);
     return tmb;
   } else {
     console.log('default team exist', userId);

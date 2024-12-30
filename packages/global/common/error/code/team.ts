@@ -1,5 +1,5 @@
-import { ErrType } from '../errorCode';
 import { i18nT } from '../../../../web/i18n/utils';
+import type { ErrType } from '../errorCode';
 /* team: 500000 */
 export enum TeamErrEnum {
   teamOverSize = 'teamOverSize',
@@ -14,6 +14,13 @@ export enum TeamErrEnum {
   groupNameEmpty = 'groupNameEmpty',
   groupNameDuplicate = 'groupNameDuplicate',
   groupNotExist = 'groupNotExist',
+  orgMemberNotExist = 'orgMemberNotExist',
+  orgMemberDuplicated = 'orgMemberDuplicated',
+  orgNotExist = 'orgNotExist',
+  orgParentNotExist = 'orgParentNotExist',
+  cannotMoveToSubPath = 'cannotMoveToSubPath',
+  cannotModifyRootOrg = 'cannotModifyRootOrg',
+  cannotDeleteNonEmptyOrg = 'cannotDeleteNonEmptyOrg',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
   userNotActive = 'userNotActive'
 }
@@ -71,6 +78,34 @@ const teamErr = [
   {
     statusText: TeamErrEnum.userNotActive,
     message: i18nT('common:code_error.team_error.user_not_active')
+  },
+  {
+    statusText: TeamErrEnum.orgMemberNotExist,
+    message: i18nT('common:code_error.team_error.org_member_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.orgMemberDuplicated,
+    message: i18nT('common:code_error.team_error.org_member_duplicated')
+  },
+  {
+    statusText: TeamErrEnum.orgNotExist,
+    message: i18nT('common:code_error.team_error.org_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.orgParentNotExist,
+    message: i18nT('common:code_error.team_error.org_parent_not_exist')
+  },
+  {
+    statusText: TeamErrEnum.cannotMoveToSubPath,
+    message: i18nT('common:code_error.team_error.cannot_move_to_sub_path')
+  },
+  {
+    statusText: TeamErrEnum.cannotModifyRootOrg,
+    message: i18nT('common:code_error.team_error.cannot_modify_root_org')
+  },
+  {
+    statusText: TeamErrEnum.cannotDeleteNonEmptyOrg,
+    message: i18nT('common:code_error.team_error.cannot_delete_non_empty_org')
   }
 ];
 
