@@ -33,6 +33,13 @@ export const OrgMemberSchema = new Schema({
   // }
 });
 
+OrgMemberSchema.virtual('org', {
+  ref: OrgCollectionName,
+  localField: 'orgId',
+  foreignField: '_id',
+  justOne: true
+});
+
 try {
   OrgMemberSchema.index(
     {
