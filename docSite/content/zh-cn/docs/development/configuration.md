@@ -168,6 +168,7 @@ weight: 707
   "reRankModels": [],
   "audioSpeechModels": [
     {
+      "provider": "OpenAI",
       "model": "tts-1",
       "name": "OpenAI TTS1",
       "charsPointsPrice": 0,
@@ -182,6 +183,7 @@ weight: 707
     }
   ],
   "whisperModel": {
+    "provider": "OpenAI",
     "model": "whisper-1",
     "name": "Whisper1",
     "charsPointsPrice": 0
