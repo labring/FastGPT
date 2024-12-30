@@ -22,6 +22,7 @@ import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/member
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import { getOrgsByTmbId } from './org/controllers';
 
 /** get resource permission for a team member
  * If there is no permission for the team member, it will return undefined
@@ -91,7 +92,42 @@ export const getResourcePermission = async ({
 
   const groupPer = getGroupPer(pers);
 
-  return groupPer;
+  const orgIds = (await getOrgsByTmbId({ tmbId, teamId })).map((item) => String(item._id));
+  if (orgIds.length === 0) {
+    return groupPer;
+  }
+  const allOrgIds = new Set(orgIds);
+  // put all org parent ids into the set
+  orgIds.forEach((id) => {
+    const arr = id.split('/');
+    arr.pop();
+    arr.forEach((i) => allOrgIds.add(i));
+  });
+
+  // get the maximum permission of the org
+  const orgPers = (
+    await MongoResourcePermission.find(
+      {
+        teamId,
+        resourceType,
+        orgId: {
+          $in: Array.from(allOrgIds)
+        },
+        resourceId
+      },
+      'permission'
+    ).lean()
+  ).map((item) => item.permission);
+
+  const orgPer = getGroupPer(orgPers);
+
+  if (groupPer === undefined) {
+    return orgPer;
+  } else if (orgPer === undefined) {
+    return groupPer;
+  }
+
+  return new Permission().addPer(groupPer, orgPer).value;
 };
 
 /* 仅取 members 不取 groups */
