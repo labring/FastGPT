@@ -1,6 +1,13 @@
 import type { ModelProviderIdType } from './provider';
 
-export type LLMModelItemType = {
+type PriceType = {
+  charsPointsPrice?: number; // 1k chars=n points; 60s=n points;
+
+  // If inputPrice is set, the input-output charging scheme is adopted
+  inputPrice?: number; // 1k tokens=n points
+  outputPrice?: number; // 1k tokens=n points
+};
+export type LLMModelItemType = PriceType & {
   provider: ModelProviderIdType;
   model: string;
   name: string;
@@ -9,8 +16,6 @@ export type LLMModelItemType = {
   maxResponse: number;
   quoteMaxToken: number;
   maxTemperature: number;
-
-  charsPointsPrice: number; // 1k chars=n points
 
   censor?: boolean;
   vision?: boolean;
@@ -33,13 +38,12 @@ export type LLMModelItemType = {
   fieldMap?: Record<string, string>;
 };
 
-export type VectorModelItemType = {
+export type VectorModelItemType = PriceType & {
   provider: ModelProviderIdType;
   model: string; // model name
   name: string; // show name
   avatar?: string;
   defaultToken: number; // split text default token
-  charsPointsPrice: number; // 1k tokens=n points
   maxToken: number; // model max token
   weight: number; // training weight
   hidden?: boolean; // Disallow creation
@@ -48,25 +52,22 @@ export type VectorModelItemType = {
   queryConfig?: Record<string, any>; // Custom parameters for query
 };
 
-export type ReRankModelItemType = {
+export type ReRankModelItemType = PriceType & {
   model: string;
   name: string;
-  charsPointsPrice: number;
   requestUrl: string;
   requestAuth: string;
 };
 
-export type AudioSpeechModelType = {
+export type AudioSpeechModelType = PriceType & {
   provider: ModelProviderIdType;
   model: string;
   name: string;
-  charsPointsPrice: number;
   voices: { label: string; value: string; bufferId: string }[];
 };
 
-export type STTModelType = {
+export type STTModelType = PriceType & {
   provider: ModelProviderIdType;
   model: string;
   name: string;
-  charsPointsPrice: number; // 60s = n points
 };

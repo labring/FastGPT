@@ -5,13 +5,17 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { createChatCompletion } from '../../../ai/config';
-import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletion,
+  ChatCompletionMessageParam,
+  StreamChatType
+} from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { countMessagesTokens } from '../../../../common/string/tiktoken/index';
+import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
   chatValue2RuntimePrompt,
@@ -214,16 +218,23 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject(getEmptyResponseTip());
   }
 
-  const completeMessages = requestMessages.concat({
-    role: ChatCompletionRequestMessageRoleEnum.Assistant,
-    content: answerText
-  });
+  const AIMessages: ChatCompletionMessageParam[] = [
+    {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: answerText
+    }
+  ];
+
+  const completeMessages = [...requestMessages, ...AIMessages];
   const chatCompleteMessages = GPTMessages2Chats(completeMessages);
 
-  const tokens = await countMessagesTokens(chatCompleteMessages);
+  const inputTokens = await countGptMessagesTokens(requestMessages);
+  const outputTokens = await countGptMessagesTokens(AIMessages);
+
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    tokens,
+    inputTokens,
+    outputTokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -232,7 +243,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
-      tokens,
+      tokens: inputTokens + outputTokens,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
       historyPreview: getHistoryPreview(
@@ -247,7 +260,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         moduleName: name,
         totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        tokens
+        inputTokens: inputTokens,
+        outputTokens: outputTokens
       }
     ],
     [DispatchNodeResponseKeyEnum.toolResponses]: answerText,

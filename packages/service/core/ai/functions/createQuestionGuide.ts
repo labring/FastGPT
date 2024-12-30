@@ -1,6 +1,6 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { createChatCompletion } from '../config';
-import { countGptMessagesTokens } from '../../../common/string/tiktoken/index';
+import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
 import { llmCompletionsBodyFormat } from '../utils';
 import {
@@ -20,7 +20,8 @@ export async function createQuestionGuide({
   customPrompt?: string;
 }): Promise<{
   result: string[];
-  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
 }> {
   const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
@@ -29,6 +30,10 @@ export async function createQuestionGuide({
       content: `${customPrompt || PROMPT_QUESTION_GUIDE}\n${PROMPT_QUESTION_GUIDE_FOOTER}`
     }
   ];
+  const requestMessages = await loadRequestMessages({
+    messages: concatMessages,
+    useVision: false
+  });
 
   const { response: data } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
@@ -36,10 +41,7 @@ export async function createQuestionGuide({
         model,
         temperature: 0.1,
         max_tokens: 200,
-        messages: await loadRequestMessages({
-          messages: concatMessages,
-          useVision: false
-        }),
+        messages: requestMessages,
         stream: false
       },
       model
@@ -51,13 +53,15 @@ export async function createQuestionGuide({
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
 
-  const tokens = await countGptMessagesTokens(concatMessages);
+  const inputTokens = await countGptMessagesTokens(requestMessages);
+  const outputTokens = await countPromptTokens(answer);
 
   if (start === -1 || end === -1) {
     addLog.warn('Create question guide error', { answer });
     return {
       result: [],
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 
@@ -69,14 +73,16 @@ export async function createQuestionGuide({
   try {
     return {
       result: json5.parse(jsonStr),
-      tokens
+      inputTokens,
+      outputTokens
     };
   } catch (error) {
     console.log(error);
 
     return {
       result: [],
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 }

@@ -1,5 +1,8 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { countMessagesTokens } from '../../../../common/string/tiktoken/index';
+import {
+  countGptMessagesTokens,
+  countPromptTokens
+} from '../../../../common/string/tiktoken/index';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatCompletion } from '../../../ai/config';
@@ -49,7 +52,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await completions({
+  const { arg, inputTokens, outputTokens } = await completions({
     ...props,
     histories: chatHistories,
     cqModel
@@ -59,7 +62,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: cqModel.model,
-    tokens,
+    inputTokens: inputTokens,
+    outputTokens: outputTokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -72,7 +76,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
-      tokens,
+      inputTokens: inputTokens,
+      outputTokens: outputTokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -82,7 +87,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
         moduleName: name,
         totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        tokens
+        inputTokens: inputTokens,
+        outputTokens: outputTokens
       }
     ]
   };
@@ -148,7 +154,8 @@ const completions = async ({
   }
 
   return {
-    tokens: await countMessagesTokens(messages),
+    inputTokens: await countGptMessagesTokens(requestMessages),
+    outputTokens: await countPromptTokens(answer),
     arg: { type: id }
   };
 };

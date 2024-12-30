@@ -1,7 +1,7 @@
 import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+const { Schema } = connectionMongo;
 import { UsageSchemaType } from '@fastgpt/global/support/wallet/usage/type';
-import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -22,7 +22,7 @@ const UsageSchema = new Schema({
   },
   source: {
     type: String,
-    enum: Object.keys(UsageSourceMap),
+    enum: Object.values(UsageSourceEnum),
     required: true
   },
   appName: {
@@ -65,7 +65,7 @@ try {
   // timer task. clear dead team
   // UsageSchema.index({ teamId: 1, time: -1 }, { background: true });
 
-  UsageSchema.index({ time: 1 }, { background: true, expireAfterSeconds: 720 * 24 * 60 * 60 });
+  UsageSchema.index({ time: 1 }, { background: true, expireAfterSeconds: 360 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);
 }

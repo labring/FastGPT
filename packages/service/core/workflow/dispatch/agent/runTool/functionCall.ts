@@ -109,7 +109,8 @@ export const runToolWithFunctionCall = async (
 
       return {
         dispatchFlowResponse: [toolRunResponse],
-        toolNodeTokens: 0,
+        toolNodeInputTokens: 0,
+        toolNodeOutputTokens: 0,
         completeMessages: requestMessages,
         assistantResponses: toolRunResponse.assistantResponses,
         runTimes: toolRunResponse.runTimes,
@@ -126,7 +127,8 @@ export const runToolWithFunctionCall = async (
       },
       {
         dispatchFlowResponse: [toolRunResponse],
-        toolNodeTokens: 0,
+        toolNodeInputTokens: 0,
+        toolNodeOutputTokens: 0,
         assistantResponses: toolRunResponse.assistantResponses,
         runTimes: toolRunResponse.runTimes
       }
@@ -340,7 +342,9 @@ export const runToolWithFunctionCall = async (
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
     // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
-    const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);
+    // const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);
+    const inputTokens = await countGptMessagesTokens(requestMessages, undefined, functions);
+    const outputTokens = await countGptMessagesTokens([assistantToolMsgParams]);
     /* 
       ...
       user
@@ -375,7 +379,12 @@ export const runToolWithFunctionCall = async (
     const runTimes =
       (response?.runTimes || 0) +
       flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0);
-    const toolNodeTokens = response?.toolNodeTokens ? response.toolNodeTokens + tokens : tokens;
+    const toolNodeInputTokens = response?.toolNodeInputTokens
+      ? response.toolNodeInputTokens + inputTokens
+      : inputTokens;
+    const toolNodeOutputTokens = response?.toolNodeOutputTokens
+      ? response.toolNodeOutputTokens + outputTokens
+      : outputTokens;
 
     // Check stop signal
     const hasStopSignal = flatToolsResponseData.some(
@@ -408,7 +417,8 @@ export const runToolWithFunctionCall = async (
 
       return {
         dispatchFlowResponse,
-        toolNodeTokens,
+        toolNodeInputTokens,
+        toolNodeOutputTokens,
         completeMessages,
         assistantResponses: toolNodeAssistants,
         runTimes,
@@ -423,7 +433,8 @@ export const runToolWithFunctionCall = async (
       },
       {
         dispatchFlowResponse,
-        toolNodeTokens,
+        toolNodeInputTokens,
+        toolNodeOutputTokens,
         assistantResponses: toolNodeAssistants,
         runTimes
       }
@@ -435,7 +446,8 @@ export const runToolWithFunctionCall = async (
       content: answer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
-    const tokens = await countGptMessagesTokens(completeMessages, undefined, functions);
+    const inputTokens = await countGptMessagesTokens(requestMessages, undefined, functions);
+    const outputTokens = await countGptMessagesTokens([gptAssistantResponse]);
     // console.log(tokens, 'response token');
 
     // concat tool assistant
@@ -443,7 +455,12 @@ export const runToolWithFunctionCall = async (
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
-      toolNodeTokens: response?.toolNodeTokens ? response.toolNodeTokens + tokens : tokens,
+      toolNodeInputTokens: response?.toolNodeInputTokens
+        ? response.toolNodeInputTokens + inputTokens
+        : inputTokens,
+      toolNodeOutputTokens: response?.toolNodeOutputTokens
+        ? response.toolNodeOutputTokens + outputTokens
+        : outputTokens,
       completeMessages,
       assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
       runTimes: (response?.runTimes || 0) + 1

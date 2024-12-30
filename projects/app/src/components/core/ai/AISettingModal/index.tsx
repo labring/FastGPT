@@ -18,7 +18,6 @@ import {
   Thead,
   Tr,
   Table,
-  useDisclosure,
   FlexProps
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -175,10 +174,28 @@ const AIChatSettingsModal = ({
             <Tbody>
               <Tr color={'myGray.900'}>
                 <Td pt={0} pb={2}>
-                  {t('common:support.wallet.Ai point every thousand tokens', {
-                    points: selectedModel?.charsPointsPrice || 0
-                  })}
+                  {typeof selectedModel?.inputPrice === 'number' ? (
+                    <>
+                      <Box>
+                        {t('common:support.wallet.Ai point every thousand tokens_input', {
+                          points: selectedModel?.inputPrice || 0
+                        })}
+                      </Box>
+                      <Box>
+                        {t('common:support.wallet.Ai point every thousand tokens_output', {
+                          points: selectedModel?.outputPrice || 0
+                        })}
+                      </Box>
+                    </>
+                  ) : (
+                    <>
+                      {t('common:support.wallet.Ai point every thousand tokens', {
+                        points: selectedModel?.charsPointsPrice || 0
+                      })}
+                    </>
+                  )}
                 </Td>
+
                 <Td pt={0} pb={2}>
                   {Math.round((selectedModel?.maxContext || 4096) / 1000)}K
                 </Td>

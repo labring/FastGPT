@@ -156,8 +156,24 @@ export const WholeResponseContent = ({
           value={`${activeModule?.tokens}`}
         />
         <Row
+          label={t('common:core.chat.response.module input tokens')}
+          value={`${activeModule?.inputTokens}`}
+        />
+        <Row
+          label={t('common:core.chat.response.module output tokens')}
+          value={`${activeModule?.outputTokens}`}
+        />
+        <Row
           label={t('common:core.chat.response.Tool call tokens')}
           value={`${activeModule?.toolCallTokens}`}
+        />
+        <Row
+          label={t('common:core.chat.response.Tool call input tokens')}
+          value={`${activeModule?.toolCallInputTokens}`}
+        />
+        <Row
+          label={t('common:core.chat.response.Tool call output tokens')}
+          value={`${activeModule?.toolCallOutputTokens}`}
         />
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />

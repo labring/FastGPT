@@ -158,7 +158,8 @@ export const runToolWithToolChoice = async (
 
       return {
         dispatchFlowResponse: [toolRunResponse],
-        toolNodeTokens: 0,
+        toolNodeInputTokens: 0,
+        toolNodeOutputTokens: 0,
         completeMessages: requestMessages,
         assistantResponses: toolRunResponse.assistantResponses,
         runTimes: toolRunResponse.runTimes,
@@ -176,7 +177,8 @@ export const runToolWithToolChoice = async (
       },
       {
         dispatchFlowResponse: [toolRunResponse],
-        toolNodeTokens: 0,
+        toolNodeInputTokens: 0,
+        toolNodeOutputTokens: 0,
         assistantResponses: toolRunResponse.assistantResponses,
         runTimes: toolRunResponse.runTimes
       }
@@ -428,7 +430,9 @@ export const runToolWithToolChoice = async (
     ] as ChatCompletionMessageParam[];
 
     // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
-    const tokens = await countGptMessagesTokens(concatToolMessages, tools);
+    const inputTokens = await countGptMessagesTokens(requestMessages, tools);
+    const outputTokens = await countGptMessagesTokens(assistantToolMsgParams);
+
     /* 
         ...
         user
@@ -463,7 +467,10 @@ export const runToolWithToolChoice = async (
     const runTimes =
       (response?.runTimes || 0) +
       flatToolsResponseData.reduce((sum, item) => sum + item.runTimes, 0);
-    const toolNodeTokens = response ? response.toolNodeTokens + tokens : tokens;
+    const toolNodeInputTokens = response ? response.toolNodeInputTokens + inputTokens : inputTokens;
+    const toolNodeOutputTokens = response
+      ? response.toolNodeOutputTokens + outputTokens
+      : outputTokens;
 
     // Check stop signal
     const hasStopSignal = flatToolsResponseData.some(
@@ -496,7 +503,8 @@ export const runToolWithToolChoice = async (
 
       return {
         dispatchFlowResponse,
-        toolNodeTokens,
+        toolNodeInputTokens,
+        toolNodeOutputTokens,
         completeMessages,
         assistantResponses: toolNodeAssistants,
         runTimes,
@@ -512,7 +520,8 @@ export const runToolWithToolChoice = async (
       },
       {
         dispatchFlowResponse,
-        toolNodeTokens,
+        toolNodeInputTokens,
+        toolNodeOutputTokens,
         assistantResponses: toolNodeAssistants,
         runTimes
       }
@@ -524,14 +533,17 @@ export const runToolWithToolChoice = async (
       content: answer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
-    const tokens = await countGptMessagesTokens(completeMessages, tools);
+    const inputTokens = await countGptMessagesTokens(requestMessages, tools);
+    const outputTokens = await countGptMessagesTokens([gptAssistantResponse]);
 
     // concat tool assistant
     const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
-      toolNodeTokens: response ? response.toolNodeTokens + tokens : tokens,
+      toolNodeInputTokens: response ? response.toolNodeInputTokens + inputTokens : inputTokens,
+      toolNodeOutputTokens: response ? response.toolNodeOutputTokens + outputTokens : outputTokens,
+
       completeMessages,
       assistantResponses: [...assistantResponses, ...toolNodeAssistant.value],
       runTimes: (response?.runTimes || 0) + 1
@@ -578,7 +590,8 @@ async function streamResponse({
           text: content
         })
       });
-    } else if (responseChoice?.tool_calls?.[0]) {
+    }
+    if (responseChoice?.tool_calls?.[0]) {
       const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
       // In a stream response, only one tool is returned at a time.  If have id, description is executing a tool
       if (toolCall.id || callingTool) {
