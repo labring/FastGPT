@@ -1,8 +1,5 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import type {
-  OrgMemberSchemaType,
-  OrgSchemaType
-} from '@fastgpt/global/support/user/team/org/type';
+import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import type { ClientSession } from 'mongoose';
 import { MongoOrgModel } from './orgSchema';
 import { MongoOrgMemberModel } from './orgMemberSchema';
@@ -35,16 +32,6 @@ import { MongoOrgMemberModel } from './orgMemberSchema';
 // export const checkOrgRole = (role: OrgMemberRole, targetRole: OrgMemberRole) => {
 //   return compareRole(role, targetRole) >= 0;
 // };
-
-export const getOrgsByTeamId = async (teamId: string) => {
-  const orgs = await MongoOrgModel.find({
-    teamId
-  })
-    .populate<{ members: OrgMemberSchemaType }>('members')
-    .lean();
-
-  return orgs;
-};
 
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
   MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();

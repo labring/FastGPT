@@ -258,20 +258,20 @@ const ListItem = () => {
                     {(AppFolderTypeList.includes(app.type)
                       ? app.permission.hasManagePer
                       : app.permission.hasWritePer) && (
-                        <Box className="more" display={['', 'none']}>
-                          <MyMenu
-                            size={'xs'}
-                            Button={
-                              <IconButton
-                                size={'xsSquare'}
-                                variant={'transparentBase'}
-                                icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
-                                aria-label={''}
-                              />
-                            }
-                            menuList={[
-                              ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
-                                ? [
+                      <Box className="more" display={['', 'none']}>
+                        <MyMenu
+                          size={'xs'}
+                          Button={
+                            <IconButton
+                              size={'xsSquare'}
+                              variant={'transparentBase'}
+                              icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
+                              aria-label={''}
+                            />
+                          }
+                          menuList={[
+                            ...([AppTypeEnum.simple, AppTypeEnum.workflow].includes(app.type)
+                              ? [
                                   {
                                     children: [
                                       {
@@ -285,9 +285,9 @@ const ListItem = () => {
                                     ]
                                   }
                                 ]
-                                : []),
-                              ...([AppTypeEnum.plugin].includes(app.type)
-                                ? [
+                              : []),
+                            ...([AppTypeEnum.plugin].includes(app.type)
+                              ? [
                                   {
                                     children: [
                                       {
@@ -301,9 +301,9 @@ const ListItem = () => {
                                     ]
                                   }
                                 ]
-                                : []),
-                              ...(app.permission.hasManagePer
-                                ? [
+                              : []),
+                            ...(app.permission.hasManagePer
+                              ? [
                                   {
                                     children: [
                                       {
@@ -330,34 +330,34 @@ const ListItem = () => {
                                         }
                                       },
                                       ...(folderDetail?.type === AppTypeEnum.httpPlugin &&
-                                        !(parentApp ? parentApp.permission : app.permission)
-                                          .hasManagePer
+                                      !(parentApp ? parentApp.permission : app.permission)
+                                        .hasManagePer
                                         ? []
                                         : [
-                                          {
-                                            icon: 'common/file/move',
-                                            type: 'grayBg' as MenuItemType,
-                                            label: t('common:common.folder.Move to'),
-                                            onClick: () => setMoveAppId(app._id)
-                                          }
-                                        ]),
+                                            {
+                                              icon: 'common/file/move',
+                                              type: 'grayBg' as MenuItemType,
+                                              label: t('common:common.folder.Move to'),
+                                              onClick: () => setMoveAppId(app._id)
+                                            }
+                                          ]),
                                       ...(app.permission.hasManagePer
                                         ? [
-                                          {
-                                            icon: 'support/team/key',
-                                            type: 'grayBg' as MenuItemType,
-                                            label: t('common:permission.Permission'),
-                                            onClick: () => setEditPerAppIndex(index)
-                                          }
-                                        ]
+                                            {
+                                              icon: 'support/team/key',
+                                              type: 'grayBg' as MenuItemType,
+                                              label: t('common:permission.Permission'),
+                                              onClick: () => setEditPerAppIndex(index)
+                                            }
+                                          ]
                                         : [])
                                     ]
                                   }
                                 ]
-                                : []),
-                              ...(AppFolderTypeList.includes(app.type)
-                                ? []
-                                : [
+                              : []),
+                            ...(AppFolderTypeList.includes(app.type)
+                              ? []
+                              : [
                                   {
                                     children: [
                                       {
@@ -370,8 +370,8 @@ const ListItem = () => {
                                     ]
                                   }
                                 ]),
-                              ...(app.permission.isOwner
-                                ? [
+                            ...(app.permission.isOwner
+                              ? [
                                   {
                                     children: [
                                       {
@@ -390,11 +390,11 @@ const ListItem = () => {
                                     ]
                                   }
                                 ]
-                                : [])
-                            ]}
-                          />
-                        </Box>
-                      )}
+                              : [])
+                          ]}
+                        />
+                      </Box>
+                    )}
                   </HStack>
                 </Flex>
               </MyBox>
