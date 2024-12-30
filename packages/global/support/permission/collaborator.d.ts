@@ -10,17 +10,20 @@ export type CollaboratorItemType = {
 } & RequireOnlyOne<{
   tmbId: string;
   groupId: string;
+  orgId: string;
 }>;
 
 export type UpdateClbPermissionProps = {
   members?: string[];
   groups?: string[];
+  orgs?: string[];
   permission: PermissionValueType;
 };
 
 export type DeleteClbPermissionProps = RequireOnlyOne<{
   tmbId: string;
   groupId: string;
+  orgId: string;
 }>;
 
 export type UpdatePermissionBody = {
@@ -28,4 +31,5 @@ export type UpdatePermissionBody = {
 } & RequireOnlyOne<{
   memberId: string;
   groupId: string;
+  orgId: string;
 }>;

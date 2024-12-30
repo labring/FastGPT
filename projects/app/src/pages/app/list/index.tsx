@@ -324,10 +324,12 @@ const MyApps = () => {
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
                 onDelOneCollaborator: async ({
                   tmbId,
-                  groupId
+                  groupId,
+                  orgId
                 }: {
                   tmbId?: string;
                   groupId?: string;
+                  orgId?: string;
                 }) => {
                   if (tmbId) {
                     return deleteAppCollaborators({
@@ -338,6 +340,11 @@ const MyApps = () => {
                     return deleteAppCollaborators({
                       appId: folderDetail._id,
                       groupId
+                    });
+                  } else if (orgId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      orgId
                     });
                   }
                 }

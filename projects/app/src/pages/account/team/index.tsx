@@ -25,11 +25,13 @@ import MemberTable from './components/MemberTable';
 const InviteModal = dynamic(() => import('./components/InviteModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
 const GroupManage = dynamic(() => import('./components/GroupManage/index'));
+const OrgManage = dynamic(() => import('./components/OrgManage/index'));
 const GroupInfoModal = dynamic(() => import('./components/GroupManage/GroupInfoModal'));
 const ManageGroupMemberModal = dynamic(() => import('./components/GroupManage/GroupManageMember'));
 
 export enum TeamTabEnum {
   member = 'member',
+  org = 'org',
   group = 'group',
   permission = 'permission'
 }
@@ -172,6 +174,7 @@ const Team = () => {
           <FillRowTabs
             list={[
               { label: t('account_team:member'), value: TeamTabEnum.member },
+              { label: t('account_team:org'), value: TeamTabEnum.org },
               { label: t('account_team:group'), value: TeamTabEnum.group },
               { label: t('account_team:permission'), value: TeamTabEnum.permission }
             ]}
@@ -274,6 +277,7 @@ const Team = () => {
           {teamTab === TeamTabEnum.group && (
             <GroupManage onEditGroup={onEditGroup} onManageMember={onManageMember} />
           )}
+          {teamTab === TeamTabEnum.org && <OrgManage />}
           {teamTab === TeamTabEnum.permission && <PermissionManage />}
         </Box>
       </Box>
