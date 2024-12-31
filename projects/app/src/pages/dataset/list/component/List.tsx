@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { resumeInheritPer } from '@/web/core/dataset/api';
+import { changeOwner, resumeInheritPer } from '@/web/core/dataset/api';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -422,6 +422,12 @@ function List() {
 
       {!!editPerDataset && (
         <ConfigPerModal
+          onChangeOwner={(tmbId: string) =>
+            changeOwner({
+              datasetId: editPerDataset._id,
+              ownerId: tmbId
+            }).then(() => loadMyDatasets())
+          }
           hasParent={!!parentId}
           refetchResource={loadMyDatasets}
           isInheritPermission={editPerDataset.inheritPermission}
