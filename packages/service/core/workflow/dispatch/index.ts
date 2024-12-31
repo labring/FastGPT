@@ -72,6 +72,7 @@ import { dispatchLoopEnd } from './loop/runLoopEnd';
 import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -231,9 +232,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     if (toolResponses !== undefined) {
       if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
-      if (typeof toolResponses === 'object' && Object.keys(toolResponses).length === 0) {
-        return;
-      }
+      if (typeof toolResponses === 'object' && Object.keys(toolResponses).length === 0) return;
       toolRunResponse = toolResponses;
     }
 
@@ -564,6 +563,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           // Get source handles of outgoing edges
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
           const skipHandleIds = targetEdges.map((item) => item.sourceHandle);
+
+          toolRunResponse = getErrText(error);
 
           // Skip all edges and return error
           return {

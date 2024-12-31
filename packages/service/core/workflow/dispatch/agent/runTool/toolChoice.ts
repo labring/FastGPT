@@ -27,9 +27,10 @@ import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type ToolRunResponseType = {
-  toolRunResponse: DispatchFlowResponse;
+  toolRunResponse?: DispatchFlowResponse;
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
 
@@ -344,59 +345,87 @@ export const runToolWithToolChoice = async (
     return Promise.reject(getEmptyResponseTip());
   }
 
-  // Run the selected tool by LLM.
-  const toolsRunResponse = (
-    await Promise.all(
-      toolCalls.map(async (tool) => {
-        const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
+  /* Run the selected tool by LLM.
+    Since only reference parameters are passed, if the same tool is run in parallel, it will get the same run parameters
+  */
+  const toolsRunResponse: ToolRunResponseType = [];
+  for await (const tool of toolCalls) {
+    try {
+      const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
 
-        if (!toolNode) return;
+      if (!toolNode) continue;
 
-        const startParams = (() => {
-          try {
-            return json5.parse(tool.function.arguments);
-          } catch (error) {
-            return {};
+      const startParams = (() => {
+        try {
+          return json5.parse(tool.function.arguments);
+        } catch (error) {
+          return {};
+        }
+      })();
+
+      initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
+      const toolRunResponse = await dispatchWorkFlow({
+        ...workflowProps,
+        isToolCall: true
+      });
+
+      const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
+
+      const toolMsgParams: ChatCompletionToolMessageParam = {
+        tool_call_id: tool.id,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        name: tool.function.name,
+        content: stringToolResponse
+      };
+
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolResponse,
+        data: {
+          tool: {
+            id: tool.id,
+            toolName: '',
+            toolAvatar: '',
+            params: '',
+            response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
           }
-        })();
+        }
+      });
 
-        initToolNodes(runtimeNodes, [toolNode.nodeId], startParams);
-        const toolRunResponse = await dispatchWorkFlow({
-          ...workflowProps,
-          isToolCall: true
-        });
+      toolsRunResponse.push({
+        toolRunResponse,
+        toolMsgParams
+      });
+    } catch (error) {
+      const err = getErrText(error);
+      workflowStreamResponse?.({
+        event: SseResponseEventEnum.toolResponse,
+        data: {
+          tool: {
+            id: tool.id,
+            toolName: '',
+            toolAvatar: '',
+            params: '',
+            response: sliceStrStartEnd(err, 5000, 5000)
+          }
+        }
+      });
 
-        const stringToolResponse = formatToolResponse(toolRunResponse.toolResponses);
-
-        const toolMsgParams: ChatCompletionToolMessageParam = {
+      toolsRunResponse.push({
+        toolRunResponse: undefined,
+        toolMsgParams: {
           tool_call_id: tool.id,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           name: tool.function.name,
-          content: stringToolResponse
-        };
+          content: sliceStrStartEnd(err, 5000, 5000)
+        }
+      });
+    }
+  }
 
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.toolResponse,
-          data: {
-            tool: {
-              id: tool.id,
-              toolName: '',
-              toolAvatar: '',
-              params: '',
-              response: sliceStrStartEnd(stringToolResponse, 5000, 5000)
-            }
-          }
-        });
-
-        return {
-          toolRunResponse,
-          toolMsgParams
-        };
-      })
-    )
-  ).filter(Boolean) as ToolRunResponseType;
-
-  const flatToolsResponseData = toolsRunResponse.map((item) => item.toolRunResponse).flat();
+  const flatToolsResponseData = toolsRunResponse
+    .map((item) => item.toolRunResponse)
+    .flat()
+    .filter(Boolean) as DispatchFlowResponse[];
   // concat tool responses
   const dispatchFlowResponse = response
     ? response.dispatchFlowResponse.concat(flatToolsResponseData)
@@ -434,22 +463,22 @@ export const runToolWithToolChoice = async (
     const outputTokens = await countGptMessagesTokens(assistantToolMsgParams);
 
     /* 
-        ...
-        user
-        assistant: tool data
-        tool: tool response
-      */
+      ...
+      user
+      assistant: tool data
+      tool: tool response
+    */
     const completeMessages = [
       ...concatToolMessages,
       ...toolsRunResponse.map((item) => item?.toolMsgParams)
     ];
 
     /* 
-        Get tool node assistant response
-        history assistant
-        current tool assistant
-        tool child assistant
-      */
+      Get tool node assistant response
+      history assistant
+      current tool assistant
+      tool child assistant
+    */
     const toolNodeAssistant = GPTMessages2Chats([
       ...assistantToolMsgParams,
       ...toolsRunResponse.map((item) => item?.toolMsgParams)
@@ -478,12 +507,12 @@ export const runToolWithToolChoice = async (
     );
     // Check interactive response(Only 1 interaction is reserved)
     const workflowInteractiveResponseItem = toolsRunResponse.find(
-      (item) => item.toolRunResponse.workflowInteractiveResponse
+      (item) => item.toolRunResponse?.workflowInteractiveResponse
     );
     if (hasStopSignal || workflowInteractiveResponseItem) {
       // Get interactive tool data
       const workflowInteractiveResponse =
-        workflowInteractiveResponseItem?.toolRunResponse.workflowInteractiveResponse;
+        workflowInteractiveResponseItem?.toolRunResponse?.workflowInteractiveResponse;
 
       // Flashback traverses completeMessages, intercepting messages that know the first user
       const firstUserIndex = completeMessages.findLastIndex((item) => item.role === 'user');
