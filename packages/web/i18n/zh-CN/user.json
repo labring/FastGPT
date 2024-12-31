@@ -40,7 +40,6 @@
   "password.email_phone_void": "邮箱/手机号不能为空",
   "password.get_code": "获取验证码",
   "password.get_code_again": "s后重新获取",
-  "password.new_password": "新密码(4~20位)",
   "password.not_match": "两次密码不一致",
   "password.password_condition": "密码最少 4 位最多 20 位",
   "password.password_required": "密码不能为空",

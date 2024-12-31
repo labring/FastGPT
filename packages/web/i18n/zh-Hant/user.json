@@ -40,7 +40,6 @@
   "password.email_phone_void": "電子郵件/手機號碼不能空白",
   "password.get_code": "取得驗證碼",
   "password.get_code_again": "秒後重新取得",
-  "password.new_password": "新密碼（4 至 20 字元）",
   "password.not_match": "兩次輸入的密碼不相符",
   "password.password_condition": "密碼長度需介於 4 至 20 字元之間",
   "password.password_required": "密碼不能空白",
