@@ -1,17 +1,13 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { ModalFooter, ModalBody, Input, Button, Box, Textarea, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export type EditResourceInfoFormType = {
   id: string;
@@ -31,7 +27,6 @@ const EditResourceModal = ({
   onEdit: (data: EditResourceInfoFormType) => any;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { register, watch, setValue, handleSubmit } = useForm<EditResourceInfoFormType>({
     defaultValues: defaultForm
   });
@@ -46,31 +41,14 @@ const EditResourceModal = ({
     }
   );
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.appAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-        setValue('avatar', src);
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, t('common:common.error.Select avatar failed')),
-          status: 'warning'
-        });
-      }
-    },
-    [setValue, t, toast]
-  );
 
   return (
     <MyModal isOpen onClose={onClose} iconSrc={avatar} title={title}>
@@ -108,7 +86,15 @@ const EditResourceModal = ({
         </Button>
       </ModalFooter>
 
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e) => setValue('avatar', e)
+          })
+        }
+      />
     </MyModal>
   );
 };

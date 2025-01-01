@@ -28,6 +28,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { addDays } from 'date-fns';
+import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -144,6 +145,8 @@ async function handler(
       autoSync,
       session
     });
+
+    await refreshSourceAvatar(avatar, dataset.avatar, session);
   };
 
   await mongoSessionRun(async (session) => {

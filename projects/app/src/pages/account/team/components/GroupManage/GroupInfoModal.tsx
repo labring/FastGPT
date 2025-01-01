@@ -6,9 +6,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo } from 'react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
@@ -23,7 +21,11 @@ export type GroupFormType = {
 function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
   const { refetchGroups, groups, refetchMembers } = useContextSelector(TeamContext, (v) => v);
   const { t } = useTranslation();
-  const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
+  const {
+    File: AvatarSelect,
+    onOpen: onOpenSelectAvatar,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg, .jpeg, .png',
     multiple: false
   });
@@ -41,13 +43,10 @@ function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGro
 
   const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
     async (file: File[]) => {
-      const src = await compressImgFileAndUpload({
-        type: MongoImageTypeEnum.groupAvatar,
-        file: file[0],
+      return onSelectImage(file, {
         maxW: 300,
         maxH: 300
       });
-      return src;
     },
     {
       onSuccess: (src: string) => {

@@ -887,6 +887,7 @@
   "error.missingParams": "参数缺失",
   "error.too_many_request": "请求太频繁了，请稍后重试",
   "error.upload_file_error_filename": "{{name}} 上传失败",
+  "error.upload_image_error": "上传文件失败",
   "error.username_empty": "账号不能为空",
   "extraction_results": "提取结果",
   "field_name": "字段名",

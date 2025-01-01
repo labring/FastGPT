@@ -884,6 +884,7 @@
   "error.missingParams": "Insufficient parameters",
   "error.too_many_request": "Too many request",
   "error.upload_file_error_filename": "{{name}} Upload Failed",
+  "error.upload_image_error": "File upload failed",
   "error.username_empty": "Account cannot be empty",
   "extraction_results": "Extraction Results",
   "field_name": "Field Name",

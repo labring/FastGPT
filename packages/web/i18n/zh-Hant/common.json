@@ -885,6 +885,7 @@
   "error.missingParams": "參數不足",
   "error.too_many_request": "請求太頻繁了，請稍後重試",
   "error.upload_file_error_filename": "{{name}} 上傳失敗",
+  "error.upload_image_error": "上傳文件失敗",
   "error.username_empty": "帳號不能為空",
   "extraction_results": "提取結果",
   "field_name": "欄位名稱",
