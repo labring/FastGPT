@@ -11,6 +11,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { isEqual } from 'lodash';
 import { onCreateApp } from '../create';
 import { onDelOneApp } from '../del';
+import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 
 export type UpdateHttpPluginBody = {
   appId: string;
@@ -49,13 +50,15 @@ async function handler(req: ApiRequestProps<UpdateHttpPluginBody>, res: NextApiR
     await MongoApp.findByIdAndUpdate(
       appId,
       {
-        name,
-        avatar,
-        intro,
+        ...(name && { name }),
+        ...(avatar && { avatar }),
+        ...(intro !== undefined && { intro }),
         pluginData
       },
       { session }
     );
+
+    await refreshSourceAvatar(avatar, app.avatar, session);
   });
 }
 

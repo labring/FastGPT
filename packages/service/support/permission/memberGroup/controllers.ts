@@ -97,8 +97,12 @@ export const authGroupMemberRole = async ({
       tmbId
     };
   }
-  const groupMember = await MongoGroupMemberModel.findOne({ groupId, tmbId });
-  const tmb = await getTmbInfoByTmbId({ tmbId });
+  const [groupMember, tmb] = await Promise.all([
+    MongoGroupMemberModel.findOne({ groupId, tmbId }),
+    getTmbInfoByTmbId({ tmbId })
+  ]);
+
+  // Team admin or role check
   if (tmb.permission.hasManagePer || (groupMember && role.includes(groupMember.role))) {
     return {
       ...result,
