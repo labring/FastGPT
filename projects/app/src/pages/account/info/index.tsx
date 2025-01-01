@@ -20,7 +20,6 @@ import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -29,7 +28,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import {
   StandardSubLevelEnum,
   standardSubLevelMap
@@ -131,7 +129,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdateNotification,
     onOpen: onOpenUpdateNotification
   } = useDisclosure();
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
@@ -149,32 +151,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       });
     },
     [reset, t, toast, updateUserInfo]
-  );
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file || !userInfo) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.userAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-
-        onclickSave({
-          ...userInfo,
-          avatar: src
-        });
-      } catch (err: any) {
-        toast({
-          title: typeof err === 'string' ? err : t('account_info:avatar_selection_exception'),
-          status: 'warning'
-        });
-      }
-    },
-    [onclickSave, t, toast, userInfo]
   );
 
   const labelStyles: BoxProps = {
@@ -329,7 +305,21 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxW: 300,
+            maxH: 300,
+            callback: (src) => {
+              if (!userInfo) return;
+              onclickSave({
+                ...userInfo,
+                avatar: src
+              });
+            }
+          })
+        }
+      />
     </Box>
   );
 };

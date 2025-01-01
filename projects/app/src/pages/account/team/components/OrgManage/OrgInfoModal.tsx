@@ -1,8 +1,6 @@
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { postCreateOrg, putUpdateOrg } from '@/web/support/user/team/org/api';
 import { Button, HStack, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { DEFAULT_ORG_AVATAR } from '@fastgpt/global/common/system/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -89,19 +87,20 @@ function OrgInfoModal({
     }
   );
 
-  const { File: AvatarSelect, onOpen: onOpenSelectAvatar } = useSelectFile({
+  const {
+    File: AvatarSelect,
+    onOpen: onOpenSelectAvatar,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg, .jpeg, .png',
     multiple: false
   });
   const { loading: uploadingAvatar, run: onSelectAvatar } = useRequest2(
     async (file: File[]) => {
-      const src = await compressImgFileAndUpload({
-        type: MongoImageTypeEnum.groupAvatar,
-        file: file[0],
+      return onSelectImage(file, {
         maxW: 300,
         maxH: 300
       });
-      return src;
     },
     {
       onSuccess: (src: string) => {
