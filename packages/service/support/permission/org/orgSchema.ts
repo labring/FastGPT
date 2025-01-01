@@ -45,12 +45,12 @@ OrgSchema.virtual('members', {
   localField: '_id',
   foreignField: 'orgId'
 });
-OrgSchema.virtual('permission', {
-  ref: ResourcePermissionCollectionName,
-  localField: '_id',
-  foreignField: 'orgId',
-  justOne: true
-});
+// OrgSchema.virtual('permission', {
+//   ref: ResourcePermissionCollectionName,
+//   localField: '_id',
+//   foreignField: 'orgId',
+//   justOne: true
+// });
 
 try {
   OrgSchema.index({
