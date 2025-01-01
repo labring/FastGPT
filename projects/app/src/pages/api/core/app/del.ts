@@ -18,6 +18,7 @@ import { ClientSession } from '@fastgpt/service/common/mongo';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
+import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -57,7 +58,7 @@ export const onDelOneApp = async ({
   const apps = await findAppAndAllChildren({
     teamId,
     appId,
-    fields: '_id'
+    fields: '_id avatar'
   });
 
   const del = async (session: ClientSession) => {
@@ -109,6 +110,8 @@ export const onDelOneApp = async ({
         },
         { session }
       );
+
+      await removeImageByPath(app.avatar, session);
     }
   };
 

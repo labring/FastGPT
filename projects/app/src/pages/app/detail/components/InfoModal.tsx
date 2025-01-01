@@ -1,7 +1,6 @@
 import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { AppContext } from '@/pages/app/detail/components/context';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useI18n } from '@/web/context/I18n';
 import { resumeInheritPer } from '@/web/core/app/api';
@@ -20,8 +19,6 @@ import {
   ModalFooter,
   Textarea
 } from '@chakra-ui/react';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
@@ -42,7 +39,11 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
@@ -99,28 +100,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const saveUpdateModel = useCallback(
     () => handleSubmit((data) => saveSubmitSuccess(data).then(onClose), saveSubmitError)(),
     [handleSubmit, onClose, saveSubmitError, saveSubmitSuccess]
-  );
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.appAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-        setValue('avatar', src);
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, t('common:common.error.Select avatar failed')),
-          status: 'warning'
-        });
-      }
-    },
-    [setValue, t, toast]
   );
 
   const onUpdateCollaborators = ({
@@ -273,7 +252,15 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         </Button>
       </ModalFooter>
 
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e) => setValue('avatar', e)
+          })
+        }
+      />
     </MyModal>
   );
 };

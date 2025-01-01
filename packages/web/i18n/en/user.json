@@ -40,7 +40,6 @@
   "password.email_phone_void": "Email/Phone Number Cannot Be Empty",
   "password.get_code": "Get Verification Code",
   "password.get_code_again": "Get Again in s",
-  "password.new_password": "New Password (4-20 characters)",
   "password.not_match": "Passwords Do Not Match",
   "password.password_condition": "Password must be between 4 and 20 characters",
   "password.password_required": "Password Cannot Be Empty",
