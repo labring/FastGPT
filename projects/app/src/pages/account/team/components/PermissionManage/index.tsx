@@ -28,6 +28,7 @@ import {
 } from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { useCreation } from 'ahooks';
+import { getOrgList } from '@/web/support/user/team/org/api';
 
 function PermissionManage() {
   const { t } = useTranslation();
@@ -35,6 +36,23 @@ function PermissionManage() {
   const { groups, refetchMembers, refetchGroups, members, searchKey } = useContextSelector(
     TeamContext,
     (v) => v
+  );
+
+  const {
+    data: orgs = [],
+    loading: isLoadingOrgs,
+    refresh: refetchOrgs
+  } = useRequest2(getOrgList, {
+    manual: false,
+    refreshDeps: [userInfo?.team?.teamId]
+  });
+
+  const filteredOrgs = useCreation(
+    () =>
+      orgs.filter(
+        (org) => org.path !== '' && org.name.toLowerCase().includes(searchKey.toLowerCase())
+      ),
+    [orgs, searchKey]
   );
 
   const { runAsync: refetchClbs, data: clbs = [] } = useRequest2(getTeamClbs, {
@@ -67,15 +85,18 @@ function PermissionManage() {
       refetchGroups();
       refetchMembers();
       refetchClbs();
+      refetchOrgs();
     }
   });
 
   const { runAsync: onAddPermission, loading: addLoading } = useRequest2(
     async ({
+      orgId,
       groupId,
       memberId,
       per
     }: {
+      orgId?: string;
       groupId?: string;
       memberId?: string;
       per: 'write' | 'manage';
@@ -95,6 +116,26 @@ function PermissionManage() {
               permission.addPer(TeamManagePermissionVal);
               return onUpdateMemberPermission({
                 groupId: group._id,
+                permission: permission.value
+              });
+          }
+        }
+      }
+      if (orgId) {
+        const org = orgs.find((org) => String(org._id) === orgId);
+        if (org) {
+          const permission = new TeamPermission({ per: org.permission.value });
+          switch (per) {
+            case 'write':
+              permission.addPer(TeamWritePermissionVal);
+              return onUpdateMemberPermission({
+                orgId: org._id,
+                permission: permission.value
+              });
+            case 'manage':
+              permission.addPer(TeamManagePermissionVal);
+              return onUpdateMemberPermission({
+                orgId: org._id,
                 permission: permission.value
               });
           }
@@ -125,10 +166,12 @@ function PermissionManage() {
 
   const { runAsync: onRemovePermission, loading: removeLoading } = useRequest2(
     async ({
+      orgId,
       groupId,
       memberId,
       per
     }: {
+      orgId?: string;
       groupId?: string;
       memberId?: string;
       per: 'write' | 'manage';
@@ -148,6 +191,26 @@ function PermissionManage() {
               permission.removePer(TeamManagePermissionVal);
               return onUpdateMemberPermission({
                 groupId: group._id,
+                permission: permission.value
+              });
+          }
+        }
+      }
+      if (orgId) {
+        const org = orgs.find((org) => String(org._id) === orgId);
+        if (org) {
+          const permission = new TeamPermission({ per: org.permission.value });
+          switch (per) {
+            case 'write':
+              permission.removePer(TeamWritePermissionVal);
+              return onUpdateMemberPermission({
+                orgId: org._id,
+                permission: permission.value
+              });
+            case 'manage':
+              permission.removePer(TeamManagePermissionVal);
+              return onUpdateMemberPermission({
+                orgId: org._id,
                 permission: permission.value
               });
           }
@@ -239,9 +302,48 @@ function PermissionManage() {
               </Td>
             </Tr>
           ))}
-          {filteredGroups?.length > 0 && filteredMembers?.length > 0 && (
+          {filteredGroups?.length > 0 && filteredOrgs?.length > 0 && (
             <Tr borderBottom={'1px solid'} borderColor={'myGray.300'} />
           )}
+
+          {filteredOrgs?.map((org) => (
+            <Tr key={org._id} overflow={'unset'} border="none">
+              <Td border="none">
+                <MemberTag name={org.name} avatar={org.avatar} />
+              </Td>
+              <Td border="none">
+                <Box mx="auto" w="fit-content">
+                  <Checkbox
+                    isDisabled={!userManage}
+                    isChecked={org.permission.hasWritePer}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onAddPermission({ orgId: org._id, per: 'write' })
+                        : onRemovePermission({ orgId: org._id, per: 'write' })
+                    }
+                  />
+                </Box>
+              </Td>
+              <Td border="none">
+                <Box mx="auto" w="fit-content">
+                  <Checkbox
+                    isDisabled={!userInfo?.permission.isOwner}
+                    isChecked={org.permission.hasManagePer}
+                    onChange={(e) =>
+                      e.target.checked
+                        ? onAddPermission({ orgId: org._id, per: 'manage' })
+                        : onRemovePermission({ orgId: org._id, per: 'manage' })
+                    }
+                  />
+                </Box>
+              </Td>
+            </Tr>
+          ))}
+
+          {filteredOrgs?.length > 0 && filteredMembers?.length > 0 && (
+            <Tr borderBottom={'1px solid'} borderColor={'myGray.300'} />
+          )}
+
           {filteredMembers?.map((member) => (
             <Tr key={member.tmbId} overflow={'unset'} border="none">
               <Td border="none">
