@@ -1,5 +1,4 @@
 import { uploadMongoImg } from '../image/controller';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
@@ -114,10 +113,9 @@ export const readRawContentByFileBuffer = async ({
   if (imageList) {
     await batchRun(imageList, async (item) => {
       const src = await uploadMongoImg({
-        type: MongoImageTypeEnum.collectionImage,
         base64Img: `data:${item.mime};base64,${item.base64}`,
         teamId,
-        expiredTime: addHours(new Date(), 1),
+        // expiredTime: addHours(new Date(), 1),
         metadata: {
           ...metadata,
           mime: item.mime

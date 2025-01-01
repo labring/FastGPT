@@ -15,8 +15,8 @@ import { ClientSession } from '@fastgpt/service/common/mongo';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -147,6 +147,8 @@ export const onCreateApp = async ({
         { session }
       );
     }
+
+    await refreshSourceAvatar(avatar, undefined, session);
 
     return appId;
   };

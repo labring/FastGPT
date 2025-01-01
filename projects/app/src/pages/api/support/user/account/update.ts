@@ -6,6 +6,9 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 /* update user info */
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { getUserDetail } from '@fastgpt/service/support/user/controller';
+import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 export type UserAccountUpdateQuery = {};
 export type UserAccountUpdateBody = UserUpdateParams;
 export type UserAccountUpdateResponse = {};
@@ -16,22 +19,22 @@ async function handler(
   const { avatar, timezone } = req.body;
 
   const { tmbId } = await authCert({ req, authToken: true });
-  const tmb = await MongoTeamMember.findById(tmbId);
-  if (!tmb) {
-    throw new Error('can not find it');
-  }
-  const userId = tmb.userId;
+  const user = await getUserDetail({ tmbId });
 
   // 更新对应的记录
-  await MongoUser.updateOne(
-    {
-      _id: userId
-    },
-    {
-      ...(avatar && { avatar }),
-      ...(timezone && { timezone })
-    }
-  );
+  await mongoSessionRun(async (session) => {
+    await MongoUser.updateOne(
+      {
+        _id: user._id
+      },
+      {
+        ...(avatar && { avatar }),
+        ...(timezone && { timezone })
+      }
+    ).session(session);
+
+    await refreshSourceAvatar(avatar, user.avatar, session);
+  });
 
   return {};
 }

@@ -27,7 +27,8 @@ type State = {
   setLastAppListRouteType: (e?: string) => void;
 
   loginStore?: LoginStoreType;
-  setLoginStore: (e: LoginStoreType) => void;
+  setLoginStore: (e?: LoginStoreType) => void;
+
   loading: boolean;
   setLoading: (val: boolean) => null;
   gitStar: number;
