@@ -80,13 +80,11 @@ export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
   avatar = '/icon/logo.svg',
-  balance,
   session
 }: {
   userId: string;
   teamName?: string;
   avatar?: string;
-  balance?: number;
   session: ClientSession;
 }) {
   // auth default team
@@ -103,7 +101,6 @@ export async function createDefaultTeam({
           ownerId: userId,
           name: teamName,
           avatar,
-          balance,
           createTime: new Date()
         }
       ],
@@ -140,11 +137,6 @@ export async function createDefaultTeam({
     return tmb;
   } else {
     console.log('default team exist', userId);
-    await MongoTeam.findByIdAndUpdate(tmb.teamId, {
-      $set: {
-        ...(balance !== undefined && { balance })
-      }
-    });
   }
 }
 

@@ -30,14 +30,16 @@ import { TeamContext } from '../context';
 import { getOrgList } from '@/web/support/user/team/org/api';
 
 import IconButton from './IconButton';
-import OrgInfoModal, { defaultOrgForm, OrgFormType } from './OrgInfoModal';
-import OrgMemberManageModal from './OrgMemberManageModal';
+import type { defaultOrgForm, OrgFormType } from './OrgInfoModal';
 
-import OrgMoveModal from './OrgMoveModal';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+
+const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
+const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
+const OrgMoveModal = dynamic(() => import('./OrgMoveModal'));
 
 function ActionButton({
   icon,
@@ -68,7 +70,7 @@ function ActionButton({
   );
 }
 
-function MemberTable() {
+function OrgTable() {
   const { t } = useTranslation();
   const { userInfo, isTeamAdmin } = useUserStore();
 
@@ -340,4 +342,4 @@ function MemberTable() {
   );
 }
 
-export default dynamic(() => Promise.resolve(MemberTable), { ssr: false });
+export default OrgTable;
