@@ -11,7 +11,8 @@ import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { isWecomTerminal } from '@fastgpt/service/support/user/wecom';
+import { PUT } from '@fastgpt/service/common/api/plusRequest';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
@@ -29,6 +30,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const state = useRef(nanoid());
   const redirectUri = `${location.origin}/login/provider`;
   const { isPc } = useSystem();
+  const isWecom = isWecomTerminal();
 
   const oAuthList = [
     ...(feConfigs?.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat
@@ -82,6 +84,18 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           }
         ]
       : []),
+    ...(feConfigs?.oauth?.wecom
+      ? [
+          {
+            label: t('login:wecom'),
+            provider: OAuthEnum.wecom,
+            icon: 'common/wecom',
+            redirectUrl: isWecom
+              ? `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${feConfigs?.oauth?.wecom?.corpid}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_base&agentid=${feConfigs?.oauth?.wecom?.agentid}&state=${state.current}#wechat_redirect`
+              : `https://login.work.weixin.qq.com/wwlogin/sso/login?login_type=CorpApp&appid=${feConfigs?.oauth?.wecom?.corpid}&agentid=${feConfigs?.oauth?.wecom?.agentid}&redirect_uri=${redirectUri}&state=${state.current}`
+          }
+        ]
+      : []),
     ...(pageType !== LoginPageTypeEnum.passwordLogin
       ? [
           {
@@ -97,6 +111,20 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const show_oauth = useMemo(
     () => !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0),
     [feConfigs?.sso?.url, oAuthList.length]
+  );
+
+  const onClickOauth = useCallback(
+    async (item: any) => {
+      item.redirectUrl &&
+        setLoginStore({
+          provider: item.provider,
+          lastRoute,
+          state: state.current
+        });
+      item.redirectUrl && router.replace(item.redirectUrl, '_self');
+      item.pageType && setPageType(item.pageType);
+    },
+    [lastRoute, setLoginStore, setPageType]
   );
 
   const onClickSso = useCallback(() => {
@@ -115,7 +143,10 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     if (feConfigs?.sso?.autoLogin) {
       onClickSso();
     }
-  }, [feConfigs?.sso?.autoLogin]);
+    if (isWecom) {
+      onClickOauth(oAuthList.find((item) => item.provider === OAuthEnum.wecom));
+    }
+  }, [feConfigs?.sso?.autoLogin, isWecom]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -159,16 +190,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
                   borderRadius={'sm'}
                   fontWeight={'medium'}
                   leftIcon={<MyIcon name={item.icon as any} w={'20px'} />}
-                  onClick={() => {
-                    item.redirectUrl &&
-                      setLoginStore({
-                        provider: item.provider,
-                        lastRoute,
-                        state: state.current
-                      });
-                    item.redirectUrl && router.replace(item.redirectUrl, '_self');
-                    item.pageType && setPageType(item.pageType);
-                  }}
+                  onClick={() => onClickOauth(item)}
                 >
                   {item.label}
                 </Button>
