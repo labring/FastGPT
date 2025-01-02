@@ -194,4 +194,4 @@ function OrgMemberManageModal({
   );
 }
 
-export default dynamic(() => Promise.resolve(OrgMemberManageModal), { ssr: false });
+export default OrgMemberManageModal;

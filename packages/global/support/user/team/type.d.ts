@@ -59,7 +59,7 @@ export type TeamTmbItemType = {
   teamName: string;
   memberName: string;
   avatar: string;
-  balance: number;
+  balance?: number;
   tmbId: string;
   teamDomain: string;
   defaultTeam: boolean;

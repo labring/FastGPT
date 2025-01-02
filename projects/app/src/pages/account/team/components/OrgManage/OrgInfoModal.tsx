@@ -159,4 +159,4 @@ function OrgInfoModal({
   );
 }
 
-export default dynamic(() => Promise.resolve(OrgInfoModal), { ssr: false });
+export default OrgInfoModal;
