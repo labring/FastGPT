@@ -22,13 +22,12 @@ import dynamic from 'next/dynamic';
 import TeamTagModal from '@/components/support/user/team/TeamTagModal';
 import MemberTable from './components/MemberTable';
 
-import OrgManage from './components/OrgManage/index';
-
 const InviteModal = dynamic(() => import('./components/InviteModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
 const GroupManage = dynamic(() => import('./components/GroupManage/index'));
 const GroupInfoModal = dynamic(() => import('./components/GroupManage/GroupInfoModal'));
 const ManageGroupMemberModal = dynamic(() => import('./components/GroupManage/GroupManageMember'));
+const OrgManage = dynamic(() => import('./components/OrgManage/index'));
 
 export enum TeamTabEnum {
   member = 'member',

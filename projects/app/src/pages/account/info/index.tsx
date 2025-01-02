@@ -9,8 +9,7 @@ import {
   Link,
   Progress,
   Grid,
-  BoxProps,
-  FlexProps
+  BoxProps
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
