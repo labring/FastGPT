@@ -48,6 +48,16 @@ const main = async (props: Props, retry = 3): Response => {
       });
     });
 
+    if (results.length === 0) {
+      return {
+        result: JSON.stringify([]),
+        error: {
+          message: 'No search results',
+          code: 500
+        }
+      };
+    }
+
     return {
       result: JSON.stringify(results.slice(0, 10))
     };

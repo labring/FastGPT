@@ -160,6 +160,18 @@ default_doi_resolver: 'oadoi.org'
 }
 ```
 
+* 搜索结果为空时会返回友好提示：
+
+```Bash
+{
+  "result": "[]",
+  "error": {
+    "message": "No search results",
+    "code": 500
+  }
+}
+```
+
 * 失败时通过 Promise.reject 可能返回错误信息：
 
 ```Bash
