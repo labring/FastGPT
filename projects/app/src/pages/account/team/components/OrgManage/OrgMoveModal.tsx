@@ -71,4 +71,4 @@ function OrgMoveModal({
   );
 }
 
-export default dynamic(() => Promise.resolve(OrgMoveModal), { ssr: false });
+export default OrgMoveModal;
