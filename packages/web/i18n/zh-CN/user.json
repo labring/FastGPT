@@ -28,7 +28,6 @@
   "login.Dingtalk": "钉钉登录",
   "manage_team": "管理团队",
   "name": "名称",
-  "notification.Bind Notification Pipe Hint": "请绑定通知接收账号，以确保您能正常接收套餐过期提醒等通知，保障您的服务正常运行。",
   "notification.remind_owner_bind": "请提醒创建者绑定通知账号",
   "operations": "操作",
   "owner": "所有者",
