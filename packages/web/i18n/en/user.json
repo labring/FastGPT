@@ -67,7 +67,7 @@
   "register.confirm": "Confirm Registration",
   "register.register_account": "Register {{account}} Account",
   "register.success": "Registration Successful",
-  "register.to_login": "Already have an account? Login",
+  "register.to_login": "Already have an account? Go to Login",
   "search_user": "Search Username",
   "sso_auth_failed": "SSO authentication failed",
   "synchronization.button": "Sync Now",
