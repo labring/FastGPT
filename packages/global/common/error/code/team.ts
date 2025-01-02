@@ -4,6 +4,7 @@ import { i18nT } from '../../../../web/i18n/utils';
 export enum TeamErrEnum {
   teamOverSize = 'teamOverSize',
   unAuthTeam = 'unAuthTeam',
+  teamMemberOverSize = 'teamMemberOverSize',
   aiPointsNotEnough = 'aiPointsNotEnough',
   datasetSizeNotEnough = 'datasetSizeNotEnough',
   datasetAmountNotEnough = 'datasetAmountNotEnough',

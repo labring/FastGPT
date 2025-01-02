@@ -95,6 +95,7 @@ export const iconPaths = {
   'common/variable': () => import('./icons/common/variable.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),
+  'common/wallet': () => import('./icons/common/wallet.svg'),
   'common/warn': () => import('./icons/common/warn.svg'),
   'common/wechatFill': () => import('./icons/common/wechatFill.svg'),
   configmap: () => import('./icons/configmap.svg'),

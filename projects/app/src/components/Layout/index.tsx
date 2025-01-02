@@ -48,7 +48,7 @@ export const navbarWidth = '64px';
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { Loading } = useLoading();
-  const { loading, feConfigs, isNotSufficientModal } = useSystemStore();
+  const { loading, feConfigs, notSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
@@ -113,7 +113,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       {feConfigs?.isPlus && (
         <>
           {!!userInfo && <UpdateInviteModal />}
-          {isNotSufficientModal && <NotSufficientModal />}
+          {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
           {!!userInfo && <SystemMsgModal />}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />

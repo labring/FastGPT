@@ -21,6 +21,7 @@ import { TeamContext, TeamModalContextProvider } from './components/context';
 import dynamic from 'next/dynamic';
 import TeamTagModal from '@/components/support/user/team/TeamTagModal';
 import MemberTable from './components/MemberTable';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const InviteModal = dynamic(() => import('./components/InviteModal'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
@@ -39,7 +40,7 @@ const Team = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { userInfo, teamPlanStatus } = useUserStore();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, setNotSufficientModalType } = useSystemStore();
 
   const {
     myTeams,
@@ -218,10 +219,11 @@ const Team = () => {
                   ) {
                     toast({
                       status: 'warning',
-                      title: t('user.team.Over Max Member Tip', {
+                      title: t('common:user.team.Over Max Member Tip', {
                         max: teamPlanStatus.standardConstants.maxTeamMember
                       })
                     });
+                    setNotSufficientModalType(TeamErrEnum.teamMemberOverSize);
                   } else {
                     onOpenInvite();
                   }
