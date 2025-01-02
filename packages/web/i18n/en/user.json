@@ -28,7 +28,6 @@
   "login.Dingtalk": "DingTalk Login",
   "manage_team": "Manage team",
   "name": "Name",
-  "notification.Bind Notification Pipe Hint": "Please bind a notification receiving account to ensure you receive notifications such as plan expiration reminders, ensuring your service runs smoothly.",
   "notification.remind_owner_bind": "Please remind the creator to bind a notification account",
   "operations": "Actions",
   "owner": "owner",

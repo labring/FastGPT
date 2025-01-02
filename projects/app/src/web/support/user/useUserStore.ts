@@ -18,6 +18,9 @@ type State = {
   systemMsgReadId: string;
   setSysMsgReadId: (id: string) => void;
 
+  isUpdateNotification: boolean;
+  setIsUpdateNotification: (val: boolean) => void;
+
   userInfo: UserType | null;
   isTeamAdmin: boolean;
   initUserInfo: () => Promise<UserType>;
@@ -47,6 +50,13 @@ export const useUserStore = create<State>()(
         setSysMsgReadId(id: string) {
           set((state) => {
             state.systemMsgReadId = id;
+          });
+        },
+
+        isUpdateNotification: true,
+        setIsUpdateNotification(val: boolean) {
+          set((state) => {
+            state.isUpdateNotification = val;
           });
         },
 
@@ -156,7 +166,8 @@ export const useUserStore = create<State>()(
       {
         name: 'userStore',
         partialize: (state) => ({
-          systemMsgReadId: state.systemMsgReadId
+          systemMsgReadId: state.systemMsgReadId,
+          isUpdateNotification: state.isUpdateNotification
         })
       }
     )
