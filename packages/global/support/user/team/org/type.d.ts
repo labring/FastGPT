@@ -4,6 +4,7 @@ import { ResourcePermissionType } from '../type';
 type OrgSchemaType = {
   _id: string;
   teamId: string;
+  pathId: string;
   path: string;
   name: string;
   avatar?: string;
