@@ -164,15 +164,11 @@ default_doi_resolver: 'oadoi.org'
 
 ```Bash
 {
-  "result": "未找到相关搜索结果，可能原因：
-1. 搜索引擎未返回结果
-2. 搜索请求超时
-3. 搜索内容过于专业或生僻
-
-建议：
-1. 尝试使用不同的关键词
-2. 确认搜索服务是否正常
-3. 稍后重试"
+  "result": "[]",
+  "error": {
+    "message": "No search results",
+    "code": 500
+  }
 }
 ```
 
