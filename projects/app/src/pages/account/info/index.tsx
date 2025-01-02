@@ -47,7 +47,9 @@ import TeamSelector from '../components/TeamSelector';
 const StandDetailModal = dynamic(() => import('./components/standardDetailModal'), { ssr: false });
 const ConversionModal = dynamic(() => import('./components/ConversionModal'));
 const UpdatePswModal = dynamic(() => import('./components/UpdatePswModal'));
-const UpdateNotification = dynamic(() => import('./components/UpdateNotificationModal'));
+const UpdateNotification = dynamic(
+  () => import('@/components/support/user/inform/UpdateNotificationModal')
+);
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const ModelPriceModal = dynamic(() =>
