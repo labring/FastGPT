@@ -7,6 +7,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import LightTip from '@fastgpt/web/components/common/LightTip';
+import Script from 'next/script';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 export type QRPayProps = {
   readPrice: number;
@@ -76,15 +78,19 @@ const QRCodePayModal = ({
   }, [billId, onSuccess, toast]);
 
   return (
-    <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
-      <ModalBody textAlign={'center'} pb={10} whiteSpace={'pre-wrap'}>
-        {tip && <LightTip text={tip} mb={8} textAlign={'left'} />}
-        <Box ref={dom} id={'payQRCode'} display={'inline-block'} h={`${qrCodeSize}px`}></Box>
-        <Box mt={5} textAlign={'center'}>
-          {t('common:pay.wechat', { price: readPrice })}
-        </Box>
-      </ModalBody>
-    </MyModal>
+    <>
+      <Script src={getWebReqUrl('/js/qrcode.min.js')} strategy="lazyOnload"></Script>
+
+      <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
+        <ModalBody textAlign={'center'} pb={10} whiteSpace={'pre-wrap'}>
+          {tip && <LightTip text={tip} mb={8} textAlign={'left'} />}
+          <Box ref={dom} id={'payQRCode'} display={'inline-block'} h={`${qrCodeSize}px`}></Box>
+          <Box mt={5} textAlign={'center'}>
+            {t('common:pay.wechat', { price: readPrice })}
+          </Box>
+        </ModalBody>
+      </MyModal>
+    </>
   );
 };
 

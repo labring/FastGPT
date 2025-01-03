@@ -88,8 +88,14 @@ const Standard = ({
               {
                 label: (
                   <Flex>
-                    {t('common:support.wallet.subscription.mode.Year')}
-                    <Box ml={1} color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}>
+                    <Box whiteSpace={'nowrap'}>
+                      {t('common:support.wallet.subscription.mode.Year')}
+                    </Box>
+                    <Box
+                      whiteSpace={'nowrap'}
+                      ml={1}
+                      color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}
+                    >
                       ({t('common:support.wallet.subscription.mode.Year sale')})
                     </Box>
                   </Flex>
