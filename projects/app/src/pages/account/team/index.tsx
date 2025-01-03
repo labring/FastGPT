@@ -76,14 +76,13 @@ const Team = () => {
     onClose: onCloseManageGroupMember
   } = useDisclosure();
 
-  const { runAsync: onLeaveTeam, loading: isLoadingLeaveTeam } = useRequest2(
-    async (teamId?: string) => {
-      if (!teamId) return;
+  const { runAsync: onLeaveTeam } = useRequest2(
+    async () => {
       const defaultTeam = myTeams.find((item) => item.defaultTeam) || myTeams[0];
       // change to personal team
       // get members
       onSwitchTeam(defaultTeam.teamId);
-      return delLeaveTeam(teamId);
+      return delLeaveTeam();
     },
     {
       onSuccess() {
@@ -242,10 +241,7 @@ const Team = () => {
                 borderRadius={'md'}
                 ml={3}
                 leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
-                isLoading={isLoadingLeaveTeam}
-                onClick={() => {
-                  openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
-                }}
+                onClick={() => openLeaveConfirm(onLeaveTeam)()}
               >
                 {t('account_team:user_team_leave_team')}
               </Button>

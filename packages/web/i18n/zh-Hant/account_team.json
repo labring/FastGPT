@@ -3,7 +3,7 @@
   "confirm_delete_group": "確認刪除群組？",
   "confirm_delete_member": "確認刪除成員？",
   "confirm_delete_org": "確認刪除該部門？",
-  "confirm_leave_team": "確認離開該團隊？  \n \n退出後，您在該團隊所有的資源（ 應用程式、知識庫、資料夾、管理的群組等）均轉讓給團隊所有者。",
+  "confirm_leave_team": "確認離開該團隊？  \n退出後，您在該團隊所有的資源轉讓給團隊所有者。",
   "create_group": "建立群組",
   "create_org": "創建部門",
   "create_sub_org": "創建子部門",

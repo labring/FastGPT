@@ -37,8 +37,7 @@ export const delRemoveMember = (tmbId: string) =>
   DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
-export const delLeaveTeam = (teamId: string) =>
-  DELETE('/proApi/support/user/team/member/leave', { teamId });
+export const delLeaveTeam = () => DELETE('/proApi/support/user/team/member/leave');
 
 export const getTeamClbs = () =>
   GET<ResourcePermissionType[]>(`/proApi/support/user/team/collaborator/list`);
