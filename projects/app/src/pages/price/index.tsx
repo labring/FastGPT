@@ -9,7 +9,6 @@ import StandardPlan from './components/Standard';
 import ExtraPlan from './components/ExtraPlan';
 import PointsCard from './components/Points';
 import FAQ from './components/FAQ';
-import { getToken } from '@/web/support/user/auth';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -22,7 +21,7 @@ const PriceBox = () => {
   const router = useRouter();
 
   const { data: teamSubPlan } = useQuery(['getTeamPlanStatus'], getTeamPlanStatus, {
-    enabled: !!getToken() || !!userInfo
+    enabled: !!userInfo
   });
 
   const onPaySuccess = () => {
