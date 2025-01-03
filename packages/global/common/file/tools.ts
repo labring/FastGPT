@@ -2,6 +2,7 @@ import { detect } from 'jschardet';
 import { documentFileType, imageFileType } from './constants';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
 import { UserChatItemValueItemType } from '../../core/chat/type';
+import * as fs from 'fs';
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B';
@@ -15,6 +16,22 @@ export const formatFileSize = (bytes: number): string => {
 
 export const detectFileEncoding = (buffer: Buffer) => {
   return detect(buffer.slice(0, 200))?.encoding?.toLocaleLowerCase();
+};
+export const detectFileEncodingByPath = async (path: string) => {
+  // Get 64KB file head
+  const MAX_BYTES = 64 * 1024;
+  const buffer = Buffer.alloc(MAX_BYTES);
+
+  const fd = await fs.promises.open(path, 'r');
+  try {
+    // Read file head
+    const { bytesRead } = await fd.read(buffer, 0, MAX_BYTES, 0);
+    const actualBuffer = buffer.slice(0, bytesRead);
+
+    return detect(actualBuffer)?.encoding?.toLocaleLowerCase();
+  } finally {
+    await fd.close();
+  }
 };
 
 // Url => user upload file type
