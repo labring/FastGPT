@@ -4,6 +4,7 @@ import type { ErrType } from '../errorCode';
 export enum TeamErrEnum {
   teamOverSize = 'teamOverSize',
   unAuthTeam = 'unAuthTeam',
+  teamMemberOverSize = 'teamMemberOverSize',
   aiPointsNotEnough = 'aiPointsNotEnough',
   datasetSizeNotEnough = 'datasetSizeNotEnough',
   datasetAmountNotEnough = 'datasetAmountNotEnough',
