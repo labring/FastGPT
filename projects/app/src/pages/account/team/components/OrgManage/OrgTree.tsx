@@ -4,7 +4,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToggle } from 'ahooks';
 import { useMemo } from 'react';
 import IconButton from './IconButton';
-import { getChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 
 function OrgTreeNode({
   org,
@@ -20,7 +20,7 @@ function OrgTreeNode({
   index?: number;
 }) {
   const children = useMemo(
-    () => list.filter((item) => item.path === getChildrenPath(org)),
+    () => list.filter((item) => item.path === getOrgChildrenPath(org)),
     [org, list]
   );
   const [isExpanded, toggleIsExpanded] = useToggle(index === 0);

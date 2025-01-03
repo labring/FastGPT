@@ -79,10 +79,10 @@ const UserSchema = new Schema({
 
 try {
   // login
-  UserSchema.index({ username: 1, password: 1 }, { background: true });
+  UserSchema.index({ username: 1 });
 
   // Admin charts
-  UserSchema.index({ createTime: -1 }, { background: true });
+  UserSchema.index({ createTime: -1 });
 } catch (error) {
   console.log(error);
 }
