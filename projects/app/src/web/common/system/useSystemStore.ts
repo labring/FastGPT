@@ -42,8 +42,8 @@ type State = {
   gitStar: number;
   loadGitStar: () => Promise<void>;
 
-  notSufficientModalType: NotSufficientModalType | undefined;
-  setNotSufficientModalType: (val: NotSufficientModalType | undefined) => void;
+  notSufficientModalType?: NotSufficientModalType;
+  setNotSufficientModalType: (val?: NotSufficientModalType) => void;
 
   initDataBufferId?: string;
   feConfigs: FastGPTFeConfigsType;
@@ -115,7 +115,7 @@ export const useSystemStore = create<State>()(
         },
 
         notSufficientModalType: undefined,
-        setNotSufficientModalType(type: NotSufficientModalType | undefined) {
+        setNotSufficientModalType(type) {
           set((state) => {
             state.notSufficientModalType = type;
           });
