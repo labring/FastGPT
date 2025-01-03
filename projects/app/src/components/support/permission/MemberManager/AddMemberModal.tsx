@@ -8,7 +8,9 @@ import {
   Grid,
   HStack,
   ModalBody,
-  ModalFooter
+  ModalFooter,
+  Tag,
+  Text
 } from '@chakra-ui/react';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
@@ -22,6 +24,11 @@ import { useContextSelector } from 'use-context-selector';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import { CollaboratorContext } from './context';
+import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
+import Path from '@/components/common/folder/Path';
+import { getChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { OrgType } from '@fastgpt/global/support/user/team/org/type';
 
 export type AddModalPropsType = {
   onClose: () => void;
@@ -30,12 +37,15 @@ export type AddModalPropsType = {
 
 function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
   const { t } = useTranslation();
-  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups, loadAndGetOrgs, myOrgs } =
+  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups, loadAndGetOrgs } =
     useUserStore();
 
   const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList, permission } =
     useContextSelector(CollaboratorContext, (v) => v);
+
   const [searchText, setSearchText] = useState<string>('');
+  const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
+  const [parentPath, setParentPath] = useState('');
 
   const { data: [members = [], groups = [], orgs = []] = [], loading: loadingMembersAndGroups } =
     useRequest2(
@@ -53,34 +63,69 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
       }
     );
 
+  const currentOrg = useMemo(() => {
+    const splitPath = parentPath.split('/');
+    const currentOrgId = splitPath[splitPath.length - 1];
+    if (!currentOrgId) return;
+
+    return orgs.find((org) => org.pathId === currentOrgId);
+  }, [orgs, parentPath]);
+  const paths = useMemo(() => {
+    const splitPath = parentPath.split('/').filter(Boolean);
+    return splitPath
+      .map((id) => {
+        const org = orgs.find((org) => org.pathId === id)!;
+
+        if (org.path === '') return;
+
+        return {
+          parentId: getChildrenPath(org),
+          parentName: org.name
+        };
+      })
+      .filter(Boolean) as ParentTreePathItemType[];
+  }, [parentPath, orgs]);
+
   const filterMembers = useMemo(() => {
-    return members.filter((item) => {
-      if (item.tmbId === userInfo?.team?.tmbId) return false;
-      if (!searchText) return true;
-      return item.memberName.includes(searchText);
-    });
-  }, [members, searchText, userInfo?.team?.tmbId]);
+    if (!searchText && filterClass !== 'member' && filterClass !== 'org') return [];
+    if (searchText) return members.filter((item) => item.memberName.includes(searchText));
+    if (filterClass === 'org') {
+      if (!currentOrg) return [];
+      return members.filter((item) => {
+        const tmbId = userInfo?.team?.tmbId;
+        if (item.tmbId === tmbId) return false;
+        return currentOrg.members.find((v) => v.tmbId === item.tmbId);
+      });
+    }
+    return members.filter((item) => item.tmbId !== userInfo?.team?.tmbId);
+  }, [members, searchText, filterClass, currentOrg, userInfo]);
 
   const filterGroups = useMemo(() => {
     if (mode !== 'all') return [];
+    if (!searchText && filterClass !== 'group') return [];
     return groups.filter((item) => {
       if (permission.isOwner) return true; // owner can see all groups
       if (myGroups.find((i) => String(i._id) === String(item._id))) return false;
       if (!searchText) return true;
       return item.name.includes(searchText);
     });
-  }, [groups, searchText, myGroups, mode, permission]);
+  }, [groups, searchText, filterClass, myGroups, mode, permission]);
 
-  const filterOrgs = useMemo(() => {
+  const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
     if (mode !== 'all') return [];
-    return orgs.filter((item) => {
-      if (item.path === '') return false; // exclude root org
-      if (!permission.isOwner && !myOrgs.find((i) => String(i._id) === String(item._id)))
-        return false;
-      if (!searchText) return true;
-      return item.name.includes(searchText);
-    });
-  }, [orgs, searchText, myOrgs, mode, permission]);
+    if (!searchText && filterClass !== 'org') return [];
+    if (searchText) return orgs.filter((item) => item.name.includes(searchText));
+    if (parentPath === '') {
+      setParentPath(`/${orgs[0].pathId}`);
+      return [];
+    }
+    return orgs
+      .filter((org) => org.path === parentPath)
+      .map((item) => ({
+        ...item,
+        count: item.members.length + orgs.filter((org) => org.path === getChildrenPath(item)).length
+      }));
+  }, [orgs, searchText, filterClass, mode, parentPath]);
 
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
@@ -134,6 +179,96 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
             />
 
             <Flex flexDirection="column" mt="2" overflow={'auto'} maxH="400px">
+              {!searchText &&
+                (filterClass === undefined ? (
+                  <>
+                    <HStack
+                      justifyContent="space-between"
+                      py="2"
+                      px="3"
+                      borderRadius="sm"
+                      alignItems="center"
+                      _hover={{
+                        bgColor: 'myGray.50',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setFilterClass('member')}
+                    >
+                      <MyAvatar src="/imgs/avatar/BlueAvatar.svg" w="1.5rem" borderRadius={'50%'} />
+                      <Box ml="2" w="full">
+                        {t('account_team:member')}
+                      </Box>
+                      <MyIcon name="core/chat/chevronRight" w="16px" />
+                    </HStack>
+                    <HStack
+                      justifyContent="space-between"
+                      py="2"
+                      px="3"
+                      borderRadius="sm"
+                      alignItems="center"
+                      _hover={{
+                        bgColor: 'myGray.50',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setFilterClass('org')}
+                    >
+                      <MyAvatar src={DEFAULT_ORG_AVATAR} w="1.5rem" borderRadius={'50%'} />
+                      <Box ml="2" w="full">
+                        {t('account_team:org')}
+                      </Box>
+                      <MyIcon name="core/chat/chevronRight" w="16px" />
+                    </HStack>
+                    <HStack
+                      justifyContent="space-between"
+                      py="2"
+                      px="3"
+                      borderRadius="sm"
+                      alignItems="center"
+                      _hover={{
+                        bgColor: 'myGray.50',
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setFilterClass('group')}
+                    >
+                      <MyAvatar src={DEFAULT_TEAM_AVATAR} w="1.5rem" borderRadius={'50%'} />
+                      <Box ml="2" w="full">
+                        {t('account_team:group')}
+                      </Box>
+                      <MyIcon name="core/chat/chevronRight" w="16px" />
+                    </HStack>
+                  </>
+                ) : (
+                  <Path
+                    paths={[
+                      {
+                        parentId: filterClass,
+                        parentName:
+                          filterClass === 'member'
+                            ? t('account_team:member')
+                            : filterClass === 'org'
+                              ? t('account_team:org')
+                              : t('account_team:group')
+                      },
+                      ...paths
+                    ]}
+                    onClick={(parentId) => {
+                      if (parentId === '') {
+                        setFilterClass(undefined);
+                        setParentPath('');
+                      } else if (
+                        parentId === 'member' ||
+                        parentId === 'org' ||
+                        parentId === 'group'
+                      ) {
+                        setFilterClass(parentId);
+                        setParentPath('');
+                      } else {
+                        setParentPath(parentId);
+                      }
+                    }}
+                    rootName={t('common:common.Team')}
+                  />
+                ))}
               {filterOrgs.map((org) => {
                 const onChange = () => {
                   setSelectedOrgIdList((state) => {
@@ -154,20 +289,41 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
                     alignItems="center"
                     _hover={{
                       bgColor: 'myGray.50',
-                      cursor: 'pointer',
-                      ...(!selectedOrgIdList.includes(org._id)
-                        ? { svg: { color: 'myGray.50' } }
-                        : {})
+                      cursor: 'pointer'
                     }}
                     onClick={onChange}
                   >
-                    <Checkbox isChecked={selectedOrgIdList.includes(org._id)} />
+                    <Checkbox
+                      isChecked={selectedOrgIdList.includes(org._id)}
+                      pointerEvents="none"
+                    />
                     <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box ml="2" w="full">
-                      {org.name}
-                    </Box>
+                    <HStack ml="2" w="full" gap="5px">
+                      <Text>{org.name}</Text>
+                      {org.count && (
+                        <>
+                          <Tag size="sm" my="auto">
+                            {org.count}
+                          </Tag>
+                        </>
+                      )}
+                    </HStack>
                     {!!collaborator && (
                       <PermissionTags permission={collaborator.permission.value} />
+                    )}
+                    {org.count && (
+                      <MyIcon
+                        name="core/chat/chevronRight"
+                        w="16px"
+                        p="4px"
+                        rounded={'6px'}
+                        _hover={{
+                          bgColor: 'myGray.200'
+                        }}
+                        onClick={() => {
+                          setParentPath(getChildrenPath(org));
+                        }}
+                      />
                     )}
                   </HStack>
                 );
@@ -192,14 +348,15 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
                     alignItems="center"
                     _hover={{
                       bgColor: 'myGray.50',
-                      cursor: 'pointer',
-                      ...(!selectedGroupIdList.includes(group._id)
-                        ? { svg: { color: 'myGray.50' } }
-                        : {})
+                      cursor: 'pointer'
                     }}
                     onClick={onChange}
                   >
-                    <Checkbox isChecked={selectedGroupIdList.includes(group._id)} />
+                    <Checkbox
+                      isChecked={selectedGroupIdList.includes(group._id)}
+                      onClick={onChange}
+                      pointerEvents="none"
+                    />
                     <MyAvatar src={group.avatar} w="1.5rem" borderRadius={'50%'} />
                     <Box ml="2" w="full">
                       {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
@@ -230,16 +387,15 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
                     alignItems="center"
                     _hover={{
                       bgColor: 'myGray.50',
-                      cursor: 'pointer',
-                      ...(!selectedMemberIdList.includes(member.tmbId)
-                        ? { svg: { color: 'myGray.50' } }
-                        : {})
+                      cursor: 'pointer'
                     }}
                     onClick={onChange}
                   >
                     <Checkbox
                       isChecked={selectedMemberIdList.includes(member.tmbId)}
                       icon={<MyIcon name={'common/check'} w={'12px'} />}
+                      onClick={onChange}
+                      pointerEvents="none"
                     />
                     <MyAvatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
                     <Box w="full" ml="2">
@@ -336,7 +492,7 @@ function AddMemberModal({ onClose, mode = 'member' }: AddModalPropsType) {
                 );
               })}
               {selectedMemberIdList.map((tmbId) => {
-                const member = filterMembers.find((v) => v.tmbId === tmbId);
+                const member = members.find((v) => v.tmbId === tmbId);
                 return member ? (
                   <HStack
                     justifyContent="space-between"
