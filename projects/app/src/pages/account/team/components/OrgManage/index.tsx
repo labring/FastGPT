@@ -30,12 +30,13 @@ import { TeamContext } from '../context';
 import { getOrgList } from '@/web/support/user/team/org/api';
 
 import IconButton from './IconButton';
-import type { defaultOrgForm, OrgFormType } from './OrgInfoModal';
+import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
 
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { getChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -88,7 +89,7 @@ function OrgTable() {
   const currentOrgs = useMemo(() => {
     if (orgs.length === 0) return [];
     if (parentPath === '') {
-      setParentPath(`/${orgs[0]._id}`);
+      setParentPath(`/${orgs[0].pathId}`);
       return [];
     }
     return orgs
@@ -97,8 +98,7 @@ function OrgTable() {
         return {
           ...item,
           count:
-            item.members.length +
-            orgs.filter((org) => org.path === `${item.path}/${item._id}`).length
+            item.members.length + orgs.filter((org) => org.path === getChildrenPath(item)).length
         };
       });
   }, [orgs, parentPath]);
@@ -107,18 +107,18 @@ function OrgTable() {
     const currentOrgId = splitPath[splitPath.length - 1];
     if (!currentOrgId) return;
 
-    return orgs.find((org) => org._id === currentOrgId);
+    return orgs.find((org) => org.pathId === currentOrgId);
   }, [orgs, parentPath]);
   const paths = useMemo(() => {
     const splitPath = parentPath.split('/').filter(Boolean);
     return splitPath
       .map((id) => {
-        const org = orgs.find((org) => org._id === id)!;
+        const org = orgs.find((org) => org.pathId === id)!;
 
         if (org.path === '') return;
 
         return {
-          parentId: `${org.path}/${org._id}`,
+          parentId: getChildrenPath(org),
           parentName: org.name
         };
       })
@@ -175,10 +175,7 @@ function OrgTable() {
               {currentOrgs.map((org) => (
                 <Tr key={org._id} overflow={'unset'}>
                   <Td>
-                    <HStack
-                      cursor={'pointer'}
-                      onClick={() => setParentPath(`${org.path}/${org._id}`)}
-                    >
+                    <HStack cursor={'pointer'} onClick={() => setParentPath(getChildrenPath(org))}>
                       <MemberTag name={org.name} avatar={org.avatar} />
                       <Tag size="sm">{org.count}</Tag>
                       <MyIcon
