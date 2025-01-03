@@ -94,8 +94,8 @@ const RechargeModal = ({
       title={t('common:user.Pay')}
       onClose={onClose}
       isCentered
-      minW={['100%', '1200px']}
-      minH={['100%', '800px']}
+      minW={'90%'}
+      maxH={'90%'}
     >
       <ModalBody px={'52px'}>
         <Flex alignItems={'center'} mb={6}>
