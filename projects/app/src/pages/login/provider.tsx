@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { clearToken, setToken } from '@/web/support/user/auth';
+import { clearToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -24,7 +24,6 @@ const provider = () => {
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
-      setToken(res.token);
       setUserInfo(res.user);
 
       router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
