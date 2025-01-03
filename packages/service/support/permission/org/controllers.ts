@@ -3,7 +3,8 @@ import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import type { ClientSession } from 'mongoose';
 import { MongoOrgModel } from './orgSchema';
 import { MongoOrgMemberModel } from './orgMemberSchema';
-import { getChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
   MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
@@ -43,9 +44,13 @@ export const getChildrenByOrg = async ({
   teamId: string;
   session?: ClientSession;
 }) => {
-  return MongoOrgModel.find({ teamId, path: { $regex: `^${getChildrenPath(org)}` } }, undefined, {
-    session
-  }).lean();
+  return MongoOrgModel.find(
+    { teamId, path: { $regex: `^${getOrgChildrenPath(org)}` } },
+    undefined,
+    {
+      session
+    }
+  ).lean();
 };
 
 export const getOrgAndChildren = async ({

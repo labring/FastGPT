@@ -36,7 +36,7 @@ import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { getChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -88,17 +88,20 @@ function OrgTable() {
   });
   const currentOrgs = useMemo(() => {
     if (orgs.length === 0) return [];
+    // Auto select the first org(root org is team)
     if (parentPath === '') {
-      setParentPath(`/${orgs[0].pathId}`);
+      setParentPath(getOrgChildrenPath(orgs[0]));
       return [];
     }
+
     return orgs
       .filter((org) => org.path === parentPath)
       .map((item) => {
         return {
           ...item,
+          // Member + org
           count:
-            item.members.length + orgs.filter((org) => org.path === getChildrenPath(item)).length
+            item.members.length + orgs.filter((org) => org.path === getOrgChildrenPath(item)).length
         };
       });
   }, [orgs, parentPath]);
@@ -109,6 +112,7 @@ function OrgTable() {
 
     return orgs.find((org) => org.pathId === currentOrgId);
   }, [orgs, parentPath]);
+
   const paths = useMemo(() => {
     const splitPath = parentPath.split('/').filter(Boolean);
     return splitPath
@@ -118,7 +122,7 @@ function OrgTable() {
         if (org.path === '') return;
 
         return {
-          parentId: getChildrenPath(org),
+          parentId: getOrgChildrenPath(org),
           parentName: org.name
         };
       })
@@ -175,7 +179,10 @@ function OrgTable() {
               {currentOrgs.map((org) => (
                 <Tr key={org._id} overflow={'unset'}>
                   <Td>
-                    <HStack cursor={'pointer'} onClick={() => setParentPath(getChildrenPath(org))}>
+                    <HStack
+                      cursor={'pointer'}
+                      onClick={() => setParentPath(getOrgChildrenPath(org))}
+                    >
                       <MemberTag name={org.name} avatar={org.avatar} />
                       <Tag size="sm">{org.count}</Tag>
                       <MyIcon
@@ -286,13 +293,13 @@ function OrgTable() {
                   });
                 }}
               />
+              <ActionButton
+                icon="common/administrator"
+                text={t('account_team:manage_member')}
+                onClick={() => setManageMemberOrg(currentOrg)}
+              />
               {currentOrg?.path !== '' && (
                 <>
-                  <ActionButton
-                    icon="common/administrator"
-                    text={t('account_team:manage_member')}
-                    onClick={() => setManageMemberOrg(currentOrg)}
-                  />
                   <ActionButton
                     icon="common/file/move"
                     text={t('account_team:move_org')}
