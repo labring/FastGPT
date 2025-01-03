@@ -14,7 +14,7 @@ export const clientInitData = async (
     useSystemStore.getState().initStaticData(res);
 
     return {
-      feConfigs: res.feConfigs || {}
+      feConfigs: res.feConfigs || useSystemStore.getState().feConfigs || {}
     };
   } catch (error) {
     if (retry > 0) {
