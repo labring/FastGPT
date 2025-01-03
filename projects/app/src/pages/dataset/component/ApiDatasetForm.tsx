@@ -135,7 +135,7 @@ const ApiDatasetForm = ({
             </Flex>
             <Input
               bg={'myWhite.600'}
-              placeholder={'Token'}
+              placeholder={'User ID'}
               maxLength={200}
               {...register('yuqueServer.userId', { required: true })}
             />
