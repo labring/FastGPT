@@ -1,6 +1,6 @@
 import React from 'react';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, HStack, VStack } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
 import { useQuery } from '@tanstack/react-query';
@@ -12,17 +12,18 @@ import FAQ from './components/FAQ';
 import { getToken } from '@/web/support/user/auth';
 import Script from 'next/script';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const PriceBox = () => {
   const { userInfo } = useUserStore();
+  const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
-  const { data: teamSubPlan, refetch: refetchTeamSubPlan } = useQuery(
-    ['getTeamPlanStatus'],
-    getTeamPlanStatus,
-    {
-      enabled: !!getToken() || !!userInfo
-    }
-  );
+  const { data: teamSubPlan } = useQuery(['getTeamPlanStatus'], getTeamPlanStatus, {
+    enabled: !!getToken() || !!userInfo
+  });
 
   return (
     <>
@@ -39,12 +40,39 @@ const PriceBox = () => {
         backgroundRepeat={'no-repeat'}
       >
         {/* standard sub */}
-        <StandardPlan
-          standardPlan={teamSubPlan?.standard}
-          refetchTeamSubPlan={refetchTeamSubPlan}
-        />
+        <VStack>
+          <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
+            {t('common:support.wallet.subscription.Sub plan')}
+          </Box>
+          <Box mt={8} mb={10} fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
+            {t('common:support.wallet.subscription.Sub plan tip', {
+              title: feConfigs?.systemTitle
+            })}
+          </Box>
+          <StandardPlan standardPlan={teamSubPlan?.standard} />
+          <HStack mt={8} color={'blue.700'} ml={8}>
+            <MyIcon name={'infoRounded'} w={'1rem'} />
+            <Box fontSize={'sm'} fontWeight={'500'}>
+              {t('user:bill.standard_valid_tip')}
+            </Box>
+          </HStack>
+        </VStack>
 
-        <ExtraPlan />
+        {/* extra plan */}
+        <VStack mt={['40px', '100px']} mb={8}>
+          <Box
+            id={'extra-plan'}
+            fontWeight={'bold'}
+            fontSize={['24px', '36px']}
+            color={'myGray.900'}
+          >
+            {t('common:support.wallet.subscription.Extra plan')}
+          </Box>
+          <Box mt={2} mb={8} color={'myGray.600'} fontSize={'md'}>
+            {t('common:support.wallet.subscription.Extra plan tip')}
+          </Box>
+          <ExtraPlan />
+        </VStack>
 
         {/* points */}
         <PointsCard />

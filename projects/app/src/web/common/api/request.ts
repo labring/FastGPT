@@ -120,8 +120,13 @@ function responseError(err: any) {
 
     return Promise.reject({ message: '无权操作' });
   }
-  if (err?.statusText === TeamErrEnum.aiPointsNotEnough) {
-    useSystemStore.getState().setIsNotSufficientModal(true);
+  if (
+    err?.statusText === TeamErrEnum.aiPointsNotEnough ||
+    err?.statusText === TeamErrEnum.datasetSizeNotEnough ||
+    err?.statusText === TeamErrEnum.datasetAmountNotEnough ||
+    err?.statusText === TeamErrEnum.appAmountNotEnough
+  ) {
+    useSystemStore.getState().setNotSufficientModalType(err.statusText);
     return Promise.reject(err);
   }
   if (err?.response?.data) {
