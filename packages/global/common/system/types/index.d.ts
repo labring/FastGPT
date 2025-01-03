@@ -73,6 +73,11 @@ export type FastGPTFeConfigsType = {
     google?: string;
     wechat?: string;
     dingtalk?: string;
+    wecom?: {
+      corpid?: string;
+      agentid?: string;
+      secret?: string;
+    };
     microsoft?: {
       clientId?: string;
       tenantId?: string;
