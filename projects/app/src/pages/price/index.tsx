@@ -13,15 +13,23 @@ import { getToken } from '@/web/support/user/auth';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRouter } from 'next/router';
 
 const PriceBox = () => {
   const { userInfo } = useUserStore();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const router = useRouter();
 
   const { data: teamSubPlan } = useQuery(['getTeamPlanStatus'], getTeamPlanStatus, {
     enabled: !!getToken() || !!userInfo
   });
+
+  const onPaySuccess = () => {
+    setTimeout(() => {
+      router.reload();
+    }, 1000);
+  };
 
   return (
     <Flex
@@ -45,7 +53,7 @@ const PriceBox = () => {
             title: feConfigs?.systemTitle
           })}
         </Box>
-        <StandardPlan standardPlan={teamSubPlan?.standard} />
+        <StandardPlan standardPlan={teamSubPlan?.standard} onPaySuccess={onPaySuccess} />
         <HStack mt={8} color={'blue.700'} ml={8}>
           <MyIcon name={'infoRounded'} w={'1rem'} />
           <Box fontSize={'sm'} fontWeight={'500'}>
@@ -62,7 +70,7 @@ const PriceBox = () => {
         <Box mt={2} mb={8} color={'myGray.600'} fontSize={'md'}>
           {t('common:support.wallet.subscription.Extra plan tip')}
         </Box>
-        <ExtraPlan />
+        <ExtraPlan onPaySuccess={onPaySuccess} />
       </VStack>
 
       {/* points */}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
@@ -10,6 +10,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { useMount } from 'ahooks';
 
 const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
   const { t } = useTranslation();
@@ -73,11 +74,9 @@ const RechargeModal = ({
   const { t } = useTranslation();
   const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
 
-  useEffect(() => {
-    (async () => {
-      await initTeamPlanStatus();
-    })();
-  }, [initTeamPlanStatus]);
+  useMount(() => {
+    initTeamPlanStatus();
+  });
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
@@ -94,8 +93,8 @@ const RechargeModal = ({
       title={t('common:user.Pay')}
       onClose={onClose}
       isCentered
-      minW={['100%', '1200px']}
-      minH={['100%', '800px']}
+      minW={'90%'}
+      maxH={'90%'}
     >
       <ModalBody px={'52px'}>
         <Flex alignItems={'center'} mb={6}>

@@ -71,17 +71,8 @@ const DatasetDataSchema = new Schema({
     type: Number,
     default: 0
   },
-  inited: {
-    type: Boolean
-  },
-  rebuilding: Boolean
-});
-
-DatasetDataSchema.virtual('collection', {
-  ref: DatasetColCollectionName,
-  localField: 'collectionId',
-  foreignField: '_id',
-  justOne: true
+  rebuilding: Boolean,
+  inited: Boolean
 });
 
 try {
@@ -100,6 +91,7 @@ try {
   DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
+  DatasetDataSchema.index({ inited: 'hashed' });
 } catch (error) {
   console.log(error);
 }

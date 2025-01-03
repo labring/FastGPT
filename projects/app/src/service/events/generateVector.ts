@@ -166,9 +166,9 @@ const rebuildData = async ({
     // get new mongoData insert to training
     const newRebuildingData = await MongoDatasetData.findOneAndUpdate(
       {
+        rebuilding: true,
         teamId: mongoData.teamId,
-        datasetId: mongoData.datasetId,
-        rebuilding: true
+        datasetId: mongoData.datasetId
       },
       {
         $unset: {

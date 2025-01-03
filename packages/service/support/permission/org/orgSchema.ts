@@ -6,10 +6,6 @@ import { OrgMemberCollectionName } from './orgMemberSchema';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 const { Schema } = connectionMongo;
 
-function requiredStringPath(this: OrgSchemaType) {
-  return typeof this.path !== 'string';
-}
-
 export const OrgSchema = new Schema(
   {
     teamId: {
@@ -25,7 +21,9 @@ export const OrgSchema = new Schema(
     },
     path: {
       type: String,
-      required: requiredStringPath // allow empty string, but not null
+      required: function (this: OrgSchemaType) {
+        return typeof this.path !== 'string';
+      } // allow empty string, but not null
     },
     name: {
       type: String,

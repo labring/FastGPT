@@ -112,6 +112,15 @@ export type DatasetDataSchemaType = {
   rebuilding?: boolean;
 };
 
+export type DatasetDataTextSchemaType = {
+  _id: string;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  dataId: string;
+  fullTextToken: string;
+};
+
 export type DatasetTrainingSchemaType = {
   _id: string;
   userId: string;

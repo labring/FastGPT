@@ -75,7 +75,7 @@ const TeamSelector = ({
                   key={'manage'}
                   alignItems={'center'}
                   borderRadius={'md'}
-                  cursor={'default'}
+                  cursor={'pointer'}
                   gap={3}
                   onClick={() => router.push('/account/team')}
                 >
