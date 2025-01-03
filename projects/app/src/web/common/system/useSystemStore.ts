@@ -114,8 +114,8 @@ export const useSystemStore = create<State>()(
           } catch (error) {}
         },
 
-        notSufficientModalType: TeamErrEnum.teamMemberOverSize,
-        setNotSufficientModalType(type: NotSufficientModalType | undefined) {
+        notSufficientModalType: undefined,
+        setNotSufficientModalType(type) {
           set((state) => {
             state.notSufficientModalType = type;
           });
