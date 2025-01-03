@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
@@ -71,7 +71,13 @@ const RechargeModal = ({
   onPaySuccess: () => void;
 }) => {
   const { t } = useTranslation();
-  const { teamPlanStatus } = useUserStore();
+  const { teamPlanStatus, initTeamPlanStatus } = useUserStore();
+
+  useEffect(() => {
+    (async () => {
+      await initTeamPlanStatus();
+    })();
+  }, [initTeamPlanStatus]);
 
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
