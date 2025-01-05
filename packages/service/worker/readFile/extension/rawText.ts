@@ -24,7 +24,11 @@ export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): Read
         return buffer.toString(encoding as BufferEncoding);
       }
 
-      return iconv.decode(buffer, encoding);
+      if (encoding) {
+        return iconv.decode(buffer, encoding);
+      }
+
+      return buffer.toString('utf-8');
     } catch (error) {
       return buffer.toString('utf-8');
     }

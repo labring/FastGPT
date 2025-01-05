@@ -39,10 +39,6 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
-  fullTextToken: {
-    type: String,
-    default: ''
-  },
   indexes: {
     type: [
       {
@@ -72,7 +68,13 @@ const DatasetDataSchema = new Schema({
     default: 0
   },
   rebuilding: Boolean,
-  inited: Boolean
+
+  // Abandon
+  fullTextToken: {
+    type: String,
+    default: ''
+  },
+  initFullText: Boolean
 });
 
 try {
@@ -85,13 +87,14 @@ try {
     updateTime: -1
   });
   // full text index
-  DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
+  // DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
   // Recall vectors after data matching
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
   DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
-  DatasetDataSchema.index({ inited: 'hashed' });
+
+  DatasetDataSchema.index({ initFullText: 1 });
 } catch (error) {
   console.log(error);
 }

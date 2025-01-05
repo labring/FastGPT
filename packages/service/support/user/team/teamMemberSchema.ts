@@ -23,10 +23,6 @@ const TeamMemberSchema = new Schema({
     type: String,
     default: 'Member'
   },
-  role: {
-    type: String
-    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
-  },
   status: {
     type: String,
     enum: Object.keys(TeamMemberStatusMap)
@@ -38,6 +34,12 @@ const TeamMemberSchema = new Schema({
   defaultTeam: {
     type: Boolean,
     default: false
+  },
+
+  // Abandoned
+  role: {
+    type: String
+    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
   }
 });
 

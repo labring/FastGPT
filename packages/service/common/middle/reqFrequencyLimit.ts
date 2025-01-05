@@ -22,7 +22,6 @@ export function useReqFrequencyLimit(seconds: number, limit: number, force = fal
         expiredTime: addSeconds(new Date(), seconds)
       });
     } catch (_) {
-      res.status(429);
       jsonRes(res, {
         code: 429,
         error: ERROR_ENUM.tooManyRequest

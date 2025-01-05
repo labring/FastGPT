@@ -31,6 +31,7 @@ import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
+import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -156,6 +157,8 @@ function List() {
         >
           {formatDatasets.map((dataset, index) => {
             const owner = members.find((v) => v.tmbId === dataset.tmbId);
+            const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
+
             return (
               <MyTooltip
                 key={dataset._id}
@@ -281,7 +284,7 @@ function List() {
                     <HStack>
                       {isPc && dataset.type !== DatasetTypeEnum.folder && (
                         <HStack spacing={1} className="time">
-                          <Avatar src={dataset.vectorModel.avatar} w={'0.85rem'} />
+                          <Avatar src={vectorModelAvatar} w={'0.85rem'} />
                           <Box color={'myGray.500'} fontSize={'mini'}>
                             {dataset.vectorModel.name}
                           </Box>
