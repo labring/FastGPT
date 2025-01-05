@@ -25,7 +25,7 @@ const DatasetDataTextSchema = new Schema({
     required: true
   },
   dataId: {
-    type: String,
+    type: Schema.Types.ObjectId,
     ref: DatasetDataCollectionName,
     required: true
   },
@@ -37,7 +37,7 @@ const DatasetDataTextSchema = new Schema({
 
 try {
   DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
-  DatasetDataTextSchema.index({ dataId: 'hashed' });
+  DatasetDataTextSchema.index({ dataId: 1 }, { unique: true });
 } catch (error) {
   console.log(error);
 }

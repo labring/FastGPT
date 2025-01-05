@@ -89,7 +89,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       path: file.path,
       filename: file.originalname,
       contentType: file.mimetype,
-      encoding: file.encoding,
       metadata: metadata
     });
 

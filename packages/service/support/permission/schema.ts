@@ -115,6 +115,7 @@ try {
     }
   );
 
+  // Delete tmb permission
   ResourcePermissionSchema.index({
     resourceType: 1,
     teamId: 1,

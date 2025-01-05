@@ -47,26 +47,32 @@ export const getTeamDefaultGroup = async ({
 export const getGroupsByTmbId = async ({
   tmbId,
   teamId,
-  role
+  role,
+  session
 }: {
   tmbId: string;
   teamId: string;
   role?: `${GroupMemberRole}`[];
+  session?: ClientSession;
 }) =>
   (
     await Promise.all([
       (
-        await MongoGroupMemberModel.find({
-          tmbId,
-          groupId: {
-            $exists: true
+        await MongoGroupMemberModel.find(
+          {
+            tmbId,
+            groupId: {
+              $exists: true
+            },
+            ...(role ? { role: { $in: role } } : {})
           },
-          ...(role ? { role: { $in: role } } : {})
-        })
+          undefined,
+          { session }
+        )
           .populate<{ group: MemberGroupSchemaType }>('group')
           .lean()
       ).map((item) => item.group),
-      role ? [] : getTeamDefaultGroup({ teamId })
+      role ? [] : getTeamDefaultGroup({ teamId, session })
     ])
   ).flat();
 
