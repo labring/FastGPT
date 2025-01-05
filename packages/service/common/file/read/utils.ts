@@ -7,7 +7,6 @@ import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
-import { addHours } from 'date-fns';
 import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
 
 export type readRawTextByLocalFileParams = {
@@ -21,7 +20,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
 
-  const buffer = fs.readFileSync(path);
+  const buffer = await fs.promises.readFile(path);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,
