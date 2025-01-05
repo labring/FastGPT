@@ -1,6 +1,6 @@
 {
   "author": "silencezhang",
-  "version": "4812",
+  "version": "4817",
   "name": "基础图表",
   "avatar": "core/workflow/template/baseChart",
   "intro": "根据数据生成图表，可根据chartType生成柱状图，折线图，饼图",
@@ -68,7 +68,7 @@
             "canEdit": true,
             "key": "yAxis",
             "label": "yAxis",
-            "description": "y轴数据，例如：['1', '2', '3']",
+            "description": "y轴数据，例如：[1,2,3]",
             "defaultValue": "",
             "list": [
               {
@@ -77,7 +77,7 @@
               }
             ],
             "required": true,
-            "toolDescription": "y轴数据，例如：['1', '2', '3']"
+            "toolDescription": "y轴数据，例如：[1,2,3]"
           },
           {
             "renderTypeList": ["select", "reference"],
@@ -145,8 +145,8 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 2122.252754006148,
-          "y": -63.5218674613718
+          "x": 2128.8138851197145,
+          "y": -63.52186746137181
         },
         "version": "481",
         "inputs": [
@@ -154,10 +154,12 @@
             "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
-            "key": "相对路径URL",
-            "label": "相对路径URL",
+            "key": "图表 url",
+            "label": "图表 url",
             "description": "可用使用markdown格式展示图片，如：![图片](url)",
-            "value": ["ws0DFKJnCPhk", "bzaYjKyQFOw2"]
+            "value": ["ws0DFKJnCPhk", "bzaYjKyQFOw2"],
+            "isToolOutput": true,
+            "required": true
           }
         ],
         "outputs": []
@@ -170,8 +172,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1216.5166647574395,
-          "y": -206.30162946606856
+          "x": 1264.2009472531117,
+          "y": -455.0773486762623
         },
         "version": "481",
         "inputs": [
@@ -275,7 +277,7 @@
             "key": "system_httpJsonBody",
             "renderTypeList": ["hidden"],
             "valueType": "any",
-            "value": "{\r\n  \"title\": \"{{title-plugin}}\",\r\n  \"xAxis\": \"{{xAxis-plugin}}\",\r\n  \"yAxis\": \"{{yAxis-plugin}}\",\r\n  \"chartType\": \"{{chartType-plugin}}\"\r\n}",
+            "value": "{\r\n  \"title\": \"{{$pluginInput.title$}}\",\r\n  \"xAxis\": {{$pluginInput.xAxis$}},\r\n  \"yAxis\": {{$pluginInput.yAxis$}},\r\n  \"chartType\": \"{{$pluginInput.chartType$}}\"\r\n}",
             "label": "",
             "required": false,
             "valueDesc": "",
@@ -306,126 +308,6 @@
             "description": "",
             "debugLabel": "",
             "toolDescription": ""
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "title-plugin",
-            "label": "title-plugin",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "title"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "xAxis-plugin",
-            "label": "xAxis-plugin",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "xAxis"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "yAxis-plugin",
-            "label": "yAxis-plugin",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "yAxis"]
-          },
-          {
-            "renderTypeList": ["reference"],
-            "valueType": "string",
-            "canEdit": true,
-            "key": "chartType-plugin",
-            "label": "chartType-plugin",
-            "customInputConfig": {
-              "selectValueTypeList": [
-                "string",
-                "number",
-                "boolean",
-                "object",
-                "arrayString",
-                "arrayNumber",
-                "arrayBoolean",
-                "arrayObject",
-                "arrayAny",
-                "any",
-                "chatHistory",
-                "datasetQuote",
-                "dynamic",
-                "selectApp",
-                "selectDataset"
-              ],
-              "showDescription": false,
-              "showDefaultValue": true
-            },
-            "required": true,
-            "value": ["pluginInput", "chartType"]
           }
         ],
         "outputs": [

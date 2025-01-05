@@ -25,17 +25,22 @@ export const simpleText = (text = '') => {
   return text;
 };
 
-/* 
-  replace {{variable}} to value
-*/
+export const valToStr = (val: any) => {
+  if (val === undefined) return 'undefined';
+  if (val === null) return 'null';
+
+  if (typeof val === 'object') return JSON.stringify(val);
+  return String(val);
+};
+
+// replace {{variable}} to value
 export function replaceVariable(text: any, obj: Record<string, string | number>) {
   if (typeof text !== 'string') return text;
 
   for (const key in obj) {
     const val = obj[key];
-    const formatVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
-
-    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), formatVal);
+    const formatVal = valToStr(val);
+    text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => formatVal);
   }
   return text || '';
 }

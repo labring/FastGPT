@@ -177,17 +177,17 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
         httpJsonBody = replaceStringVariables(httpJsonBody);
+
+        const replaceJsonBody = httpJsonBody.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null');
+
         // Json body, parse and return
-        const jsonParse = json5.parse(
-          httpJsonBody.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null')
-        );
+        const jsonParse = json5.parse(replaceJsonBody);
         const removeSignJson = removeUndefinedSign(jsonParse);
         return removeSignJson;
       }
       httpJsonBody = replaceStringVariables(httpJsonBody);
       return httpJsonBody.replaceAll(UNDEFINED_SIGN, 'null');
     } catch (error) {
-      console.log(error);
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
