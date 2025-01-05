@@ -289,20 +289,22 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       ).lean()
     ]);
 
-    const formatResult = dataList
-      .map((data, index) => {
-        const collection = collections.find((col) => String(col._id) === String(data.collectionId));
+    const formatResult = results
+      .map((item, index) => {
+        const collection = collections.find((col) => String(col._id) === String(item.collectionId));
         if (!collection) {
-          console.log('Collection is not found', data);
+          console.log('Collection is not found', item);
+          return;
+        }
+        const data = dataList.find((data) =>
+          data.indexes.some((index) => index.dataId === item.id)
+        );
+        if (!data) {
+          console.log('Data is not found', item);
           return;
         }
 
-        // add score to data(It's already sorted. The first one is the one with the most points)
-        const dataIdList = data.indexes.map((item) => item.dataId);
-        const maxScoreResult = results.find((item) => {
-          return dataIdList.includes(item.id);
-        });
-        const score = maxScoreResult?.score || 0;
+        const score = item?.score || 0;
 
         const result: SearchDataResponseItemType = {
           id: String(data._id),
@@ -319,8 +321,6 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         return result;
       })
       .filter(Boolean) as SearchDataResponseItemType[];
-
-    formatResult.sort((a, b) => b.score[0].value - a.score[0].value);
 
     return {
       embeddingRecallResults: formatResult,
