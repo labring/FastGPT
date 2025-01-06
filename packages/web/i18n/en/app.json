@@ -106,7 +106,7 @@
   "publish_success": "Publish Successful",
   "question_guide_tip": "After the conversation, 3 guiding questions will be generated for you.",
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
-  "search_app": "Search Application",
+  "search_app": "Search apps",
   "setting_app": "Workflow",
   "setting_plugin": "Workflow",
   "simple_tool_tips": "This plugin contains special inputs and is not currently supported for invocation by simple applications.",

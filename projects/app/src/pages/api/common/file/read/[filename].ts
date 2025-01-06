@@ -37,9 +37,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return stream2Encoding(fileStream);
     })();
 
+    const extension = file.filename.split('.').pop() || '';
+    const disposition = ['html', 'htm'].includes(extension) ? 'attachment' : 'inline';
+
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
     res.setHeader('Cache-Control', 'public, max-age=31536000');
-    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(filename)}"`);
+    res.setHeader(
+      'Content-Disposition',
+      `${disposition}; filename="${encodeURIComponent(filename)}"`
+    );
     res.setHeader('Content-Length', file.length);
 
     stream.pipe(res);
