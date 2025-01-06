@@ -26,7 +26,7 @@ import PermissionTags from './PermissionTags';
 import { MemberManagerPropsType } from './context';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import Path from '@/components/common/folder/Path';
-import { getChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import { createMemberPermission } from '@/web/support/user/team/api';
@@ -81,7 +81,7 @@ function MemberModal({
         if (org.path === '') return;
 
         return {
-          parentId: getChildrenPath(org),
+          parentId: getOrgChildrenPath(org),
           parentName: org.name
         };
       })
@@ -120,7 +120,8 @@ function MemberModal({
       .filter((org) => org.path === parentPath)
       .map((item) => ({
         ...item,
-        count: item.members.length + orgs.filter((org) => org.path === getChildrenPath(item)).length
+        count:
+          item.members.length + orgs.filter((org) => org.path === getOrgChildrenPath(item)).length
       }));
   }, [orgs, searchText, filterClass, mode, parentPath]);
 
@@ -330,7 +331,7 @@ function MemberModal({
                           bgColor: 'myGray.200'
                         }}
                         onClick={() => {
-                          setParentPath(getChildrenPath(org));
+                          setParentPath(getOrgChildrenPath(org));
                         }}
                       />
                     )}
@@ -405,7 +406,6 @@ function MemberModal({
                   >
                     <Checkbox
                       isChecked={selectedMemberIdList.includes(member.tmbId)}
-                      icon={<MyIcon name={'common/check'} w={'12px'} />}
                       pointerEvents="none"
                       isDisabled={userInfo?.team?.tmbId === member.tmbId}
                     />
