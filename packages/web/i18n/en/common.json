@@ -1187,6 +1187,7 @@
   "tag_list": "Tag List",
   "team_tag": "Team Tag",
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
+  "unauth_token": "The certificate has expired, please log in again",
   "unit.character": "Character",
   "unit.minute": "Minute",
   "unit.seconds": "Second",
