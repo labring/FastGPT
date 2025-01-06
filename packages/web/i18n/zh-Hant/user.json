@@ -106,6 +106,7 @@
   "team.group.set_as_admin": "設為管理員",
   "team.group.toast.can_not_delete_owner": "無法刪除擁有者，請先轉移擁有權",
   "team.group.transfer_owner": "轉移擁有者",
+  "team.org.org": "組織",
   "team.manage_collaborators": "管理協作者",
   "team.no_collaborators": "目前沒有協作者",
   "team.write_role_member": "可寫入權限",

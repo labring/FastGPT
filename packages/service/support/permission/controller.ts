@@ -133,6 +133,9 @@ export async function getResourceAllClbs({
       resourceId,
       groupId: {
         $exists: false
+      },
+      orgId: {
+        $exists: false
       }
     },
     null,
