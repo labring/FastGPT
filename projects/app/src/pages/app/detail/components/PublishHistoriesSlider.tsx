@@ -270,7 +270,7 @@ const TeamCloud = ({
                 </Box>
               }
             >
-              {({ onClose }) => (
+              {() => (
                 <Flex alignItems={'center'} h={'full'} pl={5} gap={3}>
                   <Box>
                     <Avatar src={tmb?.avatar} borderRadius={'50%'} w={'36px'} h={'36px'} />
@@ -278,6 +278,9 @@ const TeamCloud = ({
                   <Box>
                     <Box fontSize={'14px'} color={'myGray.900'}>
                       {tmb?.memberName}
+                      {tmb?.status === 'leave' && (
+                        <Tag color="gray">{t('account_team:leaved')}</Tag>
+                      )}
                     </Box>
                     <Box fontSize={'12px'} color={'myGray.500'}>
                       {formatTime2YMDHMS(item.time)}

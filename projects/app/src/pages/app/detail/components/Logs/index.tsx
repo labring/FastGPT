@@ -32,6 +32,7 @@ import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useMount } from 'ahooks';
+import Tag from '@fastgpt/web/components/common/Tag';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -145,7 +146,17 @@ const Logs = () => {
                             w="1.25rem"
                           />
                           <Box fontSize={'sm'} ml={1}>
-                            {teamMembers?.find((v) => v.tmbId === item.tmbId)?.memberName}
+                            {(() => {
+                              const member = teamMembers?.find((v) => v.tmbId === item.tmbId);
+                              return (
+                                <>
+                                  {member?.memberName}
+                                  {member?.status === 'leave' && (
+                                    <Tag color="gray">{t('account_team:leaved')}</Tag>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </Box>
                         </HStack>
                       )}
