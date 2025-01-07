@@ -75,6 +75,11 @@ const Team = () => {
     onOpen: onOpenManageGroupMember,
     onClose: onCloseManageGroupMember
   } = useDisclosure();
+  const {
+    isOpen: isOpenAddPermission,
+    onOpen: onOpenAddPermission,
+    onClose: onCloseAddPermission
+  } = useDisclosure();
 
   const { runAsync: onLeaveTeam } = useRequest2(
     async () => {
@@ -268,6 +273,18 @@ const Team = () => {
                 />
               </Box>
             )}
+            {teamTab === TeamTabEnum.permission && userInfo?.team.permission.hasManagePer && (
+              <Button
+                variant={'primary'}
+                size="md"
+                borderRadius={'md'}
+                ml={3}
+                leftIcon={<MyIcon name="common/add2" w={'14px'} />}
+                onClick={onOpenAddPermission}
+              >
+                {t('common:common.Add')}
+              </Button>
+            )}
           </Flex>
         </Flex>
         <Box flex={'1 0 0'} overflow={'auto'}>
@@ -276,7 +293,12 @@ const Team = () => {
             <GroupManage onEditGroup={onEditGroup} onManageMember={onManageMember} />
           )}
           {teamTab === TeamTabEnum.org && <OrgManage />}
-          {teamTab === TeamTabEnum.permission && <PermissionManage />}
+          {teamTab === TeamTabEnum.permission && (
+            <PermissionManage
+              isOpenAddPermission={isOpenAddPermission}
+              onCloseAddPermission={onCloseAddPermission}
+            />
+          )}
         </Box>
       </Box>
       {isOpenInvite && userInfo?.team?.teamId && (

@@ -1,5 +1,10 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import { UpdatePermissionBody } from '@fastgpt/global/support/permission/collaborator';
+import {
+  CreatePermissionBody,
+  DeletePermissionQuery,
+  ListPermissionResponse,
+  UpdatePermissionBody
+} from '@fastgpt/global/support/permission/collaborator';
 import {
   CreateTeamProps,
   InviteMemberProps,
@@ -15,7 +20,6 @@ import {
 } from '@fastgpt/global/support/user/team/type.d';
 import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
-import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -40,11 +44,17 @@ export const updateInviteResult = (data: UpdateInviteProps) =>
 export const delLeaveTeam = () => DELETE('/proApi/support/user/team/member/leave');
 
 export const getTeamClbs = () =>
-  GET<ResourcePermissionType[]>(`/proApi/support/user/team/collaborator/list`);
+  GET<ListPermissionResponse>(`/proApi/support/user/team/collaborator/list`);
 
 /* -------------- team collaborator -------------------- */
 export const updateMemberPermission = (data: UpdatePermissionBody) =>
   PUT('/proApi/support/user/team/collaborator/updatePermission', data);
+
+export const createMemberPermission = (data: CreatePermissionBody) =>
+  POST('/proApi/support/user/team/collaborator/create', data);
+
+export const deleteMemberPermission = (id: DeletePermissionQuery) =>
+  DELETE('/proApi/support/user/team/collaborator/delete', id);
 
 /* --------------- team tags ---------------- */
 export const getTeamsTags = () => GET<TeamTagSchema[]>(`/proApi/support/user/team/tag/list`);
