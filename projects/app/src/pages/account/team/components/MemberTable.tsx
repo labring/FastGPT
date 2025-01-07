@@ -166,9 +166,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   {t('account_team:user_name')}
                 </Th>
                 <Th bgColor="myGray.100">{t('account_team:member_group')}</Th>
-                <Th borderRightRadius="6px" bgColor="myGray.100">
-                  {t('common:common.Action')}
-                </Th>
+                {!isSyncMember && (
+                  <Th borderRightRadius="6px" bgColor="myGray.100">
+                    {t('common:common.Action')}
+                  </Th>
+                )}
               </Tr>
             </Thead>
             <Tbody>
@@ -195,36 +197,36 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                       max={3}
                     />
                   </Td>
-                  <Td>
-                    {!isSyncMember &&
-                      userInfo?.team.permission.hasManagePer &&
-                      item.role !== TeamMemberRoleEnum.owner &&
-                      item.tmbId !== userInfo?.team.tmbId && (
-                        <Icon
-                          name={'common/trash'}
-                          cursor={'pointer'}
-                          w="1rem"
-                          p="1"
-                          borderRadius="sm"
-                          _hover={{
-                            color: 'red.600',
-                            bgColor: 'myGray.100'
-                          }}
-                          onClick={() => {
-                            openRemoveMember(
-                              () =>
-                                delRemoveMember(item.tmbId).then(() =>
-                                  Promise.all([refetchGroups(), refetchMembers()])
-                                ),
-                              undefined,
-                              t('account_team:remove_tip', {
-                                username: item.memberName
-                              })
-                            )();
-                          }}
-                        />
-                      )}
-                  </Td>
+                  {!isSyncMember && (
+                    <Td>
+                      userInfo?.team.permission.hasManagePer && item.role !==
+                      TeamMemberRoleEnum.owner && item.tmbId !== userInfo?.team.tmbId && (
+                      <Icon
+                        name={'common/trash'}
+                        cursor={'pointer'}
+                        w="1rem"
+                        p="1"
+                        borderRadius="sm"
+                        _hover={{
+                          color: 'red.600',
+                          bgColor: 'myGray.100'
+                        }}
+                        onClick={() => {
+                          openRemoveMember(
+                            () =>
+                              delRemoveMember(item.tmbId).then(() =>
+                                Promise.all([refetchGroups(), refetchMembers()])
+                              ),
+                            undefined,
+                            t('account_team:remove_tip', {
+                              username: item.memberName
+                            })
+                          )();
+                        }}
+                      />
+                      )
+                    </Td>
+                  )}
                 </Tr>
               ))}
             </Tbody>
