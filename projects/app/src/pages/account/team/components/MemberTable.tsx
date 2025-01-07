@@ -13,7 +13,6 @@ import {
   Tr,
   useDisclosure
 } from '@chakra-ui/react';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -31,6 +30,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import { syncMembers } from '@/web/support/user/api';
+import MyLoading from '@fastgpt/web/components/common/MyLoading';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -74,7 +74,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     content: t('account_team:confirm_leave_team')
   });
 
-  const { runAsync: onSyncMember } = useRequest2(syncMembers, {
+  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(syncMembers, {
     onSuccess() {
       refetchTeams();
     },
@@ -84,6 +84,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   return (
     <>
+      {isSyncing && <MyLoading />}
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
         <HStack>
@@ -107,7 +108,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               size="md"
               borderRadius={'md'}
               ml={3}
-              leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
+              leftIcon={<MyIcon name="common/retryLight" w={'16px'} color={'white'} />}
               onClick={() => {
                 onSyncMember();
               }}
