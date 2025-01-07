@@ -360,6 +360,7 @@ export const iconPaths = {
   'modal/selectSource': () => import('./icons/modal/selectSource.svg'),
   'modal/setting': () => import('./icons/modal/setting.svg'),
   'modal/teamPlans': () => import('./icons/modal/teamPlans.svg'),
+  'modal/key': () => import('./icons/modal/key.svg'),
   'model/BAAI': () => import('./icons/model/BAAI.svg'),
   'model/alicloud': () => import('./icons/model/alicloud.svg'),
   'model/baichuan': () => import('./icons/model/baichuan.svg'),

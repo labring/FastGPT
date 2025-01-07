@@ -81,6 +81,7 @@
   "team.Update Team": "更新團隊資訊",
   "team.add_collaborator": "新增協作者",
   "team.add_writer": "新增可寫入成員",
+  "team.add_permission": "新增權限",
   "team.avatar_and_name": "頭像與名稱",
   "team.belong_to_group": "所屬成員群組",
   "team.group.avatar": "群組頭像",
