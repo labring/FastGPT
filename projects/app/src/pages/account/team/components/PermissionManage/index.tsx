@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Checkbox,
@@ -10,7 +10,9 @@ import {
   Th,
   Thead,
   Text,
-  Tr
+  Tr,
+  Flex,
+  Button
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -26,442 +28,400 @@ import MemberTag from '../../../../../components/support/user/team/Info/MemberTa
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import {
   TeamManagePermissionVal,
+  TeamPermissionList,
   TeamWritePermissionVal
 } from '@fastgpt/global/support/permission/user/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import { useCreation, useToggle } from 'ahooks';
+import { useToggle } from 'ahooks';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MemberModal from '@/components/support/permission/MemberManager/MemberModal';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import CollaboratorContextProvider, {
+  CollaboratorContext
+} from '@/components/support/permission/MemberManager/context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { useContextSelector } from 'use-context-selector';
+import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
 function PermissionManage({
-  isOpenAddPermission,
-  onCloseAddPermission
+  Tabs,
+  onOpenAddMember
 }: {
-  isOpenAddPermission: boolean;
-  onCloseAddPermission: () => void;
+  Tabs: React.ReactNode;
+  onOpenAddMember: () => void;
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
+  const [searchKey, setSearchKey] = useState('');
 
-  const { runAsync: refetchClbs, data: clbs = { tmb: [], group: [], org: [] } } = useRequest2(
-    getTeamClbs,
-    {
-      manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
-    }
+  const collaboratorList = useContextSelector(
+    CollaboratorContext,
+    (state) => state.collaboratorList
+  );
+  const onUpdateCollaborators = useContextSelector(
+    CollaboratorContext,
+    (state) => state.onUpdateCollaborators
+  );
+  const onDelOneCollaborator = useContextSelector(
+    CollaboratorContext,
+    (state) => state.onDelOneCollaborator
   );
 
   const [isExpandMember, setExpandMember] = useToggle(true);
   const [isExpandGroup, setExpandGroup] = useToggle(true);
   const [isExpandOrg, setExpandOrg] = useToggle(true);
 
-  const members = useCreation(
-    () =>
-      clbs.tmb.map((item) => ({
-        ...item,
-        permission: new TeamPermission({ per: item.permission })
-      })),
-    [clbs]
-  );
+  const { tmbList, groupList, orgList } = useMemo(() => {
+    const tmbList: CollaboratorItemType[] = [];
+    const groupList: CollaboratorItemType[] = [];
+    const orgList: CollaboratorItemType[] = [];
 
-  const groups = useCreation(
-    () =>
-      clbs.group.map((item) => ({
-        ...item,
-        permission: new TeamPermission({ per: item.permission })
-      })),
-    [clbs]
-  );
-
-  const orgs = useCreation(
-    () =>
-      clbs.org.map((item) => ({
-        ...item,
-        permission: new TeamPermission({ per: item.permission })
-      })),
-    [clbs]
-  );
-
-  const { runAsync: onUpdateMemberPermission } = useRequest2(updateMemberPermission, {
-    onSuccess: () => {
-      refetchClbs();
-    }
-  });
-
-  const { runAsync: onAddPermission, loading: addLoading } = useRequest2(
-    async ({
-      orgId,
-      groupId,
-      memberId,
-      per
-    }: {
-      orgId?: string;
-      groupId?: string;
-      memberId?: string;
-      per: 'write' | 'manage';
-    }) => {
-      if (groupId) {
-        const group = groups?.find((group) => group.groupId === groupId);
-        if (group) {
-          const permission = new TeamPermission({ per: group.permission.value });
-          switch (per) {
-            case 'write':
-              permission.addPer(TeamWritePermissionVal);
-              return onUpdateMemberPermission({
-                groupId: group.groupId,
-                permission: permission.value
-              });
-            case 'manage':
-              permission.addPer(TeamManagePermissionVal);
-              return onUpdateMemberPermission({
-                groupId: group.groupId,
-                permission: permission.value
-              });
-          }
-        }
+    collaboratorList.forEach((item) => {
+      if (item.tmbId) {
+        tmbList.push(item);
+      } else if (item.groupId) {
+        groupList.push(item);
+      } else if (item.orgId) {
+        orgList.push(item);
       }
-      if (orgId) {
-        const org = orgs.find((org) => String(org.orgId) === orgId);
-        if (org) {
-          const permission = new TeamPermission({ per: org.permission.value });
-          switch (per) {
-            case 'write':
-              permission.addPer(TeamWritePermissionVal);
-              return onUpdateMemberPermission({
-                orgId: org.orgId,
-                permission: permission.value
-              });
-            case 'manage':
-              permission.addPer(TeamManagePermissionVal);
-              return onUpdateMemberPermission({
-                orgId: org.orgId,
-                permission: permission.value
-              });
-          }
-        }
+    });
+
+    return {
+      tmbList,
+      groupList,
+      orgList
+    };
+  }, [collaboratorList]);
+
+  const { runAsync: onUpdatePermission, loading: addLoading } = useRequest2(
+    async ({ id, type, per }: { id: string; type: 'add' | 'remove'; per: 'write' | 'manage' }) => {
+      const clb = collaboratorList.find(
+        (clb) => clb.tmbId === id || clb.groupId === id || clb.orgId === id
+      );
+
+      if (!clb) return;
+
+      const updatePer = per === 'write' ? TeamWritePermissionVal : TeamManagePermissionVal;
+      const permission = new TeamPermission({ per: clb.permission.value });
+      if (type === 'add') {
+        permission.addPer(updatePer);
+      } else {
+        permission.removePer(updatePer);
       }
-      if (memberId) {
-        const member = members?.find((member) => member.tmbId === memberId);
-        if (member) {
-          const permission = new TeamPermission({ per: member.permission.value });
-          switch (per) {
-            case 'write':
-              permission.addPer(TeamWritePermissionVal);
-              return onUpdateMemberPermission({
-                memberId: member.tmbId,
-                permission: permission.value
-              });
-            case 'manage':
-              permission.addPer(TeamManagePermissionVal);
-              return onUpdateMemberPermission({
-                memberId: member.tmbId,
-                permission: permission.value
-              });
-          }
-        }
-      }
+
+      return onUpdateCollaborators({
+        ...(clb.tmbId && { members: [clb.tmbId] }),
+        ...(clb.groupId && { groups: [clb.groupId] }),
+        ...(clb.orgId && { orgs: [clb.orgId] }),
+        permission: permission.value
+      });
     }
   );
 
-  const { runAsync: onRemovePermission, loading: removeLoading } = useRequest2(
-    async ({
-      orgId,
-      groupId,
-      memberId,
-      per
-    }: {
-      orgId?: string;
-      groupId?: string;
-      memberId?: string;
-      per: 'write' | 'manage';
-    }) => {
-      if (groupId) {
-        const group = groups?.find((group) => group.groupId === groupId);
-        if (group) {
-          const permission = new TeamPermission({ per: group.permission.value });
-          switch (per) {
-            case 'write':
-              permission.removePer(TeamWritePermissionVal);
-              return onUpdateMemberPermission({
-                groupId: group.groupId,
-                permission: permission.value
-              });
-            case 'manage':
-              permission.removePer(TeamManagePermissionVal);
-              return onUpdateMemberPermission({
-                groupId: group.groupId,
-                permission: permission.value
-              });
-          }
-        }
-      }
-      if (orgId) {
-        const org = orgs.find((org) => String(org.orgId) === orgId);
-        if (org) {
-          const permission = new TeamPermission({ per: org.permission.value });
-          switch (per) {
-            case 'write':
-              permission.removePer(TeamWritePermissionVal);
-              return onUpdateMemberPermission({
-                orgId: org.orgId,
-                permission: permission.value
-              });
-            case 'manage':
-              permission.removePer(TeamManagePermissionVal);
-              return onUpdateMemberPermission({
-                orgId: org.orgId,
-                permission: permission.value
-              });
-          }
-        }
-      }
-      if (memberId) {
-        const member = members?.find((member) => String(member.tmbId) === memberId);
-        if (member) {
-          const permission = new TeamPermission({ per: member.permission.value }); // Hint: member.permission is read-only
-          switch (per) {
-            case 'write':
-              permission.removePer(TeamWritePermissionVal);
-              return onUpdateMemberPermission({
-                memberId: String(member.tmbId),
-                permission: permission.value
-              });
-            case 'manage':
-              permission.removePer(TeamManagePermissionVal);
-              return onUpdateMemberPermission({
-                memberId: String(member.tmbId),
-                permission: permission.value
-              });
-          }
-        }
-      }
-    }
-  );
-
-  const { runAsync: onDeleteMemberPermission } = useRequest2(deleteMemberPermission, {
-    onSuccess: () => {
-      refetchClbs();
-    }
-  });
+  const { runAsync: onDeleteMemberPermission, loading: deleteLoading } =
+    useRequest2(onDelOneCollaborator);
 
   const userManage = userInfo?.permission.hasManagePer;
 
   return (
-    <TableContainer fontSize={'sm'}>
-      <Table>
-        <Thead>
-          <Tr bg={'white !important'}>
-            <Th bg="myGray.100" borderLeftRadius="md" maxW={'150px'}>
-              {`${t('user:team.group.members')} / ${t('user:team.org.org')} / ${t('user:team.group.group')}`}
-              <QuestionTip ml="1" label={t('user:team.group.permission_tip')} />
-            </Th>
-            <Th bg="myGray.100">
-              <Box mx="auto" w="fit-content">
-                {t('user:team.group.permission.write')}
-              </Box>
-            </Th>
-            <Th bg="myGray.100">
-              <Box mx="auto" w="fit-content">
-                {t('user:team.group.permission.manage')}
-                <QuestionTip ml="1" label={t('user:team.group.manage_tip')} />
-              </Box>
-            </Th>
-            <Th bg="myGray.100" borderRightRadius="md">
-              <Box mx="auto" w="fit-content">
-                {t('common:common.Action')}
-              </Box>
-            </Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          <Tr overflow={'unset'} border="none">
-            <HStack paddingX={'8px'} paddingY={'4px'}>
-              <MyIconButton
-                icon={isExpandMember ? 'common/downArrowFill' : 'common/rightArrowFill'}
-                onClick={setExpandMember.toggle}
-              />
-              <Text>{t('user:team.group.members')}</Text>
-            </HStack>
-          </Tr>
-          {isExpandMember &&
-            members.map((member) => (
-              <Tr key={member.tmbId} overflow={'unset'} border="none">
-                <Td border="none">
-                  <HStack>
-                    <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box>{member.name}</Box>
+    <>
+      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
+        {Tabs}
+        <Box ml="auto">
+          {/* <SearchInput
+            placeholder={t('user:team.group.search_placeholder')}
+            w="200px"
+            value={searchKey}
+            onChange={(e) => setSearchKey(e.target.value)}
+          /> */}
+        </Box>
+        {userInfo?.team.permission.hasManagePer && (
+          <Button
+            variant={'primary'}
+            size="md"
+            borderRadius={'md'}
+            ml={3}
+            leftIcon={<MyIcon name="common/add2" w={'14px'} />}
+            onClick={onOpenAddMember}
+          >
+            {t('common:common.Add')}
+          </Button>
+        )}
+      </Flex>
+      <MyBox isLoading={addLoading || deleteLoading}>
+        <TableContainer fontSize={'sm'}>
+          <Table>
+            <Thead>
+              <Tr bg={'white !important'}>
+                <Th bg="myGray.100" borderLeftRadius="md" maxW={'150px'}>
+                  {`${t('user:team.group.members')} / ${t('user:team.org.org')} / ${t('user:team.group.group')}`}
+                  <QuestionTip ml="1" label={t('user:team.group.permission_tip')} />
+                </Th>
+                <Th bg="myGray.100">
+                  <Box mx="auto" w="fit-content">
+                    {t('user:team.group.permission.write')}
+                  </Box>
+                </Th>
+                <Th bg="myGray.100">
+                  <Box mx="auto" w="fit-content">
+                    {t('user:team.group.permission.manage')}
+                    <QuestionTip ml="1" label={t('user:team.group.manage_tip')} />
+                  </Box>
+                </Th>
+                <Th bg="myGray.100" borderRightRadius="md">
+                  <Box mx="auto" w="fit-content">
+                    {t('common:common.Action')}
+                  </Box>
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              <>
+                <Tr userSelect={'none'}>
+                  <HStack pl={3} pt={3} pb={isExpandMember && !!tmbList.length ? 0 : 3}>
+                    <MyIconButton
+                      icon={isExpandMember ? 'common/downArrowFill' : 'common/rightArrowFill'}
+                      onClick={setExpandMember.toggle}
+                    />
+                    <Box color={'myGray.900'}>{t('user:team.group.members')}</Box>
                   </HStack>
-                </Td>
-                <Td border="none">
-                  <Box mx="auto" w="fit-content">
-                    <Checkbox
-                      isDisabled={member.permission.isOwner || !userManage}
-                      isChecked={member.permission.hasWritePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ memberId: String(member.tmbId), per: 'write' })
-                          : onRemovePermission({ memberId: String(member.tmbId), per: 'write' })
-                      }
+                </Tr>
+                {isExpandMember &&
+                  tmbList.map((member) => (
+                    <Tr key={member.tmbId}>
+                      <Td pl={10}>
+                        <HStack>
+                          <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
+                          <Box>{member.name}</Box>
+                        </HStack>
+                      </Td>
+                      <Td>
+                        <Box mx="auto" w="fit-content">
+                          <Checkbox
+                            isDisabled={member.permission.isOwner || !userManage}
+                            isChecked={member.permission.hasWritePer}
+                            onChange={(e) =>
+                              e.target.checked
+                                ? onUpdatePermission({
+                                    id: member.tmbId!,
+                                    type: 'add',
+                                    per: 'write'
+                                  })
+                                : onUpdatePermission({
+                                    id: member.tmbId!,
+                                    type: 'remove',
+                                    per: 'write'
+                                  })
+                            }
+                          />
+                        </Box>
+                      </Td>
+                      <Td>
+                        <Box mx="auto" w="fit-content">
+                          <Checkbox
+                            isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
+                            isChecked={member.permission.hasManagePer}
+                            onChange={(e) =>
+                              e.target.checked
+                                ? onUpdatePermission({
+                                    id: member.tmbId!,
+                                    type: 'add',
+                                    per: 'manage'
+                                  })
+                                : onUpdatePermission({
+                                    id: member.tmbId!,
+                                    type: 'remove',
+                                    per: 'manage'
+                                  })
+                            }
+                          />
+                        </Box>
+                      </Td>
+                      {userManage &&
+                        !member.permission.isOwner &&
+                        userInfo?.team.tmbId !== member.tmbId && (
+                          <Td>
+                            <Box mx="auto" w="fit-content">
+                              <MyIconButton
+                                icon="common/trash"
+                                onClick={() =>
+                                  onDeleteMemberPermission({ tmbId: String(member.tmbId) })
+                                }
+                              />
+                            </Box>
+                          </Td>
+                        )}
+                    </Tr>
+                  ))}
+              </>
+
+              <>
+                <Tr borderBottom={'1px solid'} borderColor={'myGray.200'} />
+                <Tr userSelect={'none'}>
+                  <HStack pl={3} pt={3} pb={isExpandOrg && !!orgList.length ? 0 : 3}>
+                    <MyIconButton
+                      icon={isExpandOrg ? 'common/downArrowFill' : 'common/rightArrowFill'}
+                      onClick={setExpandOrg.toggle}
                     />
-                  </Box>
-                </Td>
-                <Td border="none">
-                  <Box mx="auto" w="fit-content">
-                    <Checkbox
-                      isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
-                      isChecked={member.permission.hasManagePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ memberId: String(member.tmbId), per: 'manage' })
-                          : onRemovePermission({ memberId: String(member.tmbId), per: 'manage' })
-                      }
+                    <Text>{t('user:team.org.org')}</Text>
+                  </HStack>
+                </Tr>
+                {isExpandOrg &&
+                  orgList.map((org) => (
+                    <Tr key={org.orgId}>
+                      <Td pl={10}>
+                        <MemberTag name={org.name} avatar={org.avatar} />
+                      </Td>
+                      <Td>
+                        <Box mx="auto" w="fit-content">
+                          <Checkbox
+                            isDisabled={!userManage}
+                            isChecked={org.permission.hasWritePer}
+                            onChange={(e) =>
+                              e.target.checked
+                                ? onUpdatePermission({ id: org.orgId!, type: 'add', per: 'write' })
+                                : onUpdatePermission({
+                                    id: org.orgId!,
+                                    type: 'remove',
+                                    per: 'write'
+                                  })
+                            }
+                          />
+                        </Box>
+                      </Td>
+                      <Td>
+                        <Box mx="auto" w="fit-content">
+                          <Checkbox
+                            isDisabled={!userInfo?.permission.isOwner}
+                            isChecked={org.permission.hasManagePer}
+                            onChange={(e) =>
+                              e.target.checked
+                                ? onUpdatePermission({ id: org.orgId!, type: 'add', per: 'manage' })
+                                : onUpdatePermission({
+                                    id: org.orgId!,
+                                    type: 'remove',
+                                    per: 'manage'
+                                  })
+                            }
+                          />
+                        </Box>
+                      </Td>
+                      {userInfo?.permission.isOwner && (
+                        <Td>
+                          <Box mx="auto" w="fit-content">
+                            <MyIconButton
+                              icon="common/trash"
+                              onClick={() => onDeleteMemberPermission({ orgId: org.orgId! })}
+                            />
+                          </Box>
+                        </Td>
+                      )}
+                    </Tr>
+                  ))}
+              </>
+
+              <>
+                <Tr borderBottom={'1px solid'} borderColor={'myGray.200'} />
+                <Tr userSelect={'none'}>
+                  <HStack pl={3} pt={3} pb={isExpandGroup && !!groupList.length ? 0 : 3}>
+                    <MyIconButton
+                      icon={isExpandGroup ? 'common/downArrowFill' : 'common/rightArrowFill'}
+                      onClick={setExpandGroup.toggle}
                     />
-                  </Box>
-                </Td>
-                {userManage &&
-                  !member.permission.isOwner &&
-                  userInfo?.team.tmbId !== member.tmbId && (
-                    <Td border="none">
-                      <Box mx="auto" w="fit-content">
-                        <MyIconButton
-                          icon="common/trash"
-                          onClick={() => onDeleteMemberPermission({ tmbId: String(member.tmbId) })}
+                    <Text>{t('user:team.group.group')}</Text>
+                  </HStack>
+                </Tr>
+                {isExpandGroup &&
+                  groupList.map((group) => (
+                    <Tr key={group.groupId}>
+                      <Td pl={10}>
+                        <MemberTag
+                          name={
+                            group.name === DefaultGroupName
+                              ? userInfo?.team.teamName ?? ''
+                              : group.name
+                          }
+                          avatar={group.avatar}
                         />
-                      </Box>
-                    </Td>
-                  )}
-              </Tr>
-            ))}
-
-          <Tr borderBottom={'1px solid'} borderColor={'myGray.200'} />
-          <Tr overflow={'unset'} border="none">
-            <HStack paddingX={'8px'} paddingY={'4px'}>
-              <MyIconButton
-                icon={isExpandOrg ? 'common/downArrowFill' : 'common/rightArrowFill'}
-                onClick={setExpandOrg.toggle}
-              />
-              <Text>{t('user:team.org.org')}</Text>
-            </HStack>
-          </Tr>
-
-          {isExpandOrg &&
-            orgs.map((org) => (
-              <Tr key={org.orgId} overflow={'unset'} border="none">
-                <Td border="none">
-                  <MemberTag name={org.name} avatar={org.avatar} />
-                </Td>
-                <Td border="none">
-                  <Box mx="auto" w="fit-content">
-                    <Checkbox
-                      isDisabled={!userManage}
-                      isChecked={org.permission.hasWritePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ orgId: org.orgId, per: 'write' })
-                          : onRemovePermission({ orgId: org.orgId, per: 'write' })
-                      }
-                    />
-                  </Box>
-                </Td>
-                <Td border="none">
-                  <Box mx="auto" w="fit-content">
-                    <Checkbox
-                      isDisabled={!userInfo?.permission.isOwner}
-                      isChecked={org.permission.hasManagePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ orgId: org.orgId, per: 'manage' })
-                          : onRemovePermission({ orgId: org.orgId, per: 'manage' })
-                      }
-                    />
-                  </Box>
-                </Td>
-                {userInfo?.permission.isOwner && (
-                  <Td border="none">
-                    <Box mx="auto" w="fit-content">
-                      <MyIconButton
-                        icon="common/trash"
-                        onClick={() => onDeleteMemberPermission({ orgId: org.orgId })}
-                      />
-                    </Box>
-                  </Td>
-                )}
-              </Tr>
-            ))}
-
-          <Tr borderBottom={'1px solid'} borderColor={'myGray.200'} />
-          <Tr overflow={'unset'} border="none">
-            <HStack paddingX={'8px'} paddingY={'4px'}>
-              <MyIconButton
-                icon={isExpandGroup ? 'common/downArrowFill' : 'common/rightArrowFill'}
-                onClick={setExpandGroup.toggle}
-              />
-              <Text>{t('user:team.group.group')}</Text>
-            </HStack>
-          </Tr>
-
-          {isExpandGroup &&
-            groups.map((group) => (
-              <Tr key={group.groupId} overflow={'unset'} border="none">
-                <Td border="none">
-                  <MemberTag
-                    name={
-                      group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
-                    }
-                    avatar={group.avatar}
-                  />
-                </Td>
-                <Td border="none">
-                  <Box mx="auto" w="fit-content">
-                    <Checkbox
-                      isDisabled={!userManage}
-                      isChecked={group.permission.hasWritePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ groupId: group.groupId, per: 'write' })
-                          : onRemovePermission({ groupId: group.groupId, per: 'write' })
-                      }
-                    />
-                  </Box>
-                </Td>
-                <Td border="none">
-                  <Box mx="auto" w="fit-content">
-                    <Checkbox
-                      isDisabled={!userInfo?.permission.isOwner}
-                      isChecked={group.permission.hasManagePer}
-                      onChange={(e) =>
-                        e.target.checked
-                          ? onAddPermission({ groupId: group.groupId, per: 'manage' })
-                          : onRemovePermission({ groupId: group.groupId, per: 'manage' })
-                      }
-                    />
-                  </Box>
-                </Td>
-                {userInfo?.permission.isOwner && (
-                  <Td border="none">
-                    <Box mx="auto" w="fit-content">
-                      <MyIconButton
-                        icon="common/trash"
-                        onClick={() => onDeleteMemberPermission({ groupId: group.groupId })}
-                      />
-                    </Box>
-                  </Td>
-                )}
-              </Tr>
-            ))}
-        </Tbody>
-      </Table>
-      {isOpenAddPermission && (
-        <MemberModal
-          onClose={() => {
-            refetchClbs();
-            onCloseAddPermission();
-          }}
-          mode="all"
-        />
-      )}
-    </TableContainer>
+                      </Td>
+                      <Td>
+                        <Box mx="auto" w="fit-content">
+                          <Checkbox
+                            isDisabled={!userManage}
+                            isChecked={group.permission.hasWritePer}
+                            onChange={(e) =>
+                              e.target.checked
+                                ? onUpdatePermission({
+                                    id: group.groupId!,
+                                    type: 'add',
+                                    per: 'write'
+                                  })
+                                : onUpdatePermission({
+                                    id: group.groupId!,
+                                    type: 'remove',
+                                    per: 'write'
+                                  })
+                            }
+                          />
+                        </Box>
+                      </Td>
+                      <Td>
+                        <Box mx="auto" w="fit-content">
+                          <Checkbox
+                            isDisabled={!userInfo?.permission.isOwner}
+                            isChecked={group.permission.hasManagePer}
+                            onChange={(e) =>
+                              e.target.checked
+                                ? onUpdatePermission({
+                                    id: group.groupId!,
+                                    type: 'add',
+                                    per: 'manage'
+                                  })
+                                : onUpdatePermission({
+                                    id: group.groupId!,
+                                    type: 'remove',
+                                    per: 'manage'
+                                  })
+                            }
+                          />
+                        </Box>
+                      </Td>
+                      {userInfo?.permission.isOwner && (
+                        <Td>
+                          <Box mx="auto" w="fit-content">
+                            <MyIconButton
+                              icon="common/trash"
+                              onClick={() => onDeleteMemberPermission({ groupId: group.groupId! })}
+                            />
+                          </Box>
+                        </Td>
+                      )}
+                    </Tr>
+                  ))}
+              </>
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </MyBox>
+    </>
   );
 }
 
-export default PermissionManage;
+export const Render = ({ Tabs }: { Tabs: React.ReactNode }) => {
+  const { userInfo } = useUserStore();
+
+  return userInfo?.team ? (
+    <CollaboratorContextProvider
+      permission={userInfo?.team.permission}
+      permissionList={TeamPermissionList}
+      onGetCollaboratorList={getTeamClbs}
+      onUpdateCollaborators={updateMemberPermission}
+      onDelOneCollaborator={deleteMemberPermission}
+      refreshDeps={[userInfo?.team.teamId]}
+    >
+      {({ onOpenAddMember }) => <PermissionManage Tabs={Tabs} onOpenAddMember={onOpenAddMember} />}
+    </CollaboratorContextProvider>
+  ) : null;
+};
+
+export default Render;

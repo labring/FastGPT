@@ -1190,6 +1190,7 @@
   "tag_list": "标签列表",
   "team_tag": "团队标签",
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
+  "unauth_token": "凭证已过期，请重新登录",
   "unit.character": "字符",
   "unit.minute": "分钟",
   "unit.seconds": "秒",

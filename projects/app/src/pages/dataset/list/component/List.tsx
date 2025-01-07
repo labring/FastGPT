@@ -440,7 +440,6 @@ function List() {
           avatar={editPerDataset.avatar}
           name={editPerDataset.name}
           managePer={{
-            mode: 'all',
             permission: editPerDataset.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerDataset._id),
             permissionList: DatasetPermissionList,

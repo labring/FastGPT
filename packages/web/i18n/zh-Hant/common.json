@@ -1187,6 +1187,7 @@
   "tag_list": "標籤列表",
   "team_tag": "團隊標籤",
   "textarea_variable_picker_tip": "輸入「/」以選擇變數",
+  "unauth_token": "憑證已過期，請重新登入",
   "unit.character": "字元",
   "unit.minute": "分鐘",
   "unit.seconds": "秒",

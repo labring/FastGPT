@@ -53,6 +53,7 @@ export type VectorModelItemType = PriceType & {
 };
 
 export type ReRankModelItemType = PriceType & {
+  provider: ModelProviderIdType;
   model: string;
   name: string;
   requestUrl: string;

@@ -57,7 +57,7 @@ const NodeCard = (props: Props) => {
     name = t('common:core.module.template.UnKnow Module'),
     intro,
     minW = '300px',
-    maxW = '600px',
+    maxW = '666px',
     minH = 0,
     w = 'full',
     h = 'full',

@@ -354,7 +354,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box>
             <MemberManager
               managePer={{
-                mode: 'all',
                 permission: datasetDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(datasetId),
                 permissionList: DatasetPermissionList,

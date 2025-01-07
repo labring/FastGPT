@@ -431,7 +431,6 @@ const ListItem = () => {
           avatar={editPerApp.avatar}
           name={editPerApp.name}
           managePer={{
-            mode: 'all',
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             permissionList: AppPermissionList,
