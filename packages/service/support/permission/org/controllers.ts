@@ -102,8 +102,6 @@ export type syncOrgParams = {
 };
 
 export async function syncOrg({ teamId, orgs, session }: syncOrgParams) {
-  console.debug('sync org', teamId, orgs);
-  // 1. get the permissions to construct the new member-pathid relations
   const permissions = await MongoResourcePermission.find(
     {
       teamId,
@@ -116,22 +114,26 @@ export async function syncOrg({ teamId, orgs, session }: syncOrgParams) {
   ).lean();
 
   const oldOrgs = await MongoOrgModel.find({ teamId }, undefined, { session });
-  /** oldOrgMap = Map<pathId, oldOrgID> */
   const pathId_oldOrgMap = new Map<string, string>();
 
   oldOrgs.forEach((org) => {
-    pathId_oldOrgMap.set(org.pathId, String(org._id));
+    pathId_oldOrgMap.set(String(org.pathId), String(org._id));
   });
 
   // 2. Delete all orgs of a team
   await Promise.all([
     MongoOrgModel.deleteMany({ teamId }, { session }),
     MongoOrgMemberModel.deleteMany({ teamId }, { session }),
-    MongoResourcePermission.deleteMany({ teamId }, { session })
+    MongoResourcePermission.deleteMany(
+      {
+        teamId,
+        orgId: {
+          $exists: true
+        }
+      },
+      { session }
+    )
   ]);
-
-  console.debug('oldOrgs', oldOrgs);
-  console.debug('newOrgs', orgs);
 
   // 3. create new orgs
   for (const org of orgs) {
@@ -163,7 +165,7 @@ export async function syncOrg({ teamId, orgs, session }: syncOrgParams) {
 
     const pers = permissions.filter((p) => {
       if (!p.orgId) return;
-      const oldOrgId = pathId_oldOrgMap.get(org.pathId);
+      const oldOrgId = pathId_oldOrgMap.get(String(org.pathId));
       if (String(p.orgId) === String(oldOrgId)) {
         return true;
       }
@@ -171,19 +173,15 @@ export async function syncOrg({ teamId, orgs, session }: syncOrgParams) {
     });
 
     // 3.3 add resource Permissions
-    for (const per of pers) {
-      await MongoResourcePermission.updateOne(
-        {
-          teamId,
-          orgId: newOrg._id
-        },
-        {
-          permission: per.permission,
-          resourceType: per.resourceType,
-          resourceId: per.resourceId
-        },
-        { session }
-      );
-    }
+    await MongoResourcePermission.create(
+      pers.map((per) => ({
+        teamId,
+        orgId: newOrg._id,
+        permission: per.permission,
+        resourceType: per.resourceType,
+        resourceId: per.resourceId
+      })),
+      { session }
+    );
   }
 }
