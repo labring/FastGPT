@@ -66,6 +66,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { defaultAvatars } from '@fastgpt/global/support/user/constant';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -104,14 +105,9 @@ const ChatBox = ({
   showVoiceIcon = true,
   showEmptyIntro = false,
   active = true,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
   onStartChat
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
@@ -152,6 +148,7 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
@@ -169,6 +166,12 @@ const ChatBox = ({
   const chatStarted =
     chatBoxData?.appId === appId &&
     (chatStartedWatch || chatRecords.length > 0 || variableList.length === 0);
+
+  const humanAvatar = useMemo(() => {
+    return chatType === 'share'
+      ? defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
+      : userAvatar;
+  }, [chatType, userAvatar]);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -910,7 +913,7 @@ const ChatBox = ({
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
                       type={item.obj}
-                      avatar={userAvatar}
+                      avatar={humanAvatar}
                       chat={item}
                       onRetry={retryInput(item.dataId)}
                       onDelete={delOneMessage(item.dataId)}
@@ -925,10 +928,6 @@ const ChatBox = ({
                       isLastChild={index === chatRecords.length - 1}
                       {...{
                         showVoiceIcon,
-                        shareId,
-                        outLinkUid,
-                        teamId,
-                        teamToken,
                         statusBoxData,
                         questionGuides,
                         onMark: onMark(
@@ -1004,18 +1003,14 @@ const ChatBox = ({
     onCloseUserLike,
     onMark,
     onReadUserDislike,
-    outLinkUid,
     questionGuides,
     retryInput,
-    shareId,
     showEmpty,
     showMarkIcon,
     showVoiceIcon,
     statusBoxData,
     t,
-    teamId,
-    teamToken,
-    userAvatar,
+    humanAvatar,
     variableList?.length,
     welcomeText
   ]);

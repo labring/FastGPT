@@ -2,22 +2,13 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
+import {
+  defaultAvatars,
+  UserStatusEnum,
+  userStatusMap
+} from '@fastgpt/global/support/user/constant';
 
 export const userCollectionName = 'users';
-
-const defaultAvatars = [
-  '/imgs/avatar/RoyalBlueAvatar.svg',
-  '/imgs/avatar/PurpleAvatar.svg',
-  '/imgs/avatar/AdoraAvatar.svg',
-  '/imgs/avatar/OrangeAvatar.svg',
-  '/imgs/avatar/RedAvatar.svg',
-  '/imgs/avatar/GrayModernAvatar.svg',
-  '/imgs/avatar/TealAvatar.svg',
-  '/imgs/avatar/GreenAvatar.svg',
-  '/imgs/avatar/BrightBlueAvatar.svg',
-  '/imgs/avatar/BlueAvatar.svg'
-];
 
 const UserSchema = new Schema({
   status: {
