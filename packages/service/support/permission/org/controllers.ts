@@ -4,7 +4,7 @@ import type { ClientSession } from 'mongoose';
 import { MongoOrgModel } from './orgSchema';
 import { MongoOrgMemberModel } from './orgMemberSchema';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { MongoResourcePermission } from '../schema';
 
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
   MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
@@ -87,4 +87,103 @@ export async function createRootOrg({
     ],
     { session }
   );
+}
+
+/** Sync the Org */
+export type syncOrgParams = {
+  teamId: string;
+  orgs: {
+    pathId: string; // this should be unique
+    path: string; // "org1/org2/org3/pathid"
+    name: string;
+    tmbIds: string[];
+  }[];
+  session?: ClientSession;
+};
+
+export async function syncOrg({ teamId, orgs, session }: syncOrgParams) {
+  console.debug('sync org', teamId, orgs);
+  // 1. get the permissions to construct the new member-pathid relations
+  const permissions = await MongoResourcePermission.find(
+    {
+      teamId,
+      orgId: {
+        $exists: true
+      }
+    },
+    undefined,
+    { session }
+  ).lean();
+
+  const oldOrgs = await MongoOrgModel.find({ teamId }, undefined, { session });
+  /** oldOrgMap = Map<pathId, oldOrgID> */
+  const pathId_oldOrgMap = new Map<string, string>();
+
+  oldOrgs.forEach((org) => {
+    pathId_oldOrgMap.set(org.pathId, String(org._id));
+  });
+
+  // 2. Delete all orgs of a team
+  await Promise.all([
+    MongoOrgModel.deleteMany({ teamId }, { session }),
+    MongoOrgMemberModel.deleteMany({ teamId }, { session }),
+    MongoResourcePermission.deleteMany({ teamId }, { session })
+  ]);
+
+  console.debug('oldOrgs', oldOrgs);
+  console.debug('newOrgs', orgs);
+
+  // 3. create new orgs
+  for (const org of orgs) {
+    // 3.1 create new orgs
+    const [newOrg] = await MongoOrgModel.create(
+      [
+        {
+          teamId,
+          name: org.name,
+          pathId: org.pathId,
+          path: org.path
+        }
+      ],
+      { session }
+    );
+    // 3.2 add members
+    for (const tmbId of org.tmbIds) {
+      await MongoOrgMemberModel.create(
+        [
+          {
+            teamId,
+            orgId: newOrg._id,
+            tmbId
+          }
+        ],
+        { session }
+      );
+    }
+
+    const pers = permissions.filter((p) => {
+      if (!p.orgId) return;
+      const oldOrgId = pathId_oldOrgMap.get(org.pathId);
+      if (String(p.orgId) === String(oldOrgId)) {
+        return true;
+      }
+      return false;
+    });
+
+    // 3.3 add resource Permissions
+    for (const per of pers) {
+      await MongoResourcePermission.updateOne(
+        {
+          teamId,
+          orgId: newOrg._id
+        },
+        {
+          permission: per.permission,
+          resourceType: per.resourceType,
+          resourceId: per.resourceId
+        },
+        { session }
+      );
+    }
+  }
 }
