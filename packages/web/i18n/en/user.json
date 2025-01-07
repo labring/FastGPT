@@ -81,6 +81,7 @@
   "team.Update Team": "Update team information",
   "team.add_collaborator": "Add Collaborator",
   "team.add_writer": "Add writable members",
+  "team.add_permission": "Add permissions",
   "team.avatar_and_name": "avatar",
   "team.belong_to_group": "Member group",
   "team.group.avatar": "Group avatar",

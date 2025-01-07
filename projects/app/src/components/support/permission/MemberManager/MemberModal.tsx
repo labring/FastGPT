@@ -165,8 +165,8 @@ function MemberModal({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="modal/AddClb"
-      title={t('user:team.add_collaborator')}
+      iconSrc={context ? 'modal/AddClb' : 'modal/key'}
+      title={context ? t('user:team.add_collaborator') : t('user:team.add_permission')}
       minW="800px"
       h={'100%'}
       maxH={'800px'}
