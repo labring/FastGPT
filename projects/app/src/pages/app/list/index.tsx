@@ -301,7 +301,6 @@ const MyApps = () => {
               deleteTip={t('app:confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               managePer={{
-                mode: 'all',
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,

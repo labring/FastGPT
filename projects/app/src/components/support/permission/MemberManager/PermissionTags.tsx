@@ -7,12 +7,15 @@ import { CollaboratorContext } from './context';
 import { useTranslation } from 'next-i18next';
 
 export type PermissionTagsProp = {
-  permission: PermissionValueType;
+  permission?: PermissionValueType;
 };
 
 function PermissionTags({ permission }: PermissionTagsProp) {
   const { getPerLabelList } = useContextSelector(CollaboratorContext, (v) => v);
   const { t } = useTranslation();
+
+  if (permission === undefined) return null;
+
   const perTagList = getPerLabelList(permission);
 
   return (

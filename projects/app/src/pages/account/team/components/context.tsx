@@ -25,8 +25,6 @@ type TeamModalContextType = {
   refetchMembers: () => void;
   refetchTeams: () => void;
   refetchGroups: () => void;
-  searchKey: string;
-  setSearchKey: React.Dispatch<React.SetStateAction<string>>;
   teamSize: number;
 };
 
@@ -51,10 +49,6 @@ export const TeamContext = createContext<TeamModalContextType>({
     throw new Error('Function not implemented.');
   },
 
-  searchKey: '',
-  setSearchKey: function (_value: React.SetStateAction<string>): void {
-    throw new Error('Function not implemented.');
-  },
   teamSize: 0
 });
 
@@ -62,7 +56,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const { t } = useTranslation();
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo, loadAndGetTeamMembers } = useUserStore();
-  const [searchKey, setSearchKey] = useState('');
 
   const {
     data: myTeams = [],
@@ -115,8 +108,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refetchTeams,
     isLoading,
     onSwitchTeam,
-    searchKey,
-    setSearchKey,
 
     // create | update team
     setEditTeamData,

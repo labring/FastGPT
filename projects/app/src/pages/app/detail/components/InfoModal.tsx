@@ -187,7 +187,6 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             )}
             <Box mt={6}>
               <CollaboratorContextProvider
-                mode="all"
                 permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 permissionList={AppPermissionList}

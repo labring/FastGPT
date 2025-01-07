@@ -19,19 +19,19 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-const AddMemberModal = dynamic(() => import('./AddMemberModal'));
+
+const MemberModal = dynamic(() => import('./MemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
 export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
-  permissionList: PermissionListType;
+  permissionList?: PermissionListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => Promise<any>;
   onDelOneCollaborator: (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
   ) => Promise<any>;
   refreshDeps?: any[];
-  mode?: 'member' | 'all';
 };
 
 export type MemberManagerPropsType = MemberManagerInputPropsType & {
@@ -80,8 +80,7 @@ const CollaboratorContextProvider = ({
   refetchResource,
   refreshDeps = [],
   isInheritPermission,
-  hasParent,
-  mode = 'member'
+  hasParent
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
   refetchResource?: () => void;
@@ -121,6 +120,8 @@ const CollaboratorContextProvider = ({
 
   const getPerLabelList = useCallback(
     (per: PermissionValueType) => {
+      if (!permissionList) return [];
+
       const Per = new Permission({ per });
       const labels: string[] = [];
 
@@ -128,7 +129,7 @@ const CollaboratorContextProvider = ({
         labels.push(permissionList['manage'].name);
       } else if (Per.hasWritePer) {
         labels.push(permissionList['write'].name);
-      } else {
+      } else if (Per.hasReadPer) {
         labels.push(permissionList['read'].name);
       }
 
@@ -203,12 +204,11 @@ const CollaboratorContextProvider = ({
         MemberListCard
       })}
       {isOpenAddMember && (
-        <AddMemberModal
+        <MemberModal
           onClose={() => {
             onCloseAddMember();
             refetchResource?.();
           }}
-          mode={mode}
         />
       )}
       {isOpenManageModal && (

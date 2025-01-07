@@ -49,13 +49,16 @@ function PermissionSelect({
   onDelete
 }: PermissionSelectProps) {
   const { t } = useTranslation();
-  const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
   const ref = useRef<HTMLButtonElement>(null);
   const closeTimer = useRef<NodeJS.Timeout>();
+
+  const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
 
   const [isOpen, setIsOpen] = useState(false);
 
   const permissionSelectList = useMemo(() => {
+    if (!permissionList) return { singleCheckBoxList: [], multipleCheckBoxList: [] };
+
     const list = Object.entries(permissionList).map(([_, value]) => {
       return {
         name: value.name,
@@ -77,6 +80,8 @@ function PermissionSelect({
     };
   }, [permission.isOwner, permissionList]);
   const selectedSingleValue = useMemo(() => {
+    if (!permissionList) return undefined;
+
     const per = new Permission({ per: value });
 
     if (per.hasManagePer) return permissionList['manage'].value;
@@ -107,7 +112,7 @@ function PermissionSelect({
     }
   });
 
-  return (
+  return selectedSingleValue !== undefined ? (
     <Menu offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'}>
       <Box
         w="fit-content"
@@ -241,7 +246,7 @@ function PermissionSelect({
         </MenuList>
       </Box>
     </Menu>
-  );
+  ) : null;
 }
 
 export default React.memo(PermissionSelect);

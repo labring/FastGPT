@@ -71,7 +71,7 @@ function ActionButton({
   );
 }
 
-function OrgTable() {
+function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo, isTeamAdmin } = useUserStore();
 
@@ -157,99 +157,69 @@ function OrgTable() {
   });
 
   return (
-    <MyBox isLoading={isLoadingOrgs}>
-      <Box mb={3}>
-        <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={setParentPath} />
-      </Box>
-      <Flex w={'100%'} gap={'4'}>
-        {/* Table */}
-        <TableContainer overflow={'unset'} fontSize={'sm'} flexGrow={1}>
-          <Table overflow={'unset'}>
-            <Thead>
-              <Tr bg={'white !important'}>
-                <Th bg="myGray.100" borderLeftRadius="6px">
-                  {t('common:Name')}
-                </Th>
-                <Th bg="myGray.100" borderRightRadius="6px">
-                  {t('common:common.Action')}
-                </Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {currentOrgs.map((org) => (
-                <Tr key={org._id} overflow={'unset'}>
-                  <Td>
-                    <HStack
-                      cursor={'pointer'}
-                      onClick={() => setParentPath(getOrgChildrenPath(org))}
-                    >
-                      <MemberTag name={org.name} avatar={org.avatar} />
-                      <Tag size="sm">{org.count}</Tag>
-                      <MyIcon
-                        name="core/chat/chevronRight"
-                        w={'1rem'}
-                        h={'1rem'}
-                        color={'myGray.500'}
-                      />
-                    </HStack>
-                  </Td>
-                  <Td w={'6rem'}>
-                    {isTeamAdmin && (
-                      <MyMenu
-                        trigger="hover"
-                        Button={<IconButton name="more" />}
-                        menuList={[
-                          {
-                            children: [
-                              {
-                                icon: 'edit',
-                                label: t('account_team:edit_info'),
-                                onClick: () => setEditOrg(org)
-                              },
-                              {
-                                icon: 'common/file/move',
-                                label: t('common:Move'),
-                                onClick: () => setMovingOrg(org)
-                              },
-                              {
-                                icon: 'delete',
-                                label: t('account_team:delete'),
-                                type: 'danger',
-                                onClick: () => deleteOrgHandler(org._id)
-                              }
-                            ]
-                          }
-                        ]}
-                      />
-                    )}
-                  </Td>
+    <>
+      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
+        {Tabs}
+      </Flex>
+      <MyBox flex={'1 0 0'} overflow={'auto'} isLoading={isLoadingOrgs}>
+        <Box mb={3}>
+          <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={setParentPath} />
+        </Box>
+        <Flex w={'100%'} gap={'4'}>
+          {/* Table */}
+          <TableContainer overflow={'unset'} fontSize={'sm'} flexGrow={1}>
+            <Table overflow={'unset'}>
+              <Thead>
+                <Tr bg={'white !important'}>
+                  <Th bg="myGray.100" borderLeftRadius="6px">
+                    {t('common:Name')}
+                  </Th>
+                  <Th bg="myGray.100" borderRightRadius="6px">
+                    {t('common:common.Action')}
+                  </Th>
                 </Tr>
-              ))}
-              {currentOrg?.members.map((member) => {
-                const memberInfo = members.find((m) => m.tmbId === member.tmbId);
-                if (!memberInfo) return null;
-
-                return (
-                  <Tr key={member.tmbId}>
+              </Thead>
+              <Tbody>
+                {currentOrgs.map((org) => (
+                  <Tr key={org._id} overflow={'unset'}>
                     <Td>
-                      <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
+                      <HStack
+                        cursor={'pointer'}
+                        onClick={() => setParentPath(getOrgChildrenPath(org))}
+                      >
+                        <MemberTag name={org.name} avatar={org.avatar} />
+                        <Tag size="sm">{org.count}</Tag>
+                        <MyIcon
+                          name="core/chat/chevronRight"
+                          w={'1rem'}
+                          h={'1rem'}
+                          color={'myGray.500'}
+                        />
+                      </HStack>
                     </Td>
                     <Td w={'6rem'}>
                       {isTeamAdmin && (
                         <MyMenu
-                          trigger={'hover'}
+                          trigger="hover"
                           Button={<IconButton name="more" />}
                           menuList={[
                             {
                               children: [
                                 {
+                                  icon: 'edit',
+                                  label: t('account_team:edit_info'),
+                                  onClick: () => setEditOrg(org)
+                                },
+                                {
+                                  icon: 'common/file/move',
+                                  label: t('common:Move'),
+                                  onClick: () => setMovingOrg(org)
+                                },
+                                {
                                   icon: 'delete',
                                   label: t('account_team:delete'),
                                   type: 'danger',
-                                  onClick: () =>
-                                    openDeleteMemberModal(() =>
-                                      deleteMemberReq(currentOrg._id, member.tmbId)
-                                    )()
+                                  onClick: () => deleteOrgHandler(org._id)
                                 }
                               ]
                             }
@@ -258,91 +228,126 @@ function OrgTable() {
                       )}
                     </Td>
                   </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
-        </TableContainer>
-        {/* Slider */}
-        <VStack w={'180px'} alignItems={'start'}>
-          <HStack gap={'6px'}>
-            <Avatar src={currentOrg?.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
-            <Box fontWeight={500} color={'myGray.900'}>
-              {currentOrg?.name}
-            </Box>
-            {currentOrg?.path !== '' && (
-              <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
-            )}
-          </HStack>
-          <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
+                ))}
+                {currentOrg?.members.map((member) => {
+                  const memberInfo = members.find((m) => m.tmbId === member.tmbId);
+                  if (!memberInfo) return null;
 
-          <Divider my={'20px'} />
-
-          <Box fontWeight={500} fontSize="sm" color="myGray.900">
-            {t('common:common.Action')}
-          </Box>
-          {currentOrg && isTeamAdmin && (
-            <VStack gap="13px" w="100%">
-              <ActionButton
-                icon="common/add2"
-                text={t('account_team:create_sub_org')}
-                onClick={() => {
-                  setEditOrg({
-                    ...defaultOrgForm,
-                    parentId: currentOrg?._id
-                  });
-                }}
-              />
-              <ActionButton
-                icon="common/administrator"
-                text={t('account_team:manage_member')}
-                onClick={() => setManageMemberOrg(currentOrg)}
-              />
+                  return (
+                    <Tr key={member.tmbId}>
+                      <Td>
+                        <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
+                      </Td>
+                      <Td w={'6rem'}>
+                        {isTeamAdmin && (
+                          <MyMenu
+                            trigger={'hover'}
+                            Button={<IconButton name="more" />}
+                            menuList={[
+                              {
+                                children: [
+                                  {
+                                    icon: 'delete',
+                                    label: t('account_team:delete'),
+                                    type: 'danger',
+                                    onClick: () =>
+                                      openDeleteMemberModal(() =>
+                                        deleteMemberReq(currentOrg._id, member.tmbId)
+                                      )()
+                                  }
+                                ]
+                              }
+                            ]}
+                          />
+                        )}
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </TableContainer>
+          {/* Slider */}
+          <VStack w={'180px'} alignItems={'start'}>
+            <HStack gap={'6px'}>
+              <Avatar src={currentOrg?.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
+              <Box fontWeight={500} color={'myGray.900'}>
+                {currentOrg?.name}
+              </Box>
               {currentOrg?.path !== '' && (
-                <>
-                  <ActionButton
-                    icon="common/file/move"
-                    text={t('account_team:move_org')}
-                    onClick={() => setMovingOrg(currentOrg)}
-                  />
-                  <ActionButton
-                    icon="delete"
-                    text={t('account_team:delete_org')}
-                    onClick={() => deleteOrgHandler(currentOrg._id)}
-                  />
-                </>
+                <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
               )}
-            </VStack>
-          )}
-        </VStack>
-      </Flex>
+            </HStack>
+            <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
 
-      {!!editOrg && (
-        <OrgInfoModal
-          editOrg={editOrg}
-          onClose={() => setEditOrg(undefined)}
-          onSuccess={refetchOrgs}
-        />
-      )}
-      {!!movingOrg && (
-        <OrgMoveModal
-          orgs={orgs}
-          movingOrg={movingOrg}
-          onClose={() => setMovingOrg(undefined)}
-          onSuccess={refetchOrgs}
-        />
-      )}
-      {!!manageMemberOrg && (
-        <OrgMemberManageModal
-          currentOrg={manageMemberOrg}
-          refetchOrgs={refetchOrgs}
-          onClose={() => setManageMemberOrg(undefined)}
-        />
-      )}
+            <Divider my={'20px'} />
 
-      <ConfirmDeleteOrgModal />
-      <ConfirmDeleteMember />
-    </MyBox>
+            <Box fontWeight={500} fontSize="sm" color="myGray.900">
+              {t('common:common.Action')}
+            </Box>
+            {currentOrg && isTeamAdmin && (
+              <VStack gap="13px" w="100%">
+                <ActionButton
+                  icon="common/add2"
+                  text={t('account_team:create_sub_org')}
+                  onClick={() => {
+                    setEditOrg({
+                      ...defaultOrgForm,
+                      parentId: currentOrg?._id
+                    });
+                  }}
+                />
+                <ActionButton
+                  icon="common/administrator"
+                  text={t('account_team:manage_member')}
+                  onClick={() => setManageMemberOrg(currentOrg)}
+                />
+                {currentOrg?.path !== '' && (
+                  <>
+                    <ActionButton
+                      icon="common/file/move"
+                      text={t('account_team:move_org')}
+                      onClick={() => setMovingOrg(currentOrg)}
+                    />
+                    <ActionButton
+                      icon="delete"
+                      text={t('account_team:delete_org')}
+                      onClick={() => deleteOrgHandler(currentOrg._id)}
+                    />
+                  </>
+                )}
+              </VStack>
+            )}
+          </VStack>
+        </Flex>
+
+        {!!editOrg && (
+          <OrgInfoModal
+            editOrg={editOrg}
+            onClose={() => setEditOrg(undefined)}
+            onSuccess={refetchOrgs}
+          />
+        )}
+        {!!movingOrg && (
+          <OrgMoveModal
+            orgs={orgs}
+            movingOrg={movingOrg}
+            onClose={() => setMovingOrg(undefined)}
+            onSuccess={refetchOrgs}
+          />
+        )}
+        {!!manageMemberOrg && (
+          <OrgMemberManageModal
+            currentOrg={manageMemberOrg}
+            refetchOrgs={refetchOrgs}
+            onClose={() => setManageMemberOrg(undefined)}
+          />
+        )}
+
+        <ConfirmDeleteOrgModal />
+        <ConfirmDeleteMember />
+      </MyBox>
+    </>
   );
 }
 

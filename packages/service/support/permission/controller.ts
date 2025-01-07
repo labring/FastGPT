@@ -8,10 +8,7 @@ import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
 import { ClientSession } from 'mongoose';
-import {
-  PermissionValueType,
-  ResourcePermissionType
-} from '@fastgpt/global/support/permission/type';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { addMinutes } from 'date-fns';
 import { getGroupsByTmbId } from './memberGroup/controllers';
@@ -107,44 +104,6 @@ export const getResourcePermission = async ({
   return concatPer([...groupPers, ...orgPers]);
 };
 
-/* 仅取 members 不取 groups */
-export async function getResourceAllClbs({
-  resourceId,
-  teamId,
-  resourceType,
-  session
-}: {
-  teamId: string;
-  session?: ClientSession;
-} & (
-  | {
-      resourceType: 'team';
-      resourceId?: undefined;
-    }
-  | {
-      resourceType: Omit<PerResourceTypeEnum, 'team'>;
-      resourceId?: string | null;
-    }
-)): Promise<ResourcePermissionType[]> {
-  return MongoResourcePermission.find(
-    {
-      resourceType: resourceType,
-      teamId: teamId,
-      resourceId,
-      groupId: {
-        $exists: false
-      },
-      orgId: {
-        $exists: false
-      }
-    },
-    null,
-    {
-      session
-    }
-  ).lean();
-}
-
 export async function getResourceClbsAndGroups({
   resourceId,
   resourceType,
@@ -172,10 +131,17 @@ export const getClbsAndGroupsWithInfo = async ({
   resourceType,
   teamId
 }: {
-  resourceId: ParentIdType;
-  resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
   teamId: string;
-}) =>
+} & (
+  | {
+      resourceId: ParentIdType;
+      resourceType: Omit<`${PerResourceTypeEnum}`, 'team'>;
+    }
+  | {
+      resourceType: 'team';
+      resourceId?: undefined;
+    }
+)) =>
   Promise.all([
     MongoResourcePermission.find({
       teamId,
