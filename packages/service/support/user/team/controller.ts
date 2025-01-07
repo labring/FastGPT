@@ -18,6 +18,12 @@ import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/consta
 import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
 import { refreshSourceAvatar } from '../../../common/file/image/controller';
+import { MongoResourcePermission } from '../../../support/permission/schema';
+import { getGroupsByTmbId } from '../../../support/permission/memberGroup/controllers';
+import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import { MongoGroupMemberModel } from '../../../support/permission/memberGroup/groupMemberSchema';
+import { MongoOrgMemberModel } from '../../../support/permission/org/orgMemberSchema';
+import { changeOwner } from '../../../core/changeOwner';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
@@ -242,4 +248,123 @@ export async function updateTeam({
       await refreshSourceAvatar(avatar, team?.avatar, session);
     }
   });
+}
+
+/** remove user from team */
+export async function removeUser({
+  teamId,
+  memberId,
+  session
+}: {
+  teamId: string;
+  memberId: string;
+  session?: ClientSession;
+}) {
+  const removeTmb = await MongoTeamMember.findOne(
+    {
+      teamId,
+      _id: memberId
+    },
+    undefined,
+    { session }
+  );
+  if (!removeTmb) {
+    return Promise.reject('member not exist');
+  }
+
+  const ownerTmb = await MongoTeamMember.findOne(
+    {
+      teamId,
+      role: TeamMemberRoleEnum.owner
+    },
+    undefined,
+    { session }
+  );
+  if (!ownerTmb) {
+    return Promise.reject('owner not exist');
+  }
+
+  const memberTmbId = String(memberId);
+  const teamOwnerTmbId = String(ownerTmb._id);
+
+  if (teamOwnerTmbId === memberTmbId) {
+    return Promise.reject('owner can not be deleted');
+  }
+
+  // Transfer source
+  const func = async (session: ClientSession) => {
+    // Delete permission
+    await MongoResourcePermission.deleteMany(
+      {
+        resourceType: { $exists: true },
+        teamId,
+        tmbId: memberTmbId
+      },
+      { session }
+    );
+
+    // Transfer group to team owner
+    const groups = await getGroupsByTmbId({
+      tmbId: memberTmbId,
+      teamId,
+      role: [GroupMemberRole.owner]
+    });
+    // update group member owner
+    await MongoGroupMemberModel.updateMany(
+      {
+        groupId: { $in: groups.map((group) => String(group._id)) },
+        tmbId: teamOwnerTmbId
+      },
+      {
+        role: GroupMemberRole.owner
+      },
+      {
+        upsert: true,
+        session
+      }
+    );
+    // Delete group member
+    await MongoGroupMemberModel.deleteMany(
+      {
+        tmbId: memberTmbId
+      },
+      { session }
+    );
+
+    // Delete org member
+    await MongoOrgMemberModel.deleteMany(
+      {
+        teamId,
+        tmbId: memberTmbId
+      },
+      { session }
+    );
+
+    // Transfer permission
+    await changeOwner({
+      teamId,
+      changeOwnerType: 'app',
+      newOwnerId: teamOwnerTmbId,
+      oldOwnerId: memberTmbId,
+      session
+    });
+
+    await changeOwner({
+      teamId,
+      changeOwnerType: 'dataset',
+      newOwnerId: teamOwnerTmbId,
+      oldOwnerId: memberTmbId,
+      session
+    });
+
+    // Update member status is leave
+    removeTmb.status = TeamMemberStatusEnum.leave;
+    await removeTmb.save({ session });
+  };
+
+  if (session) {
+    await func(session);
+  } else {
+    await mongoSessionRun(func);
+  }
 }

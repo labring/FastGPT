@@ -90,3 +90,5 @@ export const getCaptchaPic = (username: string) =>
   GET<{
     captchaImage: string;
   }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+
+export const syncMembers = () => GET('/proApi/support/user/team/org/sync');

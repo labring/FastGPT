@@ -1,4 +1,3 @@
-import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
@@ -27,7 +26,7 @@ import { useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { TeamContext } from '../context';
-import { getOrgList } from '@/web/support/user/team/org/api';
+import { deleteOrg, deleteOrgMember, getOrgList } from '@/web/support/user/team/org/api';
 
 import IconButton from './IconButton';
 import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
@@ -37,6 +36,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -76,7 +76,9 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { userInfo, isTeamAdmin } = useUserStore();
 
   const { members } = useContextSelector(TeamContext, (v) => v);
+  const { feConfigs } = useSystemStore();
 
+  const isSyncMember = userInfo?.username === 'root' && feConfigs.register_method?.includes('sync');
   const [parentPath, setParentPath] = useState('');
   const {
     data: orgs = [],
@@ -198,7 +200,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                       </HStack>
                     </Td>
                     <Td w={'6rem'}>
-                      {isTeamAdmin && (
+                      {isTeamAdmin && !isSyncMember && (
                         <MyMenu
                           trigger="hover"
                           Button={<IconButton name="more" />}
@@ -239,7 +241,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                         <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
                       </Td>
                       <Td w={'6rem'}>
-                        {isTeamAdmin && (
+                        {isTeamAdmin && !isSyncMember && (
                           <MyMenu
                             trigger={'hover'}
                             Button={<IconButton name="more" />}

@@ -1,6 +1,6 @@
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import AccountContainer from '../components/AccountContainer';
-import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import TeamSelector from '../components/TeamSelector';
@@ -10,16 +10,13 @@ import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from './components/context';
 import dynamic from 'next/dynamic';
-import MemberTable from './components/MemberTable';
 
+const MemberTable = dynamic(() => import('./components/MemberTable'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
 const GroupManage = dynamic(() => import('./components/GroupManage/index'));
-
 const OrgManage = dynamic(() => import('./components/OrgManage/index'));
 
 export enum TeamTabEnum {

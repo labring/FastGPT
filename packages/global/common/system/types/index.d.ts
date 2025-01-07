@@ -40,7 +40,7 @@ export type FastGPTConfigFileType = {
 
 export type FastGPTFeConfigsType = {
   show_emptyChat?: boolean;
-  register_method?: ['email' | 'phone'];
+  register_method?: ['email' | 'phone' | 'sync'];
   login_method?: ['email' | 'phone']; // Attention: login method is diffrent with oauth
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
@@ -77,6 +77,8 @@ export type FastGPTFeConfigsType = {
       corpid?: string;
       agentid?: string;
       secret?: string;
+      syncid?: string;
+      isSync?: boolean;
     };
     microsoft?: {
       clientId?: string;

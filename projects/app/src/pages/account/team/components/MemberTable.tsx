@@ -30,6 +30,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
+import { syncMembers } from '@/web/support/user/api';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -53,6 +54,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
     type: 'delete'
   });
+  const isSyncMember = userInfo?.username === 'root' && feConfigs.register_method?.includes('sync');
 
   const { runAsync: onLeaveTeam } = useRequest2(
     async () => {
@@ -70,6 +72,14 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   );
   const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
     content: t('account_team:confirm_leave_team')
+  });
+
+  const { runAsync: onSyncMember } = useRequest2(syncMembers, {
+    onSuccess() {
+      refetchTeams();
+    },
+    successToast: t('account_team:sync_member_success'),
+    errorToast: t('account_team:sync_member_failed')
   });
 
   return (
@@ -91,7 +101,21 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:label_sync')}
             </Button>
           )}
-          {userInfo?.team.permission.hasManagePer && (
+          {userInfo?.team.permission.hasManagePer && isSyncMember && (
+            <Button
+              variant={'primary'}
+              size="md"
+              borderRadius={'md'}
+              ml={3}
+              leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
+              onClick={() => {
+                onSyncMember();
+              }}
+            >
+              {t('account_team:sync_immediately')}
+            </Button>
+          )}
+          {userInfo?.team.permission.hasManagePer && !isSyncMember && (
             <Button
               variant={'primary'}
               size="md"
@@ -172,7 +196,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                     />
                   </Td>
                   <Td>
-                    {userInfo?.team.permission.hasManagePer &&
+                    {!isSyncMember &&
+                      userInfo?.team.permission.hasManagePer &&
                       item.role !== TeamMemberRoleEnum.owner &&
                       item.tmbId !== userInfo?.team.tmbId && (
                         <Icon
