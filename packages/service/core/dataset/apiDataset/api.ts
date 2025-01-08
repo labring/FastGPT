@@ -79,16 +79,22 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
 
   const listFiles = async ({
     searchKey,
-    parentId
+    parentId,
+    pageToken = '',
+    pageSize
   }: {
     searchKey?: string;
     parentId?: ParentIdType;
+    pageToken: string;
+    pageSize: number;
   }) => {
-    const files = await request<APIFileListResponse>(
+    const { files, nextPageToken } = await request<APIFileListResponse>(
       `/v1/file/list`,
       {
         searchKey,
-        parentId
+        parentId,
+        pageSize,
+        pageToken
       },
       'POST'
     );
@@ -105,7 +111,10 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       hasChild: file.type === 'folder'
     }));
 
-    return formattedFiles;
+    return {
+      list: formattedFiles,
+      nextPageToken
+    };
   };
 
   const getFileContent = async ({ teamId, apiFileId }: { teamId: string; apiFileId: string }) => {

@@ -2,7 +2,12 @@ import React, { ReactNode, RefObject, useMemo, useRef, useState } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { PaginationProps, PaginationResponse } from '../common/fetch/type';
+import {
+  PaginationProps,
+  PaginationResponse,
+  TokenPaginationProps,
+  TokenPaginationResponse
+} from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,
@@ -355,5 +360,144 @@ export function useScrollPagination<
     setData,
     fetchData: loadData,
     refreshList
+  };
+}
+
+export function useTokenScrollPagination<
+  TParams extends TokenPaginationProps,
+  TData extends TokenPaginationResponse
+>(
+  api: (data: TParams) => Promise<TData>,
+  {
+    refreshDeps,
+
+    pageSize = 10,
+    params = {},
+    EmptyTip,
+    showErrorToast = true
+  }: {
+    refreshDeps?: any[];
+
+    pageSize?: number;
+    params?: Record<string, any>;
+    EmptyTip?: React.JSX.Element;
+    showErrorToast?: boolean;
+  }
+) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  const [data, setData] = useState<TData['list']>([]);
+  const [isLoading, { setTrue, setFalse }] = useBoolean(false);
+
+  const [pageToken, setPageToken] = useState<string>('');
+  const noMore = !pageToken;
+  const isEmpty = data.length === 0;
+
+  const loadData = useLockFn(async (init = false) => {
+    if (noMore && !init) return;
+
+    setTrue();
+
+    try {
+      const res = await api({
+        pageToken: init ? '' : pageToken,
+        pageSize,
+        ...params
+      } as TParams);
+
+      setPageToken(res.nextPageToken);
+      setData((prevData) => (init ? res.list : [...prevData, ...res.list]));
+    } catch (error: any) {
+      if (showErrorToast) {
+        toast({
+          title: getErrText(error, t('common:core.chat.error.data_error')),
+          status: 'error'
+        });
+      }
+      console.log(error);
+    }
+
+    setFalse();
+  });
+
+  let ScrollRef = useRef<HTMLDivElement>(null);
+  const ScrollData = useMemoizedFn(
+    ({
+      children,
+      ...props
+    }: {
+      children: ReactNode;
+    } & BoxProps) => {
+      const ref = ScrollRef;
+      const loadText = useMemo(() => {
+        if (isLoading) return t('common:common.is_requesting');
+        if (noMore) return t('common:common.request_end');
+        return t('common:common.request_more');
+      }, [isLoading, noMore]);
+
+      const scroll = useScroll(ref);
+
+      // Watch scroll position
+      useThrottleEffect(
+        () => {
+          if (!ref?.current || noMore) return;
+          const { scrollTop, scrollHeight, clientHeight } = ref.current;
+
+          if (scrollTop + clientHeight >= scrollHeight - thresholdVal) {
+            loadData(false);
+          }
+        },
+        [scroll],
+        { wait: 50 }
+      );
+
+      return (
+        <Box {...props} ref={ref}>
+          {children}
+          {!isEmpty && (
+            <Box
+              mt={2}
+              fontSize={'xs'}
+              color={'blackAlpha.500'}
+              textAlign={'center'}
+              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
+              onClick={() => {
+                if (loadText !== t('common:common.request_more')) return;
+                loadData(false);
+              }}
+            >
+              {loadText}
+            </Box>
+          )}
+          {isEmpty && EmptyTip}
+        </Box>
+      );
+    }
+  );
+
+  // Reload data
+  useRequest(
+    async () => {
+      loadData(true);
+    },
+    {
+      manual: false,
+      refreshDeps
+    }
+  );
+
+  const refreshList = useMemoizedFn(() => {
+    loadData(true);
+  });
+
+  return {
+    ScrollData,
+    isLoading,
+    data,
+    setData,
+    fetchData: loadData,
+    refreshList,
+    hasMore: !noMore
   };
 }

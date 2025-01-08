@@ -11,3 +11,13 @@ type PaginationResponse<T = {}> = {
   total: number;
   list: T[];
 };
+
+export type TokenPaginationProps = {
+  pageToken: string;
+  pageSize: number;
+};
+
+export type TokenPaginationResponse<T = any> = {
+  nextPageToken: string;
+  list: T[];
+};

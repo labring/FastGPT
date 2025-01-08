@@ -6,6 +6,8 @@ export const getFeishuAndYuqueDatasetFileList = async (data: {
   feishuServer?: FeishuServer;
   yuqueServer?: YuqueServer;
   parentId?: string;
+  pageToken?: string;
+  pageSize?: number;
 }) => {
   const res = await POST<GetApiDatasetFileListResponse>('/core/dataset/systemApiDataset', {
     type: 'list',

@@ -61,6 +61,8 @@ type FileListItem = {
 {{% alert icon=" " context="success" %}}
 - parentId - 父级 id，可选，或者 null。
 - searchKey - 检索词，可选
+- pageSize - 每页显示的数据项的数量
+- pageToken - 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 pageToken，如果没有更多项则不返回
 {{% /alert %}}
 
 ```bash
@@ -69,7 +71,9 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "parentId": null,
-    "searchKey": ""
+    "searchKey": "",
+    "pageSize": 15,
+    "pageToken": ""
 }'
 ```
 
@@ -84,16 +88,19 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
     "code": 200,
     "success": true,
     "message": "",
-    "data": [
-        {
-            "id": "xxxx",
-            "parentId": "xxxx",
-            "type": "file",  // file | folder
-            "name":"test.json",
-            "updateTime":"2024-11-26T03:05:24.759Z",
-            "createTime":"2024-11-26T03:05:24.759Z"
-        }
-   ]
+    "data": {
+        "files":[
+            {
+                "id": "xxxx",
+                "parentId": "xxxx",
+                "type": "file",  // file | folder
+                "name":"test.json",
+                "updateTime":"2024-11-26T03:05:24.759Z",
+                "createTime":"2024-11-26T03:05:24.759Z"
+            }
+        ],
+        "nextPageToken": "ljCp8KywpEEw5x-wqjCoELDrAfCrXrCpsOcw4wFM2"
+   }
 }
 ```
 
