@@ -76,9 +76,6 @@ export type FastGPTFeConfigsType = {
     wecom?: {
       corpid?: string;
       agentid?: string;
-      secret?: string;
-      syncid?: string;
-      isSync?: boolean;
     };
     microsoft?: {
       clientId?: string;
