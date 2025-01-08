@@ -418,6 +418,7 @@ export const Render = ({ Tabs }: { Tabs: React.ReactNode }) => {
       onUpdateCollaborators={updateMemberPermission}
       onDelOneCollaborator={deleteMemberPermission}
       refreshDeps={[userInfo?.team.teamId]}
+      addPermissionOnly={true}
     >
       {({ onOpenAddMember }) => <PermissionManage Tabs={Tabs} onOpenAddMember={onOpenAddMember} />}
     </CollaboratorContextProvider>

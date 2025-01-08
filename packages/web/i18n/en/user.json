@@ -57,6 +57,7 @@
   "permission_des.manage": "Can create resources, invite, and delete members",
   "permission_des.read": "Members can only read related resources and cannot create new resources.",
   "permission_des.write": "In addition to readable resources, you can also create new resources",
+  "permission_add_tip": "After adding, you can check the permissions for them.",
   "permissions": "Permissions",
   "personal_information": "Me",
   "personalization": "Personalization",

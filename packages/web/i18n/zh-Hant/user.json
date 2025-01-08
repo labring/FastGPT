@@ -57,6 +57,7 @@
   "permission_des.manage": "可建立資源、邀請及刪除成員",
   "permission_des.read": "成員僅能閱讀相關資源，無法建立新資源",
   "permission_des.write": "除了可讀取資源外，還可以建立新的資源",
+  "permission_add_tip": "添加後，您可為其勾選權限。",
   "permissions": "權限",
   "personal_information": "個人資料",
   "personalization": "個人化",
