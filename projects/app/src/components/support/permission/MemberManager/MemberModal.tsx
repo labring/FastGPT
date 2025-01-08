@@ -225,7 +225,7 @@ function MemberModal({
             p="4"
           >
             <SearchInput
-              placeholder={t('user:search_user')}
+              placeholder={t('user:team.group.search_placeholder')}
               bgColor="myGray.50"
               onChange={(e) => setSearchText(e.target.value)}
             />
