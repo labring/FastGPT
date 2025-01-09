@@ -3,11 +3,12 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { PagingData, RequestPaging } from '@/types';
+import { PagingData } from '@/types';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { DatasetDataListItemType } from '@/global/core/dataset/type';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
-export type GetDatasetDataListProps = RequestPaging & {
+export type GetDatasetDataListProps = {
   searchText?: string;
   collectionId: string;
 };
@@ -15,7 +16,8 @@ export type GetDatasetDataListProps = RequestPaging & {
 async function handler(
   req: ApiRequestProps<GetDatasetDataListProps>
 ): Promise<PagingData<DatasetDataListItemType>> {
-  let { pageNum = 1, pageSize = 10, searchText = '', collectionId } = req.body;
+  let { searchText = '', collectionId } = req.body;
+  let { offset, pageSize } = parsePaginationRequest(req);
 
   pageSize = Math.min(pageSize, 30);
 
@@ -43,14 +45,14 @@ async function handler(
   const [data, total] = await Promise.all([
     MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
       .sort({ chunkIndex: 1, updateTime: -1 })
-      .skip((pageNum - 1) * pageSize)
+      .skip(offset)
       .limit(pageSize)
       .lean(),
     MongoDatasetData.countDocuments(match)
   ]);
 
   return {
-    pageNum,
+    pageNum: offset / pageSize + 1,
     pageSize,
     data,
     total

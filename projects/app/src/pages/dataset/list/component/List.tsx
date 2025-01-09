@@ -28,7 +28,6 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
@@ -39,7 +38,6 @@ function List() {
   const { setLoading } = useSystemStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
-  const { loadAndGetTeamMembers } = useUserStore();
   const {
     loadMyDatasets,
     setMoveDatasetId,
@@ -79,10 +77,6 @@ function List() {
         })
       )();
     }
-  });
-
-  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: false
   });
 
   const editPerDataset = useMemo(
@@ -156,7 +150,6 @@ function List() {
           alignItems={'stretch'}
         >
           {formatDatasets.map((dataset, index) => {
-            const owner = members.find((v) => v.tmbId === dataset.tmbId);
             const vectorModelAvatar = getModelProvider(dataset.vectorModel.provider)?.avatar;
 
             return (
@@ -265,14 +258,12 @@ function List() {
                     color={'myGray.500'}
                   >
                     <HStack spacing={3.5}>
-                      {owner && (
-                        <HStack spacing={1}>
-                          <Avatar src={owner.avatar} w={'0.875rem'} borderRadius={'50%'} />
-                          <Box maxW={'150px'} className="textEllipsis" fontSize={'mini'}>
-                            {owner.memberName}
-                          </Box>
-                        </HStack>
-                      )}
+                      <HStack spacing={1}>
+                        <Avatar src={dataset.ownerAvatar} w={'0.875rem'} borderRadius={'50%'} />
+                        <Box maxW={'150px'} className="textEllipsis" fontSize={'mini'}>
+                          {dataset.ownerName}
+                        </Box>
+                      </HStack>
                       <PermissionIconText
                         flexShrink={0}
                         private={dataset.private}

@@ -165,6 +165,8 @@ export type DatasetListItemType = {
   vectorModel: VectorModelItemType;
   inheritPermission: boolean;
   private?: boolean;
+  ownerName: string;
+  ownerAvatar: string;
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {

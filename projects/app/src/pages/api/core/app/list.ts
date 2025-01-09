@@ -18,6 +18,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -196,10 +197,26 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         ...app,
         permission: Per,
-        privateApp
+        privateApp,
+        ownerName: '',
+        ownerAvatar: ''
       };
     })
     .filter((app) => app.permission.hasReadPer);
+
+  // get member info
+  const memberInfo = await MongoTeamMember.find(
+    { _id: { $in: formatApps.map((app) => app.tmbId) } },
+    '_id name avatar'
+  ).lean();
+
+  for (const app of formatApps) {
+    const member = memberInfo.find((item) => String(item._id) === String(app.tmbId));
+    if (member) {
+      app.ownerName = member.name;
+      app.ownerAvatar = member.avatar ?? '';
+    }
+  }
 
   return formatApps.map((app) => ({
     _id: app._id,
@@ -212,7 +229,9 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     permission: app.permission,
     pluginData: app.pluginData,
     inheritPermission: app.inheritPermission ?? true,
-    private: app.privateApp
+    private: app.privateApp,
+    ownerName: app.ownerName,
+    ownerAvatar: app.ownerAvatar
   }));
 }
 

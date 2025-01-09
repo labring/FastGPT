@@ -10,18 +10,21 @@ import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchem
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { userCollectionName } from '@fastgpt/service/support/user/schema';
+import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 
 async function handler(
   req: NextApiRequest,
   _res: NextApiResponse
 ): Promise<PagingData<AppLogsListItemType>> {
   const {
-    pageNum = 1,
-    pageSize = 20,
     appId,
     dateStart = addDays(new Date(), -7),
     dateEnd = new Date()
   } = req.body as GetAppChatLogsParams;
+
+  const { pageSize = 20, offset } = parsePaginationRequest(req);
 
   if (!appId) {
     throw new Error('缺少参数');
@@ -51,7 +54,7 @@ async function handler(
             updateTime: -1
           }
         },
-        { $skip: (pageNum - 1) * pageSize },
+        { $skip: offset },
         { $limit: pageSize },
         {
           $lookup: {
@@ -78,6 +81,14 @@ async function handler(
               }
             ],
             as: 'chatitems'
+          }
+        },
+        {
+          $lookup: {
+            from: TeamMemberCollectionName,
+            localField: 'tmbId',
+            foreignField: '_id',
+            as: 'member'
           }
         },
         {
@@ -133,7 +144,10 @@ async function handler(
             customFeedbacksCount: 1,
             markCount: 1,
             outLinkUid: 1,
-            tmbId: 1
+            tmbId: 1,
+            memberAvatar: '$member.avatar',
+            memberUsername: '$member.name',
+            memberStatus: '$member.status'
           }
         }
       ],
@@ -145,7 +159,7 @@ async function handler(
   ]);
 
   return {
-    pageNum,
+    pageNum: offset / pageSize + 1,
     pageSize,
     data,
     total

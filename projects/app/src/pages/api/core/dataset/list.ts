@@ -19,6 +19,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -174,6 +175,17 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
+  const tmbIds = formatDatasets.map((item) => item.tmbId);
+  const memberInfo = await MongoTeamMember.find({ _id: { $in: tmbIds } }, '_id name avatar').lean();
+
+  for (const dataset of formatDatasets) {
+    const member = memberInfo.find((item) => String(item._id) === String(dataset.tmbId));
+    if (member) {
+      (dataset as any).ownerName = member.name;
+      (dataset as any).ownerAvatar = member.avatar ?? '';
+    }
+  }
+
   const data = formatDatasets.map<DatasetListItemType>((item) => ({
     _id: item._id,
     avatar: item.avatar,
@@ -185,7 +197,9 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     inheritPermission: item.inheritPermission,
     tmbId: item.tmbId,
     updateTime: item.updateTime,
-    private: item.privateDataset
+    private: item.privateDataset,
+    ownerName: (item as any).ownerName,
+    ownerAvatar: (item as any).ownerAvatar
   }));
 
   return data;

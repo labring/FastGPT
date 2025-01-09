@@ -35,6 +35,9 @@ const TeamMemberSchema = new Schema({
     type: Boolean,
     default: false
   },
+  avatar: {
+    type: String
+  },
 
   // Abandoned
   role: {

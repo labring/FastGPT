@@ -30,8 +30,6 @@ import { cardStyles } from '../constants';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useMount } from 'ahooks';
 import Tag from '@fastgpt/web/components/common/Tag';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
@@ -41,17 +39,11 @@ const Logs = () => {
   const { isPc } = useSystem();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  const { teamMembers, loadAndGetTeamMembers } = useUserStore();
-
-  useMount(() => {
-    loadAndGetTeamMembers();
-  });
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
   });
-
   const {
     isOpen: isOpenMarkDesc,
     onOpen: onOpenMarkDesc,
@@ -141,22 +133,12 @@ const Logs = () => {
                         item.outLinkUid
                       ) : (
                         <HStack>
-                          <Avatar
-                            src={teamMembers?.find((v) => v.tmbId === item.tmbId)?.avatar}
-                            w="1.25rem"
-                          />
+                          <Avatar src={item.memberAvatar} w="1.25rem" />
                           <Box fontSize={'sm'} ml={1}>
-                            {(() => {
-                              const member = teamMembers?.find((v) => v.tmbId === item.tmbId);
-                              return (
-                                <>
-                                  {member?.memberName}
-                                  {member?.status === 'leave' && (
-                                    <Tag color="gray">{t('account_team:leaved')}</Tag>
-                                  )}
-                                </>
-                              );
-                            })()}
+                            {item.memberUsername}
+                            {item.memberStatus === 'leave' && (
+                              <Tag color="gray">{t('account_team:leaved')}</Tag>
+                            )}
                           </Box>
                         </HStack>
                       )}

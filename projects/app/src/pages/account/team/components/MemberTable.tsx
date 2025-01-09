@@ -41,8 +41,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { userInfo, teamPlanStatus } = useUserStore();
   const { feConfigs, setNotSufficientModalType } = useSystemStore();
 
-  const { groups, refetchGroups, myTeams, refetchTeams, members, refetchMembers, onSwitchTeam } =
-    useContextSelector(TeamContext, (v) => v);
+  const {
+    groups,
+    refetchGroups,
+    myTeams,
+    refetchTeams,
+    members,
+    refetchMembers,
+    onSwitchTeam,
+    MemberScrollData
+  } = useContextSelector(TeamContext, (v) => v);
 
   const {
     isOpen: isOpenTeamTagsAsync,
@@ -160,79 +168,84 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       <Box flex={'1 0 0'} overflow={'auto'}>
         <TableContainer overflow={'unset'} fontSize={'sm'}>
-          <Table overflow={'unset'}>
-            <Thead>
-              <Tr bgColor={'white !important'}>
-                <Th borderLeftRadius="6px" bgColor="myGray.100">
-                  {t('account_team:user_name')}
-                </Th>
-                <Th bgColor="myGray.100">{t('account_team:member_group')}</Th>
-                {!isSyncMember && (
-                  <Th borderRightRadius="6px" bgColor="myGray.100">
-                    {t('common:common.Action')}
-                  </Th>
-                )}
-              </Tr>
-            </Thead>
-            <Tbody>
-              {members?.map((item) => (
-                <Tr key={item.userId} overflow={'unset'}>
-                  <Td>
-                    <HStack>
-                      <Avatar src={item.avatar} w={['18px', '22px']} borderRadius={'50%'} />
-                      <Box className={'textEllipsis'}>
-                        {item.memberName}
-                        {item.status === 'waiting' && (
-                          <Tag ml="2" colorSchema="yellow">
-                            {t('account_team:waiting')}
-                          </Tag>
-                        )}
-                      </Box>
-                    </HStack>
-                  </Td>
-                  <Td maxW={'300px'}>
-                    <GroupTags
-                      names={groups
-                        ?.filter((group) => group.members.map((m) => m.tmbId).includes(item.tmbId))
-                        .map((g) => g.name)}
-                      max={3}
-                    />
-                  </Td>
-                  {!isSyncMember && (
-                    <Td>
-                      userInfo?.team.permission.hasManagePer && item.role !==
-                      TeamMemberRoleEnum.owner && item.tmbId !== userInfo?.team.tmbId && (
-                      <Icon
-                        name={'common/trash'}
-                        cursor={'pointer'}
-                        w="1rem"
-                        p="1"
-                        borderRadius="sm"
-                        _hover={{
-                          color: 'red.600',
-                          bgColor: 'myGray.100'
-                        }}
-                        onClick={() => {
-                          openRemoveMember(
-                            () =>
-                              delRemoveMember(item.tmbId).then(() =>
-                                Promise.all([refetchGroups(), refetchMembers()])
-                              ),
-                            undefined,
-                            t('account_team:remove_tip', {
-                              username: item.memberName
-                            })
-                          )();
-                        }}
-                      />
-                      )
-                    </Td>
-                  )}
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-
+          {MemberScrollData && (
+            <MemberScrollData>
+              <Table overflow={'unset'}>
+                <Thead>
+                  <Tr bgColor={'white !important'}>
+                    <Th borderLeftRadius="6px" bgColor="myGray.100">
+                      {t('account_team:user_name')}
+                    </Th>
+                    <Th bgColor="myGray.100">{t('account_team:member_group')}</Th>
+                    {!isSyncMember && (
+                      <Th borderRightRadius="6px" bgColor="myGray.100">
+                        {t('common:common.Action')}
+                      </Th>
+                    )}
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {members?.map((item) => (
+                    <Tr key={item.userId} overflow={'unset'}>
+                      <Td>
+                        <HStack>
+                          <Avatar src={item.avatar} w={['18px', '22px']} borderRadius={'50%'} />
+                          <Box className={'textEllipsis'}>
+                            {item.memberName}
+                            {item.status === 'waiting' && (
+                              <Tag ml="2" colorSchema="yellow">
+                                {t('account_team:waiting')}
+                              </Tag>
+                            )}
+                          </Box>
+                        </HStack>
+                      </Td>
+                      <Td maxW={'300px'}>
+                        <GroupTags
+                          names={groups
+                            ?.filter((group) =>
+                              group.members.map((m) => m.tmbId).includes(item.tmbId)
+                            )
+                            .map((g) => g.name)}
+                          max={3}
+                        />
+                      </Td>
+                      {!isSyncMember && (
+                        <Td>
+                          userInfo?.team.permission.hasManagePer && item.role !==
+                          TeamMemberRoleEnum.owner && item.tmbId !== userInfo?.team.tmbId && (
+                          <Icon
+                            name={'common/trash'}
+                            cursor={'pointer'}
+                            w="1rem"
+                            p="1"
+                            borderRadius="sm"
+                            _hover={{
+                              color: 'red.600',
+                              bgColor: 'myGray.100'
+                            }}
+                            onClick={() => {
+                              openRemoveMember(
+                                () =>
+                                  delRemoveMember(item.tmbId).then(() =>
+                                    Promise.all([refetchGroups(), refetchMembers()])
+                                  ),
+                                undefined,
+                                t('account_team:remove_tip', {
+                                  username: item.memberName
+                                })
+                              )();
+                            }}
+                          />
+                          )
+                        </Td>
+                      )}
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </MemberScrollData>
+          )}
           <ConfirmRemoveMemberModal />
         </TableContainer>
       </Box>

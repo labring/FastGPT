@@ -63,6 +63,8 @@ export type AppListItemType = {
   permission: AppPermission;
   inheritPermission?: boolean;
   private?: boolean;
+  ownerName?: string;
+  ownerAvatar?: string;
 };
 
 export type AppDetailType = AppSchema & {
