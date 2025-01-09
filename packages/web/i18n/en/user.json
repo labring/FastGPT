@@ -46,6 +46,7 @@
   "password.to_login": "Go to Login",
   "password.verification_code": "Verification Code",
   "permission.Manage": "Admin",
+  "permission.Add": "Add Permissions",
   "permission.Manage tip": "Team admin with full permissions",
   "permission.Read": "Read Only",
   "permission.Read desc": "Members can only read related resources, cannot create new resources",

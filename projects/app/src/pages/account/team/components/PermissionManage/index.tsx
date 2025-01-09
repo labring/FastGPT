@@ -52,7 +52,6 @@ function PermissionManage({
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const [searchKey, setSearchKey] = useState('');
 
   const collaboratorList = useContextSelector(
     CollaboratorContext,
@@ -144,7 +143,7 @@ function PermissionManage({
             leftIcon={<MyIcon name="common/add2" w={'14px'} />}
             onClick={onOpenAddMember}
           >
-            {t('common:common.Add')}
+            {t('user:permission.Add')}
           </Button>
         )}
       </Flex>

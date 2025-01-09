@@ -49,6 +49,7 @@
   "permission.Manage tip": "團隊管理員，擁有完整權限",
   "permission.Read": "唯讀",
   "permission.Read desc": "成員僅能閱讀相關資源，無法建立新資源",
+  "permission.Add": "新增權限",
   "permission.Write": "可寫入",
   "permission.Write tip": "除了可讀取資源外，還可以建立新的資源",
   "permission.only_collaborators": "僅協作者可存取",
