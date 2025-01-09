@@ -25,7 +25,6 @@ import {
   billStatusMap,
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
-// import { usePagination } from '@/web/common/hooks/usePagination';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
@@ -36,7 +35,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useI18n } from '@/web/context/I18n';
 const BillTable = () => {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
   const { toast } = useToast();
   const [billType, setBillType] = useState<BillTypeEnum | ''>('');
   const [billDetail, setBillDetail] = useState<BillSchemaType>();

@@ -33,7 +33,7 @@ const Team = () => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { setEditTeamData, teamSize, isLoading } = useContextSelector(TeamContext, (v) => v);
+  const { setEditTeamData, isLoading, teamSize } = useContextSelector(TeamContext, (v) => v);
 
   const Tabs = useMemo(
     () => (

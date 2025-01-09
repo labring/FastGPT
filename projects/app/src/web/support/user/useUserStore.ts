@@ -30,9 +30,6 @@ type State = {
   teamPlanStatus: FeTeamPlanStatusType | null;
   initTeamPlanStatus: () => Promise<any>;
 
-  teamMembers: TeamMemberItemType[];
-  loadAndGetTeamMembers: (init?: boolean) => Promise<TeamMemberItemType[]>;
-
   teamMemberGroups: MemberGroupListType;
   myGroups: MemberGroupListType;
   loadAndGetGroups: (init?: boolean) => Promise<MemberGroupListType>;
@@ -102,28 +99,13 @@ export const useUserStore = create<State>()(
         },
         // team
         teamPlanStatus: null,
-        initTeamPlanStatus() {
+        async initTeamPlanStatus() {
           return getTeamPlanStatus().then((res) => {
             set((state) => {
               state.teamPlanStatus = res;
             });
             return res;
           });
-        },
-        teamMembers: [],
-        loadAndGetTeamMembers: async (init = false) => {
-          if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
-
-          const randomRefresh = Math.random() > 0.7;
-          if (!randomRefresh && !init && get().teamMembers?.length)
-            return Promise.resolve(get().teamMembers);
-
-          const res = await getTeamMembers();
-          set((state) => {
-            state.teamMembers = res;
-          });
-
-          return res;
         },
         teamMemberGroups: [],
         teamOrgs: [],
