@@ -5,7 +5,7 @@ import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getAppChatConfig } from '../workflow/utils';
 import { StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { WorkflowTemplateBasicType } from 'core/workflow/type';
+import { WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
