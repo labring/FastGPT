@@ -60,11 +60,12 @@ const initData = async (batchSize: number) => {
         { ordered: false, session, lean: true }
       );
       // FullText tmp 把成功插入的新数据的 dataId 更新为已初始化
-      // await MongoDatasetData.updateMany(
-      //   { _id: { $in: result.map((item) => item.dataId) } },
-      //   { $set: { initFullText: true }, $unset: { fullTextToken: 1 } },
-      //   { session }
-      // );
+      await MongoDatasetData.updateMany(
+        { _id: { $in: result.map((item) => item.dataId) } },
+        // { $set: { initFullText: true }, $unset: { fullTextToken: 1 } },
+        { $set: { initFullText: true } },
+        { session }
+      );
 
       success += result.length;
 
