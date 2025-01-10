@@ -105,7 +105,7 @@
   "team.group.role.admin": "administrator",
   "team.group.role.member": "member",
   "team.group.role.owner": "owner",
-  "team.group.search_placeholder": "Search member/group/org name",
+  "search_group_org_user": "Search member/group/org name",
   "team.group.set_as_admin": "Set as administrator",
   "team.group.toast.can_not_delete_owner": "Owner cannot be deleted, please transfer first",
   "team.group.transfer_owner": "transfer owner",

@@ -94,7 +94,7 @@ const AccountContainer = ({
     ...(userInfo?.team?.permission.hasManagePer
       ? [
           {
-            icon: 'support/outlink/apikeyLight',
+            icon: 'key',
             label: t('account:api_key'),
             value: TabEnum.apikey
           }

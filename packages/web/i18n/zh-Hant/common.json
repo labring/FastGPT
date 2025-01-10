@@ -82,6 +82,7 @@
   "code_error.team_error.group_name_duplicate": "群組名稱重複",
   "code_error.team_error.group_name_empty": "群組名稱不能為空",
   "code_error.team_error.group_not_exist": "群組不存在",
+  "code_error.team_error.not_user": "找不到該成員",
   "code_error.team_error.org_member_duplicated": "重複的組織成員",
   "code_error.team_error.org_member_not_exist": "組織成員不存在",
   "code_error.team_error.org_not_exist": "組織不存在",

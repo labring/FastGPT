@@ -105,7 +105,7 @@
   "team.group.role.admin": "管理員",
   "team.group.role.member": "成員",
   "team.group.role.owner": "擁有者",
-  "team.group.search_placeholder": "搜尋成員/部門/群組名稱",
+  "search_group_org_user": "搜尋成員/部門/群組名稱",
   "team.group.set_as_admin": "設為管理員",
   "team.group.toast.can_not_delete_owner": "無法刪除擁有者，請先轉移擁有權",
   "team.group.transfer_owner": "轉移擁有者",

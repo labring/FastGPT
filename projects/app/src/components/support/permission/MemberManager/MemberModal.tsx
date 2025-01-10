@@ -22,7 +22,11 @@ import { useTranslation } from 'next-i18next';
 import { useMemo, useRef, useState } from 'react';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
-import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
+import {
+  DEFAULT_ORG_AVATAR,
+  DEFAULT_TEAM_AVATAR,
+  DEFAULT_USER_AVATAR
+} from '@fastgpt/global/common/system/constants';
 import Path from '@/components/common/folder/Path';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
@@ -43,8 +47,7 @@ function MemberModal({
   addPermissionOnly?: boolean;
 }) {
   const { t } = useTranslation();
-  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups, loadAndGetOrgs } =
-    useUserStore();
+  const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, loadAndGetOrgs } = useUserStore();
 
   const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
 
@@ -112,10 +115,11 @@ function MemberModal({
   const filterMembers = useMemo(() => {
     if (searchText) return members.filter((item) => item.memberName.includes(searchText));
     if (!searchText && filterClass !== 'member' && filterClass !== 'org') return [];
-    if (filterClass === 'org') {
-      if (!currentOrg) return [];
+
+    if (currentOrg && filterClass === 'org') {
       return members.filter((item) => currentOrg.members.find((v) => v.tmbId === item.tmbId));
     }
+
     return members;
   }, [members, searchText, filterClass, currentOrg]);
 
@@ -123,14 +127,15 @@ function MemberModal({
   const filterGroups = useMemo(() => {
     if (searchText) return groups.filter((item) => item.name.includes(searchText));
     if (!searchText && filterClass !== 'group') return [];
-    return groups.filter((item) => {
-      return !myGroups.find((i) => String(i._id) === String(item._id));
-    });
-  }, [groups, searchText, filterClass, myGroups]);
+
+    return groups;
+  }, [groups, searchText, filterClass]);
 
   const permissionList = useContextSelector(CollaboratorContext, (v) => v.permissionList);
   const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
-  const [selectedPermission, setSelectedPermission] = useState<number>();
+  const [selectedPermission, setSelectedPermission] = useState<number | undefined>(
+    permissionList?.read?.value
+  );
   const perLabel = useMemo(() => {
     if (selectedPermission === undefined) return '';
     return getPerLabelList(selectedPermission!).join('、');
@@ -157,7 +162,7 @@ function MemberModal({
   );
 
   const entryList = useRef([
-    { label: t('user:team.group.members'), icon: '/imgs/avatar/BlueAvatar.svg', value: 'member' },
+    { label: t('user:team.group.members'), icon: DEFAULT_USER_AVATAR, value: 'member' },
     { label: t('user:team.org.org'), icon: DEFAULT_ORG_AVATAR, value: 'org' },
     { label: t('user:team.group.group'), icon: DEFAULT_TEAM_AVATAR, value: 'group' }
   ]);
@@ -201,7 +206,7 @@ function MemberModal({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc={addOnly ? 'modal/key' : 'modal/AddClb'}
+      iconSrc={addOnly ? 'keyPrimary' : 'modal/AddClb'}
       title={addOnly ? t('user:team.add_permission') : t('user:team.add_collaborator')}
       minW="800px"
       h={'100%'}
@@ -225,7 +230,7 @@ function MemberModal({
             p="4"
           >
             <SearchInput
-              placeholder={t('user:team.group.search_placeholder')}
+              placeholder={t('user:search_group_org_user')}
               bgColor="myGray.50"
               onChange={(e) => setSearchText(e.target.value)}
             />
@@ -364,11 +369,9 @@ function MemberModal({
                       <HStack ml="2" w="full" gap="5px">
                         <Text>{org.name}</Text>
                         {org.count && (
-                          <>
-                            <Tag size="sm" my="auto">
-                              {org.count}
-                            </Tag>
-                          </>
+                          <Tag size="sm" my="auto">
+                            {org.count}
+                          </Tag>
                         )}
                       </HStack>
                       <PermissionTags

@@ -350,7 +350,7 @@ function List() {
                                   ...(dataset.permission.hasManagePer
                                     ? [
                                         {
-                                          icon: 'support/team/key',
+                                          icon: 'key',
                                           label: t('common:permission.Permission'),
                                           onClick: () => setEditPerDatasetIndex(index)
                                         }

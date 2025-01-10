@@ -4,7 +4,6 @@ import type { ClientSession } from 'mongoose';
 import { MongoOrgModel } from './orgSchema';
 import { MongoOrgMemberModel } from './orgMemberSchema';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export const getOrgsByTmbId = async ({ teamId, tmbId }: { teamId: string; tmbId: string }) =>
   MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
@@ -16,23 +15,29 @@ export const getOrgIdSetWithParentByTmbId = async ({
   teamId: string;
   tmbId: string;
 }) => {
-  const orgMembers = await MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId')
-    .populate<{ org: { path: string } }>('org', 'path')
-    .lean();
+  const orgMembers = await MongoOrgMemberModel.find({ teamId, tmbId }, 'orgId').lean();
 
-  const orgIds = new Set<string>();
+  const orgIds = Array.from(new Set(orgMembers.map((item) => String(item.orgId))));
+  const orgs = await MongoOrgModel.find({ _id: { $in: orgIds } }, 'path').lean();
 
-  for (const orgMember of orgMembers) {
-    orgIds.add(String(orgMember.orgId));
+  const pathIdList = new Set<string>(
+    orgs
+      .map((org) => {
+        const pathIdList = org.path.split('/').filter(Boolean);
+        return pathIdList;
+      })
+      .flat()
+  );
+  const parentOrgs = await MongoOrgModel.find(
+    {
+      teamId,
+      pathId: { $in: Array.from(pathIdList) }
+    },
+    '_id'
+  ).lean();
+  const parentOrgIds = parentOrgs.map((item) => String(item._id));
 
-    // Add parent org
-    const parentIds = orgMember.org.path.split('/').filter(Boolean);
-    for (const parentId of parentIds) {
-      orgIds.add(parentId);
-    }
-  }
-
-  return orgIds;
+  return new Set([...orgIds, ...parentOrgIds]);
 };
 
 export const getChildrenByOrg = async ({
