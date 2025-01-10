@@ -35,7 +35,13 @@ const HoverBoxStyle = {
   cursor: 'pointer'
 };
 
-function MemberModal({ onClose }: { onClose: () => void }) {
+function MemberModal({
+  onClose,
+  addPermissionOnly: addOnly = false
+}: {
+  onClose: () => void;
+  addPermissionOnly?: boolean;
+}) {
   const { t } = useTranslation();
   const { userInfo, loadAndGetTeamMembers, loadAndGetGroups, myGroups, loadAndGetOrgs } =
     useUserStore();
@@ -195,8 +201,8 @@ function MemberModal({ onClose }: { onClose: () => void }) {
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="modal/AddClb"
-      title={t('user:team.add_collaborator')}
+      iconSrc={addOnly ? 'modal/key' : 'modal/AddClb'}
+      title={addOnly ? t('user:team.add_permission') : t('user:team.add_collaborator')}
       minW="800px"
       h={'100%'}
       maxH={'90vh'}
@@ -219,7 +225,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
             p="4"
           >
             <SearchInput
-              placeholder={t('user:search_user')}
+              placeholder={t('user:team.group.search_placeholder')}
               bgColor="myGray.50"
               onChange={(e) => setSearchText(e.target.value)}
             />
@@ -289,7 +295,10 @@ function MemberModal({ onClose }: { onClose: () => void }) {
 
               <Flex flexDirection={'column'} gap={1} userSelect={'none'}>
                 {filterMembers.map((member) => {
+                  const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
+                  const disabled = addOnly && collaborator !== undefined;
                   const onChange = () => {
+                    if (disabled) return;
                     setSelectedMembers((state) => {
                       if (state.includes(member.tmbId)) {
                         return state.filter((v) => v !== member.tmbId);
@@ -297,7 +306,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       return [...state, member.tmbId];
                     });
                   };
-                  const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
                   return (
                     <HStack
                       justifyContent="space-between"
@@ -310,19 +318,25 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       onClick={onChange}
                     >
                       <Checkbox
-                        isChecked={selectedMemberIdList.includes(member.tmbId)}
+                        isDisabled={disabled}
+                        isChecked={disabled || selectedMemberIdList.includes(member.tmbId)}
                         pointerEvents="none"
                       />
                       <MyAvatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
                       <Box w="full" ml="2">
                         {member.memberName}
                       </Box>
-                      <PermissionTags permission={collaborator?.permission.value} />
+                      <PermissionTags
+                        permission={addOnly ? undefined : collaborator?.permission.value}
+                      />
                     </HStack>
                   );
                 })}
                 {filterOrgs.map((org) => {
+                  const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
+                  const disabled = addOnly && collaborator !== undefined;
                   const onChange = () => {
+                    if (disabled) return;
                     setSelectedOrgIdList((state) => {
                       if (state.includes(org._id)) {
                         return state.filter((v) => v !== org._id);
@@ -330,7 +344,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       return [...state, org._id];
                     });
                   };
-                  const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
                   return (
                     <HStack
                       justifyContent="space-between"
@@ -343,7 +356,8 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       onClick={onChange}
                     >
                       <Checkbox
-                        isChecked={selectedOrgIdList.includes(org._id)}
+                        isDisabled={disabled}
+                        isChecked={disabled || selectedOrgIdList.includes(org._id)}
                         pointerEvents="none"
                       />
                       <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
@@ -357,7 +371,9 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                           </>
                         )}
                       </HStack>
-                      <PermissionTags permission={collaborator?.permission.value} />
+                      <PermissionTags
+                        permission={addOnly ? undefined : collaborator?.permission.value}
+                      />
                       {org.count && (
                         <MyIcon
                           name="core/chat/chevronRight"
@@ -367,7 +383,8 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                           _hover={{
                             bgColor: 'myGray.200'
                           }}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setParentPath(getOrgChildrenPath(org));
                           }}
                         />
@@ -376,7 +393,10 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                   );
                 })}
                 {filterGroups.map((group) => {
+                  const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
+                  const disabled = addOnly && collaborator !== undefined;
                   const onChange = () => {
+                    if (disabled) return;
                     setSelectedGroupIdList((state) => {
                       if (state.includes(group._id)) {
                         return state.filter((v) => v !== group._id);
@@ -384,7 +404,6 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       return [...state, group._id];
                     });
                   };
-                  const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
                   return (
                     <HStack
                       justifyContent="space-between"
@@ -397,14 +416,17 @@ function MemberModal({ onClose }: { onClose: () => void }) {
                       onClick={onChange}
                     >
                       <Checkbox
-                        isChecked={selectedGroupIdList.includes(group._id)}
+                        isDisabled={disabled}
+                        isChecked={disabled || selectedGroupIdList.includes(group._id)}
                         pointerEvents="none"
                       />
                       <MyAvatar src={group.avatar} w="1.5rem" borderRadius={'50%'} />
                       <Box ml="2" w="full">
                         {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
                       </Box>
-                      <PermissionTags permission={collaborator?.permission.value} />
+                      <PermissionTags
+                        permission={addOnly ? undefined : collaborator?.permission.value}
+                      />
                     </HStack>
                   );
                 })}
@@ -450,7 +472,7 @@ function MemberModal({ onClose }: { onClose: () => void }) {
         </Grid>
       </ModalBody>
       <ModalFooter>
-        {!!permissionList && (
+        {!addOnly && !!permissionList && (
           <PermissionSelect
             value={selectedPermission}
             Button={
@@ -469,6 +491,12 @@ function MemberModal({ onClose }: { onClose: () => void }) {
             }
             onChange={(v) => setSelectedPermission(v)}
           />
+        )}
+        {addOnly && (
+          <HStack bg={'blue.50'} color={'blue.600'} padding={'6px 12px'} rounded={'5px'}>
+            <MyIcon name="common/info" w="1rem" h="1rem" />
+            <Text fontSize="12px">{t('user:permission_add_tip')}</Text>
+          </HStack>
         )}
         <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
           {t('common:common.Confirm')}
