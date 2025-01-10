@@ -18,13 +18,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
   // auth link permission
-  const { outLinkConfig, uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const { uid, appId } = await authOutLink({ shareId, outLinkUid });
 
   // auth app permission
-  const [tmb, chat, app] = await Promise.all([
-    MongoTeamMember.findById(outLinkConfig.tmbId, '_id userId')
-      .populate<{ user: UserModelSchema }>('user', 'avatar')
-      .lean(),
+  const [chat, app] = await Promise.all([
     MongoChat.findOne({ appId, chatId, shareId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
