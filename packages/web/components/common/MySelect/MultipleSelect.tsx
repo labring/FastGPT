@@ -129,8 +129,8 @@ const MultipleSelect = <T = any,>({
                     <MyTag
                       className="tag-icon"
                       key={i}
-                      color={'myGray.600'}
-                      colorSchema="blue"
+                      bg={'primary.100'}
+                      color={'primary.700'}
                       type={'fill'}
                       borderRadius={'full'}
                       px={2}

@@ -102,11 +102,7 @@ const InputTypeConfig = ({
   }));
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
-    label: (
-      <Flex alignItems={'center'} h={6}>
-        {t(item.label as any)}
-      </Flex>
-    ),
+    label: t(item.label as any),
     value: item.value
   }));
 
@@ -363,7 +359,8 @@ const InputTypeConfig = ({
               <MultipleSelect<WorkflowIOValueTypeEnum>
                 list={valueTypeSelectList}
                 bg={'myGray.50'}
-                height={'40px'}
+                minH={'40px'}
+                py={2}
                 value={selectValueTypeList || []}
                 onSelect={(e) => {
                   setValue('customInputConfig.selectValueTypeList', e);
