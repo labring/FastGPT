@@ -12,7 +12,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
     1. 先用 4.8.18-tmp 版本，会同时有 MongoDatasetData 和 MongoDatasetDataText 两个表和索引，依然是 MongoDatasetData 生效。会同步更新两张表数据。
     2. 执行升级脚本，不要删除 MongoDatasetData 里的数据。
     3. 切换正式版镜像，让 MongoDatasetDataText 生效。
-    4. 删除 MongoDatasetData 里的索引和多余字段。
+    4. 删除 MongoDatasetData 里的索引和多余字段。（4819 再删
 */
 let success = 0;
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -26,7 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Init data time:', Date.now() - start);
 
   success = 0;
-  await batchUpdateFields();
+  // await batchUpdateFields();
 
   return { success: true };
 }
@@ -79,26 +79,26 @@ const initData = async (batchSize: number) => {
   }
 };
 
-const batchUpdateFields = async (batchSize = 2000) => {
-  // Find documents that still have these fields
-  const documents = await MongoDatasetData.find({ initFullText: { $exists: true } }, '_id')
-    .limit(batchSize)
-    .lean();
+// const batchUpdateFields = async (batchSize = 2000) => {
+//   // Find documents that still have these fields
+//   const documents = await MongoDatasetData.find({ initFullText: { $exists: true } }, '_id')
+//     .limit(batchSize)
+//     .lean();
 
-  if (documents.length === 0) return;
+//   if (documents.length === 0) return;
 
-  // Update in batches
-  await MongoDatasetData.updateMany(
-    { _id: { $in: documents.map((doc) => doc._id) } },
-    {
-      $unset: {
-        initFullText: 1
-        // fullTextToken: 1
-      }
-    }
-  );
+//   // Update in batches
+//   await MongoDatasetData.updateMany(
+//     { _id: { $in: documents.map((doc) => doc._id) } },
+//     {
+//       $unset: {
+//         initFullText: 1
+//         // fullTextToken: 1
+//       }
+//     }
+//   );
 
-  success += documents.length;
-  console.log('Delete success:', success);
-  await batchUpdateFields(batchSize);
-};
+//   success += documents.length;
+//   console.log('Delete success:', success);
+//   await batchUpdateFields(batchSize);
+// };
