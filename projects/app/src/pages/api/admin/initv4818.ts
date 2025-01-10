@@ -84,8 +84,8 @@ const initData = async (batchSize: number) => {
       // FullText tmp 把成功插入的新数据的 dataId 更新为已初始化
       await MongoDatasetData.updateMany(
         { _id: { $in: result.map((item) => item.dataId) } },
-        // { $set: { initFullText: true }, $unset: { fullTextToken: 1 } },
-        { $set: { initFullText: true } },
+        { $set: { initFullText: true }, $unset: { fullTextToken: 1 } },
+        // { $set: { initFullText: true } },
         { session }
       );
 
@@ -101,26 +101,26 @@ const initData = async (batchSize: number) => {
   }
 };
 
-// const batchUpdateFields = async (batchSize = 2000) => {
-//   // Find documents that still have these fields
-//   const documents = await MongoDatasetData.find({ initFullText: { $exists: true } }, '_id')
-//     .limit(batchSize)
-//     .lean();
+const batchUpdateFields = async (batchSize = 2000) => {
+  // Find documents that still have these fields
+  const documents = await MongoDatasetData.find({ initFullText: { $exists: true } }, '_id')
+    .limit(batchSize)
+    .lean();
 
-//   if (documents.length === 0) return;
+  if (documents.length === 0) return;
 
-//   // Update in batches
-//   await MongoDatasetData.updateMany(
-//     { _id: { $in: documents.map((doc) => doc._id) } },
-//     {
-//       $unset: {
-//         initFullText: 1
-//         // fullTextToken: 1
-//       }
-//     }
-//   );
+  // Update in batches
+  await MongoDatasetData.updateMany(
+    { _id: { $in: documents.map((doc) => doc._id) } },
+    {
+      $unset: {
+        initFullText: 1,
+        fullTextToken: 1
+      }
+    }
+  );
 
-//   success += documents.length;
-//   console.log('Delete success:', success);
-//   await batchUpdateFields(batchSize);
-// };
+  success += documents.length;
+  console.log('Delete success:', success);
+  await batchUpdateFields(batchSize);
+};
