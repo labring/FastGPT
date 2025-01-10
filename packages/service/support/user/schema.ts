@@ -2,11 +2,8 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
-import {
-  defaultAvatars,
-  UserStatusEnum,
-  userStatusMap
-} from '@fastgpt/global/support/user/constant';
+import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 export const userCollectionName = 'users';
 
@@ -38,7 +35,7 @@ const UserSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
+    default: getRandomUserAvatar()
   },
 
   promotionRate: {

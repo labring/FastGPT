@@ -66,7 +66,6 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { defaultAvatars } from '@fastgpt/global/support/user/constant';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -166,12 +165,6 @@ const ChatBox = ({
   const chatStarted =
     chatBoxData?.appId === appId &&
     (chatStartedWatch || chatRecords.length > 0 || variableList.length === 0);
-
-  const humanAvatar = useMemo(() => {
-    return chatType === 'share'
-      ? defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
-      : userAvatar;
-  }, [chatType, userAvatar]);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -913,7 +906,7 @@ const ChatBox = ({
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
                     <ChatItem
                       type={item.obj}
-                      avatar={humanAvatar}
+                      avatar={userAvatar}
                       chat={item}
                       onRetry={retryInput(item.dataId)}
                       onDelete={delOneMessage(item.dataId)}
@@ -1010,7 +1003,7 @@ const ChatBox = ({
     showVoiceIcon,
     statusBoxData,
     t,
-    humanAvatar,
+    userAvatar,
     variableList?.length,
     welcomeText
   ]);
