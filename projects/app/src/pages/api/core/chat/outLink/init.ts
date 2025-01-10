@@ -12,6 +12,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
@@ -48,7 +49,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId,
       appId: app._id,
       title: chat?.title,
-      userAvatar: tmb?.user?.avatar,
+      userAvatar: getRandomUserAvatar(),
       variables: chat?.variables,
       app: {
         chatConfig: getAppChatConfig({

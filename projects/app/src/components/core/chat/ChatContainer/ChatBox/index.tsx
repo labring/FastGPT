@@ -104,14 +104,9 @@ const ChatBox = ({
   showVoiceIcon = true,
   showEmptyIntro = false,
   active = true,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
   onStartChat
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
@@ -925,10 +920,6 @@ const ChatBox = ({
                       isLastChild={index === chatRecords.length - 1}
                       {...{
                         showVoiceIcon,
-                        shareId,
-                        outLinkUid,
-                        teamId,
-                        teamToken,
                         statusBoxData,
                         questionGuides,
                         onMark: onMark(
@@ -1004,17 +995,13 @@ const ChatBox = ({
     onCloseUserLike,
     onMark,
     onReadUserDislike,
-    outLinkUid,
     questionGuides,
     retryInput,
-    shareId,
     showEmpty,
     showMarkIcon,
     showVoiceIcon,
     statusBoxData,
     t,
-    teamId,
-    teamToken,
     userAvatar,
     variableList?.length,
     welcomeText
