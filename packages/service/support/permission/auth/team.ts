@@ -18,7 +18,7 @@ export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
     ])
     .lean();
 
-  if (!tmb) return Promise.reject(UserErrEnum.unAuthUser);
+  if (!tmb) return Promise.reject(UserErrEnum.binVisitor);
 
   await checkTeamAIPoints(tmb.team._id);
 

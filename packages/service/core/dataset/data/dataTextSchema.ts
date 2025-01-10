@@ -29,14 +29,16 @@ const DatasetDataTextSchema = new Schema({
     ref: DatasetDataCollectionName,
     required: true
   },
-  fullTextToken: {
-    type: String,
-    required: true
-  }
+  fullTextToken: String
 });
 
 try {
-  DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
+  DatasetDataTextSchema.index(
+    { teamId: 1, datasetId: 1, fullTextToken: 'text' },
+    {
+      partialFilterExpression: { fullTextToken: { $exists: true } }
+    }
+  );
   DatasetDataTextSchema.index({ dataId: 1 }, { unique: true });
 } catch (error) {
   console.log(error);
