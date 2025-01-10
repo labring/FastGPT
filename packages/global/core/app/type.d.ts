@@ -14,6 +14,7 @@ import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import { SourceMember } from 'support/user/type';
 
 export type AppSchema = {
   _id: string;
@@ -63,8 +64,7 @@ export type AppListItemType = {
   permission: AppPermission;
   inheritPermission?: boolean;
   private?: boolean;
-  ownerName?: string;
-  ownerAvatar?: string;
+  sourceMember?: SourceMember;
 };
 
 export type AppDetailType = AppSchema & {

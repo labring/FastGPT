@@ -36,8 +36,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       showStatus: false,
       version: app.pluginData?.nodeVersion || defaultNodeVersion,
       isTool: true,
-      ownerName: app.ownerName,
-      ownerAvatar: app.ownerAvatar
+      sourceMember: app.sourceMember
     }))
   );
 

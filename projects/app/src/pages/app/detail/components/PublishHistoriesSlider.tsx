@@ -258,7 +258,12 @@ const TeamCloud = ({
               h={'72px'}
               Trigger={
                 <Box>
-                  <Avatar src={data.data.memberAvatar} borderRadius={'50%'} w={'24px'} h={'24px'} />
+                  <Avatar
+                    src={data.data.sourceMember.avatar}
+                    borderRadius={'50%'}
+                    w={'24px'}
+                    h={'24px'}
+                  />
                 </Box>
               }
             >
@@ -266,7 +271,7 @@ const TeamCloud = ({
                 <Flex alignItems={'center'} h={'full'} pl={5} gap={3}>
                   <Box>
                     <Avatar
-                      src={data.data.memberAvatar}
+                      src={data.data.sourceMember.avatar}
                       borderRadius={'50%'}
                       w={'36px'}
                       h={'36px'}
@@ -274,8 +279,8 @@ const TeamCloud = ({
                   </Box>
                   <Box>
                     <Box fontSize={'14px'} color={'myGray.900'}>
-                      {data.data.memberName}
-                      {data.data.memberStatus === 'leave' && (
+                      {data.data.sourceMember.name}
+                      {data.data.sourceMember.status === 'leave' && (
                         <Tag color="gray">{t('account_team:leaved')}</Tag>
                       )}
                     </Box>

@@ -155,18 +155,10 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       searchVal?: string;
     }) => {
       if (type === TemplateTypeEnum.teamPlugin) {
-        const teamApps = await getTeamPlugTemplates({
+        return await getTeamPlugTemplates({
           parentId,
           searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appId));
-
-        return teamApps.map<NodeTemplateListItemType>((app) => {
-          return {
-            ...app,
-            author: app?.ownerName,
-            authorAvatar: app?.ownerAvatar
-          };
-        });
       }
       if (type === TemplateTypeEnum.systemPlugin) {
         return getSystemPlugTemplates({

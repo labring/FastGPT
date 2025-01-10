@@ -1,5 +1,6 @@
 import { TeamPermission } from '../permission/user/controller';
 import { UserStatusEnum } from './constant';
+import { TeamMemberStatusEnum } from './team/constant';
 import { TeamTmbItemType } from './team/type';
 
 export type UserModelSchema = {
@@ -28,4 +29,10 @@ export type UserType = {
   standardInfo?: standardInfoType;
   notificationAccount?: string;
   permission: TeamPermission;
+};
+
+export type SourceMember = {
+  name: string;
+  avatar: string;
+  status: `${TeamMemberStatusEnum}`;
 };

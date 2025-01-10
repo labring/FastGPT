@@ -259,9 +259,13 @@ function List() {
                   >
                     <HStack spacing={3.5}>
                       <HStack spacing={1}>
-                        <Avatar src={dataset.ownerAvatar} w={'0.875rem'} borderRadius={'50%'} />
+                        <Avatar
+                          src={dataset.sourceMember.avatar}
+                          w={'0.875rem'}
+                          borderRadius={'50%'}
+                        />
                         <Box maxW={'150px'} className="textEllipsis" fontSize={'mini'}>
-                          {dataset.ownerName}
+                          {dataset.sourceMember.name}
                         </Box>
                       </HStack>
                       <PermissionIconText

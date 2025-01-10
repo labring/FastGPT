@@ -222,9 +222,9 @@ const ListItem = () => {
                 >
                   <HStack spacing={3.5}>
                     <HStack spacing={1}>
-                      <Avatar src={app.ownerAvatar} w={'0.875rem'} borderRadius={'50%'} />
+                      <Avatar src={app.sourceMember.avatar} w={'0.875rem'} borderRadius={'50%'} />
                       <Box maxW={'150px'} className="textEllipsis">
-                        {app.ownerName}
+                        {app.sourceMember.name}
                       </Box>
                     </HStack>
 

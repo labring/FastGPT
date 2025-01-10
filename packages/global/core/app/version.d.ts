@@ -1,6 +1,7 @@
 import { TeamMemberStatusEnum } from 'support/user/team/constant';
 import { StoreEdgeItemType } from '../workflow/type/edge';
 import { AppChatConfigType, AppSchema } from './type';
+import { SourceMember } from 'support/user/type';
 
 export type AppVersionSchemaType = {
   _id: string;
@@ -21,7 +22,5 @@ export type VersionListItemType = {
   time: Date;
   isPublish: boolean | undefined;
   tmbId: string;
-  memberAvatar: string;
-  memberName: string;
-  memberStatus: `${TeamMemberStatusEnum}`;
+  sourceMember: SourceMember;
 };

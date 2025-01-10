@@ -11,6 +11,7 @@ import {
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
 import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
+import { SourceMember } from 'support/user/type';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -165,8 +166,7 @@ export type DatasetListItemType = {
   vectorModel: VectorModelItemType;
   inheritPermission: boolean;
   private?: boolean;
-  ownerName: string;
-  ownerAvatar: string;
+  sourceMember?: SourceMember;
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {

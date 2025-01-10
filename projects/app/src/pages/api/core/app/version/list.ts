@@ -25,33 +25,36 @@ async function handler(
   await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const [result, total] = await Promise.all([
-    MongoAppVersion.find({
-      appId
-    })
-      .sort({
-        time: -1
+    (async () => {
+      const versions = await MongoAppVersion.find({
+        appId
       })
-      .skip(offset)
-      .limit(pageSize)
-      .lean(),
+        .sort({
+          time: -1
+        })
+        .skip(offset)
+        .limit(pageSize)
+        .lean();
+
+      const memberList = await MongoTeamMember.find(
+        {
+          _id: { $in: versions.map((item) => item.tmbId) }
+        },
+        '_id name avatar status'
+      ).lean();
+
+      return versions.map((item) => {
+        const member = memberList.find((member) => String(member._id) === String(item.tmbId));
+        return {
+          ...item,
+          memberName: member?.name || '',
+          memberAvatar: member?.avatar || '',
+          memberStatus: member?.status || ''
+        };
+      });
+    })(),
     MongoAppVersion.countDocuments({ appId })
   ]);
-
-  const memberList = await MongoTeamMember.find(
-    {
-      _id: { $in: result.map((item) => item.tmbId) }
-    },
-    '_id name avatar status'
-  ).lean();
-  result.forEach((item) => {
-    const member = memberList.find((member) => String(member._id) === String(item.tmbId));
-    if (member) {
-      // add property
-      (item as any).memberName = member.name;
-      (item as any).memberAvatar = member.avatar;
-      (item as any).memberStatus = member.status;
-    }
-  });
 
   const versionList = result.map((item: any) => {
     return {
@@ -61,9 +64,11 @@ async function handler(
       time: item.time,
       isPublish: item.isPublish,
       tmbId: item.tmbId,
-      memberName: item.memberName,
-      memberAvatar: item.memberAvatar,
-      memberStatus: item.memberStatus
+      sourceMember: {
+        name: item.memberName,
+        avatar: item.memberAvatar,
+        status: item.memberStatus
+      }
     };
   });
 
