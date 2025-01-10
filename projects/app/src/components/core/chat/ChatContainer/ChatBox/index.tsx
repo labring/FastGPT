@@ -147,7 +147,6 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
-  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
