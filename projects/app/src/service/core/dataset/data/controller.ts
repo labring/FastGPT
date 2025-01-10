@@ -102,18 +102,18 @@ export async function insertData2Dataset({
   );
 
   // 3. Create mongo data text
-  // await MongoDatasetDataText.create(
-  //   [
-  //     {
-  //       teamId,
-  //       datasetId,
-  //       collectionId,
-  //       dataId: _id,
-  //       fullTextToken: jiebaSplit({ text: qaStr })
-  //     }
-  //   ],
-  //   { session }
-  // );
+  await MongoDatasetDataText.create(
+    [
+      {
+        teamId,
+        datasetId,
+        collectionId,
+        dataId: _id,
+        fullTextToken: jiebaSplit({ text: qaStr })
+      }
+    ],
+    { session }
+  );
 
   return {
     insertId: _id,

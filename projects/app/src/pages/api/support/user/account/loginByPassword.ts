@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     'status'
   );
   if (!authCert) {
-    return Promise.reject(UserErrEnum.binVisitor);
+    return Promise.reject(UserErrEnum.account_psw_error);
   }
 
   if (authCert.status === UserStatusEnum.forbidden) {
@@ -38,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   if (!user) {
-    return Promise.reject(UserErrEnum.binVisitor);
+    return Promise.reject(UserErrEnum.account_psw_error);
   }
 
   const userDetail = await getUserDetail({

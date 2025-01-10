@@ -29,7 +29,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   success = 0;
 
-  // FullText tmp
   // batchUpdateFields();
 
   return { success: true };
@@ -70,9 +69,8 @@ const initData = async (batchSize: number) => {
 
     if (dataList.length === 0) return;
 
-    await mongoSessionRun(async (session) => {
-      // 插入新数据
-      const result = await MongoDatasetDataText.insertMany(
+    try {
+      await MongoDatasetDataText.insertMany(
         dataList.map((item) => ({
           teamId: item.teamId,
           datasetId: item.datasetId,
@@ -80,19 +78,26 @@ const initData = async (batchSize: number) => {
           dataId: item._id,
           fullTextToken: item.fullTextToken
         })),
-        { ordered: false, session, lean: true }
+        { ordered: false, lean: true }
       );
+    } catch (error: any) {
+      if (error.code === 11000) {
+        console.log('Duplicate key error');
+      } else {
+        throw error;
+      }
+    }
 
-      // 把成功插入的新数据的 dataId 更新为已初始化
-      await MongoDatasetData.updateMany(
-        { _id: { $in: result.map((item) => item.dataId) } },
-        { $set: { initFullText: true } },
-        { session }
-      );
+    // 把成功插入的新数据的 dataId 更新为已初始化
+    await MongoDatasetData.updateMany(
+      { _id: { $in: dataList.map((item) => item._id) } },
+      // FullText tmp
+      { $set: { initFullText: true } }
+      // { $set: { initFullText: true }, $unset: { fullTextToken: 1 } }
+    );
 
-      success += result.length;
-      console.log('Success:', success);
-    });
+    success += dataList.length;
+    console.log('Success:', success);
 
     await initData(batchSize);
   } catch (error: any) {
