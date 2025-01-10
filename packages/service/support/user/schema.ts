@@ -35,7 +35,7 @@ const UserSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: getRandomUserAvatar()
+    default: () => getRandomUserAvatar()
   },
 
   promotionRate: {
