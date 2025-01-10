@@ -344,7 +344,7 @@ const ListItem = () => {
                                       ...(app.permission.hasManagePer
                                         ? [
                                             {
-                                              icon: 'support/team/key',
+                                              icon: 'key',
                                               type: 'grayBg' as MenuItemType,
                                               label: t('common:permission.Permission'),
                                               onClick: () => setEditPerAppIndex(index)

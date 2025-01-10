@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import {
   Box,
   Checkbox,
@@ -39,7 +39,6 @@ import CollaboratorContextProvider, {
   CollaboratorContext
 } from '@/components/support/permission/MemberManager/context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
@@ -121,6 +120,11 @@ function PermissionManage({
     useRequest2(onDelOneCollaborator);
 
   const userManage = userInfo?.permission.hasManagePer;
+  const hasDeletePer = (per: TeamPermission) => {
+    if (userInfo?.permission.isOwner) return true;
+    if (userManage && !per.hasManagePer) return true;
+    return false;
+  };
 
   return (
     <>
@@ -128,7 +132,7 @@ function PermissionManage({
         {Tabs}
         <Box ml="auto">
           {/* <SearchInput
-            placeholder={t('user:team.group.search_placeholder')}
+            placeholder={t('user:search_group_org_user')}
             w="200px"
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
@@ -236,10 +240,9 @@ function PermissionManage({
                           />
                         </Box>
                       </Td>
-                      {userManage &&
-                        !member.permission.isOwner &&
-                        userInfo?.team.tmbId !== member.tmbId && (
-                          <Td>
+                      <Td>
+                        {hasDeletePer(member.permission) &&
+                          userInfo?.team.tmbId !== member.tmbId && (
                             <Box mx="auto" w="fit-content">
                               <MyIconButton
                                 icon="common/trash"
@@ -248,8 +251,8 @@ function PermissionManage({
                                 }
                               />
                             </Box>
-                          </Td>
-                        )}
+                          )}
+                      </Td>
                     </Tr>
                   ))}
               </>
@@ -305,16 +308,16 @@ function PermissionManage({
                           />
                         </Box>
                       </Td>
-                      {userInfo?.permission.isOwner && (
-                        <Td>
+                      <Td>
+                        {hasDeletePer(org.permission) && (
                           <Box mx="auto" w="fit-content">
                             <MyIconButton
                               icon="common/trash"
                               onClick={() => onDeleteMemberPermission({ orgId: org.orgId! })}
                             />
                           </Box>
-                        </Td>
-                      )}
+                        )}
+                      </Td>
                     </Tr>
                   ))}
               </>
@@ -385,16 +388,16 @@ function PermissionManage({
                           />
                         </Box>
                       </Td>
-                      {userInfo?.permission.isOwner && (
-                        <Td>
+                      <Td>
+                        {hasDeletePer(group.permission) && (
                           <Box mx="auto" w="fit-content">
                             <MyIconButton
                               icon="common/trash"
                               onClick={() => onDeleteMemberPermission({ groupId: group.groupId! })}
                             />
                           </Box>
-                        </Td>
-                      )}
+                        )}
+                      </Td>
                     </Tr>
                   ))}
               </>

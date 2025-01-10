@@ -2,6 +2,7 @@ import { i18nT } from '../../../../web/i18n/utils';
 import type { ErrType } from '../errorCode';
 /* team: 500000 */
 export enum TeamErrEnum {
+  notUser = 'notUser',
   teamOverSize = 'teamOverSize',
   unAuthTeam = 'unAuthTeam',
   teamMemberOverSize = 'teamMemberOverSize',
@@ -27,6 +28,10 @@ export enum TeamErrEnum {
 }
 
 const teamErr = [
+  {
+    statusText: TeamErrEnum.notUser,
+    message: i18nT('common:code_error.team_error.not_user')
+  },
   {
     statusText: TeamErrEnum.teamOverSize,
     message: i18nT('common:code_error.team_error.over_size')

@@ -86,6 +86,7 @@
   "code_error.team_error.group_name_duplicate": "群组名称重复",
   "code_error.team_error.group_name_empty": "群组名称不能为空",
   "code_error.team_error.group_not_exist": "群组不存在",
+  "code_error.team_error.not_user": "找不到该成员",
   "code_error.team_error.org_member_duplicated": "重复的部门成员",
   "code_error.team_error.org_member_not_exist": "部门成员不存在",
   "code_error.team_error.org_not_exist": "部门不存在",
