@@ -636,7 +636,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
             forbidCollectionIdList,
             filterCollectionIdList
           }),
-          fullTextRecall2({
+          // FullText tmp
+          fullTextRecall({
             query,
             limit: fullTextLimit,
             filterCollectionIdList,
