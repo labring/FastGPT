@@ -21,7 +21,7 @@ images: []
 
 ### 本地部署的限制
 
-知识库和应用有创建数量上限，没有团队，只能单账号， 其他的限制没有。
+具体内容参考https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg。
 
 ### 能否纯本地运行
 
