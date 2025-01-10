@@ -1,6 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -23,6 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const start = Date.now();
   await initData(batchSize);
+  // await restore();
   console.log('Init data time:', Date.now() - start);
 
   success = 0;
@@ -32,6 +34,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 
 export default NextAPI(handler);
+
+const restore = async () => {
+  try {
+    const data = await MongoDatasetData.findOne({ fullTextToken: { $exists: false } });
+    if (!data) return;
+
+    data.fullTextToken = jiebaSplit({ text: `${data.q}\n${data.a}`.trim() });
+    await data.save();
+
+    success++;
+    console.log('Success:', success);
+
+    await restore();
+  } catch (error) {
+    console.log(error);
+    await delay(500);
+    await restore();
+  }
+};
 
 const initData = async (batchSize: number) => {
   try {
@@ -59,6 +80,7 @@ const initData = async (batchSize: number) => {
         })),
         { ordered: false, session, lean: true }
       );
+
       // FullText tmp 把成功插入的新数据的 dataId 更新为已初始化
       await MongoDatasetData.updateMany(
         { _id: { $in: result.map((item) => item.dataId) } },
@@ -68,13 +90,12 @@ const initData = async (batchSize: number) => {
       );
 
       success += result.length;
-
       console.log('Success:', success);
     });
 
     await initData(batchSize);
-  } catch (error) {
-    console.log(error, '---');
+  } catch (error: any) {
+    console.log(error, '===');
     await delay(500);
     await initData(batchSize);
   }
