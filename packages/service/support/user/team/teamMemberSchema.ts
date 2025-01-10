@@ -8,6 +8,19 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
+const defaultAvatars = [
+  '/imgs/avatar/RoyalBlueAvatar.svg',
+  '/imgs/avatar/PurpleAvatar.svg',
+  '/imgs/avatar/AdoraAvatar.svg',
+  '/imgs/avatar/OrangeAvatar.svg',
+  '/imgs/avatar/RedAvatar.svg',
+  '/imgs/avatar/GrayModernAvatar.svg',
+  '/imgs/avatar/TealAvatar.svg',
+  '/imgs/avatar/GreenAvatar.svg',
+  '/imgs/avatar/BrightBlueAvatar.svg',
+  '/imgs/avatar/BlueAvatar.svg'
+];
+
 const TeamMemberSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
@@ -36,13 +49,13 @@ const TeamMemberSchema = new Schema({
     default: false
   },
   avatar: {
-    type: String
+    type: String,
+    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
   },
 
   // Abandoned
   role: {
     type: String
-    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
   }
 });
 
