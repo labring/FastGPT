@@ -90,7 +90,7 @@ export async function insertData2Dataset({
         q,
         a,
         // FullText tmp
-        // fullTextToken: jiebaSplit({ text: qaStr }),
+        fullTextToken: jiebaSplit({ text: qaStr }),
         chunkIndex,
         indexes: indexes?.map((item, i) => ({
           ...item,
@@ -243,7 +243,7 @@ export async function updateData2Dataset({
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
     // FullText tmp
-    // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
+    mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
     // @ts-ignore
     mongoData.indexes = newIndexes;
     await mongoData.save({ session });

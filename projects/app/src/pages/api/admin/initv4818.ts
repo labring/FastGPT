@@ -28,7 +28,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Init data time:', Date.now() - start);
 
   success = 0;
-  batchUpdateFields();
+
+  // FullText tmp
+  // batchUpdateFields();
 
   return { success: true };
 }
@@ -81,7 +83,7 @@ const initData = async (batchSize: number) => {
         { ordered: false, session, lean: true }
       );
 
-      // FullText tmp 把成功插入的新数据的 dataId 更新为已初始化
+      // 把成功插入的新数据的 dataId 更新为已初始化
       await MongoDatasetData.updateMany(
         { _id: { $in: result.map((item) => item.dataId) } },
         { $set: { initFullText: true } },
