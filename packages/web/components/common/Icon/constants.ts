@@ -142,6 +142,7 @@ export const iconPaths = {
   'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg'),
   'core/app/type/httpPlugin': () => import('./icons/core/app/type/httpPlugin.svg'),
   'core/app/type/httpPluginFill': () => import('./icons/core/app/type/httpPluginFill.svg'),
+  'core/app/type/jsonImport': () => import('./icons/core/app/type/jsonImport.svg'),
   'core/app/type/plugin': () => import('./icons/core/app/type/plugin.svg'),
   'core/app/type/pluginFill': () => import('./icons/core/app/type/pluginFill.svg'),
   'core/app/type/pluginLight': () => import('./icons/core/app/type/pluginLight.svg'),
