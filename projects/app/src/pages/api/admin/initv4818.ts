@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Init data time:', Date.now() - start);
 
   success = 0;
-  // await batchUpdateFields();
+  await batchUpdateFields();
 
   return { success: true };
 }

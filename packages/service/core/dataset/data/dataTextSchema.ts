@@ -33,12 +33,7 @@ const DatasetDataTextSchema = new Schema({
 });
 
 try {
-  DatasetDataTextSchema.index(
-    { teamId: 1, datasetId: 1, fullTextToken: 'text' },
-    {
-      partialFilterExpression: { fullTextToken: { $exists: true } }
-    }
-  );
+  DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
   DatasetDataTextSchema.index({ dataId: 1 }, { unique: true });
 } catch (error) {
   console.log(error);
