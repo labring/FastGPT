@@ -153,11 +153,7 @@ export const getClbsAndGroupsWithInfo = async ({
     })
       .populate<{ tmb: TeamMemberSchema & { user: UserModelSchema } }>({
         path: 'tmb',
-        select: 'name userId',
-        populate: {
-          path: 'user',
-          select: 'avatar'
-        }
+        select: 'name userId avatar'
       })
       .lean(),
     MongoResourcePermission.find({

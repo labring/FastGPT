@@ -11,7 +11,6 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { UserModelSchema } from '@fastgpt/global/support/user/type';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
@@ -21,9 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // auth app permission
   const [tmb, chat, app] = await Promise.all([
-    MongoTeamMember.findById(outLinkConfig.tmbId, '_id userId')
-      .populate<{ user: UserModelSchema }>('user', 'avatar')
-      .lean(),
+    MongoTeamMember.findById(outLinkConfig.tmbId, '_id userId').lean(),
     MongoChat.findOne({ appId, chatId, shareId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
@@ -48,7 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId,
       appId: app._id,
       title: chat?.title,
-      userAvatar: tmb?.user?.avatar,
+      userAvatar: tmb?.avatar,
       variables: chat?.variables,
       app: {
         chatConfig: getAppChatConfig({

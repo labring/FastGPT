@@ -44,7 +44,7 @@ export type TeamMemberSchema = {
   name: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-  avatar?: string;
+  avatar: string;
   defaultTeam: boolean;
 };
 

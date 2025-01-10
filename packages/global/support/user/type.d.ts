@@ -6,7 +6,6 @@ export type UserModelSchema = {
   _id: string;
   username: string;
   password: string;
-  avatar: string;
   promotionRate: number;
   inviterId?: string;
   openaiKey: string;
@@ -22,7 +21,7 @@ export type UserModelSchema = {
 export type UserType = {
   _id: string;
   username: string;
-  avatar: string;
+  avatar: string; // it should be team member's avatar after 4.8.18
   timezone: string;
   promotionRate: UserModelSchema['promotionRate'];
   team: TeamTmbItemType;

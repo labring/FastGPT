@@ -45,10 +45,6 @@ const UserSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  avatar: {
-    type: String,
-    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
-  },
 
   promotionRate: {
     type: Number,
@@ -74,7 +70,13 @@ const UserSchema = new Schema({
     ref: userCollectionName
   },
   fastgpt_sem: Object,
-  sourceDomain: String
+  sourceDomain: String,
+
+  /** @deprecated */
+  avatar: {
+    type: String,
+    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
+  }
 });
 
 try {
