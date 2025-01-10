@@ -198,8 +198,10 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     tmbId: item.tmbId,
     updateTime: item.updateTime,
     private: item.privateDataset,
-    ownerName: (item as any).ownerName,
-    ownerAvatar: (item as any).ownerAvatar
+    sourceMember: {
+      name: (item as any).ownerName,
+      avatar: (item as any).ownerAvatar
+    }
   }));
 
   return data;
