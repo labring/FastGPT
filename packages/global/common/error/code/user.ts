@@ -2,17 +2,12 @@ import { ErrType } from '../errorCode';
 import { i18nT } from '../../../../web/i18n/utils';
 /* team: 503000 */
 export enum UserErrEnum {
-  unAuthUser = 'unAuthUser',
   unAuthRole = 'unAuthRole',
   binVisitor = 'binVisitor',
   balanceNotEnough = 'balanceNotEnough',
   unAuthSso = 'unAuthSso'
 }
 const errList = [
-  {
-    statusText: UserErrEnum.unAuthUser,
-    message: i18nT('common:code_error.user_error.un_auth_user')
-  },
   {
     statusText: UserErrEnum.binVisitor,
     message: i18nT('common:code_error.user_error.bin_visitor')

@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     'status'
   );
   if (!authCert) {
-    return Promise.reject(UserErrEnum.unAuthUser);
+    return Promise.reject(UserErrEnum.binVisitor);
   }
 
   if (authCert.status === UserStatusEnum.forbidden) {
