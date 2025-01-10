@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Init data time:', Date.now() - start);
 
   success = 0;
-  await batchUpdateFields();
+  batchUpdateFields();
 
   return { success: true };
 }
@@ -84,8 +84,7 @@ const initData = async (batchSize: number) => {
       // FullText tmp 把成功插入的新数据的 dataId 更新为已初始化
       await MongoDatasetData.updateMany(
         { _id: { $in: result.map((item) => item.dataId) } },
-        { $set: { initFullText: true }, $unset: { fullTextToken: 1 } },
-        // { $set: { initFullText: true } },
+        { $set: { initFullText: true } },
         { session }
       );
 
@@ -102,16 +101,9 @@ const initData = async (batchSize: number) => {
 };
 
 const batchUpdateFields = async (batchSize = 2000) => {
-  // Find documents that still have these fields
-  const documents = await MongoDatasetData.find({ initFullText: { $exists: true } }, '_id')
-    .limit(batchSize)
-    .lean();
-
-  if (documents.length === 0) return;
-
   // Update in batches
   await MongoDatasetData.updateMany(
-    { _id: { $in: documents.map((doc) => doc._id) } },
+    { initFullText: { $exists: true } },
     {
       $unset: {
         initFullText: 1,
@@ -119,8 +111,4 @@ const batchUpdateFields = async (batchSize = 2000) => {
       }
     }
   );
-
-  success += documents.length;
-  console.log('Delete success:', success);
-  await batchUpdateFields(batchSize);
 };

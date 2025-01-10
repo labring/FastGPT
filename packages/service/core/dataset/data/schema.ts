@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
@@ -70,10 +70,7 @@ const DatasetDataSchema = new Schema({
   rebuilding: Boolean,
 
   // Abandon
-  fullTextToken: {
-    type: String,
-    default: ''
-  },
+  fullTextToken: String,
   initFullText: Boolean
 });
 
