@@ -4,6 +4,8 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 /* 
@@ -13,6 +15,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
     2. 执行升级脚本，不要删除 MongoDatasetData 里的数据。
     3. 切换正式版镜像，让 MongoDatasetDataText 生效。
     4. 删除 MongoDatasetData 里的索引和多余字段。
+    5. 移动 User 表中的 avatar 字段到 TeamMember 表中。
 */
 let success = 0;
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -28,6 +31,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   success = 0;
   await batchUpdateFields();
 
+  await moveUserAvatar();
   return { success: true };
 }
 
@@ -101,4 +105,23 @@ const batchUpdateFields = async (batchSize = 2000) => {
   success += documents.length;
   console.log('Delete success:', success);
   await batchUpdateFields(batchSize);
+};
+
+const moveUserAvatar = async () => {
+  try {
+    const users = await MongoUser.find({});
+    for await (const user of users) {
+      await MongoTeamMember.updateOne(
+        {
+          _id: user._id
+        },
+        {
+          avatar: (user as any).avatar // 删除 avatar 字段, 因为 Type 改了，所以这里不能直接写 user.avatar
+        }
+      );
+    }
+    console.log('Move avatar success:', users.length);
+  } catch (error) {
+    console.error(error);
+  }
 };
