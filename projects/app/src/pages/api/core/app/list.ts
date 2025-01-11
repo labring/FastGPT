@@ -205,11 +205,11 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
   // get member info
   const memberInfo = await MongoTeamMember.find(
     { _id: { $in: formatApps.map((app) => app.tmbId) } },
-    '_id name avatar'
+    '_id name avatar status'
   ).lean();
 
   return formatApps.map((app) => {
-    const member = memberInfo.find((item) => String(item._id) === String(app.tmbId));
+    const member = memberInfo.find((item) => String(item._id) === String(app.tmbId))!;
     return {
       _id: app._id,
       tmbId: app.tmbId,
@@ -223,8 +223,9 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       inheritPermission: app.inheritPermission ?? true,
       private: app.privateApp,
       sourceMember: {
-        name: member?.name,
-        avatar: member?.avatar
+        name: member.name,
+        avatar: member.avatar,
+        status: member.status
       }
     };
   });

@@ -1,5 +1,4 @@
 import { PermissionValueType } from '../../permission/type';
-import { SourceMember } from '../type';
 import { TeamMemberRoleEnum } from './constant';
 import { LafAccountType, TeamMemberSchema, ThirdPartyAccountType } from './type';
 

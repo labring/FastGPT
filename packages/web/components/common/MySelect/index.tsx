@@ -164,43 +164,45 @@ const MySelect = <T = any,>(
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          {ScrollData && (
-            <ScrollData>
-              {list.map((item, i) => (
-                <Box key={i}>
-                  <MenuItem
-                    {...menuItemStyles}
-                    {...(value === item.value
-                      ? {
-                          ref: SelectedItemRef,
-                          color: 'primary.700',
-                          bg: 'myGray.100',
-                          fontWeight: '600'
-                        }
-                      : {
-                          color: 'myGray.900'
-                        })}
-                    onClick={() => {
-                      if (onChange && value !== item.value) {
-                        onChange(item.value);
+          {(() => {
+            const component = list.map((item, i) => (
+              <Box key={i}>
+                <MenuItem
+                  {...menuItemStyles}
+                  {...(value === item.value
+                    ? {
+                        ref: SelectedItemRef,
+                        color: 'primary.700',
+                        bg: 'myGray.100',
+                        fontWeight: '600'
                       }
-                    }}
-                    whiteSpace={'pre-wrap'}
-                    fontSize={'sm'}
-                    display={'block'}
-                  >
-                    <Box>{item.label}</Box>
-                    {item.description && (
-                      <Box color={'myGray.500'} fontSize={'xs'}>
-                        {item.description}
-                      </Box>
-                    )}
-                  </MenuItem>
-                  {item.showBorder && <MyDivider my={2} />}
-                </Box>
-              ))}
-            </ScrollData>
-          )}
+                    : {
+                        color: 'myGray.900'
+                      })}
+                  onClick={() => {
+                    if (onChange && value !== item.value) {
+                      onChange(item.value);
+                    }
+                  }}
+                  whiteSpace={'pre-wrap'}
+                  fontSize={'sm'}
+                  display={'block'}
+                >
+                  <Box>{item.label}</Box>
+                  {item.description && (
+                    <Box color={'myGray.500'} fontSize={'xs'}>
+                      {item.description}
+                    </Box>
+                  )}
+                </MenuItem>
+                {item.showBorder && <MyDivider my={2} />}
+              </Box>
+            ));
+            if (ScrollData) {
+              return <ScrollData>{component}</ScrollData>;
+            }
+            return component;
+          })()}
         </MenuList>
       </Menu>
     </Box>

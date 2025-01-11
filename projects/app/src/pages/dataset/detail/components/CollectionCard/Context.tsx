@@ -111,8 +111,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     isLoading: isGetting,
     pageNum,
     pageSize
-  } = usePagination<DatasetCollectionsListItemType>({
-    api: getDatasetCollections,
+  } = usePagination(getDatasetCollections, {
     pageSize: 20,
     params: {
       datasetId,

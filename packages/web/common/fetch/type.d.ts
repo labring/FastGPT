@@ -7,7 +7,7 @@ type PaginationProps<T = {}> = T & {
     pageNum: number | string;
   }>;
 
-type PaginationResponse<T = any> = {
+type PaginationResponse<T = {}> = {
   total: number;
   list: T[];
 };

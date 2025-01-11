@@ -3,7 +3,6 @@ const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
-import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 export const userCollectionName = 'users';
 
@@ -60,10 +59,7 @@ const UserSchema = new Schema({
   sourceDomain: String,
 
   /** @deprecated */
-  avatar: {
-    type: String,
-    default: () => getRandomUserAvatar()
-  }
+  avatar: String
 });
 
 try {

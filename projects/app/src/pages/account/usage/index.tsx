@@ -84,14 +84,13 @@ const UsageTable = () => {
     isLoading,
     Pagination,
     getData
-  } = usePagination<UsageItemType>({
-    api: getUserUsages,
+  } = usePagination(getUserUsages, {
     pageSize: isPc ? 20 : 10,
     params: {
       dateStart: dateRange.from || new Date(),
       dateEnd: addDays(dateRange.to || new Date(), 1),
-      source: usageSource,
-      teamMemberId: selectTmbId
+      source: usageSource as UsageSourceEnum,
+      teamMemberId: selectTmbId ?? ''
     },
     defaultRequest: false
   });

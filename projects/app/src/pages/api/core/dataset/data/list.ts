@@ -3,10 +3,10 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { PagingData } from '@/types';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { DatasetDataListItemType } from '@/global/core/dataset/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export type GetDatasetDataListProps = {
   searchText?: string;
@@ -15,7 +15,7 @@ export type GetDatasetDataListProps = {
 
 async function handler(
   req: ApiRequestProps<GetDatasetDataListProps>
-): Promise<PagingData<DatasetDataListItemType>> {
+): Promise<PaginationResponse<DatasetDataListItemType>> {
   let { searchText = '', collectionId } = req.body;
   let { offset, pageSize } = parsePaginationRequest(req);
 
@@ -42,7 +42,7 @@ async function handler(
       : {})
   };
 
-  const [data, total] = await Promise.all([
+  const [list, total] = await Promise.all([
     MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
       .sort({ chunkIndex: 1, updateTime: -1 })
       .skip(offset)
@@ -52,9 +52,7 @@ async function handler(
   ]);
 
   return {
-    pageNum: offset / pageSize + 1,
-    pageSize,
-    data,
+    list,
     total
   };
 }

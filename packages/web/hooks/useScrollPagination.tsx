@@ -2,7 +2,7 @@ import React, { ReactNode, RefObject, useMemo, useRef, useState } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { PaginationResponse } from '../common/fetch/type';
+import { PaginationProps, PaginationResponse } from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,
@@ -29,8 +29,11 @@ export type ScrollListType = ({
   isLoading?: boolean;
 } & BoxProps) => React.JSX.Element;
 
-export function useVirtualScrollPagination<TParams, TData>(
-  api: (data: TParams) => Promise<PaginationResponse<TData>>,
+export function useVirtualScrollPagination<
+  TParams extends PaginationProps,
+  TData extends PaginationResponse
+>(
+  api: (data: TParams) => Promise<TData>,
   {
     refreshDeps,
     itemHeight = 50,
@@ -41,7 +44,7 @@ export function useVirtualScrollPagination<TParams, TData>(
   }: {
     refreshDeps?: any[];
 
-    itemHeight: number | ItemHeight<PaginationResponse<TData>['list'][0]>;
+    itemHeight: number | ItemHeight<TData['list'][0]>;
     overscan?: number;
 
     pageSize?: number;
@@ -53,13 +56,13 @@ export function useVirtualScrollPagination<TParams, TData>(
   const wrapperRef = useRef(null);
   const { toast } = useToast();
 
-  const [data, setData] = useState<PaginationResponse<TData>['list']>([]);
+  const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
   const noMore = data.length >= total;
 
-  const [list] = useVirtualList<PaginationResponse<TData>['list'][0]>(data, {
+  const [list] = useVirtualList<TData['list'][0]>(data, {
     containerTarget: containerRef,
     wrapperTarget: wrapperRef,
     itemHeight,
@@ -174,8 +177,11 @@ export function useVirtualScrollPagination<TParams, TData>(
   };
 }
 
-export function useScrollPagination<TParams, TData>(
-  api: (data: TParams) => Promise<PaginationResponse<TData>>,
+export function useScrollPagination<
+  TParams extends PaginationProps,
+  TData extends PaginationResponse
+>(
+  api: (data: TParams) => Promise<TData>,
   {
     refreshDeps,
     scrollLoadType = 'bottom',
@@ -197,7 +203,7 @@ export function useScrollPagination<TParams, TData>(
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const [data, setData] = useState<PaginationResponse<TData>['list']>([]);
+  const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
   const isEmpty = total === 0 && !isLoading;

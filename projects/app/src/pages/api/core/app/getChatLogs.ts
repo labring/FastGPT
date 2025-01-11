@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
 import { addDays } from 'date-fns';
@@ -12,11 +11,12 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 async function handler(
   req: NextApiRequest,
   _res: NextApiResponse
-): Promise<PagingData<AppLogsListItemType>> {
+): Promise<PaginationResponse<AppLogsListItemType>> {
   const {
     appId,
     dateStart = addDays(new Date(), -7),
@@ -41,7 +41,7 @@ async function handler(
     }
   };
 
-  const [data, total] = await Promise.all([
+  const [list, total] = await Promise.all([
     MongoChat.aggregate(
       [
         { $match: where },
@@ -160,9 +160,7 @@ async function handler(
   ]);
 
   return {
-    pageNum: offset / pageSize + 1,
-    pageSize,
-    data,
+    list,
     total
   };
 }

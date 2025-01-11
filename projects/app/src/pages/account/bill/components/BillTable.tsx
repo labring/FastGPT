@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Button,
   Table,
@@ -32,24 +32,23 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useI18n } from '@/web/context/I18n';
 const BillTable = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [billType, setBillType] = useState<BillTypeEnum | ''>('');
+  const [billType, setBillType] = useState<BillTypeEnum | undefined>(undefined);
   const [billDetail, setBillDetail] = useState<BillSchemaType>();
 
   const billTypeList = useMemo(
     () =>
       [
-        { label: t('account_bill:all'), value: '' },
+        { label: t('account_bill:all'), value: undefined },
         ...Object.entries(billTypeMap).map(([key, value]) => ({
           label: t(value.label as any),
           value: key
         }))
       ] as {
         label: string;
-        value: BillTypeEnum | '';
+        value: BillTypeEnum | undefined;
       }[],
     [t]
   );
@@ -60,8 +59,7 @@ const BillTable = () => {
     Pagination,
     getData,
     total
-  } = usePagination({
-    api: getBills,
+  } = usePagination(getBills, {
     pageSize: 20,
     params: {
       type: billType
@@ -108,7 +106,7 @@ const BillTable = () => {
             <Tr>
               <Th>#</Th>
               <Th>
-                <MySelect<BillTypeEnum | ''>
+                <MySelect
                   list={billTypeList}
                   value={billType}
                   size={'sm'}
@@ -179,7 +177,6 @@ export default BillTable;
 
 function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
   return (
     <MyModal
       isOpen={true}

@@ -1,13 +1,12 @@
 import React from 'react';
 import { Box, Button, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';
-import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import AccountContainer, { TabEnum } from './components/AccountContainer';
+import AccountContainer from './components/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 const InformTable = () => {
@@ -23,8 +22,7 @@ const InformTable = () => {
     Pagination,
     getData,
     pageNum
-  } = usePagination<UserInformSchema>({
-    api: getInforms,
+  } = usePagination(getInforms, {
     pageSize: 20
   });
 

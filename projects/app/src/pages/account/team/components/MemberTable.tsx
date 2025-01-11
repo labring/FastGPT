@@ -29,7 +29,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
-import { syncMembers } from '@/web/support/user/api';
+import { postSyncMembers } from '@/web/support/user/api';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
@@ -83,7 +83,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     content: t('account_team:confirm_leave_team')
   });
 
-  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(syncMembers, {
+  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(postSyncMembers, {
     onSuccess() {
       refetchMembers();
     },

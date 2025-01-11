@@ -155,7 +155,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       searchVal?: string;
     }) => {
       if (type === TemplateTypeEnum.teamPlugin) {
-        return await getTeamPlugTemplates({
+        return getTeamPlugTemplates({
           parentId,
           searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appId));

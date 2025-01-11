@@ -31,7 +31,7 @@ export type UserType = {
   permission: TeamPermission;
 };
 
-export type SourceMember = {
+export type SourceMemberType = {
   name: string;
   avatar: string;
   status: `${TeamMemberStatusEnum}`;

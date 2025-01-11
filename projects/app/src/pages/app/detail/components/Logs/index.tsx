@@ -13,7 +13,7 @@ import {
   ModalBody,
   HStack
 } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { getAppChatLogs } from '@/web/core/app/api';
@@ -30,7 +30,6 @@ import { cardStyles } from '../constants';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import Tag from '@fastgpt/web/components/common/Tag';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -56,8 +55,7 @@ const Logs = () => {
     Pagination,
     getData,
     pageNum
-  } = usePagination({
-    api: getAppChatLogs,
+  } = usePagination(getAppChatLogs, {
     pageSize: 20,
     params: {
       appId,
@@ -132,15 +130,7 @@ const Logs = () => {
                       {!!item.outLinkUid ? (
                         item.outLinkUid
                       ) : (
-                        <HStack>
-                          <Avatar src={item.sourceMember.avatar} w="1.25rem" />
-                          <Box fontSize={'sm'} ml={1}>
-                            {item.sourceMember.name}
-                            {item.sourceMember.status === 'leave' && (
-                              <Tag color="gray">{t('account_team:leaved')}</Tag>
-                            )}
-                          </Box>
-                        </HStack>
+                        <UserBox sourceMember={item.sourceMember} />
                       )}
                     </Box>
                   </Td>
