@@ -10,8 +10,6 @@ import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from './components/context';
 import dynamic from 'next/dynamic';

@@ -1,53 +1,50 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import {
-  Button,
-  ModalFooter,
-  useDisclosure,
-  ModalBody,
-  Flex,
-  Box,
-  useTheme
-} from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
+import { Button, ModalFooter, ModalBody, Flex, Box, useTheme } from '@chakra-ui/react';
 import { getTeamList, updateInviteResult } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const UpdateInviteModal = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
-  const { ConfirmModal, openConfirm } = useConfirm({});
   const { feConfigs } = useSystemStore();
+  const { initUserInfo } = useUserStore();
 
-  const { data: inviteList = [], refetch } = useQuery(['getInviteList'], () =>
-    feConfigs.isPlus ? getTeamList(TeamMemberStatusEnum.waiting) : []
+  const { ConfirmModal, openConfirm } = useConfirm({});
+
+  const { data: inviteList = [], run: fetchInviteList } = useRequest2(
+    async () => (feConfigs.isPlus ? getTeamList(TeamMemberStatusEnum.waiting) : []),
+    {
+      manual: false
+    }
   );
 
-  const { mutate: onAccept, isLoading: isLoadingAccept } = useRequest({
-    mutationFn: updateInviteResult,
+  const { runAsync: onAccept, loading: isLoadingAccept } = useRequest2(updateInviteResult, {
     onSuccess() {
       toast({
         status: 'success',
         title: t('common:user.team.invite.Accepted')
       });
-      refetch();
+      fetchInviteList();
+      initUserInfo();
     }
   });
-  const { mutate: onReject, isLoading: isLoadingReject } = useRequest({
-    mutationFn: updateInviteResult,
+  const { runAsync: onReject, loading: isLoadingReject } = useRequest2(updateInviteResult, {
     onSuccess() {
       toast({
         status: 'success',
         title: t('common:user.team.invite.Reject')
       });
-      refetch();
+      fetchInviteList();
+      initUserInfo();
     }
   });
 
@@ -59,7 +56,7 @@ const UpdateInviteModal = () => {
         <Box>
           <Box>{t('common:user.team.Processing invitations')}</Box>
           <Box fontWeight={'normal'} fontSize={'sm'} color={'myGray.500'}>
-            {t('user.team.Processing invitations Tips', { amount: inviteList?.length })}
+            {t('common:user.team.Processing invitations Tips', { amount: inviteList?.length })}
           </Box>
         </Box>
       }
