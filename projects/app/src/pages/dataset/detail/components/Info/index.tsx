@@ -1,15 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Flex, Switch, Input } from '@chakra-ui/react';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
 import type { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -68,11 +65,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       title: t('common:common.confirm.Common Tip')
     });
 
-  const { File } = useSelectFile({
-    fileType: '.jpg,.png',
-    multiple: false
-  });
-
   const { runAsync: onSave } = useRequest2(
     (data: DatasetItemType) => {
       return updateDataset({
@@ -84,27 +76,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     {
       successToast: t('common:common.Update Success'),
       errorToast: t('common:common.Update Failed')
-    }
-  );
-
-  const { runAsync: onSelectFile } = useRequest2(
-    (e: File[]) => {
-      const file = e[0];
-      if (!file) return Promise.resolve(null);
-      return compressImgFileAndUpload({
-        type: MongoImageTypeEnum.datasetAvatar,
-        file,
-        maxW: 300,
-        maxH: 300
-      });
-    },
-    {
-      onSuccess(src: string | null) {
-        if (src) {
-          setValue('avatar', src);
-        }
-      },
-      errorToast: t('common:common.avatar.Select Failed')
     }
   );
 
@@ -383,7 +354,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <Box>
             <MemberManager
               managePer={{
-                mode: 'all',
                 permission: datasetDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(datasetId),
                 permissionList: DatasetPermissionList,
@@ -392,7 +362,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     ...body,
                     datasetId
                   }),
-                onDelOneCollaborator: async ({ groupId, tmbId }) => {
+                onDelOneCollaborator: async ({ groupId, tmbId, orgId }) => {
                   if (tmbId) {
                     return deleteDatasetCollaborators({
                       datasetId,
@@ -403,6 +373,11 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                       datasetId,
                       groupId
                     });
+                  } else if (orgId) {
+                    return deleteDatasetCollaborators({
+                      datasetId,
+                      orgId
+                    });
                   }
                 }
               }}
@@ -411,7 +386,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </>
       )}
 
-      <File onSelect={onSelectFile} />
       <ConfirmDelModal />
       <ConfirmRebuildModal countDown={10} />
       <ConfirmSyncScheduleModal />

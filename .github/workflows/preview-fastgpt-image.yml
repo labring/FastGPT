@@ -36,7 +36,7 @@ jobs:
           password: ${{ secrets.GH_PAT }}
       - name: Set DOCKER_REPO_TAGGED based on branch or tag
         run: |
-          echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+          echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
       - name: Build image for PR
         env:
           DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
@@ -44,7 +44,7 @@ jobs:
           docker buildx build \
           -f projects/app/Dockerfile \
           --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt-pr imae" \
+          --label "org.opencontainers.image.description=fastgpt-pr image" \
           --label "org.opencontainers.image.licenses=Apache" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \

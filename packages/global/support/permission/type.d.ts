@@ -1,8 +1,9 @@
 import { UserModelSchema } from '../user/type';
 import { RequireOnlyOne } from '../../common/type/utils';
 import { TeamMemberSchema } from '../user/team/type';
-import { AuthUserTypeEnum, PermissionKeyEnum, PerResourceTypeEnum } from './constant';
 import { MemberGroupSchemaType } from './memberGroup/type';
+import type { TeamMemberWithUserSchema } from '../user/team/type';
+import { AuthUserTypeEnum, type PermissionKeyEnum, type PerResourceTypeEnum } from './constant';
 
 // PermissionValueType, the type of permission's value is a number, which is a bit field actually.
 // It is spired by the permission system in Linux.
@@ -29,6 +30,7 @@ export type ResourcePermissionType = {
 } & RequireOnlyOne<{
   tmbId: string;
   groupId: string;
+  orgId: string;
 }>;
 
 export type ResourcePerWithTmbWithUser = Omit<ResourcePermissionType, 'tmbId'> & {

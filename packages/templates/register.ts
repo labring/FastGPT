@@ -12,24 +12,24 @@ const getTemplateNameList = () => {
   return fs.readdirSync(templatesPath) as string[];
 };
 
-const getFileTemplates = (): AppTemplateSchemaType[] => {
+const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
   const templateNames = getTemplateNameList();
 
-  const appMarketTemplates = templateNames.map((name) => {
-    const fileContent = require(`./src/${name}/template.json`);
+  return Promise.all(
+    templateNames.map<Promise<AppTemplateSchemaType>>(async (name) => {
+      const fileContent = (await import(`./src/${name}/template.json`))?.default;
 
-    return {
-      ...fileContent,
-      templateId: `${PluginSourceEnum.community}-${name}`,
-      isActive: true
-    };
-  });
-
-  return appMarketTemplates;
+      return {
+        ...fileContent,
+        templateId: `${PluginSourceEnum.community}-${name}`,
+        isActive: true
+      };
+    })
+  );
 };
 
 const getAppTemplates = async () => {
-  const communityTemplates = getFileTemplates();
+  const communityTemplates = await getFileTemplates();
 
   const dbTemplates = await MongoAppTemplate.find();
 

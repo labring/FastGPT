@@ -21,10 +21,7 @@ const TeamSchema = new Schema({
     type: Date,
     default: () => Date.now()
   },
-  balance: {
-    type: Number,
-    default: 0
-  },
+  balance: Number,
   teamDomain: {
     type: String
   },

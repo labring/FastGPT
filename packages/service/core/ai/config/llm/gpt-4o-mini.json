@@ -1,0 +1,33 @@
+{
+  "provider": "OpenAI",
+  "model": "gpt-4o-mini",
+  "name": "GPT-4o-mini", // alias
+
+  "maxContext": 125000, // 最大上下文
+  "maxResponse": 16000, // 最大回复
+  "quoteMaxToken": 60000, // 最大引用
+  "maxTemperature": 1.2, // 最大温度
+  "presencePenaltyRange": [-2, 2], // 惩罚系数范围
+  "frequencyPenaltyRange": [-2, 2], // 频率惩罚系数范围
+  "responseFormatList": ["text", "json_object", "json_schema"], // 响应格式
+  "showStopSign": true, // 是否显示停止符号
+
+  "vision": true, // 是否支持图片识别
+  "toolChoice": true, // 是否支持工具调用
+  "functionCall": false, // 是否支持函数调用（一般都可以 false 了，基本不用了）
+  "defaultSystemChatPrompt": "", // 默认系统提示
+
+  "datasetProcess": true, // 用于知识库文本处理
+  "usedInClassify": true, // 用于问题分类
+  "customCQPrompt": "", // 自定义问题分类提示
+  "usedInExtractFields": true, // 用于提取字段
+  "customExtractPrompt": "", // 自定义提取提示
+  "usedInToolCall": true, // 用于工具调用
+  "usedInQueryExtension": true, // 用于问题优化
+
+  "defaultConfig": {}, // 额外的自定义 body
+  "fieldMap": {}, // body 字段映射
+
+  "censor": false, // 是否开启敏感词过滤
+  "charsPointsPrice": 0 // n 积分/1k token
+}

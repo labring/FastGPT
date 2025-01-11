@@ -49,7 +49,7 @@
   "execution_error": "執行錯誤",
   "extraction_requirements_description": "擷取需求描述",
   "extraction_requirements_description_detail": "提供 AI 相對應的背景知識或需求描述，引導 AI 更好地完成任務。\\n這個輸入框可以使用全域變數。",
-  "extraction_requirements_placeholder": "例如：\\n1. 目前時間為：{{cTime}}。您是一位實驗室預約助理，您的任務是協助使用者預約實驗室，從文字中取得對應的預約資訊。\\n2. 您是 Google 搜尋助理，需要從文字中擷取出合適的搜尋詞。",
+  "extraction_requirements_placeholder": "例如: 1. 目前時間為: {{cTime}}。\n你是實驗室預約助手，你的任務是幫助使用者預約實驗室，從文字中取得對應的預約資訊。\n\n2. 你是Google搜尋助手，需要從文字中提取出合適的搜尋字詞。",
   "feedback_text": "回饋文字",
   "field_description": "欄位描述",
   "field_description_placeholder": "描述這個輸入欄位的功能，如果是工具呼叫參數，這個描述會影響模型產生的品質",

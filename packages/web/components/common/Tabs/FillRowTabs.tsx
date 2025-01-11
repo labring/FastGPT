@@ -1,15 +1,15 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Flex, Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
-type Props = Omit<BoxProps, 'onChange'> & {
+type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   list: {
     icon?: string;
     label: string | React.ReactNode;
-    value: string;
+    value: T;
   }[];
-  value: string;
-  onChange: (e: string) => void;
+  value: T;
+  onChange: (e: T) => void;
 };
 
 const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
@@ -61,4 +61,6 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
   );
 };
 
-export default FillRowTabs;
+export default forwardRef(FillRowTabs) as <T>(
+  props: Props<T> & { ref?: React.Ref<HTMLSelectElement> }
+) => JSX.Element;

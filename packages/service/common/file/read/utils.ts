@@ -1,5 +1,4 @@
 import { uploadMongoImg } from '../image/controller';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import FormData from 'form-data';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
@@ -8,7 +7,6 @@ import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/fn/utils';
-import { addHours } from 'date-fns';
 import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
 
 export type readRawTextByLocalFileParams = {
@@ -22,7 +20,7 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   const extension = path?.split('.')?.pop()?.toLowerCase() || '';
 
-  const buffer = fs.readFileSync(path);
+  const buffer = await fs.promises.readFile(path);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,
@@ -114,10 +112,9 @@ export const readRawContentByFileBuffer = async ({
   if (imageList) {
     await batchRun(imageList, async (item) => {
       const src = await uploadMongoImg({
-        type: MongoImageTypeEnum.collectionImage,
         base64Img: `data:${item.mime};base64,${item.base64}`,
         teamId,
-        expiredTime: addHours(new Date(), 1),
+        // expiredTime: addHours(new Date(), 1),
         metadata: {
           ...metadata,
           mime: item.mime

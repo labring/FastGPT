@@ -355,6 +355,9 @@ const TestHistories = React.memo(function TestHistories({
               boxShadow: '1',
               '& .delete': {
                 display: 'block'
+              },
+              '& .time': {
+                display: 'none'
               }
             }}
             cursor={'pointer'}
@@ -381,16 +384,14 @@ const TestHistories = React.memo(function TestHistories({
             <Box flex={1} mr={2} wordBreak={'break-all'} fontWeight={'400'}>
               {item.text}
             </Box>
-            <Box flex={'0 0 70px'}>
+            <Box className="time" flex={'0 0 auto'} fontSize={'xs'} color={'myGray.500'}>
               {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
             </Box>
             <MyTooltip label={t('common:core.dataset.test.delete test history')}>
-              <Box w={'14px'} h={'14px'}>
+              <Box className="delete" display={'none'} w={'0.8rem'} h={'0.8rem'} ml={1}>
                 <MyIcon
-                  className="delete"
                   name={'delete'}
-                  w={'14px'}
-                  display={'none'}
+                  w={'0.8rem'}
                   _hover={{ color: 'red.600' }}
                   onClick={(e) => {
                     e.stopPropagation();

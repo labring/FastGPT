@@ -3,21 +3,9 @@ const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 export const userCollectionName = 'users';
-
-const defaultAvatars = [
-  '/imgs/avatar/RoyalBlueAvatar.svg',
-  '/imgs/avatar/PurpleAvatar.svg',
-  '/imgs/avatar/AdoraAvatar.svg',
-  '/imgs/avatar/OrangeAvatar.svg',
-  '/imgs/avatar/RedAvatar.svg',
-  '/imgs/avatar/GrayModernAvatar.svg',
-  '/imgs/avatar/TealAvatar.svg',
-  '/imgs/avatar/GreenAvatar.svg',
-  '/imgs/avatar/BrightBlueAvatar.svg',
-  '/imgs/avatar/BlueAvatar.svg'
-];
 
 const UserSchema = new Schema({
   status: {
@@ -47,7 +35,7 @@ const UserSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
+    default: () => getRandomUserAvatar()
   },
 
   promotionRate: {
@@ -78,11 +66,8 @@ const UserSchema = new Schema({
 });
 
 try {
-  // login
-  UserSchema.index({ username: 1, password: 1 }, { background: true });
-
   // Admin charts
-  UserSchema.index({ createTime: -1 }, { background: true });
+  UserSchema.index({ createTime: -1 });
 } catch (error) {
   console.log(error);
 }

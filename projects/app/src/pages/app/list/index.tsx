@@ -301,7 +301,6 @@ const MyApps = () => {
               deleteTip={t('app:confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               managePer={{
-                mode: 'all',
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
@@ -324,10 +323,12 @@ const MyApps = () => {
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
                 onDelOneCollaborator: async ({
                   tmbId,
-                  groupId
+                  groupId,
+                  orgId
                 }: {
                   tmbId?: string;
                   groupId?: string;
+                  orgId?: string;
                 }) => {
                   if (tmbId) {
                     return deleteAppCollaborators({
@@ -338,6 +339,11 @@ const MyApps = () => {
                     return deleteAppCollaborators({
                       appId: folderDetail._id,
                       groupId
+                    });
+                  } else if (orgId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      orgId
                     });
                   }
                 }

@@ -4,7 +4,7 @@ import fsp from 'fs/promises';
 import fs from 'fs';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoChatFileSchema, MongoDatasetFileSchema } from './schema';
-import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
+import { detectFileEncoding, detectFileEncodingByPath } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
@@ -36,7 +36,6 @@ export async function uploadFile({
   path,
   filename,
   contentType,
-  encoding,
   metadata = {}
 }: {
   bucketName: `${BucketNameEnum}`;
@@ -45,7 +44,6 @@ export async function uploadFile({
   path: string;
   filename: string;
   contentType?: string;
-  encoding: string;
   metadata?: Record<string, any>;
 }) {
   if (!path) return Promise.reject(`filePath is empty`);
@@ -59,7 +57,7 @@ export async function uploadFile({
   // Add default metadata
   metadata.teamId = teamId;
   metadata.uid = uid;
-  metadata.encoding = encoding;
+  metadata.encoding = await detectFileEncodingByPath(path);
 
   // create a gridfs bucket
   const bucket = getGridBucket(bucketName);

@@ -66,7 +66,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 cursor={'pointer'}
                 onClick={onOpenInfoEdit}
               >
-                <MyIcon name={'support/team/key'} w={'16px'} mr={2} />
+                <MyIcon name={'key'} w={'16px'} mr={2} />
                 <Box fontSize={'sm'}>{t('app:Role_setting')}</Box>
               </MyBox>
               <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />

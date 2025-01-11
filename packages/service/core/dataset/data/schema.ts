@@ -1,4 +1,4 @@
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
@@ -39,10 +39,6 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
-  fullTextToken: {
-    type: String,
-    default: ''
-  },
   indexes: {
     type: [
       {
@@ -71,17 +67,11 @@ const DatasetDataSchema = new Schema({
     type: Number,
     default: 0
   },
-  inited: {
-    type: Boolean
-  },
-  rebuilding: Boolean
-});
+  rebuilding: Boolean,
 
-DatasetDataSchema.virtual('collection', {
-  ref: DatasetColCollectionName,
-  localField: 'collectionId',
-  foreignField: '_id',
-  justOne: true
+  // Abandon
+  fullTextToken: String,
+  initFullText: Boolean
 });
 
 try {
@@ -93,13 +83,15 @@ try {
     chunkIndex: 1,
     updateTime: -1
   });
-  // full text index
-  DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
+  // FullText tmp full text index
+  // DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
   // Recall vectors after data matching
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
   DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
+
+  DatasetDataSchema.index({ initFullText: 1 });
 } catch (error) {
   console.log(error);
 }

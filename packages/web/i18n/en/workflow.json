@@ -49,7 +49,7 @@
   "execution_error": "Execution Error",
   "extraction_requirements_description": "Extraction Requirements Description",
   "extraction_requirements_description_detail": "Provide AI with some background knowledge or requirements to guide it in completing the task better.\\nThis input box can use global variables.",
-  "extraction_requirements_placeholder": "For example: \\n1. The current time is: {{cTime}}. You are a lab reservation assistant, and your task is to help users reserve a lab by extracting the corresponding reservation information from the text.\\n2. You are a Google search assistant, and you need to extract suitable search terms from the text.",
+  "extraction_requirements_placeholder": "For example: 1. The current time is: {{cTime}}. \nYou are a laboratory reservation assistant. Your task is to help users make laboratory reservations and obtain the corresponding reservation information from the text.\n\n2. You are the Google Search Assistant and need to extract appropriate search terms from text.",
   "feedback_text": "Feedback Text",
   "field_description": "Field Description",
   "field_description_placeholder": "Describe the function of this input field. If it is a tool call parameter, this description will affect the quality of the model generation.",

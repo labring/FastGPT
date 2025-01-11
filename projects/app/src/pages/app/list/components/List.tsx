@@ -344,7 +344,7 @@ const ListItem = () => {
                                       ...(app.permission.hasManagePer
                                         ? [
                                             {
-                                              icon: 'support/team/key',
+                                              icon: 'key',
                                               type: 'grayBg' as MenuItemType,
                                               label: t('common:permission.Permission'),
                                               onClick: () => setEditPerAppIndex(index)
@@ -431,13 +431,13 @@ const ListItem = () => {
           avatar={editPerApp.avatar}
           name={editPerApp.name}
           managePer={{
-            mode: 'all',
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             permissionList: AppPermissionList,
             onUpdateCollaborators: (props: {
               members?: string[];
               groups?: string[];
+              orgs?: string[];
               permission: number;
             }) =>
               postUpdateAppCollaborators({
@@ -448,6 +448,7 @@ const ListItem = () => {
               props: RequireOnlyOne<{
                 tmbId?: string;
                 groupId?: string;
+                orgId?: string;
               }>
             ) =>
               deleteAppCollaborators({

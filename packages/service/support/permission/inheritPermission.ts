@@ -1,11 +1,11 @@
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoResourcePermission } from './schema';
-import { ClientSession, Model } from 'mongoose';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import type { ClientSession, Model } from 'mongoose';
+import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getResourceClbsAndGroups } from './controller';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export type SyncChildrenPermissionResourceType = {
   _id: string;
@@ -18,6 +18,7 @@ export type UpdateCollaboratorItem = {
 } & RequireOnlyOne<{
   tmbId: string;
   groupId: string;
+  orgId: string;
 }>;
 
 // sync the permission to all children folders.
@@ -161,7 +162,7 @@ export async function resumeInheritPermission({
   }
 }
 
-/* 
+/*
   Delete all the collaborators and then insert the new collaborators.
 */
 export async function syncCollaborators({

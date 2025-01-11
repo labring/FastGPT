@@ -20,10 +20,10 @@ export enum PackageChangeStatusEnum {
 
 const Standard = ({
   standardPlan: myStandardPlan,
-  refetchTeamSubPlan
+  onPaySuccess
 }: {
   standardPlan?: TeamSubSchema;
-  refetchTeamSubPlan: () => void;
+  onPaySuccess?: () => void;
 }) => {
   const { t } = useTranslation();
 
@@ -78,14 +78,6 @@ const Standard = ({
   return (
     <>
       <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
-        <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
-          {t('common:support.wallet.subscription.Sub plan')}
-        </Box>
-        <Box mt={8} mb={10} fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
-          {t('common:support.wallet.subscription.Sub plan tip', {
-            title: feConfigs?.systemTitle
-          })}
-        </Box>
         <Box>
           <RowTabs
             list={[
@@ -96,8 +88,14 @@ const Standard = ({
               {
                 label: (
                   <Flex>
-                    {t('common:support.wallet.subscription.mode.Year')}
-                    <Box ml={1} color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}>
+                    <Box whiteSpace={'nowrap'}>
+                      {t('common:support.wallet.subscription.mode.Year')}
+                    </Box>
+                    <Box
+                      whiteSpace={'nowrap'}
+                      ml={1}
+                      color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}
+                    >
                       ({t('common:support.wallet.subscription.mode.Year sale')})
                     </Box>
                   </Flex>
@@ -271,15 +269,13 @@ const Standard = ({
         </Grid>
 
         {!!qrPayData && packageChange && (
-          <QRCodePayModal tip={packagePayTextMap[packageChange]} {...qrPayData} />
+          <QRCodePayModal
+            tip={packagePayTextMap[packageChange]}
+            onSuccess={onPaySuccess}
+            {...qrPayData}
+          />
         )}
       </Flex>
-      <HStack mt={8} color={'blue.700'} ml={8}>
-        <MyIcon name={'infoRounded'} w={'1rem'} />
-        <Box fontSize={'sm'} fontWeight={'500'}>
-          {t('user:bill.standard_valid_tip')}
-        </Box>
-      </HStack>
     </>
   );
 };

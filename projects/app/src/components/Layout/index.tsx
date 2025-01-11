@@ -19,6 +19,9 @@ const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/U
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
+const UpdateNotification = dynamic(
+  () => import('@/components/support/user/inform/UpdateNotificationModal')
+);
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -48,9 +51,9 @@ export const navbarWidth = '64px';
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { Loading } = useLoading();
-  const { loading, feConfigs, isNotSufficientModal } = useSystemStore();
+  const { loading, feConfigs, notSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo } = useUserStore();
+  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const isChatPage = useMemo(
@@ -67,6 +70,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const importantInforms = data?.importantInforms || [];
 
   const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
+
+  const showUpdateNotification =
+    isUpdateNotification &&
+    !userInfo?.team.notificationAccount &&
+    !!userInfo?.team.permission.isOwner;
 
   useMount(() => {
     setUserDefaultLng();
@@ -113,8 +121,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       {feConfigs?.isPlus && (
         <>
           {!!userInfo && <UpdateInviteModal />}
-          {isNotSufficientModal && <NotSufficientModal />}
+          {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
           {!!userInfo && <SystemMsgModal />}
+          {showUpdateNotification && (
+            <UpdateNotification onClose={() => setIsUpdateNotification(false)} />
+          )}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}

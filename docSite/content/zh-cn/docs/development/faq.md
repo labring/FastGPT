@@ -19,6 +19,10 @@ images: []
 
 ## 二、通用问题
 
+### 本地部署的限制
+
+具体内容参考https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg。
+
 ### 能否纯本地运行
 
 可以。需要准备好向量模型和LLM模型。

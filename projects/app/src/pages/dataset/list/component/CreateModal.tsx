@@ -1,9 +1,7 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -15,7 +13,6 @@ import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -90,32 +87,14 @@ const CreateModal = ({
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: '.jpg,.png',
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
+    fileType: 'image/*',
     multiple: false
   });
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.datasetAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-        setValue('avatar' as const, src);
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, t('common:common.avatar.Select Failed')),
-          status: 'warning'
-        });
-      }
-    },
-    [setValue, t, toast]
-  );
 
   /* create a new kb and router to it */
   const { run: onclickCreate, loading: creating } = useRequest2(
@@ -275,7 +254,15 @@ const CreateModal = ({
 
       <ComplianceTip pb={6} pt={0} px={9} type={'dataset'} />
 
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e) => setValue('avatar', e)
+          })
+        }
+      />
     </MyModal>
   );
 };

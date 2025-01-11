@@ -16,6 +16,8 @@ import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupS
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
+import { createRootOrg } from '../../permission/org/controllers';
+import { refreshSourceAvatar } from '../../../common/file/image/controller';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = await MongoTeamMember.findOne(match).populate<{ team: TeamSchema }>('team').lean();
@@ -32,6 +34,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
   return {
     userId: String(tmb.userId),
     teamId: String(tmb.teamId),
+    teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
     memberName: tmb.name,
     avatar: tmb.team.avatar,
@@ -77,13 +80,11 @@ export async function createDefaultTeam({
   userId,
   teamName = 'My Team',
   avatar = '/icon/logo.svg',
-  balance,
   session
 }: {
   userId: string;
   teamName?: string;
   avatar?: string;
-  balance?: number;
   session: ClientSession;
 }) {
   // auth default team
@@ -100,7 +101,6 @@ export async function createDefaultTeam({
           ownerId: userId,
           name: teamName,
           avatar,
-          balance,
           createTime: new Date()
         }
       ],
@@ -132,15 +132,11 @@ export async function createDefaultTeam({
       ],
       { session }
     );
-    console.log('create default team and group', userId);
+    await createRootOrg({ teamId: tmb.teamId, session });
+    console.log('create default team, group and root org', userId);
     return tmb;
   } else {
     console.log('default team exist', userId);
-    await MongoTeam.findByIdAndUpdate(tmb.teamId, {
-      $set: {
-        ...(balance !== undefined && { balance })
-      }
-    });
   }
 }
 
@@ -215,7 +211,8 @@ export async function updateTeam({
       return obj;
     })();
 
-    await MongoTeam.findByIdAndUpdate(
+    // This is where we get the old team
+    const team = await MongoTeam.findByIdAndUpdate(
       teamId,
       {
         $set: {
@@ -241,6 +238,8 @@ export async function updateTeam({
         },
         { session }
       );
+
+      await refreshSourceAvatar(avatar, team?.avatar, session);
     }
   });
 }

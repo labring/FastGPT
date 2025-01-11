@@ -5,11 +5,11 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
 /* 
   Plugin points calculation:
-  1. 商业版插件：
+  1. 系统插件/商业版插件：
     - 有错误：返回 0
-    - 无错误：返回 配置的点数 + 子节点点数
-  2. 其他插件：
-    - 返回 子节点点数
+    - 无错误：返回 单次积分 + 子流程积分（可配置）
+  2. 个人插件
+    - 返回 子流程积分
 */
 export const computedPluginUsage = async ({
   plugin,
@@ -26,9 +26,9 @@ export const computedPluginUsage = async ({
   if (source !== PluginSourceEnum.personal) {
     if (error) return 0;
 
-    const pluginCurrentCose = plugin.currentCost ?? 0;
+    const pluginCurrentCost = plugin.currentCost ?? 0;
 
-    return plugin.hasTokenFee ? pluginCurrentCose + childrenUsages : pluginCurrentCose;
+    return plugin.hasTokenFee ? pluginCurrentCost + childrenUsages : pluginCurrentCost;
   }
 
   return childrenUsages;

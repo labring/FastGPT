@@ -220,7 +220,7 @@ export const streamFetch = ({
             });
           } else if (event === SseResponseEventEnum.error) {
             if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
-              useSystemStore.getState().setIsNotSufficientModal(true);
+              useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
             }
             errMsg = getErrText(parseJson, '流响应错误');
           }

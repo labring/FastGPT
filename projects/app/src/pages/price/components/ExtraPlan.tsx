@@ -1,4 +1,4 @@
-import { Box, Flex, Grid, Button } from '@chakra-ui/react';
+import { Box, Flex, Grid, Button, VStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -11,7 +11,7 @@ import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 
-const ExtraPlan = () => {
+const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
@@ -108,19 +108,8 @@ const ExtraPlan = () => {
   );
 
   return (
-    <Flex
-      mt={['40px', '100px']}
-      flexDirection={'column'}
-      alignItems={'center'}
-      position={'relative'}
-    >
-      <Box id={'extra-plan'} fontWeight={'bold'} fontSize={['24px', '36px']} color={'myGray.900'}>
-        {t('common:support.wallet.subscription.Extra plan')}
-      </Box>
-      <Box mt={2} mb={8} color={'myGray.600'} fontSize={'md'}>
-        {t('common:support.wallet.subscription.Extra plan tip')}
-      </Box>
-      <Grid mt={8} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
+    <VStack>
+      <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
         <Box
           bg={'rgba(255, 255, 255, 0.90)'}
           px={'32px'}
@@ -284,8 +273,8 @@ const ExtraPlan = () => {
         </Box>
       </Grid>
 
-      {!!qrPayData && <QRCodePayModal {...qrPayData} />}
-    </Flex>
+      {!!qrPayData && <QRCodePayModal onSuccess={onPaySuccess} {...qrPayData} />}
+    </VStack>
   );
 };
 

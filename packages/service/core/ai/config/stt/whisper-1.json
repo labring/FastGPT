@@ -1,0 +1,6 @@
+{
+  "provider": "OpenAI",
+  "model": "whisper-1",
+  "name": "whisper-1",
+  "charsPointsPrice": 0
+}
