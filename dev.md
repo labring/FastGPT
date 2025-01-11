@@ -1,6 +1,6 @@
 ## Premise
 
-Since FastGPT is managed in the same way as monorepo, it is recommended to install 'make' first during development.
+Since FastGPT is managed in the same way as monorepo, it is recommended to install ‘make’ first during development.
 
 monorepo Project Name:
 
