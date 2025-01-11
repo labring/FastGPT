@@ -28,7 +28,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   console.log('Init data time:', Date.now() - start);
 
   success = 0;
-  batchUpdateFields();
+
+  // batchUpdateFields();
 
   return { success: true };
 }
@@ -55,48 +56,56 @@ const restore = async () => {
 };
 
 const initData = async (batchSize: number) => {
-  try {
-    // 找到没有初始化的数据
-    const dataList = await MongoDatasetData.find(
-      {
-        initFullText: { $exists: false }
-      },
-      '_id teamId datasetId collectionId fullTextToken'
-    )
-      .limit(batchSize)
-      .lean();
+  while (true) {
+    try {
+      // 找到没有初始化的数据
+      const dataList = await MongoDatasetData.find(
+        {
+          initFullText: { $exists: false }
+        },
+        '_id teamId datasetId collectionId fullTextToken'
+      )
+        .limit(batchSize)
+        .lean();
 
-    if (dataList.length === 0) return;
+      if (dataList.length === 0) break;
 
-    await mongoSessionRun(async (session) => {
-      // 插入新数据
-      const result = await MongoDatasetDataText.insertMany(
-        dataList.map((item) => ({
-          teamId: item.teamId,
-          datasetId: item.datasetId,
-          collectionId: item.collectionId,
-          dataId: item._id,
-          fullTextToken: item.fullTextToken
-        })),
-        { ordered: false, session, lean: true }
-      );
+      try {
+        await MongoDatasetDataText.insertMany(
+          dataList.map((item) => ({
+            teamId: item.teamId,
+            datasetId: item.datasetId,
+            collectionId: item.collectionId,
+            dataId: item._id,
+            fullTextToken: item.fullTextToken
+          })),
+          { ordered: false, lean: true }
+        );
+      } catch (error: any) {
+        if (error.code === 11000) {
+          console.log('Duplicate key error');
+        } else {
+          throw error;
+        }
+      }
 
-      // FullText tmp 把成功插入的新数据的 dataId 更新为已初始化
+      // 把成功插入的新数据的 dataId 更新为已初始化
       await MongoDatasetData.updateMany(
-        { _id: { $in: result.map((item) => item.dataId) } },
-        { $set: { initFullText: true } },
-        { session }
+        { _id: { $in: dataList.map((item) => item._id) } },
+        // FullText tmp
+        // { $set: { initFullText: true } }
+        { $set: { initFullText: true }, $unset: { fullTextToken: 1 } }
       );
 
-      success += result.length;
+      success += dataList.length;
       console.log('Success:', success);
-    });
 
-    await initData(batchSize);
-  } catch (error: any) {
-    console.log(error, '===');
-    await delay(500);
-    await initData(batchSize);
+      // await initData(batchSize);
+    } catch (error: any) {
+      console.log(error, '===');
+      await delay(500);
+      // await initData(batchSize);
+    }
   }
 };
 

@@ -95,7 +95,7 @@
   "code_error.team_error.website_sync_not_enough": "Unauthorized to Use Website Sync",
   "code_error.token_error_code.403": "Invalid Login Status, Please Re-login",
   "code_error.user_error.balance_not_enough": "Insufficient Account Balance",
-  "code_error.user_error.bin_visitor": "Identity Verification Failed",
+  "code_error.account_error": "Incorrect account name or password",
   "code_error.user_error.bin_visitor_guest": "You Are Currently a Guest, Unauthorized to Operate",
   "code_error.user_error.un_auth_user": "User Not Found",
   "common.Action": "Action",

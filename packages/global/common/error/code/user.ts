@@ -3,14 +3,14 @@ import { i18nT } from '../../../../web/i18n/utils';
 /* team: 503000 */
 export enum UserErrEnum {
   unAuthRole = 'unAuthRole',
-  binVisitor = 'binVisitor',
+  account_psw_error = 'account_psw_error',
   balanceNotEnough = 'balanceNotEnough',
   unAuthSso = 'unAuthSso'
 }
 const errList = [
   {
-    statusText: UserErrEnum.binVisitor,
-    message: i18nT('common:code_error.user_error.bin_visitor')
+    statusText: UserErrEnum.account_psw_error,
+    message: i18nT('common:code_error.account_error')
   },
   {
     statusText: UserErrEnum.balanceNotEnough,

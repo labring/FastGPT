@@ -99,7 +99,7 @@
   "code_error.team_error.website_sync_not_enough": "无权使用Web站点同步~",
   "code_error.token_error_code.403": "登录状态无效，请重新登录",
   "code_error.user_error.balance_not_enough": "账号余额不足~",
-  "code_error.user_error.bin_visitor": "您的身份校验未通过",
+  "code_error.account_error": "账号名或密码错误",
   "code_error.user_error.bin_visitor_guest": "您当前身份为游客，无权操作",
   "code_error.user_error.un_auth_user": "找不到该用户",
   "common.Action": "操作",

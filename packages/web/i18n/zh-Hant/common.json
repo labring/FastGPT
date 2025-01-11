@@ -95,7 +95,7 @@
   "code_error.team_error.website_sync_not_enough": "無權使用網站同步",
   "code_error.token_error_code.403": "登入狀態無效，請重新登入",
   "code_error.user_error.balance_not_enough": "帳戶餘額不足",
-  "code_error.user_error.bin_visitor": "身份驗證未通過",
+  "code_error.account_error": "帳號名稱或密碼錯誤",
   "code_error.user_error.bin_visitor_guest": "您目前身份為訪客，無權操作",
   "code_error.user_error.un_auth_user": "找不到此使用者",
   "common.Action": "操作",
