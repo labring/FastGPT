@@ -90,7 +90,6 @@ ENV NEXT_PUBLIC_BASE_URL=$base_url
 
 EXPOSE 3000
 
-RUN mkdir -p /tmp && chmod 666 /tmp && chown -R nextjs:nodejs /tmp
 USER nextjs
 
 ENV serverPath=./projects/app/server.js
