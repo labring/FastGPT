@@ -93,8 +93,8 @@ const initData = async (batchSize: number) => {
       await MongoDatasetData.updateMany(
         { _id: { $in: dataList.map((item) => item._id) } },
         // FullText tmp
-        { $set: { initFullText: true } }
-        // { $set: { initFullText: true }, $unset: { fullTextToken: 1 } }
+        // { $set: { initFullText: true } }
+        { $set: { initFullText: true }, $unset: { fullTextToken: 1 } }
       );
 
       success += dataList.length;
