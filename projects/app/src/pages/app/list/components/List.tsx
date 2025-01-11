@@ -35,6 +35,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -221,13 +222,7 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
-                    <HStack spacing={1}>
-                      <Avatar src={app.sourceMember.avatar} w={'0.875rem'} borderRadius={'50%'} />
-                      <Box maxW={'150px'} className="textEllipsis">
-                        {app.sourceMember.name}
-                      </Box>
-                    </HStack>
-
+                    <UserBox sourceMember={app.sourceMember} fontSize="xs" avatarSize="1.25rem" />
                     <PermissionIconText
                       private={app.private}
                       color={'myGray.500'}

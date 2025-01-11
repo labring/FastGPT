@@ -22,6 +22,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
 import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 
 const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   onClose,
@@ -269,24 +270,9 @@ const TeamCloud = ({
             >
               {() => (
                 <Flex alignItems={'center'} h={'full'} pl={5} gap={3}>
-                  <Box>
-                    <Avatar
-                      src={data.data.sourceMember.avatar}
-                      borderRadius={'50%'}
-                      w={'36px'}
-                      h={'36px'}
-                    />
-                  </Box>
-                  <Box>
-                    <Box fontSize={'14px'} color={'myGray.900'}>
-                      {data.data.sourceMember.name}
-                      {data.data.sourceMember.status === 'leave' && (
-                        <Tag color="gray">{t('account_team:leaved')}</Tag>
-                      )}
-                    </Box>
-                    <Box fontSize={'12px'} color={'myGray.500'}>
-                      {formatTime2YMDHMS(item.time)}
-                    </Box>
+                  <UserBox sourceMember={data.data.sourceMember} avatarSize="36px" fontSize="sm" />
+                  <Box fontSize={'12px'} color={'myGray.500'}>
+                    {formatTime2YMDHMS(item.time)}
                   </Box>
                 </Flex>
               )}

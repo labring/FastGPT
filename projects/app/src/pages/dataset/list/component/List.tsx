@@ -31,6 +31,7 @@ import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import SideTag from './SideTag';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
@@ -258,16 +259,11 @@ function List() {
                     color={'myGray.500'}
                   >
                     <HStack spacing={3.5}>
-                      <HStack spacing={1}>
-                        <Avatar
-                          src={dataset.sourceMember.avatar}
-                          w={'0.875rem'}
-                          borderRadius={'50%'}
-                        />
-                        <Box maxW={'150px'} className="textEllipsis" fontSize={'mini'}>
-                          {dataset.sourceMember.name}
-                        </Box>
-                      </HStack>
+                      <UserBox
+                        sourceMember={dataset.sourceMember}
+                        fontSize="xs"
+                        avatarSize="1.25rem"
+                      />
                       <PermissionIconText
                         flexShrink={0}
                         private={dataset.private}

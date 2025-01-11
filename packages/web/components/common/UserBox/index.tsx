@@ -1,4 +1,4 @@
-import { Box, HStack } from '@chakra-ui/react';
+import { Box, HStack, type StackProps } from '@chakra-ui/react';
 import { SourceMemberType } from '@fastgpt/global/support/user/type';
 import React from 'react';
 import Avatar from '../Avatar';
@@ -7,22 +7,15 @@ import Tag from '../Tag';
 
 export type UserBoxProps = {
   sourceMember: SourceMemberType;
-  fontSize?: string;
   avatarSize?: string;
-};
-function UserBox({
-  sourceMember,
-  fontSize = 'sm',
-  avatarSize: AvatarWidth = '1.25rem'
-}: UserBoxProps) {
+} & StackProps;
+function UserBox({ sourceMember, avatarSize = '1.25rem', ...props }: UserBoxProps) {
   const { t } = useTranslation();
   return (
-    <HStack>
-      <Avatar src={sourceMember.avatar} w={AvatarWidth} />
-      <Box fontSize={fontSize} ml={1}>
-        {sourceMember.name}
-        {sourceMember.status === 'leave' && <Tag color="gray">{t('account_team:leaved')}</Tag>}
-      </Box>
+    <HStack space="1" {...props}>
+      <Avatar src={sourceMember.avatar} w={avatarSize} />
+      <Box>{sourceMember.name}</Box>
+      {sourceMember.status === 'leave' && <Tag color="gray">{t('account_team:leaved')}</Tag>}
     </HStack>
   );
 }
