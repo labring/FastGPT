@@ -11,7 +11,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { userCollectionName } from '@fastgpt/service/support/user/schema';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 
 async function handler(
@@ -145,9 +144,11 @@ async function handler(
             markCount: 1,
             outLinkUid: 1,
             tmbId: 1,
-            memberAvatar: '$member.avatar',
-            memberUsername: '$member.name',
-            memberStatus: '$member.status'
+            sourceMember: {
+              name: '$member.name',
+              avatar: '$member.avatar',
+              status: '$member.status'
+            }
           }
         }
       ],

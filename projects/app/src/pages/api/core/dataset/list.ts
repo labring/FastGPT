@@ -2,7 +2,6 @@ import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import {
@@ -178,31 +177,17 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
   const tmbIds = formatDatasets.map((item) => item.tmbId);
   const memberInfo = await MongoTeamMember.find({ _id: { $in: tmbIds } }, '_id name avatar').lean();
 
-  for (const dataset of formatDatasets) {
-    const member = memberInfo.find((item) => String(item._id) === String(dataset.tmbId));
-    if (member) {
-      (dataset as any).ownerName = member.name;
-      (dataset as any).ownerAvatar = member.avatar ?? '';
-    }
-  }
+  const data = formatDatasets.map((item) => {
+    const member = memberInfo.find((member) => String(member._id) === String(item.tmbId));
 
-  const data = formatDatasets.map<DatasetListItemType>((item) => ({
-    _id: item._id,
-    avatar: item.avatar,
-    name: item.name,
-    intro: item.intro,
-    type: item.type,
-    permission: item.permission,
-    vectorModel: getVectorModel(item.vectorModel),
-    inheritPermission: item.inheritPermission,
-    tmbId: item.tmbId,
-    updateTime: item.updateTime,
-    private: item.privateDataset,
-    sourceMember: {
-      name: (item as any).ownerName,
-      avatar: (item as any).ownerAvatar
-    }
-  }));
+    return {
+      ...item,
+      sourceMember: {
+        name: member!.name,
+        avatar: member!.avatar
+      }
+    };
+  });
 
   return data;
 }

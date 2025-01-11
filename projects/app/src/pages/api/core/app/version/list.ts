@@ -47,16 +47,18 @@ async function handler(
         const member = memberList.find((member) => String(member._id) === String(item.tmbId));
         return {
           ...item,
-          memberName: member?.name || '',
-          memberAvatar: member?.avatar || '',
-          memberStatus: member?.status || ''
+          sourceMember: {
+            name: member?.name || '',
+            avatar: member?.avatar || '',
+            status: member?.status || ''
+          }
         };
       });
     })(),
     MongoAppVersion.countDocuments({ appId })
   ]);
 
-  const versionList = result.map((item: any) => {
+  const versionList = result.map((item) => {
     return {
       _id: item._id,
       appId: item.appId,
@@ -64,11 +66,7 @@ async function handler(
       time: item.time,
       isPublish: item.isPublish,
       tmbId: item.tmbId,
-      sourceMember: {
-        name: item.memberName,
-        avatar: item.memberAvatar,
-        status: item.memberStatus
-      }
+      sourceMember: item.sourceMember
     };
   });
 

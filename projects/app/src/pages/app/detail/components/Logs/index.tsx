@@ -133,10 +133,10 @@ const Logs = () => {
                         item.outLinkUid
                       ) : (
                         <HStack>
-                          <Avatar src={item.memberAvatar} w="1.25rem" />
+                          <Avatar src={item.sourceMember.avatar} w="1.25rem" />
                           <Box fontSize={'sm'} ml={1}>
-                            {item.memberUsername}
-                            {item.memberStatus === 'leave' && (
+                            {item.sourceMember.name}
+                            {item.sourceMember.status === 'leave' && (
                               <Tag color="gray">{t('account_team:leaved')}</Tag>
                             )}
                           </Box>
