@@ -62,7 +62,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
     type: 'delete'
   });
-  const isSyncMember = userInfo?.username === 'root' && feConfigs.register_method?.includes('sync');
+
+  const isSyncMember = feConfigs.register_method?.includes('sync');
 
   const { runAsync: onLeaveTeam } = useRequest2(
     async () => {
@@ -84,7 +85,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(syncMembers, {
     onSuccess() {
-      refetchTeams();
+      refetchMembers();
     },
     successToast: t('account_team:sync_member_success'),
     errorToast: t('account_team:sync_member_failed')

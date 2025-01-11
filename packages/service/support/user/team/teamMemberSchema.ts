@@ -7,19 +7,7 @@ import {
   TeamMemberCollectionName,
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-
-const defaultAvatars = [
-  '/imgs/avatar/RoyalBlueAvatar.svg',
-  '/imgs/avatar/PurpleAvatar.svg',
-  '/imgs/avatar/AdoraAvatar.svg',
-  '/imgs/avatar/OrangeAvatar.svg',
-  '/imgs/avatar/RedAvatar.svg',
-  '/imgs/avatar/GrayModernAvatar.svg',
-  '/imgs/avatar/TealAvatar.svg',
-  '/imgs/avatar/GreenAvatar.svg',
-  '/imgs/avatar/BrightBlueAvatar.svg',
-  '/imgs/avatar/BlueAvatar.svg'
-];
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -50,7 +38,7 @@ const TeamMemberSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
+    default: getRandomUserAvatar()
   },
 
   // Abandoned

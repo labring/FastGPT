@@ -78,7 +78,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { members } = useContextSelector(TeamContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
-  const isSyncMember = userInfo?.username === 'root' && feConfigs.register_method?.includes('sync');
+  const isSyncMember = feConfigs.register_method?.includes('sync');
   const [parentPath, setParentPath] = useState('');
   const {
     data: orgs = [],
