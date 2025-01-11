@@ -34,7 +34,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // batchUpdateFields();
 
-  await moveUserAvatar();
   return { success: true };
 }
 
@@ -136,22 +135,3 @@ const initData = async (batchSize: number) => {
 //   console.log('Delete success:', success);
 //   await batchUpdateFields(batchSize);
 // };
-
-const moveUserAvatar = async () => {
-  try {
-    const users = await MongoUser.find({});
-    for await (const user of users) {
-      await MongoTeamMember.updateOne(
-        {
-          _id: user._id
-        },
-        {
-          avatar: (user as any).avatar // 删除 avatar 字段, 因为 Type 改了，所以这里不能直接写 user.avatar
-        }
-      );
-    }
-    console.log('Move avatar success:', users.length);
-  } catch (error) {
-    console.error(error);
-  }
-};
