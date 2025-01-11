@@ -82,7 +82,7 @@ COPY ./projects/app/data /app/data
 RUN chown -R nextjs:nodejs /app/data
 
 # Add tmp directory permission control
-RUN mkdir -p /tmp && chmod 666 /tmp
+# RUN mkdir -p /tmp && chmod 666 /tmp
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
