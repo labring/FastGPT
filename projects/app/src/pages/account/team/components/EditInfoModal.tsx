@@ -1,10 +1,8 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
@@ -12,7 +10,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { postCreateTeam, putUpdateTeam } from '@/web/support/user/team/api';
 import { CreateTeamProps } from '@fastgpt/global/support/user/team/controller.d';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 
 export type EditTeamFormDataType = CreateTeamProps & {
@@ -41,32 +38,14 @@ function EditModal({
   });
   const avatar = watch('avatar');
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg,.png,.svg',
     multiple: false
   });
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.teamAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-        setValue('avatar', src);
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, t('common:common.Select File Failed')),
-          status: 'warning'
-        });
-      }
-    },
-    [setValue, t, toast]
-  );
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (data: CreateTeamProps) => {
@@ -154,7 +133,15 @@ function EditModal({
           </Button>
         )}
       </ModalFooter>
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e) => setValue('avatar', e)
+          })
+        }
+      />
     </MyModal>
   );
 }

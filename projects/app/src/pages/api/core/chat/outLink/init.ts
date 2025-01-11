@@ -12,18 +12,16 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
   // auth link permission
-  const { outLinkConfig, uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const { uid, appId } = await authOutLink({ shareId, outLinkUid });
 
   // auth app permission
-  const [tmb, chat, app] = await Promise.all([
-    MongoTeamMember.findById(outLinkConfig.tmbId, '_id userId')
-      .populate<{ user: UserModelSchema }>('user', 'avatar')
-      .lean(),
+  const [chat, app] = await Promise.all([
     MongoChat.findOne({ appId, chatId, shareId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
@@ -48,7 +46,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId,
       appId: app._id,
       title: chat?.title,
-      userAvatar: tmb?.user?.avatar,
+      userAvatar: getRandomUserAvatar(),
       variables: chat?.variables,
       app: {
         chatConfig: getAppChatConfig({

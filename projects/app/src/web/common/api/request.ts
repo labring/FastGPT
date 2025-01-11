@@ -9,6 +9,7 @@ import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -108,20 +109,23 @@ function responseError(err: any) {
     return Promise.reject({ message: err });
   }
   // 有报错响应
-  if (err?.code in TOKEN_ERROR_CODE) {
-    if (
-      !(window.location.pathname === '/chat/share' || window.location.pathname === '/chat/team')
-    ) {
+  if (err?.code in TOKEN_ERROR_CODE || err?.response?.data?.code in TOKEN_ERROR_CODE) {
+    if (!['/chat/share', '/chat/team', '/login'].includes(window.location.pathname)) {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
       );
     }
 
-    return Promise.reject({ message: '无权操作' });
+    return Promise.reject({ message: i18nT('common:unauth_token') });
   }
-  if (err?.statusText === TeamErrEnum.aiPointsNotEnough) {
-    useSystemStore.getState().setIsNotSufficientModal(true);
+  if (
+    err?.statusText === TeamErrEnum.aiPointsNotEnough ||
+    err?.statusText === TeamErrEnum.datasetSizeNotEnough ||
+    err?.statusText === TeamErrEnum.datasetAmountNotEnough ||
+    err?.statusText === TeamErrEnum.appAmountNotEnough
+  ) {
+    useSystemStore.getState().setNotSufficientModalType(err.statusText);
     return Promise.reject(err);
   }
   if (err?.response?.data) {

@@ -7,12 +7,14 @@ import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password } = req.body as PostLoginProps;
 
   if (!username || !password) {
-    throw new Error('缺少参数');
+    return Promise.reject(CommonErrEnum.invalidParams);
   }
 
   // 检测用户是否存在
@@ -23,11 +25,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     'status'
   );
   if (!authCert) {
-    throw new Error('用户未注册');
+    return Promise.reject(UserErrEnum.account_psw_error);
   }
 
   if (authCert.status === UserStatusEnum.forbidden) {
-    throw new Error('账号已停用，无法登录');
+    return Promise.reject('Invalid account!');
   }
 
   const user = await MongoUser.findOne({
@@ -36,7 +38,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   if (!user) {
-    throw new Error('密码错误');
+    return Promise.reject(UserErrEnum.account_psw_error);
   }
 
   const userDetail = await getUserDetail({
@@ -68,4 +70,4 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 }
 
-export default NextAPI(useReqFrequencyLimit(120, 10), handler);
+export default NextAPI(useReqFrequencyLimit(120, 10, true), handler);

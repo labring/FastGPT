@@ -67,6 +67,7 @@ import type {
   listExistIdResponse
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -99,6 +100,9 @@ export const postCreateDatasetFolder = (data: DatasetFolderCreateBody) =>
 
 export const resumeInheritPer = (datasetId: string) =>
   GET(`/core/dataset/resumeInheritPermission`, { datasetId });
+
+export const postChangeOwner = (data: { ownerId: string; datasetId: string }) =>
+  POST(`/proApi/core/dataset/changeOwner`, data);
 
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>

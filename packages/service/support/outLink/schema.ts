@@ -92,6 +92,7 @@ OutLinkSchema.virtual('associatedApp', {
 
 try {
   OutLinkSchema.index({ shareId: -1 });
+  OutLinkSchema.index({ teamId: 1, tmbId: 1, appId: 1 });
 } catch (error) {
   console.log(error);
 }

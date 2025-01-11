@@ -9,10 +9,10 @@ import { jsonRes } from '../response';
 // unit: times/s
 // how to use?
 // export default NextAPI(useQPSLimit(10), handler); // limit 10 times per second for a ip
-export function useReqFrequencyLimit(seconds: number, limit: number) {
+export function useReqFrequencyLimit(seconds: number, limit: number, force = false) {
   return async (req: ApiRequestProps, res: NextApiResponse) => {
     const ip = requestIp.getClientIp(req);
-    if (!ip || process.env.USE_IP_LIMIT !== 'true') {
+    if (!ip || (process.env.USE_IP_LIMIT !== 'true' && !force)) {
       return;
     }
     try {
@@ -22,10 +22,9 @@ export function useReqFrequencyLimit(seconds: number, limit: number) {
         expiredTime: addSeconds(new Date(), seconds)
       });
     } catch (_) {
-      res.status(429);
       jsonRes(res, {
         code: 429,
-        message: ERROR_ENUM.tooManyRequest
+        error: ERROR_ENUM.tooManyRequest
       });
     }
   };

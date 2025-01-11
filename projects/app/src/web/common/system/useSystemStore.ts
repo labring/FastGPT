@@ -14,8 +14,16 @@ import { InitDateResponse } from '@/global/common/api/systemRes';
 import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { defaultWhisperModel } from '@fastgpt/global/core/ai/model';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
+
+export type NotSufficientModalType =
+  | TeamErrEnum.datasetSizeNotEnough
+  | TeamErrEnum.aiPointsNotEnough
+  | TeamErrEnum.datasetAmountNotEnough
+  | TeamErrEnum.teamMemberOverSize
+  | TeamErrEnum.appAmountNotEnough;
 
 type State = {
   initd: boolean;
@@ -27,14 +35,15 @@ type State = {
   setLastAppListRouteType: (e?: string) => void;
 
   loginStore?: LoginStoreType;
-  setLoginStore: (e: LoginStoreType) => void;
+  setLoginStore: (e?: LoginStoreType) => void;
+
   loading: boolean;
   setLoading: (val: boolean) => null;
   gitStar: number;
   loadGitStar: () => Promise<void>;
 
-  isNotSufficientModal: boolean;
-  setIsNotSufficientModal: (val: boolean) => void;
+  notSufficientModalType?: NotSufficientModalType;
+  setNotSufficientModalType: (val?: NotSufficientModalType) => void;
 
   initDataBufferId?: string;
   feConfigs: FastGPTFeConfigsType;
@@ -105,10 +114,10 @@ export const useSystemStore = create<State>()(
           } catch (error) {}
         },
 
-        isNotSufficientModal: false,
-        setIsNotSufficientModal(val: boolean) {
+        notSufficientModalType: undefined,
+        setNotSufficientModalType(type) {
           set((state) => {
-            state.isNotSufficientModal = val;
+            state.notSufficientModalType = type;
           });
         },
 

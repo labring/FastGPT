@@ -49,7 +49,7 @@
   "execution_error": "运行错误",
   "extraction_requirements_description": "提取要求描述",
   "extraction_requirements_description_detail": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\\n该输入框可使用全局变量。",
-  "extraction_requirements_placeholder": "例如: \\n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
+  "extraction_requirements_placeholder": "例如: 1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
   "feedback_text": "反馈的文本",
   "field_description": "字段描述",
   "field_description_placeholder": "描述该输入字段的功能，如果为工具调用参数，则该描述会影响模型生成的质量",

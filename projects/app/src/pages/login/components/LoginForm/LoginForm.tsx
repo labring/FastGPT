@@ -1,4 +1,4 @@
-import React, { useState, Dispatch, useCallback } from 'react';
+import React, { Dispatch } from 'react';
 import { FormControl, Flex, Input, Button, Box, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
@@ -9,6 +9,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
 import { useTranslation } from 'next-i18next';
 import FormLayout from './components/FormLayout';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 interface Props {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
@@ -30,31 +31,22 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     formState: { errors }
   } = useForm<LoginFormType>();
 
-  const [requesting, setRequesting] = useState(false);
-
-  const onclickLogin = useCallback(
+  const { runAsync: onclickLogin, loading: requesting } = useRequest2(
     async ({ username, password }: LoginFormType) => {
-      setRequesting(true);
-      try {
-        loginSuccess(
-          await postLogin({
-            username,
-            password
-          })
-        );
-        toast({
-          title: t('login:login_success'),
-          status: 'success'
-        });
-      } catch (error: any) {
-        toast({
-          title: error.message || t('login:login_failed'),
-          status: 'error'
-        });
-      }
-      setRequesting(false);
+      loginSuccess(
+        await postLogin({
+          username,
+          password
+        })
+      );
+      toast({
+        title: t('login:login_success'),
+        status: 'success'
+      });
     },
-    [loginSuccess, t, toast]
+    {
+      refreshDeps: [loginSuccess]
+    }
   );
 
   const isCommunityVersion = !!(feConfigs?.register_method && !feConfigs?.isPlus);

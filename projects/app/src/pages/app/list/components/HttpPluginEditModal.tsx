@@ -17,14 +17,12 @@ import {
 } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { HttpPluginImgUrl, MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { HttpPluginImgUrl } from '@fastgpt/global/common/file/image/constants';
 import {
   postCreateHttpPlugin,
   putUpdateHttpPlugin,
@@ -124,32 +122,14 @@ const HttpPluginEditModal = ({
     errorToast: t('common:common.Update Failed')
   });
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
     fileType: 'image/*',
     multiple: false
   });
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.pluginAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-        setValue('avatar', src);
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, t('common:common.Select File Failed')),
-          status: 'warning'
-        });
-      }
-    },
-    [setValue, t, toast]
-  );
 
   /* load api from url */
   const { mutate: onClickUrlLoadApi, isLoading: isLoadingUrlApi } = useRequest({
@@ -473,7 +453,15 @@ const HttpPluginEditModal = ({
           )}
         </ModalFooter>
       </MyModal>
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e) => setValue('avatar', e)
+          })
+        }
+      />
     </>
   );
 };

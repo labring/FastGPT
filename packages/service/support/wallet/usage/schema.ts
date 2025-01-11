@@ -61,11 +61,11 @@ const UsageSchema = new Schema({
 });
 
 try {
-  UsageSchema.index({ teamId: 1, tmbId: 1, source: 1, time: -1 }, { background: true });
+  UsageSchema.index({ teamId: 1, tmbId: 1, source: 1, time: -1 });
   // timer task. clear dead team
-  // UsageSchema.index({ teamId: 1, time: -1 }, { background: true });
+  // UsageSchema.index({ teamId: 1, time: -1 });
 
-  UsageSchema.index({ time: 1 }, { background: true, expireAfterSeconds: 360 * 24 * 60 * 60 });
+  UsageSchema.index({ time: 1 }, { expireAfterSeconds: 360 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);
 }

@@ -7,7 +7,6 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import CollaboratorContextProvider, {
   MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
@@ -24,7 +23,6 @@ const FolderSlideCard = ({
   deleteTip,
   onDelete,
 
-  defaultPer,
   managePer,
   isInheritPermission,
   resumeInheritPermission,
@@ -39,11 +37,6 @@ const FolderSlideCard = ({
   deleteTip: string;
   onDelete: () => void;
 
-  defaultPer?: {
-    value: PermissionValueType;
-    defaultValue: PermissionValueType;
-    onChange: (v: PermissionValueType) => Promise<any>;
-  };
   managePer: MemberManagerInputPropsType;
 
   isInheritPermission?: boolean;

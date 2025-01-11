@@ -17,7 +17,8 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
-import { getGroupPer } from '@fastgpt/service/support/permission/controller';
+import { concatPer } from '@fastgpt/service/support/permission/controller';
+import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -50,7 +51,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
   ]);
 
   // Get team all app permissions
-  const [perList, myGroupMap] = await Promise.all([
+  const [perList, myGroupMap, myOrgSet] = await Promise.all([
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.dataset,
       teamId,
@@ -67,10 +68,17 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         map.set(String(item._id), 1);
       });
       return map;
+    }),
+    getOrgIdSetWithParentByTmbId({
+      teamId,
+      tmbId
     })
   ]);
   const myPerList = perList.filter(
-    (item) => String(item.tmbId) === String(tmbId) || myGroupMap.has(String(item.groupId))
+    (item) =>
+      String(item.tmbId) === String(tmbId) ||
+      myGroupMap.has(String(item.groupId)) ||
+      myOrgSet.has(String(item.orgId))
   );
 
   const findDatasetQuery = (() => {
@@ -122,9 +130,11 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
           const tmbPer = myPerList.find(
             (item) => String(item.resourceId) === datasetId && !!item.tmbId
           )?.permission;
-          const groupPer = getGroupPer(
+          const groupPer = concatPer(
             myPerList
-              .filter((item) => String(item.resourceId) === datasetId && !!item.groupId)
+              .filter(
+                (item) => String(item.resourceId) === datasetId && (!!item.groupId || !!item.orgId)
+              )
               .map((item) => item.permission)
           );
           return new DatasetPermission({

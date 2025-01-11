@@ -8,8 +8,8 @@ import { getVectorsByText } from '../../ai/embedding';
 import { getVectorModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import {
-  DatasetCollectionSchemaType,
   DatasetDataSchemaType,
+  DatasetDataTextSchemaType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
@@ -23,6 +23,7 @@ import { Types } from '../../../common/mongo';
 import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
+import { MongoDatasetDataText } from '../data/dataTextSchema';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -266,57 +267,60 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       filterCollectionIdList
     });
 
-    // get q and a
-    const dataList = await MongoDatasetData.find(
-      {
-        teamId,
-        datasetId: { $in: datasetIds },
-        collectionId: { $in: Array.from(new Set(results.map((item) => item.collectionId))) },
-        'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
-      },
-      'datasetId collectionId updateTime q a chunkIndex indexes'
-    )
-      .populate<{ collection: DatasetCollectionSchemaType }>(
-        'collection',
-        'name fileId rawLink externalFileId externalFileUrl'
-      )
-      .lean();
+    // Get data and collections
+    const collectionIdList = Array.from(new Set(results.map((item) => item.collectionId)));
+    const [dataList, collections] = await Promise.all([
+      MongoDatasetData.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          collectionId: { $in: collectionIdList },
+          'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
+        },
+        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        { ...readFromSecondary }
+      ).lean(),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: collectionIdList }
+        },
+        '_id name fileId rawLink externalFileId externalFileUrl',
+        { ...readFromSecondary }
+      ).lean()
+    ]);
 
-    // add score to data(It's already sorted. The first one is the one with the most points)
-    const concatResults = dataList.map((data) => {
-      const dataIdList = data.indexes.map((item) => item.dataId);
+    const formatResult = results
+      .map((item, index) => {
+        const collection = collections.find((col) => String(col._id) === String(item.collectionId));
+        if (!collection) {
+          console.log('Collection is not found', item);
+          return;
+        }
+        const data = dataList.find((data) =>
+          data.indexes.some((index) => index.dataId === item.id)
+        );
+        if (!data) {
+          console.log('Data is not found', item);
+          return;
+        }
 
-      const maxScoreResult = results.find((item) => {
-        return dataIdList.includes(item.id);
-      });
+        const score = item?.score || 0;
 
-      return {
-        ...data,
-        score: maxScoreResult?.score || 0
-      };
-    });
+        const result: SearchDataResponseItemType = {
+          id: String(data._id),
+          updateTime: data.updateTime,
+          q: data.q,
+          a: data.a,
+          chunkIndex: data.chunkIndex,
+          datasetId: String(data.datasetId),
+          collectionId: String(data.collectionId),
+          ...getCollectionSourceData(collection),
+          score: [{ type: SearchScoreTypeEnum.embedding, value: score, index }]
+        };
 
-    concatResults.sort((a, b) => b.score - a.score);
-
-    const formatResult = concatResults.map((data, index) => {
-      if (!data.collectionId) {
-        console.log('Collection is not found', data);
-      }
-
-      const result: SearchDataResponseItemType = {
-        id: String(data._id),
-        updateTime: data.updateTime,
-        q: data.q,
-        a: data.a,
-        chunkIndex: data.chunkIndex,
-        datasetId: String(data.datasetId),
-        collectionId: String(data.collectionId),
-        ...getCollectionSourceData(data.collection),
-        score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
-      };
-
-      return result;
-    });
+        return result;
+      })
+      .filter(Boolean) as SearchDataResponseItemType[];
 
     return {
       embeddingRecallResults: formatResult,
@@ -344,88 +348,224 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       };
     }
 
-    let searchResults = (
+    const searchResults = (
       await Promise.all(
         datasetIds.map(async (id) => {
-          return MongoDatasetData.aggregate([
-            {
-              $match: {
-                teamId: new Types.ObjectId(teamId),
-                datasetId: new Types.ObjectId(id),
-                $text: { $search: jiebaSplit({ text: query }) },
-                ...(filterCollectionIdList
-                  ? {
-                      collectionId: {
-                        $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+          return MongoDatasetData.aggregate(
+            [
+              {
+                $match: {
+                  teamId: new Types.ObjectId(teamId),
+                  datasetId: new Types.ObjectId(id),
+                  $text: { $search: jiebaSplit({ text: query }) },
+                  ...(filterCollectionIdList
+                    ? {
+                        collectionId: {
+                          $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                        }
                       }
-                    }
-                  : {}),
-                ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
-                  ? {
-                      collectionId: {
-                        $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                    : {}),
+                  ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
+                    ? {
+                        collectionId: {
+                          $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                        }
                       }
-                    }
-                  : {})
+                    : {})
+                }
+              },
+              {
+                $sort: {
+                  score: { $meta: 'textScore' }
+                }
+              },
+              {
+                $limit: limit
+              },
+              {
+                $project: {
+                  _id: 1,
+                  datasetId: 1,
+                  collectionId: 1,
+                  updateTime: 1,
+                  q: 1,
+                  a: 1,
+                  chunkIndex: 1,
+                  score: { $meta: 'textScore' }
+                }
               }
-            },
+            ],
             {
-              $addFields: {
-                score: { $meta: 'textScore' }
-              }
-            },
-            {
-              $sort: {
-                score: { $meta: 'textScore' }
-              }
-            },
-            {
-              $limit: limit
-            },
-            {
-              $project: {
-                _id: 1,
-                datasetId: 1,
-                collectionId: 1,
-                updateTime: 1,
-                q: 1,
-                a: 1,
-                chunkIndex: 1,
-                score: 1
-              }
+              ...readFromSecondary
             }
-          ]);
+          );
         })
       )
     ).flat() as (DatasetDataSchemaType & { score: number })[];
 
-    // resort
-    searchResults.sort((a, b) => b.score - a.score);
-    searchResults.slice(0, limit);
-
+    // Get data and collections
     const collections = await MongoDatasetCollection.find(
       {
         _id: { $in: searchResults.map((item) => item.collectionId) }
       },
-      '_id name fileId rawLink'
-    );
+      '_id name fileId rawLink externalFileId externalFileUrl',
+      { ...readFromSecondary }
+    ).lean();
 
     return {
-      fullTextRecallResults: searchResults.map((item, index) => {
-        const collection = collections.find((col) => String(col._id) === String(item.collectionId));
-        return {
-          id: String(item._id),
-          datasetId: String(item.datasetId),
-          collectionId: String(item.collectionId),
-          updateTime: item.updateTime,
-          ...getCollectionSourceData(collection),
-          q: item.q,
-          a: item.a,
-          chunkIndex: item.chunkIndex,
-          indexes: item.indexes,
-          score: [{ type: SearchScoreTypeEnum.fullText, value: item.score, index }]
-        };
-      }),
+      fullTextRecallResults: searchResults
+        .map((data, index) => {
+          const collection = collections.find(
+            (col) => String(col._id) === String(data.collectionId)
+          );
+          if (!collection) {
+            console.log('Collection is not found', data);
+            return;
+          }
+
+          return {
+            id: String(data._id),
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            updateTime: data.updateTime,
+            q: data.q,
+            a: data.a,
+            chunkIndex: data.chunkIndex,
+            indexes: data.indexes,
+            ...getCollectionSourceData(collection),
+            score: [{ type: SearchScoreTypeEnum.fullText, value: data.score ?? 0, index }]
+          };
+        })
+        .filter(Boolean) as SearchDataResponseItemType[],
+      tokenLen: 0
+    };
+  };
+  const fullTextRecall2 = async ({
+    query,
+    limit,
+    filterCollectionIdList,
+    forbidCollectionIdList
+  }: {
+    query: string;
+    limit: number;
+    filterCollectionIdList?: string[];
+    forbidCollectionIdList: string[];
+  }): Promise<{
+    fullTextRecallResults: SearchDataResponseItemType[];
+    tokenLen: number;
+  }> => {
+    if (limit === 0) {
+      return {
+        fullTextRecallResults: [],
+        tokenLen: 0
+      };
+    }
+
+    const searchResults = (
+      await Promise.all(
+        datasetIds.map(async (id) => {
+          return MongoDatasetDataText.aggregate(
+            [
+              {
+                $match: {
+                  teamId: new Types.ObjectId(teamId),
+                  datasetId: new Types.ObjectId(id),
+                  $text: { $search: jiebaSplit({ text: query }) },
+                  ...(filterCollectionIdList
+                    ? {
+                        collectionId: {
+                          $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                        }
+                      }
+                    : {}),
+                  ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
+                    ? {
+                        collectionId: {
+                          $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                        }
+                      }
+                    : {})
+                }
+              },
+              {
+                $sort: {
+                  score: { $meta: 'textScore' }
+                }
+              },
+              {
+                $limit: limit
+              },
+              {
+                $project: {
+                  _id: 1,
+                  collectionId: 1,
+                  dataId: 1,
+                  score: { $meta: 'textScore' }
+                }
+              }
+            ],
+            {
+              ...readFromSecondary
+            }
+          );
+        })
+      )
+    ).flat() as (DatasetDataTextSchemaType & { score: number })[];
+
+    // Get data and collections
+    const [dataList, collections] = await Promise.all([
+      MongoDatasetData.find(
+        {
+          _id: { $in: searchResults.map((item) => item.dataId) }
+        },
+        '_id datasetId collectionId updateTime q a chunkIndex indexes',
+        { ...readFromSecondary }
+      ).lean(),
+      MongoDatasetCollection.find(
+        {
+          _id: { $in: searchResults.map((item) => item.collectionId) }
+        },
+        '_id name fileId rawLink externalFileId externalFileUrl',
+        { ...readFromSecondary }
+      ).lean()
+    ]);
+
+    return {
+      fullTextRecallResults: searchResults
+        .map((item, index) => {
+          const collection = collections.find(
+            (col) => String(col._id) === String(item.collectionId)
+          );
+          if (!collection) {
+            console.log('Collection is not found', item);
+            return;
+          }
+          const data = dataList.find((data) => String(data._id) === String(item.dataId));
+          if (!data) {
+            console.log('Data is not found', item);
+            return;
+          }
+
+          return {
+            id: String(data._id),
+            datasetId: String(data.datasetId),
+            collectionId: String(data.collectionId),
+            updateTime: data.updateTime,
+            q: data.q,
+            a: data.a,
+            chunkIndex: data.chunkIndex,
+            indexes: data.indexes,
+            ...getCollectionSourceData(collection),
+            score: [
+              {
+                type: SearchScoreTypeEnum.fullText,
+                value: item.score || 0,
+                index
+              }
+            ]
+          };
+        })
+        .filter(Boolean) as SearchDataResponseItemType[],
       tokenLen: 0
     };
   };
@@ -496,7 +636,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
             forbidCollectionIdList,
             filterCollectionIdList
           }),
-          fullTextRecall({
+          // FullText tmp
+          fullTextRecall2({
             query,
             limit: fullTextLimit,
             filterCollectionIdList,

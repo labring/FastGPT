@@ -33,7 +33,7 @@ export const jsonRes = <T = any>(
 
     addLog.error(`Api response error: ${url}`, ERROR_RESPONSE[errResponseKey]);
 
-    return res.json(ERROR_RESPONSE[errResponseKey]);
+    return res.status(code).json(ERROR_RESPONSE[errResponseKey]);
   }
 
   // another error

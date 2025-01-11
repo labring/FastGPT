@@ -32,11 +32,11 @@ weight: 602
 
 1. ### 创建应用模板
 
-应用模板配置以及相关资源，都会在 **projects/app/public/appMarketTemplates** 目录下。
+应用模板配置以及相关资源，都会在 **packages/templates/src** 目录下。
 
 ![](/imgs/template_submission2.png)
 
-1. 在 **projects/app/public/appMarketTemplates** 目录下，创建一个文件夹，名称为模板对应的 id。
+1. 在**packages/templates/src** 目录下，创建一个文件夹，名称为模板对应的 id。
 2. 在刚刚创建的文件夹中，再创建一个 **template.json** 文件，复制粘贴并填写如下配置：
 
 ```JSON
