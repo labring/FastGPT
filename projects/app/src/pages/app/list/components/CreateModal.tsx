@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Flex,
@@ -32,6 +32,7 @@ import {
 } from '@/web/core/app/api/template';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import { appTypeMap } from '@/pageComponents/app/constants';
 
 type FormType = {
   avatar: string;
@@ -59,28 +60,7 @@ const CreateModal = ({
   const [currentCreateType, setCurrentCreateType] = useState<'template' | 'curl'>('template');
   const isTemplateMode = currentCreateType === 'template';
 
-  const appTypeMap = useRef({
-    [AppTypeEnum.simple]: {
-      icon: 'core/app/simpleBot',
-      title: t('app:type.Create simple bot'),
-      avatar: 'core/app/type/simpleFill',
-      emptyCreateText: t('app:create_empty_app')
-    },
-    [AppTypeEnum.workflow]: {
-      icon: 'core/app/type/workflowFill',
-      avatar: 'core/app/type/workflowFill',
-      title: t('app:type.Create workflow bot'),
-      emptyCreateText: t('app:create_empty_workflow')
-    },
-    [AppTypeEnum.plugin]: {
-      icon: 'core/app/type/pluginFill',
-      avatar: 'core/app/type/pluginFill',
-      title: t('app:type.Create plugin bot'),
-      emptyCreateText: t('app:create_empty_plugin')
-    }
-  });
-
-  const typeData = appTypeMap.current[type];
+  const typeData = appTypeMap[type];
   const { data: templateList = [], loading: isRequestTemplates } = useRequest2(
     () => getTemplateMarketItemList({ isQuickTemplate: true, type }),
     {
@@ -162,7 +142,7 @@ const CreateModal = ({
   return (
     <MyModal
       iconSrc={typeData.icon}
-      title={typeData.title}
+      title={t(typeData.title)}
       isOpen
       isCentered={!isPc}
       maxW={['90vw', '40rem']}
@@ -255,7 +235,7 @@ const CreateModal = ({
             >
               <MyIcon name={'common/addLight'} w={'1.5rem'} />
               <Box fontSize={'sm'} mt={2}>
-                {typeData.emptyCreateText}
+                {t(typeData.emptyCreateText)}
               </Box>
             </Card>
             {templateList.map((item) => (
