@@ -74,7 +74,6 @@ export const useSelectFile = (props?: {
           maxW,
           maxH
         });
-        console.log(src, '--');
         callback?.(src);
         return src;
       } catch (err: any) {

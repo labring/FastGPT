@@ -30,6 +30,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import TemplateMarketModal from './components/TemplateMarketModal';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import JsonImportModal from './components/JsonImportModal';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -63,6 +64,11 @@ const MyApps = () => {
     isOpen: isOpenCreateHttpPlugin,
     onOpen: onOpenCreateHttpPlugin,
     onClose: onCloseCreateHttpPlugin
+  } = useDisclosure();
+  const {
+    isOpen: isOpenJsonImportModal,
+    onOpen: onOpenJsonImportModal,
+    onClose: onCloseJsonImportModal
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const [templateModalType, setTemplateModalType] = useState<AppTypeEnum | 'all'>();
@@ -244,6 +250,16 @@ const MyApps = () => {
                       }
                     ]
                   },
+                  {
+                    children: [
+                      {
+                        icon: 'core/app/type/jsonImport',
+                        label: t('app:type.Import from json'),
+                        description: t('app:type.Import from json tip'),
+                        onClick: onOpenJsonImportModal
+                      }
+                    ]
+                  },
                   ...(isPc
                     ? []
                     : [
@@ -375,6 +391,7 @@ const MyApps = () => {
           defaultType={templateModalType}
         />
       )}
+      {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
   );
 };

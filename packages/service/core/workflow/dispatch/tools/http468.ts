@@ -2,6 +2,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -16,7 +17,9 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   textAdaptGptResponse,
-  replaceEditorVariable
+  replaceEditorVariable,
+  formatVariableValByType,
+  getReferenceVariableValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
 import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
@@ -104,15 +107,73 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     [NodeInputKeyEnum.addInputParam]: concatVariables,
     ...concatVariables
   };
+
+  // General data for variable substitution（Exclude: json body)
   const replaceStringVariables = (text: string) => {
-    return replaceVariable(
-      replaceEditorVariable({
-        text,
-        nodes: runtimeNodes,
-        variables: allVariables
-      }),
-      allVariables
-    );
+    return replaceEditorVariable({
+      text,
+      nodes: runtimeNodes,
+      variables: allVariables
+    });
+  };
+  /* 特殊处理 JSON 的字符串，减少解码错误
+    1. 找不到的值，替换成 null
+    2. 有换行字符串
+  */
+  const replaceJsonBodyString = (text: string) => {
+    const valToStr = (val: any) => {
+      if (val === undefined) return 'null';
+      if (val === null) return 'null';
+
+      if (typeof val === 'object') return JSON.stringify(val);
+
+      if (typeof val === 'string') {
+        const str = JSON.stringify(val);
+        return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
+      }
+
+      return String(val);
+    };
+
+    // 1. Replace {{key}} variables
+    const regex1 = /{{([^}]+)}}/g;
+    const matches1 = text.match(regex1) || [];
+    const uniqueKeys1 = [...new Set(matches1.map((match) => match.slice(2, -2)))];
+    for (const key of uniqueKeys1) {
+      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => valToStr(variables[key]));
+    }
+
+    // 2. Replace {{key.key}} variables
+    const regex2 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
+    const matches2 = [...text.matchAll(regex2)];
+    if (matches2.length === 0) return text;
+    matches2.forEach((match) => {
+      const nodeId = match[1];
+      const id = match[2];
+
+      const variableVal = (() => {
+        if (nodeId === VARIABLE_NODE_ID) {
+          return variables[id];
+        }
+        // Find upstream node input/output
+        const node = runtimeNodes.find((node) => node.nodeId === nodeId);
+        if (!node) return;
+
+        const output = node.outputs.find((output) => output.id === id);
+        if (output) return formatVariableValByType(output.value, output.valueType);
+
+        const input = node.inputs.find((input) => input.key === id);
+        if (input)
+          return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
+      })();
+
+      const formatVal = valToStr(variableVal);
+
+      const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
+      text = text.replace(regex, () => formatVal);
+    });
+
+    return text.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null');
   };
 
   httpReqUrl = replaceStringVariables(httpReqUrl);
@@ -176,15 +237,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
-        httpJsonBody = replaceStringVariables(httpJsonBody);
-
-        const replaceJsonBody = httpJsonBody.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null');
-
-        // Json body, parse and return
-        const jsonParse = json5.parse(replaceJsonBody);
-        const removeSignJson = removeUndefinedSign(jsonParse);
-        return removeSignJson;
+        return json5.parse(replaceJsonBodyString(httpJsonBody));
       }
+
+      // Raw text, xml
       httpJsonBody = replaceStringVariables(httpJsonBody);
       return httpJsonBody.replaceAll(UNDEFINED_SIGN, 'null');
     } catch (error) {
@@ -335,40 +391,40 @@ async function fetchData({
   };
 }
 
-function replaceVariable(text: string, obj: Record<string, any>) {
-  for (const [key, value] of Object.entries(obj)) {
-    if (value === undefined) {
-      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), UNDEFINED_SIGN);
-    } else {
-      const replacement = JSON.stringify(value);
-      const unquotedReplacement =
-        replacement.startsWith('"') && replacement.endsWith('"')
-          ? replacement.slice(1, -1)
-          : replacement;
-      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => unquotedReplacement);
-    }
-  }
-  return text || '';
-}
-function removeUndefinedSign(obj: Record<string, any>) {
-  for (const key in obj) {
-    if (obj[key] === UNDEFINED_SIGN) {
-      obj[key] = undefined;
-    } else if (Array.isArray(obj[key])) {
-      obj[key] = obj[key].map((item: any) => {
-        if (item === UNDEFINED_SIGN) {
-          return undefined;
-        } else if (typeof item === 'object') {
-          removeUndefinedSign(item);
-        }
-        return item;
-      });
-    } else if (typeof obj[key] === 'object') {
-      removeUndefinedSign(obj[key]);
-    }
-  }
-  return obj;
-}
+// function replaceVariable(text: string, obj: Record<string, any>) {
+//   for (const [key, value] of Object.entries(obj)) {
+//     if (value === undefined) {
+//       text = text.replace(new RegExp(`{{(${key})}}`, 'g'), UNDEFINED_SIGN);
+//     } else {
+//       const replacement = JSON.stringify(value);
+//       const unquotedReplacement =
+//         replacement.startsWith('"') && replacement.endsWith('"')
+//           ? replacement.slice(1, -1)
+//           : replacement;
+//       text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => unquotedReplacement);
+//     }
+//   }
+//   return text || '';
+// }
+// function removeUndefinedSign(obj: Record<string, any>) {
+//   for (const key in obj) {
+//     if (obj[key] === UNDEFINED_SIGN) {
+//       obj[key] = undefined;
+//     } else if (Array.isArray(obj[key])) {
+//       obj[key] = obj[key].map((item: any) => {
+//         if (item === UNDEFINED_SIGN) {
+//           return undefined;
+//         } else if (typeof item === 'object') {
+//           removeUndefinedSign(item);
+//         }
+//         return item;
+//       });
+//     } else if (typeof obj[key] === 'object') {
+//       removeUndefinedSign(obj[key]);
+//     }
+//   }
+//   return obj;
+// }
 
 // Replace some special response from system plugin
 async function replaceSystemPluginResponse({

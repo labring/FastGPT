@@ -308,7 +308,6 @@
   "core.app.Random": "发散",
   "core.app.Search team tags": "搜索标签",
   "core.app.Select TTS": "选择语音播放模式",
-  "core.app.Select app from template": "从模板中选择",
   "core.app.Select quote template": "选择引用提示模板",
   "core.app.Set a name for your app": "给应用设置一个名称",
   "core.app.Setting ai property": "点击配置 AI 模型相关属性",

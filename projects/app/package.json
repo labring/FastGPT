@@ -10,7 +10,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@bany/curl-to-json": "^1.2.8",
     "@chakra-ui/anatomy": "2.2.1",
     "@chakra-ui/icons": "2.1.1",
     "@chakra-ui/next-js": "2.1.5",
