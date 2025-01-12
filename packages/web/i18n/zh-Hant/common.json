@@ -286,6 +286,7 @@
   "core.app.Config schedule plan": "設定排程執行",
   "core.app.Config whisper": "設定語音輸入",
   "core.app.Config_auto_execute": "點選配置自動執行規則",
+  "core.app.Create app by curl": "透過 curl 創建",
   "core.app.Interval timer config": "排程執行設定",
   "core.app.Interval timer run": "排程執行",
   "core.app.Interval timer tip": "可排程執行應用程式",

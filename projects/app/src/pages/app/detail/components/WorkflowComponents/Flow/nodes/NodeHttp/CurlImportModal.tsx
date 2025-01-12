@@ -19,6 +19,34 @@ const methodMap: { [K in RequestMethod]: string } = {
   patch: 'PATCH'
 };
 
+export const parseCurl = (curlContent: string) => {
+  const parsed = parse(curlContent);
+
+  if (!parsed.url) {
+    throw new Error('url not found');
+  }
+
+  const newParams = Object.keys(parsed.params || {}).map((key) => ({
+    key,
+    value: parsed.params?.[key],
+    type: 'string'
+  }));
+  const newHeaders = Object.keys(parsed.header || {}).map((key) => ({
+    key,
+    value: parsed.header?.[key],
+    type: 'string'
+  }));
+  const newBody = JSON.stringify(parsed.data, null, 2);
+
+  return {
+    url: parsed.url,
+    method: methodMap[parsed.method?.toLowerCase() as RequestMethod] || 'GET',
+    params: newParams,
+    headers: newHeaders,
+    body: newBody
+  };
+};
+
 const CurlImportModal = ({
   nodeId,
   inputs,
@@ -49,22 +77,7 @@ const CurlImportModal = ({
 
       if (!requestUrl || !requestMethod || !params || !headers || !jsonBody) return;
 
-      const parsed = parse(content);
-      if (!parsed.url) {
-        throw new Error('url not found');
-      }
-
-      const newParams = Object.keys(parsed.params || {}).map((key) => ({
-        key,
-        value: parsed.params?.[key],
-        type: 'string'
-      }));
-      const newHeaders = Object.keys(parsed.header || {}).map((key) => ({
-        key,
-        value: parsed.header?.[key],
-        type: 'string'
-      }));
-      const newBody = JSON.stringify(parsed.data, null, 2);
+      const parsed = parseCurl(content);
 
       onChangeNode({
         nodeId,
@@ -82,7 +95,7 @@ const CurlImportModal = ({
         key: NodeInputKeyEnum.httpMethod,
         value: {
           ...requestMethod,
-          value: methodMap[parsed.method?.toLowerCase() as RequestMethod] || 'GET'
+          value: parsed.method
         }
       });
 
@@ -92,7 +105,7 @@ const CurlImportModal = ({
         key: NodeInputKeyEnum.httpParams,
         value: {
           ...params,
-          value: newParams
+          value: parsed.params
         }
       });
 
@@ -102,7 +115,7 @@ const CurlImportModal = ({
         key: NodeInputKeyEnum.httpHeaders,
         value: {
           ...headers,
-          value: newHeaders
+          value: parsed.headers
         }
       });
 
@@ -112,7 +125,7 @@ const CurlImportModal = ({
         key: NodeInputKeyEnum.httpJsonBody,
         value: {
           ...jsonBody,
-          value: newBody
+          value: parsed.body
         }
       });
 

@@ -286,6 +286,7 @@
   "core.app.Config schedule plan": "Configure Scheduled Execution",
   "core.app.Config whisper": "Configure Voice Input",
   "core.app.Config_auto_execute": "Click to configure automatic execution rules",
+  "core.app.Create app by curl": "Create by curl",
   "core.app.Interval timer config": "Scheduled Execution Configuration",
   "core.app.Interval timer run": "Scheduled Execution",
   "core.app.Interval timer tip": "Can Execute App on Schedule",

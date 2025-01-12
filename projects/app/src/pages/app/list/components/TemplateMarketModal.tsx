@@ -37,6 +37,7 @@ import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
 type TemplateAppType = AppTypeEnum | 'all';
 
@@ -94,14 +95,18 @@ const TemplateMarketModal = ({
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
     async (template: AppTemplateSchemaType) => {
       const templateDetail = await getTemplateMarketItemDetail(template.templateId);
+      let workflow = templateDetail.workflow;
+      if (templateDetail.type === AppTypeEnum.simple) {
+        workflow = form2AppWorkflow(workflow, t);
+      }
       return postCreateApp({
         parentId,
         avatar: template.avatar,
         name: template.name,
         type: template.type as AppTypeEnum,
-        modules: templateDetail.workflow.nodes || [],
-        edges: templateDetail.workflow.edges || [],
-        chatConfig: templateDetail.workflow.chatConfig
+        modules: workflow.nodes || [],
+        edges: workflow.edges || [],
+        chatConfig: workflow.chatConfig
       }).then((res) => {
         webPushTrack.useAppTemplate({
           id: res,

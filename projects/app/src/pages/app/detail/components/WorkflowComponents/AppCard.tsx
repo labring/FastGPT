@@ -13,9 +13,10 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { filterSensitiveFormData } from '@/web/core/app/utils';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
@@ -210,11 +211,13 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
   return Render;
 };
 
-function ExportPopover({
+export function ExportPopover({
   chatConfig,
+  appForm,
   appName
 }: {
-  chatConfig: AppChatConfigType;
+  chatConfig?: AppChatConfigType;
+  appForm?: AppSimpleEditFormType;
   appName: string;
 }) {
   const { t } = useTranslation();
@@ -223,11 +226,15 @@ function ExportPopover({
 
   const onExportWorkflow = useCallback(
     async (mode: 'copy' | 'json') => {
-      const data = flowData2StoreData();
-      if (data) {
-        if (mode === 'copy') {
-          copyData(
-            JSON.stringify(
+      let config = '';
+
+      try {
+        if (appForm) {
+          config = JSON.stringify(filterSensitiveFormData(appForm), null, 2);
+        } else {
+          const data = flowData2StoreData();
+          if (data) {
+            config = JSON.stringify(
               {
                 nodes: filterSensitiveNodesData(data.nodes),
                 edges: data.edges,
@@ -235,27 +242,28 @@ function ExportPopover({
               },
               null,
               2
-            ),
-            t('app:export_config_successful')
-          );
-        } else if (mode === 'json') {
-          fileDownload({
-            text: JSON.stringify(
-              {
-                nodes: filterSensitiveNodesData(data.nodes),
-                edges: data.edges,
-                chatConfig
-              },
-              null,
-              2
-            ),
-            type: 'application/json;charset=utf-8',
-            filename: `${appName}.json`
-          });
+            );
+          }
         }
+      } catch (err) {
+        console.error(err);
+      }
+
+      if (!config) {
+        return;
+      }
+
+      if (mode === 'copy') {
+        copyData(config, t('app:export_config_successful'));
+      } else if (mode === 'json') {
+        fileDownload({
+          text: config,
+          type: 'application/json;charset=utf-8',
+          filename: `${appName}.json`
+        });
       }
     },
-    [appName, chatConfig, copyData, flowData2StoreData, t]
+    [appForm, appName, chatConfig, copyData, flowData2StoreData, t]
   );
 
   return (
@@ -266,7 +274,7 @@ function ExportPopover({
       trigger={'hover'}
       w={'8.6rem'}
       Trigger={
-        <MyBox display={'flex'} size={'md'} rounded={'4px'} cursor={'pointer'}>
+        <MyBox display={'flex'} cursor={'pointer'}>
           <MyIcon name={'export'} w={'16px'} mr={2} />
           <Box fontSize={'sm'}>{t('app:export_configs')}</Box>
         </MyBox>
