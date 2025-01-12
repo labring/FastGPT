@@ -487,16 +487,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       if (input.key === dynamicInput?.key) return;
 
       // Skip some special key
-      if (input.key === NodeInputKeyEnum.childrenNodeIdList) {
+      if (
+        [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
+          input.key as any
+        )
+      ) {
         params[input.key] = input.value;
-
         return;
       }
 
-      // replace {{xx}} variables
-      // let value = replaceVariable(input.value, variables);
-
-      // replace {{$xx.xx$}} variables
+      // replace {{$xx.xx$}} and {{xx}} variables
       let value = replaceEditorVariable({
         text: input.value,
         nodes: runtimeNodes,
@@ -604,6 +604,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         ...variables,
         ...dispatchRes[DispatchNodeResponseKeyEnum.newVariables]
       };
+    }
+
+    // Error
+    if (dispatchRes?.responseData?.error) {
+      addLog.warn('workflow error', dispatchRes.responseData.error);
     }
 
     return {

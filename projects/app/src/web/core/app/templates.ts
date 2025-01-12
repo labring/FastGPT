@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 import { AppItemType } from '@/types/app';
+import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import {
@@ -407,4 +408,287 @@ export const emptyTemplates: Record<
     ],
     edges: []
   }
+};
+
+export const parsePluginFromCurlString = (
+  curl: string
+): {
+  nodes: AppSchema['modules'];
+  edges: AppSchema['edges'];
+  chatConfig: AppSchema['chatConfig'];
+} => {
+  const { url, method, headers, body } = parseCurl(curl);
+
+  return {
+    nodes: [
+      {
+        nodeId: 'pluginInput',
+        name: 'workflow:template.plugin_start',
+        intro: 'workflow:intro_plugin_input',
+        avatar: 'core/workflow/template/workflowStart',
+        flowNodeType: 'pluginInput',
+        showStatus: false,
+        position: {
+          x: 630.1191328382079,
+          y: -125.05298493910118
+        },
+        version: '481',
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'pluginOutput',
+        name: 'common:core.module.template.self_output',
+        intro: 'workflow:intro_custom_plugin_output',
+        avatar: 'core/workflow/template/pluginOutput',
+        flowNodeType: 'pluginOutput',
+        showStatus: false,
+        position: {
+          x: 1776.334576378706,
+          y: -179.2671413906911
+        },
+        version: '481',
+        inputs: [
+          {
+            renderTypeList: ['reference'],
+            valueType: 'any',
+            canEdit: true,
+            key: 'result',
+            label: 'result',
+            isToolOutput: false,
+            description: '',
+            required: true,
+            value: ['vumlECDQTjeC', 'httpRawResponse']
+          },
+          {
+            renderTypeList: ['reference'],
+            valueType: 'object',
+            canEdit: true,
+            key: 'error',
+            label: 'error',
+            isToolOutput: false,
+            description: '',
+            required: true,
+            value: ['vumlECDQTjeC', 'error']
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: 'vumlECDQTjeC',
+        name: 'HTTP 请求',
+        intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
+        avatar: 'core/workflow/template/httpRequest',
+        flowNodeType: 'httpRequest468',
+        showStatus: true,
+        position: {
+          x: 1068.6226695001628,
+          y: -435.2671413906911
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'system_addInputParam',
+            renderTypeList: ['addInputParam'],
+            valueType: 'dynamic',
+            label: '',
+            required: false,
+            description: '接收前方节点的输出值作为变量，这些变量可以被 HTTP 请求参数使用。',
+            customInputConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'arrayAny',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: true
+            },
+            valueDesc: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpMethod',
+            renderTypeList: ['custom'],
+            valueType: 'string',
+            label: '',
+            value: method,
+            required: true,
+            valueDesc: '',
+            description: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpTimeout',
+            renderTypeList: ['custom'],
+            valueType: 'number',
+            label: '',
+            value: 30,
+            min: 5,
+            max: 600,
+            required: true,
+            valueDesc: '',
+            description: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpReqUrl',
+            renderTypeList: ['hidden'],
+            valueType: 'string',
+            label: '',
+            description:
+              '新的 HTTP 请求地址。如果出现两个"请求地址"，可以删除该模块重新加入，会拉取最新的模块配置。',
+            placeholder: 'https://api.ai.com/getInventory',
+            required: false,
+            value: url,
+            valueDesc: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpHeader',
+            renderTypeList: ['custom'],
+            valueType: 'any',
+            value: headers,
+            label: '',
+            description:
+              '自定义请求头，请严格填入 JSON 字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如：{"Authorization":"Bearer xxx"}',
+            placeholder: 'common:core.module.input.description.Http Request Header',
+            required: false,
+            valueDesc: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpParams',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            description:
+              '新的 HTTP 请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。',
+            label: '',
+            required: false,
+            valueDesc: '',
+            description: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpJsonBody',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            value: body,
+            label: '',
+            required: false,
+            valueDesc: '',
+            description: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpFormBody',
+            renderTypeList: ['hidden'],
+            valueType: 'any',
+            value: [],
+            label: '',
+            required: false,
+            valueDesc: '',
+            description: '',
+            debugLabel: '',
+            toolDescription: ''
+          },
+          {
+            key: 'system_httpContentType',
+            renderTypeList: ['hidden'],
+            valueType: 'string',
+            value: 'json',
+            label: '',
+            required: false,
+            valueDesc: '',
+            description: '',
+            debugLabel: '',
+            toolDescription: ''
+          }
+        ],
+        outputs: [
+          {
+            id: 'system_addOutputParam',
+            key: 'system_addOutputParam',
+            type: 'dynamic',
+            valueType: 'dynamic',
+            label: '输出字段提取',
+            customFieldConfig: {
+              selectValueTypeList: [
+                'string',
+                'number',
+                'boolean',
+                'object',
+                'arrayString',
+                'arrayNumber',
+                'arrayBoolean',
+                'arrayObject',
+                'arrayAny',
+                'any',
+                'chatHistory',
+                'datasetQuote',
+                'dynamic',
+                'selectApp',
+                'selectDataset'
+              ],
+              showDescription: false,
+              showDefaultValue: false
+            },
+            description: '可以通过 JSONPath 语法来提取响应值中的指定字段',
+            valueDesc: ''
+          },
+          {
+            id: 'error',
+            key: 'error',
+            label: '请求错误',
+            description: 'HTTP请求错误信息，成功时返回空',
+            valueType: 'object',
+            type: 'static',
+            valueDesc: ''
+          },
+          {
+            id: 'httpRawResponse',
+            key: 'httpRawResponse',
+            required: true,
+            label: '原始响应',
+            description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
+            valueType: 'any',
+            type: 'static',
+            valueDesc: ''
+          }
+        ]
+      }
+    ],
+    edges: [
+      {
+        source: 'pluginInput',
+        target: 'vumlECDQTjeC',
+        sourceHandle: 'pluginInput-source-right',
+        targetHandle: 'vumlECDQTjeC-target-left'
+      },
+      {
+        source: 'vumlECDQTjeC',
+        target: 'pluginOutput',
+        sourceHandle: 'vumlECDQTjeC-source-right',
+        targetHandle: 'pluginOutput-target-left'
+      }
+    ]
+  };
 };

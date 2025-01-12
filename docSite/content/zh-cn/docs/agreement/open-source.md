@@ -7,7 +7,7 @@ toc: true
 weight: 1210
 ---
 
-FastGPT 项目在 Apache License 2.0 许可下开源，同时包含以下附加条件：
+FastGPT 项目在 Apache License 2.0 许可下开源，但包含以下附加条件：
 
 + FastGPT 允许被用于商业化，例如作为其他应用的“后端即服务”使用，或者作为应用开发平台提供给企业。然而，当满足以下条件时，必须联系作者获得商业许可：
    

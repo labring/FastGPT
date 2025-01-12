@@ -5,6 +5,6 @@ export const getErrText = (err: any, def = ''): any => {
     typeof err === 'string'
       ? err
       : err?.response?.data?.message || err?.response?.message || err?.message || def;
-  msg && console.log('error =>', msg);
+  // msg && console.log('error =>', msg);
   return replaceSensitiveText(msg);
 };
