@@ -8,8 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { appTypeMap } from './CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useEffect, useState } from 'react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useMemo } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -17,30 +16,29 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
-import DragEditor from '@fastgpt/web/components/common/Textarea/DragEditor';
+import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
 
 type FormType = {
   avatar: string;
   name: string;
-  type: AppTypeEnum | '';
+  workflowStr: string;
 };
 
 const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
-  const { toast } = useToast();
   const { t } = useTranslation();
-  const { isPc } = useSystem();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
-      avatar: appTypeMap[AppTypeEnum.simple].avatar,
+      avatar: '',
       name: '',
-      type: AppTypeEnum.simple
+      workflowStr: ''
     }
   });
-  const avatar = watch('avatar');
+  const workflowStr = watch('workflowStr');
 
+  const avatar = watch('avatar');
   const {
     File,
     onOpen: onOpenSelectFile,
@@ -49,43 +47,62 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     fileType: '.jpg,.png',
     multiple: false
   });
+  // If the user does not select an avatar, it will follow the type to change
+  const selectedAvatar = useMemo(() => {
+    if (avatar) return avatar;
 
-  const { File: ConfigFile, onOpen: onOpenSelectConfigFile } = useSelectFile({
-    fileType: 'json',
-    multiple: false
-  });
+    const defaultVal = appTypeMap[AppTypeEnum.simple].avatar;
+    if (!workflowStr) return defaultVal;
 
-  const [workflowStr, setWorkflowStr] = useState('');
+    try {
+      const workflow = JSON.parse(workflowStr);
+      const type = getAppType(workflow);
+      if (type) return appTypeMap[type].avatar;
+      return defaultVal;
+    } catch (err) {
+      return defaultVal;
+    }
+  }, [avatar, workflowStr]);
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest2(
-    async (data: FormType) => {
-      if (!data.type) {
-        return Promise.reject(t('app:type_not_recognized'));
-      }
+    async ({ name, workflowStr }: FormType) => {
+      const { workflow, appType } = await (async () => {
+        try {
+          const workflow = JSON.parse(workflowStr);
+          const appType = getAppType(workflow);
 
-      let workflow;
-      try {
-        if (data.type === AppTypeEnum.simple) {
-          const appForm = JSON.parse(workflowStr);
-          workflow = form2AppWorkflow(appForm, t);
-        } else {
-          workflow = JSON.parse(workflowStr);
+          if (!appType) {
+            return Promise.reject(t('app:type_not_recognized'));
+          }
+
+          if (appType === AppTypeEnum.simple) {
+            return {
+              workflow: form2AppWorkflow(workflow, t),
+              appType
+            };
+          }
+
+          return {
+            workflow,
+            appType
+          };
+        } catch (err) {
+          return Promise.reject(t('app:invalid_json_format'));
         }
-      } catch (err) {
-        return Promise.reject(t('app:invalid_json_format'));
-      }
+      })();
 
       return postCreateApp({
         parentId,
-        avatar: data.avatar,
-        name: data.name,
-        type: data.type,
+        avatar: selectedAvatar,
+        name,
+        type: appType,
         modules: workflow.nodes,
         edges: workflow.edges,
         chatConfig: workflow.chatConfig
       });
     },
     {
+      refreshDeps: [selectedAvatar],
       onSuccess(id: string) {
         router.push(`/app/detail?appId=${id}`);
         loadMyApps();
@@ -94,19 +111,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       successToast: t('common:common.Create Success')
     }
   );
-
-  useEffect(() => {
-    try {
-      const workflow = JSON.parse(workflowStr);
-      const type = getAppType(workflow);
-      setValue('type', type);
-      if (type && !avatar.startsWith('/')) {
-        setValue('avatar', appTypeMap[type].avatar);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }, [avatar, setValue, workflowStr]);
 
   return (
     <>
@@ -117,10 +121,8 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
         iconColor={'primary.600'}
-        isCentered={!isPc}
-        maxW={['90vw', '40rem']}
       >
-        <ModalBody px={9}>
+        <ModalBody>
           <Box color={'myGray.800'} fontWeight={'bold'}>
             {t('common:common.Set Name')}
           </Box>
@@ -128,9 +130,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
             <MyTooltip label={t('common:common.Set Avatar')}>
               <Avatar
                 flexShrink={0}
-                src={avatar}
-                w={['28px', '36px']}
-                h={['28px', '36px']}
+                src={selectedAvatar}
+                w={['1.75rem', '2.25rem']}
+                h={['1.75rem', '2.25rem']}
                 cursor={'pointer'}
                 borderRadius={'md'}
                 onClick={onOpenSelectFile}
@@ -146,18 +148,19 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
               })}
             />
           </Flex>
-          <Flex mt={3} w={'458px'}>
-            <DragEditor
+          <Box mt={5}>
+            <ImportAppConfigEditor
               value={workflowStr}
-              onChange={setWorkflowStr}
+              onChange={(e) => setValue('workflowStr', e)}
               rows={10}
-              File={ConfigFile}
-              onOpen={onOpenSelectConfigFile}
             />
-          </Flex>
+          </Box>
         </ModalBody>
-        <ModalFooter>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:add_new')}</Button>
+        <ModalFooter gap={4}>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:common.Cancel')}
+          </Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       <File

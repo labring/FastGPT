@@ -6,28 +6,27 @@ import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowContext } from './context';
-import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import dynamic from 'next/dynamic';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
-import { fileDownload } from '@/web/common/file/utils';
-import { AppChatConfigType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { filterSensitiveFormData } from '@/web/core/app/utils';
 
 const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
+const ExportConfigPopover = dynamic(
+  () => import('@/pageComponents/app/detail/ExportConfigPopover')
+);
 
 const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved: boolean }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp } = useContextSelector(
-    AppContext,
-    (v) => v
-  );
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
+  const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
+  const onOpenTeamTagModal = useContextSelector(AppContext, (v) => v.onOpenTeamTagModal);
+  const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
+  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
@@ -93,10 +92,11 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                 _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
                 cursor={'pointer'}
               >
-                {ExportPopover({
-                  chatConfig: appDetail.chatConfig,
-                  appName: appDetail.name
-                })}
+                <ExportConfigPopover
+                  chatConfig={appDetail.chatConfig}
+                  appName={appDetail.name}
+                  getWorkflowData={flowData2StoreData}
+                />
               </MyBox>
               {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
                 <>
@@ -149,6 +149,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
       appDetail.permission.hasWritePer,
       appDetail.permission.isOwner,
       feConfigs?.show_team_chat,
+      flowData2StoreData,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,
@@ -210,112 +211,5 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
 
   return Render;
 };
-
-export function ExportPopover({
-  chatConfig,
-  appForm,
-  appName
-}: {
-  chatConfig?: AppChatConfigType;
-  appForm?: AppSimpleEditFormType;
-  appName: string;
-}) {
-  const { t } = useTranslation();
-  const { copyData } = useCopyData();
-  const flowData2StoreData = useContextSelector(WorkflowContext, (v) => v.flowData2StoreData);
-
-  const onExportWorkflow = useCallback(
-    async (mode: 'copy' | 'json') => {
-      let config = '';
-
-      try {
-        if (appForm) {
-          config = JSON.stringify(filterSensitiveFormData(appForm), null, 2);
-        } else {
-          const data = flowData2StoreData();
-          if (data) {
-            config = JSON.stringify(
-              {
-                nodes: filterSensitiveNodesData(data.nodes),
-                edges: data.edges,
-                chatConfig
-              },
-              null,
-              2
-            );
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      }
-
-      if (!config) {
-        return;
-      }
-
-      if (mode === 'copy') {
-        copyData(config, t('app:export_config_successful'));
-      } else if (mode === 'json') {
-        fileDownload({
-          text: config,
-          type: 'application/json;charset=utf-8',
-          filename: `${appName}.json`
-        });
-      }
-    },
-    [appForm, appName, chatConfig, copyData, flowData2StoreData, t]
-  );
-
-  return (
-    <MyPopover
-      placement={'right-start'}
-      offset={[0, 20]}
-      hasArrow
-      trigger={'hover'}
-      w={'8.6rem'}
-      Trigger={
-        <MyBox display={'flex'} cursor={'pointer'}>
-          <MyIcon name={'export'} w={'16px'} mr={2} />
-          <Box fontSize={'sm'}>{t('app:export_configs')}</Box>
-        </MyBox>
-      }
-    >
-      {({ onClose }) => (
-        <Box p={1}>
-          <Flex
-            py={'0.38rem'}
-            px={1}
-            color={'myGray.600'}
-            _hover={{
-              bg: 'myGray.05',
-              color: 'primary.600',
-              cursor: 'pointer'
-            }}
-            borderRadius={'xs'}
-            onClick={() => onExportWorkflow('copy')}
-          >
-            <MyIcon name={'copy'} w={'1rem'} mr={2} />
-            <Box fontSize={'mini'}>{t('common:common.copy_to_clipboard')}</Box>
-          </Flex>
-          <Flex
-            py={'0.38rem'}
-            px={1}
-            color={'myGray.600'}
-            _hover={{
-              bg: 'myGray.05',
-              color: 'primary.600',
-              cursor: 'pointer'
-            }}
-            borderRadius={'xs'}
-            onClick={() => onExportWorkflow('json')}
-          >
-            <MyIcon name={'configmap'} w={'1rem'} mr={2} />
-            <Box fontSize={'mini'}>{t('common:common.export_to_json')}</Box>
-          </Flex>
-        </Box>
-      )}
-    </MyPopover>
-  );
-}
 
 export default AppCard;

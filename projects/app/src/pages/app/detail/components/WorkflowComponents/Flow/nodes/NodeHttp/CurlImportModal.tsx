@@ -1,51 +1,14 @@
 import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { ModalBody, Button, ModalFooter, useDisclosure, Textarea, Box } from '@chakra-ui/react';
+import { ModalBody, Button, ModalFooter, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import parse from '@bany/curl-to-json';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
-
-type RequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
-const methodMap: { [K in RequestMethod]: string } = {
-  get: 'GET',
-  post: 'POST',
-  put: 'PUT',
-  delete: 'DELETE',
-  patch: 'PATCH'
-};
-
-export const parseCurl = (curlContent: string) => {
-  const parsed = parse(curlContent);
-
-  if (!parsed.url) {
-    throw new Error('url not found');
-  }
-
-  const newParams = Object.keys(parsed.params || {}).map((key) => ({
-    key,
-    value: parsed.params?.[key],
-    type: 'string'
-  }));
-  const newHeaders = Object.keys(parsed.header || {}).map((key) => ({
-    key,
-    value: parsed.header?.[key],
-    type: 'string'
-  }));
-  const newBody = JSON.stringify(parsed.data, null, 2);
-
-  return {
-    url: parsed.url,
-    method: methodMap[parsed.method?.toLowerCase() as RequestMethod] || 'GET',
-    params: newParams,
-    headers: newHeaders,
-    body: newBody
-  };
-};
+import { parseCurl } from '@fastgpt/global/common/string/http';
 
 const CurlImportModal = ({
   nodeId,

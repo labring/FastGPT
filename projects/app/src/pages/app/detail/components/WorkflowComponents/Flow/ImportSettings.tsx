@@ -1,13 +1,15 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useTranslation } from 'next-i18next';
-import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import DragEditor from '@fastgpt/web/components/common/Textarea/DragEditor';
+import dynamic from 'next/dynamic';
+
+const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
+  ssr: false
+});
 
 type Props = {
   onClose: () => void;
@@ -15,11 +17,7 @@ type Props = {
 
 const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
-  const { File, onOpen } = useSelectFile({
-    fileType: 'json',
-    multiple: false
-  });
-  const { isPc } = useSystem();
+
   const initData = useContextSelector(WorkflowContext, (v) => v.initData);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
@@ -31,19 +29,10 @@ const ImportSettings = ({ onClose }: Props) => {
       iconSrc="common/importLight"
       iconColor="primary.600"
       title={t('app:import_configs')}
-      size={isPc ? 'lg' : 'md'}
+      size={'md'}
     >
       <ModalBody>
-        <DragEditor
-          value={value}
-          onChange={setValue}
-          rows={16}
-          placeholder={
-            isPc ? t('app:paste_config') + '\n' + t('app:or_drag_JSON') : t('app:paste_config')
-          }
-          File={File}
-          onOpen={onOpen}
-        />
+        <ImportAppConfigEditor value={value} onChange={setValue} rows={16} />
       </ModalBody>
       <ModalFooter justifyItems={'flex-end'}>
         <Button

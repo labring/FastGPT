@@ -24,7 +24,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postTransition2Workflow } from '@/web/core/app/api/app';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { SimpleAppSnapshotType } from './useSnapshots';
-import { ExportPopover } from '../WorkflowComponents/AppCard';
+import ExportConfigPopover from '@/pageComponents/app/detail/ExportConfigPopover';
 
 const AppCard = ({
   appForm,
@@ -134,10 +134,11 @@ const AppCard = ({
                     {
                       label: (
                         <Flex>
-                          {ExportPopover({
-                            appName: appDetail.name,
-                            appForm
-                          })}
+                          <ExportConfigPopover
+                            appName={appDetail.name}
+                            appForm={appForm}
+                            chatConfig={appDetail.chatConfig}
+                          />
                         </Flex>
                       )
                     },

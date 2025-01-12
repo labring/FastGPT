@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 import { AppItemType } from '@/types/app';
+import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import {
@@ -409,31 +410,15 @@ export const emptyTemplates: Record<
   }
 };
 
-export const getCurlPlugin = ({
-  params,
-  headers,
-  body,
-  method,
-  url
-}: {
-  params: {
-    key: string;
-    value: string | undefined;
-    type: string;
-  }[];
-  headers: {
-    key: string;
-    value: string | undefined;
-    type: string;
-  }[];
-  body: string;
-  method: string;
-  url: string;
-}): {
+export const parsePluginFromCurlString = (
+  curl: string
+): {
   nodes: AppSchema['modules'];
   edges: AppSchema['edges'];
   chatConfig: AppSchema['chatConfig'];
 } => {
+  const { url, method, headers, body } = parseCurl(curl);
+
   return {
     nodes: [
       {
@@ -487,20 +472,6 @@ export const getCurlPlugin = ({
             value: ['vumlECDQTjeC', 'error']
           }
         ],
-        outputs: []
-      },
-      {
-        nodeId: 'pluginConfig',
-        name: 'common:core.module.template.system_config',
-        intro: '',
-        avatar: 'core/workflow/template/systemConfig',
-        flowNodeType: 'pluginConfig',
-        position: {
-          x: 182.48010602254573,
-          y: -190.55298493910115
-        },
-        version: '4811',
-        inputs: [],
         outputs: []
       },
       {
@@ -718,34 +689,6 @@ export const getCurlPlugin = ({
         sourceHandle: 'vumlECDQTjeC-source-right',
         targetHandle: 'pluginOutput-target-left'
       }
-    ],
-    chatConfig: {
-      questionGuide: {
-        open: false,
-        model: 'gpt-4o-mini',
-        customPrompt:
-          "You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:\n\n1. Use the same language as the user's last question in the conversation history.\n2. Keep each question under 20 characters in length.\n\nAnalyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.\n\nRemember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics."
-      },
-      ttsConfig: {
-        type: 'web'
-      },
-      whisperConfig: {
-        open: false,
-        autoSend: false,
-        autoTTSResponse: false
-      },
-      chatInputGuide: {
-        open: false,
-        textList: [],
-        customUrl: ''
-      },
-      instruction: '',
-      autoExecute: {
-        open: false,
-        defaultPrompt: ''
-      },
-      variables: [],
-      welcomeText: ''
-    }
+    ]
   };
 };

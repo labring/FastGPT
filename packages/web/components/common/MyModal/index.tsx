@@ -75,6 +75,7 @@ const MyModal = ({
             py={'10px'}
             fontSize={'md'}
             fontWeight={'bold'}
+            minH={['46px', '53px']}
           >
             {iconSrc && (
               <>

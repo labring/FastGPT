@@ -1,24 +1,25 @@
 import React, { DragEvent, useCallback, useState } from 'react';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useSystem } from '../../../../hooks/useSystem';
-import MyIcon from '../../Icon';
-import { useToast } from '../../../../hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 
 type Props = {
   value: string;
   onChange: (value: string) => void;
-  placeholder?: string;
   rows?: number;
-  File?: ({ onSelect }: { onSelect: (e: File[], sign?: any) => void }) => React.JSX.Element;
-  onOpen?: () => void;
 };
 
-const DragEditor = ({ value, onChange, placeholder, rows = 16, File, onOpen }: Props) => {
+const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
   const { t } = useTranslation();
-  const { isPc } = useSystem();
   const { toast } = useToast();
   const [isDragging, setIsDragging] = useState(false);
+
+  const { File, onOpen } = useSelectFile({
+    fileType: 'json',
+    multiple: false
+  });
 
   const handleDragEnter = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -48,7 +49,7 @@ const DragEditor = ({ value, onChange, placeholder, rows = 16, File, onOpen }: P
       };
       reader.readAsText(file);
     },
-    [t, toast]
+    [onChange, t, toast]
   );
 
   const onSelectFile = useCallback(
@@ -88,15 +89,15 @@ const DragEditor = ({ value, onChange, placeholder, rows = 16, File, onOpen }: P
             onDragLeave={handleDragLeave}
           >
             <Flex align={'center'} justify={'center'} flexDir={'column'} gap={'0.62rem'}>
-              <MyIcon name={'configmap'} w={'1.5rem'} color={'myGray.500'} />
-              <Box color={'myGray.600'} fontSize={'mini'}>
+              <MyIcon name={'configmap'} w={'2rem'} color={'primary.500'} />
+              <Box color={'primary.600'} fontSize={'sm'}>
                 {t('app:file_recover')}
               </Box>
             </Flex>
           </Flex>
         ) : (
           <Box>
-            <Flex justify={'space-between'} align={'center'} pb={2}>
+            <Flex justify={'space-between'} align={'center'} pb={3}>
               <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
                 {t('common:common.json_config')}
               </Box>
@@ -119,12 +120,7 @@ const DragEditor = ({ value, onChange, placeholder, rows = 16, File, onOpen }: P
                 borderRadius={'md'}
                 borderColor={'myGray.200'}
                 value={value}
-                placeholder={
-                  placeholder ||
-                  (isPc
-                    ? t('app:paste_config') + '\n' + t('app:or_drag_JSON')
-                    : t('app:paste_config'))
-                }
+                placeholder={t('app:or_drag_JSON')}
                 rows={rows}
                 onChange={(e) => onChange(e.target.value)}
               />
@@ -137,4 +133,4 @@ const DragEditor = ({ value, onChange, placeholder, rows = 16, File, onOpen }: P
   );
 };
 
-export default React.memo(DragEditor);
+export default React.memo(ImportAppConfigEditor);

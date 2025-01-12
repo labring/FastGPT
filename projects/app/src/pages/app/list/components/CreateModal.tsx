@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -14,7 +14,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
-import { emptyTemplates, getCurlPlugin } from '@/web/core/app/templates';
+import { emptyTemplates, parsePluginFromCurlString } from '@/web/core/app/templates';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -31,37 +31,15 @@ import {
   getTemplateMarketItemList
 } from '@/web/core/app/api/template';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { i18nT } from '@fastgpt/web/i18n/utils';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { parseCurl } from '../../detail/components/WorkflowComponents/Flow/nodes/NodeHttp/CurlImportModal';
 
 type FormType = {
   avatar: string;
   name: string;
+  curlContent: string;
 };
 
 export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
-
-export const appTypeMap = {
-  [AppTypeEnum.simple]: {
-    icon: 'core/app/simpleBot',
-    title: i18nT('app:type.Create simple bot'),
-    avatar: 'core/app/type/simpleFill',
-    emptyCreateText: i18nT('app:create_empty_app')
-  },
-  [AppTypeEnum.workflow]: {
-    icon: 'core/app/type/workflowFill',
-    avatar: 'core/app/type/workflowFill',
-    title: i18nT('app:type.Create workflow bot'),
-    emptyCreateText: i18nT('app:create_empty_workflow')
-  },
-  [AppTypeEnum.plugin]: {
-    icon: 'core/app/type/pluginFill',
-    avatar: 'core/app/type/pluginFill',
-    title: i18nT('app:type.Create plugin bot'),
-    emptyCreateText: i18nT('app:create_empty_plugin')
-  }
-};
 
 const CreateModal = ({
   onClose,
@@ -77,10 +55,32 @@ const CreateModal = ({
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
-  const [currentCreateType, setCurrentCreateType] = useState<'template' | 'curl'>('template');
-  const [curlContent, setCurlContent] = useState('');
 
-  const typeData = appTypeMap[type];
+  const [currentCreateType, setCurrentCreateType] = useState<'template' | 'curl'>('template');
+  const isTemplateMode = currentCreateType === 'template';
+
+  const appTypeMap = useRef({
+    [AppTypeEnum.simple]: {
+      icon: 'core/app/simpleBot',
+      title: t('app:type.Create simple bot'),
+      avatar: 'core/app/type/simpleFill',
+      emptyCreateText: t('app:create_empty_app')
+    },
+    [AppTypeEnum.workflow]: {
+      icon: 'core/app/type/workflowFill',
+      avatar: 'core/app/type/workflowFill',
+      title: t('app:type.Create workflow bot'),
+      emptyCreateText: t('app:create_empty_workflow')
+    },
+    [AppTypeEnum.plugin]: {
+      icon: 'core/app/type/pluginFill',
+      avatar: 'core/app/type/pluginFill',
+      title: t('app:type.Create plugin bot'),
+      emptyCreateText: t('app:create_empty_plugin')
+    }
+  });
+
+  const typeData = appTypeMap.current[type];
   const { data: templateList = [], loading: isRequestTemplates } = useRequest2(
     () => getTemplateMarketItemList({ isQuickTemplate: true, type }),
     {
@@ -91,11 +91,12 @@ const CreateModal = ({
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: typeData.avatar,
-      name: ''
+      name: '',
+      curlContent: ''
     }
   });
-  const avatar = watch('avatar');
 
+  const avatar = watch('avatar');
   const {
     File,
     onOpen: onOpenSelectFile,
@@ -106,12 +107,13 @@ const CreateModal = ({
   });
 
   const { runAsync: onclickCreate, loading: isCreating } = useRequest2(
-    async (data: FormType, templateId?: string) => {
+    async ({ avatar, name, curlContent }: FormType, templateId?: string) => {
+      // From empty template
       if (!templateId && currentCreateType !== 'curl') {
         return postCreateApp({
           parentId,
-          avatar: data.avatar,
-          name: data.name,
+          avatar: avatar,
+          name: name,
           type,
           modules: emptyTemplates[type].nodes,
           edges: emptyTemplates[type].edges,
@@ -119,21 +121,28 @@ const CreateModal = ({
         });
       }
 
-      let workflow;
-      let templateDetail;
-      if (templateId) {
-        templateDetail = await getTemplateMarketItemDetail(templateId);
-        workflow = templateDetail.workflow;
-      } else {
-        const parsedCurl = parseCurl(curlContent);
-        workflow = getCurlPlugin(parsedCurl);
-      }
+      const { workflow, appAvatar } = await (async () => {
+        if (templateId) {
+          const templateDetail = await getTemplateMarketItemDetail(templateId);
+          return {
+            appAvatar: templateDetail.avatar,
+            workflow: templateDetail.workflow
+          };
+        }
+        if (curlContent) {
+          return {
+            appAvatar: avatar,
+            workflow: parsePluginFromCurlString(curlContent)
+          };
+        }
+        return Promise.reject('No template or curl content');
+      })();
 
       return postCreateApp({
         parentId,
-        avatar: data.avatar || templateDetail?.avatar || '',
-        name: data.name,
-        type: (templateDetail?.type as AppTypeEnum) || type,
+        avatar: appAvatar,
+        name: name,
+        type,
         modules: workflow.nodes || [],
         edges: workflow.edges || [],
         chatConfig: workflow.chatConfig || {}
@@ -153,14 +162,13 @@ const CreateModal = ({
   return (
     <MyModal
       iconSrc={typeData.icon}
-      title={t(typeData.title)}
+      title={typeData.title}
       isOpen
-      onClose={onClose}
       isCentered={!isPc}
       maxW={['90vw', '40rem']}
       isLoading={isCreating || isRequestTemplates}
     >
-      <ModalBody px={9} pb={currentCreateType === 'template' ? 8 : 2}>
+      <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
           {t('common:common.Set Name')}
         </Box>
@@ -186,23 +194,25 @@ const CreateModal = ({
             })}
           />
         </Flex>
-        <Flex mt={[4, 7]} mb={[0, 3]}>
-          {type !== AppTypeEnum.plugin ? (
-            <Box color={'myGray.900'} fontWeight={'bold'} fontSize={'sm'}>
-              {t('common:core.app.Select app from template')}
-            </Box>
-          ) : (
+
+        <Flex mt={[4, 7]} mb={3}>
+          {type === AppTypeEnum.plugin ? (
             <FillRowTabs
               list={[
-                { label: t('common:core.app.Select app from template'), value: 'template' },
-                { label: t('common:core.app.Create app by curl'), value: 'curl' }
+                { label: t('app:create_by_template'), value: 'template' },
+                { label: t('app:create_by_curl'), value: 'curl' }
               ]}
               value={currentCreateType}
+              fontSize={'xs'}
               onChange={(e) => setCurrentCreateType(e as 'template' | 'curl')}
             />
+          ) : (
+            <Box color={'myGray.900'} fontWeight={'bold'} fontSize={'sm'}>
+              {t('app:create_by_template')}
+            </Box>
           )}
           <Box flex={1} />
-          {currentCreateType === 'template' && (
+          {isTemplateMode && (
             <Flex
               onClick={() => onOpenTemplateModal(type)}
               alignItems={'center'}
@@ -216,7 +226,8 @@ const CreateModal = ({
             </Flex>
           )}
         </Flex>
-        {currentCreateType === 'template' ? (
+
+        {isTemplateMode ? (
           <Grid
             userSelect={'none'}
             gridTemplateColumns={
@@ -244,7 +255,7 @@ const CreateModal = ({
             >
               <MyIcon name={'common/addLight'} w={'1.5rem'} />
               <Box fontSize={'sm'} mt={2}>
-                {t(typeData.emptyCreateText)}
+                {typeData.emptyCreateText}
               </Box>
             </Card>
             {templateList.map((item) => (
@@ -309,25 +320,25 @@ const CreateModal = ({
         ) : (
           <Box>
             <Textarea
-              placeholder={t('app:paste_config')}
+              placeholder={t('app:oaste_curl_string')}
               w={'560px'}
               h={'260px'}
               bg={'myGray.50'}
-              onChange={(e) => setCurlContent(e.target.value)}
+              {...register('curlContent')}
             />
           </Box>
         )}
       </ModalBody>
-      {currentCreateType !== 'template' && (
-        <ModalFooter gap={4}>
-          <Button variant={'whiteBase'} onClick={onClose}>
-            {t('common:common.Cancel')}
-          </Button>
-          <Button variant={'primary'} onClick={handleSubmit((data) => onclickCreate(data))}>
-            {t('common:common.Confirm')}
-          </Button>
-        </ModalFooter>
-      )}
+
+      <ModalFooter gap={4}>
+        <Button variant={'whiteBase'} onClick={onClose}>
+          {t('common:common.Cancel')}
+        </Button>
+        <Button variant={'primary'} onClick={handleSubmit((data) => onclickCreate(data))}>
+          {t('common:common.Confirm')}
+        </Button>
+      </ModalFooter>
+
       <File
         onSelect={(e) =>
           onSelectImage(e, {
