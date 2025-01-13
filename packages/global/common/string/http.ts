@@ -27,12 +27,18 @@ export const parseCurl = (curlContent: string) => {
     type: 'string'
   }));
   const newBody = JSON.stringify(parsed.data, null, 2);
+  const bodyArray = Object.keys(parsed.data || {}).map((key) => ({
+    key,
+    value: parsed.data?.[key],
+    type: 'string'
+  }));
 
   return {
     url: parsed.url,
     method: methodMap[parsed.method?.toLowerCase() as RequestMethod] || 'GET',
     params: newParams,
     headers: newHeaders,
-    body: newBody
+    body: newBody,
+    bodyArray
   };
 };
