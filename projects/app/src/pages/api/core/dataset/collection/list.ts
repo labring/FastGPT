@@ -10,14 +10,15 @@ import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/sc
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { PagingData } from '@/types';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
-async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectionsListItemType>> {
+async function handler(
+  req: NextApiRequest
+): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
   let {
-    pageNum = 1,
-    pageSize = 10,
     datasetId,
     parentId = null,
     searchText = '',
@@ -25,8 +26,9 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     filterTags = [],
     simple = false
   } = req.body as GetDatasetCollectionsProps;
-  searchText = searchText?.replace(/'/g, '');
+  let { pageSize, offset } = parsePaginationRequest(req);
   pageSize = Math.min(pageSize, 30);
+  searchText = searchText?.replace(/'/g, '');
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({
@@ -78,9 +80,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
       .lean();
 
     return {
-      pageNum,
-      pageSize,
-      data: await Promise.all(
+      list: await Promise.all(
         collections.map(async (item) => ({
           ...item,
           tags: await collectionTagsToTagLabel({
@@ -105,7 +105,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
         $sort: { updateTime: -1 }
       },
       {
-        $skip: (pageNum - 1) * pageSize
+        $skip: offset
       },
       {
         $limit: pageSize
@@ -167,7 +167,7 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     })
   ]);
 
-  const data = await Promise.all(
+  const list = await Promise.all(
     collections.map(async (item) => ({
       ...item,
       tags: await collectionTagsToTagLabel({
@@ -178,15 +178,13 @@ async function handler(req: NextApiRequest): Promise<PagingData<DatasetCollectio
     }))
   );
 
-  if (data.find((item) => item.trainingAmount > 0)) {
+  if (list.find((item) => item.trainingAmount > 0)) {
     startTrainingQueue();
   }
 
   // count collections
   return {
-    pageNum,
-    pageSize,
-    data,
+    list,
     total
   };
 }

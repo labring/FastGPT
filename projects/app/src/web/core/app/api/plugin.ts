@@ -35,7 +35,8 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       intro: app.intro,
       showStatus: false,
       version: app.pluginData?.nodeVersion || defaultNodeVersion,
-      isTool: true
+      isTool: true,
+      sourceMember: app.sourceMember
     }))
   );
 

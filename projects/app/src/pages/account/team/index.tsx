@@ -1,6 +1,6 @@
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import AccountContainer from '../components/AccountContainer';
-import { Box, Flex, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import TeamSelector from '../components/TeamSelector';
@@ -13,11 +13,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from './components/context';
 import dynamic from 'next/dynamic';
-import MemberTable from './components/MemberTable';
 
+const MemberTable = dynamic(() => import('./components/MemberTable'));
 const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
 const GroupManage = dynamic(() => import('./components/GroupManage/index'));
-
 const OrgManage = dynamic(() => import('./components/OrgManage/index'));
 
 export enum TeamTabEnum {
@@ -34,7 +33,7 @@ const Team = () => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { setEditTeamData, teamSize, isLoading } = useContextSelector(TeamContext, (v) => v);
+  const { setEditTeamData, isLoading, teamSize } = useContextSelector(TeamContext, (v) => v);
 
   const Tabs = useMemo(
     () => (
