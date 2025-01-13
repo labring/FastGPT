@@ -116,6 +116,14 @@ services:
       # 日志等级: debug, info, warn, error
       - LOG_LEVEL=info
       - STORE_LOG_LEVEL=warn
+      # 工作流最大运行次数
+      - WORKFLOW_MAX_RUN_TIMES=1000
+      # 批量执行节点，最大输入长度
+      - WORKFLOW_MAX_LOOP_TIMES=100
+      # 自定义跨域，不配置时，默认都允许跨域（多个域名通过逗号分割）
+      - ALLOWED_ORIGINS=
+      # 是否开启IP限制，默认不开启
+      - USE_IP_LIMIT=false
     volumes:
       - ./config.json:/app/data/config.json
 
