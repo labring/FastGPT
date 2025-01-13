@@ -19,6 +19,16 @@ images: []
 
 ## 二、通用问题
 
+### 通过sealos部署的话，是否没有本地部署的一些限制？
+![](/imgs/faq1.png)
+这是索引模型的长度限制，通过任何方式部署都一样的，但不同索引模型的配置不一样，可以在后台修改参数。
+
+### sealos怎么挂载 小程序配置文件
+
+新增配置文件：/app/projects/app/public/xxxx.txt
+如图
+![](/imgs/faq2.png)
+
 ### 本地部署的限制
 
 具体内容参考https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg。
