@@ -45,31 +45,6 @@ images: []
 1. 问题补全需要经过一轮AI生成。
 2. 会进行3~5轮的查询，如果数据库性能不足，会有明显影响。
 
-### 对话接口报错或返回为空(core.chat.Chat API is error or undefined)
-
-1. 检查 AI 的 key 问题：通过 curl 请求看是否正常。务必用 stream=true 模式。并且 maxToken 等相关参数尽量一致。
-2. 如果是国内模型，可能是命中风控了。
-3. 查看模型请求日志，检查出入参数是否异常。
-
-```sh
-# curl 例子。
-curl --location --request POST 'https://xxx.cn/v1/chat/completions' \
---header 'Authorization: Bearer sk-xxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-  "model": "gpt-3.5-turbo",
-  "stream": true,
-  "temperature": 1,
-  "max_tokens": 3000,
-  "messages": [
-    {
-      "role": "user",
-      "content": "你是谁"
-    }
-  ]
-}'
-```
-
 ### 页面中可以正常回复，API 报错
 
 页面中是用 stream=true 模式，所以API也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。
@@ -115,6 +90,13 @@ FastGPT 模型配置文件中的 model 必须与 OneAPI 渠道中的模型对应
 
 如果OneAPI中，没有配置对应的模型，`config.json`中也不要配置，否则容易报错。
 
+### 点击模型测试失败
+
+OneAPI 只会测试渠道的第一个模型，并且只会测试对话模型，向量模型无法自动测试，需要手动发起请求进行测试。[查看测试模型命令示例](/docs/development/faq/#如何检查模型问题)
+### get request url failed: Post "https://xxx dial tcp: xxxx
+
+OneAPI 与模型网络不通，需要检查网络配置。
+
 ### Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
 
 OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 docker-compose down 然后再 docker-compose up -d 运行一次）。
@@ -129,6 +111,112 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 
 ## 四、常见模型问题
+
+### 如何检查模型问题
+
+1. 私有部署模型，先确认部署的模型是否正常。
+2. 通过 CURL 请求，直接测试上游模型是否正常运行（云端模型或私有模型均进行测试）
+3. 通过 CURL 请求，请求 OneAPI 去测试模型是否正常。
+4. 在 FastGPT 中使用该模型进行测试。
+
+下面是几个测试 CURL 示例：
+
+{{< tabs tabTotal="5" >}}
+{{< tab tabName="LLM模型" >}}
+{{< markdownify >}}
+
+```bash
+curl https://api.openai.com/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -d '{
+    "model": "gpt-4o",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a helpful assistant."
+      },
+      {
+        "role": "user",
+        "content": "Hello!"
+      }
+    ]
+  }'
+
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="Embedding模型" >}}
+{{< markdownify >}}
+
+```bash
+curl https://api.openai.com/v1/embeddings \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "The food was delicious and the waiter...",
+    "model": "text-embedding-ada-002",
+    "encoding_format": "float"
+  }'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="Rerank 模型" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'https://xxxx.com/api/v1/rerank' \
+--header 'Authorization: Bearer {{ACCESS_TOKEN}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "bge-rerank-m3",
+  "query": "导演是谁",
+  "documents": [
+    "你是谁？\n我是电影《铃芽之旅》助手"
+  ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="TTS 模型" >}}
+{{< markdownify >}}
+
+```bash
+curl https://api.openai.com/v1/audio/speech \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "tts-1",
+    "input": "The quick brown fox jumped over the lazy dog.",
+    "voice": "alloy"
+  }' \
+  --output speech.mp3
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="Whisper 模型" >}}
+{{< markdownify >}}
+
+```bash
+curl https://api.openai.com/v1/audio/transcriptions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: multipart/form-data" \
+  -F file="@/path/to/file/audio.mp3" \
+  -F model="whisper-1"
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< /tabs >}}
 
 ### 报错 - 模型响应为空/模型报错
 
@@ -169,7 +257,7 @@ curl --location --request POST 'https://api.openai.com/v1/chat/completions' \
 
 需要模型提供商和 oneapi 同时支持工具调用才可使用，测试方法如下：
 
-1. 通过 `curl` 向 `oneapi` 发起第一轮 stream 模式的 tool 测试。
+##### 1. 通过 `curl` 向 `oneapi` 发起第一轮 stream 模式的 tool 测试。
 
 ```bash
 curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
@@ -204,7 +292,7 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 }'
 ```
 
-2. 检查响应参数
+##### 2. 检查响应参数
 
 如果能正常调用工具，会返回对应 `tool_calls` 参数。
 
@@ -242,7 +330,7 @@ curl --location --request POST 'https://oneapi.xxx/v1/chat/completions' \
 }
 ```
 
-3. 通过 `curl` 向 `oneapi` 发起第二轮 stream 模式的 tool 测试。
+##### 3. 通过 `curl` 向 `oneapi` 发起第二轮 stream 模式的 tool 测试。
 
 第二轮请求是把工具结果发送给模型。发起后会得到模型回答的结果。
 
