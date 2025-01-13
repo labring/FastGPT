@@ -20,6 +20,10 @@ const TeamMemberSchema = new Schema({
     ref: userCollectionName,
     required: true
   },
+  avatar: {
+    type: String,
+    default: () => getRandomUserAvatar()
+  },
   name: {
     type: String,
     default: 'Member'
@@ -35,10 +39,6 @@ const TeamMemberSchema = new Schema({
   defaultTeam: {
     type: Boolean,
     default: false
-  },
-  avatar: {
-    type: String,
-    default: getRandomUserAvatar()
   },
 
   // Abandoned
