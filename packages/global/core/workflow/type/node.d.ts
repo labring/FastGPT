@@ -89,6 +89,7 @@ export type NodeTemplateListItemType = {
   hasTokenFee?: boolean; // 是否配置积分
   instructions?: string; // 使用说明
   courseUrl?: string; // 教程链接
+  sourceMember?: SourceMember;
 };
 
 export type NodeTemplateListType = {

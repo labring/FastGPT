@@ -13,6 +13,7 @@ import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type getPaginationRecordsQuery = {};
 
@@ -22,16 +23,11 @@ export type getPaginationRecordsResponse = PaginationResponse<ChatItemType>;
 
 async function handler(
   req: ApiRequestProps<getPaginationRecordsBody, getPaginationRecordsQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<getPaginationRecordsResponse> {
-  const {
-    appId,
-    chatId,
-    offset,
-    pageSize = 10,
-    loadCustomFeedbacks,
-    type = GetChatTypeEnum.normal
-  } = req.body;
+  const { appId, chatId, loadCustomFeedbacks, type = GetChatTypeEnum.normal } = req.body;
+
+  const { offset, pageSize } = parsePaginationRequest(req);
 
   if (!appId || !chatId) {
     return {

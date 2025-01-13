@@ -18,12 +18,11 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
 import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 
 const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   onClose,
@@ -183,10 +182,8 @@ const TeamCloud = ({
 }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { loadAndGetTeamMembers } = useUserStore();
-  const { feConfigs } = useSystemStore();
 
-  const { scrollDataList, ScrollList, isLoading, fetchData, setData } = useVirtualScrollPagination(
+  const { scrollDataList, ScrollList, isLoading, setData } = useVirtualScrollPagination(
     getWorkflowVersionList,
     {
       itemHeight: 40,
@@ -198,9 +195,6 @@ const TeamCloud = ({
       }
     }
   );
-  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: !feConfigs.isPlus
-  });
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
 
@@ -241,7 +235,6 @@ const TeamCloud = ({
       {scrollDataList.map((data, index) => {
         const item = data.data;
         const firstPublishedIndex = scrollDataList.findIndex((data) => data.data.isPublish);
-        const tmb = members.find((member) => member.tmbId === item.tmbId);
 
         return (
           <Flex
@@ -266,22 +259,20 @@ const TeamCloud = ({
               h={'72px'}
               Trigger={
                 <Box>
-                  <Avatar src={tmb?.avatar} borderRadius={'50%'} w={'24px'} h={'24px'} />
+                  <Avatar
+                    src={data.data.sourceMember.avatar}
+                    borderRadius={'50%'}
+                    w={'24px'}
+                    h={'24px'}
+                  />
                 </Box>
               }
             >
-              {({ onClose }) => (
+              {() => (
                 <Flex alignItems={'center'} h={'full'} pl={5} gap={3}>
-                  <Box>
-                    <Avatar src={tmb?.avatar} borderRadius={'50%'} w={'36px'} h={'36px'} />
-                  </Box>
-                  <Box>
-                    <Box fontSize={'14px'} color={'myGray.900'}>
-                      {tmb?.memberName}
-                    </Box>
-                    <Box fontSize={'12px'} color={'myGray.500'}>
-                      {formatTime2YMDHMS(item.time)}
-                    </Box>
+                  <UserBox sourceMember={data.data.sourceMember} avatarSize="36px" fontSize="sm" />
+                  <Box fontSize={'12px'} color={'myGray.500'}>
+                    {formatTime2YMDHMS(item.time)}
                   </Box>
                 </Flex>
               )}

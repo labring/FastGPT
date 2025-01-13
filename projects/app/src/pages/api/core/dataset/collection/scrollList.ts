@@ -10,6 +10,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type GetScrollCollectionsProps = PaginationProps<{
   datasetId: string;
@@ -25,8 +26,6 @@ async function handler(
 ): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
   let {
     datasetId,
-    pageSize = 10,
-    offset,
     parentId = null,
     searchText = '',
     selectFolder = false,
@@ -36,6 +35,7 @@ async function handler(
   if (!datasetId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
+  let { offset, pageSize } = parsePaginationRequest(req);
 
   searchText = searchText?.replace(/'/g, '');
   pageSize = Math.min(pageSize, 30);
