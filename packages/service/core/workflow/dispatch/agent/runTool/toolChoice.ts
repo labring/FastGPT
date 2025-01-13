@@ -210,7 +210,7 @@ export const runToolWithToolChoice = async (
       properties[item.key] = {
         ...jsonSchema,
         description: item.toolDescription || '',
-        enum: item.enum?.split('\n').filter(Boolean) || []
+        enum: item.enum?.split('\n').filter(Boolean) || undefined
       };
     });
 
@@ -227,6 +227,7 @@ export const runToolWithToolChoice = async (
       }
     };
   });
+
   // Filter histories by maxToken
   const filterMessages = (
     await filterGPTMessageByMaxTokens({
