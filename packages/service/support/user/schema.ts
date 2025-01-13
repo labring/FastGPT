@@ -3,7 +3,6 @@ const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
-import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 export const userCollectionName = 'users';
 
@@ -33,11 +32,6 @@ const UserSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  avatar: {
-    type: String,
-    default: () => getRandomUserAvatar()
-  },
-
   promotionRate: {
     type: Number,
     default: 15
@@ -62,7 +56,10 @@ const UserSchema = new Schema({
     ref: userCollectionName
   },
   fastgpt_sem: Object,
-  sourceDomain: String
+  sourceDomain: String,
+
+  /** @deprecated */
+  avatar: String
 });
 
 try {

@@ -17,7 +17,6 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
-import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
 import { getOrgIdSetWithParentByTmbId } from './org/controllers';
 
@@ -151,13 +150,9 @@ export const getClbsAndGroupsWithInfo = async ({
         $exists: true
       }
     })
-      .populate<{ tmb: TeamMemberSchema & { user: UserModelSchema } }>({
+      .populate<{ tmb: TeamMemberSchema }>({
         path: 'tmb',
-        select: 'name userId role',
-        populate: {
-          path: 'user',
-          select: 'avatar'
-        }
+        select: 'name userId avatar'
       })
       .lean(),
     MongoResourcePermission.find({

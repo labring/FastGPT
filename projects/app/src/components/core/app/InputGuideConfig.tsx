@@ -54,7 +54,7 @@ const InputGuideConfig = ({
   onChange: (e: ChatInputGuideConfigType) => void;
 }) => {
   const { t } = useTranslation();
-  const { chatT, commonT } = useI18n();
+  const { chatT } = useI18n();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const {
     isOpen: isOpenLexiconConfig,
@@ -220,7 +220,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
   });
 
   const { run: createNewData, loading: isCreating } = useRequest2(
-    (textList: string[]) => {
+    async (textList: string[]) => {
       if (textList.filter(Boolean).length === 0) {
         return Promise.resolve();
       }

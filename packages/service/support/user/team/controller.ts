@@ -37,7 +37,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     teamAvatar: tmb.team.avatar,
     teamName: tmb.team.name,
     memberName: tmb.name,
-    avatar: tmb.team.avatar,
+    avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
     teamDomain: tmb.team?.teamDomain,

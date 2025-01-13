@@ -5,7 +5,7 @@ import { AppUpdateParams, AppChangeOwnerBody } from '@/global/core/app/api';
 import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 import { AppLogsListItemType } from '@/types/app';
-import { PagingData } from '@/types';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 /**
  * 获取应用列表
@@ -39,7 +39,7 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) =>
-  POST<PagingData<AppLogsListItemType>>(`/core/app/getChatLogs`, data);
+  POST<PaginationResponse<AppLogsListItemType>>(`/core/app/getChatLogs`, data);
 
 export const resumeInheritPer = (appId: string) =>
   GET(`/core/app/resumeInheritPermission`, { appId });

@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import type { PagingData } from '@/types';
 import { AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
 import { addDays } from 'date-fns';
@@ -10,18 +9,21 @@ import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchem
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 async function handler(
   req: NextApiRequest,
   _res: NextApiResponse
-): Promise<PagingData<AppLogsListItemType>> {
+): Promise<PaginationResponse<AppLogsListItemType>> {
   const {
-    pageNum = 1,
-    pageSize = 20,
     appId,
     dateStart = addDays(new Date(), -7),
     dateEnd = new Date()
   } = req.body as GetAppChatLogsParams;
+
+  const { pageSize = 20, offset } = parsePaginationRequest(req);
 
   if (!appId) {
     throw new Error('缺少参数');
@@ -39,7 +41,7 @@ async function handler(
     }
   };
 
-  const [data, total] = await Promise.all([
+  const [list, total] = await Promise.all([
     MongoChat.aggregate(
       [
         { $match: where },
@@ -51,7 +53,7 @@ async function handler(
             updateTime: -1
           }
         },
-        { $skip: (pageNum - 1) * pageSize },
+        { $skip: offset },
         { $limit: pageSize },
         {
           $lookup: {
@@ -78,6 +80,14 @@ async function handler(
               }
             ],
             as: 'chatitems'
+          }
+        },
+        {
+          $lookup: {
+            from: TeamMemberCollectionName,
+            localField: 'tmbId',
+            foreignField: '_id',
+            as: 'member'
           }
         },
         {
@@ -133,7 +143,12 @@ async function handler(
             customFeedbacksCount: 1,
             markCount: 1,
             outLinkUid: 1,
-            tmbId: 1
+            tmbId: 1,
+            sourceMember: {
+              name: '$member.name',
+              avatar: '$member.avatar',
+              status: '$member.status'
+            }
           }
         }
       ],
@@ -145,9 +160,7 @@ async function handler(
   ]);
 
   return {
-    pageNum,
-    pageSize,
-    data,
+    list,
     total
   };
 }

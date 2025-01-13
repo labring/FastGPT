@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -160,6 +160,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     color: 'myGray.900'
   };
 
+  const isSyncMember = feConfigs.register_method?.includes('sync');
   return (
     <Box>
       {/* user info */}
@@ -224,6 +225,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             <Box {...labelStyles}>{t('account_info:member_name')}:&nbsp;</Box>
             <Input
               flex={'1 0 0'}
+              disabled={isSyncMember}
               defaultValue={userInfo?.team?.memberName || 'Member'}
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
@@ -590,11 +592,6 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const { userInfo, updateUserInfo } = useUserStore();
-
-  const { reset } = useForm<UserUpdateParams>({
-    defaultValues: userInfo as UserType
-  });
 
   return (
     <Box>
