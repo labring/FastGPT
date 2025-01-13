@@ -53,8 +53,9 @@ FastGPT 商业版软件根据不同的部署方式，分为 3 类收费模式。
 {{< table "table-hover table-striped-columns" >}}
 | 部署方式 | 特有服务 | 上线时长 | 标品价格 |
 | ---- | ---- | ---- | ---- |
-| Sealos全托管 |  1. 有效期内免费升级。<br>2. 免运维服务&数据库。 |  半天  | 6000元起/月（3个月起）<br>或<br>60000元起/年  |
-| 自有服务器部署 |  1. 6个版本免费升级支持。 | 14天内 |  具体价格可[联系咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud) |
+| Sealos全托管 |  1. 有效期内免费升级。<br>2. 免运维服务&数据库。 |  半天  | 10000元起/月（3个月起）<br>或<br>120000元起/年<br>8C32G 资源，额外资源另外收费。  |
+| Sealos全托管（多节点） |  1. 有效期内免费升级。<br>2. 免运维服务&数据库。 |  半天  | 22000元起/月（3个月起）<br>或<br>264000元起/年<br>32C128G 资源，额外资源另外收费。  |
+| 自有服务器部署 |  1. 6个版本免费升级支持。 | 14天内 | 具体价格和优惠可[联系咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnRxj3utrzjywsom96Px4sud) |
 {{< /table >}}
 
 {{% alert icon="🤖 " context="success" %}}

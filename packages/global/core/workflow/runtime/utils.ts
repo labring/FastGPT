@@ -339,6 +339,7 @@ export function replaceEditorVariable({
       const output = node.outputs.find((output) => output.id === id);
       if (output) return formatVariableValByType(output.value, output.valueType);
 
+      // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
       const input = node.inputs.find((input) => input.key === id);
       if (input) return getReferenceVariableValue({ value: input.value, nodes, variables });
     })();
