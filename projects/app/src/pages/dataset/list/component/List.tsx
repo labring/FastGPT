@@ -262,7 +262,8 @@ function List() {
                       <UserBox
                         sourceMember={dataset.sourceMember}
                         fontSize="xs"
-                        avatarSize="1.25rem"
+                        avatarSize="1rem"
+                        spacing={0.5}
                       />
                       <PermissionIconText
                         flexShrink={0}
