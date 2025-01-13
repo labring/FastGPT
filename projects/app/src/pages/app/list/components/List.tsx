@@ -222,7 +222,12 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
-                    <UserBox sourceMember={app.sourceMember} fontSize="xs" avatarSize="1.25rem" />
+                    <UserBox
+                      sourceMember={app.sourceMember}
+                      fontSize="xs"
+                      avatarSize="1rem"
+                      spacing={0.5}
+                    />
                     <PermissionIconText
                       private={app.private}
                       color={'myGray.500'}
