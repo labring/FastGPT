@@ -4,7 +4,7 @@ import {
   getWorkflowVersionList,
   updateAppVersion
 } from '@/web/core/app/api/version';
-import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
 import { Box, BoxProps, Button, Flex, Input } from '@chakra-ui/react';
@@ -22,7 +22,6 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
 import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
-import UserBox from '@fastgpt/web/components/common/UserBox';
 
 const PublishHistoriesSlider = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
   onClose,
@@ -183,18 +182,18 @@ const TeamCloud = ({
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const { scrollDataList, ScrollList, isLoading, setData } = useVirtualScrollPagination(
-    getWorkflowVersionList,
-    {
-      itemHeight: 40,
-      overscan: 20,
-
-      pageSize: 30,
-      defaultParams: {
-        appId: appDetail._id
-      }
-    }
-  );
+  const {
+    ScrollData,
+    data: scrollDataList,
+    setData,
+    isLoading
+  } = useScrollPagination(getWorkflowVersionList, {
+    pageSize: 30,
+    params: {
+      appId: appDetail._id
+    },
+    refreshDeps: [appDetail._id]
+  });
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
 
@@ -231,14 +230,13 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollList isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
-      {scrollDataList.map((data, index) => {
-        const item = data.data;
-        const firstPublishedIndex = scrollDataList.findIndex((data) => data.data.isPublish);
+    <ScrollData isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
+      {scrollDataList.map((item, index) => {
+        const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 
         return (
           <Flex
-            key={data.index}
+            key={item._id}
             alignItems={'center'}
             py={editIndex !== index ? 2 : 1}
             px={3}
@@ -260,7 +258,7 @@ const TeamCloud = ({
               Trigger={
                 <Box>
                   <Avatar
-                    src={data.data.sourceMember.avatar}
+                    src={item.sourceMember.avatar}
                     borderRadius={'50%'}
                     w={'24px'}
                     h={'24px'}
@@ -269,10 +267,25 @@ const TeamCloud = ({
               }
             >
               {() => (
-                <Flex alignItems={'center'} h={'full'} pl={5} gap={3}>
-                  <UserBox sourceMember={data.data.sourceMember} avatarSize="36px" fontSize="sm" />
-                  <Box fontSize={'12px'} color={'myGray.500'}>
-                    {formatTime2YMDHMS(item.time)}
+                <Flex alignItems={'center'} h={'full'} pl={5} gap={2}>
+                  <Box>
+                    <Avatar
+                      src={item.sourceMember.avatar}
+                      borderRadius={'50%'}
+                      w={'36px'}
+                      h={'36px'}
+                    />
+                  </Box>
+                  <Box>
+                    <Flex gap={1} fontSize={'sm'} color={'myGray.900'}>
+                      <Box>{item.sourceMember.name}</Box>
+                      {item.sourceMember.status === 'leave' && (
+                        <Tag color="gray">{t('common:user_leaved')}</Tag>
+                      )}
+                    </Flex>
+                    <Box fontSize={'xs'} mt={2} color={'myGray.500'}>
+                      {formatTime2YMDHMS(item.time)}
+                    </Box>
                   </Box>
                 </Flex>
               )}
@@ -340,6 +353,6 @@ const TeamCloud = ({
           </Flex>
         );
       })}
-    </ScrollList>
+    </ScrollData>
   );
 };

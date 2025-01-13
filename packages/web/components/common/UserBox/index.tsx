@@ -15,7 +15,7 @@ function UserBox({ sourceMember, avatarSize = '1.25rem', ...props }: UserBoxProp
     <HStack space="1" {...props}>
       <Avatar src={sourceMember.avatar} w={avatarSize} />
       <Box>{sourceMember.name}</Box>
-      {sourceMember.status === 'leave' && <Tag color="gray">{t('account_team:leaved')}</Tag>}
+      {sourceMember.status === 'leave' && <Tag color="gray">{t('common:user_leaved')}</Tag>}
     </HStack>
   );
 }
