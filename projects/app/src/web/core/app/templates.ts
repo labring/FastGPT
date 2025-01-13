@@ -417,35 +417,82 @@ export const parsePluginFromCurlString = (
   edges: AppSchema['edges'];
   chatConfig: AppSchema['chatConfig'];
 } => {
-  const { url, method, headers, body } = parseCurl(curl);
+  const { url, method, headers, body, params, bodyArray } = parseCurl(curl);
+
+  const allInputs = Array.from(
+    new Map([...headers, ...params, ...bodyArray].map((item) => [item.key, item])).values()
+  );
+  const formatInputs = allInputs.map((item) => {
+    const valueType = item.value === null ? 'string' : typeof item.value;
+    return {
+      renderTypeList: ['reference'],
+      selectedTypeIndex: 0,
+      valueType,
+      canEdit: true,
+      key: item.key,
+      label: item.key,
+      description: item.key,
+      defaultValue: '',
+      required: false,
+      toolDescription: ['string', 'number', 'boolean'].includes(valueType) ? item.key : ''
+    };
+  });
+  const formatOutputs = formatInputs.map((item) => ({
+    id: item.key,
+    key: item.key,
+    label: item.key,
+    valueType: item.valueType,
+    type: 'hidden'
+  }));
+
+  const referenceHeaders = headers.map((item) => ({
+    key: item.key,
+    value: `{{$pluginInput.${item.key}$}}`,
+    type: item.type
+  }));
+  const referenceParams = params.map((item) => ({
+    key: item.key,
+    value: `{{$pluginInput.${item.key}$}}`,
+    type: item.type
+  }));
+  const referenceBody = Object.entries(JSON.parse(body)).reduce(
+    (acc, [key, value]) => {
+      acc[key] = `{{$pluginInput.${key}$}}`;
+      return acc;
+    },
+    {} as Record<string, any>
+  );
+  const referenceBodyStr = JSON.stringify(referenceBody, null, 2)
+    .replace(/"{{\$/g, '{{$')
+    .replace(/\$}}"/g, '$}}');
 
   return {
     nodes: [
       {
         nodeId: 'pluginInput',
-        name: 'workflow:template.plugin_start',
-        intro: 'workflow:intro_plugin_input',
+        name: i18nT('workflow:template.plugin_start'),
+        intro: i18nT('workflow:intro_plugin_input'),
         avatar: 'core/workflow/template/workflowStart',
         flowNodeType: 'pluginInput',
         showStatus: false,
         position: {
-          x: 630.1191328382079,
-          y: -125.05298493910118
+          x: 427.6554681270263,
+          y: -291.6987155252725
         },
         version: '481',
-        inputs: [],
-        outputs: []
+        inputs: formatInputs,
+        outputs: formatOutputs
       },
       {
         nodeId: 'pluginOutput',
-        name: 'common:core.module.template.self_output',
-        intro: 'workflow:intro_custom_plugin_output',
+        name: i18nT('common:core.module.template.self_output'),
+        intro: i18nT('workflow:intro_custom_plugin_output'),
         avatar: 'core/workflow/template/pluginOutput',
         flowNodeType: 'pluginOutput',
         showStatus: false,
         position: {
-          x: 1776.334576378706,
-          y: -179.2671413906911
+          x: 1870.1072210870427,
+          y: -126.69871552527252
         },
         version: '481',
         inputs: [
@@ -455,7 +502,7 @@ export const parsePluginFromCurlString = (
             canEdit: true,
             key: 'result',
             label: 'result',
-            isToolOutput: false,
+            isToolOutput: true,
             description: '',
             required: true,
             value: ['vumlECDQTjeC', 'httpRawResponse']
@@ -466,7 +513,7 @@ export const parsePluginFromCurlString = (
             canEdit: true,
             key: 'error',
             label: 'error',
-            isToolOutput: false,
+            isToolOutput: true,
             description: '',
             required: true,
             value: ['vumlECDQTjeC', 'error']
@@ -482,8 +529,8 @@ export const parsePluginFromCurlString = (
         flowNodeType: 'httpRequest468',
         showStatus: true,
         position: {
-          x: 1068.6226695001628,
-          y: -435.2671413906911
+          x: 1049.4419012643668,
+          y: -471.49748139163944
         },
         version: '481',
         inputs: [
@@ -563,7 +610,7 @@ export const parsePluginFromCurlString = (
             key: 'system_httpHeader',
             renderTypeList: ['custom'],
             valueType: 'any',
-            value: headers,
+            value: referenceHeaders,
             label: '',
             description:
               '自定义请求头，请严格填入 JSON 字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如：{"Authorization":"Bearer xxx"}',
@@ -577,6 +624,7 @@ export const parsePluginFromCurlString = (
             key: 'system_httpParams',
             renderTypeList: ['hidden'],
             valueType: 'any',
+            value: referenceParams,
             description:
               '新的 HTTP 请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。',
             label: '',
@@ -590,7 +638,7 @@ export const parsePluginFromCurlString = (
             key: 'system_httpJsonBody',
             renderTypeList: ['hidden'],
             valueType: 'any',
-            value: body,
+            value: referenceBodyStr,
             label: '',
             required: false,
             valueDesc: '',
@@ -674,6 +722,20 @@ export const parsePluginFromCurlString = (
             valueDesc: ''
           }
         ]
+      },
+      {
+        nodeId: 'pluginConfig',
+        name: i18nT('common:core.module.template.system_config'),
+        intro: '',
+        avatar: 'core/workflow/template/systemConfig',
+        flowNodeType: FlowNodeTypeEnum.pluginConfig,
+        position: {
+          x: -88.12977161770735,
+          y: -235.2337531748973
+        },
+        version: '4811',
+        inputs: [],
+        outputs: []
       }
     ],
     edges: [
