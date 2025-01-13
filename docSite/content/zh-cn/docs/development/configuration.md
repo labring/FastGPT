@@ -11,14 +11,6 @@ weight: 707
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。  
 
-**商业版用户**，直接在 Admin 端模型配置添加模型即可, 配置和名字对对应， 并且需要把注释都去掉：
-
-- llmModels - LLM 大语言模型
-- vectorModels - 向量模型
-- reRankModels - 重排模型
-- audioSpeechModels - 语音播放模型
-- whisperModel - 语音输入模型
-
 下面配置文件示例中包含了系统参数和各个模型配置：
 
 ## 4.6.8+ 版本新配置文件示例
