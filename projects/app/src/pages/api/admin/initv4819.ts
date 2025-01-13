@@ -1,4 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -19,18 +20,35 @@ export default NextAPI(handler);
 
 const moveUserAvatar = async () => {
   try {
-    const users = await MongoUser.find({});
+    const users = await MongoUser.find({}, '_id avatar');
+    console.log('Total users:', users.length);
+    let success = 0;
     for await (const user of users) {
-      await MongoTeamMember.updateOne(
-        {
-          _id: user._id
-        },
-        {
-          avatar: (user as any).avatar // 删除 avatar 字段, 因为 Type 改了，所以这里不能直接写 user.avatar
-        }
-      );
+      // @ts-ignore
+      if (!user.avatar) continue;
+      try {
+        await mongoSessionRun(async (session) => {
+          await MongoTeamMember.updateOne(
+            {
+              userId: user._id
+            },
+            {
+              $set: {
+                avatar: (user as any).avatar // 删除 avatar 字段, 因为 Type 改了，所以这里不能直接写 user.avatar
+              }
+            },
+            { session }
+          );
+          // @ts-ignore
+          user.avatar = undefined;
+          await user.save({ session });
+        });
+        success++;
+        console.log('Move avatar success:', success);
+      } catch (error) {
+        console.error(error);
+      }
     }
-    console.log('Move avatar success:', users.length);
   } catch (error) {
     console.error(error);
   }

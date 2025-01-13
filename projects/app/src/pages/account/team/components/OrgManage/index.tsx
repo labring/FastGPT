@@ -163,14 +163,20 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
       </Flex>
-      <MyBox flex={'1 0 0'} overflow={'auto'} isLoading={isLoadingOrgs}>
+      <MyBox
+        flex={'1 0 0'}
+        h={0}
+        display={'flex'}
+        flexDirection={'column'}
+        isLoading={isLoadingOrgs}
+      >
         <Box mb={3}>
           <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={setParentPath} />
         </Box>
-        <Flex w={'100%'} gap={'4'}>
+        <Flex flex={'1 0 0'} h={0} w={'100%'} gap={'4'}>
           {/* Table */}
-          <TableContainer overflow={'unset'} fontSize={'sm'} flexGrow={1}>
-            <Table overflow={'unset'}>
+          <TableContainer h={'100%'} overflowY={'auto'} fontSize={'sm'} flexGrow={1}>
+            <Table>
               <Thead>
                 <Tr bg={'white !important'}>
                   <Th bg="myGray.100" borderLeftRadius="6px">
@@ -326,33 +332,33 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
             </VStack>
           )}
         </Flex>
-
-        {!!editOrg && (
-          <OrgInfoModal
-            editOrg={editOrg}
-            onClose={() => setEditOrg(undefined)}
-            onSuccess={refetchOrgs}
-          />
-        )}
-        {!!movingOrg && (
-          <OrgMoveModal
-            orgs={orgs}
-            movingOrg={movingOrg}
-            onClose={() => setMovingOrg(undefined)}
-            onSuccess={refetchOrgs}
-          />
-        )}
-        {!!manageMemberOrg && (
-          <OrgMemberManageModal
-            currentOrg={manageMemberOrg}
-            refetchOrgs={refetchOrgs}
-            onClose={() => setManageMemberOrg(undefined)}
-          />
-        )}
-
-        <ConfirmDeleteOrgModal />
-        <ConfirmDeleteMember />
       </MyBox>
+
+      {!!editOrg && (
+        <OrgInfoModal
+          editOrg={editOrg}
+          onClose={() => setEditOrg(undefined)}
+          onSuccess={refetchOrgs}
+        />
+      )}
+      {!!movingOrg && (
+        <OrgMoveModal
+          orgs={orgs}
+          movingOrg={movingOrg}
+          onClose={() => setMovingOrg(undefined)}
+          onSuccess={refetchOrgs}
+        />
+      )}
+      {!!manageMemberOrg && (
+        <OrgMemberManageModal
+          currentOrg={manageMemberOrg}
+          refetchOrgs={refetchOrgs}
+          onClose={() => setManageMemberOrg(undefined)}
+        />
+      )}
+
+      <ConfirmDeleteOrgModal />
+      <ConfirmDeleteMember />
     </>
   );
 }
