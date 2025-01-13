@@ -116,9 +116,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       variables: allVariables
     });
   };
-  /* 特殊处理 JSON 的字符串，减少解码错误
-    1. 找不到的值，替换成 null
-    2. 有换行字符串
+  /* Replace the JSON string to reduce parsing errors
+    1. Replace undefined values with null
+    2. Replace newline strings
   */
   const replaceJsonBodyString = (text: string) => {
     const valToStr = (val: any) => {
