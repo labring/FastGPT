@@ -26,7 +26,7 @@ type TeamModalContextType = {
   refetchTeams: () => void;
   refetchGroups: () => void;
   teamSize: number;
-  MemberScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+  MemberScrollData: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
 export const TeamContext = createContext<TeamModalContextType>({
@@ -51,7 +51,7 @@ export const TeamContext = createContext<TeamModalContextType>({
   },
 
   teamSize: 0,
-  MemberScrollData: undefined
+  MemberScrollData: () => <></>
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
