@@ -12,6 +12,7 @@ export type CreateTeamProps = {
   avatar?: string;
   defaultTeam?: boolean;
   memberName?: string;
+  memberAvatar?: string;
 };
 export type UpdateTeamProps = Omit<ThirdPartyAccountType, 'externalWorkflowVariable'> & {
   name?: string;

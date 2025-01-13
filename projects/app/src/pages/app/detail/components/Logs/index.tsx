@@ -13,7 +13,7 @@ import {
   ModalBody,
   HStack
 } from '@chakra-ui/react';
-import Avatar from '@fastgpt/web/components/common/Avatar';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { getAppChatLogs } from '@/web/core/app/api';
@@ -30,8 +30,6 @@ import { cardStyles } from '../constants';
 
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useMount } from 'ahooks';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -40,17 +38,11 @@ const Logs = () => {
   const { isPc } = useSystem();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
-  const { teamMembers, loadAndGetTeamMembers } = useUserStore();
-
-  useMount(() => {
-    loadAndGetTeamMembers();
-  });
 
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
   });
-
   const {
     isOpen: isOpenMarkDesc,
     onOpen: onOpenMarkDesc,
@@ -63,8 +55,7 @@ const Logs = () => {
     Pagination,
     getData,
     pageNum
-  } = usePagination({
-    api: getAppChatLogs,
+  } = usePagination(getAppChatLogs, {
     pageSize: 20,
     params: {
       appId,
@@ -139,15 +130,7 @@ const Logs = () => {
                       {!!item.outLinkUid ? (
                         item.outLinkUid
                       ) : (
-                        <HStack>
-                          <Avatar
-                            src={teamMembers?.find((v) => v.tmbId === item.tmbId)?.avatar}
-                            w="1.25rem"
-                          />
-                          <Box fontSize={'sm'} ml={1}>
-                            {teamMembers?.find((v) => v.tmbId === item.tmbId)?.memberName}
-                          </Box>
-                        </HStack>
+                        <UserBox sourceMember={item.sourceMember} />
                       )}
                     </Box>
                   </Td>

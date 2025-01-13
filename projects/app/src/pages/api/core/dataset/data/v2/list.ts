@@ -6,6 +6,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { DatasetDataListItemType } from '@/global/core/dataset/type';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type GetDatasetDataListProps = PaginationProps & {
   searchText?: string;
@@ -16,7 +17,8 @@ export type GetDatasetDataListRes = PaginationResponse<DatasetDataListItemType>;
 async function handler(
   req: ApiRequestProps<GetDatasetDataListProps>
 ): Promise<GetDatasetDataListRes> {
-  let { offset, pageSize = 10, searchText = '', collectionId } = req.body;
+  let { searchText = '', collectionId } = req.body;
+  let { offset, pageSize } = parsePaginationRequest(req);
 
   pageSize = Math.min(pageSize, 30);
 

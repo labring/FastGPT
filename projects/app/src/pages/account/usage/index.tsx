@@ -23,15 +23,16 @@ import DateRangePicker, {
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'next-i18next';
-import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import AccountContainer, { TabEnum } from '../components/AccountContainer';
+import AccountContainer from '../components/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { getTeamMembers } from '@/web/support/user/team/api';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
@@ -44,7 +45,7 @@ const UsageTable = () => {
   });
   const [usageSource, setUsageSource] = useState<UsageSourceEnum | ''>('');
   const { isPc } = useSystem();
-  const { userInfo, loadAndGetTeamMembers } = useUserStore();
+  const { userInfo } = useUserStore();
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 
   const sourceList = useMemo(
@@ -63,10 +64,7 @@ const UsageTable = () => {
   );
 
   const [selectTmbId, setSelectTmbId] = useState(userInfo?.team?.tmbId);
-  const { data: members = [] } = useQuery(['getMembers', userInfo?.team?.teamId], () => {
-    if (!userInfo?.team?.teamId) return [];
-    return loadAndGetTeamMembers();
-  });
+  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
   const tmbList = useMemo(
     () =>
       members.map((item) => ({
@@ -86,14 +84,13 @@ const UsageTable = () => {
     isLoading,
     Pagination,
     getData
-  } = usePagination<UsageItemType>({
-    api: getUserUsages,
+  } = usePagination(getUserUsages, {
     pageSize: isPc ? 20 : 10,
     params: {
       dateStart: dateRange.from || new Date(),
       dateEnd: addDays(dateRange.to || new Date(), 1),
-      source: usageSource,
-      teamMemberId: selectTmbId
+      source: usageSource as UsageSourceEnum,
+      teamMemberId: selectTmbId ?? ''
     },
     defaultRequest: false
   });
@@ -120,6 +117,7 @@ const UsageTable = () => {
               <MySelect
                 size={'sm'}
                 minW={'100px'}
+                ScrollData={ScrollData}
                 list={tmbList}
                 value={selectTmbId}
                 onchange={setSelectTmbId}

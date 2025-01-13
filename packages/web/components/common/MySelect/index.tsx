@@ -21,7 +21,15 @@ import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
+import { useScrollPagination } from '../../../hooks/useScrollPagination';
 
+/** 选择组件 Props 类型
+ * value: 选中的值
+ * placeholder: 占位符
+ * list: 列表数据
+ * isLoading: 是否加载中
+ * ScrollData: 分页滚动数据控制器 [useScrollPagination] 的返回值
+ * */
 export type SelectProps<T = any> = ButtonProps & {
   value?: T;
   placeholder?: string;
@@ -34,6 +42,7 @@ export type SelectProps<T = any> = ButtonProps & {
   }[];
   isLoading?: boolean;
   onchange?: (val: T) => any | Promise<any>;
+  ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
 const MySelect = <T = any,>(
@@ -44,6 +53,7 @@ const MySelect = <T = any,>(
     list = [],
     onchange,
     isLoading = false,
+    ScrollData,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -154,39 +164,45 @@ const MySelect = <T = any,>(
           maxH={'40vh'}
           overflowY={'auto'}
         >
-          {list.map((item, i) => (
-            <Box key={i}>
-              <MenuItem
-                {...menuItemStyles}
-                {...(value === item.value
-                  ? {
-                      ref: SelectedItemRef,
-                      color: 'primary.700',
-                      bg: 'myGray.100',
-                      fontWeight: '600'
+          {(() => {
+            const component = list.map((item, i) => (
+              <Box key={i}>
+                <MenuItem
+                  {...menuItemStyles}
+                  {...(value === item.value
+                    ? {
+                        ref: SelectedItemRef,
+                        color: 'primary.700',
+                        bg: 'myGray.100',
+                        fontWeight: '600'
+                      }
+                    : {
+                        color: 'myGray.900'
+                      })}
+                  onClick={() => {
+                    if (onChange && value !== item.value) {
+                      onChange(item.value);
                     }
-                  : {
-                      color: 'myGray.900'
-                    })}
-                onClick={() => {
-                  if (onChange && value !== item.value) {
-                    onChange(item.value);
-                  }
-                }}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                display={'block'}
-              >
-                <Box>{item.label}</Box>
-                {item.description && (
-                  <Box color={'myGray.500'} fontSize={'xs'}>
-                    {item.description}
-                  </Box>
-                )}
-              </MenuItem>
-              {item.showBorder && <MyDivider my={2} />}
-            </Box>
-          ))}
+                  }}
+                  whiteSpace={'pre-wrap'}
+                  fontSize={'sm'}
+                  display={'block'}
+                >
+                  <Box>{item.label}</Box>
+                  {item.description && (
+                    <Box color={'myGray.500'} fontSize={'xs'}>
+                      {item.description}
+                    </Box>
+                  )}
+                </MenuItem>
+                {item.showBorder && <MyDivider my={2} />}
+              </Box>
+            ));
+            if (ScrollData) {
+              return <ScrollData>{component}</ScrollData>;
+            }
+            return component;
+          })()}
         </MenuList>
       </Menu>
     </Box>

@@ -1,4 +1,3 @@
-import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
@@ -27,7 +26,7 @@ import { useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { TeamContext } from '../context';
-import { getOrgList } from '@/web/support/user/team/org/api';
+import { deleteOrg, deleteOrgMember, getOrgList } from '@/web/support/user/team/org/api';
 
 import IconButton from './IconButton';
 import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
@@ -37,6 +36,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -76,7 +76,9 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { userInfo, isTeamAdmin } = useUserStore();
 
   const { members } = useContextSelector(TeamContext, (v) => v);
+  const { feConfigs } = useSystemStore();
 
+  const isSyncMember = feConfigs.register_method?.includes('sync');
   const [parentPath, setParentPath] = useState('');
   const {
     data: orgs = [],
@@ -174,9 +176,11 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <Th bg="myGray.100" borderLeftRadius="6px">
                     {t('common:Name')}
                   </Th>
-                  <Th bg="myGray.100" borderRightRadius="6px">
-                    {t('common:common.Action')}
-                  </Th>
+                  {!isSyncMember && (
+                    <Th bg="myGray.100" borderRightRadius="6px">
+                      {t('common:common.Action')}
+                    </Th>
+                  )}
                 </Tr>
               </Thead>
               <Tbody>
@@ -197,8 +201,8 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                         />
                       </HStack>
                     </Td>
-                    <Td w={'6rem'}>
-                      {isTeamAdmin && (
+                    {isTeamAdmin && !isSyncMember && (
+                      <Td w={'6rem'}>
                         <MyMenu
                           trigger="hover"
                           Button={<IconButton name="more" />}
@@ -225,8 +229,8 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                             }
                           ]}
                         />
-                      )}
-                    </Td>
+                      </Td>
+                    )}
                   </Tr>
                 ))}
                 {currentOrg?.members.map((member) => {
@@ -239,7 +243,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                         <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
                       </Td>
                       <Td w={'6rem'}>
-                        {isTeamAdmin && (
+                        {isTeamAdmin && !isSyncMember && (
                           <MyMenu
                             trigger={'hover'}
                             Button={<IconButton name="more" />}
@@ -268,57 +272,59 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
             </Table>
           </TableContainer>
           {/* Slider */}
-          <VStack w={'180px'} alignItems={'start'}>
-            <HStack gap={'6px'}>
-              <Avatar src={currentOrg?.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
-              <Box fontWeight={500} color={'myGray.900'}>
-                {currentOrg?.name}
-              </Box>
-              {currentOrg?.path !== '' && (
-                <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
-              )}
-            </HStack>
-            <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
-
-            <Divider my={'20px'} />
-
-            <Box fontWeight={500} fontSize="sm" color="myGray.900">
-              {t('common:common.Action')}
-            </Box>
-            {currentOrg && isTeamAdmin && (
-              <VStack gap="13px" w="100%">
-                <ActionButton
-                  icon="common/add2"
-                  text={t('account_team:create_sub_org')}
-                  onClick={() => {
-                    setEditOrg({
-                      ...defaultOrgForm,
-                      parentId: currentOrg?._id
-                    });
-                  }}
-                />
-                <ActionButton
-                  icon="common/administrator"
-                  text={t('account_team:manage_member')}
-                  onClick={() => setManageMemberOrg(currentOrg)}
-                />
+          {!isSyncMember && (
+            <VStack w={'180px'} alignItems={'start'}>
+              <HStack gap={'6px'}>
+                <Avatar src={currentOrg?.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
+                <Box fontWeight={500} color={'myGray.900'}>
+                  {currentOrg?.name}
+                </Box>
                 {currentOrg?.path !== '' && (
-                  <>
-                    <ActionButton
-                      icon="common/file/move"
-                      text={t('account_team:move_org')}
-                      onClick={() => setMovingOrg(currentOrg)}
-                    />
-                    <ActionButton
-                      icon="delete"
-                      text={t('account_team:delete_org')}
-                      onClick={() => deleteOrgHandler(currentOrg._id)}
-                    />
-                  </>
+                  <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
                 )}
-              </VStack>
-            )}
-          </VStack>
+              </HStack>
+              <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
+
+              <Divider my={'20px'} />
+
+              <Box fontWeight={500} fontSize="sm" color="myGray.900">
+                {t('common:common.Action')}
+              </Box>
+              {currentOrg && isTeamAdmin && (
+                <VStack gap="13px" w="100%">
+                  <ActionButton
+                    icon="common/add2"
+                    text={t('account_team:create_sub_org')}
+                    onClick={() => {
+                      setEditOrg({
+                        ...defaultOrgForm,
+                        parentId: currentOrg?._id
+                      });
+                    }}
+                  />
+                  <ActionButton
+                    icon="common/administrator"
+                    text={t('account_team:manage_member')}
+                    onClick={() => setManageMemberOrg(currentOrg)}
+                  />
+                  {currentOrg?.path !== '' && (
+                    <>
+                      <ActionButton
+                        icon="common/file/move"
+                        text={t('account_team:move_org')}
+                        onClick={() => setMovingOrg(currentOrg)}
+                      />
+                      <ActionButton
+                        icon="delete"
+                        text={t('account_team:delete_org')}
+                        onClick={() => deleteOrgHandler(currentOrg._id)}
+                      />
+                    </>
+                  )}
+                </VStack>
+              )}
+            </VStack>
+          )}
         </Flex>
 
         {!!editOrg && (

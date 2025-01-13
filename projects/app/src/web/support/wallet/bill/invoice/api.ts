@@ -1,8 +1,8 @@
-import { PagingData, RequestPaging } from '@/types';
 import { GET, POST } from '@/web/common/api/request';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { InvoiceType } from '@fastgpt/global/support/wallet/bill/type';
 import { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 export type invoiceBillDataType = {
   type: BillTypeEnum;
   price: number;
@@ -16,5 +16,5 @@ export const getInvoiceBillsList = () =>
 export const submitInvoice = (data: InvoiceType) =>
   POST(`/proApi/support/wallet/bill/invoice/submit`, data);
 
-export const getInvoiceRecords = (data: RequestPaging) =>
-  POST<PagingData<InvoiceSchemaType>>(`/proApi/support/wallet/bill/invoice/records`, data);
+export const getInvoiceRecords = (data: PaginationProps) =>
+  POST<PaginationResponse<InvoiceSchemaType>>(`/proApi/support/wallet/bill/invoice/records`, data);
