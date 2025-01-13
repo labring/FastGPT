@@ -10,8 +10,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
 async function handler(
   req: NextApiRequest,
@@ -83,14 +83,6 @@ async function handler(
           }
         },
         {
-          $lookup: {
-            from: TeamMemberCollectionName,
-            localField: 'tmbId',
-            foreignField: '_id',
-            as: 'member'
-          }
-        },
-        {
           $addFields: {
             userGoodFeedbackCount: {
               $size: {
@@ -143,12 +135,7 @@ async function handler(
             customFeedbacksCount: 1,
             markCount: 1,
             outLinkUid: 1,
-            tmbId: 1,
-            sourceMember: {
-              name: '$member.name',
-              avatar: '$member.avatar',
-              status: '$member.status'
-            }
+            tmbId: 1
           }
         }
       ],
@@ -159,8 +146,15 @@ async function handler(
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
 
+  const listWithSourceMember = await addSourceMember({
+    list: list,
+    teamId
+  });
+
+  const listWithoutTmbId = list.filter((item) => !item.tmbId);
+
   return {
-    list,
+    list: listWithSourceMember.concat(listWithoutTmbId),
     total
   };
 }
