@@ -1,4 +1,4 @@
-import { useUserStore } from '@/web/support/user/useUserStore';
+import { getTeamMembers } from '@/web/support/user/team/api';
 import {
   Box,
   Flex,
@@ -15,6 +15,7 @@ import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
 import React, { useState } from 'react';
 
@@ -31,13 +32,12 @@ export function ChangeOwnerModal({
   onChangeOwner
 }: ChangeOwnerModalProps & { onClose: () => void }) {
   const { t } = useTranslation();
-  const { loadAndGetTeamMembers } = useUserStore();
-
   const [inputValue, setInputValue] = React.useState('');
 
-  const { data: teamMembers = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: false
+  const { data: teamMembers, ScrollData } = useScrollPagination(getTeamMembers, {
+    pageSize: 15
   });
+
   const memberList = teamMembers.filter((item) => {
     return item.memberName.includes(inputValue);
   });
@@ -101,11 +101,6 @@ export function ChangeOwnerModal({
                 onOpenMemberListMenu();
                 setSelectedMember(null);
               }}
-              // onBlur={() => {
-              //   setTimeout(() => {
-              //     onCloseMemberListMenu();
-              //   }, 10);
-              // }}
               {...(selectedMember && { pl: '10' })}
             />
           </Flex>
@@ -123,26 +118,28 @@ export function ChangeOwnerModal({
               maxH={'300px'}
               overflow={'auto'}
             >
-              {memberList.map((item) => (
-                <Box
-                  key={item.tmbId}
-                  p="2"
-                  _hover={{ bg: 'myGray.100' }}
-                  mx="1"
-                  borderRadius="md"
-                  cursor={'pointer'}
-                  onClickCapture={() => {
-                    setInputValue(item.memberName);
-                    setSelectedMember(item);
-                    onCloseMemberListMenu();
-                  }}
-                >
-                  <Flex align="center">
-                    <Avatar src={item.avatar} w="1.25rem" />
-                    <Box ml="2">{item.memberName}</Box>
-                  </Flex>
-                </Box>
-              ))}
+              <ScrollData>
+                {memberList.map((item) => (
+                  <Box
+                    key={item.tmbId}
+                    p="2"
+                    _hover={{ bg: 'myGray.100' }}
+                    mx="1"
+                    borderRadius="md"
+                    cursor={'pointer'}
+                    onClickCapture={() => {
+                      setInputValue(item.memberName);
+                      setSelectedMember(item);
+                      onCloseMemberListMenu();
+                    }}
+                  >
+                    <Flex align="center">
+                      <Avatar src={item.avatar} w="1.25rem" />
+                      <Box ml="2">{item.memberName}</Box>
+                    </Flex>
+                  </Box>
+                ))}
+              </ScrollData>
             </Flex>
           )}
 

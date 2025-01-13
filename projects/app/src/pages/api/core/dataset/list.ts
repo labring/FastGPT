@@ -2,7 +2,6 @@ import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import {
@@ -19,6 +18,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -174,19 +174,20 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const data = formatDatasets.map<DatasetListItemType>((item) => ({
-    _id: item._id,
-    avatar: item.avatar,
-    name: item.name,
-    intro: item.intro,
-    type: item.type,
-    permission: item.permission,
-    vectorModel: getVectorModel(item.vectorModel),
-    inheritPermission: item.inheritPermission,
-    tmbId: item.tmbId,
-    updateTime: item.updateTime,
-    private: item.privateDataset
-  }));
+  const tmbIds = formatDatasets.map((item) => item.tmbId);
+  const memberInfo = await MongoTeamMember.find({ _id: { $in: tmbIds } }, '_id name avatar').lean();
+
+  const data = formatDatasets.map((item) => {
+    const member = memberInfo.find((member) => String(member._id) === String(item.tmbId));
+
+    return {
+      ...item,
+      sourceMember: {
+        name: member!.name,
+        avatar: member!.avatar
+      }
+    };
+  });
 
   return data;
 }

@@ -1,14 +1,14 @@
-import { PagingData, RequestPaging } from '@/types';
 import { GET, POST } from '@/web/common/api/request';
 import { CreateBillProps, CreateBillResponse } from '@fastgpt/global/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export const getBills = (
-  data: RequestPaging & {
+  data: PaginationProps<{
     type?: BillTypeEnum;
-  }
-) => POST<PagingData<BillSchemaType>>(`/proApi/support/wallet/bill/list`, data);
+  }>
+) => POST<PaginationResponse<BillSchemaType>>(`/proApi/support/wallet/bill/list`, data);
 
 export const getWxPayQRCode = (data: CreateBillProps) =>
   POST<CreateBillResponse>(`/proApi/support/wallet/bill/create`, data);

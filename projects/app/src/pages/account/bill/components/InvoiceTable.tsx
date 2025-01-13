@@ -1,7 +1,7 @@
 import { getInvoiceRecords } from '@/web/support/wallet/bill/invoice/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -30,8 +30,7 @@ const InvoiceTable = () => {
     isLoading,
     Pagination,
     total
-  } = usePagination({
-    api: getInvoiceRecords,
+  } = usePagination(getInvoiceRecords, {
     pageSize: 20
   });
 
