@@ -56,3 +56,27 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
     ]
 }'
 ```
+
+## 自定义用户 ID
+
+`v4.8.13`后支持传入自定义的用户 ID, 并且存入历史记录中。
+
+```sh
+curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "111",
+    "stream": false,
+    "detail": false,
+    "messages": [
+        {
+            "content": "导演是谁",
+            "role": "user"
+        }
+    ],
+    "customUid": "xxxxxx"
+}'
+```
+
+在历史记录中，该条记录的使用者会显示为 `xxxxxx`。
