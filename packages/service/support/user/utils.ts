@@ -79,19 +79,16 @@ export const checkWebSyncLimit = async ({
  */
 export async function addSourceMember<T extends { tmbId: string }>({
   list,
-  teamId,
   session
 }: {
   list: T[];
-  teamId?: string;
   session?: ClientSession;
 }): Promise<Array<T & { sourceMember: SourceMemberType }>> {
-  if (!list.length) return [];
+  if (!Array.isArray(list)) return [];
 
   const tmbList = await MongoTeamMember.find(
     {
-      _id: { $in: list.map((item) => String(item.tmbId)) },
-      ...(teamId && { teamId })
+      _id: { $in: list.map((item) => String(item.tmbId)) }
     },
     'tmbId name avatar status',
     {
@@ -103,9 +100,10 @@ export async function addSourceMember<T extends { tmbId: string }>({
     .map((item) => {
       const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
       if (!tmb) return;
+
       return {
         ...item,
-        ...(tmb && { sourceMember: { name: tmb.name, avatar: tmb.avatar, status: tmb.status } })
+        sourceMember: { name: tmb.name, avatar: tmb.avatar, status: tmb.status }
       };
     })
     .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;

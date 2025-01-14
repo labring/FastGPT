@@ -41,6 +41,10 @@ export type ChatDispatchProps = {
     teamId: string;
     tmbId: string; // App tmbId
   };
+  runningUserInfo: {
+    teamId: string;
+    tmbId: string;
+  };
   uid: string; // Who run this workflow
 
   chatId?: string;

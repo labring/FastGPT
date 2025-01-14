@@ -280,6 +280,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
           },
+          runningUserInfo: {
+            teamId,
+            tmbId
+          },
           uid: String(outLinkUserId || tmbId),
 
           chatId,

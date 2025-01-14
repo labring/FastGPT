@@ -152,6 +152,7 @@ export enum NodeInputKeyEnum {
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   collectionFilterMatch = 'collectionFilterMatch',
+  authTmbId = 'authTmbId',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',
