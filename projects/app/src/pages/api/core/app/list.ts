@@ -203,8 +203,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     .filter((app) => app.permission.hasReadPer);
 
   return addSourceMember({
-    list: formatApps,
-    teamId
+    list: formatApps
   });
 }
 

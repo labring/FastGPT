@@ -147,8 +147,7 @@ async function handler(
   ]);
 
   const listWithSourceMember = await addSourceMember({
-    list: list,
-    teamId
+    list: list
   });
 
   const listWithoutTmbId = list.filter((item) => !item.tmbId);
