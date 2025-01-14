@@ -1175,7 +1175,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/v2/l
 }'
 ```
 
-**4.6.7+**
+**4.6.7-(即将弃用)**
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list' \
@@ -1197,8 +1197,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
 
 {{% alert icon=" " context="success" %}}
 
-- pageNum: 偏移量（选填）
-- pageNum: 页码（选填）
+- offset: 偏移量（选填）
 - pageSize: 每页数量，最大30（选填）
 - collectionId: 集合的ID（必填）
 - searchText: 模糊搜索词（选填）
@@ -1220,7 +1219,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
     "data": {
         "pageNum": 1,
         "pageSize": 10,
-        "data": [
+        "list": [
             {
                 "_id": "65abd4b29d1448617cba61db",
                 "datasetId": "65abc9bd9d1448617cba5e6c",
