@@ -7,7 +7,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { VersionListItemType } from '@fastgpt/global/core/app/version';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
 export type versionListBody = PaginationProps<{
   appId: string;
@@ -36,43 +36,21 @@ async function handler(
         .limit(pageSize)
         .lean();
 
-      const memberList = await MongoTeamMember.find(
-        {
-          _id: { $in: versions.map((item) => item.tmbId) }
-        },
-        '_id name avatar status'
-      ).lean();
-
-      return versions.map((item) => {
-        const member = memberList.find((member) => String(member._id) === String(item.tmbId));
-        return {
-          ...item,
-          sourceMember: {
-            name: member?.name || '',
-            avatar: member?.avatar || '',
-            status: member?.status || ''
-          }
-        };
-      });
+      return (
+        await addSourceMember({
+          list: versions
+        })
+      ).map((item) => ({
+        ...item,
+        isPublish: !!item.isPublish
+      }));
     })(),
     MongoAppVersion.countDocuments({ appId })
   ]);
 
-  const versionList = result.map((item) => {
-    return {
-      _id: item._id,
-      appId: item.appId,
-      versionName: item.versionName,
-      time: item.time,
-      isPublish: item.isPublish,
-      tmbId: item.tmbId,
-      sourceMember: item.sourceMember
-    };
-  });
-
   return {
     total,
-    list: versionList
+    list: result
   };
 }
 
