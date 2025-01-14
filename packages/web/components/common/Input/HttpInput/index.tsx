@@ -31,7 +31,7 @@ const HttpInput = ({
 
   const onChangeInput = useCallback(
     (editorState: EditorState, editor: LexicalEditor) => {
-      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      const text = editorStateToText(editor);
       setCurrentValue(text);
       onChange?.(text);
     },
@@ -39,7 +39,7 @@ const HttpInput = ({
   );
   const onBlurInput = useCallback(
     (editor: LexicalEditor) => {
-      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      const text = editorStateToText(editor);
       onBlur?.(text);
     },
     [onBlur]
