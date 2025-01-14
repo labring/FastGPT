@@ -164,6 +164,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       runningAppInfo: {
         id: appId,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: {
         teamId,
         tmbId
       },

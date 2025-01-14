@@ -45,7 +45,11 @@ async function handler(
     requestOrigin: req.headers.origin,
     mode: 'debug',
     runningAppInfo: {
-      id: appId,
+      id: app._id,
+      teamId: app.teamId,
+      tmbId: app.tmbId
+    },
+    runningUserInfo: {
       teamId,
       tmbId
     },
