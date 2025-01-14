@@ -44,7 +44,8 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     members: allMembers,
     refetchGroups,
     groups,
-    refetchMembers
+    refetchMembers,
+    MemberScrollData
   } = useContextSelector(TeamContext, (v) => v);
 
   const group = useMemo(() => {
@@ -156,31 +157,33 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
               }}
             />
             <Flex flexDirection="column" mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
-              {filtered.map((member) => {
-                return (
-                  <HStack
-                    py="2"
-                    px={3}
-                    borderRadius={'md'}
-                    alignItems="center"
-                    key={member.tmbId}
-                    cursor={'pointer'}
-                    _hover={{
-                      bg: 'myGray.50',
-                      ...(!isSelected(member.tmbId) ? { svg: { color: 'myGray.50' } } : {})
-                    }}
-                    _notLast={{ mb: 2 }}
-                    onClick={() => handleToggleSelect(member.tmbId)}
-                  >
-                    <Checkbox
-                      isChecked={!!isSelected(member.tmbId)}
-                      icon={<MyIcon name={'common/check'} w={'12px'} />}
-                    />
-                    <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box>{member.memberName}</Box>
-                  </HStack>
-                );
-              })}
+              <MemberScrollData>
+                {filtered.map((member) => {
+                  return (
+                    <HStack
+                      py="2"
+                      px={3}
+                      borderRadius={'md'}
+                      alignItems="center"
+                      key={member.tmbId}
+                      cursor={'pointer'}
+                      _hover={{
+                        bg: 'myGray.50',
+                        ...(!isSelected(member.tmbId) ? { svg: { color: 'myGray.50' } } : {})
+                      }}
+                      _notLast={{ mb: 2 }}
+                      onClick={() => handleToggleSelect(member.tmbId)}
+                    >
+                      <Checkbox
+                        isChecked={!!isSelected(member.tmbId)}
+                        icon={<MyIcon name={'common/check'} w={'12px'} />}
+                      />
+                      <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
+                      <Box>{member.memberName}</Box>
+                    </HStack>
+                  );
+                })}
+              </MemberScrollData>
             </Flex>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>

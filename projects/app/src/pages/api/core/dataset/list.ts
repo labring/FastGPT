@@ -1,4 +1,3 @@
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -18,8 +17,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -175,30 +173,9 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const tmbIds = formatDatasets.map((item) => String(item.tmbId));
-  const memberInfo = await MongoTeamMember.find({ _id: { $in: tmbIds } }, '_id name avatar').lean();
-
-  return formatDatasets.map((item) => {
-    const member =
-      memberInfo.find((member) => String(member._id) === String(item.tmbId)) ?? memberInfo[0];
-
-    return {
-      _id: item._id,
-      avatar: item.avatar,
-      name: item.name,
-      intro: item.intro,
-      type: item.type,
-      permission: item.permission,
-      vectorModel: getVectorModel(item.vectorModel),
-      inheritPermission: item.inheritPermission,
-      tmbId: item.tmbId,
-      updateTime: item.updateTime,
-      private: item.privateDataset,
-      sourceMember: {
-        name: member!.name,
-        avatar: member!.avatar
-      }
-    };
+  return addSourceMember({
+    list: formatDatasets,
+    teamId
   });
 }
 
