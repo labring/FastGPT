@@ -1217,8 +1217,6 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/data/list
     "statusText": "",
     "message": "",
     "data": {
-        "pageNum": 1,
-        "pageSize": 10,
         "list": [
             {
                 "_id": "65abd4b29d1448617cba61db",
