@@ -40,14 +40,14 @@ const PromptEditor = ({
 
   const onChangeInput = useCallback(
     (editorState: EditorState, editor: LexicalEditor) => {
-      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      const text = editorStateToText(editor);
       onChange?.(text);
     },
     [onChange]
   );
   const onBlurInput = useCallback(
     (editor: LexicalEditor) => {
-      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+      const text = editorStateToText(editor);
       onBlur?.(text);
     },
     [onBlur]
