@@ -41,7 +41,6 @@ const PromptEditor = ({
   const onChangeInput = useCallback(
     (editorState: EditorState, editor: LexicalEditor) => {
       const text = editorStateToText(editor);
-      console.log('text', text);
       onChange?.(text);
     },
     [onChange]
