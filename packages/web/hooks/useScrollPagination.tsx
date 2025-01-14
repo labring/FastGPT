@@ -16,7 +16,7 @@ import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 
 type ItemHeight<T> = (index: number, data: T) => number;
-const thresholdVal = 200;
+const thresholdVal = 100;
 
 export type ScrollListType = ({
   children,

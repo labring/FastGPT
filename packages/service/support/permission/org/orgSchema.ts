@@ -47,14 +47,11 @@ export const OrgSchema = new Schema(
 OrgSchema.virtual('members', {
   ref: OrgMemberCollectionName,
   localField: '_id',
-  foreignField: 'orgId'
+  foreignField: 'orgId',
+  match: function (this: OrgSchemaType) {
+    return { teamId: this.teamId };
+  }
 });
-// OrgSchema.virtual('permission', {
-//   ref: ResourcePermissionCollectionName,
-//   localField: '_id',
-//   foreignField: 'orgId',
-//   justOne: true
-// });
 
 try {
   OrgSchema.index({
