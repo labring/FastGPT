@@ -1,6 +1,6 @@
 import type {
   APIFileContentResponse,
-  APIFileListResponse,
+  APIFileItem,
   APIFileReadResponse,
   APIFileServer
 } from '@fastgpt/global/core/dataset/apiDataset';
@@ -80,21 +80,21 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   const listFiles = async ({
     searchKey,
     parentId,
-    pageToken = '',
+    offset,
     pageSize
   }: {
     searchKey?: string;
     parentId?: ParentIdType;
-    pageToken: string;
+    offset?: number;
     pageSize: number;
   }) => {
-    const { files, nextPageToken } = await request<APIFileListResponse>(
+    const files = await request<APIFileItem[]>(
       `/v1/file/list`,
       {
         searchKey,
         parentId,
         pageSize,
-        pageToken
+        offset
       },
       'POST'
     );
@@ -112,8 +112,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     }));
 
     return {
-      list: formattedFiles,
-      nextPageToken
+      list: formattedFiles
     };
   };
 

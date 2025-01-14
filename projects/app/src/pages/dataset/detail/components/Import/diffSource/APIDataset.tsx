@@ -16,7 +16,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
-import { useTokenScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import {
   GetApiDatasetFileListProps,
   GetApiDatasetFileListResponse
@@ -62,7 +62,7 @@ const CustomAPIFileInput = () => {
     data: apiFileList,
     ScrollData,
     isLoading
-  } = useTokenScrollPagination<GetApiDatasetFileListProps, GetApiDatasetFileListResponse>(
+  } = useScrollPagination<GetApiDatasetFileListProps, GetApiDatasetFileListResponse>(
     getApiDatasetFileList,
     {
       pageSize: 15,
@@ -71,7 +71,8 @@ const CustomAPIFileInput = () => {
         parentId: parent?.parentId,
         searchKey: searchKey
       },
-      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey]
+      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey],
+      isTokenPagination: !datasetDetail.apiServer
     }
   );
 
@@ -92,7 +93,7 @@ const CustomAPIFileInput = () => {
       // Computed all selected files
       const getFilesRecursively = async (
         files: APIFileItem[],
-        pageToken: string
+        pageToken?: string
       ): Promise<APIFileItem[]> => {
         const allFiles: APIFileItem[] = [];
 

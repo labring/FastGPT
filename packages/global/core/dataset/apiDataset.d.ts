@@ -13,11 +13,6 @@ export type APIFileServer = {
   authorization: string;
 };
 
-export type APIFileListResponse = {
-  files: APIFileItem[];
-  nextPageToken: string;
-};
-
 export type APIFileContentResponse = {
   content?: string;
   previewUrl?: string;

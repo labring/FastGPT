@@ -183,8 +183,8 @@ export function useVirtualScrollPagination<
 }
 
 export function useScrollPagination<
-  TParams extends PaginationProps,
-  TData extends PaginationResponse
+  TParams extends PaginationProps | TokenPaginationProps,
+  TData extends PaginationResponse | TokenPaginationResponse
 >(
   api: (data: TParams) => Promise<TData>,
   {
@@ -194,7 +194,8 @@ export function useScrollPagination<
     pageSize = 10,
     params = {},
     EmptyTip,
-    showErrorToast = true
+    showErrorToast = true,
+    isTokenPagination = false
   }: {
     refreshDeps?: any[];
     scrollLoadType?: 'top' | 'bottom';
@@ -203,36 +204,46 @@ export function useScrollPagination<
     params?: Record<string, any>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
+    isTokenPagination?: boolean;
   }
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const [data, setData] = useState<TData['list']>([]);
+  const [data, setData] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [pageToken, setPageToken] = useState<string>('');
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
-  const isEmpty = total === 0 && !isLoading;
 
-  const noMore = data.length >= total;
+  const isEmpty = isTokenPagination ? data.length === 0 : total === 0 && !isLoading;
+  const noMore = isTokenPagination ? !pageToken : data.length >= total;
 
   const loadData = useLockFn(
     async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && !init) return;
 
-      const offset = init ? 0 : data.length;
-
       setTrue();
 
       try {
-        const res = await api({
-          offset,
-          pageSize,
-          ...params
-        } as TParams);
+        let res;
+        if (isTokenPagination) {
+          res = await api({
+            pageToken: init ? '' : pageToken,
+            pageSize,
+            ...params
+          } as TParams);
+          setPageToken((res as TokenPaginationResponse).nextPageToken || '');
+        } else {
+          const offset = init ? 0 : data.length;
+          res = await api({
+            offset,
+            pageSize,
+            ...params
+          } as TParams);
+          setTotal((res as PaginationResponse).total);
+        }
 
-        setTotal(res.total);
-
-        if (scrollLoadType === 'top') {
+        if (scrollLoadType === 'top' && !isTokenPagination) {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
           // 使用 requestAnimationFrame 来调整滚动位置
@@ -250,10 +261,10 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (offset === 0 ? res.list : [...res.list, ...prevData]));
+          setData((prevData) => (init ? res.list : [...res.list, ...prevData]));
           adjustScrollPosition();
         } else {
-          setData((prevData) => (offset === 0 ? res.list : [...prevData, ...res.list]));
+          setData((prevData) => (init ? res.list : [...prevData, ...res.list]));
         }
       } catch (error: any) {
         if (showErrorToast) {
@@ -355,145 +366,7 @@ export function useScrollPagination<
   return {
     ScrollData,
     isLoading,
-    total: Math.max(total, data.length),
-    data,
-    setData,
-    fetchData: loadData,
-    refreshList
-  };
-}
-
-export function useTokenScrollPagination<
-  TParams extends TokenPaginationProps,
-  TData extends TokenPaginationResponse
->(
-  api: (data: TParams) => Promise<TData>,
-  {
-    refreshDeps,
-
-    pageSize = 10,
-    params = {},
-    EmptyTip,
-    showErrorToast = true
-  }: {
-    refreshDeps?: any[];
-
-    pageSize?: number;
-    params?: Record<string, any>;
-    EmptyTip?: React.JSX.Element;
-    showErrorToast?: boolean;
-  }
-) {
-  const { t } = useTranslation();
-  const { toast } = useToast();
-
-  const [data, setData] = useState<TData['list']>([]);
-  const [isLoading, { setTrue, setFalse }] = useBoolean(false);
-
-  const [pageToken, setPageToken] = useState<string>('');
-  const noMore = !pageToken;
-  const isEmpty = data.length === 0;
-
-  const loadData = useLockFn(async (init = false) => {
-    if (noMore && !init) return;
-
-    setTrue();
-
-    try {
-      const res = await api({
-        pageToken: init ? '' : pageToken,
-        pageSize,
-        ...params
-      } as TParams);
-
-      setPageToken(res.nextPageToken);
-      setData((prevData) => (init ? res.list : [...prevData, ...res.list]));
-    } catch (error: any) {
-      if (showErrorToast) {
-        toast({
-          title: getErrText(error, t('common:core.chat.error.data_error')),
-          status: 'error'
-        });
-      }
-      console.log(error);
-    }
-
-    setFalse();
-  });
-
-  let ScrollRef = useRef<HTMLDivElement>(null);
-  const ScrollData = useMemoizedFn(
-    ({
-      children,
-      ...props
-    }: {
-      children: ReactNode;
-    } & BoxProps) => {
-      const ref = ScrollRef;
-      const loadText = useMemo(() => {
-        if (isLoading) return t('common:common.is_requesting');
-        if (noMore) return t('common:common.request_end');
-        return t('common:common.request_more');
-      }, [isLoading, noMore]);
-
-      const scroll = useScroll(ref);
-
-      // Watch scroll position
-      useThrottleEffect(
-        () => {
-          if (!ref?.current || noMore) return;
-          const { scrollTop, scrollHeight, clientHeight } = ref.current;
-
-          if (scrollTop + clientHeight >= scrollHeight - thresholdVal) {
-            loadData(false);
-          }
-        },
-        [scroll],
-        { wait: 50 }
-      );
-
-      return (
-        <Box {...props} ref={ref}>
-          {children}
-          {!isEmpty && (
-            <Box
-              mt={2}
-              fontSize={'xs'}
-              color={'blackAlpha.500'}
-              textAlign={'center'}
-              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
-              onClick={() => {
-                if (loadText !== t('common:common.request_more')) return;
-                loadData(false);
-              }}
-            >
-              {loadText}
-            </Box>
-          )}
-          {isEmpty && EmptyTip}
-        </Box>
-      );
-    }
-  );
-
-  // Reload data
-  useRequest(
-    async () => {
-      loadData(true);
-    },
-    {
-      manual: false,
-      refreshDeps
-    }
-  );
-
-  const refreshList = useMemoizedFn(() => {
-    loadData(true);
-  });
-
-  return {
-    ScrollData,
-    isLoading,
+    total: isTokenPagination ? undefined : Math.max(total, data.length),
     data,
     setData,
     fetchData: loadData,
