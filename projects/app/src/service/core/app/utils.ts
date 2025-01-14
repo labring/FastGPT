@@ -65,6 +65,10 @@ export const getScheduleTriggerApp = async () => {
               teamId: String(app.teamId),
               tmbId: String(app.tmbId)
             },
+            runningUserInfo: {
+              teamId: String(app.teamId),
+              tmbId: String(app.tmbId)
+            },
             uid: String(app.tmbId),
             runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
             runtimeEdges: initWorkflowEdgeStatus(edges),

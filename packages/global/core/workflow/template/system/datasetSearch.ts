@@ -90,6 +90,13 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       value: ''
     },
     {
+      key: NodeInputKeyEnum.authTmbId,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    },
+    {
       ...Input_Template_UserChatInput,
       toolDescription: i18nT('workflow:content_to_search')
     },
