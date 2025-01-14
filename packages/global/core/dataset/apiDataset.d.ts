@@ -5,6 +5,7 @@ export type APIFileItem = {
   type: 'file' | 'folder';
   updateTime: Date;
   createTime: Date;
+  canEnter?: boolean;
 };
 
 export type APIFileServer = {
