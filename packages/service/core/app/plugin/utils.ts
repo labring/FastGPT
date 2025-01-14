@@ -1,11 +1,15 @@
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { splitCombinePluginId } from './controller';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
 /* 
   Plugin points calculation:
-  1. Return 0 if error
-  2. Add configured points if commercial plugin
-  3. Add sum of child nodes points
+  1. 系统插件/商业版插件：
+    - 有错误：返回 0
+    - 无错误：返回 单次积分 + 子流程积分（可配置）
+  2. 个人插件
+    - 返回 子流程积分
 */
 export const computedPluginUsage = async ({
   plugin,
@@ -16,13 +20,16 @@ export const computedPluginUsage = async ({
   childrenUsage: ChatNodeUsageType[];
   error?: boolean;
 }) => {
-  if (error) {
-    return 0;
+  const { source } = await splitCombinePluginId(plugin.id);
+  const childrenUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+
+  if (source !== PluginSourceEnum.personal) {
+    if (error) return 0;
+
+    const pluginCurrentCost = plugin.currentCost ?? 0;
+
+    return plugin.hasTokenFee ? pluginCurrentCost + childrenUsages : pluginCurrentCost;
   }
 
-  const childrenIUsages = childrenUsage.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
-  const pluginCurrentCose = plugin.currentCost ?? 0;
-
-  return plugin.hasTokenFee ? pluginCurrentCose + childrenIUsages : pluginCurrentCose;
+  return childrenUsages;
 };

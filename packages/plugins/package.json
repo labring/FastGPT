@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
+    "cheerio": "1.0.0-rc.12",
     "@types/pg": "^8.6.6",
     "axios": "^1.5.1",
     "duck-duck-scrape": "^2.2.5",

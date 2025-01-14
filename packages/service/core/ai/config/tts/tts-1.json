@@ -1,0 +1,32 @@
+{
+  "provider": "OpenAI",
+  "model": "tts-1",
+  "name": "TTS1",
+  "charsPointsPrice": 0,
+  "voices": [
+    {
+      "label": "Alloy",
+      "value": "alloy"
+    },
+    {
+      "label": "Echo",
+      "value": "echo"
+    },
+    {
+      "label": "Fable",
+      "value": "fable"
+    },
+    {
+      "label": "Onyx",
+      "value": "onyx"
+    },
+    {
+      "label": "Nova",
+      "value": "nova"
+    },
+    {
+      "label": "Shimmer",
+      "value": "shimmer"
+    }
+  ]
+}

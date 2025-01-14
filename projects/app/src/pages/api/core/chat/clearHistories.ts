@@ -48,6 +48,13 @@ async function handler(req: ApiRequestProps<{}, ClearHistoriesProps>, res: NextA
         source: ChatSourceEnum.online
       };
     }
+    if (authType === 'apikey') {
+      return {
+        teamId: chatTeamId,
+        appId,
+        source: ChatSourceEnum.api
+      };
+    }
 
     return Promise.reject('Param are error');
   })();

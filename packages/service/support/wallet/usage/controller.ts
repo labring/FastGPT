@@ -31,20 +31,23 @@ export const createTrainingUsage = async ({
           {
             moduleName: 'support.wallet.moduleName.index',
             model: vectorModel,
-            tokens: 0,
-            amount: 0
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0
           },
           {
             moduleName: 'support.wallet.moduleName.qa',
             model: agentModel,
-            tokens: 0,
-            amount: 0
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0
           },
           {
             moduleName: 'core.dataset.training.Auto mode',
             model: agentModel,
-            tokens: 0,
-            amount: 0
+            amount: 0,
+            inputTokens: 0,
+            outputTokens: 0
           }
         ]
       }

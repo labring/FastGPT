@@ -33,6 +33,7 @@
   "multiple_AI_conversations": "多组 AI 对话",
   "new_input_guide_lexicon": "新词库",
   "no_workflow_response": "没有运行数据",
+  "not_query": "缺少查询内容",
   "not_select_file": "未选择文件",
   "plugins_output": "插件输出",
   "question_tip": "从上到下，为各个模块的响应顺序",

@@ -45,7 +45,7 @@ async function handler(req: NextApiRequest) {
   // auth collection and get dataset
   const [
     {
-      datasetId: { _id: datasetId, vectorModel }
+      dataset: { _id: datasetId, vectorModel }
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
@@ -89,7 +89,7 @@ async function handler(req: NextApiRequest) {
   pushGenerateVectorUsage({
     teamId,
     tmbId,
-    tokens,
+    inputTokens: tokens,
     model: vectorModelData.model
   });
 

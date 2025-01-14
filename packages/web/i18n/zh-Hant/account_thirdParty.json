@@ -1,0 +1,16 @@
+{
+  "configured": "已配置",
+  "error.no_permission": "請聯繫管理員配置",
+  "laf_account": "af 帳號",
+  "no_intro": "暫無說明",
+  "not_configured": "未配置",
+  "open_api_notice": "可以填寫 OpenAI/OneAPI 的相關金鑰。\n如果你填寫了該內容，在線上平台使用【 AI 對話】、【問題分類】和【內容提取】將會走你填寫的 Key，不會計費用。\n請注意你的 Key 是否有存取對應模型的權限。 \nGPT 模型可以選擇 FastAI 。",
+  "openai_account_configuration": "OpenAI/OneAPI 帳號",
+  "request_address_notice": "請求地址，預設為 openai 官方。可填中轉位址，未自動補全 \"v1\"",
+  "third_party_account": "第三方帳號",
+  "third_party_account_desc": "管理員可以在這裡配置第三方帳號或變量，該帳號將被團隊所有人使用",
+  "unavailable": "取得使用量異常",
+  "usage": "使用量：",
+  "value_not_return_tip": "參數配置後，不會再次返回前端，無需洩漏給其他成員",
+  "value_placeholder": "輸入參數值。\n輸入空值表示刪除該配置。"
+}

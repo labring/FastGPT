@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
@@ -30,6 +30,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import TemplateMarketModal from './components/TemplateMarketModal';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
+import JsonImportModal from './components/JsonImportModal';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -63,6 +64,11 @@ const MyApps = () => {
     isOpen: isOpenCreateHttpPlugin,
     onOpen: onOpenCreateHttpPlugin,
     onClose: onCloseCreateHttpPlugin
+  } = useDisclosure();
+  const {
+    isOpen: isOpenJsonImportModal,
+    onOpen: onOpenJsonImportModal,
+    onClose: onCloseJsonImportModal
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const [templateModalType, setTemplateModalType] = useState<AppTypeEnum | 'all'>();
@@ -244,6 +250,16 @@ const MyApps = () => {
                       }
                     ]
                   },
+                  {
+                    children: [
+                      {
+                        icon: 'core/app/type/jsonImport',
+                        label: t('app:type.Import from json'),
+                        description: t('app:type.Import from json tip'),
+                        onClick: onOpenJsonImportModal
+                      }
+                    ]
+                  },
                   ...(isPc
                     ? []
                     : [
@@ -301,7 +317,6 @@ const MyApps = () => {
               deleteTip={t('app:confirm_delete_folder_tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
               managePer={{
-                mode: 'all',
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
@@ -324,10 +339,12 @@ const MyApps = () => {
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
                 onDelOneCollaborator: async ({
                   tmbId,
-                  groupId
+                  groupId,
+                  orgId
                 }: {
                   tmbId?: string;
                   groupId?: string;
+                  orgId?: string;
                 }) => {
                   if (tmbId) {
                     return deleteAppCollaborators({
@@ -338,6 +355,11 @@ const MyApps = () => {
                     return deleteAppCollaborators({
                       appId: folderDetail._id,
                       groupId
+                    });
+                  } else if (orgId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      orgId
                     });
                   }
                 }
@@ -369,6 +391,7 @@ const MyApps = () => {
           defaultType={templateModalType}
         />
       )}
+      {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
   );
 };

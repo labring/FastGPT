@@ -1,5 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import { useEffect } from 'react';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 export const useBeforeunload = (props?: { callback?: () => any; tip?: string }) => {
   const { t } = useTranslation();
@@ -7,16 +8,15 @@ export const useBeforeunload = (props?: { callback?: () => any; tip?: string }) 
   const { tip = t('common:common.Confirm to leave the page'), callback } = props || {};
 
   useEffect(() => {
-    const listen =
-      process.env.NODE_ENV === 'production'
-        ? (e: any) => {
-            e.preventDefault();
-            e.returnValue = tip;
-            callback?.();
-          }
-        : () => {
-            callback?.();
-          };
+    const listen = isProduction
+      ? (e: any) => {
+          e.preventDefault();
+          e.returnValue = tip;
+          callback?.();
+        }
+      : () => {
+          callback?.();
+        };
     window.addEventListener('beforeunload', listen);
 
     return () => {

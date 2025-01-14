@@ -13,6 +13,7 @@ import { StoreEdgeItemType } from '../workflow/type/edge';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
+import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 
 export type AppSchema = {
   _id: string;
@@ -73,8 +74,8 @@ export type AppSimpleEditFormType = {
   aiSettings: {
     model: string;
     systemPrompt?: string | undefined;
-    temperature: number;
-    maxToken: number;
+    temperature?: number;
+    maxToken?: number;
     isResponseAnswerText: boolean;
     maxHistories: number;
   };
@@ -97,7 +98,7 @@ export type AppChatConfigType = {
   welcomeText?: string;
   variables?: VariableItemType[];
   autoExecute?: AppAutoExecuteConfigType;
-  questionGuide?: boolean;
+  questionGuide?: AppQGConfigType;
   ttsConfig?: AppTTSConfigType;
   whisperConfig?: AppWhisperConfigType;
   scheduledTriggerConfig?: AppScheduledTriggerConfigType;
@@ -109,8 +110,8 @@ export type AppChatConfigType = {
 };
 export type SettingAIDataType = {
   model: string;
-  temperature: number;
-  maxToken: number;
+  temperature?: number;
+  maxToken?: number;
   isResponseAnswerText?: boolean;
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
@@ -148,6 +149,14 @@ export type AppWhisperConfigType = {
   autoSend: boolean;
   autoTTSResponse: boolean;
 };
+
+// question guide
+export type AppQGConfigType = {
+  open: boolean;
+  model?: string;
+  customPrompt?: string;
+};
+
 // question guide text
 export type ChatInputGuideConfigType = {
   open: boolean;
@@ -175,4 +184,29 @@ export type SystemPluginListItemType = {
   _id: string;
   name: string;
   avatar: string;
+};
+
+export type AppTemplateSchemaType = {
+  templateId: string;
+  name: string;
+  intro: string;
+  avatar: string;
+  tags: string[];
+  type: string;
+  author?: string;
+  isActive?: boolean;
+  userGuide?: {
+    type: 'markdown' | 'link';
+    content?: string;
+    link?: string;
+  };
+  isQuickTemplate?: boolean;
+  order?: number;
+  workflow: WorkflowTemplateBasicType;
+};
+
+export type TemplateTypeSchemaType = {
+  typeName: string;
+  typeId: string;
+  typeOrder: number;
 };

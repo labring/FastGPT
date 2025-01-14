@@ -1,11 +1,10 @@
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
-import {
-  CollectionWithDatasetType,
-  DatasetCollectionSchemaType,
-  DatasetSchemaType
-} from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSchemaType, DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
@@ -24,6 +23,8 @@ import { getLLMModel, getVectorModel } from '../../ai/model';
 import { pushDataListToTrainingQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { addDays } from 'date-fns';
+import { MongoDatasetDataText } from '../data/dataTextSchema';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -72,6 +73,17 @@ export const createCollectionAndInsertData = async ({
 
       hashRawText: hashStr(rawText),
       rawTextLength: rawText.length,
+      nextSyncTime: (() => {
+        if (!dataset.autoSync) return undefined;
+        if (
+          [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
+            createCollectionParams.type
+          )
+        ) {
+          return addDays(new Date(), 1);
+        }
+        return undefined;
+      })(),
       session
     });
 
@@ -155,10 +167,8 @@ export async function createOneCollection({
 
   fileId,
   rawLink,
-
   externalFileId,
   externalFileUrl,
-
   apiFileId,
 
   hashRawText,
@@ -166,7 +176,10 @@ export async function createOneCollection({
   metadata = {},
   session,
   tags,
-  createTime
+
+  createTime,
+  updateTime,
+  nextSyncTime
 }: CreateOneCollectionParams) {
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
@@ -197,7 +210,10 @@ export async function createOneCollection({
         rawTextLength,
         hashRawText,
         tags: collectionTags,
-        createTime
+
+        createTime,
+        updateTime,
+        nextSyncTime
       }
     ],
     { session }
@@ -211,7 +227,7 @@ export const delCollectionRelatedSource = async ({
   collections,
   session
 }: {
-  collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+  collections: DatasetCollectionSchemaType[];
   session: ClientSession;
 }) => {
   if (collections.length === 0) return;
@@ -225,12 +241,12 @@ export const delCollectionRelatedSource = async ({
     .map((item) => item?.metadata?.relatedImgId || '')
     .filter(Boolean);
 
-  // delete files
+  // Delete files
   await delFileByFileIdList({
     bucketName: BucketNameEnum.dataset,
     fileIdList
   });
-  // delete images
+  // Delete images
   await delImgByRelatedId({
     teamId,
     relateIds: relatedImageIds,
@@ -245,7 +261,7 @@ export async function delCollection({
   session,
   delRelatedSource
 }: {
-  collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+  collections: DatasetCollectionSchemaType[];
   session: ClientSession;
   delRelatedSource: boolean;
 }) {
@@ -255,19 +271,10 @@ export async function delCollection({
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
-  const datasetIds = Array.from(
-    new Set(
-      collections.map((item) => {
-        if (typeof item.datasetId === 'string') {
-          return String(item.datasetId);
-        }
-        return String(item.datasetId._id);
-      })
-    )
-  );
+  const datasetIds = Array.from(new Set(collections.map((item) => String(item.datasetId))));
   const collectionIds = collections.map((item) => String(item._id));
 
-  // delete training data
+  // Delete training data
   await MongoDatasetTraining.deleteMany({
     teamId,
     datasetIds: { $in: datasetIds },
@@ -279,8 +286,13 @@ export async function delCollection({
     await delCollectionRelatedSource({ collections, session });
   }
 
-  // delete dataset.datas
+  // Delete dataset_datas
   await MongoDatasetData.deleteMany(
+    { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+    { session }
+  );
+  // Delete dataset_data_texts
+  await MongoDatasetDataText.deleteMany(
     { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
     { session }
   );
@@ -305,7 +317,7 @@ export async function delOnlyCollection({
   collections,
   session
 }: {
-  collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+  collections: DatasetCollectionSchemaType[];
   session: ClientSession;
 }) {
   if (collections.length === 0) return;
@@ -314,16 +326,7 @@ export async function delOnlyCollection({
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
-  const datasetIds = Array.from(
-    new Set(
-      collections.map((item) => {
-        if (typeof item.datasetId === 'string') {
-          return String(item.datasetId);
-        }
-        return String(item.datasetId._id);
-      })
-    )
-  );
+  const datasetIds = Array.from(new Set(collections.map((item) => String(item.datasetId))));
   const collectionIds = collections.map((item) => String(item._id));
 
   // delete training data

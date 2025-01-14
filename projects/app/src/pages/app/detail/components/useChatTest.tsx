@@ -107,8 +107,10 @@ export const useChatTest = ({
     async () => {
       if (!appId || !chatId) return;
       const res = await getInitChatInfo({ appId, chatId });
+
       resetVariables({
-        variables: res.variables
+        variables: res.variables,
+        variableList: res.app?.chatConfig?.variables
       });
     },
     {

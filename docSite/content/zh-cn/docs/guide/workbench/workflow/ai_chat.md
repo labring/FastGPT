@@ -19,7 +19,7 @@ weight: 232
 
 ## AI模型
 
-可以通过 [config.json](/docs/development/configuration/) 配置可选的对话模型，通过 [one-api](/docs/development/one-api/) 来实现多模型接入。
+可以通过 [config.json](/docs/development/configuration/) 配置可选的对话模型，通过 [one-api](/docs/development/modelconfig/one-api/) 来实现多模型接入。
 
 点击AI模型后，可以配置模型的相关参数。
 

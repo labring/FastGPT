@@ -2,7 +2,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCallback } from 'react';
 import { hasHttps } from '@fastgpt/web/common/system/utils';
-import { isProduction } from '@fastgpt/service/common/system/constants';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 /**
  * copy text data

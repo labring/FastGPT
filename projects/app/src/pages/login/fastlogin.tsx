@@ -2,11 +2,11 @@ import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { clearToken, setToken } from '@/web/support/user/auth';
+import { clearToken } from '@/web/support/user/auth';
 import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 const FastLogin = ({
@@ -24,7 +24,6 @@ const FastLogin = ({
   const { t } = useTranslation();
   const loginSuccess = useCallback(
     (res: ResLogin) => {
-      setToken(res.token);
       setUserInfo(res.user);
 
       setTimeout(() => {

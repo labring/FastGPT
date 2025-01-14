@@ -111,7 +111,7 @@ export async function generateVector(): Promise<any> {
     pushGenerateVectorUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      tokens,
+      inputTokens: tokens,
       model: data.model,
       billId: data.billId
     });
@@ -166,9 +166,9 @@ const rebuildData = async ({
     // get new mongoData insert to training
     const newRebuildingData = await MongoDatasetData.findOneAndUpdate(
       {
+        rebuilding: true,
         teamId: mongoData.teamId,
-        datasetId: mongoData.datasetId,
-        rebuilding: true
+        datasetId: mongoData.datasetId
       },
       {
         $unset: {

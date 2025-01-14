@@ -23,13 +23,15 @@ const typeMap = {
   [WorkflowIOValueTypeEnum.arrayString]: WorkflowIOValueTypeEnum.string,
   [WorkflowIOValueTypeEnum.arrayNumber]: WorkflowIOValueTypeEnum.number,
   [WorkflowIOValueTypeEnum.arrayBoolean]: WorkflowIOValueTypeEnum.boolean,
-  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object
+  [WorkflowIOValueTypeEnum.arrayObject]: WorkflowIOValueTypeEnum.object,
+  [WorkflowIOValueTypeEnum.arrayAny]: WorkflowIOValueTypeEnum.any
 };
 
 const NodeLoopStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
-  const { nodeList, onChangeNode } = useContextSelector(WorkflowContext, (v) => v);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const loopStartNode = useMemo(
     () => nodeList.find((node) => node.nodeId === nodeId),

@@ -1,7 +1,7 @@
 import React, { Dispatch } from 'react';
 import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
+import { LoginPageTypeEnum, PasswordRule } from '@/web/support/user/login/constants';
 import { postRegister } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes';
@@ -45,16 +45,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
 
   const { runAsync: onclickRegister, loading: requesting } = useRequest2(
     async ({ username, password, code }: RegisterType) => {
-      const fastgpt_sem = (() => {
-        try {
-          return sessionStorage.getItem('fastgpt_sem')
-            ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
-            : undefined;
-        } catch {
-          return undefined;
-        }
-      })();
-
       loginSuccess(
         await postRegister({
           username,
@@ -62,7 +52,16 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           password,
           inviterId: localStorage.getItem('inviterId') || undefined,
           bd_vid: sessionStorage.getItem('bd_vid') || undefined,
-          fastgpt_sem: fastgpt_sem
+          fastgpt_sem: (() => {
+            try {
+              return sessionStorage.getItem('fastgpt_sem')
+                ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
+                : undefined;
+            } catch {
+              return undefined;
+            }
+          })(),
+          sourceDomain: sessionStorage.getItem('sourceDomain') || undefined
         })
       );
 
@@ -88,6 +87,18 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       refreshDeps: [loginSuccess, t, toast]
     }
   );
+  const onSubmitErr = (err: Record<string, any>) => {
+    const val = Object.values(err)[0];
+    if (!val) return;
+    if (val.message) {
+      toast({
+        status: 'warning',
+        title: val.message,
+        duration: 3000,
+        isClosable: true
+      });
+    }
+  };
 
   const placeholder = feConfigs?.register_method
     ?.map((item) => {
@@ -109,7 +120,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         mt={9}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey && !requesting) {
-            handleSubmit(onclickRegister)();
+            handleSubmit(onclickRegister, onSubmitErr)();
           }
         }}
       >
@@ -152,16 +163,12 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             bg={'myGray.50'}
             size={'lg'}
             type={'password'}
-            placeholder={t('user:password.new_password')}
+            placeholder={t('login:password_tip')}
             {...register('password', {
-              required: t('user:password.password_required'),
-              minLength: {
-                value: 4,
-                message: t('user:password.password_condition')
-              },
-              maxLength: {
-                value: 20,
-                message: t('user:password.password_condition')
+              required: true,
+              pattern: {
+                value: PasswordRule,
+                message: t('login:password_tip')
               }
             })}
           ></Input>
@@ -176,7 +183,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               validate: (val) =>
                 getValues('password') === val ? true : t('user:password.not_match')
             })}
-          ></Input>
+          />
         </FormControl>
         <Button
           type="submit"
@@ -188,7 +195,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           fontWeight={['medium', 'medium']}
           colorScheme="blue"
           isLoading={requesting}
-          onClick={handleSubmit(onclickRegister)}
+          onClick={handleSubmit(onclickRegister, onSubmitErr)}
         >
           {t('user:register.confirm')}
         </Button>

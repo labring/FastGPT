@@ -81,6 +81,8 @@ COPY --from=builder /app/projects/app/package.json ./package.json
 COPY ./projects/app/data /app/data
 RUN chown -R nextjs:nodejs /app/data
 
+# Add tmp directory permission control
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000

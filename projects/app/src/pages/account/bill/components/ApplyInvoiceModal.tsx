@@ -8,6 +8,8 @@ import {
   Button,
   Checkbox,
   Flex,
+  ModalBody,
+  ModalFooter,
   Table,
   TableContainer,
   Tbody,
@@ -97,6 +99,7 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       bankName: '',
       bankAccount: '',
       needSpecialInvoice: false,
+      contactPhone: '',
       emailAddress: ''
     }
   });
@@ -117,19 +120,69 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
       isOpen={true}
       isCentered
       iconSrc="/imgs/modal/invoice.svg"
-      minHeight={'42.25rem'}
       w={'43rem'}
       onClose={onClose}
       isLoading={isLoading}
       title={t('account_bill:support_wallet_apply_invoice')}
     >
-      {!isOpenSettleModal ? (
-        <Box px={['1.6rem', '3.25rem']} py={['1rem', '2rem']}>
-          <Box fontWeight={500} fontSize={'1rem'} pb={'0.75rem'}>
-            {t('account_bill:support_wallet_apply_invoice')}
-          </Box>
-          <Box h={'27.9rem'} overflow={'auto'}>
-            <TableContainer>
+      {isOpenSettleModal ? (
+        <>
+          <ModalBody>
+            <Box w={'100%'} fontSize={'0.875rem'}>
+              <Flex w={'100%'} justifyContent={'space-between'}>
+                <Box>{t('account_bill:total_amount')}</Box>
+                <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
+              </Flex>
+              <Box w={'100%'} py={4}>
+                <Divider showBorderBottom={false} />
+              </Box>
+            </Box>
+            <MyBox isLoading={isLoadingHeader}>
+              <Flex justify={'center'}>
+                <InvoiceHeaderSingleForm inputForm={inputForm} required />
+              </Flex>
+            </MyBox>
+            <Flex
+              align={'center'}
+              w={'19.8rem'}
+              h={'1.75rem'}
+              mt={4}
+              px={'0.75rem'}
+              py={'0.38rem'}
+              bg={'blue.50'}
+              borderRadius={'sm'}
+              color={'blue.600'}
+            >
+              <MyIcon name="infoRounded" w={'14px'} h={'14px'} />
+              <Box ml={2} fontSize={'0.6875rem'}>
+                {t('account_bill:invoice_sending_info')}
+              </Box>
+            </Flex>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant={'outline'} mr={'0.75rem'} px="0" onClick={handleBack}>
+              <Flex alignItems={'center'}>
+                <Box px={'1.25rem'} py={'0.5rem'}>
+                  {t('account_bill:back')}
+                </Box>
+              </Flex>
+            </Button>
+            <Button isLoading={isSubmitting} px="0" onClick={inputForm.handleSubmit(onSubmitApply)}>
+              <Flex alignItems={'center'}>
+                <Box px={'1.25rem'} py={'0.5rem'}>
+                  {t('account_bill:confirm')}
+                </Box>
+              </Flex>
+            </Button>
+          </ModalFooter>
+        </>
+      ) : (
+        <>
+          <ModalBody>
+            <Box fontWeight={500} fontSize={'1rem'} pb={'0.75rem'}>
+              {t('account_bill:support_wallet_apply_invoice')}
+            </Box>
+            <TableContainer minH={'50vh'}>
               <Table>
                 <Thead>
                   <Tr>
@@ -201,8 +254,8 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                 </Flex>
               )}
             </TableContainer>
-          </Box>
-          <Flex pt={'2.5rem'} justify={'flex-end'}>
+          </ModalBody>
+          <ModalFooter>
             <Button
               variant={'primary'}
               px="0"
@@ -220,57 +273,8 @@ const ApplyInvoiceModal = ({ onClose }: { onClose: () => void }) => {
                 </Box>
               </Flex>
             </Button>
-          </Flex>
-        </Box>
-      ) : (
-        <Box px={['1.6rem', '3.25rem']} py={['1rem', '2rem']}>
-          <Box w={'100%'} fontSize={'0.875rem'}>
-            <Flex w={'100%'} justifyContent={'space-between'}>
-              <Box>{t('account_bill:support_wallet_amount')}</Box>
-              <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(totalPrice) })}</Box>
-            </Flex>
-            <Box w={'100%'} py={4}>
-              <Divider showBorderBottom={false} />
-            </Box>
-          </Box>
-          <MyBox isLoading={isLoadingHeader}>
-            <Flex justify={'center'}>
-              <InvoiceHeaderSingleForm inputForm={inputForm} />
-            </Flex>
-          </MyBox>
-          <Flex
-            align={'center'}
-            w={'19.8rem'}
-            h={'1.75rem'}
-            mt={4}
-            px={'0.75rem'}
-            py={'0.38rem'}
-            bg={'blue.50'}
-            borderRadius={'sm'}
-            color={'blue.600'}
-          >
-            <MyIcon name="infoRounded" w={'14px'} h={'14px'} />
-            <Box ml={2} fontSize={'0.6875rem'}>
-              {t('account_bill:invoice_sending_info')}
-            </Box>
-          </Flex>
-          <Flex justify={'flex-end'} w={'100%'} pt={[3, 7]}>
-            <Button variant={'outline'} mr={'0.75rem'} px="0" onClick={handleBack}>
-              <Flex alignItems={'center'}>
-                <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('account_bill:back')}
-                </Box>
-              </Flex>
-            </Button>
-            <Button isLoading={isSubmitting} px="0" onClick={inputForm.handleSubmit(onSubmitApply)}>
-              <Flex alignItems={'center'}>
-                <Box px={'1.25rem'} py={'0.5rem'}>
-                  {t('account_bill:confirm')}
-                </Box>
-              </Flex>
-            </Button>
-          </Flex>
-        </Box>
+          </ModalFooter>
+        </>
       )}
     </MyModal>
   );

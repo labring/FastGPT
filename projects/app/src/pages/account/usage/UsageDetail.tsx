@@ -26,37 +26,48 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
     [usage.list]
   );
 
-  const { hasModel, hasToken, hasCharsLen, hasDuration } = useMemo(() => {
-    let hasModel = false;
-    let hasToken = false;
-    let hasCharsLen = false;
-    let hasDuration = false;
-    let hasDataLen = false;
+  const { hasModel, hasToken, hasInputToken, hasOutputToken, hasCharsLen, hasDuration } =
+    useMemo(() => {
+      let hasModel = false;
+      let hasToken = false;
+      let hasInputToken = false;
+      let hasOutputToken = false;
+      let hasCharsLen = false;
+      let hasDuration = false;
+      let hasDataLen = false;
 
-    usage.list.forEach((item) => {
-      if (item.model !== undefined) {
-        hasModel = true;
-      }
+      usage.list.forEach((item) => {
+        if (item.model !== undefined) {
+          hasModel = true;
+        }
 
-      if (typeof item.tokens === 'number') {
-        hasToken = true;
-      }
-      if (typeof item.charsLength === 'number') {
-        hasCharsLen = true;
-      }
-      if (typeof item.duration === 'number') {
-        hasDuration = true;
-      }
-    });
+        if (typeof item.tokens === 'number') {
+          hasToken = true;
+        }
+        if (typeof item.inputTokens === 'number') {
+          hasInputToken = true;
+        }
+        if (typeof item.outputTokens === 'number') {
+          hasOutputToken = true;
+        }
+        if (typeof item.charsLength === 'number') {
+          hasCharsLen = true;
+        }
+        if (typeof item.duration === 'number') {
+          hasDuration = true;
+        }
+      });
 
-    return {
-      hasModel,
-      hasToken,
-      hasCharsLen,
-      hasDuration,
-      hasDataLen
-    };
-  }, [usage.list]);
+      return {
+        hasModel,
+        hasToken,
+        hasInputToken,
+        hasOutputToken,
+        hasCharsLen,
+        hasDuration,
+        hasDataLen
+      };
+    }, [usage.list]);
 
   return (
     <MyModal
@@ -98,6 +109,8 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                   <Th>{t('account_usage:module_name')}</Th>
                   {hasModel && <Th>{t('account_usage:ai_model')}</Th>}
                   {hasToken && <Th>{t('account_usage:token_length')}</Th>}
+                  {hasInputToken && <Th>{t('account_usage:input_token_length')}</Th>}
+                  {hasOutputToken && <Th>{t('account_usage:output_token_length')}</Th>}
                   {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
                   {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
                   <Th>{t('account_usage:total_points_consumed')}</Th>
@@ -109,6 +122,8 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                     <Td>{t(item.moduleName as any)}</Td>
                     {hasModel && <Td>{item.model ?? '-'}</Td>}
                     {hasToken && <Td>{item.tokens ?? '-'}</Td>}
+                    {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}
+                    {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
                     <Td>{formatNumber(item.amount)}</Td>

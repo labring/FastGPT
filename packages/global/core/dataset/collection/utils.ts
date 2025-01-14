@@ -1,9 +1,7 @@
 import { DatasetCollectionTypeEnum, TrainingModeEnum, TrainingTypeMap } from '../constants';
-import { CollectionWithDatasetType, DatasetCollectionSchemaType } from '../type';
+import { DatasetCollectionSchemaType } from '../type';
 
-export const getCollectionSourceData = (
-  collection?: CollectionWithDatasetType | DatasetCollectionSchemaType
-) => {
+export const getCollectionSourceData = (collection?: DatasetCollectionSchemaType) => {
   return {
     sourceId:
       collection?.fileId ||

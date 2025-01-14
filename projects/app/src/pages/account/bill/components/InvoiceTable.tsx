@@ -163,6 +163,7 @@ function InvoiceDetailModal({
             label={t('account_bill:need_special_invoice')}
             value={invoice.needSpecialInvoice ? t('account_bill:yes') : t('account_bill:no')}
           />
+          <LabelItem label={t('account_bill:contact_phone')} value={invoice.contactPhone} />
           <LabelItem label={t('account_bill:email_address')} value={invoice.emailAddress} />
         </Flex>
       </ModalBody>

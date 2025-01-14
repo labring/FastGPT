@@ -3,7 +3,6 @@ const { Schema } = connectionMongo;
 import { TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import {
-  TeamMemberRoleMap,
   TeamMemberStatusMap,
   TeamMemberCollectionName,
   TeamCollectionName
@@ -24,10 +23,6 @@ const TeamMemberSchema = new Schema({
     type: String,
     default: 'Member'
   },
-  role: {
-    type: String
-    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
-  },
   status: {
     type: String,
     enum: Object.keys(TeamMemberStatusMap)
@@ -39,7 +34,26 @@ const TeamMemberSchema = new Schema({
   defaultTeam: {
     type: Boolean,
     default: false
+  },
+
+  // Abandoned
+  role: {
+    type: String
+    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
   }
+});
+
+TeamMemberSchema.virtual('team', {
+  ref: TeamCollectionName,
+  localField: 'teamId',
+  foreignField: '_id',
+  justOne: true
+});
+TeamMemberSchema.virtual('user', {
+  ref: userCollectionName,
+  localField: 'userId',
+  foreignField: '_id',
+  justOne: true
 });
 
 try {

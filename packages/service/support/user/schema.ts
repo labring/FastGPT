@@ -3,21 +3,9 @@ const { Schema } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 export const userCollectionName = 'users';
-
-const defaultAvatars = [
-  '/imgs/avatar/RoyalBlueAvatar.svg',
-  '/imgs/avatar/PurpleAvatar.svg',
-  '/imgs/avatar/AdoraAvatar.svg',
-  '/imgs/avatar/OrangeAvatar.svg',
-  '/imgs/avatar/RedAvatar.svg',
-  '/imgs/avatar/GrayModernAvatar.svg',
-  '/imgs/avatar/TealAvatar.svg',
-  '/imgs/avatar/GreenAvatar.svg',
-  '/imgs/avatar/BrightBlueAvatar.svg',
-  '/imgs/avatar/BlueAvatar.svg'
-];
 
 const UserSchema = new Schema({
   status: {
@@ -47,13 +35,9 @@ const UserSchema = new Schema({
   },
   avatar: {
     type: String,
-    default: defaultAvatars[Math.floor(Math.random() * defaultAvatars.length)]
+    default: () => getRandomUserAvatar()
   },
-  inviterId: {
-    // 谁邀请注册的
-    type: Schema.Types.ObjectId,
-    ref: userCollectionName
-  },
+
   promotionRate: {
     type: Number,
     default: 15
@@ -71,14 +55,18 @@ const UserSchema = new Schema({
   lastLoginTmbId: {
     type: Schema.Types.ObjectId
   },
-  fastgpt_sem: {
-    type: Object
-  }
+
+  inviterId: {
+    // 谁邀请注册的
+    type: Schema.Types.ObjectId,
+    ref: userCollectionName
+  },
+  fastgpt_sem: Object,
+  sourceDomain: String
 });
 
 try {
-  // login
-  UserSchema.index({ username: 1, password: 1 });
+  // Admin charts
   UserSchema.index({ createTime: -1 });
 } catch (error) {
   console.log(error);

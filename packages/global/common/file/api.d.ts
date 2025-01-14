@@ -1,10 +1,7 @@
-import { MongoImageTypeEnum } from './image/constants';
 import { OutLinkChatAuthProps } from '../../support/permission/chat.d';
 
 export type preUploadImgProps = OutLinkChatAuthProps & {
-  type: `${MongoImageTypeEnum}`;
-
-  expiredTime?: Date;
+  // expiredTime?: Date;
   metadata?: Record<string, any>;
 };
 export type UploadImgProps = preUploadImgProps & {

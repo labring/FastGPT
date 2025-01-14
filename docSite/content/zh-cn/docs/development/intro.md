@@ -148,7 +148,7 @@ FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI
 
 ## 加入社区
 
-遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
+遇到困难了吗？有任何问题吗? 加入飞书群与开发者和用户保持沟通。
 
 <img width="400px" src="https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png" class="medium-zoom-image" />
 

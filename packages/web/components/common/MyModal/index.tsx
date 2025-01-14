@@ -50,6 +50,8 @@ const MyModal = ({
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
       blockScrollOnMount={false}
+      allowPinchZoom
+      scrollBehavior={'inside'}
       closeOnOverlayClick={closeOnOverlayClick}
     >
       <ModalOverlay />
@@ -73,6 +75,7 @@ const MyModal = ({
             py={'10px'}
             fontSize={'md'}
             fontWeight={'bold'}
+            minH={['46px', '53px']}
           >
             {iconSrc && (
               <>

@@ -6,8 +6,9 @@ import { useSystem } from '../../../hooks/useSystem';
 import Loading from '../MyLoading';
 import MyImage from './MyImage';
 
-const MyPhotoView = ({ ...props }: ImageProps) => {
+const MyPhotoView = (props: ImageProps) => {
   const { isPc } = useSystem();
+
   return (
     <PhotoProvider
       maskOpacity={0.6}

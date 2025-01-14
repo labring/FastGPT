@@ -1,9 +1,10 @@
 import 'i18next';
 import account_team from '../i18n/zh-CN/account_team.json';
 import account from '../i18n/zh-CN/account.json';
+import account_thirdParty from '../i18n/zh-CN/account_thirdParty.json';
 import account_promotion from '../i18n/zh-CN/account_promotion.json';
 import account_inform from '../i18n/zh-CN/account_inform.json';
-import account_individuation from '../i18n/zh-CN/account_individuation.json';
+import account_setting from '../i18n/zh-CN/account_setting.json';
 import account_apikey from '../i18n/zh-CN/account_apikey.json';
 import account_bill from '../i18n/zh-CN/account_bill.json';
 import account_usage from '../i18n/zh-CN/account_usage.json';
@@ -32,11 +33,12 @@ export interface I18nNamespaces {
   account_usage: typeof account_usage;
   account_bill: typeof account_bill;
   account_apikey: typeof account_apikey;
-  account_individuation: typeof account_individuation;
+  account_setting: typeof account_setting;
   account_inform: typeof account_inform;
   account_promotion: typeof account_promotion;
   account: typeof account;
   account_team: typeof account_team;
+  account_thirdParty: typeof account_thirdParty;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
@@ -66,9 +68,10 @@ declare module 'i18next' {
       'account_usage',
       'account_bill',
       'account_apikey',
-      'account_individuation',
+      'account_setting',
       'account_inform',
       'account_promotion',
+      'account_thirdParty',
       'account',
       'account_team'
     ];

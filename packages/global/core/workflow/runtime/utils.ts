@@ -9,6 +9,7 @@ import { isValidReferenceValueFormat } from '../utils';
 import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
+import { replaceVariable, valToStr } from '../../../common/string/tools';
 
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
@@ -251,6 +252,7 @@ export const getReferenceVariableValue = ({
       return variables[outputId];
     }
 
+    // 避免 value 刚好就是二个元素的字符串数组
     const node = nodes.find((node) => node.nodeId === sourceNodeId);
     if (!node) {
       return value;
@@ -283,9 +285,13 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
   if (!valueType) return val;
   // Value type check, If valueType invalid, return undefined
   if (valueType.startsWith('array') && !Array.isArray(val)) return undefined;
-  if (valueType === WorkflowIOValueTypeEnum.boolean && typeof val !== 'boolean') return undefined;
-  if (valueType === WorkflowIOValueTypeEnum.number && typeof val !== 'number') return undefined;
-  if (valueType === WorkflowIOValueTypeEnum.string && typeof val !== 'string') return undefined;
+  if (valueType === WorkflowIOValueTypeEnum.boolean) return Boolean(val);
+  if (valueType === WorkflowIOValueTypeEnum.number) return Number(val);
+  if (valueType === WorkflowIOValueTypeEnum.string) {
+    if (val === undefined) return 'undefined';
+    if (val === null) return 'null';
+    return typeof val === 'object' ? JSON.stringify(val) : String(val);
+  }
   if (
     [
       WorkflowIOValueTypeEnum.object,
@@ -312,6 +318,8 @@ export function replaceEditorVariable({
 }) {
   if (typeof text !== 'string') return text;
 
+  text = replaceVariable(text, variables);
+
   const variablePattern = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
   const matches = [...text.matchAll(variablePattern)];
   if (matches.length === 0) return text;
@@ -331,15 +339,12 @@ export function replaceEditorVariable({
       const output = node.outputs.find((output) => output.id === id);
       if (output) return formatVariableValByType(output.value, output.valueType);
 
+      // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
       const input = node.inputs.find((input) => input.key === id);
       if (input) return getReferenceVariableValue({ value: input.value, nodes, variables });
     })();
 
-    const formatVal = (() => {
-      if (variableVal === undefined) return 'undefined';
-      if (variableVal === null) return 'null';
-      return typeof variableVal === 'object' ? JSON.stringify(variableVal) : String(variableVal);
-    })();
+    const formatVal = valToStr(variableVal);
 
     const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
     text = text.replace(regex, () => formatVal);

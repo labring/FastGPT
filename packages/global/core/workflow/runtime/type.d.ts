@@ -21,13 +21,20 @@ import { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
 import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
+import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
+
+export type ExternalProviderType = {
+  openaiAccount?: OpenaiAccountType;
+  externalWorkflowVariables?: Record<string, string>;
+};
 
 /* workflow props */
 export type ChatDispatchProps = {
   res?: NextApiResponse;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';
-  user: UserModelSchema;
+  timezone: string;
+  externalProvider: ExternalProviderType;
 
   runningAppInfo: {
     id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)
@@ -100,7 +107,9 @@ export type DispatchNodeResponseType = {
   mergeSignId?: string;
 
   // bill
-  tokens?: number;
+  tokens?: number; // deprecated
+  inputTokens?: number;
+  outputTokens?: number;
   model?: string;
   contextTotalLen?: number;
   totalPoints?: number;
@@ -150,6 +159,8 @@ export type DispatchNodeResponseType = {
 
   // tool
   toolCallTokens?: number;
+  toolCallInputTokens?: number;
+  toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
 
@@ -201,13 +212,14 @@ export type DispatchNodeResultType<T = {}> = {
 export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]?: string;
-  [NodeInputKeyEnum.aiChatTemperature]: number;
-  [NodeInputKeyEnum.aiChatMaxToken]: number;
+  [NodeInputKeyEnum.aiChatTemperature]?: number;
+  [NodeInputKeyEnum.aiChatMaxToken]?: number;
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
+  [NodeInputKeyEnum.aiChatVision]?: boolean;
+
   [NodeInputKeyEnum.aiChatQuoteRole]?: AiChatQuoteRoleType;
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
   [NodeInputKeyEnum.aiChatQuotePrompt]?: string;
-  [NodeInputKeyEnum.aiChatVision]?: boolean;
 
   [NodeInputKeyEnum.stringQuoteText]?: string;
   [NodeInputKeyEnum.fileUrlList]?: string[];

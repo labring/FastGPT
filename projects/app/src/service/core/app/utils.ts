@@ -1,4 +1,4 @@
-import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -39,7 +39,7 @@ export const getScheduleTriggerApp = async () => {
         if (!app.scheduledTriggerConfig) return;
         // random delay 0 ~ 60s
         await delay(Math.floor(Math.random() * 60 * 1000));
-        const { user } = await getUserChatInfoAndAuthTeamPoints(app.tmbId);
+        const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(app.tmbId);
 
         // Get app latest version
         const { nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
@@ -57,7 +57,8 @@ export const getScheduleTriggerApp = async () => {
         const { flowUsages, assistantResponses, flowResponses } = await retryFn(() => {
           return dispatchWorkFlow({
             chatId,
-            user,
+            timezone,
+            externalProvider,
             mode: 'chat',
             runningAppInfo: {
               id: String(app._id),

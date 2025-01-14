@@ -5,10 +5,16 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export const useInitApp = () => {
   const router = useRouter();
-  const { hiId, bd_vid, k } = router.query as { hiId?: string; bd_vid?: string; k?: string };
+  const { hiId, bd_vid, k, sourceDomain } = router.query as {
+    hiId?: string;
+    bd_vid?: string;
+    k?: string;
+    sourceDomain?: string;
+  };
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
@@ -36,8 +42,6 @@ export const useInitApp = () => {
   });
 
   useMount(() => {
-    initFetch();
-
     const errorTrack = (event: ErrorEvent) => {
       window.umami?.track(TrackEventName.windowError, {
         device: {
@@ -57,11 +61,25 @@ export const useInitApp = () => {
     };
   });
 
+  useRequest2(initFetch, {
+    manual: false,
+    pollingInterval: 300000
+  });
+
   useEffect(() => {
     hiId && localStorage.setItem('inviterId', hiId);
     bd_vid && sessionStorage.setItem('bd_vid', bd_vid);
     k && sessionStorage.setItem('fastgpt_sem', JSON.stringify({ keyword: k }));
-  }, [bd_vid, hiId, k]);
+
+    const formatSourceDomain = (() => {
+      if (sourceDomain) return sourceDomain;
+      return document.referrer;
+    })();
+    console.log(formatSourceDomain, '-=-=');
+    if (formatSourceDomain && !sessionStorage.getItem('sourceDomain')) {
+      sessionStorage.setItem('sourceDomain', formatSourceDomain);
+    }
+  }, [bd_vid, hiId, k, sourceDomain]);
 
   return {
     feConfigs,

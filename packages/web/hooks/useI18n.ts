@@ -43,14 +43,16 @@ export const useI18nLng = () => {
     setLang(lang);
 
     await i18n?.changeLanguage?.(lang);
-    if (prevLang && prevLang !== lang) {
+
+    if (!i18n.hasResourceBundle(lang, 'common') && prevLang !== lang) {
       window?.location?.reload?.();
     }
   };
 
-  const setUserDefaultLng = () => {
+  const setUserDefaultLng = (forceGetDefaultLng: boolean = false) => {
     if (!navigator || !localStorage) return;
-    if (getLang()) return onChangeLng(getLang() as string);
+
+    if (getLang() && !forceGetDefaultLng) return onChangeLng(getLang() as string);
 
     const lang = languageMap[navigator.language] || 'en';
 

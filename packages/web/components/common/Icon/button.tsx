@@ -18,7 +18,6 @@ const MyIconButton = ({
 }: Props) => {
   return (
     <Flex
-      mr={1}
       p={1}
       color={'myGray.500'}
       rounded={'sm'}

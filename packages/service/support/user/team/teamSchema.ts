@@ -21,10 +21,7 @@ const TeamSchema = new Schema({
     type: Date,
     default: () => Date.now()
   },
-  balance: {
-    type: Number,
-    default: 0
-  },
+  balance: Number,
   teamDomain: {
     type: String
   },
@@ -46,6 +43,16 @@ const TeamSchema = new Schema({
     pat: {
       type: String
     }
+  },
+  openaiAccount: {
+    type: {
+      key: String,
+      baseUrl: String
+    }
+  },
+  externalWorkflowVariables: {
+    type: Object,
+    default: {}
   },
   notificationAccount: {
     type: String,

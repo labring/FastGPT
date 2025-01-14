@@ -44,7 +44,7 @@ const ConfigPerModal = ({
     <>
       <MyModal
         isOpen
-        iconSrc="/imgs/modal/key.svg"
+        iconSrc="keyPrimary"
         onClose={onClose}
         title={t('common:permission.Permission config')}
       >

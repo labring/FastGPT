@@ -33,7 +33,7 @@ import {
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
@@ -59,6 +59,7 @@ import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runt
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -80,7 +81,8 @@ export type Props = ChatCompletionCreateParams &
 type AuthResponseType = {
   teamId: string;
   tmbId: string;
-  user: UserModelSchema;
+  timezone: string;
+  externalProvider: ExternalProviderType;
   app: AppSchema;
   responseDetail?: boolean;
   showNodeStatus?: boolean;
@@ -154,7 +156,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const {
       teamId,
       tmbId,
-      user,
+      timezone,
+      externalProvider,
       app,
       responseDetail,
       authType,
@@ -269,7 +272,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           res,
           requestOrigin: req.headers.origin,
           mode: 'chat',
-          user,
+          timezone,
+          externalProvider,
 
           runningAppInfo: {
             id: String(app._id),
@@ -314,7 +318,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
       const newTitle = isPlugin
-        ? variables.cTime ?? getSystemTime(user.timezone)
+        ? variables.cTime ?? getSystemTime(timezone)
         : getChatTitleFromChatMessage(userQuestion);
 
       const aiResponse: AIChatItemType & { dataId?: string } = {
@@ -459,8 +463,18 @@ const authShareChat = async ({
   shareId: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
-  const { teamId, tmbId, user, appId, authType, responseDetail, showNodeStatus, uid, sourceName } =
-    await authOutLinkChatStart(data);
+  const {
+    teamId,
+    tmbId,
+    timezone,
+    externalProvider,
+    appId,
+    authType,
+    responseDetail,
+    showNodeStatus,
+    uid,
+    sourceName
+  } = await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
   if (!app) {
@@ -477,8 +491,9 @@ const authShareChat = async ({
     sourceName,
     teamId,
     tmbId,
-    user,
     app,
+    timezone,
+    externalProvider,
     apikey: '',
     authType,
     responseAllData: false,
@@ -508,7 +523,7 @@ const authTeamSpaceChat = async ({
     return Promise.reject('app is empty');
   }
 
-  const [chat, { user }] = await Promise.all([
+  const [chat, { timezone, externalProvider }] = await Promise.all([
     MongoChat.findOne({ appId, chatId }).lean(),
     getUserChatInfoAndAuthTeamPoints(app.tmbId)
   ]);
@@ -520,8 +535,9 @@ const authTeamSpaceChat = async ({
   return {
     teamId,
     tmbId: app.tmbId,
-    user,
     app,
+    timezone,
+    externalProvider,
     authType: AuthUserTypeEnum.outLink,
     apikey: '',
     responseAllData: false,
@@ -588,7 +604,7 @@ const authHeaderRequest = async ({
     }
   })();
 
-  const [{ user }, chat] = await Promise.all([
+  const [{ timezone, externalProvider }, chat] = await Promise.all([
     getUserChatInfoAndAuthTeamPoints(tmbId),
     MongoChat.findOne({ appId, chatId }).lean()
   ]);
@@ -605,7 +621,8 @@ const authHeaderRequest = async ({
   return {
     teamId,
     tmbId,
-    user,
+    timezone,
+    externalProvider,
     app,
     apikey,
     authType,

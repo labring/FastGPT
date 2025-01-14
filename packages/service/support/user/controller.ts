@@ -44,7 +44,6 @@ export async function getUserDetail({
     avatar: user.avatar,
     timezone: user.timezone,
     promotionRate: user.promotionRate,
-    openaiAccount: user.openaiAccount,
     team: tmb,
     notificationAccount: tmb.notificationAccount,
     permission: tmb.permission

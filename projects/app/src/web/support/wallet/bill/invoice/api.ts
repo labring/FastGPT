@@ -2,7 +2,7 @@ import { PagingData, RequestPaging } from '@/types';
 import { GET, POST } from '@/web/common/api/request';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { InvoiceType } from '@fastgpt/global/support/wallet/bill/type';
-import { InvoiceSchemaType } from '../../../../../../../../packages/global/support/wallet/bill/type';
+import { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 export type invoiceBillDataType = {
   type: BillTypeEnum;
   price: number;

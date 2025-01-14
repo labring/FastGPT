@@ -19,7 +19,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import SaveButton from '../Workflow/components/SaveButton';
-import { useBoolean, useDebounceEffect } from 'ahooks';
+import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import {
   compareSimpleAppSnapshot,
@@ -29,6 +29,7 @@ import {
 import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import { isProduction } from '@fastgpt/global/common/system/constants';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -75,10 +76,12 @@ const Header = ({
   const { runAsync: onClickSave, loading } = useRequest2(
     async ({
       isPublish,
-      versionName = formatTime2YMDHMS(new Date())
+      versionName = formatTime2YMDHMS(new Date()),
+      autoSave
     }: {
       isPublish?: boolean;
       versionName?: string;
+      autoSave?: boolean;
     }) => {
       const { nodes, edges } = form2AppWorkflow(appForm, t);
       await onSaveApp({
@@ -86,7 +89,8 @@ const Header = ({
         edges,
         chatConfig: appForm.chatConfig,
         isPublish,
-        versionName
+        versionName,
+        autoSave
       });
       setPast((prevPast) =>
         prevPast.map((item, index) =>
@@ -152,15 +156,22 @@ const Header = ({
     { wait: 500 }
   );
 
-  const onLeaveAutoSave = useCallback(() => {
+  const onLeaveAutoSave = useLockFn(async () => {
     if (isSaved) return;
     try {
       console.log('Leave auto save');
-      onClickSave({ isPublish: false, versionName: t('app:auto_save') });
+      return onClickSave({ isPublish: false, autoSave: true });
     } catch (error) {
       console.error(error);
     }
-  }, [isSaved, onClickSave, t]);
+  });
+  useEffect(() => {
+    return () => {
+      if (isProduction) {
+        onLeaveAutoSave();
+      }
+    };
+  }, []);
   useBeforeunload({
     tip: t('common:core.common.tip.leave page'),
     callback: onLeaveAutoSave

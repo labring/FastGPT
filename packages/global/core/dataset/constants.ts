@@ -6,7 +6,9 @@ export enum DatasetTypeEnum {
   dataset = 'dataset',
   websiteDataset = 'websiteDataset', // depp link
   externalFile = 'externalFile',
-  apiDataset = 'apiDataset'
+  apiDataset = 'apiDataset',
+  feishu = 'feishu',
+  yuque = 'yuque'
 }
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
@@ -32,6 +34,16 @@ export const DatasetTypeMap = {
   [DatasetTypeEnum.apiDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: 'api_file',
+    collectionLabel: 'common.File'
+  },
+  [DatasetTypeEnum.feishu]: {
+    icon: 'core/dataset/feishuDatasetOutline',
+    label: 'feishu_dataset',
+    collectionLabel: 'common.File'
+  },
+  [DatasetTypeEnum.yuque]: {
+    icon: 'core/dataset/yuqueDatasetOutline',
+    label: 'yuque_dataset',
     collectionLabel: 'common.File'
   }
 };
@@ -82,7 +94,8 @@ export const DatasetCollectionTypeMap = {
 
 export enum DatasetCollectionSyncResultEnum {
   sameRaw = 'sameRaw',
-  success = 'success'
+  success = 'success',
+  failed = 'failed'
 }
 export const DatasetCollectionSyncResultMap = {
   [DatasetCollectionSyncResultEnum.sameRaw]: {
@@ -90,6 +103,9 @@ export const DatasetCollectionSyncResultMap = {
   },
   [DatasetCollectionSyncResultEnum.success]: {
     label: i18nT('common:core.dataset.collection.sync.result.success')
+  },
+  [DatasetCollectionSyncResultEnum.failed]: {
+    label: i18nT('dataset:sync_collection_failed')
   }
 };
 

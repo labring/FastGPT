@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.8.15",
+  "version": "4.8.18",
   "private": false,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@bany/curl-to-json": "^1.2.8",
     "@chakra-ui/anatomy": "2.2.1",
     "@chakra-ui/icons": "2.1.1",
     "@chakra-ui/next-js": "2.1.5",
@@ -23,6 +22,7 @@
     "@fastgpt/plugins": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
+    "@fastgpt/templates": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@node-rs/jieba": "1.10.0",
     "@tanstack/react-query": "^4.24.10",
@@ -75,7 +75,6 @@
     "@faker-js/faker": "^9.0.3",
     "@shelf/jest-mongodb": "^4.3.2",
     "@svgr/webpack": "^6.5.1",
-    "@types/faker": "^6.6.9",
     "@types/formidable": "^2.0.5",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.3",

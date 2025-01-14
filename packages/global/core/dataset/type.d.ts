@@ -10,7 +10,7 @@ import {
 } from './constants';
 import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
-import { APIFileServer } from './apiDataset';
+import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -33,9 +33,10 @@ export type DatasetSchemaType = {
   };
   inheritPermission: boolean;
   apiServer?: APIFileServer;
+  feishuServer?: FeishuServer;
+  yuqueServer?: YuqueServer;
 
-  syncSchedule?: { cronString: string; timezone: string };
-  syncNextTime?: Date;
+  autoSync?: boolean;
 
   // abandon
   externalReadUrl?: string;
@@ -65,11 +66,13 @@ export type DatasetCollectionSchemaType = {
   fileId?: string; // local file id
   rawLink?: string; // link url
   externalFileId?: string; //external file id
+  apiFileId?: string; // api file id
+  externalFileUrl?: string; // external import url
+
+  nextSyncTime?: Date;
 
   rawTextLength?: number;
   hashRawText?: string;
-  externalFileUrl?: string; // external import url
-  apiFileId?: string; // api file id
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections
@@ -109,6 +112,15 @@ export type DatasetDataSchemaType = {
   rebuilding?: boolean;
 };
 
+export type DatasetDataTextSchemaType = {
+  _id: string;
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  dataId: string;
+  fullTextToken: string;
+};
+
 export type DatasetTrainingSchemaType = {
   _id: string;
   userId: string;
@@ -130,11 +142,8 @@ export type DatasetTrainingSchemaType = {
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 
-export type CollectionWithDatasetType = Omit<DatasetCollectionSchemaType, 'datasetId'> & {
-  datasetId: DatasetSchemaType;
-};
-export type DatasetDataWithCollectionType = Omit<DatasetDataSchemaType, 'collectionId'> & {
-  collectionId: DatasetCollectionSchemaType;
+export type CollectionWithDatasetType = DatasetCollectionSchemaType & {
+  dataset: DatasetSchemaType;
 };
 
 /* ================= dataset ===================== */

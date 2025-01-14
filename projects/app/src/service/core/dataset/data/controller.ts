@@ -12,6 +12,7 @@ import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 
 /* insert data.
  * 1. create data id
@@ -42,7 +43,8 @@ export async function insertData2Dataset({
 
   const qaStr = getDefaultIndex({ q, a }).text;
 
-  // empty indexes check, if empty, create default index
+  // 1. Get vector indexes and insert
+  // Empty indexes check, if empty, create default index
   indexes =
     Array.isArray(indexes) && indexes.length > 0
       ? indexes.map((index) => ({
@@ -77,7 +79,7 @@ export async function insertData2Dataset({
     )
   );
 
-  // create mongo data
+  // 2. Create mongo data
   const [{ _id }] = await MongoDatasetData.create(
     [
       {
@@ -87,12 +89,27 @@ export async function insertData2Dataset({
         collectionId,
         q,
         a,
-        fullTextToken: jiebaSplit({ text: qaStr }),
+        // FullText tmp
+        // fullTextToken: jiebaSplit({ text: qaStr }),
         chunkIndex,
         indexes: indexes?.map((item, i) => ({
           ...item,
           dataId: result[i].insertId
         }))
+      }
+    ],
+    { session }
+  );
+
+  // 3. Create mongo data text
+  await MongoDatasetDataText.create(
+    [
+      {
+        teamId,
+        datasetId,
+        collectionId,
+        dataId: _id,
+        fullTextToken: jiebaSplit({ text: qaStr })
       }
     ],
     { session }
@@ -225,10 +242,18 @@ export async function updateData2Dataset({
     // update mongo other data
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
-    mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
+    // FullText tmp
+    // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
     // @ts-ignore
     mongoData.indexes = newIndexes;
     await mongoData.save({ session });
+
+    // update mongo data text
+    await MongoDatasetDataText.updateOne(
+      { dataId: mongoData._id },
+      { fullTextToken: jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
+      { session }
+    );
 
     // delete vector
     const deleteIdList = patchResult

@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import ParentPaths from '@/components/common/folder/Path';
 import List from './component/List';
 import { DatasetsContext } from './context';
@@ -64,7 +64,10 @@ const Dataset = () => {
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
-      if (!feConfigs?.isPlus && e === DatasetTypeEnum.websiteDataset) {
+      if (
+        !feConfigs?.isPlus &&
+        [DatasetTypeEnum.websiteDataset, DatasetTypeEnum.feishu, DatasetTypeEnum.yuque].includes(e)
+      ) {
         return toast({
           status: 'warning',
           title: t('common:common.system.Commercial version function')
@@ -168,6 +171,18 @@ const Dataset = () => {
                           label: t('dataset:website_dataset'),
                           description: t('dataset:website_dataset_desc'),
                           onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
+                        },
+                        {
+                          icon: 'core/dataset/feishuDatasetColor',
+                          label: t('dataset:feishu_dataset'),
+                          description: t('dataset:feishu_dataset_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                        },
+                        {
+                          icon: 'core/dataset/yuqueDatasetColor',
+                          label: t('dataset:yuque_dataset'),
+                          description: t('dataset:yuque_dataset_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
                         }
                       ]
                     },
@@ -223,7 +238,6 @@ const Dataset = () => {
                 })
               }
               managePer={{
-                mode: 'all',
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: DatasetPermissionList,
@@ -242,7 +256,7 @@ const Dataset = () => {
                     permission,
                     datasetId: folderDetail._id
                   }),
-                onDelOneCollaborator: async ({ tmbId, groupId }) => {
+                onDelOneCollaborator: async ({ tmbId, groupId, orgId }) => {
                   if (tmbId) {
                     return deleteDatasetCollaborators({
                       datasetId: folderDetail._id,
@@ -252,6 +266,11 @@ const Dataset = () => {
                     return deleteDatasetCollaborators({
                       datasetId: folderDetail._id,
                       groupId
+                    });
+                  } else if (orgId) {
+                    return deleteDatasetCollaborators({
+                      datasetId: folderDetail._id,
+                      orgId
                     });
                   }
                 },

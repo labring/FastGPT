@@ -44,4 +44,4 @@ const Loading = ({
   );
 };
 
-export default Loading;
+export default React.memo(Loading);

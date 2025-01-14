@@ -153,8 +153,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: appData.name,
-        totalPoints: usagePoints,
-        tokens: 0
+        totalPoints: usagePoints
       }
     ],
     [DispatchNodeResponseKeyEnum.toolResponses]: text,

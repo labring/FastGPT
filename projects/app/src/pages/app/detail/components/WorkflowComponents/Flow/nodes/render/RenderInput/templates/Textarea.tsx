@@ -8,14 +8,17 @@ import { useCreation } from 'ahooks';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { getEditorVariables } from '../../../../../utils';
 import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
+const TextareaRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const { feConfigs } = useSystemStore();
 
   // get variable
   const variables = useCreation(() => {
@@ -27,6 +30,15 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
       t
     });
   }, [nodeId, nodeList, edges, appDetail, t]);
+
+  const externalProviderWorkflowVariables = useMemo(() => {
+    return (
+      feConfigs?.externalProviderWorkflowVariables?.map((item) => ({
+        key: item.key,
+        label: item.name
+      })) || []
+    );
+  }, [feConfigs?.externalProviderWorkflowVariables]);
 
   const onChange = useCallback(
     (e: string) => {
@@ -47,7 +59,7 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
     return (
       <PromptEditor
         variableLabels={variables}
-        variables={variables}
+        variables={[...variables, ...externalProviderWorkflowVariables]}
         title={t(item.label as any)}
         maxLength={item.maxLength}
         minH={100}
@@ -57,7 +69,16 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
         onChange={onChange}
       />
     );
-  }, [item.label, item.maxLength, item.placeholder, item.value, onChange, t, variables]);
+  }, [
+    externalProviderWorkflowVariables,
+    item.label,
+    item.maxLength,
+    item.placeholder,
+    item.value,
+    onChange,
+    t,
+    variables
+  ]);
 
   return Render;
 };

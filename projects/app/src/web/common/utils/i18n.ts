@@ -20,8 +20,3 @@ export const langMap = {
     avatar: 'common/language/China'
   }
 };
-
-export const serviceSideProps = (content: any, ns: I18nNsType = []) => {
-  const lang = content.req?.cookies?.NEXT_LOCALE || content.locale;
-  return serverSideTranslations(lang, ['common', ...ns], null);
-};

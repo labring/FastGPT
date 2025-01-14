@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
@@ -10,14 +10,10 @@ import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getScheduleTriggerApp } from '@/service/core/app/utils';
 
-async function handler(
-  req: ApiRequestProps<PostPublishAppProps>,
-  res: NextApiResponse<any>
-): Promise<{}> {
+async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
-  const { nodes = [], edges = [], chatConfig, isPublish, versionName } = req.body;
+  const { nodes = [], edges = [], chatConfig, isPublish, versionName, autoSave } = req.body;
 
   const { app, tmbId } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
@@ -25,6 +21,15 @@ async function handler(
     nodes,
     isPlugin: app.type === AppTypeEnum.plugin
   });
+
+  if (autoSave) {
+    return MongoApp.findByIdAndUpdate(appId, {
+      modules: formatNodes,
+      edges,
+      chatConfig,
+      updateTime: new Date()
+    });
+  }
 
   await mongoSessionRun(async (session) => {
     // create version histories
@@ -71,8 +76,6 @@ async function handler(
       }
     );
   });
-
-  return {};
 }
 
 export default NextAPI(handler);

@@ -104,14 +104,9 @@ const ChatBox = ({
   showVoiceIcon = true,
   showEmptyIntro = false,
   active = true,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
   onStartChat
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
@@ -335,7 +330,7 @@ const ChatBox = ({
 
   // create question guide
   const createQuestionGuide = useCallback(async () => {
-    if (!questionGuide || chatController.current?.signal?.aborted) return;
+    if (!questionGuide.open || chatController.current?.signal?.aborted) return;
     try {
       const abortSignal = new AbortController();
       questionGuideController.current = abortSignal;
@@ -344,6 +339,7 @@ const ChatBox = ({
         {
           appId,
           chatId,
+          questionGuide,
           ...outLinkAuthData
         },
         abortSignal
@@ -355,7 +351,7 @@ const ChatBox = ({
         }, 100);
       }
     } catch (error) {}
-  }, [questionGuide, appId, outLinkAuthData, scrollToBottom]);
+  }, [questionGuide, appId, chatId, outLinkAuthData, scrollToBottom]);
 
   /* Abort chat completions, questionGuide */
   const abortRequest = useMemoizedFn((signal: string = 'stop') => {
@@ -805,7 +801,7 @@ const ChatBox = ({
     setQuestionGuide([]);
     setValue('chatStarted', false);
     abortRequest('leave');
-  }, [abortRequest, setValue]);
+  }, [chatId, appId, abortRequest, setValue]);
 
   // Add listener
   useEffect(() => {
@@ -924,10 +920,6 @@ const ChatBox = ({
                       isLastChild={index === chatRecords.length - 1}
                       {...{
                         showVoiceIcon,
-                        shareId,
-                        outLinkUid,
-                        teamId,
-                        teamToken,
                         statusBoxData,
                         questionGuides,
                         onMark: onMark(
@@ -1003,17 +995,13 @@ const ChatBox = ({
     onCloseUserLike,
     onMark,
     onReadUserDislike,
-    outLinkUid,
     questionGuides,
     retryInput,
-    shareId,
     showEmpty,
     showMarkIcon,
     showVoiceIcon,
     statusBoxData,
     t,
-    teamId,
-    teamToken,
     userAvatar,
     variableList?.length,
     welcomeText

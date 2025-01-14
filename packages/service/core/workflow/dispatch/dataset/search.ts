@@ -120,14 +120,14 @@ export async function dispatchDatasetSearch(
   // vector
   const { totalPoints, modelName } = formatModelChars2Points({
     model: vectorModel.model,
-    tokens,
+    inputTokens: tokens,
     modelType: ModelTypeEnum.vector
   });
   const responseData: DispatchNodeResponseType & { totalPoints: number } = {
     totalPoints,
     query: concatQueries.join('\n'),
     model: modelName,
-    tokens,
+    inputTokens: tokens,
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
@@ -139,19 +139,21 @@ export async function dispatchDatasetSearch(
       totalPoints,
       moduleName: node.name,
       model: modelName,
-      tokens
+      inputTokens: tokens
     }
   ];
 
   if (aiExtensionResult) {
     const { totalPoints, modelName } = formatModelChars2Points({
       model: aiExtensionResult.model,
-      tokens: aiExtensionResult.tokens,
+      inputTokens: aiExtensionResult.inputTokens,
+      outputTokens: aiExtensionResult.outputTokens,
       modelType: ModelTypeEnum.llm
     });
 
     responseData.totalPoints += totalPoints;
-    responseData.tokens = aiExtensionResult.tokens;
+    responseData.inputTokens = aiExtensionResult.inputTokens;
+    responseData.outputTokens = aiExtensionResult.outputTokens;
     responseData.extensionModel = modelName;
     responseData.extensionResult =
       aiExtensionResult.extensionQueries?.join('\n') ||
@@ -161,7 +163,8 @@ export async function dispatchDatasetSearch(
       totalPoints,
       moduleName: 'core.module.template.Query extension',
       model: modelName,
-      tokens: aiExtensionResult.tokens
+      inputTokens: aiExtensionResult.inputTokens,
+      outputTokens: aiExtensionResult.outputTokens
     });
   }
 

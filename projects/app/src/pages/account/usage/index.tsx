@@ -31,7 +31,7 @@ import { formatNumber } from '@fastgpt/global/common/math/tools';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import AccountContainer, { TabEnum } from '../components/AccountContainer';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 

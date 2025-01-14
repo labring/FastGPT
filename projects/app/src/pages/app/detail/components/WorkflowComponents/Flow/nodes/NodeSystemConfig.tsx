@@ -3,7 +3,7 @@ import { NodeProps } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 
-import QGSwitch from '@/components/core/app/QGSwitch';
+import QGConfig from '@/components/core/app/QGConfig';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import InputGuideConfig from '@/components/core/app/InputGuideConfig';
@@ -13,7 +13,12 @@ import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { AppChatConfigType, AppDetailType, VariableItemType } from '@fastgpt/global/core/app/type';
+import {
+  AppChatConfigType,
+  AppDetailType,
+  AppQGConfigType,
+  VariableItemType
+} from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pages/app/detail/components/context';
@@ -149,17 +154,16 @@ function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentPro
   );
 }
 
-function QuestionGuide({ chatConfig: { questionGuide = false }, setAppDetail }: ComponentProps) {
+function QuestionGuide({ chatConfig: { questionGuide }, setAppDetail }: ComponentProps) {
   return (
-    <QGSwitch
-      isChecked={questionGuide}
+    <QGConfig
+      value={questionGuide}
       onChange={(e) => {
-        const value = e.target.checked;
         setAppDetail((state) => ({
           ...state,
           chatConfig: {
             ...state.chatConfig,
-            questionGuide: value
+            questionGuide: e
           }
         }));
       }}

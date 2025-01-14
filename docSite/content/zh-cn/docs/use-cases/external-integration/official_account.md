@@ -17,9 +17,11 @@ weight: 506
 
 ![图片](/imgs/offiaccount-1.png)
 
-## 2. 登录微信公众平台，获取 AppID 、 Secret和Token
+## 2. 获取 AppID 、 Secret和Token
 
-### 1. https://mp.weixin.qq.com 登录微信公众平台，选择您的公众号。
+### 1. 登录微信公众平台，选择您的公众号。
+
+打开微信公众号官网：https://mp.weixin.qq.com
 
 **只支持通过验证的公众号，未通过验证的公众号暂不支持。**
 
@@ -28,6 +30,7 @@ weight: 506
 ![图片](/imgs/offiaccount-2.png)
 
 ### 2. 把3个参数填入 FastGPT 配置弹窗中。
+
 ![图片](/imgs/offiaccount-3.png)
 
 ## 3. 在 IP 白名单中加入 FastGPT 的 IP
@@ -36,7 +39,7 @@ weight: 506
 
 私有部署的用户可自行查阅自己的 IP 地址。
 
-海外版用户（cloud.tryfastgpt.ai)可以填写下面的 IP 白名单：
+海外版用户（cloud.tryfastgpt.ai）可以填写下面的 IP 白名单：
 
 ```
 35.240.227.100

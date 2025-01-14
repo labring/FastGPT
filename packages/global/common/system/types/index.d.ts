@@ -5,7 +5,7 @@ import type {
   LLMModelItemType,
   VectorModelItemType,
   AudioSpeechModels,
-  WhisperModelType,
+  STTModelType,
   ReRankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
@@ -18,6 +18,14 @@ export type NavbarItemType = {
   isActive: boolean;
 };
 
+export type ExternalProviderWorkflowVarType = {
+  name: string;
+  key: string;
+  intro: string;
+  isOpen: boolean;
+  url?: string;
+};
+
 /* fastgpt main */
 export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
@@ -27,7 +35,7 @@ export type FastGPTConfigFileType = {
   vectorModels: VectorModelItemType[];
   reRankModels: ReRankModelItemType[];
   audioSpeechModels: AudioSpeechModelType[];
-  whisperModel: WhisperModelType;
+  whisperModel: STTModelType;
 };
 
 export type FastGPTFeConfigsType = {
@@ -58,11 +66,18 @@ export type FastGPTFeConfigsType = {
     icon?: string;
     title?: string;
     url?: string;
+    autoLogin?: boolean;
   };
   oauth?: {
     github?: string;
     google?: string;
     wechat?: string;
+    dingtalk?: string;
+    wecom?: {
+      corpid?: string;
+      agentid?: string;
+      secret?: string;
+    };
     microsoft?: {
       clientId?: string;
       tenantId?: string;
@@ -82,6 +97,7 @@ export type FastGPTFeConfigsType = {
   uploadFileMaxSize?: number;
   lafEnv?: string;
   navbarItems?: NavbarItemType[];
+  externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
 };
 
 export type SystemEnvType = {

@@ -1,9 +1,7 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -15,18 +13,21 @@ import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { useTranslation } from 'next-i18next';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
+import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
+import ApiDatasetForm from '../../component/ApiDatasetForm';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
   | DatasetTypeEnum.apiDataset
-  | DatasetTypeEnum.websiteDataset;
+  | DatasetTypeEnum.websiteDataset
+  | DatasetTypeEnum.feishu
+  | DatasetTypeEnum.yuque;
 
 const CreateModal = ({
   onClose,
@@ -43,65 +44,57 @@ const CreateModal = ({
   const { vectorModelList, datasetModelList } = useSystemStore();
   const { isPc } = useSystem();
 
-  const databaseNameMap = useMemo(() => {
+  const datasetTypeMap = useMemo(() => {
     return {
-      [DatasetTypeEnum.dataset]: t('dataset:common_dataset'),
-      [DatasetTypeEnum.apiDataset]: t('dataset:api_file'),
-      [DatasetTypeEnum.websiteDataset]: t('dataset:website_dataset')
+      [DatasetTypeEnum.dataset]: {
+        name: t('dataset:common_dataset'),
+        icon: 'core/dataset/commonDatasetColor'
+      },
+      [DatasetTypeEnum.apiDataset]: {
+        name: t('dataset:api_file'),
+        icon: 'core/dataset/externalDatasetColor'
+      },
+      [DatasetTypeEnum.websiteDataset]: {
+        name: t('dataset:website_dataset'),
+        icon: 'core/dataset/websiteDatasetColor'
+      },
+      [DatasetTypeEnum.feishu]: {
+        name: t('dataset:feishu_dataset'),
+        icon: 'core/dataset/feishuDatasetColor'
+      },
+      [DatasetTypeEnum.yuque]: {
+        name: t('dataset:yuque_dataset'),
+        icon: 'core/dataset/yuqueDatasetColor'
+      }
     };
   }, [t]);
 
-  const iconMap = useMemo(() => {
-    return {
-      [DatasetTypeEnum.dataset]: 'core/dataset/commonDatasetColor',
-      [DatasetTypeEnum.apiDataset]: 'core/dataset/externalDatasetColor',
-      [DatasetTypeEnum.websiteDataset]: 'core/dataset/websiteDatasetColor'
-    };
-  }, []);
-
   const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
 
-  const { register, setValue, handleSubmit, watch } = useForm<CreateDatasetParams>({
+  const form = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
       type: type || DatasetTypeEnum.dataset,
-      avatar: iconMap[type] || 'core/dataset/commonDatasetColor',
+      avatar: datasetTypeMap[type].icon,
       name: '',
       intro: '',
       vectorModel: filterNotHiddenVectorModelList[0].model,
       agentModel: datasetModelList[0].model
     }
   });
+  const { register, setValue, handleSubmit, watch } = form;
   const avatar = watch('avatar');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: '.jpg,.png',
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
+    fileType: 'image/*',
     multiple: false
   });
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.datasetAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-        setValue('avatar' as const, src);
-      } catch (err: any) {
-        toast({
-          title: getErrText(err, t('common:common.avatar.Select Failed')),
-          status: 'warning'
-        });
-      }
-    },
-    [setValue, t, toast]
-  );
 
   /* create a new kb and router to it */
   const { run: onclickCreate, loading: creating } = useRequest2(
@@ -119,8 +112,14 @@ const CreateModal = ({
     <MyModal
       title={
         <Flex alignItems={'center'} ml={-3}>
-          <Avatar w={'20px'} h={'20px'} borderRadius={'xs'} src={iconMap[type]} pr={'10px'} />
-          {t('common:core.dataset.Create dataset', { name: databaseNameMap[type] })}
+          <Avatar
+            w={'20px'}
+            h={'20px'}
+            borderRadius={'xs'}
+            src={datasetTypeMap[type].icon}
+            pr={'10px'}
+          />
+          {t('common:core.dataset.Create dataset', { name: datasetTypeMap[type].name })}
         </Flex>
       }
       isOpen
@@ -134,16 +133,14 @@ const CreateModal = ({
             <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
               {t('common:common.Set Name')}
             </Box>
-            {type === DatasetTypeEnum.apiDataset && (
+            {datasetTypeCourseMap[type] && (
               <Flex
                 as={'span'}
                 alignItems={'center'}
                 color={'primary.600'}
                 fontSize={'sm'}
                 cursor={'pointer'}
-                onClick={() =>
-                  window.open(getDocPath('/docs/guide/knowledge_base/api_dataset/'), '_blank')
-                }
+                onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
               >
                 <MyIcon name={'book'} w={4} mr={0.5} />
                 {t('common:Instructions')}
@@ -242,44 +239,8 @@ const CreateModal = ({
             </Box>
           </Flex>
         )}
-        {type === DatasetTypeEnum.apiDataset && (
-          <>
-            <Flex mt={6}>
-              <Flex
-                alignItems={'center'}
-                flex={['', '0 0 110px']}
-                color={'myGray.900'}
-                fontWeight={500}
-                fontSize={'sm'}
-              >
-                {t('dataset:api_url')}
-              </Flex>
-              <Input
-                bg={'myWhite.600'}
-                placeholder={t('dataset:api_url')}
-                maxLength={200}
-                {...register('apiServer.baseUrl', { required: true })}
-              />
-            </Flex>
-            <Flex mt={6}>
-              <Flex
-                alignItems={'center'}
-                flex={['', '0 0 110px']}
-                color={'myGray.900'}
-                fontWeight={500}
-                fontSize={'sm'}
-              >
-                Authorization
-              </Flex>
-              <Input
-                bg={'myWhite.600'}
-                placeholder={t('dataset:request_headers')}
-                maxLength={200}
-                {...register('apiServer.authorization')}
-              />
-            </Flex>
-          </>
-        )}
+        {/* @ts-ignore */}
+        <ApiDatasetForm type={type} form={form} />
       </ModalBody>
 
       <ModalFooter px={9}>
@@ -293,7 +254,15 @@ const CreateModal = ({
 
       <ComplianceTip pb={6} pt={0} px={9} type={'dataset'} />
 
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e) => setValue('avatar', e)
+          })
+        }
+      />
     </MyModal>
   );
 };

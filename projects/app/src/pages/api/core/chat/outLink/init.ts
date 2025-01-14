@@ -11,16 +11,17 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
+import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
 
   // auth link permission
-  const { outLinkConfig, uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const { uid, appId } = await authOutLink({ shareId, outLinkUid });
 
   // auth app permission
-  const [tmb, chat, app] = await Promise.all([
-    MongoTeamMember.findById(outLinkConfig.tmbId, '_id userId').populate('userId', 'avatar').lean(),
+  const [chat, app] = await Promise.all([
     MongoChat.findOne({ appId, chatId, shareId }).lean(),
     MongoApp.findById(appId).lean()
   ]);
@@ -35,15 +36,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
+  const pluginInputs =
+    chat?.pluginInputs ??
+    nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
+    [];
 
   jsonRes<InitChatResponse>(res, {
     data: {
       chatId,
       appId: app._id,
       title: chat?.title,
-      //@ts-ignore
-      userAvatar: tmb?.userId?.avatar,
-      variables: chat?.variables || {},
+      userAvatar: getRandomUserAvatar(),
+      variables: chat?.variables,
       app: {
         chatConfig: getAppChatConfig({
           chatConfig,
@@ -56,9 +60,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         avatar: app.avatar,
         intro: app.intro,
         type: app.type,
-        pluginInputs:
-          app?.modules?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)
-            ?.inputs ?? []
+        pluginInputs
       }
     }
   });

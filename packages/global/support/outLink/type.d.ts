@@ -14,6 +14,11 @@ export interface FeishuAppType {
   verificationToken?: string;
 }
 
+export interface DingtalkAppType {
+  clientId: string;
+  clientSecret: string;
+}
+
 export interface WecomAppType {
   AgentId: string;
   CorpId: string;
@@ -36,7 +41,12 @@ export interface OffiAccountAppType {
   // because we can not reply anything in 15s. Thus, the wechat server will treat this request as a failed request.
 }
 
-export type OutlinkAppType = FeishuAppType | WecomAppType | OffiAccountAppType | undefined;
+export type OutlinkAppType =
+  | FeishuAppType
+  | WecomAppType
+  | OffiAccountAppType
+  | DingtalkAppType
+  | undefined;
 
 export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   _id: string;
@@ -71,11 +81,6 @@ export type OutLinkSchema<T extends OutlinkAppType = undefined> = {
   };
 
   app: T;
-};
-
-// to handle MongoDB querying
-export type OutLinkWithAppType = Omit<OutLinkSchema, 'appId'> & {
-  appId: AppSchema;
 };
 
 // Edit the Outlink

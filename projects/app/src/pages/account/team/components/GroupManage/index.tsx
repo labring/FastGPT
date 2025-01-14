@@ -1,6 +1,8 @@
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import {
   Box,
+  Button,
+  Flex,
   HStack,
   Table,
   TableContainer,
@@ -26,19 +28,35 @@ import MemberTag from '../../../../../components/support/user/team/Info/MemberTa
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
+import IconButton from '../OrgManage/IconButton';
 
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
+const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
+const ManageGroupMemberModal = dynamic(() => import('./GroupManageMember'));
 
-function MemberTable({
-  onEditGroup,
-  onManageMember
-}: {
-  onEditGroup: (groupId: string) => void;
-  onManageMember: (groupId: string) => void;
-}) {
+function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
+
   const [editGroupId, setEditGroupId] = useState<string>();
+  const {
+    isOpen: isOpenGroupInfo,
+    onOpen: onOpenGroupInfo,
+    onClose: onCloseGroupInfo
+  } = useDisclosure();
+  const {
+    isOpen: isOpenManageGroupMember,
+    onOpen: onOpenManageGroupMember,
+    onClose: onCloseManageGroupMember
+  } = useDisclosure();
+  const onEditGroup = (groupId: string) => {
+    setEditGroupId(groupId);
+    onOpenGroupInfo();
+  };
+  const onManageMember = (groupId: string) => {
+    setEditGroupId(groupId);
+    onOpenManageGroupMember();
+  };
 
   const { ConfirmModal: ConfirmDeleteGroupModal, openConfirm: openDeleteGroupModal } = useConfirm({
     type: 'delete',
@@ -72,145 +90,184 @@ function MemberTable({
     onOpen: onOpenChangeOwner,
     onClose: onCloseChangeOwner
   } = useDisclosure();
-
   const onChangeOwner = (groupId: string) => {
     setEditGroupId(groupId);
     onOpenChangeOwner();
   };
 
   return (
-    <MyBox>
-      <TableContainer overflow={'unset'} fontSize={'sm'}>
-        <Table overflow={'unset'}>
-          <Thead>
-            <Tr bg={'white !important'}>
-              <Th bg="myGray.100" borderLeftRadius="6px">
-                {t('account_team:group_name')}
-              </Th>
-              <Th bg="myGray.100">{t('account_team:owner')}</Th>
-              <Th bg="myGray.100">{t('account_team:member')}</Th>
-              <Th bg="myGray.100" borderRightRadius="6px">
-                {t('common:common.Action')}
-              </Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {groups?.map((group) => (
-              <Tr key={group._id} overflow={'unset'}>
-                <Td>
-                  <HStack>
+    <>
+      <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
+        {Tabs}
+        {userInfo?.team.permission.hasManagePer && (
+          <Button
+            variant={'primary'}
+            size="md"
+            borderRadius={'md'}
+            ml={3}
+            leftIcon={<MyIcon name="support/permission/collaborator" w={'14px'} />}
+            onClick={onOpenGroupInfo}
+          >
+            {t('user:team.group.create')}
+          </Button>
+        )}
+      </Flex>
+
+      <MyBox flex={'1 0 0'} overflow={'auto'}>
+        <TableContainer overflow={'unset'} fontSize={'sm'}>
+          <Table overflow={'unset'}>
+            <Thead>
+              <Tr bg={'white !important'}>
+                <Th bg="myGray.100" borderLeftRadius="6px">
+                  {t('account_team:group_name')}
+                </Th>
+                <Th bg="myGray.100">{t('account_team:owner')}</Th>
+                <Th bg="myGray.100">{t('account_team:member')}</Th>
+                <Th bg="myGray.100" borderRightRadius="6px">
+                  {t('common:common.Action')}
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {groups?.map((group) => (
+                <Tr key={group._id} overflow={'unset'}>
+                  <Td>
+                    <HStack>
+                      <MemberTag
+                        name={
+                          group.name === DefaultGroupName
+                            ? userInfo?.team.teamName ?? ''
+                            : group.name
+                        }
+                        avatar={group.avatar}
+                      />
+                      <Box>
+                        ({group.name === DefaultGroupName ? members.length : group.members.length})
+                      </Box>
+                    </HStack>
+                  </Td>
+                  <Td>
                     <MemberTag
                       name={
-                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
+                        group.name === DefaultGroupName
+                          ? members.find((item) => item.role === 'owner')?.memberName ?? ''
+                          : members.find(
+                              (item) =>
+                                item.tmbId ===
+                                group.members.find((item) => item.role === 'owner')?.tmbId
+                            )?.memberName ?? ''
                       }
-                      avatar={group.avatar}
+                      avatar={
+                        group.name === DefaultGroupName
+                          ? members.find((item) => item.role === 'owner')?.avatar ?? ''
+                          : members.find(
+                              (i) =>
+                                i.tmbId ===
+                                group.members.find((item) => item.role === 'owner')?.tmbId
+                            )?.avatar ?? ''
+                      }
                     />
-                    <Box>
-                      ({group.name === DefaultGroupName ? members.length : group.members.length})
-                    </Box>
-                  </HStack>
-                </Td>
-                <Td>
-                  <MemberTag
-                    name={
-                      group.name === DefaultGroupName
-                        ? members.find((item) => item.role === 'owner')?.memberName ?? ''
-                        : members.find(
-                            (item) =>
-                              item.tmbId ===
-                              group.members.find((item) => item.role === 'owner')?.tmbId
-                          )?.memberName ?? ''
-                    }
-                    avatar={
-                      group.name === DefaultGroupName
-                        ? members.find((item) => item.role === 'owner')?.avatar ?? ''
-                        : members.find(
-                            (i) =>
-                              i.tmbId === group.members.find((item) => item.role === 'owner')?.tmbId
-                          )?.avatar ?? ''
-                    }
-                  />
-                </Td>
-                <Td>
-                  {group.name === DefaultGroupName ? (
-                    <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
-                  ) : hasGroupManagePer(group) ? (
-                    <MyTooltip label={t('account_team:manage_member')}>
-                      <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
-                        <AvatarGroup
-                          avatars={group.members.map(
-                            (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
-                          )}
-                          groupId={group._id}
-                        />
-                      </Box>
-                    </MyTooltip>
-                  ) : (
-                    <AvatarGroup
-                      avatars={group.members.map(
-                        (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
-                      )}
-                      groupId={group._id}
-                    />
-                  )}
-                </Td>
-                <Td>
-                  {hasGroupManagePer(group) && group.name !== DefaultGroupName && (
-                    <MyMenu
-                      Button={<MyIcon name={'edit'} cursor={'pointer'} w="1rem" />}
-                      menuList={[
-                        {
-                          children: [
-                            {
-                              label: t('account_team:edit_info'),
-                              icon: 'edit',
-                              onClick: () => {
-                                onEditGroup(group._id);
-                              }
-                            },
-                            {
-                              label: t('account_team:manage_member'),
-                              icon: 'support/team/group',
-                              onClick: () => {
-                                onManageMember(group._id);
-                              }
-                            },
-                            ...(isGroupOwner(group)
-                              ? [
-                                  {
-                                    label: t('account_team:transfer_ownership'),
-                                    icon: 'modal/changePer',
-                                    onClick: () => {
-                                      onChangeOwner(group._id);
+                  </Td>
+                  <Td>
+                    {group.name === DefaultGroupName ? (
+                      <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
+                    ) : hasGroupManagePer(group) ? (
+                      <MyTooltip label={t('account_team:manage_member')}>
+                        <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
+                          <AvatarGroup
+                            avatars={group.members.map(
+                              (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
+                            )}
+                            groupId={group._id}
+                          />
+                        </Box>
+                      </MyTooltip>
+                    ) : (
+                      <AvatarGroup
+                        avatars={group.members.map(
+                          (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
+                        )}
+                        groupId={group._id}
+                      />
+                    )}
+                  </Td>
+                  <Td>
+                    {hasGroupManagePer(group) && group.name !== DefaultGroupName && (
+                      <MyMenu
+                        Button={<IconButton name={'more'} />}
+                        menuList={[
+                          {
+                            children: [
+                              {
+                                label: t('account_team:edit_info'),
+                                icon: 'edit',
+                                onClick: () => {
+                                  onEditGroup(group._id);
+                                }
+                              },
+                              {
+                                label: t('account_team:manage_member'),
+                                icon: 'support/team/group',
+                                onClick: () => {
+                                  onManageMember(group._id);
+                                }
+                              },
+                              ...(isGroupOwner(group)
+                                ? [
+                                    {
+                                      label: t('account_team:transfer_ownership'),
+                                      icon: 'modal/changePer',
+                                      onClick: () => {
+                                        onChangeOwner(group._id);
+                                      },
+                                      type: 'primary' as MenuItemType
                                     },
-                                    type: 'primary' as MenuItemType
-                                  },
-                                  {
-                                    label: t('common:common.Delete'),
-                                    icon: 'delete',
-                                    onClick: () => {
-                                      openDeleteGroupModal(() => delDeleteGroup(group._id))();
-                                    },
-                                    type: 'danger' as MenuItemType
-                                  }
-                                ]
-                              : [])
-                          ]
-                        }
-                      ]}
-                    />
-                  )}
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
+                                    {
+                                      label: t('common:common.Delete'),
+                                      icon: 'delete',
+                                      onClick: () => {
+                                        openDeleteGroupModal(() => delDeleteGroup(group._id))();
+                                      },
+                                      type: 'danger' as MenuItemType
+                                    }
+                                  ]
+                                : [])
+                            ]
+                          }
+                        ]}
+                      />
+                    )}
+                  </Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </MyBox>
+
       <ConfirmDeleteGroupModal />
       {isOpenChangeOwner && editGroupId && (
         <ChangeOwnerModal groupId={editGroupId} onClose={onCloseChangeOwner} />
       )}
-    </MyBox>
+      {isOpenGroupInfo && (
+        <GroupInfoModal
+          onClose={() => {
+            onCloseGroupInfo();
+            setEditGroupId(undefined);
+          }}
+          editGroupId={editGroupId}
+        />
+      )}
+      {isOpenManageGroupMember && (
+        <ManageGroupMemberModal
+          onClose={() => {
+            onCloseManageGroupMember();
+            setEditGroupId(undefined);
+          }}
+          editGroupId={editGroupId}
+        />
+      )}
+    </>
   );
 }
 

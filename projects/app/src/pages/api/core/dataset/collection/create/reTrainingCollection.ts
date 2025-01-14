@@ -66,7 +66,9 @@ async function handler(
       return {
         type: DatasetSourceReadTypeEnum.apiFile,
         sourceId: collection.apiFileId,
-        apiServer: collection.datasetId.apiServer
+        apiServer: collection.dataset.apiServer,
+        feishuServer: collection.dataset.feishuServer,
+        yuqueServer: collection.dataset.yuqueServer
       };
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
@@ -88,12 +90,12 @@ async function handler(
 
   return mongoSessionRun(async (session) => {
     const { collectionId } = await createCollectionAndInsertData({
-      dataset: collection.datasetId,
+      dataset: collection.dataset,
       rawText,
       createCollectionParams: {
         teamId: collection.teamId,
         tmbId: collection.tmbId,
-        datasetId: collection.datasetId._id,
+        datasetId: collection.dataset._id,
         name: collection.name,
         type: collection.type,
 

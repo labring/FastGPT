@@ -19,6 +19,9 @@ const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/U
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
+const UpdateNotification = dynamic(
+  () => import('@/components/support/user/inform/UpdateNotificationModal')
+);
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -48,9 +51,9 @@ export const navbarWidth = '64px';
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { Loading } = useLoading();
-  const { loading, feConfigs, isNotSufficientModal } = useSystemStore();
+  const { loading, feConfigs, notSufficientModalType } = useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo } = useUserStore();
+  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const isChatPage = useMemo(
@@ -61,12 +64,17 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
     enabled: !!userInfo && !!feConfigs.isPlus,
-    refetchInterval: 10000
+    refetchInterval: 30000
   });
   const unread = data?.unReadCount || 0;
   const importantInforms = data?.importantInforms || [];
 
   const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
+
+  const showUpdateNotification =
+    isUpdateNotification &&
+    !userInfo?.team.notificationAccount &&
+    !!userInfo?.team.permission.isOwner;
 
   useMount(() => {
     setUserDefaultLng();
@@ -80,14 +88,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             {isHideNavbar ? (
               <Auth>{children}</Auth>
             ) : (
-              <>
+              <Auth>
                 <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
                   <Navbar unread={unread} />
                 </Box>
                 <Box h={'100%'} ml={navbarWidth} overflow={'overlay'}>
-                  <Auth>{children}</Auth>
+                  {children}
                 </Box>
-              </>
+              </Auth>
             )}
           </>
         )}
@@ -96,14 +104,16 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
               <Auth>{children}</Auth>
             ) : (
-              <Flex h={'100%'} flexDirection={'column'}>
-                <Box flex={'1 0 0'} h={0}>
-                  <Auth>{children}</Auth>
-                </Box>
-                <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-                  <NavbarPhone unread={unread} />
-                </Box>
-              </Flex>
+              <Auth>
+                <Flex h={'100%'} flexDirection={'column'}>
+                  <Box flex={'1 0 0'} h={0}>
+                    {children}
+                  </Box>
+                  <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+                    <NavbarPhone unread={unread} />
+                  </Box>
+                </Flex>
+              </Auth>
             )}
           </>
         )}
@@ -111,8 +121,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       {feConfigs?.isPlus && (
         <>
           {!!userInfo && <UpdateInviteModal />}
-          {isNotSufficientModal && <NotSufficientModal />}
+          {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
           {!!userInfo && <SystemMsgModal />}
+          {showUpdateNotification && (
+            <UpdateNotification onClose={() => setIsUpdateNotification(false)} />
+          )}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}

@@ -9,6 +9,10 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -25,16 +29,31 @@ async function handler(
     avatar,
     vectorModel = global.vectorModels[0].model,
     agentModel = getDatasetModel().model,
-    apiServer
+    apiServer,
+    feishuServer,
+    yuqueServer
   } = req.body;
 
   // auth
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    authApiKey: true,
-    per: WritePermissionVal
-  });
+  const [{ teamId, tmbId, userId }] = await Promise.all([
+    authUserPer({
+      req,
+      authToken: true,
+      authApiKey: true,
+      per: WritePermissionVal
+    }),
+    ...(parentId
+      ? [
+          authDataset({
+            req,
+            datasetId: parentId,
+            authToken: true,
+            authApiKey: true,
+            per: WritePermissionVal
+          })
+        ]
+      : [])
+  ]);
 
   // check model valid
   const vectorModelStore = getVectorModel(vectorModel);
@@ -46,19 +65,38 @@ async function handler(
   // check limit
   await checkTeamDatasetLimit(teamId);
 
-  const { _id } = await MongoDataset.create({
-    ...parseParentIdInMongo(parentId),
-    name,
-    intro,
-    teamId,
-    tmbId,
-    vectorModel,
-    agentModel,
-    avatar,
-    type,
-    apiServer
+  const datasetId = await mongoSessionRun(async (session) => {
+    const [{ _id }] = await MongoDataset.create(
+      [
+        {
+          ...parseParentIdInMongo(parentId),
+          name,
+          intro,
+          teamId,
+          tmbId,
+          vectorModel,
+          agentModel,
+          avatar,
+          type,
+          apiServer,
+          feishuServer,
+          yuqueServer
+        }
+      ],
+      { session }
+    );
+    await refreshSourceAvatar(avatar, undefined, session);
+
+    return _id;
   });
 
-  return _id;
+  pushTrack.createDataset({
+    type,
+    teamId,
+    tmbId,
+    uid: userId
+  });
+
+  return datasetId;
 }
 export default NextAPI(handler);

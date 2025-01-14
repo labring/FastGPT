@@ -31,7 +31,7 @@ export const dispatchQueryExtension = async ({
   const queryExtensionModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, tokens } = await queryExtension({
+  const { extensionQueries, inputTokens, outputTokens } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
@@ -42,7 +42,8 @@ export const dispatchQueryExtension = async ({
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: queryExtensionModel.model,
-    tokens,
+    inputTokens,
+    outputTokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -59,7 +60,8 @@ export const dispatchQueryExtension = async ({
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       model: modelName,
-      tokens,
+      inputTokens,
+      outputTokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
     },
@@ -68,7 +70,8 @@ export const dispatchQueryExtension = async ({
         moduleName: node.name,
         totalPoints,
         model: modelName,
-        tokens
+        inputTokens,
+        outputTokens
       }
     ],
     [NodeOutputKeyEnum.text]: JSON.stringify(filterSameQueries)

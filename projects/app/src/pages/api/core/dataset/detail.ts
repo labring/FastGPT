@@ -36,6 +36,19 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
           authorization: ''
         }
       : undefined,
+    yuqueServer: dataset.yuqueServer
+      ? {
+          userId: dataset.yuqueServer.userId,
+          token: ''
+        }
+      : undefined,
+    feishuServer: dataset.feishuServer
+      ? {
+          appId: dataset.feishuServer.appId,
+          appSecret: '',
+          folderToken: dataset.feishuServer.folderToken
+        }
+      : undefined,
     permission,
     vectorModel: getVectorModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel)

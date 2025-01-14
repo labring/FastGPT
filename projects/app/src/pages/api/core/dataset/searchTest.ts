@@ -74,14 +74,15 @@ async function handler(req: NextApiRequest) {
   const { totalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    tokens,
+    inputTokens: tokens,
     model: dataset.vectorModel,
     source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
     ...(aiExtensionResult &&
       extensionModel && {
         extensionModel: extensionModel.name,
-        extensionTokens: aiExtensionResult.tokens
+        extensionInputTokens: aiExtensionResult.inputTokens,
+        extensionOutputTokens: aiExtensionResult.outputTokens
       })
   });
   if (apikey) {
@@ -99,4 +100,4 @@ async function handler(req: NextApiRequest) {
   };
 }
 
-export default NextAPI(useReqFrequencyLimit(1, 2), handler);
+export default NextAPI(useReqFrequencyLimit(1, 15), handler);

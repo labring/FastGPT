@@ -1,6 +1,6 @@
 import { PermissionValueType } from '../../permission/type';
 import { TeamMemberRoleEnum } from './constant';
-import { LafAccountType, TeamMemberSchema } from './type';
+import { LafAccountType, TeamMemberSchema, ThirdPartyAccountType } from './type';
 
 export type AuthTeamRoleProps = {
   teamId: string;
@@ -11,13 +11,13 @@ export type CreateTeamProps = {
   name: string;
   avatar?: string;
   defaultTeam?: boolean;
-  lafAccount?: LafAccountType;
+  memberName?: string;
 };
-export type UpdateTeamProps = {
+export type UpdateTeamProps = Omit<ThirdPartyAccountType, 'externalWorkflowVariable'> & {
   name?: string;
   avatar?: string;
   teamDomain?: string;
-  lafAccount?: null | LafAccountType;
+  externalWorkflowVariable?: { key: string; value: string };
 };
 
 /* ------------- member ----------- */

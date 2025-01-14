@@ -657,10 +657,12 @@ const RenderList = React.memo(function RenderList({
                           <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                             {t(template.intro as any) || t('common:core.workflow.Not intro')}
                           </Box>
-                          <CostTooltip
-                            cost={template.currentCost}
-                            hasTokenFee={template.hasTokenFee}
-                          />
+                          {type === TemplateTypeEnum.systemPlugin && (
+                            <CostTooltip
+                              cost={template.currentCost}
+                              hasTokenFee={template.hasTokenFee}
+                            />
+                          )}
                         </Box>
                       }
                     >

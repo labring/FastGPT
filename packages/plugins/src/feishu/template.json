@@ -1,8 +1,8 @@
 {
   "author": "",
   "version": "488",
-  "name": "飞书机器人 webhook",
-  "avatar": "/appMarketTemplates/plugin-feishu/avatar.svg",
+  "name": "飞书 webhook",
+  "avatar": "core/app/templates/plugin-feishu",
   "intro": "向飞书机器人发起 webhook 请求。",
   "courseUrl": "https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot#f62e72d5",
   "showStatus": false,
@@ -27,7 +27,7 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -35,7 +35,9 @@
             "label": "content",
             "description": "需要发送的消息",
             "required": true,
-            "toolDescription": "需要发送的消息"
+            "toolDescription": "需要发送的消息",
+            "list": [],
+            "defaultValue": ""
           },
           {
             "renderTypeList": ["input"],
@@ -46,7 +48,8 @@
             "label": "hook_url",
             "description": "飞书机器人地址",
             "required": true,
-            "defaultValue": ""
+            "defaultValue": "",
+            "list": []
           }
         ],
         "outputs": [
@@ -508,6 +511,30 @@
         "sourceHandle": "qcJpBBVtXsGd-source-right",
         "targetHandle": "vzreK6vHrPvZ-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": false,
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "6710a5619c45325525326719"
+    }
   }
 }

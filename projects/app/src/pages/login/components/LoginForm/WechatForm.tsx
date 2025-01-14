@@ -32,8 +32,10 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   useQuery(['getWXLoginResult', wechatInfo?.code], () => getWXLoginResult(wechatInfo?.code || ''), {
     refetchInterval: 3 * 1000,
     enabled: !!wechatInfo?.code,
-    onSuccess(data: ResLogin) {
-      loginSuccess(data);
+    onSuccess(data: ResLogin | undefined) {
+      if (data) {
+        loginSuccess(data);
+      }
     }
   });
 

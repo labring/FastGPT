@@ -13,6 +13,7 @@ import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -150,13 +151,20 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const { runAsync: onSaveApp } = useRequest2(async (data: PostPublishAppProps) => {
-    await postPublishApp(appId, data);
-    setAppDetail((state) => ({
-      ...state,
-      ...data,
-      modules: data.nodes || state.modules
-    }));
-    reloadAppLatestVersion();
+    try {
+      await postPublishApp(appId, data);
+      setAppDetail((state) => ({
+        ...state,
+        ...data,
+        modules: data.nodes || state.modules
+      }));
+      reloadAppLatestVersion();
+    } catch (error: any) {
+      if (error.statusText == AppErrEnum.unExist) {
+        return;
+      }
+      return Promise.reject(error);
+    }
   });
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({

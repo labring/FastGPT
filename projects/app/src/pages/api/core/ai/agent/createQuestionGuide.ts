@@ -37,7 +37,7 @@ async function handler(
 
     const qgModel = global.llmModels[0];
 
-    const { result, tokens } = await createQuestionGuide({
+    const { result, inputTokens, outputTokens } = await createQuestionGuide({
       messages,
       model: qgModel.model
     });
@@ -47,7 +47,8 @@ async function handler(
     });
 
     pushQuestionGuideUsage({
-      tokens,
+      inputTokens,
+      outputTokens,
       teamId,
       tmbId
     });

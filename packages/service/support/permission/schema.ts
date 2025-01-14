@@ -6,6 +6,7 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MemberGroupCollectionName } from './memberGroup/memberGroupSchema';
+import { OrgCollectionName } from '@fastgpt/global/support/user/team/org/constant';
 const { Schema } = connectionMongo;
 
 export const ResourcePermissionCollectionName = 'resource_permissions';
@@ -23,6 +24,10 @@ export const ResourcePermissionSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: MemberGroupCollectionName
   },
+  orgId: {
+    type: Schema.Types.ObjectId,
+    ref: OrgCollectionName
+  },
   resourceType: {
     type: String,
     enum: Object.values(PerResourceTypeEnum),
@@ -37,6 +42,25 @@ export const ResourcePermissionSchema = new Schema({
   resourceId: {
     type: Schema.Types.ObjectId
   }
+});
+
+ResourcePermissionSchema.virtual('tmb', {
+  ref: TeamMemberCollectionName,
+  localField: 'tmbId',
+  foreignField: '_id',
+  justOne: true
+});
+ResourcePermissionSchema.virtual('group', {
+  ref: MemberGroupCollectionName,
+  localField: 'groupId',
+  foreignField: '_id',
+  justOne: true
+});
+ResourcePermissionSchema.virtual('org', {
+  ref: OrgCollectionName,
+  localField: 'orgId',
+  foreignField: '_id',
+  justOne: true
 });
 
 try {
@@ -62,6 +86,23 @@ try {
       resourceType: 1,
       teamId: 1,
       resourceId: 1,
+      orgId: 1
+    },
+    {
+      unique: true,
+      partialFilterExpression: {
+        orgId: {
+          $exists: true
+        }
+      }
+    }
+  );
+
+  ResourcePermissionSchema.index(
+    {
+      resourceType: 1,
+      teamId: 1,
+      resourceId: 1,
       tmbId: 1
     },
     {
@@ -74,6 +115,7 @@ try {
     }
   );
 
+  // Delete tmb permission
   ResourcePermissionSchema.index({
     resourceType: 1,
     teamId: 1,

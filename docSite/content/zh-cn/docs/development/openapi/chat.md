@@ -866,6 +866,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/delHistory
 
 ### 清空所有历史记录
 
+仅会情况通过 API Key 创建的对话历史记录，不会清空在线使用、分享链接等其他来源的对话历史记录。
+
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
@@ -1313,6 +1315,83 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 ## 猜你想问
 
+**4.8.16 后新版接口**
+
+新版猜你想问，必须包含 appId 和 chatId 的参数才可以进行使用。会自动根据 chatId 去拉取最近 6 轮对话记录作为上下文来引导回答。
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/createQuestionGuide' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "appId": "appId",
+    "chatId": "chatId",
+    "questionGuide": {
+        "open": true,
+        "model": "GPT-4o-mini",
+        "customPrompt": "你是一个智能助手，请根据用户的问题生成猜你想问。"
+    }
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert icon=" " context="success" %}}
+
+| 参数名 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| appId | string | ✅ | 应用 Id |
+| chatId | string | ✅ | 对话 Id |
+| questionGuide | object |  | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
+
+```ts
+type CreateQuestionGuideParams = OutLinkChatAuthProps & {
+  appId: string;
+  chatId: string;
+  questionGuide?: {
+    open: boolean;
+    model?: string;
+    customPrompt?: string;
+  };
+};
+```
+
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "statusText": "",
+    "message": "",
+    "data": [
+        "你对AI有什么看法？",
+        "想了解AI的应用吗？",
+        "你希望AI能做什么？"
+    ]
+}
+```
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+---
+
+**4.8.16 前旧版接口：**
+
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
@@ -1366,6 +1445,8 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
+
+
 
 
 

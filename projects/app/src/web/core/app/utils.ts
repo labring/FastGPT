@@ -39,6 +39,8 @@ import {
   Input_Template_File_Link_Prompt,
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
+import { workflowStartNodeId } from './constants';
+import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -50,7 +52,6 @@ export function form2AppWorkflow(
 ): WorkflowType & {
   chatConfig: AppChatConfigType;
 } {
-  const workflowStartNodeId = 'workflowStartNodeId';
   const datasetNodeId = 'iKBoX2vIzETU';
   const aiChatNodeId = '7BdojPlukIQw';
 
@@ -513,6 +514,13 @@ export function form2AppWorkflow(
     nodes: [systemConfigTemplate(), workflowStartTemplate(), ...workflow.nodes],
     edges: workflow.edges,
     chatConfig: data.chatConfig
+  };
+}
+export function filterSensitiveFormData(appForm: AppSimpleEditFormType) {
+  const defaultAppForm = getDefaultAppForm();
+  return {
+    ...appForm,
+    dataset: defaultAppForm.dataset
   };
 }
 

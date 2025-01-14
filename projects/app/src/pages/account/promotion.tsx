@@ -26,7 +26,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AccountContainer, { TabEnum } from './components/AccountContainer';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 const Promotion = () => {
   const { t } = useTranslation();

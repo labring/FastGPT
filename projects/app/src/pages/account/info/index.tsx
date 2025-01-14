@@ -9,8 +9,7 @@ import {
   Link,
   Progress,
   Grid,
-  BoxProps,
-  FlexProps
+  BoxProps
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
@@ -20,7 +19,6 @@ import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -29,7 +27,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
-import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import {
   StandardSubLevelEnum,
   standardSubLevelMap
@@ -38,25 +35,24 @@ import { formatTime2YMD } from '@fastgpt/global/common/string/time';
 import { getExtraPlanCardRoute } from '@/web/support/wallet/sub/constants';
 
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '../components/AccountContainer';
-import { serviceSideProps } from '@/web/common/utils/i18n';
+import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useRouter } from 'next/router';
 import TeamSelector from '../components/TeamSelector';
 
-const StandDetailModal = dynamic(() => import('./components/standardDetailModal'));
+const StandDetailModal = dynamic(() => import('./components/standardDetailModal'), { ssr: false });
 const ConversionModal = dynamic(() => import('./components/ConversionModal'));
 const UpdatePswModal = dynamic(() => import('./components/UpdatePswModal'));
-const UpdateNotification = dynamic(() => import('./components/UpdateNotificationModal'));
-const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
-const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
+const UpdateNotification = dynamic(
+  () => import('@/components/support/user/inform/UpdateNotificationModal')
+);
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
-const AiPointsModal = dynamic(() =>
-  import('@/pages/price/components/Points').then((mod) => mod.AiPointsModal)
+
+const ModelPriceModal = dynamic(() =>
+  import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 const Info = () => {
@@ -134,7 +130,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onClose: onCloseUpdateNotification,
     onOpen: onOpenUpdateNotification
   } = useDisclosure();
-  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+  const {
+    File,
+    onOpen: onOpenSelectFile,
+    onSelectImage
+  } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
   });
@@ -143,8 +143,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     async (data: UserType) => {
       await updateUserInfo({
         avatar: data.avatar,
-        timezone: data.timezone,
-        openaiAccount: data.openaiAccount
+        timezone: data.timezone
       });
       reset(data);
       toast({
@@ -153,32 +152,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       });
     },
     [reset, t, toast, updateUserInfo]
-  );
-
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
-      const file = e[0];
-      if (!file || !userInfo) return;
-      try {
-        const src = await compressImgFileAndUpload({
-          type: MongoImageTypeEnum.userAvatar,
-          file,
-          maxW: 300,
-          maxH: 300
-        });
-
-        onclickSave({
-          ...userInfo,
-          avatar: src
-        });
-      } catch (err: any) {
-        toast({
-          title: typeof err === 'string' ? err : t('account_info:avatar_selection_exception'),
-          status: 'warning'
-        });
-      }
-    },
-    [onclickSave, t, toast, userInfo]
   );
 
   const labelStyles: BoxProps = {
@@ -333,7 +306,21 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
       {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
-      <File onSelect={onSelectFile} />
+      <File
+        onSelect={(e) =>
+          onSelectImage(e, {
+            maxW: 300,
+            maxH: 300,
+            callback: (src) => {
+              if (!userInfo) return;
+              onclickSave({
+                ...userInfo,
+                avatar: src
+              });
+            }
+          })
+        }
+      />
     </Box>
   );
 };
@@ -351,11 +338,6 @@ const PlanUsage = () => {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
     onOpen: onOpenStandardModal
-  } = useDisclosure();
-  const {
-    isOpen: isOpenAiPointsModal,
-    onClose: onCloseAiPointsModal,
-    onOpen: onOpenAiPointsModal
   } = useDisclosure();
 
   const planName = useMemo(() => {
@@ -442,9 +424,13 @@ const PlanUsage = () => {
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('account_info:package_and_usage')}
         </Flex>
-        <Button ml={4} size={'sm'} onClick={onOpenAiPointsModal}>
-          {t('account_info:billing_standard')}
-        </Button>
+        <ModelPriceModal>
+          {({ onOpen }) => (
+            <Button ml={4} size={'sm'} onClick={onOpen}>
+              {t('account_info:billing_standard')}
+            </Button>
+          )}
+        </ModelPriceModal>
         <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
         </Button>
@@ -583,14 +569,24 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
-      {isOpenAiPointsModal && <AiPointsModal onClose={onCloseAiPointsModal} />}
     </Box>
   ) : null;
 };
 
+const ButtonStyles = {
+  bg: 'white',
+  py: 3,
+  px: 6,
+  border: 'sm',
+  borderWidth: '1.5px',
+  borderRadius: 'md',
+  display: 'flex',
+  alignItems: 'center',
+  cursor: 'pointer',
+  userSelect: 'none' as any,
+  fontSize: 'sm'
+};
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
-  const theme = useTheme();
-  const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -599,56 +595,16 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
-  const { isOpen: isOpenLaf, onClose: onCloseLaf, onOpen: onOpenLaf } = useDisclosure();
-  const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
-
-  const onclickSave = useCallback(
-    async (data: UserType) => {
-      await updateUserInfo({
-        avatar: data.avatar,
-        timezone: data.timezone,
-        openaiAccount: data.openaiAccount
-      });
-      reset(data);
-      toast({
-        title: t('account_info:update_success_tip'),
-        status: 'success'
-      });
-    },
-    [reset, t, toast, updateUserInfo]
-  );
-
-  const buttonStyles = useRef<FlexProps>({
-    bg: 'white',
-    py: 3,
-    px: 6,
-    border: theme.borders.sm,
-    borderWidth: '1.5px',
-    borderRadius: 'md',
-    alignItems: 'center',
-    cursor: 'pointer',
-    userSelect: 'none',
-    fontSize: 'sm'
-  });
 
   return (
     <Box>
       <Grid gridGap={4} mt={3}>
         {feConfigs?.docUrl && (
           <Link
-            bg={'white'}
             href={getDocPath('/docs/intro')}
             target="_blank"
-            display={'flex'}
-            py={3}
-            px={6}
-            border={theme.borders.sm}
-            borderWidth={'1.5px'}
-            borderRadius={'md'}
-            alignItems={'center'}
-            userSelect={'none'}
             textDecoration={'none !important'}
-            fontSize={'sm'}
+            {...ButtonStyles}
           >
             <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
@@ -661,76 +617,22 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
           feConfigs?.navbarItems
             ?.filter((item) => item.isActive)
             .map((item) => (
-              <Flex
-                key={item.id}
-                {...buttonStyles.current}
-                onClick={() => window.open(item.url, '_blank')}
-              >
+              <Flex key={item.id} {...ButtonStyles} onClick={() => window.open(item.url, '_blank')}>
                 <Avatar src={item.avatar} w={'18px'} />
                 <Box ml={2} flex={1}>
                   {item.name}
                 </Box>
               </Flex>
             ))}
-
-        {feConfigs?.lafEnv && userInfo?.team.role === TeamMemberRoleEnum.owner && (
-          <Flex {...buttonStyles.current} onClick={onOpenLaf}>
-            <MyImage src="/imgs/workflow/laf.png" w={'18px'} alt="laf" />
-            <Box ml={2} flex={1}>
-              {'laf' + t('account_info:account_duplicate')}
-            </Box>
-            <Box
-              w={'9px'}
-              h={'9px'}
-              borderRadius={'50%'}
-              bg={userInfo?.team.lafAccount?.token ? '#67c13b' : 'myGray.500'}
-            />
-          </Flex>
-        )}
-
-        {feConfigs?.show_openai_account && (
-          <Flex {...buttonStyles.current} onClick={onOpenOpenai}>
-            <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
-            <Box ml={2} flex={1}>
-              {'OpenAI / OneAPI' + t('account_info:account_duplicate')}
-            </Box>
-            <Box
-              w={'9px'}
-              h={'9px'}
-              borderRadius={'50%'}
-              bg={userInfo?.openaiAccount?.key ? '#67c13b' : 'myGray.500'}
-            />
-          </Flex>
-        )}
         {feConfigs?.concatMd && (
-          <Button
-            variant={'whiteBase'}
-            justifyContent={'flex-start'}
-            leftIcon={<MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />}
-            onClick={onOpenContact}
-            h={'48px'}
-            fontSize={'sm'}
-          >
-            {t('account_info:contact_us')}
-          </Button>
+          <Flex onClick={onOpenContact} {...ButtonStyles}>
+            <MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />
+            <Box ml={2} flex={1}>
+              {t('account_info:contact_us')}
+            </Box>
+          </Flex>
         )}
       </Grid>
-
-      {isOpenLaf && userInfo && (
-        <LafAccountModal defaultData={userInfo?.team.lafAccount} onClose={onCloseLaf} />
-      )}
-      {isOpenOpenai && userInfo && (
-        <OpenAIAccountModal
-          defaultData={userInfo?.openaiAccount}
-          onSuccess={(data) =>
-            onclickSave({
-              ...userInfo,
-              openaiAccount: data
-            })
-          }
-          onClose={onCloseOpenai}
-        />
-      )}
     </Box>
   );
 };
