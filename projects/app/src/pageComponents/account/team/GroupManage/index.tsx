@@ -24,49 +24,42 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteGroup } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
+import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import IconButton from '../OrgManage/IconButton';
+import { MemberGroupType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
-const ManageGroupMemberModal = dynamic(() => import('./GroupManageMember'));
+const GroupManageMember = dynamic(() => import('./GroupManageMember'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const [editGroupId, setEditGroupId] = useState<string>();
+  const { groups, refetchGroups, members, refetchMembers } = useContextSelector(
+    TeamContext,
+    (v) => v
+  );
+
+  const [editGroup, setEditGroup] = useState<MemberGroupType>();
   const {
     isOpen: isOpenGroupInfo,
     onOpen: onOpenGroupInfo,
     onClose: onCloseGroupInfo
   } = useDisclosure();
-  const {
-    isOpen: isOpenManageGroupMember,
-    onOpen: onOpenManageGroupMember,
-    onClose: onCloseManageGroupMember
-  } = useDisclosure();
-  const onEditGroup = (groupId: string) => {
-    setEditGroupId(groupId);
+
+  const onEditGroupInfo = (e: MemberGroupType) => {
+    setEditGroup(e);
     onOpenGroupInfo();
-  };
-  const onManageMember = (groupId: string) => {
-    setEditGroupId(groupId);
-    onOpenManageGroupMember();
   };
 
   const { ConfirmModal: ConfirmDeleteGroupModal, openConfirm: openDeleteGroupModal } = useConfirm({
     type: 'delete',
     content: t('account_team:confirm_delete_group')
   });
-
-  const { groups, refetchGroups, members, refetchMembers } = useContextSelector(
-    TeamContext,
-    (v) => v
-  );
 
   const { runAsync: delDeleteGroup } = useRequest2(deleteGroup, {
     onSuccess: () => {
@@ -75,12 +68,21 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     }
   });
 
+  const {
+    isOpen: isOpenManageGroupMember,
+    onOpen: onOpenManageGroupMember,
+    onClose: onCloseManageGroupMember
+  } = useDisclosure();
+  const onManageMember = (e: MemberGroupType) => {
+    setEditGroup(e);
+    onOpenManageGroupMember();
+  };
+
   const hasGroupManagePer = (group: (typeof groups)[0]) =>
     userInfo?.team.permission.hasManagePer ||
     ['admin', 'owner'].includes(
       group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
     );
-
   const isGroupOwner = (group: (typeof groups)[0]) =>
     userInfo?.team.permission.hasManagePer ||
     group.members.find((item) => item.role === 'owner')?.tmbId === userInfo?.team.tmbId;
@@ -90,8 +92,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     onOpen: onOpenChangeOwner,
     onClose: onCloseChangeOwner
   } = useDisclosure();
-  const onChangeOwner = (groupId: string) => {
-    setEditGroupId(groupId);
+  const onChangeOwner = (e: MemberGroupType) => {
+    setEditGroup(e);
     onOpenChangeOwner();
   };
 
@@ -173,7 +175,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                       <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
                     ) : hasGroupManagePer(group) ? (
                       <MyTooltip label={t('account_team:manage_member')}>
-                        <Box cursor="pointer" onClick={() => onManageMember(group._id)}>
+                        <Box cursor="pointer" onClick={() => onManageMember(group)}>
                           <AvatarGroup
                             avatars={group.members.map(
                               (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
@@ -202,14 +204,14 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                 label: t('account_team:edit_info'),
                                 icon: 'edit',
                                 onClick: () => {
-                                  onEditGroup(group._id);
+                                  onEditGroupInfo(group);
                                 }
                               },
                               {
                                 label: t('account_team:manage_member'),
                                 icon: 'support/team/group',
                                 onClick: () => {
-                                  onManageMember(group._id);
+                                  onManageMember(group);
                                 }
                               },
                               ...(isGroupOwner(group)
@@ -218,7 +220,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                       label: t('account_team:transfer_ownership'),
                                       icon: 'modal/changePer',
                                       onClick: () => {
-                                        onChangeOwner(group._id);
+                                        onChangeOwner(group);
                                       },
                                       type: 'primary' as MenuItemType
                                     },
@@ -246,25 +248,25 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       </MyBox>
 
       <ConfirmDeleteGroupModal />
-      {isOpenChangeOwner && editGroupId && (
-        <ChangeOwnerModal groupId={editGroupId} onClose={onCloseChangeOwner} />
+      {isOpenChangeOwner && editGroup && (
+        <ChangeOwnerModal groupId={editGroup._id} onClose={onCloseChangeOwner} />
       )}
       {isOpenGroupInfo && (
         <GroupInfoModal
           onClose={() => {
             onCloseGroupInfo();
-            setEditGroupId(undefined);
+            setEditGroup(undefined);
           }}
-          editGroupId={editGroupId}
+          editGroupId={editGroup?._id}
         />
       )}
-      {isOpenManageGroupMember && (
-        <ManageGroupMemberModal
+      {isOpenManageGroupMember && editGroup && (
+        <GroupManageMember
           onClose={() => {
             onCloseManageGroupMember();
-            setEditGroupId(undefined);
+            setEditGroup(undefined);
           }}
-          editGroupId={editGroupId}
+          editGroupId={editGroup._id}
         />
       )}
     </>

@@ -686,7 +686,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 - appId - 应用 Id
 - offset - 偏移量，即从第几条数据开始取
 - pageSize - 记录数量
-- source - 对话源
+- source - 对话源。source=api，表示获取通过 API 创建的对话（不会获取到页面上的对话记录）
 {{% /alert %}}
 
 {{< /markdownify >}}
