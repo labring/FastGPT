@@ -2,6 +2,7 @@ import type { NextApiRequest } from 'next';
 import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
+import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -11,20 +12,23 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
-async function handler(req: NextApiRequest) {
+async function handler(
+  req: NextApiRequest
+): Promise<PaginationResponse<DatasetCollectionsListItemType>> {
   let {
-    pageNum = 1,
-    pageSize = 10,
     datasetId,
     parentId = null,
     searchText = '',
     selectFolder = false,
     filterTags = [],
     simple = false
-  } = req.body as any;
-  searchText = searchText?.replace(/'/g, '');
+  } = req.body as GetDatasetCollectionsProps;
+  let { pageSize, offset } = parsePaginationRequest(req);
   pageSize = Math.min(pageSize, 30);
+  searchText = searchText?.replace(/'/g, '');
 
   // auth dataset and get my role
   const { teamId, permission } = await authDataset({
@@ -76,9 +80,7 @@ async function handler(req: NextApiRequest) {
       .lean();
 
     return {
-      pageNum,
-      pageSize,
-      data: await Promise.all(
+      list: await Promise.all(
         collections.map(async (item) => ({
           ...item,
           tags: await collectionTagsToTagLabel({
@@ -103,7 +105,7 @@ async function handler(req: NextApiRequest) {
         $sort: { updateTime: -1 }
       },
       {
-        $skip: (pageNum - 1) * pageSize
+        $skip: offset
       },
       {
         $limit: pageSize
@@ -165,7 +167,7 @@ async function handler(req: NextApiRequest) {
     })
   ]);
 
-  const data = await Promise.all(
+  const list = await Promise.all(
     collections.map(async (item) => ({
       ...item,
       tags: await collectionTagsToTagLabel({
@@ -176,15 +178,13 @@ async function handler(req: NextApiRequest) {
     }))
   );
 
-  if (data.find((item) => item.trainingAmount > 0)) {
+  if (list.find((item) => item.trainingAmount > 0)) {
     startTrainingQueue();
   }
 
   // count collections
   return {
-    pageNum,
-    pageSize,
-    data,
+    list,
     total
   };
 }
