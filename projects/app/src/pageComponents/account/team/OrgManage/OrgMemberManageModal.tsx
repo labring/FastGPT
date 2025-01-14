@@ -97,7 +97,6 @@ function OrgMemberManageModal({
 
   return (
     <MyModal
-      onClose={onClose}
       isOpen
       title={t('user:team.group.manage_member')}
       iconSrc={currentOrg?.avatar}
@@ -186,7 +185,10 @@ function OrgMemberManageModal({
           </Flex>
         </Grid>
       </ModalBody>
-      <ModalFooter alignItems="flex-end">
+      <ModalFooter>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+          {t('common:common.Close')}
+        </Button>
         <Button isLoading={isLoading} onClick={onUpdate}>
           {t('common:common.Save')}
         </Button>

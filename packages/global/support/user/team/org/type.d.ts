@@ -13,6 +13,7 @@ type OrgSchemaType = {
 };
 
 type OrgMemberSchemaType = {
+  _id: string;
   teamId: string;
   orgId: string;
   tmbId: string;
@@ -20,6 +21,6 @@ type OrgMemberSchemaType = {
 
 type OrgType = Omit<OrgSchemaType, 'avatar'> & {
   avatar: string;
-  members: OrgMemberSchemaType[];
   permission: TeamPermission;
+  members: OrgMemberSchemaType[];
 };
