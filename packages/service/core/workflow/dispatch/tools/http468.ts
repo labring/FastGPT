@@ -100,10 +100,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   const concatVariables = {
     ...variables,
     ...body,
-    // ...dynamicInput,
     ...systemVariables
   };
-  const allVariables = {
+  const allVariables: Record<string, any> = {
     [NodeInputKeyEnum.addInputParam]: concatVariables,
     ...concatVariables
   };
@@ -135,19 +134,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return String(val);
     };
 
-    // 1. Replace {{key}} variables
-    const regex1 = /{{([^}]+)}}/g;
-    const matches1 = text.match(regex1) || [];
-    const uniqueKeys1 = [...new Set(matches1.map((match) => match.slice(2, -2)))];
-    for (const key of uniqueKeys1) {
-      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => valToStr(variables[key]));
-    }
-
-    // 2. Replace {{key.key}} variables
-    const regex2 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
-    const matches2 = [...text.matchAll(regex2)];
-    if (matches2.length === 0) return text;
-    matches2.forEach((match) => {
+    // 1. Replace {{key.key}} variables
+    const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
+    const matches1 = [...text.matchAll(regex1)];
+    if (matches1.length === 0) return text;
+    matches1.forEach((match) => {
       const nodeId = match[1];
       const id = match[2];
 
@@ -172,6 +163,14 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
       text = text.replace(regex, () => formatVal);
     });
+
+    // 2. Replace {{key}} variables
+    const regex2 = /{{([^}]+)}}/g;
+    const matches2 = text.match(regex2) || [];
+    const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
+    for (const key of uniqueKeys2) {
+      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => valToStr(allVariables[key]));
+    }
 
     return text.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null');
   };
