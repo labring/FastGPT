@@ -11,13 +11,15 @@ import { useRouter } from 'next/router';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { TeamContext, TeamModalContextProvider } from './components/context';
+import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/team/context';
 import dynamic from 'next/dynamic';
 
-const MemberTable = dynamic(() => import('./components/MemberTable'));
-const PermissionManage = dynamic(() => import('./components/PermissionManage/index'));
-const GroupManage = dynamic(() => import('./components/GroupManage/index'));
-const OrgManage = dynamic(() => import('./components/OrgManage/index'));
+const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
+const PermissionManage = dynamic(
+  () => import('@/pageComponents/account/team/PermissionManage/index')
+);
+const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
+const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
 
 export enum TeamTabEnum {
   member = 'member',
