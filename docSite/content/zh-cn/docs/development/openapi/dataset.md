@@ -733,6 +733,21 @@ data 为集合的 ID。
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
+**4.8.19+**
+```bash
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/listv2' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "offset":0,
+    "pageSize": 10,
+    "datasetId":"6593e137231a2be9c5603ba7",
+    "parentId": null,
+    "searchText":""
+}'
+```
+
+**4.8.19-(不再维护)**
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/list' \
 --header 'Authorization: Bearer {{authorization}}' \
@@ -753,7 +768,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
-- pageNum: 页码（选填）
+- offset: 偏移量
 - pageSize: 每页数量，最大30（选填）
 - datasetId: 知识库的ID(必填)
 - parentId: 父级Id（选填）
@@ -773,9 +788,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
     "statusText": "",
     "message": "",
     "data": {
-        "pageNum": 1,
-        "pageSize": 10,
-        "data": [
+        "list": [
             {
                 "_id": "6593e137231a2be9c5603ba9",
                 "parentId": null,

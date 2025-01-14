@@ -118,7 +118,7 @@ export const storeNode2FlowNode = ({
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
 
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
-          value: storeInput.value ?? templateInput.value,
+          value: storeInput.value,
           valueType: storeInput.valueType ?? templateInput.valueType,
           label: storeInput.label ?? templateInput.label
         };
