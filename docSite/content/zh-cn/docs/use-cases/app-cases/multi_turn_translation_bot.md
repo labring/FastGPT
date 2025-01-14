@@ -212,7 +212,7 @@ export default async function (ctx: FunctionContext): Promise<IResponse>{
 
 ![](/imgs/translate13.png)
 
-## 循环执行
+## 批量运行
 
 长文反思翻译比较关键的一个部分，就是对多个文本块进行循环反思翻译
 
