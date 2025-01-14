@@ -36,14 +36,14 @@ async function handler(
         .limit(pageSize)
         .lean();
 
-      return (
-        await addSourceMember({
-          list: versions
-        })
-      ).map((item) => ({
-        ...item,
-        isPublish: !!item.isPublish
-      }));
+      return addSourceMember({
+        list: versions
+      }).then((list) =>
+        list.map((item) => ({
+          ...item,
+          isPublish: !!item.isPublish
+        }))
+      );
     })(),
     MongoAppVersion.countDocuments({ appId })
   ]);
