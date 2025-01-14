@@ -107,7 +107,7 @@ export const postSearchText = (data: SearchTestProps) =>
 
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
-  POST<PaginationResponse<DatasetCollectionsListItemType>>(`/core/dataset/collection/list`, data);
+  POST<PaginationResponse<DatasetCollectionsListItemType>>(`/core/dataset/collection/listV2`, data);
 export const getDatasetCollectionPathById = (parentId: string) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>
