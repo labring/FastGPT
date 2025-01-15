@@ -137,7 +137,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     // 1. Replace {{key.key}} variables
     const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
     const matches1 = [...text.matchAll(regex1)];
-    if (matches1.length === 0) return text;
     matches1.forEach((match) => {
       const nodeId = match[1];
       const id = match[2];
