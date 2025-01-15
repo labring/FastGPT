@@ -23,19 +23,19 @@ weight: 707
 
 ### PgVector版本
 
-体验测试首选
+非常轻量，适合数据量在 5000 万以下。
 
 {{< table "table-hover table-striped-columns" >}}
 | 环境 | 最低配置（单节点） | 推荐配置 |
 | ---- | ---- | ---- |
-| 测试 | 2c2g  | 2c4g |
+| 测试（可以把计算进程设置少一些） | 2c4g  | 2c8g |
 | 100w 组向量 | 4c8g 50GB | 4c16g 50GB |
 | 500w 组向量 | 8c32g 200GB | 16c64g 200GB |
 {{< /table >}}
 
 ### Milvus版本
 
-生产部署首选，对于千万级以上向量性能更优秀。
+对于亿级以上向量性能更优秀。
 
 [点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
