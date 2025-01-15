@@ -153,8 +153,6 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
     [inputs]
   );
 
-  console.log(authTmbIdInput, '--');
-
   return authTmbIdInput ? (
     <Flex alignItems={'center'}>
       <Box fontSize={'sm'}>{t('workflow:auth_tmb_id')}</Box>
