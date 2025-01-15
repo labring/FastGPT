@@ -284,7 +284,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         {
           _id: { $in: collectionIdList }
         },
-        '_id name fileId rawLink externalFileId externalFileUrl',
+        '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
         { ...readFromSecondary }
       ).lean()
     ]);
@@ -525,7 +525,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         {
           _id: { $in: searchResults.map((item) => item.collectionId) }
         },
-        '_id name fileId rawLink externalFileId externalFileUrl',
+        '_id name fileId rawLink apiFileId externalFileId externalFileUrl',
         { ...readFromSecondary }
       ).lean()
     ]);
