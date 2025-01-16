@@ -145,15 +145,20 @@ const CustomAPIFileInput = () => {
     [selectFiles]
   );
 
-  const handleSelectAll = useCallback(() => {
-    const isAllSelected = fileList.length === selectFiles.length;
+  const isAllSelected = useMemo(() => {
+    const validSelectFiles = selectFiles.filter((file) =>
+      fileList.some((apiFile) => apiFile.id === file.id)
+    );
+    return fileList.length === validSelectFiles.length;
+  }, [fileList, selectFiles]);
 
+  const handleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectFiles([]);
     } else {
       setSelectFiles(fileList);
     }
-  }, [fileList, selectFiles]);
+  }, [fileList, isAllSelected]);
 
   return (
     <MyBox isLoading={loading} position="relative" h="full">
@@ -199,7 +204,7 @@ const CustomAPIFileInput = () => {
               <Checkbox
                 className="checkbox"
                 mr={2}
-                isChecked={fileList.length === selectFiles.length}
+                isChecked={isAllSelected}
                 onChange={handleSelectAll}
               />
               {t('common:Select_all')}
