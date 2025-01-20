@@ -33,7 +33,7 @@ export const defaultWhisperConfig: AppWhisperConfigType = {
 export const defaultQGConfig: AppQGConfigType = {
   open: false,
   model: 'gpt-4o-mini',
-  customPrompt: PROMPT_QUESTION_GUIDE
+  customPrompt: ''
 };
 
 export const defaultChatInputGuideConfig = {

@@ -127,8 +127,16 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       if (typeof val === 'object') return JSON.stringify(val);
 
       if (typeof val === 'string') {
-        const str = JSON.stringify(val);
-        return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
+        try {
+          const parsed = JSON.parse(val);
+          if (typeof parsed === 'object') {
+            return JSON.stringify(parsed);
+          }
+          return val;
+        } catch (error) {
+          const str = JSON.stringify(val);
+          return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
+        }
       }
 
       return String(val);
@@ -235,7 +243,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       }
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
-        return json5.parse(replaceJsonBodyString(httpJsonBody));
+        httpJsonBody = replaceJsonBodyString(httpJsonBody);
+        console.log(httpJsonBody);
+        return json5.parse(httpJsonBody);
       }
 
       // Raw text, xml
