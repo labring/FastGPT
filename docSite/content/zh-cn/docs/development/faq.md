@@ -29,6 +29,11 @@ images: []
 如图
 ![](/imgs/faq2.png)
 
+### 数据库3306端口被占用了，启动服务失败
+![](/imgs/faq3.png)
+
+mysql 只有 oneAPI 用到，外面一般不需要调用，所以可以把 3306:3306 的映射去掉。或者直接改一个映射。另一种做法是可以直接连现有的 mysql， 不过相应的，要改 oneAPI 的环境变量。
+
 ### 本地部署的限制
 
 具体内容参考https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg。
