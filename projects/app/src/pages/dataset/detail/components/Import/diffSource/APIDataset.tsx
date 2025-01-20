@@ -71,8 +71,7 @@ const CustomAPIFileInput = () => {
         parentId: parent?.parentId,
         searchKey: searchKey
       },
-      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey],
-      isTokenPagination: !datasetDetail.apiServer
+      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey]
     }
   );
 
@@ -93,19 +92,19 @@ const CustomAPIFileInput = () => {
       // Computed all selected files
       const getFilesRecursively = async (
         files: APIFileItem[],
-        pageToken?: string
+        offset: number
       ): Promise<APIFileItem[]> => {
         const allFiles: APIFileItem[] = [];
 
         for (const file of files) {
           if (file.type === 'folder') {
-            const { list: folderFiles, nextPageToken } = await getApiDatasetFileList({
+            const { list: folderFiles, total } = await getApiDatasetFileList({
               datasetId: datasetDetail._id,
               parentId: file?.id,
-              pageToken,
+              offset,
               pageSize: 100
             });
-            const subFiles = await getFilesRecursively(folderFiles, nextPageToken);
+            const subFiles = await getFilesRecursively(folderFiles, total);
             allFiles.push(...subFiles);
           } else {
             allFiles.push(file);
@@ -115,7 +114,7 @@ const CustomAPIFileInput = () => {
         return allFiles;
       };
 
-      const allFiles = await getFilesRecursively(selectFiles, '');
+      const allFiles = await getFilesRecursively(selectFiles, 0);
 
       setSources(
         allFiles
@@ -157,15 +156,20 @@ const CustomAPIFileInput = () => {
     [selectFiles]
   );
 
-  const handleSelectAll = useCallback(() => {
-    const isAllSelected = apiFileList.length === selectFiles.length;
+  const isAllSelected = useMemo(() => {
+    const validSelectFiles = selectFiles.filter((file) =>
+      apiFileList.some((apiFile) => apiFile.id === file.id)
+    );
+    return apiFileList.length === validSelectFiles.length;
+  }, [apiFileList, selectFiles]);
 
+  const handleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectFiles([]);
     } else {
       setSelectFiles(apiFileList);
     }
-  }, [apiFileList, selectFiles]);
+  }, [apiFileList, isAllSelected]);
 
   return (
     <MyBox
@@ -216,7 +220,7 @@ const CustomAPIFileInput = () => {
           <Checkbox
             className="checkbox"
             mr={2}
-            isChecked={apiFileList.length === selectFiles.length}
+            isChecked={isAllSelected}
             onChange={handleSelectAll}
           />
           {t('common:Select_all')}
@@ -268,7 +272,7 @@ const CustomAPIFileInput = () => {
                 <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
                   {item.name}
                 </Box>
-                {item.canEnter && <MyIcon name="core/chat/chevronRight" w={'18px'} ml={2} />}
+                {item.hasChild && <MyIcon name="core/chat/chevronRight" w={'18px'} ml={2} />}
               </Flex>
             );
           })}

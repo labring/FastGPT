@@ -2,12 +2,7 @@ import React, { ReactNode, RefObject, useMemo, useRef, useState } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  PaginationProps,
-  PaginationResponse,
-  TokenPaginationProps,
-  TokenPaginationResponse
-} from '../common/fetch/type';
+import { PaginationProps, PaginationResponse } from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,
@@ -94,7 +89,7 @@ export function useVirtualScrollPagination<
         // init or reload
         setData(res.list);
       } else {
-        setData((prev) => [...prev, ...res.list]);
+        setData((prevData) => [...prevData, ...res.list]);
       }
     } catch (error: any) {
       toast({
@@ -183,8 +178,8 @@ export function useVirtualScrollPagination<
 }
 
 export function useScrollPagination<
-  TParams extends PaginationProps | TokenPaginationProps,
-  TData extends PaginationResponse | TokenPaginationResponse
+  TParams extends PaginationProps,
+  TData extends PaginationResponse
 >(
   api: (data: TParams) => Promise<TData>,
   {
@@ -194,8 +189,7 @@ export function useScrollPagination<
     pageSize = 10,
     params = {},
     EmptyTip,
-    showErrorToast = true,
-    isTokenPagination = false
+    showErrorToast = true
   }: {
     refreshDeps?: any[];
     scrollLoadType?: 'top' | 'bottom';
@@ -204,19 +198,18 @@ export function useScrollPagination<
     params?: Record<string, any>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
-    isTokenPagination?: boolean;
   }
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<TData['list']>([]);
   const [total, setTotal] = useState(0);
-  const [pageToken, setPageToken] = useState<string>('');
+  const [metaData, setMetaData] = useState<TData['metaData']>({});
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
-  const isEmpty = isTokenPagination ? data.length === 0 : total === 0 && !isLoading;
-  const noMore = isTokenPagination ? !pageToken : data.length >= total;
+  const isEmpty = total === 0 && !isLoading;
+  const noMore = data.length >= total || !!metaData?.noMore;
 
   const loadData = useLockFn(
     async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
@@ -225,25 +218,21 @@ export function useScrollPagination<
       setTrue();
 
       try {
-        let res;
-        if (isTokenPagination) {
-          res = await api({
-            pageToken: init ? '' : pageToken,
-            pageSize,
-            ...params
-          } as TParams);
-          setPageToken((res as TokenPaginationResponse).nextPageToken || '');
-        } else {
-          const offset = init ? 0 : data.length;
-          res = await api({
-            offset,
-            pageSize,
-            ...params
-          } as TParams);
-          setTotal((res as PaginationResponse).total);
-        }
+        const offset = init ? 0 : data.length;
 
-        if (scrollLoadType === 'top' && !isTokenPagination) {
+        const res = await api({
+          offset,
+          pageSize,
+          ...metaData,
+          ...params
+        } as TParams);
+
+        const { total: totalCount, list: dataList, ...restMetaData } = res;
+
+        setTotal(totalCount);
+        setMetaData(restMetaData);
+
+        if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
           const prevScrollTop = ScrollContainerRef?.current?.scrollTop || 0;
           // 使用 requestAnimationFrame 来调整滚动位置
@@ -261,10 +250,10 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (init ? res.list : [...res.list, ...prevData]));
+          setData((prevData) => (init ? dataList : [...dataList, ...prevData]));
           adjustScrollPosition();
         } else {
-          setData((prevData) => (init ? res.list : [...prevData, ...res.list]));
+          setData((prevData) => (init ? dataList : [...prevData, ...dataList]));
         }
       } catch (error: any) {
         if (showErrorToast) {
@@ -366,11 +355,10 @@ export function useScrollPagination<
   return {
     ScrollData,
     isLoading,
-    total: isTokenPagination ? undefined : Math.max(total, data.length),
+    total: Math.max(total, data.length),
     data,
     setData,
     fetchData: loadData,
-    refreshList,
-    hasMore: !noMore
+    refreshList
   };
 }

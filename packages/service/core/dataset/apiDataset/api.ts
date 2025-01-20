@@ -1,6 +1,6 @@
 import type {
   APIFileContentResponse,
-  APIFileItem,
+  APIFileListResponse,
   APIFileReadResponse,
   APIFileServer
 } from '@fastgpt/global/core/dataset/apiDataset';
@@ -85,10 +85,10 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   }: {
     searchKey?: string;
     parentId?: ParentIdType;
-    offset?: number;
+    offset: number;
     pageSize: number;
   }) => {
-    const files = await request<APIFileItem[]>(
+    const { list, total } = await request<APIFileListResponse>(
       `/v1/file/list`,
       {
         searchKey,
@@ -99,20 +99,21 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       'POST'
     );
 
-    if (!Array.isArray(files)) {
+    if (!Array.isArray(list)) {
       return Promise.reject('Invalid file list format');
     }
-    if (files.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
+    if (list.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
       return Promise.reject('Invalid file data format');
     }
 
-    const formattedFiles = files.map((file) => ({
+    const formattedFiles = list.map((file) => ({
       ...file,
       hasChild: file.type === 'folder'
     }));
 
     return {
-      list: formattedFiles
+      list: formattedFiles,
+      total
     };
   };
 

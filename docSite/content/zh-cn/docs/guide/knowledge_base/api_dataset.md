@@ -88,16 +88,19 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
     "code": 200,
     "success": true,
     "message": "",
-    "data":[ 
-        {
-            "id": "xxxx",
-            "parentId": "xxxx",
-            "type": "file",  // file | folder
-            "name":"test.json",
-            "updateTime":"2024-11-26T03:05:24.759Z",
-            "createTime":"2024-11-26T03:05:24.759Z"
-        }
-   ]
+    "data":{
+        "list": [ 
+            {
+                "id": "xxxx",
+                "parentId": "xxxx",
+                "type": "file",  // file | folder
+                "name":"test.json",
+                "updateTime":"2024-11-26T03:05:24.759Z",
+                "createTime":"2024-11-26T03:05:24.759Z"
+            }
+       ],
+        "total": 1
+    }
 }
 ```
 

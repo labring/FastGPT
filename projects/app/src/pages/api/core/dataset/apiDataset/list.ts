@@ -12,14 +12,13 @@ export type GetApiDatasetFileListProps = {
   searchKey?: string;
   parentId?: ParentIdType;
   datasetId: string;
-  pageToken?: string;
-  offset?: number;
+  offset: number;
   pageSize: number;
 };
 
 export type GetApiDatasetFileListResponse = {
-  nextPageToken?: string;
   list: APIFileItem[];
+  total: number;
 };
 
 async function handler(req: NextApiRequest) {
@@ -27,7 +26,7 @@ async function handler(req: NextApiRequest) {
     searchKey = '',
     parentId = null,
     datasetId,
-    pageToken = '',
+    nextPageToken = '',
     pageSize,
     offset = 0
   } = req.body;
@@ -45,14 +44,15 @@ async function handler(req: NextApiRequest) {
   const yuqueServer = dataset.yuqueServer;
 
   if (apiServer) {
-    const { list } = await useApiDatasetRequest({ apiServer }).listFiles({
+    const { list, total } = await useApiDatasetRequest({ apiServer }).listFiles({
       searchKey,
       parentId,
       offset,
       pageSize
     });
     return {
-      list
+      list,
+      total
     };
   }
   if (feishuServer || yuqueServer) {
@@ -60,7 +60,7 @@ async function handler(req: NextApiRequest) {
       feishuServer,
       yuqueServer,
       parentId,
-      pageToken,
+      nextPageToken,
       pageSize
     });
   }
