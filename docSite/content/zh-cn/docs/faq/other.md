@@ -15,5 +15,7 @@ weight: 918
 ![](/imgs/other1.png)
 ![](/imgs/other2.png)
 
-fastgpt商业版支持，可以绑定多个CHAT_API_KEY，每个用户绑定不同的CHAT_API_KEY，每个团队可配置自己的key，暂时只能在web页面操作。
+多用户问题：只能采取二开或者商业版
+
+多chat key问题：1. 私有化部署情况下，oneapi解决。2. Saas或者商业版中，可以为每个团队设置单独的key。
 ![](/imgs/other3.png)
