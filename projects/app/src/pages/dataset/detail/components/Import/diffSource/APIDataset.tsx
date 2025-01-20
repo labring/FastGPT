@@ -160,16 +160,18 @@ const CustomAPIFileInput = () => {
     const validSelectFiles = selectFiles.filter((file) =>
       apiFileList.some((apiFile) => apiFile.id === file.id)
     );
-    return apiFileList.length === validSelectFiles.length;
-  }, [apiFileList, selectFiles]);
+    const notExistFiles = apiFileList.filter((file) => !existIdList.some((id) => id === file.id));
+
+    return notExistFiles.length === validSelectFiles.length;
+  }, [apiFileList, existIdList, selectFiles]);
 
   const handleSelectAll = useCallback(() => {
     if (isAllSelected) {
       setSelectFiles([]);
     } else {
-      setSelectFiles(apiFileList);
+      setSelectFiles(apiFileList.filter((item) => !existIdList.includes(item.id)));
     }
-  }, [apiFileList, isAllSelected]);
+  }, [apiFileList, existIdList, isAllSelected]);
 
   return (
     <MyBox
