@@ -135,7 +135,7 @@ const MySelect = <T = any,>(
         ))}
       </>
     );
-  }, []);
+  }, [list, value]);
 
   return (
     <Box
