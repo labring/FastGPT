@@ -29,8 +29,6 @@ export type ChatProviderProps = {
   outLinkAuthData?: OutLinkChatAuthProps;
 
   chatType: 'log' | 'chat' | 'share' | 'team';
-  showRawSource: boolean;
-  showNodeStatus: boolean;
 };
 
 type useChatStoreType = ChatProviderProps & {
@@ -132,8 +130,6 @@ const Provider = ({
   chatId,
   outLinkAuthData = {},
   chatType = 'chat',
-  showRawSource,
-  showNodeStatus,
   children,
   ...props
 }: ChatProviderProps & {
@@ -249,9 +245,7 @@ const Provider = ({
     chatId,
     outLinkAuthData,
     getHistoryResponseData,
-    chatType,
-    showRawSource,
-    showNodeStatus
+    chatType
   };
 
   return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;

@@ -249,14 +249,7 @@ export const WholeResponseContent = ({
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
             label={t('common:core.chat.response.module quoteList')}
-            rawDom={
-              <QuoteList
-                canEditDataset
-                canViewSource
-                chatItemId={dataId}
-                rawSearch={activeModule.quoteList}
-              />
-            }
+            rawDom={<QuoteList chatItemId={dataId} rawSearch={activeModule.quoteList} />}
           />
         )}
       </>

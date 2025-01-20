@@ -14,6 +14,8 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useContextSelector } from 'use-context-selector';
 
 const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
 
@@ -21,6 +23,8 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   const { t } = useTranslation();
   const router = useRouter();
   const isTeamChat = router.pathname === '/chat/team';
+
+  const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
     return getMyApps({
@@ -50,34 +54,36 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box mt={4} px={4}>
-        {!isTeamChat && (
-          <Flex
-            alignItems={'center'}
-            cursor={'pointer'}
-            py={2}
-            px={3}
-            borderRadius={'md'}
-            _hover={{ bg: 'myGray.200' }}
-            onClick={() => router.push('/app/list')}
-          >
-            <IconButton
-              mr={3}
-              icon={<MyIcon name={'common/backFill'} w={'1rem'} color={'primary.500'} />}
-              bg={'white'}
-              boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-              size={'smSquare'}
-              borderRadius={'50%'}
-              aria-label={''}
-            />
-            {t('common:core.chat.Exit Chat')}
-          </Flex>
-        )}
-      </Box>
+      {showRouteToAppDetail && (
+        <>
+          <Box mt={4} px={4}>
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              py={2}
+              px={3}
+              borderRadius={'md'}
+              _hover={{ bg: 'myGray.200' }}
+              onClick={() => router.push('/app/list')}
+            >
+              <IconButton
+                mr={3}
+                icon={<MyIcon name={'common/backFill'} w={'1rem'} color={'primary.500'} />}
+                bg={'white'}
+                boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+                size={'smSquare'}
+                borderRadius={'50%'}
+                aria-label={''}
+              />
+              {t('common:core.chat.Exit Chat')}
+            </Flex>
+          </Box>
+          <MyDivider h={2} my={1} />
+        </>
+      )}
 
       {!isTeamChat && (
         <>
-          <MyDivider h={2} my={1} />
           <HStack
             px={4}
             my={2}
