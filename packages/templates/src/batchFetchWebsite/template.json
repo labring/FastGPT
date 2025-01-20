@@ -1,0 +1,841 @@
+{
+  "name": "批量抓取多个网页",
+  "intro": "通过循环运行组件实现抓取多个网页",
+  "author": "Finley Ge",
+  "avatar": "core/workflow/template/loop",
+  "tags": [
+    "office-services"
+  ],
+  "type": "simple",
+  "weight": 1,
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "userGuide",
+        "name": "common:core.module.template.system_config",
+        "intro": "common:core.module.template.system_config_info",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "userGuide",
+        "position": {
+          "x": 373.2606563665192,
+          "y": -545.3115022750724
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "welcomeText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "core.app.Welcome Text",
+            "value": ""
+          },
+          {
+            "key": "variables",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "core.app.Chat Variable",
+            "value": []
+          },
+          {
+            "key": "questionGuide",
+            "valueType": "any",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "core.app.Question Guide",
+            "value": {
+              "open": false
+            }
+          },
+          {
+            "key": "tts",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "type": "web"
+            }
+          },
+          {
+            "key": "whisper",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": {
+              "open": false,
+              "autoSend": false,
+              "autoTTSResponse": false
+            }
+          },
+          {
+            "key": "scheduleTrigger",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "value": null
+          }
+        ],
+        "outputs": [],
+        "isFolded": false
+      },
+      {
+        "nodeId": "448745",
+        "name": "common:core.module.template.work_start",
+        "intro": "",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "workflowStart",
+        "position": {
+          "x": 928.8732709604676,
+          "y": -476.1918530824636
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "common:core.module.input.label.user question",
+            "required": true,
+            "toolDescription": "用户问题",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "userChatInput",
+            "key": "userChatInput",
+            "label": "common:core.module.input.label.user question",
+            "type": "static",
+            "valueType": "string",
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "nYahojqWl3Dv",
+        "name": "循环运行",
+        "intro": "可以输入一个数组，数组内元素将独立执行循环体，并将所有结果作为数组输出。",
+        "avatar": "core/workflow/template/loop",
+        "flowNodeType": "loop",
+        "showStatus": true,
+        "position": {
+          "x": 1903.3781205353034,
+          "y": -1114.1918530824637
+        },
+        "version": "4811",
+        "inputs": [
+          {
+            "key": "loopInputArray",
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "arrayString",
+            "required": true,
+            "label": "数组",
+            "value": [
+              [
+                "z5G5SN3Ft1Fq",
+                "fXhyidtwu81J"
+              ]
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "childrenNodeIdList",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "arrayString",
+            "label": "",
+            "value": [
+              "vnB6XU6neBzP",
+              "cyOXfbErj2W2",
+              "ij5bOSRhu7hg",
+              "uHAFz4JcEizL",
+              "cSZChQbyBgQU"
+            ]
+          },
+          {
+            "key": "nodeWidth",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 2374.02397925574
+          },
+          {
+            "key": "nodeHeight",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 1400.1158876875272
+          },
+          {
+            "key": "loopNodeInputHeight",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 83,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "loopArray",
+            "key": "loopArray",
+            "label": "workflow:loop_result",
+            "type": "static",
+            "valueType": "arrayString",
+            "description": ""
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "vnB6XU6neBzP",
+        "parentNodeId": "nYahojqWl3Dv",
+        "name": "循环体开始",
+        "avatar": "core/workflow/template/loopStart",
+        "flowNodeType": "loopStart",
+        "showStatus": false,
+        "position": {
+          "x": 1972.9531142948777,
+          "y": -446.01931598298484
+        },
+        "version": "4811",
+        "inputs": [
+          {
+            "key": "loopStartInput",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "label": "",
+            "required": true,
+            "value": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "loopStartIndex",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "number",
+            "label": "workflow:Array_element_index",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "loopStartIndex",
+            "key": "loopStartIndex",
+            "label": "workflow:Array_element_index",
+            "type": "static",
+            "valueType": "number",
+            "description": ""
+          },
+          {
+            "id": "loopStartInput",
+            "key": "loopStartInput",
+            "label": "数组元素",
+            "type": "static",
+            "valueType": "string"
+          }
+        ],
+        "isFolded": false
+      },
+      {
+        "nodeId": "cyOXfbErj2W2",
+        "parentNodeId": "nYahojqWl3Dv",
+        "name": "循环体结束",
+        "avatar": "core/workflow/template/loopEnd",
+        "flowNodeType": "loopEnd",
+        "showStatus": false,
+        "position": {
+          "x": 3846.977093550617,
+          "y": 283.5965717045424
+        },
+        "version": "4811",
+        "inputs": [
+          {
+            "key": "loopEndInput",
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "any",
+            "label": "",
+            "required": true,
+            "value": [
+              "uHAFz4JcEizL",
+              "answerText"
+            ],
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [],
+        "isFolded": false
+      },
+      {
+        "nodeId": "ij5bOSRhu7hg",
+        "parentNodeId": "nYahojqWl3Dv",
+        "name": "网页内容抓取",
+        "intro": "可获取一个网页链接内容，并以 Markdown 格式输出，仅支持获取静态网站。",
+        "avatar": "core/workflow/template/fetchUrl",
+        "flowNodeType": "pluginModule",
+        "showStatus": true,
+        "position": {
+          "x": 2462.505381544273,
+          "y": -531.5193159829848
+        },
+        "version": "486",
+        "inputs": [
+          {
+            "key": "system_forbid_stream",
+            "renderTypeList": [
+              "switch"
+            ],
+            "valueType": "boolean",
+            "label": "禁用流输出",
+            "description": "强制设置嵌套运行的应用，均以非流模式运行",
+            "value": true,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "key": "url",
+            "label": "url",
+            "description": "需要读取的网页链接",
+            "required": true,
+            "toolDescription": "需要读取的网页链接",
+            "value": [
+              "vnB6XU6neBzP",
+              "loopStartInput"
+            ],
+            "canEdit": false,
+            "valueDesc": "",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "result",
+            "type": "static",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "description": "",
+            "valueDesc": ""
+          }
+        ],
+        "pluginId": "community-fetchUrl",
+        "isFolded": false
+      },
+      {
+        "nodeId": "z5G5SN3Ft1Fq",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1349.2260314765435,
+          "y": -627.6918530824636
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "这些变量会作为代码的运行的输入参数",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "value": "function main({input}){\n    const result = input.split(',')\n    return {\n        result\n    }\n}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "input",
+            "label": "input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "448745",
+              "userChatInput"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "完整响应数据",
+            "valueType": "object",
+            "type": "static",
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "运行错误",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static",
+            "valueDesc": ""
+          },
+          {
+            "id": "fXhyidtwu81J",
+            "valueType": "arrayString",
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
+          }
+        ]
+      },
+      {
+        "nodeId": "uHAFz4JcEizL",
+        "parentNodeId": "nYahojqWl3Dv",
+        "name": "AI 对话",
+        "intro": "AI 大模型对话",
+        "avatar": "core/workflow/template/aiChat",
+        "flowNodeType": "chatNode",
+        "showStatus": true,
+        "position": {
+          "x": 3123.9551958295056,
+          "y": -791.5193159829848
+        },
+        "version": "4813",
+        "inputs": [
+          {
+            "key": "model",
+            "renderTypeList": [
+              "settingLLMModel",
+              "reference"
+            ],
+            "label": "AI 模型",
+            "valueType": "string",
+            "value": "gpt-4o-mini",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "temperature",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": 0,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "maxToken",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": 2000,
+            "valueType": "number",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "isResponseAnswerText",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "value": false,
+            "valueType": "boolean",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatQuoteRole",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "system",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteTemplate",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quotePrompt",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "aiChatVision",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "boolean",
+            "value": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "systemPrompt",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "max": 3000,
+            "valueType": "string",
+            "label": "提示词",
+            "description": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可通过输入 / 插入选择变量\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
+            "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+            "value": "你是一个网页总结机器人， 使用一句话总结该页面。",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "history",
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "valueType": "chatHistory",
+            "label": "聊天记录",
+            "description": "最多携带多少轮对话记录",
+            "required": true,
+            "min": 0,
+            "max": 50,
+            "value": 0,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "quoteQA",
+            "renderTypeList": [
+              "settingDatasetQuotePrompt"
+            ],
+            "label": "",
+            "debugLabel": "知识库引用",
+            "description": "",
+            "valueType": "datasetQuote",
+            "valueDesc": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "fileUrlList",
+            "renderTypeList": [
+              "reference",
+              "input"
+            ],
+            "label": "文件链接",
+            "debugLabel": "文件链接",
+            "valueType": "arrayString",
+            "value": [
+              [
+                "448745",
+                "userFiles"
+              ]
+            ],
+            "valueDesc": "",
+            "description": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "userChatInput",
+            "renderTypeList": [
+              "reference",
+              "textarea"
+            ],
+            "valueType": "string",
+            "label": "用户问题",
+            "toolDescription": "用户问题",
+            "required": true,
+            "value": [
+              "vnB6XU6neBzP",
+              "loopStartInput"
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "history",
+            "key": "history",
+            "required": true,
+            "label": "新的上下文",
+            "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+            "valueType": "chatHistory",
+            "valueDesc": "{\n  obj: System | Human | AI;\n  value: string;\n}[]",
+            "type": "static"
+          },
+          {
+            "id": "answerText",
+            "key": "answerText",
+            "required": true,
+            "label": "AI 回复内容",
+            "description": "将在 stream 回复完毕后触发",
+            "valueType": "string",
+            "type": "static",
+            "valueDesc": ""
+          }
+        ]
+      },
+      {
+        "nodeId": "cSZChQbyBgQU",
+        "parentNodeId": "nYahojqWl3Dv",
+        "name": "指定回复",
+        "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "avatar": "core/workflow/template/reply",
+        "flowNodeType": "answerNode",
+        "position": {
+          "x": 3085.9551958295056,
+          "y": 194.59657170454244
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "text",
+            "renderTypeList": [
+              "textarea",
+              "reference"
+            ],
+            "valueType": "any",
+            "required": true,
+            "label": "回复的内容",
+            "description": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
+            "placeholder": "common:core.module.input.description.Response content",
+            "value": "**页面 {{$vnB6XU6neBzP.loopStartIndex$}}**\n*{{$vnB6XU6neBzP.loopStartInput$}}*\n\n{{$uHAFz4JcEizL.answerText$}}\n\n---",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": []
+      }
+    ],
+    "edges": [
+      {
+        "source": "vnB6XU6neBzP",
+        "target": "ij5bOSRhu7hg",
+        "sourceHandle": "vnB6XU6neBzP-source-right",
+        "targetHandle": "ij5bOSRhu7hg-target-left"
+      },
+      {
+        "source": "448745",
+        "target": "z5G5SN3Ft1Fq",
+        "sourceHandle": "448745-source-right",
+        "targetHandle": "z5G5SN3Ft1Fq-target-left"
+      },
+      {
+        "source": "z5G5SN3Ft1Fq",
+        "target": "nYahojqWl3Dv",
+        "sourceHandle": "z5G5SN3Ft1Fq-source-right",
+        "targetHandle": "nYahojqWl3Dv-target-left"
+      },
+      {
+        "source": "ij5bOSRhu7hg",
+        "target": "uHAFz4JcEizL",
+        "sourceHandle": "ij5bOSRhu7hg-source-right",
+        "targetHandle": "uHAFz4JcEizL-target-left"
+      },
+      {
+        "source": "cSZChQbyBgQU",
+        "target": "cyOXfbErj2W2",
+        "sourceHandle": "cSZChQbyBgQU-source-right",
+        "targetHandle": "cyOXfbErj2W2-target-left"
+      },
+      {
+        "source": "uHAFz4JcEizL",
+        "target": "cSZChQbyBgQU",
+        "sourceHandle": "uHAFz4JcEizL-source-bottom",
+        "targetHandle": "cSZChQbyBgQU-target-top"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "发送多个网页URL,使用英文逗号隔开。\n例如：\n[https://doc.tryfastgpt.ai/docs/guide/course/quick-start/,https://doc.tryfastgpt.ai/docs/guide/course/ai_settings/,https://doc.tryfastgpt.ai/docs/guide/course/chat_input_guide/,https://doc.tryfastgpt.ai/docs/guide/course/collection_tags/,https://doc.tryfastgpt.ai/docs/guide/course/fileinput/]\n",
+      "variables": [],
+      "scheduledTriggerConfig": {
+        "cronString": "",
+        "timezone": "Asia/Shanghai",
+        "defaultPrompt": ""
+      },
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "677f98bf25a320b34a51f25c"
+    }
+  }
+}
