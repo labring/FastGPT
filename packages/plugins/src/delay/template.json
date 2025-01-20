@@ -1,11 +1,11 @@
 {
   "author": "collin",
   "version": "4817",
-  "name": "流程暂停",
+  "name": "流程等待",
   "avatar": "core/workflow/template/sleep",
-  "intro": "让工作流暂停指定时间后运行",
+  "intro": "让工作流等待指定时间后运行",
   "showStatus": true,
-  "weight": 10,
+  "weight": 1,
 
   "isTool": true,
   "templateType": "tools",
@@ -20,22 +20,19 @@
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
-          "x": 616.4226348688949,
-          "y": -165.05298493910115
+          "x": 627.6352390819724,
+          "y": -165.05298493910118
         },
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "numberInput",
-              "reference"
-            ],
+            "renderTypeList": ["numberInput", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "number",
             "canEdit": true,
-            "key": "ms",
-            "label": "ms",
-            "description": "需要暂停的时间，毫秒",
+            "key": "延迟时长",
+            "label": "延迟时长",
+            "description": "需要暂停的时间，单位毫秒",
             "defaultValue": 1000,
             "list": [
               {
@@ -47,8 +44,8 @@
             "canSelectFile": true,
             "canSelectImg": true,
             "required": true,
-            "toolDescription": "需要暂停的时间，毫秒",
-            "max": 999999999999,
+            "toolDescription": "需要暂停的时间，单位毫秒",
+            "max": 300000,
             "min": 1
           }
         ],
@@ -56,8 +53,8 @@
           {
             "id": "ms",
             "valueType": "number",
-            "key": "ms",
-            "label": "ms",
+            "key": "延迟时长",
+            "label": "延迟时长",
             "type": "hidden"
           }
         ]
@@ -70,15 +67,13 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1925.5772573010433,
-          "y": -131.55298493910115
+          "x": 1921.839722563351,
+          "y": -160.05298493910115
         },
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "any",
             "canEdit": true,
             "key": "result",
@@ -86,10 +81,7 @@
             "isToolOutput": true,
             "description": "",
             "required": true,
-            "value": [
-              "zCJC6zw7c14i",
-              "httpRawResponse"
-            ]
+            "value": ["zCJC6zw7c14i", "httpRawResponse"]
           }
         ],
         "outputs": []
@@ -116,16 +108,14 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1152.535395637613,
-          "y": -433.21496011686054
+          "x": 1154.4041630064592,
+          "y": -455.0529849391012
         },
         "version": "481",
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": [
-              "addInputParam"
-            ],
+            "renderTypeList": ["addInputParam"],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -157,9 +147,7 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -171,9 +159,7 @@
           },
           {
             "key": "system_httpTimeout",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "number",
             "label": "",
             "value": 30,
@@ -187,24 +173,20 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "sleep",
+            "value": "delay",
             "valueDesc": "",
             "debugLabel": "",
             "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -217,9 +199,7 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -231,9 +211,7 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": "{\n\"ms\": {{$pluginInput.ms$}}\n}",
             "label": "",
@@ -245,9 +223,7 @@
           },
           {
             "key": "system_httpFormBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -259,9 +235,7 @@
           },
           {
             "key": "system_httpContentType",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "value": "json",
             "label": "",
@@ -338,32 +312,7 @@
       }
     ],
     "chatConfig": {
-      "welcomeText": "",
-      "variables": [],
-      "questionGuide": {
-        "open": false,
-        "model": "gpt-4o-mini",
-        "customPrompt": "You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:\n\n1. Use the same language as the user's last question in the conversation history.\n2. Keep each question under 20 characters in length.\n\nAnalyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.\n\nRemember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics."
-      },
-      "ttsConfig": {
-        "type": "web"
-      },
-      "whisperConfig": {
-        "open": false,
-        "autoSend": false,
-        "autoTTSResponse": false
-      },
-      "chatInputGuide": {
-        "open": false,
-        "textList": [],
-        "customUrl": ""
-      },
-      "instruction": "",
-      "autoExecute": {
-        "open": false,
-        "defaultPrompt": ""
-      },
-      "_id": "6784ba2c227f92f6c723ead0"
+      "welcomeText": ""
     }
   }
 }

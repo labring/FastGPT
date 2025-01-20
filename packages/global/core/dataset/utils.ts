@@ -34,7 +34,7 @@ export function getSourceNameIcon({
     }
   } catch (error) {}
 
-  return 'file/fill/manual';
+  return 'file/fill/file';
 }
 
 /* get dataset data default index */

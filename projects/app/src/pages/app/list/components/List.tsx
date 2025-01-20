@@ -34,8 +34,8 @@ import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -43,8 +43,6 @@ const ListItem = () => {
   const router = useRouter();
   const { parentId = null } = router.query;
   const { isPc } = useSystem();
-
-  const { loadAndGetTeamMembers } = useUserStore();
 
   const { openConfirm: openMoveConfirm, ConfirmModal: MoveConfirmModal } = useConfirm({
     type: 'common',
@@ -115,10 +113,6 @@ const ListItem = () => {
     successToast: t('app:create_copy_success')
   });
 
-  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: false
-  });
-
   const { runAsync: onResumeInheritPermission } = useRequest2(
     () => {
       return resumeInheritPer(editPerApp!._id);
@@ -145,7 +139,6 @@ const ListItem = () => {
         alignItems={'stretch'}
       >
         {myApps.map((app, index) => {
-          const owner = members.find((v) => v.tmbId === app.tmbId);
           return (
             <MyTooltip
               key={app._id}
@@ -229,15 +222,12 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
-                    {owner && (
-                      <HStack spacing={1}>
-                        <Avatar src={owner.avatar} w={'0.875rem'} borderRadius={'50%'} />
-                        <Box maxW={'150px'} className="textEllipsis">
-                          {owner.memberName}
-                        </Box>
-                      </HStack>
-                    )}
-
+                    <UserBox
+                      sourceMember={app.sourceMember}
+                      fontSize="xs"
+                      avatarSize="1rem"
+                      spacing={0.5}
+                    />
                     <PermissionIconText
                       private={app.private}
                       color={'myGray.500'}

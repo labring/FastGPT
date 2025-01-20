@@ -16,7 +16,7 @@ import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 
 type ItemHeight<T> = (index: number, data: T) => number;
-const thresholdVal = 200;
+const thresholdVal = 100;
 
 export type ScrollListType = ({
   children,
@@ -269,8 +269,10 @@ export function useScrollPagination<
     ({
       children,
       ScrollContainerRef,
+      isLoading,
       ...props
     }: {
+      isLoading?: boolean;
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
@@ -302,7 +304,7 @@ export function useScrollPagination<
       );
 
       return (
-        <Box {...props} ref={ref} overflow={'overlay'}>
+        <MyBox {...props} ref={ref} overflow={'overlay'} isLoading={isLoading}>
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}
@@ -325,7 +327,7 @@ export function useScrollPagination<
             </Box>
           )}
           {isEmpty && EmptyTip}
-        </Box>
+        </MyBox>
       );
     }
   );

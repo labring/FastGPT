@@ -37,7 +37,6 @@ import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/typ
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
-import { PagingData } from '@/types';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
 import type {
@@ -66,8 +65,6 @@ import type {
   listExistIdQuery,
   listExistIdResponse
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -110,7 +107,7 @@ export const postSearchText = (data: SearchTestProps) =>
 
 /* ============================= collections ==================================== */
 export const getDatasetCollections = (data: GetDatasetCollectionsProps) =>
-  POST<PagingData<DatasetCollectionsListItemType>>(`/core/dataset/collection/list`, data);
+  POST<PaginationResponse<DatasetCollectionsListItemType>>(`/core/dataset/collection/listV2`, data);
 export const getDatasetCollectionPathById = (parentId: string) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>

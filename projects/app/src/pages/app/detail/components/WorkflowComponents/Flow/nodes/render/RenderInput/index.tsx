@@ -8,71 +8,72 @@ import InputLabel from './Label';
 import type { RenderInputProps } from './type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
-const RenderList: {
-  types: FlowNodeInputTypeEnum[];
-  Component: React.ComponentType<RenderInputProps>;
-}[] = [
-  {
-    types: [FlowNodeInputTypeEnum.reference],
+const RenderList: Record<
+  FlowNodeInputTypeEnum,
+  | {
+      Component: React.ComponentType<RenderInputProps>;
+      LableRightComponent?: React.ComponentType<RenderInputProps>;
+    }
+  | undefined
+> = {
+  [FlowNodeInputTypeEnum.reference]: {
     Component: dynamic(() => import('./templates/Reference'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.fileSelect],
+  [FlowNodeInputTypeEnum.fileSelect]: {
     Component: dynamic(() => import('./templates/Reference'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.select],
+  [FlowNodeInputTypeEnum.select]: {
     Component: dynamic(() => import('./templates/Select'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.numberInput],
+  [FlowNodeInputTypeEnum.numberInput]: {
     Component: dynamic(() => import('./templates/NumberInput'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.switch],
+  [FlowNodeInputTypeEnum.switch]: {
     Component: dynamic(() => import('./templates/Switch'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.selectApp],
+  [FlowNodeInputTypeEnum.selectApp]: {
     Component: dynamic(() => import('./templates/SelectApp'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.selectLLMModel],
+  [FlowNodeInputTypeEnum.selectLLMModel]: {
     Component: dynamic(() => import('./templates/SelectLLMModel'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.settingLLMModel],
+  [FlowNodeInputTypeEnum.settingLLMModel]: {
     Component: dynamic(() => import('./templates/SettingLLMModel'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.selectDataset],
-    Component: dynamic(() => import('./templates/SelectDataset'))
+  [FlowNodeInputTypeEnum.selectDataset]: {
+    Component: dynamic(() =>
+      import('./templates/SelectDataset').then((mod) => mod.SelectDatasetRender)
+    ),
+    LableRightComponent: dynamic(() =>
+      import('./templates/SelectDataset').then((mod) => mod.SwitchAuthTmb)
+    )
   },
-  {
-    types: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
+  [FlowNodeInputTypeEnum.selectDatasetParamsModal]: {
     Component: dynamic(() => import('./templates/SelectDatasetParams'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.addInputParam],
+  [FlowNodeInputTypeEnum.addInputParam]: {
     Component: dynamic(() => import('./templates/DynamicInputs/index'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.JSONEditor],
+  [FlowNodeInputTypeEnum.JSONEditor]: {
     Component: dynamic(() => import('./templates/JsonEditor'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+  [FlowNodeInputTypeEnum.settingDatasetQuotePrompt]: {
     Component: dynamic(() => import('./templates/SettingQuotePrompt'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.input],
+  [FlowNodeInputTypeEnum.input]: {
     Component: dynamic(() => import('./templates/TextInput'))
   },
-  {
-    types: [FlowNodeInputTypeEnum.textarea],
-    Component: dynamic(() => import('./templates/Textarea'))
-  }
-];
+  [FlowNodeInputTypeEnum.textarea]: {
+    Component: dynamic(() => import('./templates/Textarea')),
+    LableRightComponent: dynamic(() =>
+      import('./templates/Textarea').then((mod) => mod.TextareaRightComponent)
+    )
+  },
+
+  [FlowNodeInputTypeEnum.customVariable]: undefined,
+  [FlowNodeInputTypeEnum.hidden]: undefined,
+  [FlowNodeInputTypeEnum.custom]: undefined
+};
 
 const hideLabelTypeList = [FlowNodeInputTypeEnum.addInputParam];
 
@@ -101,7 +102,7 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
       return true;
     });
-  }, [feConfigs?.isPlus, flowInputList]);
+  }, [filterProInputs]);
 
   return (
     <>
@@ -110,23 +111,41 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
         const RenderComponent = (() => {
           if (renderType === FlowNodeInputTypeEnum.custom && CustomComponent?.[input.key]) {
-            return <>{CustomComponent?.[input.key]({ ...input })}</>;
+            return {
+              Component: <>{CustomComponent?.[input.key]({ ...input })}</>
+            };
           }
 
-          const Component = RenderList.find((item) => item.types.includes(renderType))?.Component;
+          const RenderItem = RenderList[renderType];
 
-          if (!Component) return null;
-          return <Component inputs={filterProInputs} item={input} nodeId={nodeId} />;
+          if (!RenderItem) return null;
+
+          return {
+            Component: (
+              <RenderItem.Component inputs={filterProInputs} item={input} nodeId={nodeId} />
+            ),
+            LableRightComponent: RenderItem.LableRightComponent ? (
+              <RenderItem.LableRightComponent
+                inputs={filterProInputs}
+                item={input}
+                nodeId={nodeId}
+              />
+            ) : undefined
+          };
         })();
 
         return (
           <Box key={input.key} _notLast={{ mb }} position={'relative'}>
             {!!input.label && !hideLabelTypeList.includes(renderType) && (
-              <InputLabel nodeId={nodeId} input={input} />
+              <InputLabel
+                nodeId={nodeId}
+                input={input}
+                RightComponent={RenderComponent?.LableRightComponent}
+              />
             )}
             {!!RenderComponent && (
               <Box mt={2} className={'nodrag'}>
-                {RenderComponent}
+                {RenderComponent.Component}
               </Box>
             )}
           </Box>

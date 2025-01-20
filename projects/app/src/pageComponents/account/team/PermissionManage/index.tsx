@@ -24,7 +24,7 @@ import {
 import { useUserStore } from '@/web/support/user/useUserStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MemberTag from '../../../../../components/support/user/team/Info/MemberTag';
+import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import {
   TeamManagePermissionVal,

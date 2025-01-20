@@ -1,8 +1,6 @@
-import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import {
@@ -19,6 +17,8 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { getVectorModel } from '@fastgpt/service/core/ai/model';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -167,28 +167,24 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
       })();
 
       return {
-        ...dataset,
+        _id: dataset._id,
+        avatar: dataset.avatar,
+        name: dataset.name,
+        intro: dataset.intro,
+        type: dataset.type,
+        vectorModel: getVectorModel(dataset.vectorModel),
+        inheritPermission: dataset.inheritPermission,
+        tmbId: dataset.tmbId,
+        updateTime: dataset.updateTime,
         permission: Per,
         privateDataset
       };
     })
     .filter((app) => app.permission.hasReadPer);
 
-  const data = formatDatasets.map<DatasetListItemType>((item) => ({
-    _id: item._id,
-    avatar: item.avatar,
-    name: item.name,
-    intro: item.intro,
-    type: item.type,
-    permission: item.permission,
-    vectorModel: getVectorModel(item.vectorModel),
-    inheritPermission: item.inheritPermission,
-    tmbId: item.tmbId,
-    updateTime: item.updateTime,
-    private: item.privateDataset
-  }));
-
-  return data;
+  return addSourceMember({
+    list: formatDatasets
+  });
 }
 
 export default NextAPI(handler);

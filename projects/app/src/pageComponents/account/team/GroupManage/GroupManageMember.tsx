@@ -32,26 +32,26 @@ export type GroupFormType = {
   }[];
 };
 
+// 1. Owner can not be deleted, toast
+// 2. Owner/Admin can manage members
+// 3. Owner can add/remove admins
 function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
-  // 1. Owner can not be deleted, toast
-  // 2. Owner/Admin can manage members
-  // 3. Owner can add/remove admins
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
-  const [hoveredMemberId, setHoveredMemberId] = useState<string | undefined>(undefined);
-  const {
-    members: allMembers,
-    refetchGroups,
-    groups,
-    refetchMembers
-  } = useContextSelector(TeamContext, (v) => v);
 
+  const groups = useContextSelector(TeamContext, (v) => v.groups);
+  const refetchGroups = useContextSelector(TeamContext, (v) => v.refetchGroups);
   const group = useMemo(() => {
     return groups.find((item) => item._id === editGroupId);
   }, [editGroupId, groups]);
 
+  const allMembers = useContextSelector(TeamContext, (v) => v.members);
+  const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
+  const MemberScrollData = useContextSelector(TeamContext, (v) => v.MemberScrollData);
+  const [hoveredMemberId, setHoveredMemberId] = useState<string>();
   const [members, setMembers] = useState(group?.members || []);
+
   const [searchKey, setSearchKey] = useState('');
   const filtered = useMemo(() => {
     return [
@@ -62,7 +62,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     ];
   }, [searchKey, allMembers]);
 
-  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async () => {
       if (!editGroupId || !members.length) return;
       return putUpdateGroup({
@@ -155,7 +155,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                 setSearchKey(e.target.value);
               }}
             />
-            <Flex flexDirection="column" mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
+            <MemberScrollData mt={3} flex={'1 0 0'} h={0}>
               {filtered.map((member) => {
                 return (
                   <HStack
@@ -181,11 +181,11 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                   </HStack>
                 );
               })}
-            </Flex>
+            </MemberScrollData>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
             <Box mt={2}>{t('common:chosen') + ': ' + members.length}</Box>
-            <Flex mt={3} flexDirection="column" flexGrow="1" overflow={'auto'} maxH={'400px'}>
+            <MemberScrollData mt={3} flex={'1 0 0'} h={0}>
               {members.map((member) => {
                 return (
                   <HStack
@@ -262,11 +262,14 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                   </HStack>
                 );
               })}
-            </Flex>
+            </MemberScrollData>
           </Flex>
         </Grid>
       </ModalBody>
-      <ModalFooter alignItems="flex-end">
+      <ModalFooter>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+          {t('common:common.Close')}
+        </Button>
         <Button isLoading={isLoading} onClick={onUpdate}>
           {t('common:common.Save')}
         </Button>

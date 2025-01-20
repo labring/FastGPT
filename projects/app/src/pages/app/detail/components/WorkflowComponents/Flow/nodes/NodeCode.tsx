@@ -14,22 +14,18 @@ import RenderToolInput from './render/RenderToolInput';
 import RenderOutput from './render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Flex } from '@chakra-ui/react';
-import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { getLatestNodeTemplate } from '@/web/core/workflow/utils';
-import { CodeNode } from '@fastgpt/global/core/workflow/template/system/sandbox';
+import { JS_TEMPLATE } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { workflowT } = useI18n();
   const { nodeId, inputs, outputs } = data;
-  const { splitToolInputs, onChangeNode, onResetNode } = useContextSelector(
-    WorkflowContext,
-    (ctx) => ctx
-  );
+
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
+  const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
 
   const { ConfirmModal, openConfirm } = useConfirm({
-    content: workflowT('code.Reset template confirm')
+    content: t('workflow:code.Reset template confirm')
   });
 
   const CustomComponent = useMemo(() => {
@@ -38,19 +34,24 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         return (
           <Box mt={-3}>
             <Flex mb={2} alignItems={'flex-end'}>
-              <Box flex={'1'}>{'Javascript ' + workflowT('Code')}</Box>
+              <Box flex={'1'}>{'Javascript ' + t('workflow:Code')}</Box>
               <Box
                 cursor={'pointer'}
                 color={'primary.500'}
                 fontSize={'xs'}
                 onClick={openConfirm(() => {
-                  onResetNode({
-                    id: nodeId,
-                    node: getLatestNodeTemplate(data, CodeNode)
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: item.key,
+                    value: {
+                      ...item,
+                      value: JS_TEMPLATE
+                    }
                   });
                 })}
               >
-                {workflowT('code.Reset template')}
+                {t('workflow:code.Reset template')}
               </Box>
             </Flex>
             <CodeEditor
@@ -73,37 +74,33 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [data, nodeId, onChangeNode, onResetNode, openConfirm, workflowT]);
+  }, [nodeId, onChangeNode, openConfirm, t]);
 
-  const Render = useMemo(() => {
-    const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
+  const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
-    return (
-      <NodeCard minW={'400px'} selected={selected} {...data}>
-        {isTool && (
-          <>
-            <Container>
-              <RenderToolInput nodeId={nodeId} inputs={inputs} />
-            </Container>
-          </>
-        )}
-        <Container>
-          <IOTitle text={t('common:common.Input')} mb={-1} />
-          <RenderInput
-            nodeId={nodeId}
-            flowInputList={commonInputs}
-            CustomComponent={CustomComponent}
-          />
-        </Container>
-        <Container>
-          <IOTitle text={t('common:common.Output')} />
-          <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
-        </Container>
-        <ConfirmModal />
-      </NodeCard>
-    );
-  }, [ConfirmModal, CustomComponent, data, inputs, nodeId, outputs, selected, splitToolInputs, t]);
-
-  return Render;
+  return (
+    <NodeCard minW={'400px'} selected={selected} {...data}>
+      {isTool && (
+        <>
+          <Container>
+            <RenderToolInput nodeId={nodeId} inputs={inputs} />
+          </Container>
+        </>
+      )}
+      <Container>
+        <IOTitle text={t('common:common.Input')} mb={-1} />
+        <RenderInput
+          nodeId={nodeId}
+          flowInputList={commonInputs}
+          CustomComponent={CustomComponent}
+        />
+      </Container>
+      <Container>
+        <IOTitle text={t('common:common.Output')} />
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+      </Container>
+      <ConfirmModal />
+    </NodeCard>
+  );
 };
 export default React.memo(NodeCode);

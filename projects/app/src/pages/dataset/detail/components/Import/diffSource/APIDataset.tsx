@@ -49,7 +49,6 @@ const CustomAPIFileInput = () => {
     parentId: '',
     parentName: ''
   });
-  const [parentUuid, setParentUuid] = useState<string>('');
   const [paths, setPaths] = useState<ParentTreePathItemType[]>([]);
 
   const [searchKey, setSearchKey] = useState('');
@@ -128,7 +127,7 @@ const CustomAPIFileInput = () => {
 
   const handleItemClick = useCallback(
     (item: APIFileItem) => {
-      if (item.type === 'folder') {
+      if (item.hasChild) {
         setPaths((state) => [...state, { parentId: item.id, parentName: item.name }]);
         return setParent({
           parentId: item.id,
@@ -251,6 +250,7 @@ const CustomAPIFileInput = () => {
                   <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'}>
                     {item.name}
                   </Box>
+                  {item.hasChild && <MyIcon name="core/chat/chevronRight" w={'18px'} ml={2} />}
                 </Flex>
               );
             })}

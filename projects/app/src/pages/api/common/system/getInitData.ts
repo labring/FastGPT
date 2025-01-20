@@ -8,7 +8,8 @@ async function handler(req: ApiRequestProps<{}, { bufferId?: string }>, res: Nex
   // If bufferId is the same as the current bufferId, return directly
   if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
     return {
-      bufferId: global.systemInitBufferId
+      bufferId: global.systemInitBufferId,
+      systemVersion: global.systemVersion || '0.0.0'
     };
   }
 

@@ -18,6 +18,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
+import { addSourceMember } from '@fastgpt/service/support/user/utils';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
@@ -201,19 +202,9 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return formatApps.map((app) => ({
-    _id: app._id,
-    tmbId: app.tmbId,
-    avatar: app.avatar,
-    type: app.type,
-    name: app.name,
-    intro: app.intro,
-    updateTime: app.updateTime,
-    permission: app.permission,
-    pluginData: app.pluginData,
-    inheritPermission: app.inheritPermission ?? true,
-    private: app.privateApp
-  }));
+  return addSourceMember({
+    list: formatApps
+  });
 }
 
 export default NextAPI(handler);

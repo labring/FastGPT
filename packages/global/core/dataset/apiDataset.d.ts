@@ -5,6 +5,7 @@ export type APIFileItem = {
   type: 'file' | 'folder';
   updateTime: Date;
   createTime: Date;
+  hasChild?: boolean;
 };
 
 export type APIFileServer = {

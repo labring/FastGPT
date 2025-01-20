@@ -22,7 +22,6 @@ import { useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
 import { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import dynamic from 'next/dynamic';
 
 export type GroupFormType = {
   members: {
@@ -51,7 +50,7 @@ function OrgMemberManageModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const allMembers = useContextSelector(TeamContext, (v) => v.members);
+  const { members: allMembers, MemberScrollData } = useContextSelector(TeamContext, (v) => v);
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>(
     currentOrg.members.map((item) => item.tmbId)
@@ -98,7 +97,6 @@ function OrgMemberManageModal({
 
   return (
     <MyModal
-      onClose={onClose}
       isOpen
       title={t('user:team.group.manage_member')}
       iconSrc={currentOrg?.avatar}
@@ -124,32 +122,34 @@ function OrgMemberManageModal({
               }}
             />
             <Flex flexDirection="column" mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
-              {filterMembers.map((member) => {
-                return (
-                  <HStack
-                    py="2"
-                    px={3}
-                    borderRadius={'md'}
-                    alignItems="center"
-                    key={member.tmbId}
-                    cursor={'pointer'}
-                    _hover={{
-                      bg: 'myGray.50',
-                      ...(!isSelected(member.tmbId) ? { svg: { color: 'myGray.50' } } : {})
-                    }}
-                    _notLast={{ mb: 2 }}
-                    onClick={() => handleToggleSelect(member.tmbId)}
-                  >
-                    <Checkbox
-                      isChecked={!!isSelected(member.tmbId)}
-                      icon={<CheckboxIcon name={'common/check'} />}
-                      pointerEvents="none"
-                    />
-                    <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box>{member.memberName}</Box>
-                  </HStack>
-                );
-              })}
+              <MemberScrollData>
+                {filterMembers.map((member) => {
+                  return (
+                    <HStack
+                      py="2"
+                      px={3}
+                      borderRadius={'md'}
+                      alignItems="center"
+                      key={member.tmbId}
+                      cursor={'pointer'}
+                      _hover={{
+                        bg: 'myGray.50',
+                        ...(!isSelected(member.tmbId) ? { svg: { color: 'myGray.50' } } : {})
+                      }}
+                      _notLast={{ mb: 2 }}
+                      onClick={() => handleToggleSelect(member.tmbId)}
+                    >
+                      <Checkbox
+                        isChecked={!!isSelected(member.tmbId)}
+                        icon={<CheckboxIcon name={'common/check'} />}
+                        pointerEvents="none"
+                      />
+                      <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
+                      <Box>{member.memberName}</Box>
+                    </HStack>
+                  );
+                })}
+              </MemberScrollData>
             </Flex>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
@@ -185,7 +185,10 @@ function OrgMemberManageModal({
           </Flex>
         </Grid>
       </ModalBody>
-      <ModalFooter alignItems="flex-end">
+      <ModalFooter>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
+          {t('common:common.Close')}
+        </Button>
         <Button isLoading={isLoading} onClick={onUpdate}>
           {t('common:common.Save')}
         </Button>

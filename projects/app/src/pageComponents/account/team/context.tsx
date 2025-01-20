@@ -2,7 +2,7 @@ import React, { ReactNode, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';
-import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
+import { getTeamList, getTeamMembers, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
@@ -10,7 +10,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
@@ -26,6 +26,7 @@ type TeamModalContextType = {
   refetchTeams: () => void;
   refetchGroups: () => void;
   teamSize: number;
+  MemberScrollData: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
 export const TeamContext = createContext<TeamModalContextType>({
@@ -49,13 +50,14 @@ export const TeamContext = createContext<TeamModalContextType>({
     throw new Error('Function not implemented.');
   },
 
-  teamSize: 0
+  teamSize: 0,
+  MemberScrollData: () => <></>
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
-  const { userInfo, initUserInfo, loadAndGetTeamMembers } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
 
   const {
     data: myTeams = [],
@@ -69,18 +71,11 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   // member action
   const {
     data: members = [],
-    runAsync: refetchMembers,
-    loading: loadingMembers
-  } = useRequest2(
-    () => {
-      if (!userInfo?.team?.teamId) return Promise.resolve([]);
-      return loadAndGetTeamMembers(true);
-    },
-    {
-      manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
-    }
-  );
+    isLoading: loadingMembers,
+    refreshList: refetchMembers,
+    total: memberTotal,
+    ScrollData: MemberScrollData
+  } = useScrollPagination(getTeamMembers, {});
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
@@ -115,7 +110,8 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refetchMembers,
     groups,
     refetchGroups,
-    teamSize: members.length
+    teamSize: memberTotal,
+    MemberScrollData
   };
 
   return (

@@ -12,8 +12,9 @@ import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/use
 import { StoreEdgeItemType } from '../workflow/type/edge';
 import { AppPermission } from '../../support/permission/app/controller';
 import { ParentIdType } from '../../common/parentFolder/type';
-import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
+import { SourceMemberType } from '../../support/user/type';
 
 export type AppSchema = {
   _id: string;
@@ -63,6 +64,7 @@ export type AppListItemType = {
   permission: AppPermission;
   inheritPermission?: boolean;
   private?: boolean;
+  sourceMember: SourceMemberType;
 };
 
 export type AppDetailType = AppSchema & {

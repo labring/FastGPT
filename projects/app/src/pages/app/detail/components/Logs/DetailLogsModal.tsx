@@ -164,8 +164,6 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
               showMarkIcon
               showVoiceIcon={false}
               chatType="log"
-              showRawSource
-              showNodeStatus
             />
           )}
         </Box>
@@ -187,7 +185,12 @@ const Render = (props: Props) => {
   }, [appId, chatId]);
 
   return (
-    <ChatItemContextProvider>
+    <ChatItemContextProvider
+      showRouteToAppDetail={true}
+      showRouteToDatasetDetail={true}
+      isShowReadRawSource={true}
+      showNodeStatus
+    >
       <ChatRecordContextProvider params={params}>
         <DetailLogsModal {...props} />
       </ChatRecordContextProvider>
