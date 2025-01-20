@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
@@ -20,8 +20,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
-import { InitChatResponse } from '@/global/core/chat/api';
-import { defaultChatData, GetChatTypeEnum } from '@/global/core/chat/constants';
+import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
@@ -226,8 +225,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="team"
-                  showRawSource
-                  showNodeStatus
                 />
               )}
             </Box>
@@ -299,7 +296,12 @@ const Render = (props: Props) => {
 
   return source === ChatSourceEnum.team ? (
     <ChatContextProvider params={contextParams}>
-      <ChatItemContextProvider>
+      <ChatItemContextProvider
+        showRouteToAppDetail={false}
+        showRouteToDatasetDetail={false}
+        isShowReadRawSource={true}
+        showNodeStatus
+      >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <Chat {...props} myApps={myApps} />
         </ChatRecordContextProvider>

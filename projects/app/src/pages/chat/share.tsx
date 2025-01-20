@@ -55,7 +55,6 @@ type Props = {
 const OutLink = (props: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { showRawSource, showNodeStatus } = props;
   const {
     shareId = '',
     showHistory = '1',
@@ -287,8 +286,6 @@ const OutLink = (props: Props) => {
                   feedbackType={'user'}
                   onStartChat={startChat}
                   chatType="share"
-                  showRawSource={showRawSource}
-                  showNodeStatus={showNodeStatus}
                 />
               )}
             </Box>
@@ -340,7 +337,12 @@ const Render = (props: Props) => {
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
-      <ChatItemContextProvider>
+      <ChatItemContextProvider
+        showRouteToAppDetail={false}
+        showRouteToDatasetDetail={false}
+        isShowReadRawSource={props.showRawSource}
+        showNodeStatus={props.showNodeStatus}
+      >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
           <OutLink {...props} />
         </ChatRecordContextProvider>

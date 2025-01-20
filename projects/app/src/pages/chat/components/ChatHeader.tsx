@@ -27,13 +27,11 @@ const ChatHeader = ({
   history,
   showHistory,
   apps,
-  onRouteToAppDetail,
   totalRecordsCount
 }: {
   history: ChatItemType[];
   showHistory?: boolean;
   apps?: AppListItemType[];
-  onRouteToAppDetail?: () => void;
   totalRecordsCount: number;
 }) => {
   const { t } = useTranslation();
@@ -71,7 +69,7 @@ const ChatHeader = ({
       )}
 
       {/* control */}
-      {!isPlugin && <ToolMenu history={history} onRouteToAppDetail={onRouteToAppDetail} />}
+      {!isPlugin && <ToolMenu history={history} />}
     </Flex>
   );
 };

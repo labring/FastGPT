@@ -91,7 +91,12 @@ const Render = ({ appForm }: Props) => {
   );
 
   return (
-    <ChatItemContextProvider>
+    <ChatItemContextProvider
+      showRouteToAppDetail={true}
+      showRouteToDatasetDetail={true}
+      isShowReadRawSource={true}
+      showNodeStatus
+    >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
         <ChatTest appForm={appForm} />
       </ChatRecordContextProvider>

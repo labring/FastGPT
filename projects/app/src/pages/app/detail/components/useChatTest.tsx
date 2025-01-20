@@ -141,8 +141,6 @@ export const useChatTest = ({
         chatId={chatId}
         showMarkIcon
         chatType="chat"
-        showRawSource
-        showNodeStatus
         onStartChat={startChat}
       />
     )

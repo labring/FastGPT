@@ -25,6 +25,7 @@ import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -139,7 +140,7 @@ const ChatItem = (props: Props) => {
 
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
-  const showNodeStatus = useContextSelector(ChatBoxContext, (v) => v.showNodeStatus);
+  const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
   const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
