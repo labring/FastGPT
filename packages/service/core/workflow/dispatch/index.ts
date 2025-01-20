@@ -133,6 +133,17 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ...props
   } = data;
 
+  const handleApiKey = () => {
+    //api调用指定了key的情况下，使用这个key
+    if (variables.ChatApiKey) {
+      externalProvider.openaiAccount = {
+        key: variables.ChatApiKey,
+        baseUrl: '' //使用系统默认的base url
+      };
+    }
+  };
+  handleApiKey();
+
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {
     props.workflowDispatchDeep = 1;
