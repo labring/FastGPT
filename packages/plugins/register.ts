@@ -12,7 +12,8 @@ const staticPluginList = [
   'DingTalkWebhook',
   'WeWorkWebhook',
   'google',
-  'bing'
+  'bing',
+  'delay'
 ];
 // Run in worker thread (Have npm packages)
 const packagePluginList = [
@@ -28,8 +29,7 @@ const packagePluginList = [
   'databaseConnection',
   'Doc2X',
   'Doc2X/PDF2text',
-  'searchXNG',
-  'sleep'
+  'searchXNG'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
