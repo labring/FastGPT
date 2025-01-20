@@ -270,6 +270,7 @@ export const iconPaths = {
     import('./icons/core/workflow/template/datasource.svg'),
   'core/workflow/template/duckduckgo': () =>
     import('./icons/core/workflow/template/duckduckgo.svg'),
+  'core/workflow/template/sleep': () => import('./icons/core/workflow/template/sleep.svg'),
   'core/workflow/template/extractJson': () =>
     import('./icons/core/workflow/template/extractJson.svg'),
   'core/workflow/template/fetchUrl': () => import('./icons/core/workflow/template/fetchUrl.svg'),
