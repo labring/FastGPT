@@ -28,7 +28,6 @@ type HistoryItemType = {
 const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) => {
   const theme = useTheme();
   const router = useRouter();
-  const isUserChatPage = router.pathname === '/chat';
 
   const { t } = useTranslation();
 
@@ -46,6 +45,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
+  const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
@@ -77,8 +77,8 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
   });
 
   const canRouteToDetail = useMemo(
-    () => appId && userInfo?.team.permission.hasWritePer,
-    [appId, userInfo?.team.permission.hasWritePer]
+    () => appId && userInfo?.team.permission.hasWritePer && showRouteToAppDetail,
+    [appId, userInfo?.team.permission.hasWritePer, showRouteToAppDetail]
   );
 
   return (
@@ -287,7 +287,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
       </ScrollData>
 
       {/* exec */}
-      {!isPc && isUserChatPage && (
+      {!isPc && !!canRouteToDetail && (
         <Flex
           mt={2}
           borderTop={theme.borders.base}

@@ -72,6 +72,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       showStatus: false
     };
   });
+
   const runtimeVariables = {
     ...filterSystemVariables(props.variables),
     appId: String(plugin.id)

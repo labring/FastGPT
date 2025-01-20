@@ -2,7 +2,7 @@ import { getPaginationRecordsBody } from '@/pages/api/core/chat/getPaginationRec
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import React, { ReactNode, useEffect, useMemo, useState } from 'react';
+import React, { ReactNode, useMemo, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from './chatItemContext';
 import { getChatRecords } from '../api';
@@ -68,7 +68,7 @@ const ChatRecordContextProvider = ({
       const res = await getChatRecords(data);
 
       // First load scroll to bottom
-      if (data.offset === 0) {
+      if (Number(data.offset) === 0) {
         function scrollToBottom() {
           requestAnimationFrame(
             ChatBoxRef?.current ? () => ChatBoxRef?.current?.scrollToBottom?.() : scrollToBottom

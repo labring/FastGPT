@@ -50,7 +50,6 @@ import { useWorkflowUtils } from './hooks/useUtils';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { cloneDeep } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -89,8 +88,6 @@ enum TemplateTypeEnum {
 const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
-  const { loadAndGetTeamMembers } = useUserStore();
-
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const { feConfigs } = useSystemStore();
@@ -98,10 +95,6 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const hasToolNode = useContextSelector(WorkflowContext, (v) => v.hasToolNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const appId = useContextSelector(WorkflowContext, (v) => v.appId);
-
-  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: !feConfigs.isPlus
-  });
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
@@ -162,19 +155,10 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       searchVal?: string;
     }) => {
       if (type === TemplateTypeEnum.teamPlugin) {
-        const teamApps = await getTeamPlugTemplates({
+        return getTeamPlugTemplates({
           parentId,
           searchKey: searchVal
         }).then((res) => res.filter((app) => app.id !== appId));
-
-        return teamApps.map<NodeTemplateListItemType>((app) => {
-          const member = members.find((member) => member.tmbId === app.tmbId);
-          return {
-            ...app,
-            author: member?.memberName,
-            authorAvatar: member?.avatar
-          };
-        });
       }
       if (type === TemplateTypeEnum.systemPlugin) {
         return getSystemPlugTemplates({
@@ -188,7 +172,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         setParentId(parentId);
         setTemplateType(type);
       },
-      refreshDeps: [members, searchKey, templateType]
+      refreshDeps: [searchKey, templateType]
     }
   );
 
@@ -420,7 +404,6 @@ const RenderList = React.memo(function RenderList({
   templates,
   type,
   onClose,
-  parentId,
   setParentId
 }: RenderListProps) {
   const { t } = useTranslation();

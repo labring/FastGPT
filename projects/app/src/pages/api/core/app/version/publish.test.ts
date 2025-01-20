@@ -12,7 +12,6 @@ describe('发布应用版本测试', () => {
       nodes: [],
       edges: [],
       chatConfig: {},
-      type: AppTypeEnum.simple,
       isPublish: false,
       versionName: '1'
     };

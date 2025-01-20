@@ -9,6 +9,12 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppChatConfigType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
+type ContextProps = {
+  showRouteToAppDetail: boolean;
+  showRouteToDatasetDetail: boolean;
+  isShowReadRawSource: boolean;
+  showNodeStatus: boolean;
+};
 type ChatBoxDataType = {
   appId: string;
   title?: string;
@@ -37,7 +43,7 @@ type ChatItemContextType = {
   chatBoxData: ChatBoxDataType;
   setChatBoxData: React.Dispatch<React.SetStateAction<ChatBoxDataType>>;
   isPlugin: boolean;
-};
+} & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
   ChatBoxRef: null,
@@ -61,7 +67,15 @@ export const ChatItemContext = createContext<ChatItemContextType>({
 /* 
     Chat 对象的上下文
 */
-const ChatItemContextProvider = ({ children }: { children: ReactNode }) => {
+const ChatItemContextProvider = ({
+  children,
+  showRouteToAppDetail,
+  showRouteToDatasetDetail,
+  isShowReadRawSource,
+  showNodeStatus
+}: {
+  children: ReactNode;
+} & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
 
@@ -113,16 +127,23 @@ const ChatItemContextProvider = ({ children }: { children: ReactNode }) => {
       pluginRunTab,
       setPluginRunTab,
       resetVariables,
-      clearChatRecords
+      clearChatRecords,
+      showRouteToAppDetail,
+      showRouteToDatasetDetail,
+      isShowReadRawSource,
+      showNodeStatus
     };
   }, [
     chatBoxData,
-    setChatBoxData,
-    clearChatRecords,
     isPlugin,
+    variablesForm,
     pluginRunTab,
     resetVariables,
-    variablesForm
+    clearChatRecords,
+    showRouteToAppDetail,
+    showRouteToDatasetDetail,
+    isShowReadRawSource,
+    showNodeStatus
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;

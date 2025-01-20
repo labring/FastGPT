@@ -55,7 +55,7 @@ function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGro
     }
   );
 
-  const { run: onCreate, loading: isLoadingCreate } = useRequest2(
+  const { runAsync: onCreate, loading: isLoadingCreate } = useRequest2(
     (data: GroupFormType) => {
       return postCreateGroup({
         name: data.name,
@@ -67,7 +67,7 @@ function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGro
     }
   );
 
-  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async (data: GroupFormType) => {
       if (!editGroupId) return;
       return putUpdateGroup({

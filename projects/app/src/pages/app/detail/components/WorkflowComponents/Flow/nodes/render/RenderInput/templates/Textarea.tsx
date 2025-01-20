@@ -9,6 +9,7 @@ import { AppContext } from '@/pages/app/detail/components/context';
 import { getEditorVariables } from '../../../../../utils';
 import { WorkflowNodeEdgeContext } from '../../../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 
 const TextareaRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -84,3 +85,10 @@ const TextareaRender = ({ item, nodeId }: RenderInputProps) => {
 };
 
 export default React.memo(TextareaRender);
+
+export const TextareaRightComponent = React.memo(function TextareaRightComponent({
+  item,
+  nodeId
+}: RenderInputProps) {
+  return <VariableTip transform={'translateY(2px)'} />;
+});

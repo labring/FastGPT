@@ -5,6 +5,8 @@ import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { NextApiRequest, NextApiResponse } from 'next';
 
 /* 
@@ -14,6 +16,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
     2. 执行升级脚本，不要删除 MongoDatasetData 里的数据。
     3. 切换正式版镜像，让 MongoDatasetDataText 生效。
     4. 删除 MongoDatasetData 里的索引和多余字段。（4819 再删
+    5. 移动 User 表中的 avatar 字段到 TeamMember 表中。
 */
 let success = 0;
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -109,15 +112,26 @@ const initData = async (batchSize: number) => {
   }
 };
 
-const batchUpdateFields = async (batchSize = 2000) => {
-  // Update in batches
-  await MongoDatasetData.updateMany(
-    { initFullText: { $exists: true } },
-    {
-      $unset: {
-        initFullText: 1,
-        fullTextToken: 1
-      }
-    }
-  );
-};
+// const batchUpdateFields = async (batchSize = 2000) => {
+//   // Find documents that still have these fields
+//   const documents = await MongoDatasetData.find({ initFullText: { $exists: true } }, '_id')
+//     .limit(batchSize)
+//     .lean();
+
+//   if (documents.length === 0) return;
+
+//   // Update in batches
+//   await MongoDatasetData.updateMany(
+//     { _id: { $in: documents.map((doc) => doc._id) } },
+//     {
+//       $unset: {
+//         initFullText: 1
+//         // fullTextToken: 1
+//       }
+//     }
+//   );
+
+//   success += documents.length;
+//   console.log('Delete success:', success);
+//   await batchUpdateFields(batchSize);
+// };

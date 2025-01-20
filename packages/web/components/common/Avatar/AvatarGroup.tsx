@@ -23,7 +23,7 @@ function AvatarGroup({
     <Flex position="relative">
       {avatars.slice(0, max).map((avatar, index) => (
         <Avatar
-          key={avatar + groupId}
+          key={index}
           src={avatar}
           position={index > 0 ? 'absolute' : 'relative'}
           left={index > 0 ? `${index * 15}px` : 0}

@@ -1,4 +1,7 @@
+import { SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
+import { MongoTeamMember } from './team/teamMemberSchema';
+import { ClientSession } from '../../common/mongo';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {
@@ -67,3 +70,41 @@ export const checkWebSyncLimit = async ({
     return Promise.reject(`每个团队，每 ${limitMinutes} 分钟仅使用一次同步功能。`);
   }
 };
+
+/**
+ * This function will add a property named sourceMember to the list passed in.
+ * @param list The list to add the sourceMember property to. [TmbId] property is required.
+ * @error If member is not found, this item will be skipped.
+ * @returns The list with the sourceMember property added.
+ */
+export async function addSourceMember<T extends { tmbId: string }>({
+  list,
+  session
+}: {
+  list: T[];
+  session?: ClientSession;
+}): Promise<Array<T & { sourceMember: SourceMemberType }>> {
+  if (!Array.isArray(list)) return [];
+
+  const tmbList = await MongoTeamMember.find(
+    {
+      _id: { $in: list.map((item) => String(item.tmbId)) }
+    },
+    'tmbId name avatar status',
+    {
+      session
+    }
+  ).lean();
+
+  return list
+    .map((item) => {
+      const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
+      if (!tmb) return;
+
+      return {
+        ...item,
+        sourceMember: { name: tmb.name, avatar: tmb.avatar, status: tmb.status }
+      };
+    })
+    .filter(Boolean) as Array<T & { sourceMember: SourceMemberType }>;
+}

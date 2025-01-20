@@ -5,7 +5,6 @@ import { useTranslation } from 'next-i18next';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useI18n } from '@/web/context/I18n';
 import type { readCollectionSourceBody } from '@/pages/api/core/dataset/collection/read';
 
 type Props = BoxProps &
@@ -33,7 +32,6 @@ const RawSourceBox = ({
   ...props
 }: Props) => {
   const { t } = useTranslation();
-  const { fileT } = useI18n();
 
   const canPreview = !!sourceId && canView;
 
@@ -51,7 +49,7 @@ const RawSourceBox = ({
 
   return (
     <MyTooltip
-      label={canPreview ? fileT('click_to_view_raw_source') : ''}
+      label={canPreview ? t('file:click_to_view_raw_source') : ''}
       shouldWrapChildren={false}
     >
       <Box

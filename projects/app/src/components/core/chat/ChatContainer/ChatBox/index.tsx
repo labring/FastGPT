@@ -18,7 +18,6 @@ import { Box, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
-import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import {

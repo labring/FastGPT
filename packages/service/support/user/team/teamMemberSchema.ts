@@ -7,6 +7,7 @@ import {
   TeamMemberCollectionName,
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -18,6 +19,10 @@ const TeamMemberSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: userCollectionName,
     required: true
+  },
+  avatar: {
+    type: String,
+    default: () => getRandomUserAvatar()
   },
   name: {
     type: String,
@@ -39,7 +44,6 @@ const TeamMemberSchema = new Schema({
   // Abandoned
   role: {
     type: String
-    // enum: Object.keys(TeamMemberRoleMap) // disable enum validation for old data
   }
 });
 

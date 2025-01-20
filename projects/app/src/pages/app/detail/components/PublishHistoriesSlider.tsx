@@ -4,7 +4,7 @@ import {
   getWorkflowVersionList,
   updateAppVersion
 } from '@/web/core/app/api/version';
-import { useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
 import { Box, BoxProps, Button, Flex, Input } from '@chakra-ui/react';
@@ -18,9 +18,7 @@ import Tag from '@fastgpt/web/components/common/Tag';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { AppVersionSchemaType, VersionListItemType } from '@fastgpt/global/core/app/version';
 import type { SimpleAppSnapshotType } from './SimpleApp/useSnapshots';
@@ -183,23 +181,18 @@ const TeamCloud = ({
 }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { loadAndGetTeamMembers } = useUserStore();
-  const { feConfigs } = useSystemStore();
 
-  const { scrollDataList, ScrollList, isLoading, fetchData, setData } = useVirtualScrollPagination(
-    getWorkflowVersionList,
-    {
-      itemHeight: 40,
-      overscan: 20,
-
-      pageSize: 30,
-      defaultParams: {
-        appId: appDetail._id
-      }
-    }
-  );
-  const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
-    manual: !feConfigs.isPlus
+  const {
+    ScrollData,
+    data: scrollDataList,
+    setData,
+    isLoading
+  } = useScrollPagination(getWorkflowVersionList, {
+    pageSize: 30,
+    params: {
+      appId: appDetail._id
+    },
+    refreshDeps: [appDetail._id]
   });
   const [editIndex, setEditIndex] = useState<number | undefined>(undefined);
   const [hoveredIndex, setHoveredIndex] = useState<number | undefined>(undefined);
@@ -237,15 +230,13 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollList isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
-      {scrollDataList.map((data, index) => {
-        const item = data.data;
-        const firstPublishedIndex = scrollDataList.findIndex((data) => data.data.isPublish);
-        const tmb = members.find((member) => member.tmbId === item.tmbId);
+    <ScrollData isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
+      {scrollDataList.map((item, index) => {
+        const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 
         return (
           <Flex
-            key={data.index}
+            key={item._id}
             alignItems={'center'}
             py={editIndex !== index ? 2 : 1}
             px={3}
@@ -266,20 +257,33 @@ const TeamCloud = ({
               h={'72px'}
               Trigger={
                 <Box>
-                  <Avatar src={tmb?.avatar} borderRadius={'50%'} w={'24px'} h={'24px'} />
+                  <Avatar
+                    src={item.sourceMember.avatar}
+                    borderRadius={'50%'}
+                    w={'24px'}
+                    h={'24px'}
+                  />
                 </Box>
               }
             >
-              {({ onClose }) => (
-                <Flex alignItems={'center'} h={'full'} pl={5} gap={3}>
+              {() => (
+                <Flex alignItems={'center'} h={'full'} pl={5} gap={2}>
                   <Box>
-                    <Avatar src={tmb?.avatar} borderRadius={'50%'} w={'36px'} h={'36px'} />
+                    <Avatar
+                      src={item.sourceMember.avatar}
+                      borderRadius={'50%'}
+                      w={'36px'}
+                      h={'36px'}
+                    />
                   </Box>
                   <Box>
-                    <Box fontSize={'14px'} color={'myGray.900'}>
-                      {tmb?.memberName}
-                    </Box>
-                    <Box fontSize={'12px'} color={'myGray.500'}>
+                    <Flex gap={1} fontSize={'sm'} color={'myGray.900'}>
+                      <Box>{item.sourceMember.name}</Box>
+                      {item.sourceMember.status === 'leave' && (
+                        <Tag color="gray">{t('common:user_leaved')}</Tag>
+                      )}
+                    </Flex>
+                    <Box fontSize={'xs'} mt={2} color={'myGray.500'}>
                       {formatTime2YMDHMS(item.time)}
                     </Box>
                   </Box>
@@ -349,6 +353,6 @@ const TeamCloud = ({
           </Flex>
         );
       })}
-    </ScrollList>
+    </ScrollData>
   );
 };

@@ -9,19 +9,16 @@ import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const QuoteModal = ({
   rawSearch = [],
   onClose,
-  canEditDataset,
-  showRawSource,
   chatItemId,
   metadata
 }: {
   rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
-  canEditDataset: boolean;
-  showRawSource: boolean;
   chatItemId: string;
   metadata?: {
     collectionId: string;
@@ -47,6 +44,11 @@ const QuoteModal = ({
     chatItemId,
     ...(v.outLinkAuthData || {})
   }));
+  const showRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+  const showRouteToDatasetDetail = useContextSelector(
+    ChatItemContext,
+    (v) => v.showRouteToDatasetDetail
+  );
 
   return (
     <>
@@ -71,12 +73,7 @@ const QuoteModal = ({
         }
       >
         <ModalBody>
-          <QuoteList
-            rawSearch={filterResults}
-            canEditDataset={canEditDataset}
-            canViewSource={showRawSource}
-            chatItemId={chatItemId}
-          />
+          <QuoteList rawSearch={filterResults} chatItemId={chatItemId} />
         </ModalBody>
       </MyModal>
     </>
@@ -87,14 +84,10 @@ export default QuoteModal;
 
 export const QuoteList = React.memo(function QuoteList({
   chatItemId,
-  rawSearch = [],
-  canEditDataset,
-  canViewSource
+  rawSearch = []
 }: {
   chatItemId?: string;
   rawSearch: SearchDataResponseItemType[];
-  canEditDataset: boolean;
-  canViewSource: boolean;
 }) {
   const theme = useTheme();
 
@@ -104,6 +97,11 @@ export const QuoteList = React.memo(function QuoteList({
     chatId: v.chatId,
     ...(v.outLinkAuthData || {})
   }));
+  const showRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+  const showRouteToDatasetDetail = useContextSelector(
+    ChatItemContext,
+    (v) => v.showRouteToDatasetDetail
+  );
 
   return (
     <>
@@ -120,8 +118,8 @@ export const QuoteList = React.memo(function QuoteList({
         >
           <QuoteItem
             quoteItem={item}
-            canViewSource={canViewSource}
-            canEditDataset={canEditDataset}
+            canViewSource={showRawSource}
+            canEditDataset={showRouteToDatasetDetail}
             {...RawSourceBoxProps}
           />
         </Box>
