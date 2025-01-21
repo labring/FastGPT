@@ -11,8 +11,9 @@ export const getUserUsages = (
   data: PaginationProps<{
     dateStart: Date;
     dateEnd: Date;
-    source?: UsageSourceEnum;
-    teamMemberId: string;
+    sources?: UsageSourceEnum[];
+    teamMemberIds?: string[];
+    projectName?: string;
   }>
 ) => POST<PaginationResponse<UsageItemType>>(`/proApi/support/wallet/usage/getUsage`, data);
 

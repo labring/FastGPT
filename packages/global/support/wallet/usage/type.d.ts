@@ -23,10 +23,11 @@ export type UsageSchemaType = CreateUsageProps & {
 
 export type UsageItemType = {
   id: string;
-  tmbId: string;
   time: Date;
   appName: string;
   source: UsageSchemaType['source'];
   totalPoints: number;
   list: UsageSchemaType['list'];
+  tmbName?: string;
+  tmbAvatar?: string;
 };

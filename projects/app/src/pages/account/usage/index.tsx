@@ -51,8 +51,7 @@ const UsageTable = () => {
     [t]
   );
 
-  const [selectTmbId, setSelectTmbId] = useState(userInfo?.team?.tmbId);
-  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
+  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, { pageSize: 2 });
   const [selectTmbIds, setSelectTmbIds] = useState<string[]>([]);
   const [usageSources, setUsageSources] = useState<UsageSourceEnum[]>(
     Object.values(UsageSourceEnum)
@@ -60,10 +59,6 @@ const UsageTable = () => {
   const [projectName, setProjectName] = useState<string>('');
   const [currentParams, setCurrentParams] = useState<ExportModalParams | null>(null);
   const [unit, setUnit] = useState<'day' | 'week' | 'month'>('day');
-  // const { data: members = [] } = useRequest2(loadAndGetTeamMembers, {
-  //   manual: false,
-  //   refreshDeps: [userInfo?.team?.teamId]
-  // });
 
   const tmbList = useMemo(
     () =>
@@ -90,10 +85,8 @@ const UsageTable = () => {
     params: {
       dateStart: dateRange.from || new Date(),
       dateEnd: addDays(dateRange.to || new Date(), 1),
-      // source: usageSource as UsageSourceEnum,
-      teamMemberId: selectTmbId ?? '',
-      source: usageSources[0],
-      teamMemberIds: selectTmbIds,
+      sources: usageSources,
+      teamMemberIds: selectTmbIds.length === members.length ? undefined : selectTmbIds,
       projectName
     },
     defaultRequest: false
@@ -217,30 +210,15 @@ const UsageTable = () => {
                   list={tmbList}
                   value={selectTmbIds}
                   onSelect={(val) => {
-                    console.log(val);
                     setSelectTmbIds(val as string[]);
                   }}
                   itemWrap={false}
                   height={'32px'}
                   bg={'myGray.50'}
                   w={'160px'}
+                  ScrollData={ScrollData}
                 />
               </Box>
-              {/* {tmbList.length > 1 && userInfo?.team?.permission.hasManagePer && (
-            <Flex alignItems={'center'}>
-              <Box mr={2} flexShrink={0}>
-                {t('account_usage:member')}
-              </Box>
-              <MySelect
-                size={'sm'}
-                minW={'100px'}
-                ScrollData={ScrollData}
-                list={tmbList}
-                value={selectTmbId}
-                onchange={setSelectTmbId}
-              />
-            </Flex>
-          )} */}
             </Flex>
           )}
           <Flex alignItems={'center'} ml={6}>
@@ -302,7 +280,7 @@ const UsageTable = () => {
 
         {isDetail ? (
           <>
-            <UsageTableList usages={usages} tmbList={tmbList} isLoading={isLoading} />
+            <UsageTableList usages={usages} isLoading={isLoading} />
             <Flex mt={3} justifyContent={'center'}>
               <Pagination />
             </Flex>

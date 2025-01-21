@@ -10,11 +10,12 @@ import {
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
-import React, { useRef } from 'react';
+import React, { useMemo, useRef } from 'react';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
 import { useTranslation } from 'next-i18next';
+import { useScrollPagination } from '../../../hooks/useScrollPagination';
 
 export type SelectProps<T = any> = {
   value: T[];
@@ -28,6 +29,7 @@ export type SelectProps<T = any> = {
   itemWrap?: boolean;
   onSelect: (val: T[]) => void;
   closeable?: boolean;
+  ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
@@ -38,6 +40,7 @@ const MultipleSelect = <T = any,>({
   onSelect,
   closeable = false,
   itemWrap = true,
+  ScrollData,
   ...props
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -72,6 +75,41 @@ const MultipleSelect = <T = any,>({
       onSelect([...value, val]);
     }
   };
+
+  const ListRender = useMemo(() => {
+    return (
+      <>
+        {list.map((item, i) => (
+          <MenuItem
+            key={i}
+            {...menuItemStyles}
+            {...(value.includes(item.value)
+              ? {
+                  color: 'primary.600'
+                }
+              : {
+                  color: 'myGray.900'
+                })}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onclickItem(item.value);
+            }}
+            whiteSpace={'pre-wrap'}
+            fontSize={'sm'}
+            gap={2}
+          >
+            <Checkbox isChecked={value.includes(item.value)} />
+            {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
+            <Box flex={'1 0 0'}>{item.label}</Box>
+            <Box w={'0.8rem'} lineHeight={1}>
+              {value.includes(item.value) && <MyIcon name={'price/right'} w={'1rem'} />}
+            </Box>
+          </MenuItem>
+        ))}
+      </>
+    );
+  }, [value]);
 
   return (
     <Box>
@@ -121,42 +159,48 @@ const MultipleSelect = <T = any,>({
                 overflow={'hidden'}
                 flex={1}
               >
-                {value.map((item, i) => {
-                  const listItem = list.find((i) => i.value === item);
-                  if (!listItem) return null;
+                {value.length === list.length ? (
+                  <Box fontSize={'mini'} color={'myGray.900'}>
+                    {t('common:common.All')}
+                  </Box>
+                ) : (
+                  value.map((item, i) => {
+                    const listItem = list.find((i) => i.value === item);
+                    if (!listItem) return null;
 
-                  return (
-                    <MyTag
-                      className="tag-icon"
-                      key={i}
-                      bg={'primary.100'}
-                      color={'primary.700'}
-                      type={'fill'}
-                      borderRadius={'full'}
-                      px={2}
-                      py={0.5}
-                      flexShrink={0}
-                    >
-                      {listItem.label}
-                      {closeable && (
-                        <MyIcon
-                          name={'common/closeLight'}
-                          ml={1}
-                          w="0.8rem"
-                          cursor={'pointer'}
-                          _hover={{
-                            color: 'red.500'
-                          }}
-                          onClick={(e) => {
-                            console.log(111);
-                            e.stopPropagation();
-                            onclickItem(item);
-                          }}
-                        />
-                      )}
-                    </MyTag>
-                  );
-                })}
+                    return (
+                      <MyTag
+                        className="tag-icon"
+                        key={i}
+                        bg={'primary.100'}
+                        color={'primary.700'}
+                        type={'fill'}
+                        borderRadius={'full'}
+                        px={2}
+                        py={0.5}
+                        flexShrink={0}
+                      >
+                        {listItem.label}
+                        {closeable && (
+                          <MyIcon
+                            name={'common/closeLight'}
+                            ml={1}
+                            w="0.8rem"
+                            cursor={'pointer'}
+                            _hover={{
+                              color: 'red.500'
+                            }}
+                            onClick={(e) => {
+                              console.log(111);
+                              e.stopPropagation();
+                              onclickItem(item);
+                            }}
+                          />
+                        )}
+                      </MyTag>
+                    );
+                  })
+                )}
               </Flex>
               <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
             </Flex>
@@ -191,34 +235,7 @@ const MultipleSelect = <T = any,>({
             <Box>{t('common:common.All')}</Box>
           </MenuItem>
 
-          {list.map((item, i) => (
-            <MenuItem
-              key={i}
-              {...menuItemStyles}
-              {...(value.includes(item.value)
-                ? {
-                    color: 'primary.600'
-                  }
-                : {
-                    color: 'myGray.900'
-                  })}
-              onClick={(e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                onclickItem(item.value);
-              }}
-              whiteSpace={'pre-wrap'}
-              fontSize={'sm'}
-              gap={2}
-            >
-              <Checkbox isChecked={value.includes(item.value)} />
-              {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
-              <Box flex={'1 0 0'}>{item.label}</Box>
-              <Box w={'0.8rem'} lineHeight={1}>
-                {value.includes(item.value) && <MyIcon name={'price/right'} w={'1rem'} />}
-              </Box>
-            </MenuItem>
-          ))}
+          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
         </MenuList>
       </Menu>
     </Box>

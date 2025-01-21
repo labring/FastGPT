@@ -1,4 +1,4 @@
-import { Button, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import { Button, Flex, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
@@ -8,19 +8,9 @@ import dayjs from 'dayjs';
 import { useTranslation } from 'next-i18next';
 import { useState } from 'react';
 import UsageDetail from './UsageDetail';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
-const UsageTableList = ({
-  usages,
-  isLoading,
-  tmbList
-}: {
-  usages: UsageItemType[];
-  isLoading: boolean;
-  tmbList: {
-    label: React.JSX.Element;
-    value: string;
-  }[];
-}) => {
+const UsageTableList = ({ usages, isLoading }: { usages: UsageItemType[]; isLoading: boolean }) => {
   const { t } = useTranslation();
 
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
@@ -44,7 +34,12 @@ const UsageTableList = ({
               {usages.map((item) => (
                 <Tr key={item.id}>
                   <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                  <Td>{tmbList.find((tmb) => tmb.value === item.tmbId)?.label}</Td>
+                  <Td>
+                    <Flex alignItems={'center'} color={'myGray.500'}>
+                      <Avatar src={item.tmbAvatar} w={'20px'} mr={1} rounded={'full'} />
+                      {item.tmbName}
+                    </Flex>
+                  </Td>
                   <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
                   <Td>{t(item.appName as any) || '-'}</Td>
                   <Td>{formatNumber(item.totalPoints) || 0}</Td>
