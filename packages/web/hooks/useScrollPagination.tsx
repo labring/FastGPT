@@ -227,10 +227,10 @@ export function useScrollPagination<
           ...params
         } as TParams);
 
-        const { total: totalCount, list: dataList, ...restMetaData } = res;
+        const { total: totalCount, list: dataList, metaData: resMetaData } = res;
 
         setTotal(totalCount);
-        setMetaData(restMetaData);
+        setMetaData(resMetaData);
 
         if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
