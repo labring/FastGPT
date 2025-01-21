@@ -73,7 +73,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     const { collectionId, insertResults } = await createCollectionAndInsertData({
       dataset,
       rawText,
-      relatedId: fileId,
+      relatedId: relatedImgId,
       createCollectionParams: {
         ...collectionData,
         name: collectionName,
