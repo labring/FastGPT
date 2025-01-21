@@ -14,22 +14,11 @@ export type GetApiDatasetFileListProps = {
   datasetId: string;
   offset: number;
   pageSize: number;
-};
-
-export type GetApiDatasetFileListResponse = {
-  list: APIFileItem[];
-  total: number;
+  metaData?: Record<string, any>;
 };
 
 async function handler(req: NextApiRequest) {
-  let {
-    searchKey = '',
-    parentId = null,
-    datasetId,
-    nextPageToken = '',
-    pageSize,
-    offset = 0
-  } = req.body;
+  let { searchKey = '', parentId = null, datasetId, pageSize, offset = 0, metaData } = req.body;
 
   const { dataset } = await authDataset({
     req,
@@ -60,9 +49,9 @@ async function handler(req: NextApiRequest) {
       feishuServer,
       yuqueServer,
       parentId,
-      nextPageToken,
       offset,
-      pageSize
+      pageSize,
+      metaData
     });
   }
 

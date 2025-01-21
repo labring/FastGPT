@@ -16,6 +16,7 @@ export type APIFileServer = {
 export type APIFileListResponse = {
   list: APIFileItem[];
   total: number;
+  metaData?: Record<string, any>;
 };
 
 export type APIFileContentResponse = {

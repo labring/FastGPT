@@ -57,14 +57,12 @@ import type { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/contro
 import type { DatasetFolderCreateBody } from '@/pages/api/core/dataset/folder/create';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { GetScrollCollectionsProps } from '@/pages/api/core/dataset/collection/scrollList';
-import type {
-  GetApiDatasetFileListProps,
-  GetApiDatasetFileListResponse
-} from '@/pages/api/core/dataset/apiDataset/list';
+import type { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 import type {
   listExistIdQuery,
   listExistIdResponse
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
+import { APIFileListResponse } from '@fastgpt/global/core/dataset/apiDataset';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -224,6 +222,6 @@ export const getCollectionSource = (data: readCollectionSourceBody) =>
 
 /* ================== apiDataset ======================== */
 export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
-  POST<GetApiDatasetFileListResponse>('/core/dataset/apiDataset/list', data);
+  POST<APIFileListResponse>('/core/dataset/apiDataset/list', data);
 export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
   GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);

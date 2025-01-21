@@ -223,14 +223,12 @@ export function useScrollPagination<
         const res = await api({
           offset,
           pageSize,
-          ...metaData,
+          metaData,
           ...params
         } as TParams);
 
-        const { total: totalCount, list: dataList, metaData: resMetaData } = res;
-
-        setTotal(totalCount);
-        setMetaData(resMetaData);
+        setTotal(res.total);
+        setMetaData(res.metaData);
 
         if (scrollLoadType === 'top') {
           const prevHeight = ScrollContainerRef?.current?.scrollHeight || 0;
@@ -250,10 +248,10 @@ export function useScrollPagination<
             );
           }
 
-          setData((prevData) => (init ? dataList : [...dataList, ...prevData]));
+          setData((prevData) => (init ? res.list : [...res.list, ...prevData]));
           adjustScrollPosition();
         } else {
-          setData((prevData) => (init ? dataList : [...prevData, ...dataList]));
+          setData((prevData) => (init ? res.list : [...prevData, ...res.list]));
         }
       } catch (error: any) {
         if (showErrorToast) {

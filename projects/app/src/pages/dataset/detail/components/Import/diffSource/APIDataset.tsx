@@ -13,14 +13,11 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import FolderPath from '@/components/common/folder/Path';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import { APIFileItem, APIFileListResponse } from '@fastgpt/global/core/dataset/apiDataset';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMount } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import {
-  GetApiDatasetFileListProps,
-  GetApiDatasetFileListResponse
-} from '@/pages/api/core/dataset/apiDataset/list';
+import { GetApiDatasetFileListProps } from '@/pages/api/core/dataset/apiDataset/list';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -62,18 +59,16 @@ const CustomAPIFileInput = () => {
     data: apiFileList,
     ScrollData,
     isLoading
-  } = useScrollPagination<GetApiDatasetFileListProps, GetApiDatasetFileListResponse>(
-    getApiDatasetFileList,
-    {
-      pageSize: 15,
-      params: {
-        datasetId: datasetDetail._id,
-        parentId: parent?.parentId,
-        searchKey: searchKey
-      },
-      refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey]
-    }
-  );
+  } = useScrollPagination<GetApiDatasetFileListProps, APIFileListResponse>(getApiDatasetFileList, {
+    pageSize: 15,
+    params: {
+      datasetId: datasetDetail._id,
+      parentId: parent?.parentId,
+      searchKey: searchKey
+    },
+
+    refreshDeps: [datasetDetail._id, datasetDetail.apiServer, parent, searchKey]
+  });
 
   const { data: existIdList = [] } = useRequest2(
     () => getApiDatasetFileListExistId({ datasetId: datasetDetail._id }),
