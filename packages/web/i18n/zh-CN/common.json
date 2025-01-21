@@ -940,6 +940,8 @@
   "model_sparkdesk": "讯飞星火",
   "model_stepfun": "阶跃星辰",
   "model_yi": "零一万物",
+  "model_intern": "书生",
+  "model_moka": "Moka-AI",
   "move.confirm": "确认移动",
   "navbar.Account": "账号",
   "navbar.Chat": "聊天",
