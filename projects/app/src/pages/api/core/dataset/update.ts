@@ -29,6 +29,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { addDays } from 'date-fns';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -175,6 +176,12 @@ async function handler(
           collaborators: parentClbsAndGroups,
           session
         });
+      } else {
+        // Not folder, delete all clb
+        await MongoResourcePermission.deleteMany(
+          { resourceId: id, teamId: dataset.teamId, resourceType: PerResourceTypeEnum.dataset },
+          { session }
+        );
       }
       return onUpdate(session);
     } else {
