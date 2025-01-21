@@ -26,45 +26,16 @@ images: []
 ### sealos怎么挂载 小程序配置文件
 
 新增配置文件：/app/projects/app/public/xxxx.txt
-如图
+
+如图:
+
 ![](/imgs/faq2.png)
 
 ### 数据库3306端口被占用了，启动服务失败
+
 ![](/imgs/faq3.png)
 
-mysql 只有 oneAPI 用到，外面一般不需要调用，所以可以
-- 把 3306:3306 的映射去掉/或者直接改一个映射。
-
-```yaml
-# 在 docker-compose.yaml 文件内
-# ...
- mysql:
-  image: mysql:8.0.36
-     ports:
-       - 3306:3306 # 这个端口被占用了！
-       # - 3307:3306 # 直接改一个。。和外面的不冲突
-       # *empty* 或者直接删了，反正外面用不到
- oneapi:
-  container_name: oneapi
-  image: ghcr.io/songquanpeng/one-api:latest
-  environment:
-    - SQL_DSN=root:oneapimmysql@tcp(mysql:3306)/oneapi # 这不用改，容器内外网络是隔离的
-```
-- 另一种做法是可以直接连现有的 mysql， 要改 oneAPI 的环境变量。
-```yaml
-# 在 docker-compose.yaml 文件内
-# ...
-# mysql: # 要连外面的，这个玩意用不到了
-#  image: mysql:8.0.36
-#     ports:
-#       - 3306:3306 # 这个端口被占用了！
-oneapi:
-  container_name: oneapi
-  image: ghcr.io/songquanpeng/one-api:latest
-  environment:
-    - SQL_DSN=root:oneapimmysql@tcp(mysql:3306)/oneapi # 改成外面的链接字符串
-```
-
+把端口映射改成 3307 之类的，例如 3307:3306。
 
 ### 本地部署的限制
 
