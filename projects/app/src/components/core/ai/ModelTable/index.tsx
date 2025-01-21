@@ -25,7 +25,6 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
@@ -237,15 +236,13 @@ const ModelTable = () => {
             </Tr>
           </Thead>
           <Tbody>
-            {modelList.map((item) => (
-              <Tr key={item.name} _hover={{ bg: 'myGray.50' }}>
+            {modelList.map((item, index) => (
+              <Tr key={index} _hover={{ bg: 'myGray.50' }}>
                 <Td fontSize={'sm'}>
-                  <MyTooltip title={item.providerName}>
-                    <HStack>
-                      <Avatar src={item.avatar} w={'1.2rem'} />
-                      <Box color={'myGray.900'}>{item.name}</Box>
-                    </HStack>
-                  </MyTooltip>
+                  <HStack>
+                    <Avatar src={item.avatar} w={'1.2rem'} />
+                    <Box color={'myGray.900'}>{item.name}</Box>
+                  </HStack>
                 </Td>
                 <Td>
                   <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
