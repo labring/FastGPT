@@ -61,6 +61,7 @@ async function handler(req: NextApiRequest) {
       yuqueServer,
       parentId,
       nextPageToken,
+      offset,
       pageSize
     });
   }

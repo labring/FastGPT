@@ -88,7 +88,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     offset: number;
     pageSize: number;
   }) => {
-    const { list, total } = await request<APIFileListResponse>(
+    const response = await request<APIFileListResponse>(
       `/v1/file/list`,
       {
         searchKey,
@@ -99,9 +99,18 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       'POST'
     );
 
-    if (!Array.isArray(list)) {
-      return Promise.reject('Invalid file list format');
+    let list: any[] = [];
+    let total = 0;
+
+    // 兼容旧的数据格式
+    if (Array.isArray(response)) {
+      list = response;
+      total = response.length;
+    } else {
+      list = response.list;
+      total = response.total;
     }
+
     if (list.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
       return Promise.reject('Invalid file data format');
     }
