@@ -23,6 +23,8 @@ export type ModelProviderIdType =
   | 'Ollama'
   | 'BAAI'
   | 'FishAudio'
+  | 'Intern'
+  | 'Moka'
   | 'Other';
 
 export type ModelProviderType = {
@@ -142,6 +144,16 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'FishAudio',
     name: 'FishAudio',
     avatar: 'model/fishaudio'
+  },
+  {
+    id: 'Intern',
+    name: i18nT('common:model_intern'),
+    avatar: 'model/intern'
+  },
+  {
+    id: 'Moka',
+    name: i18nT('common:model_moka'),
+    avatar: 'model/moka'
   },
   {
     id: 'Other',
