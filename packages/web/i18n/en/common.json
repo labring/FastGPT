@@ -937,6 +937,8 @@
   "model_sparkdesk": "SprkDesk",
   "model_stepfun": "StepFun",
   "model_yi": "Yi",
+  "model_intern": "Intern",
+  "model_moka": "Moka-AI",
   "move.confirm": "Confirm move",
   "navbar.Account": "Account",
   "navbar.Chat": "Chat",

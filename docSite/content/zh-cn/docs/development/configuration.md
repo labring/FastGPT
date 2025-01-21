@@ -221,6 +221,8 @@ weight: 707
 - Ollama
 - BAAI - 智源研究院
 - FishAudio
+- Intern - 书生
+- Moka - Moka-AI
 - Other - 其他
 
 
