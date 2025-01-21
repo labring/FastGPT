@@ -9,7 +9,7 @@ import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
@@ -71,7 +71,7 @@ export async function insertData2Dataset({
     indexes.map((item) =>
       insertDatasetDataVector({
         query: item.text,
-        model: getVectorModel(model),
+        model: getEmbeddingModel(model),
         teamId,
         datasetId,
         collectionId
@@ -219,7 +219,7 @@ export async function updateData2Dataset({
       if (item.type === 'create' || item.type === 'update') {
         const result = await insertDatasetDataVector({
           query: item.index.text,
-          model: getVectorModel(model),
+          model: getEmbeddingModel(model),
           teamId: mongoData.teamId,
           datasetId: mongoData.datasetId,
           collectionId: mongoData.collectionId

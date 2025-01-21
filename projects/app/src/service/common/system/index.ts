@@ -12,6 +12,7 @@ import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type
 import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
+import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -50,6 +51,7 @@ export async function getInitConfig() {
   return Promise.all([
     initSystemConfig(),
     getSystemVersion(),
+    loadSystemModels(),
 
     // abandon
     getSystemPlugin()
@@ -96,12 +98,7 @@ export async function initSystemConfig() {
       ...fileRes.systemEnv,
       ...(dbConfig.systemEnv || {})
     },
-    subPlans: dbConfig.subPlans || fileRes.subPlans,
-    llmModels: dbConfig.llmModels || fileRes.llmModels || [],
-    vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
-    reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
-    audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
-    whisperModel: dbConfig.whisperModel || fileRes.whisperModel
+    subPlans: dbConfig.subPlans || fileRes.subPlans
   };
 
   // set config
@@ -111,12 +108,7 @@ export async function initSystemConfig() {
   console.log({
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    llmModels: global.llmModels,
-    vectorModels: global.vectorModels,
-    reRankModels: global.reRankModels,
-    audioSpeechModels: global.audioSpeechModels,
-    whisperModel: global.whisperModel
+    subPlans: global.subPlans
   });
 }
 

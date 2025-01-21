@@ -22,11 +22,10 @@ const ModelProvider = () => {
       <FillRowTabs<TabType>
         list={[
           { label: t('account:active_model'), value: 'model' },
-          { label: t('account:config_model'), value: 'config' },
-          { label: t('account:channel'), value: 'channel' }
+          { label: t('account:config_model'), value: 'config' }
+          // { label: t('account:channel'), value: 'channel' }
         ]}
         value={tab}
-        px={8}
         py={1}
         onChange={setTab}
       />

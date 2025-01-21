@@ -9,7 +9,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
-import type { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
@@ -80,7 +80,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { runAsync: onRebuilding } = useRequest2(
-    (vectorModel: VectorModelItemType) => {
+    (vectorModel: EmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
         vectorModel: vectorModel.model

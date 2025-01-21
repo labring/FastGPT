@@ -4,16 +4,16 @@ import { immer } from 'zustand/middleware/immer';
 import axios from 'axios';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type {
-  AudioSpeechModelType,
+  TTSModelType,
   LLMModelItemType,
   ReRankModelItemType,
-  VectorModelItemType,
+  EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { InitDateResponse } from '@/global/common/api/systemRes';
 import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { defaultWhisperModel } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
@@ -51,10 +51,10 @@ type State = {
   systemVersion: string;
   llmModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
-  vectorModelList: VectorModelItemType[];
-  audioSpeechModelList: AudioSpeechModelType[];
+  vectorModelList: EmbeddingModelItemType[];
+  audioSpeechModelList: TTSModelType[];
   reRankModelList: ReRankModelItemType[];
-  whisperModel: STTModelType;
+  sttModelList: STTModelType[];
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
   setAppType: (e?: string) => void;
@@ -130,7 +130,7 @@ export const useSystemStore = create<State>()(
         vectorModelList: [],
         audioSpeechModelList: [],
         reRankModelList: [],
-        whisperModel: defaultWhisperModel,
+        sttModelList: [],
         initStaticData(res) {
           set((state) => {
             state.initDataBufferId = res.bufferId;
@@ -139,12 +139,22 @@ export const useSystemStore = create<State>()(
             state.subPlans = res.subPlans ?? state.subPlans;
             state.systemVersion = res.systemVersion ?? state.systemVersion;
 
-            state.llmModelList = res.llmModels ?? state.llmModelList;
+            state.llmModelList =
+              res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
+              state.llmModelList;
             state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
-            state.vectorModelList = res.vectorModels ?? state.vectorModelList;
-            state.audioSpeechModelList = res.audioSpeechModels ?? state.audioSpeechModelList;
-            state.reRankModelList = res.reRankModels ?? state.reRankModelList;
-            state.whisperModel = res.whisperModel ?? state.whisperModel;
+            state.vectorModelList =
+              res.activeModelList?.filter((item) => item.type === ModelTypeEnum.embedding) ??
+              state.vectorModelList;
+            state.audioSpeechModelList =
+              res.activeModelList?.filter((item) => item.type === ModelTypeEnum.tts) ??
+              state.audioSpeechModelList;
+            state.reRankModelList =
+              res.activeModelList?.filter((item) => item.type === ModelTypeEnum.rerank) ??
+              state.reRankModelList;
+            state.sttModelList =
+              res.activeModelList?.filter((item) => item.type === ModelTypeEnum.stt) ??
+              state.sttModelList;
           });
         }
       })),
@@ -161,7 +171,7 @@ export const useSystemStore = create<State>()(
           vectorModelList: state.vectorModelList,
           audioSpeechModelList: state.audioSpeechModelList,
           reRankModelList: state.reRankModelList,
-          whisperModel: state.whisperModel
+          sttModelList: state.sttModelList
         })
       }
     )

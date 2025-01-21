@@ -1,10 +1,10 @@
 import {
-  AudioSpeechModelType,
+  TTSModelType,
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
   ReRankModelItemType,
-  VectorModelItemType,
+  EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { TrackEventName } from '@/web/common/system/constants';

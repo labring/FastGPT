@@ -6,7 +6,7 @@ import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
-import { getAudioSpeechModel } from '@fastgpt/service/core/ai/model';
+import { getTTSModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
@@ -31,7 +31,7 @@ async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiRes
       ...req.body
     });
 
-    const ttsModel = getAudioSpeechModel(ttsConfig.model);
+    const ttsModel = getTTSModel(ttsConfig.model);
     const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {

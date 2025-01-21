@@ -5,6 +5,7 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { getFirstLLMModel, getFirstSTTModel } from '@fastgpt/service/core/ai/model';
 
 export const pushChatUsage = ({
   appName,
@@ -185,7 +186,7 @@ export const pushQuestionGuideUsage = ({
   teamId: string;
   tmbId: string;
 }) => {
-  const qgModel = global.llmModels[0];
+  const qgModel = getFirstLLMModel();
   const { totalPoints, modelName } = formatModelChars2Points({
     inputTokens,
     outputTokens,
@@ -258,7 +259,7 @@ export function pushWhisperUsage({
   tmbId: string;
   duration: number;
 }) {
-  const whisperModel = global.whisperModel;
+  const whisperModel = getFirstSTTModel();
 
   if (!whisperModel) return;
 

@@ -1,15 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, ModalBody } from '@chakra-ui/react';
+import { ModalBody } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
-import { getModelFromList } from '@fastgpt/global/core/ai/model';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getSystemModelList } from '@/web/core/ai/cofig';
+import { getSystemModelList } from '@/web/core/ai/config';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const DefaultModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -25,7 +21,7 @@ const DefaultModal = ({ onClose }: { onClose: () => void }) => {
     }));
   }, [systemModelList]);
 
-  const { llmModelList, vectorModelList, whisperModel, audioSpeechModelList, reRankModelList } =
+  const { llmModelList, vectorModelList, sttModelList, audioSpeechModelList, reRankModelList } =
     useSystemStore();
   const [value, setValue] = useState<string[]>([]);
 
@@ -35,13 +31,13 @@ const DefaultModal = ({ onClose }: { onClose: () => void }) => {
       ...vectorModelList,
       ...audioSpeechModelList,
       ...reRankModelList,
-      whisperModel
+      ...sttModelList
     ].map((item) => ({
       provider: item.provider,
       name: item.name,
       model: item.model
     }));
-  }, [llmModelList, vectorModelList, whisperModel, audioSpeechModelList, reRankModelList]);
+  }, [llmModelList, vectorModelList, sttModelList, audioSpeechModelList, reRankModelList]);
 
   return (
     <MyModal

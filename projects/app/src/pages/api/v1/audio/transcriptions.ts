@@ -9,6 +9,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { getFirstSTTModel } from '@fastgpt/service/core/ai/model';
 
 const upload = getUploadModel({
   maxSize: 5
@@ -36,7 +37,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     filePaths = [file.path];
 
-    if (!global.whisperModel) {
+    if (!getFirstSTTModel()) {
       throw new Error('whisper model not found');
     }
 
@@ -65,7 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     // }
 
     const result = await aiTranscriptions({
-      model: global.whisperModel.model,
+      model: getFirstSTTModel().model,
       fileStream: fs.createReadStream(file.path)
     });
 

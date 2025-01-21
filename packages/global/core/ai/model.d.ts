@@ -1,3 +1,4 @@
+import { ModelTypeEnum } from './model';
 import type { ModelProviderIdType } from './provider';
 
 type PriceType = {
@@ -12,10 +13,18 @@ type BaseModelItemType = {
   model: string;
   name: string;
   avatar?: string; // model icon, from provider
+
+  isActive?: boolean;
+  isCustom?: boolean;
+
+  // If has requestUrl, it will request the model directly
+  requestUrl?: string;
+  requestAuth?: string;
 };
 
 export type LLMModelItemType = PriceType &
   BaseModelItemType & {
+    type: ModelTypeEnum.llm;
     maxContext: number;
     maxResponse: number;
     quoteMaxToken: number;
@@ -42,8 +51,9 @@ export type LLMModelItemType = PriceType &
     fieldMap?: Record<string, string>;
   };
 
-export type VectorModelItemType = PriceType &
+export type EmbeddingModelItemType = PriceType &
   BaseModelItemType & {
+    type: ModelTypeEnum.embedding;
     defaultToken: number; // split text default token
     maxToken: number; // model max token
     weight: number; // training weight
@@ -55,17 +65,16 @@ export type VectorModelItemType = PriceType &
 
 export type ReRankModelItemType = PriceType &
   BaseModelItemType & {
-    requestUrl: string;
-    requestAuth: string;
+    type: ModelTypeEnum.rerank;
   };
 
-export type AudioSpeechModelType = PriceType &
+export type TTSModelType = PriceType &
   BaseModelItemType & {
+    type: ModelTypeEnum.tts;
     voices: { label: string; value: string; bufferId: string }[];
   };
 
 export type STTModelType = PriceType &
   BaseModelItemType & {
-    model: string;
-    name: string;
+    type: ModelTypeEnum.stt;
   };

@@ -1,11 +1,11 @@
-import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../config';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { addLog } from '../../../common/system/log';
 
 type GetVectorProps = {
-  model: VectorModelItemType;
+  model: EmbeddingModelItemType;
   input: string;
   type?: `${EmbeddingTypeEnm}`;
 };

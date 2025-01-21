@@ -1,9 +1,8 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
-import { registerSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { findAIModel } from '@fastgpt/service/core/ai/model';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export type listQuery = {};
 
@@ -18,14 +17,16 @@ export type listResponse = {
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
-  active: boolean;
+
+  isActive: boolean;
+  isCustom: boolean;
 }[];
 
 async function handler(
   req: ApiRequestProps<listBody, listQuery>,
   res: ApiResponseType<any>
 ): Promise<listResponse> {
-  await registerSystemModels();
+  await authSystemAdmin({ req });
 
   // Read db
   return global.systemModelList.map((model) => ({
@@ -37,7 +38,8 @@ async function handler(
     charsPointsPrice: model.charsPointsPrice,
     inputPrice: model.inputPrice,
     outputPrice: model.outputPrice,
-    active: !!findAIModel(model.model)
+    isActive: model.isActive ?? false,
+    isCustom: model.isCustom ?? false
   }));
 }
 
