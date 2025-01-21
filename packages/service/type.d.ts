@@ -18,7 +18,6 @@ declare global {
   var subPlans: SubPlanType | undefined;
 
   var llmModels: LLMModelItemType[];
-  var llmModelPriceType: 'IO' | 'Tokens';
   var vectorModels: VectorModelItemType[];
   var audioSpeechModels: AudioSpeechModelType[];
   var whisperModel: STTModelType;

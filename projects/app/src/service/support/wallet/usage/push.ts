@@ -1,10 +1,10 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export const pushChatUsage = ({
   appName,
@@ -108,7 +108,7 @@ export const pushGenerateVectorUsage = ({
   extensionOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
-    modelType: ModelTypeEnum.vector,
+    modelType: ModelTypeEnum.embedding,
     model,
     inputTokens
   });
@@ -229,7 +229,7 @@ export function pushAudioSpeechUsage({
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
     inputTokens: charsLength,
-    modelType: ModelTypeEnum.audioSpeech
+    modelType: ModelTypeEnum.tts
   });
 
   createUsage({
@@ -265,7 +265,7 @@ export function pushWhisperUsage({
   const { totalPoints, modelName } = formatModelChars2Points({
     model: whisperModel.model,
     inputTokens: duration,
-    modelType: ModelTypeEnum.whisper,
+    modelType: ModelTypeEnum.stt,
     multiple: 60
   });
 

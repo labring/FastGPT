@@ -1,5 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ModelTypeEnum, getModelMap } from '../../../core/ai/model';
+import { getModelMap } from '../../../core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export const formatModelChars2Points = ({
   model,

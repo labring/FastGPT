@@ -2,15 +2,29 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, ModalBody } from '@chakra-ui/react';
-import { MultipleRowArraySelect } from '@fastgpt/web/components/common/MySelect/MultipleRowSelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ModelProviderList } from '@fastgpt/global/core/ai/provider';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { getModelFromList } from '@fastgpt/global/core/ai/model';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getSystemModelList } from '@/web/core/ai/cofig';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 
 const DefaultModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
+
+  const { data: systemModelList = [] } = useRequest2(getSystemModelList, {
+    manual: false
+  });
+  const selectorList = useMemo(() => {
+    return systemModelList.map((item) => ({
+      icon: item.avatar,
+      label: item.name,
+      value: item.model
+    }));
+  }, [systemModelList]);
+
   const { llmModelList, vectorModelList, whisperModel, audioSpeechModelList, reRankModelList } =
     useSystemStore();
   const [value, setValue] = useState<string[]>([]);
@@ -29,45 +43,6 @@ const DefaultModal = ({ onClose }: { onClose: () => void }) => {
     }));
   }, [llmModelList, vectorModelList, whisperModel, audioSpeechModelList, reRankModelList]);
 
-  const selectorList = useMemo(() => {
-    const renderList = ModelProviderList.map<{
-      label: React.JSX.Element;
-      value: string;
-      children: { label: string | React.ReactNode; value: string }[];
-    }>((provider) => ({
-      label: (
-        <Flex alignItems={'center'} py={1}>
-          <Avatar
-            borderRadius={'0'}
-            mr={2}
-            src={provider?.avatar || HUGGING_FACE_ICON}
-            fallbackSrc={HUGGING_FACE_ICON}
-            w={'1rem'}
-          />
-          <Box>{t(provider.name as any)}</Box>
-        </Flex>
-      ),
-      value: provider.id,
-      children: []
-    }));
-
-    for (const item of modelList) {
-      const modelData = getModelFromList(modelList, item.model);
-      const provider =
-        renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
-        renderList[renderList.length - 1];
-
-      provider.children.push({
-        label: modelData.name,
-        value: modelData.model
-      });
-    }
-
-    return renderList.filter((item) => item.children.length > 0);
-  }, [modelList, t]);
-
-  console.log(selectorList);
-
   return (
     <MyModal
       isOpen
@@ -76,7 +51,15 @@ const DefaultModal = ({ onClose }: { onClose: () => void }) => {
       iconColor="primary.600"
       onClose={onClose}
     >
-      <ModalBody>11</ModalBody>
+      <ModalBody>
+        <MultipleSelect<string>
+          list={selectorList}
+          value={value}
+          onSelect={(e) => {
+            setValue(e);
+          }}
+        />
+      </ModalBody>
     </MyModal>
   );
 };

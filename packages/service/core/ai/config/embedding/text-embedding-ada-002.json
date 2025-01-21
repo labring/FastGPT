@@ -3,9 +3,9 @@
   "model": "text-embedding-ada-002",
   "name": "text-embedding-ada-002",
 
-  "defaultToken": 512, // 默认分块 token
-  "maxToken": 3000, // 最大分块 token
-  "weight": 0, // 权重
+  "defaultToken": 512,
+  "maxToken": 3000,
+  "weight": 0,
 
-  "charsPointsPrice": 0 // 积分/1k token
+  "charsPointsPrice": 0
 }

@@ -128,7 +128,7 @@ const ModelTable = () => {
     };
 
     const list = (() => {
-      if (modelType === ModelTypeEnum.chat) return formatLLMModelList;
+      if (modelType === ModelTypeEnum.llm) return formatLLMModelList;
       if (modelType === ModelTypeEnum.embedding) return formatVectorModelList;
       if (modelType === ModelTypeEnum.tts) return formatAudioSpeechModelList;
       if (modelType === ModelTypeEnum.stt) return [formatWhisperModel];

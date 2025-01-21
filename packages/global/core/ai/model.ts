@@ -56,14 +56,16 @@ export const getModelFromList = (
 };
 
 export enum ModelTypeEnum {
-  chat = 'chat',
+  llm = 'llm',
   embedding = 'embedding',
   tts = 'tts',
-  stt = 'stt'
+  stt = 'stt',
+  rerank = 'rerank'
 }
 export const modelTypeList = [
-  { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.chat },
+  { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.llm },
   { label: i18nT('common:model.type.embedding'), value: ModelTypeEnum.embedding },
   { label: i18nT('common:model.type.tts'), value: ModelTypeEnum.tts },
-  { label: i18nT('common:model.type.stt'), value: ModelTypeEnum.stt }
+  { label: i18nT('common:model.type.stt'), value: ModelTypeEnum.stt },
+  { label: i18nT('common:model.type.reRank'), value: ModelTypeEnum.rerank }
 ];
