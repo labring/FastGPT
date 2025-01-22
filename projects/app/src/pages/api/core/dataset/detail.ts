@@ -1,4 +1,4 @@
-import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getLLMModel, getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
@@ -50,7 +50,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
         }
       : undefined,
     permission,
-    vectorModel: getVectorModel(dataset.vectorModel),
+    vectorModel: getEmbeddingModel(dataset.vectorModel),
     agentModel: getLLMModel(dataset.agentModel)
   };
 }

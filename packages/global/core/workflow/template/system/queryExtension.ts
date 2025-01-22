@@ -31,10 +31,7 @@ export const AiQueryExtension: FlowNodeTemplateType = {
   showStatus: true,
   version: '481',
   inputs: [
-    {
-      ...Input_Template_SelectAIModel,
-      llmModelType: LLMModelTypeEnum.queryExtension
-    },
+    Input_Template_SelectAIModel,
     {
       key: NodeInputKeyEnum.aiSystemPrompt,
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],

@@ -29,7 +29,7 @@ export type ModelProviderIdType =
 
 export type ModelProviderType = {
   id: ModelProviderIdType;
-  name: string;
+  name: any;
   avatar: string;
 };
 
@@ -165,6 +165,7 @@ export const ModelProviderMap = Object.fromEntries(
   ModelProviderList.map((item, index) => [item.id, { ...item, order: index }])
 );
 
-export const getModelProvider = (provider: ModelProviderIdType) => {
+export const getModelProvider = (provider?: ModelProviderIdType) => {
+  if (!provider) return ModelProviderMap.Other;
   return ModelProviderMap[provider] ?? ModelProviderMap.Other;
 };

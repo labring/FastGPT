@@ -16,6 +16,7 @@ import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSc
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getFirstLLMModel } from '@fastgpt/service/core/ai/model';
 
 async function handler(
   req: ApiRequestProps<
@@ -35,7 +36,7 @@ async function handler(
       authApiKey: true
     });
 
-    const qgModel = global.llmModels[0];
+    const qgModel = getFirstLLMModel();
 
     const { result, inputTokens, outputTokens } = await createQuestionGuide({
       messages,

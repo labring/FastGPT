@@ -53,7 +53,8 @@ const ModelTable = () => {
 
   const [search, setSearch] = useState('');
 
-  const { llmModelList, audioSpeechModelList, vectorModelList, whisperModel } = useSystemStore();
+  const { llmModelList, ttsModelList, embeddingModelList, sttModelList, reRankModelList } =
+    useSystemStore();
 
   const modelList = useMemo(() => {
     const formatLLMModelList = llmModelList.map((item) => ({
@@ -87,7 +88,7 @@ const ModelTable = () => {
         ),
       tagColor: 'blue'
     }));
-    const formatVectorModelList = vectorModelList.map((item) => ({
+    const formatVectorModelList = embeddingModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.embedding'),
       priceLabel: (
@@ -100,7 +101,7 @@ const ModelTable = () => {
       ),
       tagColor: 'yellow'
     }));
-    const formatAudioSpeechModelList = audioSpeechModelList.map((item) => ({
+    const formatAudioSpeechModelList = ttsModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.tts'),
       priceLabel: (
@@ -113,31 +114,39 @@ const ModelTable = () => {
       ),
       tagColor: 'green'
     }));
-    const formatWhisperModel = {
-      ...whisperModel,
+    const formatWhisperModelList = sttModelList.map((item) => ({
+      ...item,
       typeLabel: t('common:model.type.stt'),
       priceLabel: (
         <Flex color={'myGray.700'}>
           <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {whisperModel.charsPointsPrice}
+            {item.charsPointsPrice}
           </Box>
           {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
         </Flex>
       ),
       tagColor: 'purple'
-    };
+    }));
+    const formatRerankModelList = reRankModelList.map((item) => ({
+      ...item,
+      typeLabel: t('common:model.type.reRank'),
+      priceLabel: <Flex color={'myGray.700'}>- </Flex>,
+      tagColor: 'red'
+    }));
 
     const list = (() => {
-      if (modelType === ModelTypeEnum.chat) return formatLLMModelList;
+      if (modelType === ModelTypeEnum.llm) return formatLLMModelList;
       if (modelType === ModelTypeEnum.embedding) return formatVectorModelList;
       if (modelType === ModelTypeEnum.tts) return formatAudioSpeechModelList;
-      if (modelType === ModelTypeEnum.stt) return [formatWhisperModel];
+      if (modelType === ModelTypeEnum.stt) return formatWhisperModelList;
+      if (modelType === ModelTypeEnum.rerank) return formatRerankModelList;
 
       return [
         ...formatLLMModelList,
         ...formatVectorModelList,
         ...formatAudioSpeechModelList,
-        formatWhisperModel
+        ...formatWhisperModelList,
+        ...formatRerankModelList
       ];
     })();
     const formatList = list.map((item) => {
@@ -167,9 +176,10 @@ const ModelTable = () => {
     return filterList;
   }, [
     llmModelList,
-    vectorModelList,
-    audioSpeechModelList,
-    whisperModel,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
     t,
     modelType,
     provider,
@@ -179,15 +189,16 @@ const ModelTable = () => {
   const filterProviderList = useMemo(() => {
     const allProviderIds: string[] = [
       ...llmModelList,
-      ...vectorModelList,
-      ...audioSpeechModelList,
-      whisperModel
+      ...embeddingModelList,
+      ...ttsModelList,
+      ...sttModelList,
+      ...reRankModelList
     ].map((model) => model.provider);
 
     return providerList.current.filter(
       (item) => allProviderIds.includes(item.value) || item.value === ''
     );
-  }, [audioSpeechModelList, llmModelList, vectorModelList, whisperModel]);
+  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

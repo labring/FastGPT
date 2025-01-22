@@ -8,13 +8,13 @@ import {
   MenuItem,
   MenuItemProps,
   MenuList,
-  useDisclosure,
-  useOutsideClick
+  useDisclosure
 } from '@chakra-ui/react';
 import React, { useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
+import MyAvatar from '../Avatar';
 
 export type SelectProps<T = any> = {
   value: T[];
@@ -26,6 +26,7 @@ export type SelectProps<T = any> = {
   }[];
   maxH?: number;
   onSelect: (val: T[]) => void;
+  closeable?: boolean;
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
@@ -35,6 +36,7 @@ const MultipleSelect = <T = any,>({
   width = '100%',
   maxH = 400,
   onSelect,
+  closeable = false,
   ...props
 }: SelectProps<T>) => {
   const { t } = useTranslation();
@@ -106,19 +108,24 @@ const MultipleSelect = <T = any,>({
                 if (!listItem) return null;
 
                 return (
-                  <MyTag key={i} colorSchema="blue" type={'borderFill'}>
+                  <MyTag className="tag-icon" key={i} colorSchema="blue" type={'borderFill'}>
                     {listItem.label}
-                    {/* <MyIcon
-                      name={'common/closeLight'}
-                      ml={1}
-                      w="14px"
-                      cursor={'pointer'}
-                      onClickCapture={(e) => {
-                        console.log(111);
-                        e.stopPropagation();
-                        onclickItem(item);
-                      }}
-                    /> */}
+                    {closeable && (
+                      <MyIcon
+                        name={'common/closeLight'}
+                        ml={1}
+                        w="0.8rem"
+                        cursor={'pointer'}
+                        _hover={{
+                          color: 'red.500'
+                        }}
+                        onClick={(e) => {
+                          console.log(111);
+                          e.stopPropagation();
+                          onclickItem(item);
+                        }}
+                      />
+                    )}
                   </MyTag>
                 );
               })}
@@ -164,10 +171,11 @@ const MultipleSelect = <T = any,>({
               fontSize={'sm'}
               gap={2}
             >
+              {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
+              <Box flex={'1 0 0'}>{item.label}</Box>
               <Box w={'0.8rem'} lineHeight={1}>
                 {value.includes(item.value) && <MyIcon name={'price/right'} w={'1rem'} />}
               </Box>
-              <Box>{item.label}</Box>
             </MenuItem>
           ))}
         </MenuList>
