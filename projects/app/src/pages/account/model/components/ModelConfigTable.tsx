@@ -13,7 +13,8 @@ import {
   ModalBody,
   Input,
   ModalFooter,
-  Button
+  Button,
+  useDisclosure
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -31,6 +32,7 @@ import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteSystemModel,
+  getModelConfigJson,
   getSystemModelDetail,
   getSystemModelList,
   putSystemModel
@@ -48,6 +50,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { putUpdateWithJson } from '@/web/core/ai/config';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -223,7 +226,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
     return filterList;
   }, [systemModelList, t, modelType, provider, search, showActive]);
-
   const activeModelLength = useMemo(() => {
     return modelList.filter((item) => item.isActive).length;
   }, [modelList]);
@@ -282,13 +284,23 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     });
   };
 
+  const {
+    isOpen: isOpenJsonConfig,
+    onOpen: onOpenJsonConfig,
+    onClose: onCloseJsonConfig
+  } = useDisclosure();
+
   const isLoading = loadingModels || loadingData || updatingModel;
 
   return (
     <>
       {isRoot && (
-        <Flex justifyContent={'space-between'}>
+        <Flex alignItems={'center'}>
           {Tab}
+          <Box flex={1} />
+          <Button variant={'whiteBase'} mr={2} onClick={onOpenJsonConfig}>
+            {t('account:model.json_config')}
+          </Button>
           <MyMenu
             trigger="hover"
             size="sm"
@@ -434,6 +446,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           onSuccess={refreshModels}
           onClose={() => setEditModelData(undefined)}
         />
+      )}
+      {isOpenJsonConfig && (
+        <JsonConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
       )}
     </>
   );
@@ -902,7 +917,8 @@ const ModelEditModal = ({
                     </Td>
                     <Td textAlign={'right'}>
                       <JsonEditor
-                        value={JSON.stringify(getValues('defaultConfig'))}
+                        value={JSON.stringify(getValues('defaultConfig'), null, 2)}
+                        resize
                         onChange={(e) => {
                           try {
                             setValue('defaultConfig', JSON.parse(e));
@@ -928,6 +944,71 @@ const ModelEditModal = ({
           {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
+    </MyModal>
+  );
+};
+
+const JsonConfigModal = ({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  const [data, setData] = useState<string>('');
+  const { loading } = useRequest2(getModelConfigJson, {
+    manual: false,
+    onSuccess(res) {
+      setData(res);
+    }
+  });
+
+  const { openConfirm, ConfirmModal } = useConfirm({
+    content: t('account:model.json_config_confirm')
+  });
+  const { runAsync } = useRequest2(putUpdateWithJson, {
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    }
+  });
+
+  return (
+    <MyModal
+      isOpen
+      isLoading={loading}
+      onClose={onClose}
+      iconSrc="modal/edit"
+      title={t('account:model.json_config')}
+      w={'100%'}
+      h={'100%'}
+    >
+      <ModalBody display={'flex'} flexDirection={'column'}>
+        <Box fontSize={'sm'} color={'myGray.500'}>
+          {t('account:model.json_config_tip')}
+        </Box>
+        <Box mt={2} flex={1} w={'100%'} overflow={'hidden'}>
+          <JsonEditor value={data} onChange={setData} resize h={'100%'} />
+        </Box>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant={'whiteBase'} mr={4} onClick={onClose}>
+          {t('common:common.Cancel')}
+        </Button>
+        <Button
+          onClick={() =>
+            openConfirm(() => {
+              return runAsync({ config: data });
+            })()
+          }
+        >
+          {t('common:common.Confirm')}
+        </Button>
+      </ModalFooter>
+
+      <ConfirmModal />
     </MyModal>
   );
 };

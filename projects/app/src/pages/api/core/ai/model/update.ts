@@ -3,8 +3,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
+import { findAIModel } from '@fastgpt/service/core/ai/model';
+import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 
 export type updateQuery = {};
 
@@ -26,14 +27,16 @@ async function handler(
   model = model.trim();
 
   const dbModel = await MongoSystemModel.findOne({ model }).lean();
+  const modelData = findAIModel(model);
 
   const metadataConcat: Record<string, any> = {
-    ...dbModel?.metadata,
-    ...metadata,
-
-    avatar: undefined,
-    isCustom: undefined
+    ...modelData, // system config
+    ...dbModel?.metadata, // db config
+    ...metadata // user config
   };
+  delete metadataConcat.avatar;
+  delete metadataConcat.isCustom;
+
   // 强制赋值 model，避免脏的 metadata 覆盖真实 model
   metadataConcat.model = model;
   metadataConcat.name = metadataConcat?.name?.trim();
@@ -55,7 +58,7 @@ async function handler(
     }
   );
 
-  await delay(1000);
+  await loadSystemModels(true);
   await updateFastGPTConfigBuffer();
 
   return {};

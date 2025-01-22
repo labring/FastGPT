@@ -5,6 +5,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { findAIModel } from '@fastgpt/service/core/ai/model';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
+import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 
 export type deleteQuery = {
   model: string;
@@ -34,7 +35,7 @@ async function handler(
 
   await MongoSystemModel.deleteOne({ model });
 
-  await delay(1000);
+  await loadSystemModels(true);
   await updateFastGPTConfigBuffer();
 
   return {};

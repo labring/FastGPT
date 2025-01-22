@@ -10,6 +10,7 @@ import {
   STTModelType,
   ReRankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
+import { debounce } from 'lodash';
 
 type FolderBaseType = `${ModelTypeEnum}`;
 
@@ -106,7 +107,12 @@ export const loadSystemModels = async (init = false) => {
 export const watchSystemModelUpdate = () => {
   const changeStream = MongoSystemModel.watch();
 
-  changeStream.on('change', () => {
-    loadSystemModels(true);
-  });
+  changeStream.on(
+    'change',
+    debounce(async () => {
+      try {
+        await loadSystemModels(true);
+      } catch (error) {}
+    }, 500)
+  );
 };
