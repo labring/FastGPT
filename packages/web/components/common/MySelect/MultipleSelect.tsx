@@ -30,6 +30,8 @@ export type SelectProps<T = any> = {
   onSelect: (val: T[]) => void;
   closeable?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+  isSelectAll?: boolean;
+  setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
@@ -41,6 +43,8 @@ const MultipleSelect = <T = any,>({
   closeable = false,
   itemWrap = true,
   ScrollData,
+  isSelectAll,
+  setIsSelectAll,
   ...props
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -60,20 +64,23 @@ const MultipleSelect = <T = any,>({
   };
 
   const onclickItem = (val: T) => {
-    if (val === 'all') {
-      if (value.length === list.length) {
-        onSelect([]);
-      } else {
-        onSelect(list.map((item) => item.value));
-      }
-      return;
-    }
-
     if (value.includes(val)) {
       onSelect(value.filter((i) => i !== val));
     } else {
       onSelect([...value, val]);
     }
+  };
+
+  const onSelectAll = () => {
+    if (!setIsSelectAll) {
+      onSelect(value.length === list.length ? [] : list.map((item) => item.value));
+      return;
+    }
+
+    if (isSelectAll) {
+      onSelect([]);
+    }
+    setIsSelectAll((state) => !state);
   };
 
   const ListRender = useMemo(() => {
@@ -99,7 +106,12 @@ const MultipleSelect = <T = any,>({
             fontSize={'sm'}
             gap={2}
           >
-            <Checkbox isChecked={value.includes(item.value)} />
+            <Checkbox
+              isChecked={
+                (isSelectAll && !value.includes(item.value)) ||
+                (!isSelectAll && value.includes(item.value))
+              }
+            />
             {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
             <Box flex={'1 0 0'}>{item.label}</Box>
             <Box w={'0.8rem'} lineHeight={1}>
@@ -109,7 +121,12 @@ const MultipleSelect = <T = any,>({
         ))}
       </>
     );
-  }, [value]);
+  }, [value, list, isSelectAll]);
+
+  const isAllSelected = useMemo(
+    () => (isSelectAll && value.length === 0) || (!isSelectAll && value.length === list.length),
+    [isSelectAll, value, list]
+  );
 
   return (
     <Box>
@@ -159,47 +176,44 @@ const MultipleSelect = <T = any,>({
                 overflow={'hidden'}
                 flex={1}
               >
-                {value.length === list.length ? (
+                {isAllSelected ? (
                   <Box fontSize={'mini'} color={'myGray.900'}>
                     {t('common:common.All')}
                   </Box>
                 ) : (
-                  value.map((item, i) => {
-                    const listItem = list.find((i) => i.value === item);
-                    if (!listItem) return null;
-
-                    return (
-                      <MyTag
-                        className="tag-icon"
-                        key={i}
-                        bg={'primary.100'}
-                        color={'primary.700'}
-                        type={'fill'}
-                        borderRadius={'full'}
-                        px={2}
-                        py={0.5}
-                        flexShrink={0}
-                      >
-                        {listItem.label}
-                        {closeable && (
-                          <MyIcon
-                            name={'common/closeLight'}
-                            ml={1}
-                            w="0.8rem"
-                            cursor={'pointer'}
-                            _hover={{
-                              color: 'red.500'
-                            }}
-                            onClick={(e) => {
-                              console.log(111);
-                              e.stopPropagation();
-                              onclickItem(item);
-                            }}
-                          />
-                        )}
-                      </MyTag>
-                    );
-                  })
+                  (isSelectAll
+                    ? list.filter((item) => !value.includes(item.value))
+                    : list.filter((item) => value.includes(item.value))
+                  ).map((item, i) => (
+                    <MyTag
+                      className="tag-icon"
+                      key={i}
+                      bg={'primary.100'}
+                      color={'primary.700'}
+                      type={'fill'}
+                      borderRadius={'full'}
+                      px={2}
+                      py={0.5}
+                      flexShrink={0}
+                    >
+                      {item.label}
+                      {closeable && (
+                        <MyIcon
+                          name={'common/closeLight'}
+                          ml={1}
+                          w="0.8rem"
+                          cursor={'pointer'}
+                          _hover={{
+                            color: 'red.500'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onclickItem(item.value);
+                          }}
+                        />
+                      )}
+                    </MyTag>
+                  ))
                 )}
               </Flex>
               <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
@@ -221,17 +235,18 @@ const MultipleSelect = <T = any,>({
         >
           <MenuItem
             {...menuItemStyles}
-            color={value.length === list.length ? 'primary.600' : 'myGray.900'}
+            color={isAllSelected ? 'primary.600' : 'myGray.900'}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              onclickItem('all' as T);
+              onSelectAll();
             }}
             whiteSpace={'pre-wrap'}
             fontSize={'sm'}
             gap={2}
+            mb={1}
           >
-            <Checkbox isChecked={value.length === list.length} />
+            <Checkbox isChecked={isAllSelected} />
             <Box>{t('common:common.All')}</Box>
           </MenuItem>
 

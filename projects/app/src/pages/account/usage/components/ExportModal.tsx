@@ -12,21 +12,32 @@ export type ExportModalParams = {
   sources: UsageSourceEnum[];
   teamMemberIds: string[];
   teamMemberNames: string[];
+  isSelectAllTmb: boolean;
   projectName: string;
 };
 
 const ExportModal = ({
   onClose,
   params,
+  memberTotal,
   total
 }: {
   onClose: () => void;
   params: ExportModalParams;
+  memberTotal: number;
   total: number;
 }) => {
   const { t } = useTranslation();
 
-  const { teamMemberIds, teamMemberNames, sources, dateStart, dateEnd, projectName } = params;
+  const {
+    teamMemberIds,
+    teamMemberNames,
+    isSelectAllTmb,
+    sources,
+    dateStart,
+    dateEnd,
+    projectName
+  } = params;
 
   const { runAsync: exportUsage, loading } = useRequest2(
     async () => {
@@ -35,6 +46,7 @@ const ExportModal = ({
       searchParams.set('dateEnd', dateEnd.toISOString());
       sources.forEach((source) => searchParams.append('sources', source.toString()));
       teamMemberIds.forEach((tmbId) => searchParams.append('teamMemberIds', tmbId));
+      searchParams.set('isSelectAllTmb', isSelectAllTmb.toString());
       searchParams.set('projectName', projectName);
 
       await downloadFetch({
@@ -54,7 +66,7 @@ const ExportModal = ({
         <Flex>
           {`${t('common:user.Time')}: ${formatTime2YMD(dateStart)} ~ ${formatTime2YMD(dateEnd)}`}
         </Flex>
-        <Flex>{`${t('common:user.team.Member')}: ${teamMemberNames.join(', ')}`}</Flex>
+        <Flex>{`${t('common:user.team.Member')}(${memberTotal}): ${teamMemberNames.join(', ')}`}</Flex>
         <Flex>
           {`${t('common:user.type')}: ${sources.map((item) => t(UsageSourceMap[item].label as any)).join(', ')}`}
         </Flex>

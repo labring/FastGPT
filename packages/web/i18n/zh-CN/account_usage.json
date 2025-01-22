@@ -27,6 +27,7 @@
   "output_token_length": "输出 tokens",
   "points": "积分",
   "project_name": "项目名",
+  "select_member_and_source_first": "请先选中成员和类型",
   "share": "分享链接",
   "source": "来源",
   "start_export": "已开始导出",

@@ -1,21 +1,14 @@
 import { POST } from '@/web/common/api/request';
 import {
   CreateTrainingUsageProps,
-  GetTotalPointsProps
+  GetTotalPointsProps,
+  GetUsageProps
 } from '@fastgpt/global/support/wallet/usage/api.d';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
-export const getUserUsages = (
-  data: PaginationProps<{
-    dateStart: Date;
-    dateEnd: Date;
-    sources?: UsageSourceEnum[];
-    teamMemberIds?: string[];
-    projectName?: string;
-  }>
-) => POST<PaginationResponse<UsageItemType>>(`/proApi/support/wallet/usage/getUsage`, data);
+export const getUserUsages = (data: PaginationProps<GetUsageProps>) =>
+  POST<PaginationResponse<UsageItemType>>(`/proApi/support/wallet/usage/getUsage`, data);
 
 export const getTotalPoints = (data: GetTotalPointsProps) =>
   POST<{ totalPoints: number; date: string }[]>(

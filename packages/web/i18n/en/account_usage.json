@@ -23,6 +23,7 @@
   "output_token_length": "output tokens",
   "points": "Points",
   "project_name": "Project name",
+  "select_member_and_source_first": "Please select members and types first",
   "share": "Share Link",
   "source": "source",
   "start_export": "Export started",
