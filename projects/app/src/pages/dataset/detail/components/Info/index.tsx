@@ -50,7 +50,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { feConfigs, datasetModelList, vectorModelList } = useSystemStore();
+  const { feConfigs, datasetModelList, embeddingModelList } = useSystemStore();
   const { ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -186,12 +186,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     )
                   : undefined
               }
-              list={vectorModelList.map((item) => ({
+              list={embeddingModelList.map((item) => ({
                 label: item.name,
                 value: item.model
               }))}
               onchange={(e) => {
-                const vectorModel = vectorModelList.find((item) => item.model === e);
+                const vectorModel = embeddingModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(async () => {
                   await onRebuilding(vectorModel);

@@ -16,7 +16,7 @@ import {
   Button
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ModelProviderList,
   ModelProviderIdType,
@@ -45,11 +45,18 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { useMount } from 'ahooks';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
+  const { userInfo } = useUserStore();
+  const isRoot = userInfo?.username === 'root';
+
   const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
   const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
     { label: t('common:common.All'), value: '' },
@@ -237,7 +244,28 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   return (
     <>
-      <Flex justifyContent={'space-between'}>{Tab}</Flex>
+      {isRoot && (
+        <Flex justifyContent={'space-between'}>
+          {Tab}
+          <MyMenu
+            trigger="hover"
+            size="mini"
+            Button={<Button>{t('account:create_model')}</Button>}
+            menuList={[
+              {
+                children: [
+                  {
+                    label: t('account:default_model')
+                  },
+                  {
+                    label: t('account:custom_model')
+                  }
+                ]
+              }
+            ]}
+          />
+        </Flex>
+      )}
       <MyBox flex={'1 0 0'} isLoading={isLoading}>
         <Flex flexDirection={'column'} h={'100%'}>
           <Flex>
@@ -334,6 +362,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           </TableContainer>
         </Flex>
       </MyBox>
+
       <ConfirmModal />
       {!!updateModelId && (
         <ModelEditModal
@@ -436,6 +465,364 @@ const ModelEditModal = ({
                       <Avatar src={provider.avatar} w={'1rem'} />
                       <Box>{t(provider.name)}</Box>
                     </HStack>
+                  </Td>
+                </Tr>
+                <Tr>
+                  <Td>Alias</Td>
+                  <Td textAlign={'right'}>
+                    <Input {...register('name')} {...InputStyles} />
+                  </Td>
+                </Tr>
+                {priceUnit && (
+                  <Tr>
+                    <Td>Price</Td>
+                    <Td>
+                      <Flex justify="flex-end">
+                        <HStack w={'100%'} maxW={'300px'}>
+                          <MyNumberInput
+                            flex={'1 0 0'}
+                            register={register}
+                            name={'charsPointsPrice'}
+                            step={0.01}
+                          />
+                          <Box fontSize={'sm'}>{priceUnit}</Box>
+                        </HStack>
+                      </Flex>
+                    </Td>
+                  </Tr>
+                )}
+
+                {isLLMModel && (
+                  <>
+                    <Tr>
+                      <Td>Max Context</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput register={register} name="maxContext" {...InputStyles} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Max Quote</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput
+                            register={register}
+                            name="quoteMaxToken"
+                            {...InputStyles}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Max Tokens</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Max Temperature</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput
+                            register={register}
+                            name="maxTemperature"
+                            step={0.1}
+                            {...InputStyles}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>toolChoice</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('toolChoice')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>functionCall</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('functionCall')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Censor</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('censor')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>Vision</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('vision')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  </>
+                )}
+                {isEmbeddingModel && (
+                  <>
+                    <Tr>
+                      <Td>defaultToken</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput register={register} name="defaultToken" {...InputStyles} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>maxToken</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <MyNumberInput register={register} name="maxToken" {...InputStyles} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  </>
+                )}
+                {isTTSModel && (
+                  <>
+                    <Tr>
+                      <Td>voices</Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <JsonEditor
+                            value={JSON.stringify(getValues('voices'), null, 2)}
+                            onChange={(e) => {
+                              try {
+                                setValue('voices', JSON.parse(e));
+                              } catch (error) {
+                                console.error(error);
+                              }
+                            }}
+                            {...InputStyles}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  </>
+                )}
+                <Tr>
+                  <Td>requestUrl</Td>
+                  <Td textAlign={'right'}>
+                    <Input {...register('requestUrl')} {...InputStyles} />
+                  </Td>
+                </Tr>
+                <Tr>
+                  <Td>requestAuth</Td>
+                  <Td textAlign={'right'}>
+                    <Input {...register('requestAuth')} {...InputStyles} />
+                  </Td>
+                </Tr>
+              </Tbody>
+            </Table>
+          </TableContainer>
+          {isLLMModel && (
+            <TableContainer flex={'1'}>
+              <Table>
+                <Thead>
+                  <Tr color={'myGray.600'}>
+                    <Th fontSize={'xs'}>{t('account:model.param_name')}</Th>
+                    <Th fontSize={'xs'}></Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  <Tr>
+                    <Td>datasetProcess</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('datasetProcess')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>usedInClassify</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('usedInClassify')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>usedInExtractFields</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('usedInExtractFields')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>usedInToolCall</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('usedInToolCall')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>usedInQueryExtension</Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('usedInQueryExtension')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>defaultSystemChatPrompt</Td>
+                    <Td textAlign={'right'}>
+                      <MyTextarea {...register('defaultSystemChatPrompt')} {...InputStyles} />
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>customCQPrompt</Td>
+                    <Td textAlign={'right'}>
+                      <MyTextarea {...register('customCQPrompt')} {...InputStyles} />
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>customExtractPrompt</Td>
+                    <Td textAlign={'right'}>
+                      <MyTextarea {...register('customExtractPrompt')} {...InputStyles} />
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>defaultConfig</Td>
+                    <Td textAlign={'right'}>
+                      <JsonEditor
+                        value={JSON.stringify(getValues('defaultConfig'))}
+                        onChange={(e) => {
+                          try {
+                            setValue('defaultConfig', JSON.parse(e));
+                          } catch (error) {
+                            console.error(error);
+                          }
+                        }}
+                        {...InputStyles}
+                      />
+                    </Td>
+                  </Tr>
+                </Tbody>
+              </Table>
+            </TableContainer>
+          )}
+        </Flex>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant={'whiteBase'} mr={4} onClick={onClose}>
+          {t('common:common.Cancel')}
+        </Button>
+        <Button isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
+          {t('common:common.Confirm')}
+        </Button>
+      </ModalFooter>
+    </MyModal>
+  );
+};
+
+const ModelCreateModal = ({
+  type,
+  onSuccess,
+  onClose
+}: {
+  type: SystemModelItemType['type'];
+  onSuccess: () => void;
+  onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  const { register, reset, getValues, setValue, handleSubmit } = useForm<SystemModelItemType>();
+
+  const isLLMModel = type === ModelTypeEnum.llm;
+  const isEmbeddingModel = type === ModelTypeEnum.embedding;
+  const isTTSModel = type === ModelTypeEnum.tts;
+  const isSTTModel = type === ModelTypeEnum.stt;
+  const isRerankModel = type === ModelTypeEnum.rerank;
+
+  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
+    useSystemStore();
+  useMount(() => {
+    if (isLLMModel) {
+      setValue('model', llmModelList[0].model);
+    }
+  });
+
+  const priceUnit = useMemo(() => {
+    if (isLLMModel || isEmbeddingModel) return '/ 1k Tokens';
+    if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
+    if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
+    return '';
+    return '';
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel]);
+  const providerList = useRef<{ label: any; value: ModelProviderIdType }[]>(
+    ModelProviderList.map((item) => ({
+      label: (
+        <HStack>
+          <Avatar src={item.avatar} w={'1rem'} />
+          <Box>{t(item.name as any)}</Box>
+        </HStack>
+      ),
+      value: item.id
+    }))
+  );
+
+  const { runAsync: updateModel, loading: updatingModel } = useRequest2(
+    async (data: SystemModelItemType) => {
+      return putSystemModel({
+        model: data.model,
+        metadata: data
+      }).then(onSuccess);
+    },
+    {
+      onSuccess: () => {
+        onClose();
+      }
+    }
+  );
+
+  return (
+    <MyModal
+      iconSrc={'modal/edit'}
+      title={t('account:model.edit_model')}
+      isOpen
+      onClose={onClose}
+      maxW={['90vw', '80vw']}
+      w={'100%'}
+      h={'100%'}
+    >
+      <ModalBody>
+        <Flex gap={4}>
+          <TableContainer flex={'1'}>
+            <Table>
+              <Thead>
+                <Tr color={'myGray.600'}>
+                  <Th fontSize={'xs'}>{t('account:model.param_name')}</Th>
+                  <Th fontSize={'xs'}></Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <Tr>
+                  <Td>{t('account:model.model_id')}</Td>
+                  <Td textAlign={'right'}>
+                    <Input {...register('model', { required: true })} {...InputStyles} />
+                  </Td>
+                </Tr>
+                <Tr>
+                  <Td>Provider</Td>
+                  <Td textAlign={'right'}>
+                    <MySelect
+                      {...register('provider', { required: true })}
+                      list={providerList.current}
+                      {...InputStyles}
+                    />
                   </Td>
                 </Tr>
                 <Tr>

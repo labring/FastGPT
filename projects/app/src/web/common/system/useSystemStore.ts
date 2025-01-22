@@ -51,8 +51,8 @@ type State = {
   systemVersion: string;
   llmModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
-  vectorModelList: EmbeddingModelItemType[];
-  audioSpeechModelList: TTSModelType[];
+  embeddingModelList: EmbeddingModelItemType[];
+  ttsModelList: TTSModelType[];
   reRankModelList: ReRankModelItemType[];
   sttModelList: STTModelType[];
   initStaticData: (e: InitDateResponse) => void;
@@ -127,8 +127,8 @@ export const useSystemStore = create<State>()(
         systemVersion: '0.0.0',
         llmModelList: [],
         datasetModelList: [],
-        vectorModelList: [],
-        audioSpeechModelList: [],
+        embeddingModelList: [],
+        ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
         initStaticData(res) {
@@ -143,12 +143,12 @@ export const useSystemStore = create<State>()(
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.llm) ??
               state.llmModelList;
             state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
-            state.vectorModelList =
+            state.embeddingModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.embedding) ??
-              state.vectorModelList;
-            state.audioSpeechModelList =
+              state.embeddingModelList;
+            state.ttsModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.tts) ??
-              state.audioSpeechModelList;
+              state.ttsModelList;
             state.reRankModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.rerank) ??
               state.reRankModelList;
@@ -168,8 +168,8 @@ export const useSystemStore = create<State>()(
           systemVersion: state.systemVersion,
           llmModelList: state.llmModelList,
           datasetModelList: state.datasetModelList,
-          vectorModelList: state.vectorModelList,
-          audioSpeechModelList: state.audioSpeechModelList,
+          embeddingModelList: state.embeddingModelList,
+          ttsModelList: state.ttsModelList,
           reRankModelList: state.reRankModelList,
           sttModelList: state.sttModelList
         })

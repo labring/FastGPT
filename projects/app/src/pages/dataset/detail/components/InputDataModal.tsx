@@ -67,7 +67,7 @@ const InputDataModal = ({
   const theme = useTheme();
   const { toast } = useToast();
   const [currentTab, setCurrentTab] = useState(TabEnum.content);
-  const { vectorModelList } = useSystemStore();
+  const { embeddingModelList } = useSystemStore();
   const { isPc } = useSystem();
   const { register, handleSubmit, reset, control } = useForm<InputDataType>();
   const {
@@ -158,11 +158,11 @@ const InputDataModal = ({
 
   const maxToken = useMemo(() => {
     const vectorModel =
-      vectorModelList.find((item) => item.model === collection.dataset.vectorModel) ||
-      vectorModelList[0];
+      embeddingModelList.find((item) => item.model === collection.dataset.vectorModel) ||
+      embeddingModelList[0];
 
     return vectorModel?.maxToken || 3000;
-  }, [collection.dataset.vectorModel, vectorModelList]);
+  }, [collection.dataset.vectorModel, embeddingModelList]);
 
   // import new data
   const { mutate: sureImportData, isLoading: isImporting } = useRequest({

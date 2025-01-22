@@ -53,9 +53,11 @@ export async function getServerSideProps(content: any) {
 export default ModelProvider;
 
 const ValidModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
+  const { userInfo } = useUserStore();
+  const isRoot = userInfo?.username === 'root';
   return (
     <>
-      <Flex justifyContent={'space-between'}>{Tab}</Flex>
+      {isRoot && <Flex justifyContent={'space-between'}>{Tab}</Flex>}
       <Box flex={'1 0 0'}>
         <ModelTable />
       </Box>

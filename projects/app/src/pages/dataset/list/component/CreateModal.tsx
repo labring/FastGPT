@@ -41,7 +41,7 @@ const CreateModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { vectorModelList, datasetModelList } = useSystemStore();
+  const { embeddingModelList, datasetModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const datasetTypeMap = useMemo(() => {
@@ -69,7 +69,7 @@ const CreateModal = ({
     };
   }, [t]);
 
-  const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
+  const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
   const form = useForm<CreateDatasetParams>({
     defaultValues: {

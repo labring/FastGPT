@@ -53,7 +53,7 @@ const ModelTable = () => {
 
   const [search, setSearch] = useState('');
 
-  const { llmModelList, audioSpeechModelList, vectorModelList, sttModelList, reRankModelList } =
+  const { llmModelList, ttsModelList, embeddingModelList, sttModelList, reRankModelList } =
     useSystemStore();
 
   const modelList = useMemo(() => {
@@ -88,7 +88,7 @@ const ModelTable = () => {
         ),
       tagColor: 'blue'
     }));
-    const formatVectorModelList = vectorModelList.map((item) => ({
+    const formatVectorModelList = embeddingModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.embedding'),
       priceLabel: (
@@ -101,7 +101,7 @@ const ModelTable = () => {
       ),
       tagColor: 'yellow'
     }));
-    const formatAudioSpeechModelList = audioSpeechModelList.map((item) => ({
+    const formatAudioSpeechModelList = ttsModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.tts'),
       priceLabel: (
@@ -176,8 +176,8 @@ const ModelTable = () => {
     return filterList;
   }, [
     llmModelList,
-    vectorModelList,
-    audioSpeechModelList,
+    embeddingModelList,
+    ttsModelList,
     sttModelList,
     reRankModelList,
     t,
@@ -189,8 +189,8 @@ const ModelTable = () => {
   const filterProviderList = useMemo(() => {
     const allProviderIds: string[] = [
       ...llmModelList,
-      ...vectorModelList,
-      ...audioSpeechModelList,
+      ...embeddingModelList,
+      ...ttsModelList,
       ...sttModelList,
       ...reRankModelList
     ].map((model) => model.provider);
@@ -198,7 +198,7 @@ const ModelTable = () => {
     return providerList.current.filter(
       (item) => allProviderIds.includes(item.value) || item.value === ''
     );
-  }, [audioSpeechModelList, llmModelList, vectorModelList, sttModelList, reRankModelList]);
+  }, [ttsModelList, llmModelList, embeddingModelList, sttModelList, reRankModelList]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

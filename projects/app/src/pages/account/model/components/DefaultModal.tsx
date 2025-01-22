@@ -21,15 +21,15 @@ const DefaultModal = ({ onClose }: { onClose: () => void }) => {
     }));
   }, [systemModelList]);
 
-  const { llmModelList, vectorModelList, sttModelList, audioSpeechModelList, reRankModelList } =
+  const { llmModelList, embeddingModelList, sttModelList, ttsModelList, reRankModelList } =
     useSystemStore();
   const [value, setValue] = useState<string[]>([]);
 
   const modelList = useMemo(() => {
     return [
       ...llmModelList,
-      ...vectorModelList,
-      ...audioSpeechModelList,
+      ...embeddingModelList,
+      ...ttsModelList,
       ...reRankModelList,
       ...sttModelList
     ].map((item) => ({
@@ -37,7 +37,7 @@ const DefaultModal = ({ onClose }: { onClose: () => void }) => {
       name: item.name,
       model: item.model
     }));
-  }, [llmModelList, vectorModelList, sttModelList, audioSpeechModelList, reRankModelList]);
+  }, [llmModelList, embeddingModelList, sttModelList, ttsModelList, reRankModelList]);
 
   return (
     <MyModal
