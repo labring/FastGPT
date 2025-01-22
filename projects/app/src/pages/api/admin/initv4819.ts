@@ -28,7 +28,7 @@ const moveUserAvatar = async () => {
       if (!user.avatar) continue;
       try {
         await mongoSessionRun(async (session) => {
-          await MongoTeamMember.updateOne(
+          await MongoTeamMember.updateMany(
             {
               userId: user._id
             },
