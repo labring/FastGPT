@@ -2,8 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { delay } from '@fastgpt/global/common/system/utils';
-import { findAIModel } from '@fastgpt/service/core/ai/model';
+import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 
@@ -23,7 +22,7 @@ async function handler(
 
   const { model } = req.query;
 
-  const modelData = findAIModel(model);
+  const modelData = findModelFromAlldata(model);
 
   if (!modelData) {
     return Promise.reject('Model not found');

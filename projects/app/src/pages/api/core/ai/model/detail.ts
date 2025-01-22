@@ -2,7 +2,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findAIModel } from '@fastgpt/service/core/ai/model';
+import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 
 export type detailQuery = {
   model: string;
@@ -19,7 +19,7 @@ async function handler(
   await authSystemAdmin({ req });
 
   const { model } = req.query;
-  const modelItem = findAIModel(model);
+  const modelItem = findModelFromAlldata(model);
   if (!modelItem) {
     return Promise.reject('Model not found');
   }

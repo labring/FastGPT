@@ -13,11 +13,12 @@ import {
 import { debounce } from 'lodash';
 
 type FolderBaseType = `${ModelTypeEnum}`;
+const BASE_PATH = '../../../../models/';
 
 export const loadSystemModels = async (init = false) => {
   const getModelNameList = (base: FolderBaseType) => {
     const currentFileUrl = new URL(import.meta.url);
-    const modelsPath = path.join(path.dirname(currentFileUrl.pathname), base);
+    const modelsPath = path.join(path.dirname(currentFileUrl.pathname), BASE_PATH, base);
 
     return fs.readdirSync(modelsPath) as string[];
   };
@@ -70,11 +71,12 @@ export const loadSystemModels = async (init = false) => {
   await Promise.all(
     baseList.map(async (base) => {
       const modelList = getModelNameList(base);
-      const nameList = modelList.map((name) => `${base}/${name}`);
 
+      const nameList = modelList.map((name) => `${base}/${name}`);
+      console.log(nameList, '-=-=');
       await Promise.all(
         nameList.map(async (name) => {
-          const fileContent = (await import(`./${name}`))?.default as SystemModelItemType;
+          const fileContent = (await import(`${BASE_PATH}${name}`))?.default as SystemModelItemType;
 
           const dbModel = dbModels.find((item) => item.model === fileContent.model);
 

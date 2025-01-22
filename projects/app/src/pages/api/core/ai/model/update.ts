@@ -4,7 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
-import { findAIModel } from '@fastgpt/service/core/ai/model';
+import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 
 export type updateQuery = {};
@@ -27,7 +27,7 @@ async function handler(
   model = model.trim();
 
   const dbModel = await MongoSystemModel.findOne({ model }).lean();
-  const modelData = findAIModel(model);
+  const modelData = findModelFromAlldata(model);
 
   const metadataConcat: Record<string, any> = {
     ...modelData, // system config

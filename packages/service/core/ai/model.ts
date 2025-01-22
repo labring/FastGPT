@@ -49,3 +49,6 @@ export const findAIModel = (model: string): SystemModelItemType | undefined => {
     global.reRankModelMap.get(model)
   );
 };
+export const findModelFromAlldata = (model: string) => {
+  return global.systemModelList.find((item) => item.model === model);
+};
