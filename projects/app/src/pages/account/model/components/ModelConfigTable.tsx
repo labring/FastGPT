@@ -274,7 +274,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       charsPointsPrice: 0,
       inputPrice: 0,
       outputPrice: 0,
+
       isCustom: true,
+      isActive: true,
       // @ts-ignore
       type
     });

@@ -5,7 +5,8 @@ import type { SystemModelSchemaType } from '../type';
 const SystemModelSchema = new Schema({
   model: {
     type: String,
-    required: true
+    required: true,
+    unique: true
   },
   metadata: {
     type: Object,

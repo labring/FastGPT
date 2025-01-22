@@ -32,11 +32,12 @@ export type FastGPTConfigFileType = {
   systemEnv: SystemEnvType;
   subPlans?: SubPlanType;
 
-  // llmModels: ChatModelItemType[];
-  // vectorModels: EmbeddingModelItemType[];
-  // reRankModels: ReRankModelItemType[];
-  // audioSpeechModels: TTSModelType[];
-  // whisperModel: STTModelType;
+  // Abandon
+  llmModels?: ChatModelItemType[];
+  vectorModels?: EmbeddingModelItemType[];
+  reRankModels?: ReRankModelItemType[];
+  audioSpeechModels?: TTSModelType[];
+  whisperModel?: STTModelType;
 };
 
 export type FastGPTFeConfigsType = {
