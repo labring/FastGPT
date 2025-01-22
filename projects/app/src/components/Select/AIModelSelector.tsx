@@ -22,7 +22,7 @@ type Props = SelectProps & {
 
 const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
-  const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
+  const { feConfigs, llmModelList, embeddingModelList } = useSystemStore();
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -35,7 +35,7 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   }, [props.size]);
 
   const avatarList = list.map((item) => {
-    const modelData = getModelFromList([...llmModelList, ...vectorModelList], item.value);
+    const modelData = getModelFromList([...llmModelList, ...embeddingModelList], item.value);
 
     return {
       value: item.value,
@@ -100,7 +100,7 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
 };
 const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
-  const { llmModelList, vectorModelList } = useSystemStore();
+  const { llmModelList, embeddingModelList } = useSystemStore();
   const [value, setValue] = useState<string[]>([]);
 
   const avatarSize = useMemo(() => {
@@ -136,7 +136,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }));
 
     for (const item of list) {
-      const modelData = getModelFromList([...llmModelList, ...vectorModelList], item.value);
+      const modelData = getModelFromList([...llmModelList, ...embeddingModelList], item.value);
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
         renderList[renderList.length - 1];
@@ -148,7 +148,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, llmModelList, t, vectorModelList]);
+  }, [avatarSize, list, llmModelList, t, embeddingModelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -158,7 +158,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   );
 
   const SelectedModel = useMemo(() => {
-    const modelData = getModelFromList([...llmModelList, ...vectorModelList], props.value);
+    const modelData = getModelFromList([...llmModelList, ...embeddingModelList], props.value);
 
     setValue([modelData.provider, props.value]);
 
@@ -174,7 +174,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
         <Box>{modelData?.name}</Box>
       </HStack>
     );
-  }, [avatarSize, llmModelList, props.value, vectorModelList]);
+  }, [avatarSize, llmModelList, props.value, embeddingModelList]);
 
   return (
     <Box

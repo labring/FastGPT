@@ -922,6 +922,7 @@
   "model.search_name_placeholder": "Search by model name",
   "model.type.chat": "language model",
   "model.type.embedding": "Embedding",
+  "model.type.reRank": "ReRank",
   "model.type.stt": "speech recognition",
   "model.type.tts": "TTS",
   "model_alicloud": "Ali Cloud",

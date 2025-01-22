@@ -1,5 +1,6 @@
 import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
+import { getFirstReRankModel } from '../model';
 
 type PostReRankResponse = {
   id: string;
@@ -17,7 +18,7 @@ export function reRankRecall({
   query: string;
   documents: { id: string; text: string }[];
 }): Promise<ReRankCallResult> {
-  const model = global.reRankModels[0];
+  const model = getFirstReRankModel();
 
   if (!model || !model?.requestUrl) {
     return Promise.reject('no rerank model');

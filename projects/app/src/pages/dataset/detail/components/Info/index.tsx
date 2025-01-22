@@ -9,7 +9,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
-import type { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
@@ -50,7 +50,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { feConfigs, datasetModelList, vectorModelList } = useSystemStore();
+  const { feConfigs, datasetModelList, embeddingModelList } = useSystemStore();
   const { ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -80,7 +80,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { runAsync: onRebuilding } = useRequest2(
-    (vectorModel: VectorModelItemType) => {
+    (vectorModel: EmbeddingModelItemType) => {
       return postRebuildEmbedding({
         datasetId,
         vectorModel: vectorModel.model
@@ -186,12 +186,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                     )
                   : undefined
               }
-              list={vectorModelList.map((item) => ({
+              list={embeddingModelList.map((item) => ({
                 label: item.name,
                 value: item.model
               }))}
               onchange={(e) => {
-                const vectorModel = vectorModelList.find((item) => item.model === e);
+                const vectorModel = embeddingModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(async () => {
                   await onRebuilding(vectorModel);

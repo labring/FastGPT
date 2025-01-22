@@ -25,7 +25,7 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t } = useTranslation();
-  const { audioSpeechModelList } = useSystemStore();
+  const { ttsModelList } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -34,9 +34,9 @@ const TTSSelect = ({
     () => [
       { label: t('common:core.app.tts.Close'), value: TTSTypeEnum.none },
       { label: t('common:core.app.tts.Web'), value: TTSTypeEnum.web },
-      ...audioSpeechModelList.map((item) => item?.voices || []).flat()
+      ...ttsModelList.map((item) => item?.voices || []).flat()
     ],
-    [audioSpeechModelList, t]
+    [ttsModelList, t]
   );
 
   const formatValue = useMemo(() => {
@@ -63,7 +63,7 @@ const TTSSelect = ({
       if (e === TTSTypeEnum.none || e === TTSTypeEnum.web) {
         onChange({ type: e as `${TTSTypeEnum}` });
       } else {
-        const audioModel = audioSpeechModelList.find((item) =>
+        const audioModel = ttsModelList.find((item) =>
           item.voices?.find((voice) => voice.value === e)
         );
         if (!audioModel) {
@@ -77,7 +77,7 @@ const TTSSelect = ({
         });
       }
     },
-    [audioSpeechModelList, onChange, value]
+    [ttsModelList, onChange, value]
   );
 
   const onCloseTTSModal = useCallback(() => {

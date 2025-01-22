@@ -9,6 +9,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { getFirstLLMModel } from '@fastgpt/service/core/ai/model';
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   appId: string;
@@ -50,7 +51,7 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   });
   const messages = chats2GPTMessages({ messages: histories, reserveId: false });
 
-  const qgModel = questionGuide?.model || global.llmModels[0].model;
+  const qgModel = questionGuide?.model || getFirstLLMModel().model;
 
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,

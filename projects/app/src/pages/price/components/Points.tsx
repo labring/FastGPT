@@ -31,7 +31,7 @@ export default React.memo(Points);
 
 export const AiPointsTable = () => {
   const { t } = useTranslation();
-  const { llmModelList, audioSpeechModelList, vectorModelList, whisperModel } = useSystemStore();
+  const { llmModelList, ttsModelList, embeddingModelList, sttModelList } = useSystemStore();
 
   return (
     <Grid gap={6} w={'100%'} color={'myGray.900'}>
@@ -85,7 +85,7 @@ export const AiPointsTable = () => {
           </Box>
         </Box>
         <Box flex={4} textAlign={'center'}>
-          {vectorModelList?.map((item, i) => (
+          {embeddingModelList?.map((item, i) => (
             <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.100' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
@@ -111,7 +111,7 @@ export const AiPointsTable = () => {
           </Box>
         </Box>
         <Box flex={4} textAlign={'center'}>
-          {audioSpeechModelList?.map((item, i) => (
+          {ttsModelList?.map((item, i) => (
             <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
               <Box flex={'1 0 0'}>{item.name}</Box>
               <Box flex={'1 0 0'}>
@@ -138,15 +138,17 @@ export const AiPointsTable = () => {
           </Box>
         </Box>
         <Box flex={4} textAlign={'center'} h={'100%'}>
-          <Flex py={4}>
-            <Box flex={'1 0 0'}>{whisperModel?.name}</Box>
-            <Box flex={'1 0 0'}>
-              {whisperModel?.charsPointsPrice +
-                t('common:support.wallet.subscription.point') +
-                ' / 60' +
-                t('common:unit.seconds')}
-            </Box>
-          </Flex>
+          {sttModelList.map((item) => (
+            <Flex key={item.model} py={4}>
+              <Box flex={'1 0 0'}>{item.name}</Box>
+              <Box flex={'1 0 0'}>
+                {item.charsPointsPrice +
+                  t('common:support.wallet.subscription.point') +
+                  ' / 60' +
+                  t('common:unit.seconds')}
+              </Box>
+            </Flex>
+          ))}
         </Box>
       </Box>
     </Grid>

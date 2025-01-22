@@ -41,7 +41,7 @@ const CreateModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { vectorModelList, datasetModelList } = useSystemStore();
+  const { embeddingModelList, datasetModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const datasetTypeMap = useMemo(() => {
@@ -69,7 +69,7 @@ const CreateModal = ({
     };
   }, [t]);
 
-  const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
+  const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
   const form = useForm<CreateDatasetParams>({
     defaultValues: {
@@ -172,73 +172,69 @@ const CreateModal = ({
             />
           </Flex>
         </Box>
-        {filterNotHiddenVectorModelList.length > 1 && (
-          <Flex
-            mt={6}
-            alignItems={['flex-start', 'center']}
-            justify={'space-between'}
-            flexDir={['column', 'row']}
+        <Flex
+          mt={6}
+          alignItems={['flex-start', 'center']}
+          justify={'space-between'}
+          flexDir={['column', 'row']}
+        >
+          <HStack
+            spacing={1}
+            alignItems={'center'}
+            flex={['', '0 0 110px']}
+            fontSize={'sm'}
+            color={'myGray.900'}
+            fontWeight={500}
+            pb={['12px', '0']}
           >
-            <HStack
-              spacing={1}
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              fontSize={'sm'}
-              color={'myGray.900'}
-              fontWeight={500}
-              pb={['12px', '0']}
-            >
-              <Box>{t('common:core.ai.model.Vector Model')}</Box>
-              <QuestionTip label={t('common:core.dataset.embedding model tip')} />
-            </HStack>
-            <Box w={['100%', '300px']}>
-              <AIModelSelector
-                w={['100%', '300px']}
-                value={vectorModel}
-                list={filterNotHiddenVectorModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
-                onchange={(e) => {
-                  setValue('vectorModel' as const, e);
-                }}
-              />
-            </Box>
-          </Flex>
-        )}
-        {datasetModelList.length > 1 && (
-          <Flex
-            mt={6}
-            alignItems={['flex-start', 'center']}
-            justify={'space-between'}
-            flexDir={['column', 'row']}
+            <Box>{t('common:core.ai.model.Vector Model')}</Box>
+            <QuestionTip label={t('common:core.dataset.embedding model tip')} />
+          </HStack>
+          <Box w={['100%', '300px']}>
+            <AIModelSelector
+              w={['100%', '300px']}
+              value={vectorModel}
+              list={filterNotHiddenVectorModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              onchange={(e) => {
+                setValue('vectorModel' as const, e);
+              }}
+            />
+          </Box>
+        </Flex>
+        <Flex
+          mt={6}
+          alignItems={['flex-start', 'center']}
+          justify={'space-between'}
+          flexDir={['column', 'row']}
+        >
+          <HStack
+            spacing={1}
+            flex={['', '0 0 110px']}
+            fontSize={'sm'}
+            color={'myGray.900'}
+            fontWeight={500}
+            pb={['12px', '0']}
           >
-            <HStack
-              spacing={1}
-              flex={['', '0 0 110px']}
-              fontSize={'sm'}
-              color={'myGray.900'}
-              fontWeight={500}
-              pb={['12px', '0']}
-            >
-              <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
-              <QuestionTip label={t('dataset:file_model_function_tip')} />
-            </HStack>
-            <Box w={['100%', '300px']}>
-              <AIModelSelector
-                w={['100%', '300px']}
-                value={agentModel}
-                list={datasetModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
-                onchange={(e) => {
-                  setValue('agentModel' as const, e);
-                }}
-              />
-            </Box>
-          </Flex>
-        )}
+            <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+            <QuestionTip label={t('dataset:file_model_function_tip')} />
+          </HStack>
+          <Box w={['100%', '300px']}>
+            <AIModelSelector
+              w={['100%', '300px']}
+              value={agentModel}
+              list={datasetModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              onchange={(e) => {
+                setValue('agentModel' as const, e);
+              }}
+            />
+          </Box>
+        </Flex>
         {/* @ts-ignore */}
         <ApiDatasetForm type={type} form={form} />
       </ModalBody>

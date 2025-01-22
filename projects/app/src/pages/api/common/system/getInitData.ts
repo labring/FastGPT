@@ -5,6 +5,20 @@ import { NextAPI } from '@/service/middleware/entry';
 async function handler(req: ApiRequestProps<{}, { bufferId?: string }>, res: NextApiResponse) {
   const { bufferId } = req.query;
 
+  const activeModelList = global.systemActiveModelList.map((model) => ({
+    ...model,
+    customCQPrompt: undefined,
+    customExtractPrompt: undefined,
+    defaultSystemChatPrompt: undefined,
+    fieldMap: undefined,
+    defaultConfig: undefined,
+    weight: undefined,
+    dbConfig: undefined,
+    queryConfig: undefined,
+    requestUrl: undefined,
+    requestAuth: undefined
+  }));
+
   // If bufferId is the same as the current bufferId, return directly
   if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
     return {
@@ -17,21 +31,7 @@ async function handler(req: ApiRequestProps<{}, { bufferId?: string }>, res: Nex
     bufferId: global.systemInitBufferId,
     feConfigs: global.feConfigs,
     subPlans: global.subPlans,
-    llmModels: global.llmModels.map((model) => ({
-      ...model,
-      customCQPrompt: '',
-      customExtractPrompt: '',
-      defaultSystemChatPrompt: ''
-    })),
-    vectorModels: global.vectorModels,
-    reRankModels:
-      global.reRankModels?.map((item) => ({
-        ...item,
-        requestUrl: '',
-        requestAuth: ''
-      })) || [],
-    whisperModel: global.whisperModel,
-    audioSpeechModels: global.audioSpeechModels,
+    activeModelList,
     systemVersion: global.systemVersion || '0.0.0'
   };
 }

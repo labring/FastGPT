@@ -31,6 +31,7 @@ type OAuthItem = {
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const rootLogin = router.query.rootLogin === '1';
 
   const { setLoginStore, feConfigs } = useSystemStore();
   const { isPc } = useSystem();
@@ -147,7 +148,9 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     [lastRoute, router, setLoginStore, setPageType]
   );
 
+  // Auto login
   useEffect(() => {
+    if (rootLogin) return;
     const sso = oAuthList.find((item) => item.provider === OAuthEnum.sso);
     const wecom = oAuthList.find((item) => item.provider === OAuthEnum.wecom);
     if (feConfigs?.sso?.autoLogin && sso) {
@@ -157,7 +160,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       // Auto wecom login
       onClickOauth(wecom);
     }
-  }, [feConfigs?.sso?.autoLogin, isWecomWorkTerminal, onClickOauth]);
+  }, [rootLogin, feConfigs?.sso?.autoLogin, isWecomWorkTerminal, onClickOauth]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>

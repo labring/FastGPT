@@ -6,7 +6,7 @@ import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
-import { getAudioSpeechModel } from '@fastgpt/service/core/ai/model';
+import { getTTSModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
@@ -31,17 +31,19 @@ async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiRes
       ...req.body
     });
 
-    const ttsModel = getAudioSpeechModel(ttsConfig.model);
+    const ttsModel = getTTSModel(ttsConfig.model);
     const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);
 
     if (!voiceData) {
       throw new Error('voice not found');
     }
 
+    const bufferId = `${ttsModel.model}-${ttsConfig.voice}`;
+
     /* get audio from buffer */
     const ttsBuffer = await MongoTTSBuffer.findOne(
       {
-        bufferId: voiceData.bufferId,
+        bufferId,
         text: JSON.stringify({ text: input, speed: ttsConfig.speed })
       },
       'buffer'
@@ -70,11 +72,21 @@ async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiRes
           });
 
           /* create buffer */
-          await MongoTTSBuffer.create({
-            bufferId: voiceData.bufferId,
-            text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
-            buffer
-          });
+          await MongoTTSBuffer.create(
+            {
+              bufferId,
+              text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
+              buffer
+            },
+            ttsModel.requestUrl && ttsModel.requestAuth
+              ? {
+                  path: ttsModel.requestUrl,
+                  headers: {
+                    Authorization: `Bearer ${ttsModel.requestAuth}`
+                  }
+                }
+              : {}
+          );
         } catch (error) {}
       },
       onError: (err) => {
