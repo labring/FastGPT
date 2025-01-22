@@ -118,7 +118,6 @@ CHAT_API_KEY=sk-xxxxxx
       "usedInClassify": true, // 是否用于问题分类
       "usedInExtractFields": true, // 是否用于字段提取
       "usedInToolCall": true, // 是否用于工具调用
-      "usedInQueryExtension": true, // 是否用于问题优化
       "toolChoice": true, // 是否支持工具选择
       "functionCall": false, // 是否支持函数调用
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型

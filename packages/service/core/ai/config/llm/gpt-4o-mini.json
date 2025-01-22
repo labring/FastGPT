@@ -3,15 +3,13 @@
   "model": "gpt-4o-mini",
   "name": "GPT-4o-mini",
 
+  "censor": false,
+  "charsPointsPrice": 0,
+
   "maxContext": 125000,
   "maxResponse": 16000,
   "quoteMaxToken": 60000,
   "maxTemperature": 1.2,
-
-  "presencePenaltyRange": [-2, 2],
-  "frequencyPenaltyRange": [-2, 2],
-  "responseFormatList": ["text", "json_object", "json_schema"],
-  "showStopSign": true,
 
   "vision": true,
   "toolChoice": true,
@@ -24,11 +22,7 @@
   "usedInExtractFields": true,
   "customExtractPrompt": "",
   "usedInToolCall": true,
-  "usedInQueryExtension": true,
 
   "defaultConfig": {},
-  "fieldMap": {},
-
-  "censor": false,
-  "charsPointsPrice": 0
+  "fieldMap": {}
 }

@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 
 export type updateQuery = {};
 
@@ -19,15 +20,34 @@ async function handler(
 ): Promise<updateResponse> {
   await authSystemAdmin({ req });
 
-  const { model, metadata } = req.body;
+  let { model, metadata } = req.body;
+  if (!model) return Promise.reject(new Error('model is required'));
+  model = model.trim();
 
   const dbModel = await MongoSystemModel.findOne({ model }).lean();
+
+  const metadataConcat: Record<string, any> = {
+    ...dbModel?.metadata,
+    ...metadata,
+
+    avatar: undefined,
+    isCustom: undefined
+  };
+  // 强制赋值 model，避免脏的 metadata 覆盖真实 model
+  metadataConcat.model = model;
+  metadataConcat.name = metadataConcat?.name?.trim();
+  // Delete null value
+  Object.keys(metadataConcat).forEach((key) => {
+    if (metadataConcat[key] === null || metadataConcat[key] === undefined) {
+      delete metadataConcat[key];
+    }
+  });
 
   await MongoSystemModel.updateOne(
     { model },
     {
       model,
-      metadata: { ...dbModel?.metadata, ...metadata }
+      metadata: metadataConcat
     },
     {
       upsert: true
@@ -35,6 +55,7 @@ async function handler(
   );
 
   await delay(1000);
+  await loadSystemModels(true);
 
   return {};
 }

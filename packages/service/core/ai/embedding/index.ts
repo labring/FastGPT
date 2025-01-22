@@ -24,13 +24,23 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
 
     // input text to vector
     const result = await ai.embeddings
-      .create({
-        ...model.defaultConfig,
-        ...(type === EmbeddingTypeEnm.db && model.dbConfig),
-        ...(type === EmbeddingTypeEnm.query && model.queryConfig),
-        model: model.model,
-        input: [input]
-      })
+      .create(
+        {
+          ...model.defaultConfig,
+          ...(type === EmbeddingTypeEnm.db && model.dbConfig),
+          ...(type === EmbeddingTypeEnm.query && model.queryConfig),
+          model: model.model,
+          input: [input]
+        },
+        model.requestUrl && model.requestAuth
+          ? {
+              path: model.requestUrl,
+              headers: {
+                Authorization: `Bearer ${model.requestAuth}`
+              }
+            }
+          : {}
+      )
       .then(async (res) => {
         if (!res.data) {
           addLog.error('Embedding API is not responding', res);

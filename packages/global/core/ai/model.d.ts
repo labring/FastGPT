@@ -38,7 +38,6 @@ export type LLMModelItemType = PriceType &
     usedInClassify?: boolean; // classify
     usedInExtractFields?: boolean; // extract fields
     usedInToolCall?: boolean; // tool call
-    usedInQueryExtension?: boolean; // query extension
 
     functionCall: boolean;
     toolChoice: boolean;
@@ -71,7 +70,7 @@ export type ReRankModelItemType = PriceType &
 export type TTSModelType = PriceType &
   BaseModelItemType & {
     type: ModelTypeEnum.tts;
-    voices: { label: string; value: string; bufferId: string }[];
+    voices: { label: string; value: string }[];
   };
 
 export type STTModelType = PriceType &

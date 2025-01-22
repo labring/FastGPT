@@ -3,6 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { findAIModel } from '@fastgpt/service/core/ai/model';
 
 export type deleteQuery = {
   model: string;
@@ -20,16 +21,17 @@ async function handler(
 
   const { model } = req.query;
 
-  const dbModel = await MongoSystemModel.findOne({ model });
+  const modelData = findAIModel(model);
 
-  if (!dbModel) {
+  if (!modelData) {
     return Promise.reject('Model not found');
   }
-  if (!dbModel.metadata?.isCustom) {
+
+  if (!modelData.isCustom) {
     return Promise.reject('System model cannot be deleted');
   }
 
-  await dbModel.deleteOne();
+  await MongoSystemModel.deleteOne({ model });
 
   await delay(1000);
 

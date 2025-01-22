@@ -1,7 +1,6 @@
 import path from 'path';
 import * as fs from 'fs';
 import { SystemModelItemType } from '../type';
-import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { MongoSystemModel } from './schema';
 import {
@@ -15,14 +14,38 @@ import {
 type FolderBaseType = `${ModelTypeEnum}`;
 
 export const loadSystemModels = async (init = false) => {
-  if (!init && global.systemModelList && global.systemModelList.length > 0) return;
-
   const getModelNameList = (base: FolderBaseType) => {
     const currentFileUrl = new URL(import.meta.url);
     const modelsPath = path.join(path.dirname(currentFileUrl.pathname), base);
 
     return fs.readdirSync(modelsPath) as string[];
   };
+  const pushModel = (model: SystemModelItemType) => {
+    global.systemModelList.push(model);
+
+    if (model.isActive) {
+      global.systemActiveModelList.push(model);
+
+      if (model.type === ModelTypeEnum.llm) {
+        global.llmModelMap.set(model.model, model);
+        global.llmModelMap.set(model.name, model);
+      } else if (model.type === ModelTypeEnum.embedding) {
+        global.embeddingModelMap.set(model.model, model);
+        global.embeddingModelMap.set(model.name, model);
+      } else if (model.type === ModelTypeEnum.tts) {
+        global.ttsModelMap.set(model.model, model);
+        global.ttsModelMap.set(model.name, model);
+      } else if (model.type === ModelTypeEnum.stt) {
+        global.sttModelMap.set(model.model, model);
+        global.sttModelMap.set(model.name, model);
+      } else if (model.type === ModelTypeEnum.rerank) {
+        global.reRankModelMap.set(model.model, model);
+        global.reRankModelMap.set(model.name, model);
+      }
+    }
+  };
+
+  if (!init && global.systemModelList && global.systemModelList.length > 0) return;
 
   const dbModels = await MongoSystemModel.find({}).lean();
 
@@ -42,6 +65,7 @@ export const loadSystemModels = async (init = false) => {
     ModelTypeEnum.rerank
   ];
 
+  // System model
   await Promise.all(
     baseList.map(async (base) => {
       const modelList = getModelNameList(base);
@@ -52,41 +76,29 @@ export const loadSystemModels = async (init = false) => {
           const fileContent = (await import(`./${name}`))?.default as SystemModelItemType;
 
           const dbModel = dbModels.find((item) => item.model === fileContent.model);
-          const provider = dbModel?.metadata?.provider || fileContent.provider;
 
           const model: any = {
             ...fileContent,
             ...dbModel?.metadata,
-            avatar: getModelProvider(provider).avatar,
-            type: dbModel?.metadata?.type || base
+            type: dbModel?.metadata?.type || base,
+            isCustom: false
           };
 
-          global.systemModelList.push(model);
-
-          if (base === ModelTypeEnum.llm) {
-            global.llmModelMap.set(model.model, model);
-            global.llmModelMap.set(model.name, model);
-          } else if (base === ModelTypeEnum.embedding) {
-            global.embeddingModelMap.set(model.model, model);
-            global.embeddingModelMap.set(model.name, model);
-          } else if (base === ModelTypeEnum.tts) {
-            global.ttsModelMap.set(model.model, model);
-            global.ttsModelMap.set(model.name, model);
-          } else if (base === ModelTypeEnum.stt) {
-            global.sttModelMap.set(model.model, model);
-            global.sttModelMap.set(model.name, model);
-          } else if (base === ModelTypeEnum.rerank) {
-            global.reRankModelMap.set(model.model, model);
-            global.reRankModelMap.set(model.name, model);
-          }
-
-          if (model.isActive) {
-            global.systemActiveModelList.push(model);
-          }
+          pushModel(model);
         })
       );
     })
   );
+
+  // Custom model
+  dbModels.forEach((dbModel) => {
+    if (global.systemModelList.find((item) => item.model === dbModel.model)) return;
+
+    pushModel({
+      ...dbModel.metadata,
+      isCustom: true
+    });
+  });
 
   console.log('Load models success', JSON.stringify(global.systemModelList, null, 2));
 };

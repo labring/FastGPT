@@ -38,10 +38,12 @@ async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiRes
       throw new Error('voice not found');
     }
 
+    const bufferId = `${ttsModel.model}-${ttsConfig.voice}`;
+
     /* get audio from buffer */
     const ttsBuffer = await MongoTTSBuffer.findOne(
       {
-        bufferId: voiceData.bufferId,
+        bufferId,
         text: JSON.stringify({ text: input, speed: ttsConfig.speed })
       },
       'buffer'
@@ -70,11 +72,21 @@ async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiRes
           });
 
           /* create buffer */
-          await MongoTTSBuffer.create({
-            bufferId: voiceData.bufferId,
-            text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
-            buffer
-          });
+          await MongoTTSBuffer.create(
+            {
+              bufferId,
+              text: JSON.stringify({ text: input, speed: ttsConfig.speed }),
+              buffer
+            },
+            ttsModel.requestUrl && ttsModel.requestAuth
+              ? {
+                  path: ttsModel.requestUrl,
+                  headers: {
+                    Authorization: `Bearer ${ttsModel.requestAuth}`
+                  }
+                }
+              : {}
+          );
         } catch (error) {}
       },
       onError: (err) => {
