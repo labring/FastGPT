@@ -23,7 +23,6 @@ async function handler(req: ApiRequestProps<{}, { bufferId?: string }>, res: Nex
   if (bufferId && global.systemInitBufferId && global.systemInitBufferId === bufferId) {
     return {
       bufferId: global.systemInitBufferId,
-      activeModelList,
       systemVersion: global.systemVersion || '0.0.0'
     };
   }

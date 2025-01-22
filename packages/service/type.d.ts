@@ -12,6 +12,7 @@ import { Worker } from 'worker_threads';
 
 declare global {
   var systemInitBufferId: string | undefined;
+
   var systemVersion: string;
   var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;

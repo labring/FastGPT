@@ -80,6 +80,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   ]);
 
   const [search, setSearch] = useState('');
+  const [showActive, setShowActive] = useState(false);
 
   const {
     data: systemModelList = [],
@@ -215,11 +216,17 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       const regx = new RegExp(search, 'i');
       const nameFilter = search ? regx.test(item.name) : true;
 
-      return providerFilter && nameFilter;
+      const activeFilter = showActive ? item.isActive : true;
+
+      return providerFilter && nameFilter && activeFilter;
     });
 
     return filterList;
-  }, [systemModelList, t, modelType, provider, search]);
+  }, [systemModelList, t, modelType, provider, search, showActive]);
+
+  const activeModelLength = useMemo(() => {
+    return modelList.filter((item) => item.isActive).length;
+  }, [modelList]);
 
   const filterProviderList = useMemo(() => {
     const allProviderIds: string[] = systemModelList.map((model) => model.provider);
@@ -357,13 +364,21 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Th fontSize={'xs'}>{t('common:model.name')}</Th>
                   <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
                   <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-                  <Th fontSize={'xs'}>{t('account:model.active')}</Th>
+                  <Th fontSize={'xs'}>
+                    <Box
+                      cursor={'pointer'}
+                      onClick={() => setShowActive(!showActive)}
+                      color={showActive ? 'primary.600' : 'myGray.600'}
+                    >
+                      {t('account:model.active')}({activeModelLength})
+                    </Box>
+                  </Th>
                   <Th fontSize={'xs'}></Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {modelList.map((item, index) => (
-                  <Tr key={index} _hover={{ bg: 'myGray.50' }}>
+                  <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
                     <Td fontSize={'sm'}>
                       <HStack>
                         <Avatar src={item.avatar} w={'1.2rem'} />

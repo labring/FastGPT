@@ -80,7 +80,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   // load config
-  const [{ config: dbConfig, configId }, fileConfig] = await Promise.all([
+  const [{ config: dbConfig }, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);
@@ -102,7 +102,6 @@ export async function initSystemConfig() {
   };
 
   // set config
-  global.systemInitBufferId = configId;
   initFastGPTConfig(config);
 
   console.log({

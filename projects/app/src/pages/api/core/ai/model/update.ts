@@ -4,6 +4,7 @@ import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
+import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
 
 export type updateQuery = {};
 
@@ -55,7 +56,7 @@ async function handler(
   );
 
   await delay(1000);
-  await loadSystemModels(true);
+  await updateFastGPTConfigBuffer();
 
   return {};
 }

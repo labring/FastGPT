@@ -100,7 +100,7 @@ export const loadSystemModels = async (init = false) => {
     });
   });
 
-  console.log('Load models success', JSON.stringify(global.systemModelList, null, 2));
+  console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
 };
 
 export const watchSystemModelUpdate = () => {
