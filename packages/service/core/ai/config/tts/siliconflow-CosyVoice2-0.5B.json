@@ -1,0 +1,40 @@
+{
+  "provider": "Siliconflow",
+  "model": "FunAudioLLM/CosyVoice2-0.5B",
+  "name": "FunAudioLLM/CosyVoice2-0.5B",
+  "charsPointsPrice": 0,
+  "voices": [
+    {
+      "label": "alex",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:alex"
+    },
+    {
+      "label": "anna",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:anna"
+    },
+    {
+      "label": "bella",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:bella"
+    },
+    {
+      "label": "benjamin",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:benjamin"
+    },
+    {
+      "label": "charles",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:charles"
+    },
+    {
+      "label": "claire",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:claire"
+    },
+    {
+      "label": "david",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:david"
+    },
+    {
+      "label": "diana",
+      "value": "FunAudioLLM/CosyVoice2-0.5B:diana"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "provider": "Doubao",
+  "model": "Doubao-embedding",
+  "name": "Doubao-embedding",
+
+  "defaultToken": 512,
+  "maxToken": 4096,
+
+  "charsPointsPrice": 0
+}

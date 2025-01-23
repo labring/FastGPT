@@ -20,6 +20,7 @@ export type ModelProviderIdType =
   | 'Baichuan'
   | 'StepFun'
   | 'Yi'
+  | 'Siliconflow'
   | 'Ollama'
   | 'BAAI'
   | 'FishAudio'
@@ -154,6 +155,11 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'Moka',
     name: i18nT('common:model_moka'),
     avatar: 'model/moka'
+  },
+  {
+    id: 'Siliconflow',
+    name: i18nT('common:model_siliconflow'),
+    avatar: 'model/siliconflow'
   },
   {
     id: 'Other',

@@ -1,0 +1,10 @@
+{
+  "provider": "Hunyuan",
+  "model": "hunyuan-embedding",
+  "name": "hunyuan-embedding",
+
+  "defaultToken": 512,
+  "maxToken": 1024,
+
+  "charsPointsPrice": 0
+}

@@ -1,0 +1,10 @@
+{
+  "provider": "Ernie",
+  "model": "tao-8k",
+  "name": "tao-8k",
+
+  "defaultToken": 512,
+  "maxToken": 8000,
+
+  "charsPointsPrice": 0
+}

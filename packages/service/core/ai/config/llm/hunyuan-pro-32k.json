@@ -1,0 +1,29 @@
+{
+  "provider": "Hunyuan",
+  "model": "hunyuan-pro-32k(测试)",
+  "name": "hunyuan-pro-32k(测试)",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 28000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 28000,
+  "maxTemperature": 1,
+
+  "vision": false,
+  "toolChoice": false,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}

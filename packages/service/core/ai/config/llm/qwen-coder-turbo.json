@@ -1,0 +1,29 @@
+{
+  "provider": "Qwen",
+  "model": "qwen-coder-turbo",
+  "name": "qwen-coder-turbo",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 128000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 50000,
+  "maxTemperature": 1,
+
+  "vision": false,
+  "toolChoice": false,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": false,
+  "usedInClassify": false,
+  "customCQPrompt": "",
+  "usedInExtractFields": false,
+  "usedInQueryExtension": false,
+  "customExtractPrompt": "",
+  "usedInToolCall": false,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}
