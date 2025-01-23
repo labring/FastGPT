@@ -13,6 +13,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const PriceBox = () => {
   const { userInfo } = useUserStore();
@@ -20,8 +21,9 @@ const PriceBox = () => {
   const { feConfigs } = useSystemStore();
   const router = useRouter();
 
-  const { data: teamSubPlan } = useQuery(['getTeamPlanStatus'], getTeamPlanStatus, {
-    enabled: !!userInfo
+  const { data: teamSubPlan } = useRequest2(getTeamPlanStatus, {
+    manual: false,
+    refreshDeps: [userInfo]
   });
 
   const onPaySuccess = () => {

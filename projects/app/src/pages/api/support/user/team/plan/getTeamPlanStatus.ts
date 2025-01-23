@@ -4,14 +4,16 @@ import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { teamId } = await authCert({
-    req,
-    authToken: true
-  });
+  try {
+    const { teamId } = await authCert({
+      req,
+      authToken: true
+    });
 
-  return getTeamPlanStatus({
-    teamId
-  });
+    return getTeamPlanStatus({
+      teamId
+    });
+  } catch (error) {}
 }
 
 export default NextAPI(handler);
