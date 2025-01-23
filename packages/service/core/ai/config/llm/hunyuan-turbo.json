@@ -3,9 +3,6 @@
   "model": "hunyuan-turbo",
   "name": "hunyuan-turbo",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 28000,
   "maxResponse": 4000,
   "quoteMaxToken": 20000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

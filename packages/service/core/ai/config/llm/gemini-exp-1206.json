@@ -3,9 +3,6 @@
   "model": "gemini-exp-1206",
   "name": "gemini-exp-1206",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 128000,
   "maxResponse": 8000,
   "quoteMaxToken": 120000,

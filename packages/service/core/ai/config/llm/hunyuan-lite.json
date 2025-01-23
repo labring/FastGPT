@@ -3,9 +3,6 @@
   "model": "hunyuan-lite",
   "name": "hunyuan-lite",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 250000,
   "maxResponse": 6000,
   "quoteMaxToken": 100000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

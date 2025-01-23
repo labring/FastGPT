@@ -125,7 +125,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           ) : (
             <Flex color={'myGray.700'}>
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-                {item.charsPointsPrice}
+                {item.charsPointsPrice || 0}
               </Box>
               {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
             </Flex>
@@ -140,7 +140,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {item.charsPointsPrice || 0}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
           </Flex>
@@ -155,7 +155,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {item.charsPointsPrice || 0}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
           </Flex>

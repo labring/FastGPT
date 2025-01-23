@@ -46,9 +46,7 @@ export const loadSystemModels = async (init = false) => {
     }
   };
 
-  if (!init && global.systemModelList && global.systemModelList.length > 0) return;
-
-  const dbModels = await MongoSystemModel.find({}).lean();
+  if (!init && global.systemModelList) return;
 
   global.systemModelList = [];
   global.systemActiveModelList = [];
@@ -57,6 +55,8 @@ export const loadSystemModels = async (init = false) => {
   global.ttsModelMap = new Map<string, TTSModelType>();
   global.sttModelMap = new Map<string, STTModelType>();
   global.reRankModelMap = new Map<string, ReRankModelItemType>();
+
+  const dbModels = await MongoSystemModel.find({}).lean();
 
   const baseList: FolderBaseType[] = [
     ModelTypeEnum.llm,

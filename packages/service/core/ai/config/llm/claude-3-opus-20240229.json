@@ -3,9 +3,6 @@
   "model": "claude-3-opus-20240229",
   "name": "claude-3-opus-20240229",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 200000,
   "maxResponse": 4096,
   "quoteMaxToken": 100000,

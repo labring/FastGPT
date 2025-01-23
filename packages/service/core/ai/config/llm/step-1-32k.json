@@ -1,0 +1,20 @@
+{
+  "provider": "StepFun",
+  "model": "step-1-32k",
+  "name": "step-1-32k",
+  "maxContext": 32000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 30000,
+  "maxTemperature": 2,
+  "vision": false,
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "usedInExtractFields": true,
+  "usedInToolCall": true,
+  "usedInQueryExtension": true,
+  "toolChoice": false,
+  "functionCall": false,
+  "customCQPrompt": "",
+  "customExtractPrompt": "",
+  "defaultSystemChatPrompt": ""
+}

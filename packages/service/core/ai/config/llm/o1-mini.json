@@ -3,9 +3,6 @@
   "model": "o1-mini",
   "name": "o1-mini",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 125000,
   "maxResponse": 4000,
   "quoteMaxToken": 120000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

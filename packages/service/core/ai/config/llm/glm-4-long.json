@@ -3,9 +3,6 @@
   "model": "glm-4-long",
   "name": "glm-4-long",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 1000000,
   "maxResponse": 4000,
   "quoteMaxToken": 900000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

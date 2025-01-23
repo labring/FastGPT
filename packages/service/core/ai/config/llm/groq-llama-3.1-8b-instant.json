@@ -3,9 +3,6 @@
   "model": "llama-3.1-8b-instant",
   "name": "Groq-llama-3.1-8b-instant",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 125000,
   "maxResponse": 8000,
   "quoteMaxToken": 60000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

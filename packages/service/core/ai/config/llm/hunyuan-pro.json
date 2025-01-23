@@ -3,9 +3,6 @@
   "model": "hunyuan-pro",
   "name": "hunyuan-pro",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 28000,
   "maxResponse": 4000,
   "quoteMaxToken": 28000,

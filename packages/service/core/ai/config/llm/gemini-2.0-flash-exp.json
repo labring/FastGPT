@@ -3,9 +3,6 @@
   "model": "gemini-2.0-flash-exp",
   "name": "Gemini-2.0-flash-exp",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 1000000,
   "maxResponse": 8000,
   "quoteMaxToken": 60000,

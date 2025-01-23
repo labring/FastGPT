@@ -33,7 +33,18 @@ const DatasetDataTextSchema = new Schema({
 });
 
 try {
-  DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
+  DatasetDataTextSchema.index(
+    { teamId: 1, datasetId: 1, fullTextToken: 'text' },
+    {
+      name: 'teamId_1_datasetId_1_fullTextToken_text',
+      default_language: 'none',
+      collation: {
+        locale: 'simple', // 使用简单匹配规则
+        strength: 2, //  忽略大小写
+        caseLevel: false // 进一步确保大小写不敏感
+      }
+    }
+  );
   DatasetDataTextSchema.index({ dataId: 1 }, { unique: true });
 } catch (error) {
   console.log(error);

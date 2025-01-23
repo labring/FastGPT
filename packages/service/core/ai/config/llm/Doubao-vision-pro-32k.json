@@ -3,9 +3,6 @@
   "model": "Doubao-vision-pro-32k",
   "name": "Doubao-vision-pro-32k",
 
-  "censor": false,
-  "charsPointsPrice": 2,
-
   "maxContext": 32000,
   "maxResponse": 4000,
   "quoteMaxToken": 30000,
@@ -22,7 +19,7 @@
   "usedInExtractFields": true,
   "usedInQueryExtension": true,
   "customExtractPrompt": "",
-  "usedInToolCall": false,
+  "usedInToolCall": true,
 
   "defaultConfig": {},
   "fieldMap": {}
