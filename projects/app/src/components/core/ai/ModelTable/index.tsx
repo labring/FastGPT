@@ -26,6 +26,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
+import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -252,7 +253,9 @@ const ModelTable = () => {
                 <Td fontSize={'sm'}>
                   <HStack>
                     <Avatar src={item.avatar} w={'1.2rem'} />
-                    <Box color={'myGray.900'}>{item.name}</Box>
+                    <CopyBox value={item.name} color={'myGray.900'}>
+                      {item.name}
+                    </CopyBox>
                   </HStack>
                 </Td>
                 <Td>

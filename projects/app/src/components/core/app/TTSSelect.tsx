@@ -15,7 +15,7 @@ import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pages/app/detail/components/context';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 const TTSSelect = ({
   value = defaultTTSConfig,

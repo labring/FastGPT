@@ -3,9 +3,9 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import ApplyInvoiceModal from './components/ApplyInvoiceModal';
+import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
-import AccountContainer, { TabEnum } from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 export enum InvoiceTabEnum {
@@ -14,9 +14,9 @@ export enum InvoiceTabEnum {
   invoiceHeader = 'invoiceHeader'
 }
 
-const BillTable = dynamic(() => import('./components/BillTable'));
-const InvoiceHeaderForm = dynamic(() => import('./components/InvoiceHeaderForm'));
-const InvoiceTable = dynamic(() => import('./components/InvoiceTable'));
+const BillTable = dynamic(() => import('@/pageComponents/account/bill/BillTable'));
+const InvoiceHeaderForm = dynamic(() => import('@/pageComponents/account/bill/InvoiceHeaderForm'));
+const InvoiceTable = dynamic(() => import('@/pageComponents/account/bill/InvoiceTable'));
 const BillAndInvoice = () => {
   const { t } = useTranslation();
   const router = useRouter();

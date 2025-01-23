@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 
 export const codeLight: { [key: string]: React.CSSProperties } = {

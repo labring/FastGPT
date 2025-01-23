@@ -12,7 +12,7 @@ import {
   ModalCloseButton
 } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';

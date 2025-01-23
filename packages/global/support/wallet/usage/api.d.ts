@@ -6,21 +6,20 @@ export type CreateTrainingUsageProps = {
   datasetId: string;
 };
 
-export type GetTotalPointsProps = {
-  dateStart: Date;
-  dateEnd: Date;
-  teamMemberIds: string[];
-  sources: UsageSourceEnum[];
-  unit: 'day' | 'week' | 'month';
-};
-
 export type GetUsageProps = {
   dateStart: Date;
   dateEnd: Date;
   sources?: UsageSourceEnum[];
   teamMemberIds?: string[];
   projectName?: string;
-  isSelectAllTmb?: boolean;
+};
+
+export type GetUsageDashboardProps = GetUsageProps & {
+  unit: 'day' | 'month';
+};
+export type GetUsageDashboardResponseItem = {
+  date: Date;
+  totalPoints: number;
 };
 
 export type ConcatUsageProps = UsageListItemCountType & {

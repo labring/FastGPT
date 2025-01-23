@@ -9,7 +9,7 @@ import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
-import AccountContainer from './components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 
 const Individuation = () => {
