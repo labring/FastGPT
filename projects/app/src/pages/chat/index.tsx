@@ -11,9 +11,9 @@ import { useTranslation } from 'next-i18next';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
-import ChatHistorySlider from './components/ChatHistorySlider';
-import SliderApps from './components/SliderApps';
-import ChatHeader from './components/ChatHeader';
+import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
+import SliderApps from '@/pageComponents/chat/SliderApps';
+import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -37,7 +37,7 @@ import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 
-const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
+const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();

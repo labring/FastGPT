@@ -8,7 +8,7 @@ import { addDays, startOfMonth, startOfWeek } from 'date-fns';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import AccountContainer from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
@@ -21,10 +21,10 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
-import UsageTableList from './components/UsageTable';
-import { UnitType } from './type';
+import UsageTableList from '@/pageComponents/account/usage/UsageTable';
+import { UnitType } from '@/pageComponents/account/usage/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-const UsageDashboard = dynamic(() => import('./components/Dashboard'));
+const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
 
 export enum UsageTabEnum {
   detail = 'detail',

@@ -5,19 +5,19 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
-import AppContextProvider, { AppContext } from './components/context';
+import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
-const SimpleEdit = dynamic(() => import('./components/SimpleApp'), {
+const SimpleEdit = dynamic(() => import('@/pageComponents/app/detail/SimpleApp'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const Workflow = dynamic(() => import('./components/Workflow'), {
+const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
-const Plugin = dynamic(() => import('./components/Plugin'), {
+const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
