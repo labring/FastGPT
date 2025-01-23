@@ -1,0 +1,14 @@
+{
+  "provider": "OpenAI",
+  "model": "text-embedding-3-large",
+  "name": "text-embedding-3-large",
+
+  "defaultToken": 512,
+  "maxToken": 3000,
+
+  "charsPointsPrice": 0,
+
+  "defaultConfig": {
+    "dimensions": 1024
+  }
+}

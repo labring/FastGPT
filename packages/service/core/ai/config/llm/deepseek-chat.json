@@ -1,0 +1,26 @@
+{
+  "provider": "DeepSeek",
+  "model": "deepseek-chat",
+  "name": "Deepseek-chat",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 64000,
+  "maxResponse": 4096,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1.5,
+
+  "vision": false,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true
+}

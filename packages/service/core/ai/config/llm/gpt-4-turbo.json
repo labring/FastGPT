@@ -1,0 +1,30 @@
+{
+  "provider": "OpenAI",
+  "model": "gpt-4-turbo",
+  "name": "gpt-4-turbo(abandon)",
+
+  "censor": true,
+  "charsPointsPrice": 15,
+
+  "maxContext": 125000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1.2,
+
+  "vision": true,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": false,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {
+    "max_tokens": null
+  }
+}

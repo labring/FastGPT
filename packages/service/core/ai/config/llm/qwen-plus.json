@@ -1,0 +1,29 @@
+{
+  "provider": "Qwen",
+  "model": "qwen-plus",
+  "name": "Qwen-plus",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 64000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1,
+
+  "vision": false,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}

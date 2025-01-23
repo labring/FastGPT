@@ -1,0 +1,29 @@
+{
+  "provider": "Gemini",
+  "model": "gemini-2.0-flash-thinking-exp-01-21",
+  "name": "Gemini-2.0-flash-thinking-exp",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 1000000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1,
+
+  "vision": true,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}

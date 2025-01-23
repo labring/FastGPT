@@ -1,0 +1,10 @@
+{
+  "provider": "Gemini",
+  "model": "text-embedding-004",
+  "name": "text-embedding-004",
+
+  "defaultToken": 512,
+  "maxToken": 2000,
+
+  "charsPointsPrice": 0
+}
