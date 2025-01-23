@@ -1,7 +1,7 @@
 {
   "provider": "Hunyuan",
-  "model": "hunyuan-pro-32k(测试)",
-  "name": "hunyuan-pro-32k(测试)",
+  "model": "hunyuan-pro",
+  "name": "hunyuan-pro",
 
   "censor": false,
   "charsPointsPrice": 0,
