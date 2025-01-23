@@ -359,6 +359,8 @@ const InputTypeConfig = ({
               <MultipleSelect<WorkflowIOValueTypeEnum>
                 list={valueTypeSelectList}
                 bg={'myGray.50'}
+                minH={'40px'}
+                py={2}
                 value={selectValueTypeList || []}
                 onSelect={(e) => {
                   setValue('customInputConfig.selectValueTypeList', e);

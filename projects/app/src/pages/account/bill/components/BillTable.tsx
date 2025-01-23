@@ -32,6 +32,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+
 const BillTable = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -177,6 +178,7 @@ export default BillTable;
 
 function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
   const { t } = useTranslation();
+
   return (
     <MyModal
       isOpen={true}
