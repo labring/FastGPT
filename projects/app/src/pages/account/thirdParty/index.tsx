@@ -1,4 +1,4 @@
-import AccountContainer from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex, Grid, Progress, useDisclosure } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -7,7 +7,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
-import WorkflowVariableModal from './components/WorkflowVariableModal';
+import WorkflowVariableModal from '@/pageComponents/account/thirdParty/WorkflowVariableModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -16,7 +16,9 @@ import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdPar
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
-const OpenAIAccountModal = dynamic(() => import('./components/OpenAIAccountModal'));
+const OpenAIAccountModal = dynamic(
+  () => import('@/pageComponents/account/thirdParty/OpenAIAccountModal')
+);
 
 export type ThirdPartyAccountType = {
   name: string;

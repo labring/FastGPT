@@ -3,7 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { filterSensitiveNodesData } from '@/web/core/workflow/utils';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { fileDownload } from '@/web/common/file/utils';
 import { AppChatConfigType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';

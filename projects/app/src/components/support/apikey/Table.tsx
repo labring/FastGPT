@@ -26,7 +26,7 @@ import {
 import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
 import dayjs from 'dayjs';
 import { AddIcon } from '@chakra-ui/icons';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';

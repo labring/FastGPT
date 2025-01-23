@@ -4,7 +4,7 @@ import { Box, Flex, Grid, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemo, useState } from 'react';
-import PluginCard from './components/PluginCard';
+import PluginCard from '@/pageComponents/toolkit/PluginCard';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';

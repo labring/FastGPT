@@ -1,6 +1,6 @@
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import React, { useMemo, useState } from 'react';
-import AccountContainer from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import ModelTable from '@/components/core/ai/ModelTable';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -8,7 +8,7 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 
-const ModelConfigTable = dynamic(() => import('./components/ModelConfigTable'));
+const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
 
 type TabType = 'model' | 'config' | 'channel';
 

@@ -101,7 +101,7 @@ const DateRangePicker = ({
                 date.to = date.from;
               }
               setRange(date);
-              onChange && onChange(date);
+              onChange?.(date);
             }}
             footer={
               <Flex justifyContent={'flex-end'}>
@@ -116,7 +116,7 @@ const DateRangePicker = ({
                 <Button
                   size={'sm'}
                   onClick={() => {
-                    onSuccess && onSuccess(range || defaultDate);
+                    onSuccess?.(range || defaultDate);
                     setShowSelected(false);
                   }}
                 >

@@ -10,7 +10,7 @@ import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
-const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
+const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
 export type AdminMarkType = {
   feedbackDataId?: string;
