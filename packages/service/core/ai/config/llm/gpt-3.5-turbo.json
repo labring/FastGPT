@@ -1,0 +1,30 @@
+{
+  "provider": "OpenAI",
+  "model": "gpt-3.5-turbo",
+  "name": "gpt-3.5-turbo(abandon)",
+
+  "censor": true,
+  "charsPointsPrice": 1,
+
+  "maxContext": 16000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 13000,
+  "maxTemperature": 1.2,
+
+  "vision": false,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": false,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {
+    "max_tokens": null
+  }
+}

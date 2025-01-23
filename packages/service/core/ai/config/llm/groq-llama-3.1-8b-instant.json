@@ -1,0 +1,28 @@
+{
+  "provider": "Groq",
+  "model": "llama-3.1-8b-instant",
+  "name": "Groq-llama-3.1-8b-instant",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 125000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1.2,
+
+  "vision": true,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": false,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {}
+}

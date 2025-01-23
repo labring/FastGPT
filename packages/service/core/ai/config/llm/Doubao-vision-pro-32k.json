@@ -1,0 +1,29 @@
+{
+  "provider": "Doubao",
+  "model": "Doubao-vision-pro-32k",
+  "name": "Doubao-vision-pro-32k",
+
+  "censor": false,
+  "charsPointsPrice": 2,
+
+  "maxContext": 32000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 30000,
+  "maxTemperature": 1,
+
+  "vision": true,
+  "toolChoice": false,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": false,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}
