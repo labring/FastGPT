@@ -158,6 +158,7 @@ const UsageTable = () => {
                 height={'32px'}
                 bg={'myGray.50'}
                 w={'160px'}
+                showCheckedIcon={false}
                 ScrollData={ScrollData}
                 isSelectAll={isSelectAllTmb}
                 setIsSelectAll={setIsSelectAllTmb}
@@ -178,6 +179,7 @@ const UsageTable = () => {
               height={'32px'}
               bg={'myGray.50'}
               w={'160px'}
+              showCheckedIcon={false}
             />
           </Box>
         </Flex>

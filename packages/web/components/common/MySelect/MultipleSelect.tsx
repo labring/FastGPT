@@ -29,6 +29,7 @@ export type SelectProps<T = any> = {
   itemWrap?: boolean;
   onSelect: (val: T[]) => void;
   closeable?: boolean;
+  showCheckedIcon?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
   isSelectAll?: boolean;
   setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
@@ -41,6 +42,7 @@ const MultipleSelect = <T = any,>({
   maxH = 400,
   onSelect,
   closeable = false,
+  showCheckedIcon = true,
   itemWrap = true,
   ScrollData,
   isSelectAll,
@@ -90,7 +92,8 @@ const MultipleSelect = <T = any,>({
           <MenuItem
             key={i}
             {...menuItemStyles}
-            {...(value.includes(item.value)
+            {...((isSelectAll && !value.includes(item.value)) ||
+            (!isSelectAll && value.includes(item.value))
               ? {
                   color: 'primary.600'
                 }
@@ -106,17 +109,24 @@ const MultipleSelect = <T = any,>({
             fontSize={'sm'}
             gap={2}
           >
-            <Checkbox
-              isChecked={
-                (isSelectAll && !value.includes(item.value)) ||
-                (!isSelectAll && value.includes(item.value))
-              }
-            />
+            {!showCheckedIcon && (
+              <Checkbox
+                isChecked={
+                  (isSelectAll && !value.includes(item.value)) ||
+                  (!isSelectAll && value.includes(item.value))
+                }
+              />
+            )}
             {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
             <Box flex={'1 0 0'}>{item.label}</Box>
-            <Box w={'0.8rem'} lineHeight={1}>
-              {value.includes(item.value) && <MyIcon name={'price/right'} w={'1rem'} />}
-            </Box>
+            {showCheckedIcon && (
+              <Box w={'0.8rem'} lineHeight={1}>
+                {(isSelectAll && !value.includes(item.value)) ||
+                  (!isSelectAll && value.includes(item.value) && (
+                    <MyIcon name={'price/right'} w={'1rem'} />
+                  ))}
+              </Box>
+            )}
           </MenuItem>
         ))}
       </>
@@ -246,8 +256,13 @@ const MultipleSelect = <T = any,>({
             gap={2}
             mb={1}
           >
-            <Checkbox isChecked={isAllSelected} />
-            <Box>{t('common:common.All')}</Box>
+            {!showCheckedIcon && <Checkbox isChecked={isAllSelected} />}
+            <Box flex={'1 0 0'}>{t('common:common.All')}</Box>
+            {showCheckedIcon && (
+              <Box w={'0.8rem'} lineHeight={1}>
+                {isAllSelected && <MyIcon name={'price/right'} w={'1rem'} />}
+              </Box>
+            )}
           </MenuItem>
 
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
