@@ -8,7 +8,7 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
-import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { getFirstSTTModel } from '@fastgpt/service/core/ai/model';
 
 const upload = getUploadModel({
@@ -90,7 +90,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   removeFilesByPaths(filePaths);
 }
 
-export default NextAPI(useReqFrequencyLimit(1, 1), handler);
+export default NextAPI(useIPFrequencyLimit(1, 1), handler);
 
 export const config = {
   api: {

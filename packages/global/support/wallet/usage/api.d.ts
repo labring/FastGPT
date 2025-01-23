@@ -20,7 +20,6 @@ export type GetUsageProps = {
   sources?: UsageSourceEnum[];
   teamMemberIds?: string[];
   projectName?: string;
-  isSelectAllTmb?: boolean;
 };
 
 export type ConcatUsageProps = UsageListItemCountType & {

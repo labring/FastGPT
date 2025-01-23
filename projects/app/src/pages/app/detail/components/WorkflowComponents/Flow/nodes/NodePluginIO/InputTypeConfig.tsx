@@ -18,7 +18,9 @@ import {
   FlowValueTypeMap
 } from '@fastgpt/global/core/workflow/node/constant';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect, {
+  useMultipleSelect
+} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import React, { useMemo } from 'react';
@@ -79,9 +81,12 @@ const InputTypeConfig = ({
   const maxLength = watch('maxLength');
   const max = watch('max');
   const min = watch('min');
-  const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
   const defaultValue = watch('defaultValue');
   const valueType = watch('valueType');
+
+  const selectValueTypeList = watch('customInputConfig.selectValueTypeList');
+  const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
+    useMultipleSelect(selectValueTypeList, false);
 
   const toolDescription = watch('toolDescription');
   const isToolInput = !!toolDescription;
@@ -365,6 +370,8 @@ const InputTypeConfig = ({
                 onSelect={(e) => {
                   setValue('customInputConfig.selectValueTypeList', e);
                 }}
+                isSelectAll={isSelectAllValueType}
+                setIsSelectAll={setIsSelectAllValueType}
               />
             </Box>
           </>

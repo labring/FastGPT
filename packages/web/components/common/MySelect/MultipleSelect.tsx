@@ -10,29 +10,30 @@ import {
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
 import { useTranslation } from 'next-i18next';
 import { useScrollPagination } from '../../../hooks/useScrollPagination';
+import MyDivider from '../MyDivider';
 
 export type SelectProps<T = any> = {
-  value: T[];
-  placeholder?: string;
   list: {
     icon?: string;
     label: string | React.ReactNode;
     value: T;
   }[];
+  value: T[];
+  isSelectAll: boolean;
+  setIsSelectAll: React.Dispatch<React.SetStateAction<boolean>>;
+
+  placeholder?: string;
   maxH?: number;
   itemWrap?: boolean;
   onSelect: (val: T[]) => void;
   closeable?: boolean;
-  showCheckedIcon?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
-  isSelectAll?: boolean;
-  setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 } & Omit<ButtonProps, 'onSelect'>;
 
 const MultipleSelect = <T = any,>({
@@ -42,7 +43,6 @@ const MultipleSelect = <T = any,>({
   maxH = 400,
   onSelect,
   closeable = false,
-  showCheckedIcon = true,
   itemWrap = true,
   ScrollData,
   isSelectAll,
@@ -65,78 +65,65 @@ const MultipleSelect = <T = any,>({
     }
   };
 
-  const onclickItem = (val: T) => {
-    if (value.includes(val)) {
-      onSelect(value.filter((i) => i !== val));
-    } else {
-      onSelect([...value, val]);
-    }
-  };
+  const onclickItem = useCallback(
+    (val: T) => {
+      // 全选状态下，value 实际上上空。
+      if (isSelectAll) {
+        onSelect(list.map((item) => item.value).filter((i) => i !== val));
+        setIsSelectAll(false);
+        return;
+      }
 
-  const onSelectAll = () => {
-    if (!setIsSelectAll) {
-      onSelect(value.length === list.length ? [] : list.map((item) => item.value));
-      return;
-    }
+      if (value.includes(val)) {
+        onSelect(value.filter((i) => i !== val));
+      } else {
+        onSelect([...value, val]);
+      }
+    },
+    [value, isSelectAll, onSelect, setIsSelectAll]
+  );
 
-    if (isSelectAll) {
-      onSelect([]);
-    }
+  const onSelectAll = useCallback(() => {
+    const hasSelected = isSelectAll || value.length > 0;
+    onSelect(hasSelected ? [] : list.map((item) => item.value));
+
     setIsSelectAll((state) => !state);
-  };
+  }, [value, list, setIsSelectAll, onSelect]);
 
   const ListRender = useMemo(() => {
     return (
       <>
-        {list.map((item, i) => (
-          <MenuItem
-            key={i}
-            {...menuItemStyles}
-            {...((isSelectAll && !value.includes(item.value)) ||
-            (!isSelectAll && value.includes(item.value))
-              ? {
-                  color: 'primary.600'
-                }
-              : {
-                  color: 'myGray.900'
-                })}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onclickItem(item.value);
-            }}
-            whiteSpace={'pre-wrap'}
-            fontSize={'sm'}
-            gap={2}
-          >
-            {!showCheckedIcon && (
-              <Checkbox
-                isChecked={
-                  (isSelectAll && !value.includes(item.value)) ||
-                  (!isSelectAll && value.includes(item.value))
-                }
-              />
-            )}
-            {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
-            <Box flex={'1 0 0'}>{item.label}</Box>
-            {showCheckedIcon && (
-              <Box w={'0.8rem'} lineHeight={1}>
-                {(isSelectAll && !value.includes(item.value)) ||
-                  (!isSelectAll && value.includes(item.value) && (
-                    <MyIcon name={'price/right'} w={'1rem'} />
-                  ))}
-              </Box>
-            )}
-          </MenuItem>
-        ))}
+        {list.map((item, i) => {
+          const isSelected = isSelectAll || value.includes(item.value);
+          return (
+            <MenuItem
+              key={i}
+              {...menuItemStyles}
+              {...(isSelected
+                ? {
+                    color: 'primary.600'
+                  }
+                : {
+                    color: 'myGray.900'
+                  })}
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onclickItem(item.value);
+              }}
+              whiteSpace={'pre-wrap'}
+              fontSize={'sm'}
+              gap={2}
+            >
+              <Checkbox isChecked={isSelected} />
+              {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
+              <Box flex={'1 0 0'}>{item.label}</Box>
+            </MenuItem>
+          );
+        })}
       </>
     );
   }, [value, list, isSelectAll]);
-
-  const isAllSelected = useMemo(
-    () => (isSelectAll && value.length === 0) || (!isSelectAll && value.length === list.length),
-    [isSelectAll, value, list]
-  );
 
   return (
     <Box>
@@ -186,44 +173,43 @@ const MultipleSelect = <T = any,>({
                 overflow={'hidden'}
                 flex={1}
               >
-                {isAllSelected ? (
+                {isSelectAll ? (
                   <Box fontSize={'mini'} color={'myGray.900'}>
                     {t('common:common.All')}
                   </Box>
                 ) : (
-                  (isSelectAll
-                    ? list.filter((item) => !value.includes(item.value))
-                    : list.filter((item) => value.includes(item.value))
-                  ).map((item, i) => (
-                    <MyTag
-                      className="tag-icon"
-                      key={i}
-                      bg={'primary.100'}
-                      color={'primary.700'}
-                      type={'fill'}
-                      borderRadius={'full'}
-                      px={2}
-                      py={0.5}
-                      flexShrink={0}
-                    >
-                      {item.label}
-                      {closeable && (
-                        <MyIcon
-                          name={'common/closeLight'}
-                          ml={1}
-                          w="0.8rem"
-                          cursor={'pointer'}
-                          _hover={{
-                            color: 'red.500'
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onclickItem(item.value);
-                          }}
-                        />
-                      )}
-                    </MyTag>
-                  ))
+                  list
+                    .filter((item) => value.includes(item.value))
+                    .map((item, i) => (
+                      <MyTag
+                        className="tag-icon"
+                        key={i}
+                        bg={'primary.100'}
+                        color={'primary.700'}
+                        type={'fill'}
+                        borderRadius={'full'}
+                        px={2}
+                        py={0.5}
+                        flexShrink={0}
+                      >
+                        {item.label}
+                        {closeable && (
+                          <MyIcon
+                            name={'common/closeLight'}
+                            ml={1}
+                            w="0.8rem"
+                            cursor={'pointer'}
+                            _hover={{
+                              color: 'red.500'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onclickItem(item.value);
+                            }}
+                          />
+                        )}
+                      </MyTag>
+                    ))
                 )}
               </Flex>
               <MyIcon name={'core/chat/chevronDown'} color={'myGray.600'} w={4} h={4} />
@@ -245,7 +231,7 @@ const MultipleSelect = <T = any,>({
         >
           <MenuItem
             {...menuItemStyles}
-            color={isAllSelected ? 'primary.600' : 'myGray.900'}
+            color={isSelectAll ? 'primary.600' : 'myGray.900'}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
@@ -256,14 +242,11 @@ const MultipleSelect = <T = any,>({
             gap={2}
             mb={1}
           >
-            {!showCheckedIcon && <Checkbox isChecked={isAllSelected} />}
+            <Checkbox isChecked={isSelectAll} />
             <Box flex={'1 0 0'}>{t('common:common.All')}</Box>
-            {showCheckedIcon && (
-              <Box w={'0.8rem'} lineHeight={1}>
-                {isAllSelected && <MyIcon name={'price/right'} w={'1rem'} />}
-              </Box>
-            )}
           </MenuItem>
+
+          <MyDivider my={1} />
 
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
         </MenuList>
@@ -273,3 +256,9 @@ const MultipleSelect = <T = any,>({
 };
 
 export default MultipleSelect;
+
+export const useMultipleSelect = <T = any,>(defaultValue: T[] = [], defaultSelectAll = false) => {
+  const [value, setValue] = useState<T[]>(defaultValue);
+  const [isSelectAll, setIsSelectAll] = useState<boolean>(defaultSelectAll);
+  return { value, setValue, isSelectAll, setIsSelectAll };
+};

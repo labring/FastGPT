@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Flex, Box } from '@chakra-ui/react';
+import { Flex, Box, HStack } from '@chakra-ui/react';
 import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import DateRangePicker, {
   type DateRangeType
@@ -13,7 +13,9 @@ import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import MultipleSelect, {
+  useMultipleSelect
+} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import UsageForm from './components/UsageForm';
 import UsageTableList from './components/UsageTable';
@@ -32,42 +34,51 @@ const UsageTable = () => {
   const { userInfo } = useUserStore();
   const router = useRouter();
   const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
-  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(getTeamMembers, {});
+
+  const [unit, setUnit] = useState<UnitType>('day');
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const [selectTmbIds, setSelectTmbIds] = useState<string[]>([]);
-  const [usageSources, setUsageSources] = useState<UsageSourceEnum[]>(
-    Object.values(UsageSourceEnum)
-  );
-  const [isSelectAllTmb, setIsSelectAllTmb] = useState<boolean>(true);
-  const [unit, setUnit] = useState<UnitType>('day');
-  const [projectName, setProjectName] = useState<string>('');
-  const [inputValue, setInputValue] = useState('');
 
-  const sourceList = useMemo(
-    () =>
-      Object.entries(UsageSourceMap).map(([key, value]) => ({
-        label: t(value.label as any),
-        value: key
-      })),
-    [t]
-  );
-
+  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(getTeamMembers, {});
+  const {
+    value: selectTmbIds,
+    setValue: setSelectTmbIds,
+    isSelectAll: isSelectAllTmb,
+    setIsSelectAll: setIsSelectAllTmb
+  } = useMultipleSelect<string>([], true);
   const tmbList = useMemo(
     () =>
       members.map((item) => ({
         label: (
-          <Flex alignItems={'center'} color={'myGray.500'}>
-            <Avatar src={item.avatar} w={'20px'} mr={1} rounded={'full'} />
-            {item.memberName}
-          </Flex>
+          <HStack spacing={1} color={'myGray.500'}>
+            <Avatar src={item.avatar} w={'1.2rem'} mr={1} rounded={'full'} />
+            <Box>{item.memberName}</Box>
+          </HStack>
         ),
         value: item.tmbId
       })),
     [members]
   );
+
+  const {
+    value: usageSources,
+    setValue: setUsageSources,
+    isSelectAll: isSelectAllSource,
+    setIsSelectAll: setIsSelectAllSource
+  } = useMultipleSelect<UsageSourceEnum>(Object.values(UsageSourceEnum), true);
+  const sourceList = useMemo(
+    () =>
+      Object.entries(UsageSourceMap).map(([key, value]) => ({
+        label: t(value.label as any),
+        value: key as UsageSourceEnum
+      })),
+    [t]
+  );
+
+  const [projectName, setProjectName] = useState<string>('');
+  const [inputValue, setInputValue] = useState('');
 
   const Tabs = useMemo(
     () => (
@@ -93,9 +104,9 @@ const UsageTable = () => {
 
   const Selectors = useMemo(
     () => (
-      <Flex mt={4}>
-        <Flex alignItems={'center'}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'} mr={4}>
+      <Flex alignItems={'center'} gap={3}>
+        <Flex alignItems={'center'} gap={2}>
+          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
             {t('common:user.Time')}
           </Box>
           <DateRangePicker
@@ -142,9 +153,9 @@ const UsageTable = () => {
             />
           )}
         </Flex>
-        {tmbList.length > 1 && userInfo?.team?.permission.hasManagePer && (
-          <Flex alignItems={'center'} ml={6}>
-            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'} mr={4}>
+        {userInfo?.team?.permission.hasManagePer && (
+          <Flex alignItems={'center'} gap={2}>
+            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
               {t('account_usage:member')}
             </Box>
             <Box>
@@ -158,7 +169,6 @@ const UsageTable = () => {
                 height={'32px'}
                 bg={'myGray.50'}
                 w={'160px'}
-                showCheckedIcon={false}
                 ScrollData={ScrollData}
                 isSelectAll={isSelectAllTmb}
                 setIsSelectAll={setIsSelectAllTmb}
@@ -166,25 +176,26 @@ const UsageTable = () => {
             </Box>
           </Flex>
         )}
-        <Flex alignItems={'center'} ml={6}>
-          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'} mr={4}>
-            {t('common:user.type')}
+        <Flex alignItems={'center'} gap={2}>
+          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+            {t('account_usage:source')}
           </Box>
           <Box>
-            <MultipleSelect<string>
+            <MultipleSelect<UsageSourceEnum>
               list={sourceList}
               value={usageSources}
-              onSelect={(val) => setUsageSources(val as UsageSourceEnum[])}
+              onSelect={setUsageSources}
+              isSelectAll={isSelectAllSource}
+              setIsSelectAll={setIsSelectAllSource}
               itemWrap={false}
               height={'32px'}
               bg={'myGray.50'}
               w={'160px'}
-              showCheckedIcon={false}
             />
           </Box>
         </Flex>
-        {usageTab === UsageTabEnum.detail && (
-          <Flex alignItems={'center'} ml={6}>
+        {/* {usageTab === UsageTabEnum.detail && (
+          <Flex alignItems={'center'}>
             <Box
               fontSize={'mini'}
               fontWeight={'medium'}
@@ -201,20 +212,26 @@ const UsageTable = () => {
               onChange={(e) => setInputValue(e.target.value)}
             />
           </Flex>
-        )}
+        )} */}
       </Flex>
     ),
     [
-      dateRange,
-      selectTmbIds,
-      sourceList,
       t,
-      tmbList,
-      unit,
-      usageSources,
+      dateRange,
       usageTab,
-      inputValue,
-      isSelectAllTmb
+      unit,
+      userInfo?.team?.permission.hasManagePer,
+      tmbList,
+      selectTmbIds,
+      ScrollData,
+      isSelectAllTmb,
+      setIsSelectAllTmb,
+      sourceList,
+      usageSources,
+      setUsageSources,
+      isSelectAllSource,
+      setIsSelectAllSource,
+      setSelectTmbIds
     ]
   );
 
@@ -225,6 +242,18 @@ const UsageTable = () => {
 
     return () => clearTimeout(timer);
   }, [inputValue]);
+
+  const filterParams = useMemo(
+    () => ({
+      dateRange,
+      selectTmbIds,
+      projectName,
+      isSelectAllTmb,
+      usageSources,
+      isSelectAllSource
+    }),
+    [dateRange, isSelectAllSource, isSelectAllTmb, projectName, selectTmbIds, usageSources]
+  );
 
   return (
     <AccountContainer>
@@ -238,17 +267,7 @@ const UsageTable = () => {
         flexDirection={'column'}
       >
         {usageTab === UsageTabEnum.detail && (
-          <UsageTableList
-            dateRange={dateRange}
-            selectTmbIds={selectTmbIds}
-            usageSources={usageSources}
-            projectName={projectName}
-            members={members}
-            memberTotal={memberTotal}
-            isSelectAllTmb={isSelectAllTmb}
-            Tabs={Tabs}
-            Selectors={Selectors}
-          />
+          <UsageTableList filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
         )}
         {usageTab === UsageTabEnum.dashboard && (
           <UsageForm
