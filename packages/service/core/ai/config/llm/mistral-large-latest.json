@@ -1,0 +1,29 @@
+{
+  "provider": "MistralAI",
+  "model": "mistral-large-latest",
+  "name": "Mistral-large-latest",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 130000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1.2,
+
+  "vision": false,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}

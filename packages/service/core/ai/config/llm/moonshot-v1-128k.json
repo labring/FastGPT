@@ -1,0 +1,29 @@
+{
+  "provider": "Moonshot",
+  "model": "moonshot-v1-128k",
+  "name": "月之暗面-128k",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 128000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 60000,
+  "maxTemperature": 1,
+
+  "vision": false,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": false,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}

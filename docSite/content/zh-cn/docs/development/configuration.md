@@ -199,8 +199,8 @@ weight: 707
 - OpenAI
 - Claude
 - Gemini
-- Meta
 - MistralAI
+- Groq
 - AliCloud - 阿里云
 - Qwen - 通义千问
 - Doubao - 豆包

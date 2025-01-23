@@ -1,0 +1,32 @@
+{
+  "provider": "OpenAI",
+  "model": "o1-preview",
+  "name": "o1-preview",
+
+  "censor": false,
+  "charsPointsPrice": 0,
+
+  "maxContext": 125000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 120000,
+  "maxTemperature": 1.2,
+
+  "vision": false,
+  "toolChoice": false,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": false,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {
+    "temperature": 1,
+    "max_tokens": null,
+    "stream": false
+  }
+}
