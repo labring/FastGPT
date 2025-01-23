@@ -940,6 +940,7 @@
   "model_moonshot": "Moonshot",
   "model_other": "Other",
   "model_qwen": "Qwen",
+  "model_siliconflow": "Siliconflow",
   "model_sparkdesk": "SprkDesk",
   "model_stepfun": "StepFun",
   "model_yi": "Yi",

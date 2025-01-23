@@ -1,0 +1,6 @@
+{
+  "provider": "Siliconflow",
+  "model": "BAAI/bge-reranker-v2-m3",
+  "name": "BAAI/bge-reranker-v2-m3",
+  "charsPointsPrice": 0
+}

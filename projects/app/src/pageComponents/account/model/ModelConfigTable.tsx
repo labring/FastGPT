@@ -728,6 +728,29 @@ const ModelEditModal = ({
                         </Flex>
                       </Td>
                     </Tr>
+                    <Tr>
+                      <Td>
+                        <HStack spacing={1}>
+                          <Box>{t('account:model.defaultConfig')}</Box>
+                          <QuestionTip label={t('account:model.defaultConfig_tip')} />
+                        </HStack>
+                      </Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <JsonEditor
+                            value={JSON.stringify(getValues('defaultConfig'), null, 2)}
+                            onChange={(e) => {
+                              try {
+                                setValue('defaultConfig', JSON.parse(e));
+                              } catch (error) {
+                                console.error(error);
+                              }
+                            }}
+                            {...InputStyles}
+                          />
+                        </Flex>
+                      </Td>
+                    </Tr>
                   </>
                 )}
                 {isTTSModel && (
