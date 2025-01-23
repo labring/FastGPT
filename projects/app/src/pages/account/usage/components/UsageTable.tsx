@@ -91,7 +91,7 @@ const UsageTableList = ({
   return (
     <>
       <Box>{Tabs}</Box>
-      <Flex mt={4} flexDir={['column', 'row']} w={'100%'} alignItems={['flex-end', 'center']}>
+      <Flex mt={4} w={'100%'}>
         <Box>{Selectors}</Box>
         <Box flex={'1'} />
         <PopoverConfirm

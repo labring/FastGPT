@@ -1,7 +1,7 @@
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useToast } from './useToast';
 import { useCallback } from 'react';
-import { hasHttps } from '@fastgpt/web/common/system/utils';
+import { hasHttps } from '../common/system/utils';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 
 /**

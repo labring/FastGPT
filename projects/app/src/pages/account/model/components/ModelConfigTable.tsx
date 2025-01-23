@@ -51,6 +51,7 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
+import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -396,7 +397,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td fontSize={'sm'}>
                       <HStack>
                         <Avatar src={item.avatar} w={'1.2rem'} />
-                        <Box color={'myGray.900'}>{item.name}</Box>
+                        <CopyBox value={item.name} color={'myGray.900'}>
+                          {item.name}
+                        </CopyBox>
                       </HStack>
                     </Td>
                     <Td>

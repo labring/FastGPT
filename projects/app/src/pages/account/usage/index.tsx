@@ -23,6 +23,7 @@ import dynamic from 'next/dynamic';
 
 import UsageTableList from './components/UsageTable';
 import { UnitType } from './type';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 const UsageDashboard = dynamic(() => import('./components/Dashboard'));
 
 export enum UsageTabEnum {
@@ -33,6 +34,7 @@ export enum UsageTabEnum {
 const UsageTable = () => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
+  const { isPc } = useSystem();
   const router = useRouter();
   const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
 
@@ -88,7 +90,7 @@ const UsageTable = () => {
           { label: t('account_usage:usage_detail'), value: 'detail' },
           { label: t('account_usage:dashboard'), value: 'dashboard' }
         ]}
-        px={'1rem'}
+        py={1}
         value={usageTab}
         onChange={(e) => {
           router.replace({
@@ -105,7 +107,7 @@ const UsageTable = () => {
 
   const Selectors = useMemo(
     () => (
-      <Flex alignItems={'center'} gap={3}>
+      <Flex flexDir={['column', 'row']} alignItems={'center'} gap={3}>
         <Flex alignItems={'center'} gap={2}>
           <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
             {t('common:user.Time')}
@@ -239,7 +241,7 @@ const UsageTable = () => {
     <AccountContainer>
       <Box
         px={[3, 8]}
-        pt={[0, 8]}
+        pt={[0, 4]}
         pb={[0, 4]}
         h={'full'}
         overflow={'hidden'}

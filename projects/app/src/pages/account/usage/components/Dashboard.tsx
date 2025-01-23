@@ -98,7 +98,7 @@ const UsageDashboard = ({
     <>
       <Box>{Tabs}</Box>
       <Box mt={4}>{Selectors}</Box>
-      <MyBox isLoading={totalPointsLoading}>
+      <MyBox overflowY={'auto'} isLoading={totalPointsLoading}>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
           <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
           <Box color={'primary.600'} ml={2}>
@@ -123,25 +123,7 @@ const UsageDashboard = ({
               tickMargin={12}
               tick={{ fontSize: '12px', color: '#667085', fontWeight: '500' }}
             />
-            <CartesianGrid
-              strokeDasharray="3 3"
-              verticalCoordinatesGenerator={(props) => {
-                const { width } = props;
-                if (width < 500) {
-                  return [width * 0.2, width * 0.4, width * 0.6, width * 0.8];
-                } else {
-                  return [
-                    width * 0.125,
-                    width * 0.25,
-                    width * 0.375,
-                    width * 0.5,
-                    width * 0.625,
-                    width * 0.75,
-                    width * 0.875
-                  ];
-                }
-              }}
-            />
+            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
             <Tooltip content={<CustomTooltip />} />
             <Line
               type="monotone"

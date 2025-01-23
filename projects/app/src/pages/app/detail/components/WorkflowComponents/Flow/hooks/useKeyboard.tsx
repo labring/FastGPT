@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { Node, useKeyPress } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
