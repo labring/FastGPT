@@ -1,0 +1,10 @@
+{
+  "provider": "BAAI",
+  "model": "bge-m3",
+  "name": "bge-m3",
+
+  "defaultToken": 512,
+  "maxToken": 8000,
+
+  "charsPointsPrice": 0
+}

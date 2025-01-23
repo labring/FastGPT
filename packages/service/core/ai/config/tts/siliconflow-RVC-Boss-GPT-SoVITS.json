@@ -1,0 +1,40 @@
+{
+  "provider": "Siliconflow",
+  "model": "RVC-Boss/GPT-SoVITS",
+  "name": "RVC-Boss/GPT-SoVITS",
+  "charsPointsPrice": 0,
+  "voices": [
+    {
+      "label": "alex",
+      "value": "RVC-Boss/GPT-SoVITS:alex"
+    },
+    {
+      "label": "anna",
+      "value": "RVC-Boss/GPT-SoVITS:anna"
+    },
+    {
+      "label": "bella",
+      "value": "RVC-Boss/GPT-SoVITS:bella"
+    },
+    {
+      "label": "benjamin",
+      "value": "RVC-Boss/GPT-SoVITS:benjamin"
+    },
+    {
+      "label": "charles",
+      "value": "RVC-Boss/GPT-SoVITS:charles"
+    },
+    {
+      "label": "claire",
+      "value": "RVC-Boss/GPT-SoVITS:claire"
+    },
+    {
+      "label": "david",
+      "value": "RVC-Boss/GPT-SoVITS:david"
+    },
+    {
+      "label": "diana",
+      "value": "RVC-Boss/GPT-SoVITS:diana"
+    }
+  ]
+}

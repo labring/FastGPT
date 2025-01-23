@@ -1,0 +1,10 @@
+{
+  "provider": "Ernie",
+  "model": "Embedding-V1",
+  "name": "Embedding-V1",
+
+  "defaultToken": 512,
+  "maxToken": 1000,
+
+  "charsPointsPrice": 0
+}

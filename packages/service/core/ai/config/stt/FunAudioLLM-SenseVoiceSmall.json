@@ -1,0 +1,6 @@
+{
+  "provider": "Siliconflow",
+  "model": "FunAudioLLM/SenseVoiceSmall",
+  "name": "FunAudioLLM/SenseVoiceSmall",
+  "charsPointsPrice": 0
+}
