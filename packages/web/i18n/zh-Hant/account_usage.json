@@ -9,6 +9,8 @@
   "details": "詳情",
   "dingtalk": "釘釘",
   "duration_seconds": "時長（秒）",
+  "every_day": "天",
+  "every_month": "月",
   "export_confirm": "導出確認",
   "export_confirm_tip": "當前共 {{total}} 筆使用記錄，確認導出？",
   "feishu": "飛書",

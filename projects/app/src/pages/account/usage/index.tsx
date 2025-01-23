@@ -17,17 +17,18 @@ import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import UsageForm from './components/UsageForm';
-import UsageTableList from './components/UsageTable';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
+
+import UsageTableList from './components/UsageTable';
+import { UnitType } from './type';
+const UsageDashboard = dynamic(() => import('./components/Dashboard'));
 
 export enum UsageTabEnum {
   detail = 'detail',
   dashboard = 'dashboard'
 }
-
-export type UnitType = 'day' | 'week' | 'month';
 
 const UsageTable = () => {
   const { t } = useTranslation();
@@ -113,10 +114,10 @@ const UsageTable = () => {
             defaultDate={dateRange}
             dateRange={dateRange}
             position="bottom"
-            onChange={setDateRange}
+            onSuccess={setDateRange}
           />
-          {usageTab === UsageTabEnum.dashboard && (
-            <MySelect
+          {/* {usageTab === UsageTabEnum.dashboard && (
+            <MySelect<UnitType>
               bg={'myGray.50'}
               minH={'32px'}
               height={'32px'}
@@ -124,34 +125,12 @@ const UsageTable = () => {
               ml={1}
               list={[
                 { label: t('account_usage:every_day'), value: 'day' },
-                { label: t('account_usage:every_week'), value: 'week' },
                 { label: t('account_usage:every_month'), value: 'month' }
               ]}
               value={unit}
-              onchange={(val) => {
-                if (!dateRange.from) return dateRange;
-
-                switch (val) {
-                  case 'week':
-                    setDateRange({
-                      from: startOfWeek(dateRange.from, { weekStartsOn: 1 }),
-                      to: dateRange.to
-                    });
-                    break;
-                  case 'month':
-                    setDateRange({
-                      from: startOfMonth(dateRange.from),
-                      to: dateRange.to
-                    });
-                    break;
-                  default:
-                    break;
-                }
-
-                setUnit(val as 'day' | 'week' | 'month');
-              }}
+              onchange={setUnit}
             />
-          )}
+          )} */}
         </Flex>
         {userInfo?.team?.permission.hasManagePer && (
           <Flex alignItems={'center'} gap={2}>
@@ -250,9 +229,10 @@ const UsageTable = () => {
       projectName,
       isSelectAllTmb,
       usageSources,
-      isSelectAllSource
+      isSelectAllSource,
+      unit
     }),
-    [dateRange, isSelectAllSource, isSelectAllTmb, projectName, selectTmbIds, usageSources]
+    [dateRange, isSelectAllSource, unit, isSelectAllTmb, projectName, selectTmbIds, usageSources]
   );
 
   return (
@@ -270,14 +250,7 @@ const UsageTable = () => {
           <UsageTableList filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
         )}
         {usageTab === UsageTabEnum.dashboard && (
-          <UsageForm
-            dateRange={dateRange}
-            selectTmbIds={selectTmbIds}
-            usageSources={usageSources}
-            unit={unit}
-            Tabs={Tabs}
-            Selectors={Selectors}
-          />
+          <UsageDashboard filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
         )}
       </Box>
     </AccountContainer>

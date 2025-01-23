@@ -37,7 +37,6 @@ const UsageTableList = ({
 }: {
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
-} & {
   filterParams: UsageFilterParams;
 }) => {
   const { t } = useTranslation();
@@ -92,7 +91,7 @@ const UsageTableList = ({
   return (
     <>
       <Box>{Tabs}</Box>
-      <Flex mt={3} flexDir={['column', 'row']} w={'100%'} alignItems={['flex-end', 'center']}>
+      <Flex mt={4} flexDir={['column', 'row']} w={'100%'} alignItems={['flex-end', 'center']}>
         <Box>{Selectors}</Box>
         <Box flex={'1'} />
         <PopoverConfirm

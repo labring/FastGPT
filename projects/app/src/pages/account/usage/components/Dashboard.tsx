@@ -1,13 +1,11 @@
-import { getTotalPoints } from '@/web/support/wallet/usage/api';
+import { getDashboardData } from '@/web/support/wallet/usage/api';
 import { Box, Flex } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { addDays } from 'date-fns';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -19,7 +17,8 @@ import {
   TooltipProps
 } from 'recharts';
 import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { UnitType } from '../index';
+import { UnitType, UsageFilterParams } from '../type';
+import dayjs from 'dayjs';
 
 export type usageFormType = {
   date: string;
@@ -53,60 +52,57 @@ const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) =
   return null;
 };
 
-const UsageForm = ({
-  dateRange,
-  selectTmbIds,
-  usageSources,
-  unit,
+const UsageDashboard = ({
+  filterParams,
   Tabs,
   Selectors
 }: {
-  dateRange: DateRangeType;
-  selectTmbIds: string[];
-  usageSources: UsageSourceEnum[];
-  unit: UnitType;
+  filterParams: UsageFilterParams;
   Tabs: React.ReactNode;
   Selectors: React.ReactNode;
 }) => {
   const { t } = useTranslation();
 
-  const {
-    run: getTotalPointsData,
-    data: totalPoints,
-    loading: totalPointsLoading
-  } = useRequest2(
+  const { dateRange, selectTmbIds, usageSources, unit, isSelectAllSource, isSelectAllTmb } =
+    filterParams;
+
+  const { data: totalPoints = [], loading: totalPointsLoading } = useRequest2(
     () =>
-      getTotalPoints({
-        dateStart: dateRange.from || new Date(),
-        dateEnd: addDays(dateRange.to || new Date(), 1),
-        teamMemberIds: selectTmbIds,
-        sources: usageSources,
+      getDashboardData({
+        dateStart: dateRange.from
+          ? new Date(dateRange.from.setHours(0, 0, 0, 0))
+          : new Date(new Date().setHours(0, 0, 0, 0)),
+        dateEnd: dateRange.to
+          ? new Date(addDays(dateRange.to, 1).setHours(0, 0, 0, 0))
+          : new Date(addDays(new Date(), 1).setHours(0, 0, 0, 0)),
+        sources: isSelectAllSource ? undefined : usageSources,
+        teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
         unit
-      }),
+      }).then((res) =>
+        res.map((item) => ({
+          ...item,
+          date: dayjs(item.date).format('YYYY-MM-DD')
+        }))
+      ),
     {
-      manual: true
+      manual: false,
+      refreshDeps: [filterParams]
     }
   );
 
   const totalUsage = useMemo(() => {
-    return totalPoints?.reduce((acc, curr) => acc + curr.totalPoints, 0);
+    return totalPoints.reduce((acc, curr) => acc + curr.totalPoints, 0);
   }, [totalPoints]);
-
-  useEffect(() => {
-    if (selectTmbIds.length === 0 || usageSources.length === 0) return;
-    getTotalPointsData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [usageSources, selectTmbIds.length, dateRange, unit]);
 
   return (
     <>
       <Box>{Tabs}</Box>
-      <Box>{Selectors}</Box>
+      <Box mt={4}>{Selectors}</Box>
       <MyBox isLoading={totalPointsLoading}>
         <Flex fontSize={'20px'} fontWeight={'medium'} my={6}>
           <Box color={'black'}>{`${t('account_usage:total_usage')}:`}</Box>
           <Box color={'primary.600'} ml={2}>
-            {`${formatNumber(totalUsage || 0)} ${t('account_usage:points')}`}
+            {`${formatNumber(totalUsage)} ${t('account_usage:points')}`}
           </Box>
         </Flex>
         <Flex mb={4} fontSize={'mini'} color={'myGray.500'} fontWeight={'medium'}>
@@ -151,7 +147,7 @@ const UsageForm = ({
               type="monotone"
               dataKey="totalPoints"
               stroke="#5E8FFF"
-              strokeWidth={1.5}
+              strokeWidth={2.5}
               dot={false}
             />
           </LineChart>
@@ -161,4 +157,4 @@ const UsageForm = ({
   );
 };
 
-export default React.memo(UsageForm);
+export default React.memo(UsageDashboard);

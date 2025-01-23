@@ -9,6 +9,8 @@
   "details": "Details",
   "dingtalk": "DingTalk",
   "duration_seconds": "Duration (seconds)",
+  "every_day": "Day",
+  "every_month": "Moon",
   "export_confirm": "Export confirmation",
   "export_confirm_tip": "There are currently {{total}} usage records in total. Are you sure to export?",
   "feishu": "Feishu",
