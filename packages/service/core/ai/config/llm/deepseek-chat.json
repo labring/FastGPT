@@ -3,9 +3,6 @@
   "model": "deepseek-chat",
   "name": "Deepseek-chat",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 64000,
   "maxResponse": 4096,
   "quoteMaxToken": 60000,

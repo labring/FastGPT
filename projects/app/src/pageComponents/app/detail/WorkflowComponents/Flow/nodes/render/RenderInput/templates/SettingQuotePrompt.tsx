@@ -80,6 +80,16 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const quoteTemplateVariables = useMemo(
     () => [
       {
+        key: 'id',
+        label: 'id',
+        icon: 'core/app/simpleMode/variable'
+      },
+      {
+        key: 'source',
+        label: t('common:core.dataset.search.Source name'),
+        icon: 'core/app/simpleMode/variable'
+      },
+      {
         key: 'q',
         label: 'q',
         icon: 'core/app/simpleMode/variable'
@@ -90,13 +100,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         icon: 'core/app/simpleMode/variable'
       },
       {
-        key: 'source',
-        label: t('common:core.dataset.search.Source name'),
-        icon: 'core/app/simpleMode/variable'
-      },
-      {
-        key: 'sourceId',
-        label: t('common:core.dataset.search.Source id'),
+        key: 'updateTime',
+        label: t('app:source_updateTime'),
         icon: 'core/app/simpleMode/variable'
       },
       {

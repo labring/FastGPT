@@ -3,9 +3,6 @@
   "model": "glm-4v-plus",
   "name": "GLM-4v-plus",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 8000,
   "maxResponse": 1000,
   "quoteMaxToken": 6000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

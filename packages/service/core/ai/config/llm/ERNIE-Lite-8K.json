@@ -3,9 +3,6 @@
   "model": "ERNIE-Lite-8K",
   "name": "ERNIE-lite-8k",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 8000,
   "maxResponse": 2048,
   "quoteMaxToken": 6000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

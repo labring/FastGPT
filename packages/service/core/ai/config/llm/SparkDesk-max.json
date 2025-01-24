@@ -1,0 +1,20 @@
+{
+  "provider": "SparkDesk",
+  "model": "generalv3.5",
+  "name": "SparkDesk-max",
+  "maxContext": 32000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 32000,
+  "maxTemperature": 1,
+  "vision": false,
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "usedInExtractFields": true,
+  "usedInToolCall": true,
+  "usedInQueryExtension": true,
+  "toolChoice": false,
+  "functionCall": false,
+  "customCQPrompt": "",
+  "customExtractPrompt": "",
+  "defaultSystemChatPrompt": ""
+}

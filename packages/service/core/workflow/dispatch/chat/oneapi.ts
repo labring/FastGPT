@@ -281,11 +281,12 @@ async function filterDatasetQuote({
 }) {
   function getValue(item: SearchDataResponseItemType, index: number) {
     return replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
+      id: item.id,
       q: item.q,
       a: item.a,
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
-      sourceId: String(item.sourceId || 'UnKnow'),
+      sourceId: String(item.sourceId || ''),
       index: index + 1
     });
   }

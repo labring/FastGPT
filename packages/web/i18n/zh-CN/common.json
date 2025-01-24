@@ -1013,6 +1013,7 @@
   "plugin.go to laf": "去编写",
   "plugin.path": "路径",
   "prompt_input_placeholder": "请输入提示词",
+  "read_quote": "查看引用",
   "required": "必须",
   "resume_failed": "恢复失败",
   "select_reference_variable": "选择引用变量",

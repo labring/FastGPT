@@ -3,10 +3,7 @@
   "model": "gpt-4o-mini",
   "name": "GPT-4o-mini",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
-  "maxContext": 125000,
+  "maxContext": 128000,
   "maxResponse": 16000,
   "quoteMaxToken": 60000,
   "maxTemperature": 1.2,

@@ -3,9 +3,6 @@
   "model": "yi-lightning",
   "name": "yi-lightning",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 16000,
   "maxResponse": 4000,
   "quoteMaxToken": 12000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

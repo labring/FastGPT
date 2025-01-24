@@ -3,10 +3,7 @@
   "model": "o1-preview",
   "name": "o1-preview",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
-  "maxContext": 125000,
+  "maxContext": 128000,
   "maxResponse": 4000,
   "quoteMaxToken": 120000,
   "maxTemperature": 1.2,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

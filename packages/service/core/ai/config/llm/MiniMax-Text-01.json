@@ -3,9 +3,6 @@
   "model": "MiniMax-Text-01",
   "name": "MiniMax-Text-01",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 1000000,
   "maxResponse": 1000000,
   "quoteMaxToken": 100000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

@@ -3,26 +3,23 @@
   "model": "Doubao-lite-128k",
   "name": "Doubao-lite-128k",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 128000,
   "maxResponse": 4000,
   "quoteMaxToken": 120000,
   "maxTemperature": 1,
 
   "vision": false,
-  "toolChoice": false,
+  "toolChoice": true,
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,
   "usedInQueryExtension": true,
   "customExtractPrompt": "",
-  "usedInToolCall": false,
+  "usedInToolCall": true,
 
   "defaultConfig": {},
   "fieldMap": {}

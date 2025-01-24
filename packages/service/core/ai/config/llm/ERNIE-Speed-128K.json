@@ -1,10 +1,7 @@
 {
   "provider": "Ernie",
   "model": "ERNIE-Speed-128K",
-  "name": "ERNIE-Speed-128K(测试)",
-
-  "censor": false,
-  "charsPointsPrice": 0,
+  "name": "ERNIE-Speed-128K",
 
   "maxContext": 128000,
   "maxResponse": 4096,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

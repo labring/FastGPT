@@ -1,4 +1,4 @@
-import { GET, PUT, DELETE } from '@/web/common/api/request';
+import { GET, PUT, DELETE, POST } from '@/web/common/api/request';
 import type { listResponse } from '@/pages/api/core/ai/model/list';
 import type { updateBody } from '@/pages/api/core/ai/model/update';
 import type { deleteQuery } from '@/pages/api/core/ai/model/delete';
@@ -16,3 +16,5 @@ export const deleteSystemModel = (data: deleteQuery) => DELETE('/core/ai/model/d
 export const getModelConfigJson = () => GET<string>('/core/ai/model/getConfigJson');
 export const putUpdateWithJson = (data: updateWithJsonBody) =>
   PUT('/core/ai/model/updateWithJson', data);
+
+export const getTestModel = (model: String) => GET('/core/ai/model/test', { model });

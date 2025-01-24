@@ -3,9 +3,6 @@
   "model": "ministral-3b-latest",
   "name": "Ministral-3b-latest",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 130000,
   "maxResponse": 8000,
   "quoteMaxToken": 60000,

@@ -3,9 +3,6 @@
   "model": "abab6.5s-chat",
   "name": "MiniMax-abab6.5s",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 245000,
   "maxResponse": 10000,
   "quoteMaxToken": 240000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

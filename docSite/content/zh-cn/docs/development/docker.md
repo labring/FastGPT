@@ -202,6 +202,10 @@ docker restart oneapi
 
 首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志里会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
 
+### 6. 配置模型
+
+[点击查看模型配置教程](/docs/development/modelConfig/intro/)
+
 ## FAQ
 
 ### Mongo 副本集自动初始化失败
