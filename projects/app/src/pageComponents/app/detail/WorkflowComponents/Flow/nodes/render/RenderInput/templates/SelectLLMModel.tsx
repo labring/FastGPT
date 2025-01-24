@@ -7,7 +7,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 
 const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
-  const { llmModelList } = useSystemStore();
+  const { llmModelList, defaultModels } = useSystemStore();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const modelList = useMemo(
@@ -21,6 +21,12 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
       }),
     [llmModelList, item.llmModelType]
   );
+  const defaultModel = useMemo(() => {
+    if (defaultModels.llm && modelList.find((model) => model.model === defaultModels.llm?.model)) {
+      return defaultModels.llm.model;
+    }
+    return modelList[0]?.model;
+  }, [defaultModels.llm, modelList]);
 
   const onChangeModel = useCallback(
     (e: string) => {
@@ -38,10 +44,10 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
   );
 
   useEffect(() => {
-    if (!item.value && modelList.length > 0) {
-      onChangeModel(modelList[0].model);
+    if (!modelList.find((model) => model.model === item.value) && !!defaultModel) {
+      onChangeModel(defaultModel);
     }
-  }, []);
+  }, [defaultModel, item.value, modelList, onChangeModel]);
 
   const Render = useMemo(() => {
     return (
