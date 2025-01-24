@@ -1,6 +1,0 @@
-{
-  "provider": "BAAI",
-  "model": "bge-reranker-v2-m3",
-  "name": "bge-reranker-v2-m3",
-  "charsPointsPrice": 0
-}
