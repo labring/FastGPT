@@ -307,12 +307,11 @@ const AIChatSettingsModal = ({
         )}
         {showVisionSwitch && (
           <Flex {...FlexItemStyles} h={'25px'}>
-            <Box {...LabelStyles}>
+            <Box {...LabelStyles} w={llmSupportVision ? '9rem' : 'auto'}>
               <Flex alignItems={'center'}>
                 {t('app:llm_use_vision')}
                 <QuestionTip ml={1} label={t('app:llm_use_vision_tip')}></QuestionTip>
               </Flex>
-
               {llmSupportVision ? (
                 <Switch
                   isChecked={useVision}
@@ -323,7 +322,7 @@ const AIChatSettingsModal = ({
                   }}
                 />
               ) : (
-                <Box fontSize={'sm'} color={'myGray.500'}>
+                <Box ml={3} fontSize={'sm'} color={'myGray.500'}>
                   {t('app:llm_not_support_vision')}
                 </Box>
               )}

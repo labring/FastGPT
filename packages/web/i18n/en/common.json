@@ -1010,6 +1010,7 @@
   "plugin.go to laf": "Go to Write",
   "plugin.path": "Path",
   "prompt_input_placeholder": "Please enter the prompt word",
+  "read_quote": "View citations",
   "required": "Required",
   "resume_failed": "Resume Failed",
   "select_reference_variable": "Select Reference Variable",

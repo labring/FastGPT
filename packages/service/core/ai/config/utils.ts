@@ -14,6 +14,11 @@ import { debounce } from 'lodash';
 
 type FolderBaseType = `${ModelTypeEnum}`;
 
+/* 
+  TODO: 分优先级读取：
+  1. 有外部挂载目录，则读取外部的
+  2. 没有外部挂载目录，则读取本地的。然后试图拉取云端的进行覆盖。
+*/
 export const loadSystemModels = async (init = false) => {
   const getModelNameList = (base: FolderBaseType) => {
     const currentFileUrl = new URL(import.meta.url);
@@ -46,9 +51,7 @@ export const loadSystemModels = async (init = false) => {
     }
   };
 
-  if (!init && global.systemModelList && global.systemModelList.length > 0) return;
-
-  const dbModels = await MongoSystemModel.find({}).lean();
+  if (!init && global.systemModelList) return;
 
   global.systemModelList = [];
   global.systemActiveModelList = [];
@@ -58,50 +61,58 @@ export const loadSystemModels = async (init = false) => {
   global.sttModelMap = new Map<string, STTModelType>();
   global.reRankModelMap = new Map<string, ReRankModelItemType>();
 
-  const baseList: FolderBaseType[] = [
-    ModelTypeEnum.llm,
-    ModelTypeEnum.embedding,
-    ModelTypeEnum.tts,
-    ModelTypeEnum.stt,
-    ModelTypeEnum.rerank
-  ];
+  try {
+    const dbModels = await MongoSystemModel.find({}).lean();
 
-  // System model
-  await Promise.all(
-    baseList.map(async (base) => {
-      const modelList = getModelNameList(base);
-      const nameList = modelList.map((name) => `${base}/${name}`);
+    const baseList: FolderBaseType[] = [
+      ModelTypeEnum.llm,
+      ModelTypeEnum.embedding,
+      ModelTypeEnum.tts,
+      ModelTypeEnum.stt,
+      ModelTypeEnum.rerank
+    ];
 
-      await Promise.all(
-        nameList.map(async (name) => {
-          const fileContent = (await import(`./${name}`))?.default as SystemModelItemType;
+    // System model
+    await Promise.all(
+      baseList.map(async (base) => {
+        const modelList = getModelNameList(base);
+        const nameList = modelList.map((name) => `${base}/${name}`);
 
-          const dbModel = dbModels.find((item) => item.model === fileContent.model);
+        await Promise.all(
+          nameList.map(async (name) => {
+            const fileContent = (await import(`./${name}`))?.default as SystemModelItemType;
 
-          const model: any = {
-            ...fileContent,
-            ...dbModel?.metadata,
-            type: dbModel?.metadata?.type || base,
-            isCustom: false
-          };
+            const dbModel = dbModels.find((item) => item.model === fileContent.model);
 
-          pushModel(model);
-        })
-      );
-    })
-  );
+            const model: any = {
+              ...fileContent,
+              ...dbModel?.metadata,
+              type: dbModel?.metadata?.type || base,
+              isCustom: false
+            };
 
-  // Custom model
-  dbModels.forEach((dbModel) => {
-    if (global.systemModelList.find((item) => item.model === dbModel.model)) return;
+            pushModel(model);
+          })
+        );
+      })
+    );
 
-    pushModel({
-      ...dbModel.metadata,
-      isCustom: true
+    // Custom model
+    dbModels.forEach((dbModel) => {
+      if (global.systemModelList.find((item) => item.model === dbModel.model)) return;
+
+      pushModel({
+        ...dbModel.metadata,
+        isCustom: true
+      });
     });
-  });
 
-  console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
+    console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
+  } catch (error) {
+    console.error('Load models error', error);
+    // @ts-ignore
+    global.systemModelList = undefined;
+  }
 };
 
 export const watchSystemModelUpdate = () => {

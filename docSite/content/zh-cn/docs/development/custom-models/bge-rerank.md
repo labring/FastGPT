@@ -118,9 +118,16 @@ services:
 ```
 ## 接入 FastGPT
 
-参考 [ReRank模型接入](/docs/development/configuration/#rerank-接入)，host 变量为部署的域名。
+1. 打开 FastGPT 模型配置，新增一个重排模型。
+2. 填写模型配置表单：模型 ID 为`bge-reranker-base`，地址填写`{{host}}/v1/rerank`，host 为你部署的域名/IP:Port。
+
+![alt text](/imgs/image-102.png)
 
 ## QA
+
+### 403报错
+
+FastGPT中，自定义请求 Token 和环境变量的 ACCESS_TOKEN 不一致。 
 
 ### Docker 运行提示 `Bus error (core dumped)`
 

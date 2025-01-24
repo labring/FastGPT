@@ -3,9 +3,6 @@
   "model": "qwen-turbo",
   "name": "Qwen-turbo",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 128000,
   "maxResponse": 8000,
   "quoteMaxToken": 100000,

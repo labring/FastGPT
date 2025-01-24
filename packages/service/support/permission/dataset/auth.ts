@@ -279,6 +279,7 @@ export async function authDatasetData({
 
   return {
     ...result,
-    datasetData: data
+    datasetData: data,
+    collection: result.collection
   };
 }

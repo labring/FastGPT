@@ -1,0 +1,26 @@
+{
+  "provider": "Doubao",
+  "model": "Doubao-lite-4k",
+  "name": "Doubao-lite-4k",
+
+  "maxContext": 4000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 4000,
+  "maxTemperature": 1,
+
+  "vision": false,
+  "toolChoice": true,
+  "functionCall": false,
+  "defaultSystemChatPrompt": "",
+
+  "datasetProcess": true,
+  "usedInClassify": true,
+  "customCQPrompt": "",
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
+  "customExtractPrompt": "",
+  "usedInToolCall": true,
+
+  "defaultConfig": {},
+  "fieldMap": {}
+}

@@ -3,9 +3,6 @@
   "model": "hunyuan-vision",
   "name": "hunyuan-vision",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 6000,
   "maxResponse": 2000,
   "quoteMaxToken": 4000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

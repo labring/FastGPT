@@ -374,6 +374,7 @@ export const iconPaths = {
   'model/ernie': () => import('./icons/model/ernie.svg'),
   'model/fishaudio': () => import('./icons/model/fishaudio.svg'),
   'model/gemini': () => import('./icons/model/gemini.svg'),
+  'model/grok': () => import('./icons/model/grok.svg'),
   'model/groq': () => import('./icons/model/groq.svg'),
   'model/huggingface': () => import('./icons/model/huggingface.svg'),
   'model/hunyuan': () => import('./icons/model/hunyuan.svg'),

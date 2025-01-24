@@ -3,12 +3,9 @@
   "model": "mistral-small-latest",
   "name": "Mistral-small-latest",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 32000,
   "maxResponse": 4000,
-  "quoteMaxToken": 30000,
+  "quoteMaxToken": 32000,
   "maxTemperature": 1.2,
 
   "vision": false,

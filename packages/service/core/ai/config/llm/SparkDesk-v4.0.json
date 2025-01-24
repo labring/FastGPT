@@ -1,14 +1,11 @@
 {
   "provider": "SparkDesk",
-  "model": "SparkDesk-v4.0",
-  "name": "SparkDesk-v4.0",
-
-  "censor": false,
-  "charsPointsPrice": 0,
+  "model": "4.0Ultra",
+  "name": "SparkDesk-v4.0 Ultra",
 
   "maxContext": 8000,
   "maxResponse": 8000,
-  "quoteMaxToken": 6000,
+  "quoteMaxToken": 8000,
   "maxTemperature": 1,
 
   "vision": false,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

@@ -3,9 +3,6 @@
   "model": "o1",
   "name": "o1",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 195000,
   "maxResponse": 8000,
   "quoteMaxToken": 120000,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

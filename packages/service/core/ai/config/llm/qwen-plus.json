@@ -3,9 +3,6 @@
   "model": "qwen-plus",
   "name": "Qwen-plus",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 64000,
   "maxResponse": 8000,
   "quoteMaxToken": 60000,

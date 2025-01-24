@@ -3,9 +3,6 @@
   "model": "qwen-vl-max",
   "name": "qwen-vl-max",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
   "maxContext": 32000,
   "maxResponse": 2000,
   "quoteMaxToken": 20000,
@@ -16,13 +13,13 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
-  "usedInClassify": false,
+  "datasetProcess": true,
+  "usedInClassify": true,
   "customCQPrompt": "",
-  "usedInExtractFields": false,
-  "usedInQueryExtension": false,
+  "usedInExtractFields": true,
+  "usedInQueryExtension": true,
   "customExtractPrompt": "",
-  "usedInToolCall": false,
+  "usedInToolCall": true,
 
   "defaultConfig": {},
   "fieldMap": {}

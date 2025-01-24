@@ -3,10 +3,7 @@
   "model": "hunyuan-standard",
   "name": "hunyuan-standard",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
-  "maxContext": 30000,
+  "maxContext": 32000,
   "maxResponse": 2000,
   "quoteMaxToken": 20000,
   "maxTemperature": 1,
@@ -16,7 +13,7 @@
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
-  "datasetProcess": false,
+  "datasetProcess": true,
   "usedInClassify": true,
   "customCQPrompt": "",
   "usedInExtractFields": true,

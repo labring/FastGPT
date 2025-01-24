@@ -1,18 +1,15 @@
 {
-  "provider": "Hunyuan",
-  "model": "hunyuan-pro-32k(测试)",
-  "name": "hunyuan-pro-32k(测试)",
+  "provider": "Intern",
+  "model": "internlm2-pro-chat",
+  "name": "internlm2-pro-chat",
 
-  "censor": false,
-  "charsPointsPrice": 0,
-
-  "maxContext": 28000,
-  "maxResponse": 4000,
-  "quoteMaxToken": 28000,
+  "maxContext": 32000,
+  "maxResponse": 8000,
+  "quoteMaxToken": 32000,
   "maxTemperature": 1,
 
   "vision": false,
-  "toolChoice": false,
+  "toolChoice": true,
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 

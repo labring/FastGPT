@@ -35,6 +35,7 @@ import {
   getModelConfigJson,
   getSystemModelDetail,
   getSystemModelList,
+  getTestModel,
   putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -52,14 +53,21 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const {
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    feConfigs
+  } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -125,7 +133,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           ) : (
             <Flex color={'myGray.700'}>
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-                {item.charsPointsPrice}
+                {item.charsPointsPrice || 0}
               </Box>
               {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
             </Flex>
@@ -140,7 +148,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {item.charsPointsPrice || 0}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
           </Flex>
@@ -155,7 +163,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {item.charsPointsPrice || 0}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / 1K ${t('common:unit.character')}`}
           </Flex>
@@ -239,6 +247,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     );
   }, [systemModelList]);
 
+  const { runAsync: onTestModel, loading: testingModel } = useRequest2(getTestModel, {
+    manual: true,
+    successToast: t('common:common.Success')
+  });
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(putSystemModel, {
     onSuccess: refreshModels
   });
@@ -275,8 +287,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       model: '',
       name: '',
       charsPointsPrice: 0,
-      inputPrice: 0,
-      outputPrice: 0,
+      inputPrice: undefined,
+      outputPrice: undefined,
 
       isCustom: true,
       isActive: true,
@@ -291,7 +303,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onClose: onCloseJsonConfig
   } = useDisclosure();
 
-  const isLoading = loadingModels || loadingData || updatingModel;
+  const isLoading = loadingModels || loadingData || updatingModel || testingModel;
+
+  const [showModelId, setShowModelId] = useState(true);
 
   return (
     <>
@@ -376,9 +390,20 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             <Table>
               <Thead>
                 <Tr color={'myGray.600'}>
-                  <Th fontSize={'xs'}>{t('common:model.name')}</Th>
+                  <Th fontSize={'xs'}>
+                    <HStack
+                      spacing={1}
+                      cursor={'pointer'}
+                      onClick={() => setShowModelId(!showModelId)}
+                    >
+                      <Box>
+                        {showModelId ? t('account:model.model_id') : t('common:model.name')}
+                      </Box>
+                      <MyIcon name={'modal/changePer'} w={'1rem'} />
+                    </HStack>
+                  </Th>
                   <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
-                  <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+                  {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
                   <Th fontSize={'xs'}>
                     <Box
                       cursor={'pointer'}
@@ -396,16 +421,37 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
                     <Td fontSize={'sm'}>
                       <HStack>
-                        <Avatar src={item.avatar} w={'1.2rem'} />
-                        <CopyBox value={item.name} color={'myGray.900'}>
-                          {item.name}
+                        <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
+                        <CopyBox
+                          value={showModelId ? item.model : item.name}
+                          color={'myGray.900'}
+                          fontWeight={'500'}
+                        >
+                          {showModelId ? item.model : item.name}
                         </CopyBox>
+                      </HStack>
+                      <HStack mt={2}>
+                        {item.contextToken && (
+                          <MyTag type="borderFill" colorSchema="blue" py={0.5}>
+                            {Math.floor(item.contextToken / 1000)}k
+                          </MyTag>
+                        )}
+                        {item.vision && (
+                          <MyTag type="borderFill" colorSchema="green" py={0.5}>
+                            {t('account:model.vision_tag')}
+                          </MyTag>
+                        )}
+                        {item.toolChoice && (
+                          <MyTag type="borderFill" colorSchema="adora" py={0.5}>
+                            {t('account:model.tool_choice_tag')}
+                          </MyTag>
+                        )}
                       </HStack>
                     </Td>
                     <Td>
                       <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                     </Td>
-                    <Td fontSize={'sm'}>{item.priceLabel}</Td>
+                    {feConfigs?.isPlus && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
                     <Td fontSize={'sm'}>
                       <Switch
                         size={'sm'}
@@ -422,7 +468,13 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>
                       <HStack>
                         <MyIconButton
+                          icon={'core/chat/sendLight'}
+                          tip={t('account:model.test_model')}
+                          onClick={() => onTestModel(item.model)}
+                        />
+                        <MyIconButton
                           icon={'common/settingLight'}
+                          tip={t('account:model.edit_model')}
                           onClick={() => onEditModel(item.model)}
                         />
                         {item.isCustom && (
@@ -546,24 +598,6 @@ const ModelEditModal = ({
               </Thead>
               <Tbody>
                 <Tr>
-                  <Td>{t('common:model.provider')}</Td>
-                  <Td textAlign={'right'}>
-                    {isCustom ? (
-                      <MySelect
-                        value={provider}
-                        onchange={(value) => setValue('provider', value)}
-                        list={providerList.current}
-                        {...InputStyles}
-                      />
-                    ) : (
-                      <HStack justifyContent={'flex-end'}>
-                        <Avatar src={providerData.avatar} w={'1rem'} />
-                        <Box>{t(providerData.name)}</Box>
-                      </HStack>
-                    )}
-                  </Td>
-                </Tr>
-                <Tr>
                   <Td>
                     <HStack spacing={1}>
                       <Box>{t('account:model.model_id')}</Box>
@@ -576,6 +610,17 @@ const ModelEditModal = ({
                     ) : (
                       modelData?.model
                     )}
+                  </Td>
+                </Tr>
+                <Tr>
+                  <Td>{t('common:model.provider')}</Td>
+                  <Td textAlign={'right'}>
+                    <MySelect
+                      value={provider}
+                      onchange={(value) => setValue('provider', value)}
+                      list={providerList.current}
+                      {...InputStyles}
+                    />
                   </Td>
                 </Tr>
                 <Tr>

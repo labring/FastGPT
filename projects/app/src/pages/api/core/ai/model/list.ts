@@ -20,6 +20,11 @@ export type listResponse = {
 
   isActive: boolean;
   isCustom: boolean;
+
+  // Tag
+  contextToken?: number;
+  vision?: boolean;
+  toolChoice?: boolean;
 }[];
 
 async function handler(
@@ -39,7 +44,13 @@ async function handler(
     inputPrice: model.inputPrice,
     outputPrice: model.outputPrice,
     isActive: model.isActive ?? false,
-    isCustom: model.isCustom ?? false
+    isCustom: model.isCustom ?? false,
+
+    // Tag
+    contextToken:
+      'maxContext' in model ? model.maxContext : 'maxToken' in model ? model.maxToken : undefined,
+    vision: 'vision' in model ? model.vision : undefined,
+    toolChoice: 'toolChoice' in model ? model.toolChoice : undefined
   }));
 }
 

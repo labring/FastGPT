@@ -7,6 +7,7 @@ export type ModelProviderIdType =
   | 'Meta'
   | 'MistralAI'
   | 'Groq'
+  | 'Grok'
   | 'AliCloud'
   | 'Qwen'
   | 'Doubao'
@@ -59,6 +60,11 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'MistralAI',
     name: 'MistralAI',
     avatar: 'model/mistral'
+  },
+  {
+    id: 'Grok',
+    name: 'Grok',
+    avatar: 'model/grok'
   },
   {
     id: 'Groq',

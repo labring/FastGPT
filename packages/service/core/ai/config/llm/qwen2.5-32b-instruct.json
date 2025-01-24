@@ -1,10 +1,7 @@
 {
   "provider": "Qwen",
   "model": "qwen2.5-32b-instruct",
-  "name": "qwen2.5-32b-128k",
-
-  "censor": false,
-  "charsPointsPrice": 0,
+  "name": "qwen2.5-32b-instruct",
 
   "maxContext": 128000,
   "maxResponse": 8000,

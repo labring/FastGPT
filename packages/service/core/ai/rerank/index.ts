@@ -1,6 +1,7 @@
 import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 import { getFirstReRankModel } from '../model';
+import { getAxiosConfig } from '../config';
 
 type PostReRankResponse = {
   id: string;
@@ -24,9 +25,11 @@ export function reRankRecall({
     return Promise.reject('no rerank model');
   }
 
+  const { baseUrl, authorization } = getAxiosConfig({});
+
   let start = Date.now();
   return POST<PostReRankResponse>(
-    model.requestUrl,
+    model.requestUrl ? model.requestUrl : `${baseUrl}/v1/rerank`,
     {
       model: model.model,
       query,
@@ -34,7 +37,7 @@ export function reRankRecall({
     },
     {
       headers: {
-        Authorization: `Bearer ${model.requestAuth}`
+        Authorization: model.requestAuth ? model.requestAuth : authorization
       },
       timeout: 30000
     }
