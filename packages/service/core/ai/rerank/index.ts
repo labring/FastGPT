@@ -2,6 +2,7 @@ import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
+import { ReRankModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 type PostReRankResponse = {
   id: string;
@@ -13,14 +14,14 @@ type PostReRankResponse = {
 type ReRankCallResult = { id: string; score?: number }[];
 
 export function reRankRecall({
+  model = getDefaultRerankModel(),
   query,
   documents
 }: {
+  model?: ReRankModelItemType;
   query: string;
   documents: { id: string; text: string }[];
 }): Promise<ReRankCallResult> {
-  const model = getDefaultRerankModel();
-
   if (!model || !model?.requestUrl) {
     return Promise.reject('no rerank model');
   }
