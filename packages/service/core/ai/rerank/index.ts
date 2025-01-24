@@ -22,7 +22,7 @@ export function reRankRecall({
   query: string;
   documents: { id: string; text: string }[];
 }): Promise<ReRankCallResult> {
-  if (!model || !model?.requestUrl) {
+  if (!model) {
     return Promise.reject('no rerank model');
   }
 
@@ -30,7 +30,7 @@ export function reRankRecall({
 
   let start = Date.now();
   return POST<PostReRankResponse>(
-    model.requestUrl ? model.requestUrl : `${baseUrl}/v1/rerank`,
+    model.requestUrl ? model.requestUrl : `${baseUrl}/rerank`,
     {
       model: model.model,
       query,
@@ -58,6 +58,6 @@ export function reRankRecall({
     .catch((err) => {
       addLog.error('rerank error', err);
 
-      return [];
+      return Promise.reject(err);
     });
 }
