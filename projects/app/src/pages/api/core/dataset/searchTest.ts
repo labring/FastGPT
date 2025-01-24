@@ -100,4 +100,4 @@ async function handler(req: NextApiRequest) {
   };
 }
 
-export default NextAPI(useIPFrequencyLimit(1, 15), handler);
+export default NextAPI(useIPFrequencyLimit({ id: 'search-test', seconds: 1, limit: 15 }), handler);

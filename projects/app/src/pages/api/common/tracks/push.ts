@@ -38,7 +38,7 @@ async function handler(
   return TrackModel.create(data);
 }
 
-export default NextAPI(useIPFrequencyLimit(1, 5), handler);
+export default NextAPI(useIPFrequencyLimit({ id: 'push-tracks', seconds: 1, limit: 5 }), handler);
 
 export const config = {
   api: {

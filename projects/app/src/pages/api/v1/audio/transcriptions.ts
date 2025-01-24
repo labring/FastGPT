@@ -90,7 +90,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   removeFilesByPaths(filePaths);
 }
 
-export default NextAPI(useIPFrequencyLimit(1, 1), handler);
+export default NextAPI(
+  useIPFrequencyLimit({ id: 'transcriptions', seconds: 1, limit: 1 }),
+  handler
+);
 
 export const config = {
   api: {
