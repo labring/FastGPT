@@ -34,18 +34,33 @@ export const loadSystemModels = async (init = false) => {
       if (model.type === ModelTypeEnum.llm) {
         global.llmModelMap.set(model.model, model);
         global.llmModelMap.set(model.name, model);
+        if (model.isDefault) {
+          global.systemDefaultModel.llm = model;
+        }
       } else if (model.type === ModelTypeEnum.embedding) {
         global.embeddingModelMap.set(model.model, model);
         global.embeddingModelMap.set(model.name, model);
+        if (model.isDefault) {
+          global.systemDefaultModel.embedding = model;
+        }
       } else if (model.type === ModelTypeEnum.tts) {
         global.ttsModelMap.set(model.model, model);
         global.ttsModelMap.set(model.name, model);
+        if (model.isDefault) {
+          global.systemDefaultModel.tts = model;
+        }
       } else if (model.type === ModelTypeEnum.stt) {
         global.sttModelMap.set(model.model, model);
         global.sttModelMap.set(model.name, model);
+        if (model.isDefault) {
+          global.systemDefaultModel.stt = model;
+        }
       } else if (model.type === ModelTypeEnum.rerank) {
         global.reRankModelMap.set(model.model, model);
         global.reRankModelMap.set(model.name, model);
+        if (model.isDefault) {
+          global.systemDefaultModel.rerank = model;
+        }
       }
     }
   };
@@ -59,6 +74,8 @@ export const loadSystemModels = async (init = false) => {
   global.ttsModelMap = new Map<string, TTSModelType>();
   global.sttModelMap = new Map<string, STTModelType>();
   global.reRankModelMap = new Map<string, ReRankModelItemType>();
+  // @ts-ignore
+  global.systemDefaultModel = {};
 
   try {
     const dbModels = await MongoSystemModel.find({}).lean();
@@ -97,6 +114,23 @@ export const loadSystemModels = async (init = false) => {
         isCustom: true
       });
     });
+
+    // Default model check
+    if (!global.systemDefaultModel.llm) {
+      global.systemDefaultModel.llm = Array.from(global.llmModelMap.values())[0];
+    }
+    if (!global.systemDefaultModel.embedding) {
+      global.systemDefaultModel.embedding = Array.from(global.embeddingModelMap.values())[0];
+    }
+    if (!global.systemDefaultModel.tts) {
+      global.systemDefaultModel.tts = Array.from(global.ttsModelMap.values())[0];
+    }
+    if (!global.systemDefaultModel.stt) {
+      global.systemDefaultModel.stt = Array.from(global.sttModelMap.values())[0];
+    }
+    if (!global.systemDefaultModel.rerank) {
+      global.systemDefaultModel.rerank = Array.from(global.reRankModelMap.values())[0];
+    }
 
     console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
   } catch (error) {

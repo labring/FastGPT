@@ -1,6 +1,6 @@
 import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
-import { getFirstReRankModel } from '../model';
+import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
 
 type PostReRankResponse = {
@@ -19,7 +19,7 @@ export function reRankRecall({
   query: string;
   documents: { id: string; text: string }[];
 }): Promise<ReRankCallResult> {
-  const model = getFirstReRankModel();
+  const model = getDefaultRerankModel();
 
   if (!model || !model?.requestUrl) {
     return Promise.reject('no rerank model');

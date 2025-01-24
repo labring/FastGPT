@@ -6,7 +6,7 @@ import {
   getLLMModel,
   getEmbeddingModel,
   getDatasetModel,
-  getFirstEmbeddingModel
+  getDefaultEmbeddingModel
 } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -32,7 +32,7 @@ async function handler(
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = getFirstEmbeddingModel().model,
+    vectorModel = getDefaultEmbeddingModel().model,
     agentModel = getDatasetModel().model,
     apiServer,
     feishuServer,

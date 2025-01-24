@@ -2,11 +2,11 @@
   "provider": "Moonshot",
   "list": [
     {
-      "model": "moonshot-v1-128k",
-      "name": "moonshot-v1-128k",
-      "maxContext": 128000,
+      "model": "moonshot-v1-8k",
+      "name": "moonshot-v1-8k",
+      "maxContext": 8000,
       "maxResponse": 4000,
-      "quoteMaxToken": 60000,
+      "quoteMaxToken": 6000,
       "maxTemperature": 1,
       "vision": false,
       "toolChoice": true,
@@ -46,11 +46,11 @@
       "type": "llm"
     },
     {
-      "model": "moonshot-v1-8k",
-      "name": "moonshot-v1-8k",
-      "maxContext": 8000,
+      "model": "moonshot-v1-128k",
+      "name": "moonshot-v1-128k",
+      "maxContext": 128000,
       "maxResponse": 4000,
-      "quoteMaxToken": 6000,
+      "quoteMaxToken": 60000,
       "maxTemperature": 1,
       "vision": false,
       "toolChoice": true,

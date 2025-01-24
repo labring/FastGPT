@@ -233,7 +233,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
           onEdit={() => {
             toast({
               status: 'success',
-              title: t('common:common.Update Successful')
+              title: t('common:common.Update Success')
             });
             refetchShareChatList();
             setEditLinkData(undefined);

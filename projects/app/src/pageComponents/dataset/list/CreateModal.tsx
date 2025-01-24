@@ -41,7 +41,7 @@ const CreateModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { embeddingModelList, datasetModelList } = useSystemStore();
+  const { defaultModels, embeddingModelList, datasetModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const datasetTypeMap = useMemo(() => {
@@ -78,8 +78,8 @@ const CreateModal = ({
       avatar: datasetTypeMap[type].icon,
       name: '',
       intro: '',
-      vectorModel: filterNotHiddenVectorModelList[0].model,
-      agentModel: datasetModelList[0].model
+      vectorModel: defaultModels.embedding?.model,
+      agentModel: defaultModels.llm?.model
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
