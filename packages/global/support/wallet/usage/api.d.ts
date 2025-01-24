@@ -12,9 +12,6 @@ export type GetUsageProps = {
   sources?: UsageSourceEnum[];
   teamMemberIds?: string[];
   projectName?: string;
-  appNameMap: Record<string, string>;
-  sourcesMap: Record<string, { label: string }>;
-  title: string;
 };
 
 export type GetUsageDashboardProps = GetUsageProps & {
