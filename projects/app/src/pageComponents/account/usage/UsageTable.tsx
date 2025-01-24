@@ -44,33 +44,10 @@ const UsageTableList = ({
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
   const requestParams = useMemo(() => {
-    const appNameMap = {
-      ['core.app.Question Guide']: t('common:core.app.Question Guide'),
-      ['common:support.wallet.usage.Audio Speech']: t('common:support.wallet.usage.Audio Speech'),
-      ['support.wallet.usage.Whisper']: t('common:support.wallet.usage.Whisper'),
-      ['support.wallet.moduleName.index']: t('common:support.wallet.moduleName.index'),
-      ['support.wallet.moduleName.qa']: t('common:support.wallet.moduleName.qa'),
-      ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
-      ['common:core.module.template.ai_chat']: t('common:core.module.template.ai_chat')
-    };
-
-    const sourcesMap = Object.fromEntries(
-      Object.entries(UsageSourceMap).map(([key, config]) => [
-        key,
-        {
-          label: t(config.label as any)
-        }
-      ])
-    );
-    const title = t('account_usage:export_title');
-
     return {
       dateStart: dateRange.from || new Date(),
       dateEnd: addDays(dateRange.to || new Date(), 1),
       sources: isSelectAllSource ? undefined : usageSources,
-      sourcesMap,
-      appNameMap,
-      title,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName
     };
@@ -81,8 +58,7 @@ const UsageTableList = ({
     isSelectAllTmb,
     projectName,
     selectTmbIds,
-    usageSources,
-    t
+    usageSources
   ]);
 
   const {
@@ -103,7 +79,29 @@ const UsageTableList = ({
       await downloadFetch({
         url: `/api/proApi/support/wallet/usage/exportUsage`,
         filename: `usage.csv`,
-        body: requestParams
+        body: {
+          ...requestParams,
+          appNameMap: {
+            ['core.app.Question Guide']: t('common:core.app.Question Guide'),
+            ['common:support.wallet.usage.Audio Speech']: t(
+              'common:support.wallet.usage.Audio Speech'
+            ),
+            ['support.wallet.usage.Whisper']: t('common:support.wallet.usage.Whisper'),
+            ['support.wallet.moduleName.index']: t('common:support.wallet.moduleName.index'),
+            ['support.wallet.moduleName.qa']: t('common:support.wallet.moduleName.qa'),
+            ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
+            ['common:core.module.template.ai_chat']: t('common:core.module.template.ai_chat')
+          },
+          sourcesMap: Object.fromEntries(
+            Object.entries(UsageSourceMap).map(([key, config]) => [
+              key,
+              {
+                label: t(config.label as any)
+              }
+            ])
+          ),
+          title: t('account_usage:export_title')
+        }
       });
     },
     {
