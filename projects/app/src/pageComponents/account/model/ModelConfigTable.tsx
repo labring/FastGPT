@@ -36,7 +36,8 @@ import {
   getSystemModelDetail,
   getSystemModelList,
   getTestModel,
-  putSystemModel
+  putSystemModel,
+  putUpdateDefaultModels
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
@@ -54,20 +55,14 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const {
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    feConfigs
-  } = useSystemStore();
+  const { defaultModels, feConfigs } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -273,14 +268,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
   const onCreateModel = (type: ModelTypeEnum) => {
-    const defaultModel = (() => {
-      if (type === ModelTypeEnum.llm) return llmModelList[0];
-      if (type === ModelTypeEnum.embedding) return embeddingModelList[0];
-      if (type === ModelTypeEnum.tts) return ttsModelList[0];
-      if (type === ModelTypeEnum.stt) return sttModelList[0];
-      if (type === ModelTypeEnum.rerank) return reRankModelList[0];
-      return llmModelList[0];
-    })();
+    const defaultModel = defaultModels[type];
 
     setEditModelData({
       ...defaultModel,
@@ -302,6 +290,11 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onOpen: onOpenJsonConfig,
     onClose: onCloseJsonConfig
   } = useDisclosure();
+  const {
+    onOpen: onOpenDefaultModel,
+    onClose: onCloseDefaultModel,
+    isOpen: isOpenDefaultModel
+  } = useDisclosure();
 
   const isLoading = loadingModels || loadingData || updatingModel || testingModel;
 
@@ -313,6 +306,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         <Flex alignItems={'center'}>
           {Tab}
           <Box flex={1} />
+          <Button variant={'whiteBase'} mr={2} onClick={onOpenDefaultModel}>
+            {t('account:model.default_model')}
+          </Button>
           <Button variant={'whiteBase'} mr={2} onClick={onOpenJsonConfig}>
             {t('account:model.json_config')}
           </Button>
@@ -504,6 +500,9 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       )}
       {isOpenJsonConfig && (
         <JsonConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
+      )}
+      {isOpenDefaultModel && (
+        <DefaultModelModal onClose={onCloseDefaultModel} onSuccess={refreshModels} />
       )}
     </>
   );
@@ -1080,6 +1079,166 @@ const JsonConfigModal = ({
       </ModalFooter>
 
       <ConfirmModal />
+    </MyModal>
+  );
+};
+
+const labelStyles = {
+  fontSize: 'sm',
+  color: 'myGray.900',
+  mb: 0.5
+};
+const DefaultModelModal = ({
+  onSuccess,
+  onClose
+}: {
+  onSuccess: () => void;
+  onClose: () => void;
+}) => {
+  const { t } = useTranslation();
+  const {
+    defaultModels,
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList
+  } = useSystemStore();
+
+  // Create a copy of defaultModels for local state management
+  const [defaultData, setDefaultData] = useState(defaultModels);
+
+  const { runAsync, loading } = useRequest2(putUpdateDefaultModels, {
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
+    successToast: t('common:common.Update Success')
+  });
+
+  return (
+    <MyModal
+      isOpen
+      onClose={onClose}
+      title={t('account:default_model_config')}
+      iconSrc="modal/edit"
+    >
+      <ModalBody>
+        <Box>
+          <Box {...labelStyles}>{t('common:model.type.chat')}</Box>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.llm?.model}
+              list={llmModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  llm: llmModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+        <Box mt={4}>
+          <Box {...labelStyles}>{t('common:model.type.embedding')}</Box>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.embedding?.model}
+              list={embeddingModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  embedding: embeddingModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+        <Box mt={4}>
+          <Box {...labelStyles}>{t('common:model.type.tts')}</Box>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.tts?.model}
+              list={ttsModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  tts: ttsModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+        <Box mt={4}>
+          <Box {...labelStyles}>{t('common:model.type.stt')}</Box>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.stt?.model}
+              list={sttModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  stt: sttModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+        <Box mt={4}>
+          <Box {...labelStyles}>{t('common:model.type.reRank')}</Box>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.rerank?.model}
+              list={reRankModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  rerank: reRankModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+      </ModalBody>
+      <ModalFooter>
+        <Button variant={'whiteBase'} mr={4} onClick={onClose}>
+          {t('common:common.Cancel')}
+        </Button>
+        <Button
+          isLoading={loading}
+          onClick={() =>
+            runAsync({
+              [ModelTypeEnum.llm]: defaultData.llm?.model,
+              [ModelTypeEnum.embedding]: defaultData.embedding?.model,
+              [ModelTypeEnum.tts]: defaultData.tts?.model,
+              [ModelTypeEnum.stt]: defaultData.stt?.model,
+              [ModelTypeEnum.rerank]: defaultData.rerank?.model
+            })
+          }
+        >
+          {t('common:common.Confirm')}
+        </Button>
+      </ModalFooter>
     </MyModal>
   );
 };

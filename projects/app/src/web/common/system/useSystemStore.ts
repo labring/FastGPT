@@ -15,6 +15,7 @@ import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -49,6 +50,7 @@ type State = {
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
+  defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
@@ -125,6 +127,7 @@ export const useSystemStore = create<State>()(
         feConfigs: {},
         subPlans: undefined,
         systemVersion: '0.0.0',
+        defaultModels: {},
         llmModelList: [],
         datasetModelList: [],
         embeddingModelList: [],
@@ -155,6 +158,8 @@ export const useSystemStore = create<State>()(
             state.sttModelList =
               res.activeModelList?.filter((item) => item.type === ModelTypeEnum.stt) ??
               state.sttModelList;
+
+            state.defaultModels = res.defaultModels ?? state.defaultModels;
           });
         }
       })),
@@ -166,6 +171,7 @@ export const useSystemStore = create<State>()(
           feConfigs: state.feConfigs,
           subPlans: state.subPlans,
           systemVersion: state.systemVersion,
+          defaultModels: state.defaultModels,
           llmModelList: state.llmModelList,
           datasetModelList: state.datasetModelList,
           embeddingModelList: state.embeddingModelList,
