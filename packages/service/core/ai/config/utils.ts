@@ -95,7 +95,7 @@ export const loadSystemModels = async (init = false) => {
           const modelData: any = {
             ...fileModel,
             ...dbModel?.metadata,
-            provider: fileContent.provider,
+            provider: dbModel?.metadata?.provider || fileContent.provider,
             type: dbModel?.metadata?.type || fileModel.type,
             isCustom: false
           };
