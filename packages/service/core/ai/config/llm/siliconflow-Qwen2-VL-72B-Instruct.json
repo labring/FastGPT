@@ -1,0 +1,22 @@
+{
+  "provider": "Siliconflow",
+  "model": "Qwen/Qwen2-VL-72B-Instruct",
+  "name": "Qwen/Qwen2-VL-72B-Instruct",
+  "maxContext": 32000,
+  "maxResponse": 4000,
+  "quoteMaxToken": 30000,
+  "maxTemperature": 1,
+  "charsPointsPrice": 0,
+  "censor": false,
+  "vision": true,
+  "datasetProcess": false,
+  "usedInClassify": false,
+  "usedInExtractFields": false,
+  "usedInToolCall": false,
+  "toolChoice": false,
+  "functionCall": false,
+  "customCQPrompt": "",
+  "customExtractPrompt": "",
+  "defaultSystemChatPrompt": "",
+  "defaultConfig": {}
+}

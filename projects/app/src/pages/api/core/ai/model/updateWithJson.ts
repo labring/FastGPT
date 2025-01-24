@@ -39,6 +39,9 @@ async function handler(
       return Promise.reject(`${item.model} metadata.provider is required`);
     }
     item.metadata.model = item.model.trim();
+    if (!item.metadata.name) {
+      item.metadata.name = item.model;
+    }
   }
 
   await mongoSessionRun(async (session) => {

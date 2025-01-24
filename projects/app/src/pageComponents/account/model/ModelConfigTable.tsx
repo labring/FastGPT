@@ -52,6 +52,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -281,8 +282,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       model: '',
       name: '',
       charsPointsPrice: 0,
-      inputPrice: 0,
-      outputPrice: 0,
+      inputPrice: undefined,
+      outputPrice: undefined,
 
       isCustom: true,
       isActive: true,
@@ -298,6 +299,8 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   } = useDisclosure();
 
   const isLoading = loadingModels || loadingData || updatingModel;
+
+  const [showModelId, setShowModelId] = useState(true);
 
   return (
     <>
@@ -382,7 +385,18 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             <Table>
               <Thead>
                 <Tr color={'myGray.600'}>
-                  <Th fontSize={'xs'}>{t('common:model.name')}</Th>
+                  <Th fontSize={'xs'}>
+                    <HStack
+                      spacing={1}
+                      cursor={'pointer'}
+                      onClick={() => setShowModelId(!showModelId)}
+                    >
+                      <Box>
+                        {showModelId ? t('account:model.model_id') : t('common:model.name')}
+                      </Box>
+                      <MyIcon name={'modal/changePer'} w={'1rem'} />
+                    </HStack>
+                  </Th>
                   <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
                   {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
                   <Th fontSize={'xs'}>
@@ -403,8 +417,12 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td fontSize={'sm'}>
                       <HStack>
                         <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
-                        <CopyBox value={item.name} color={'myGray.900'} fontWeight={'500'}>
-                          {item.name}
+                        <CopyBox
+                          value={showModelId ? item.model : item.name}
+                          color={'myGray.900'}
+                          fontWeight={'500'}
+                        >
+                          {showModelId ? item.model : item.name}
                         </CopyBox>
                       </HStack>
                       <HStack mt={2}>

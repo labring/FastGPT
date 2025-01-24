@@ -1,0 +1,10 @@
+{
+  "provider": "Siliconflow",
+  "model": "BAAI/bge-m3",
+  "name": "BAAI/bge-m3",
+
+  "defaultToken": 512,
+  "maxToken": 8000,
+
+  "charsPointsPrice": 0
+}
