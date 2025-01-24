@@ -25,7 +25,7 @@ async function handler(
   const { llm, embedding, tts, stt, rerank } = req.body;
 
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.updateMany({}, { $set: { 'metadata.isDefault': false } }, { session });
+    await MongoSystemModel.updateMany({}, { $unset: { 'metadata.isDefault': 1 } }, { session });
 
     if (llm) {
       await MongoSystemModel.updateOne(
