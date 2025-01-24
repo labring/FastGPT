@@ -14,6 +14,11 @@ import { debounce } from 'lodash';
 
 type FolderBaseType = `${ModelTypeEnum}`;
 
+/* 
+  TODO: 分优先级读取：
+  1. 有外部挂载目录，则读取外部的
+  2. 没有外部挂载目录，则读取本地的。然后试图拉取云端的进行覆盖。
+*/
 export const loadSystemModels = async (init = false) => {
   const getModelNameList = (base: FolderBaseType) => {
     const currentFileUrl = new URL(import.meta.url);
@@ -56,52 +61,58 @@ export const loadSystemModels = async (init = false) => {
   global.sttModelMap = new Map<string, STTModelType>();
   global.reRankModelMap = new Map<string, ReRankModelItemType>();
 
-  const dbModels = await MongoSystemModel.find({}).lean();
+  try {
+    const dbModels = await MongoSystemModel.find({}).lean();
 
-  const baseList: FolderBaseType[] = [
-    ModelTypeEnum.llm,
-    ModelTypeEnum.embedding,
-    ModelTypeEnum.tts,
-    ModelTypeEnum.stt,
-    ModelTypeEnum.rerank
-  ];
+    const baseList: FolderBaseType[] = [
+      ModelTypeEnum.llm,
+      ModelTypeEnum.embedding,
+      ModelTypeEnum.tts,
+      ModelTypeEnum.stt,
+      ModelTypeEnum.rerank
+    ];
 
-  // System model
-  await Promise.all(
-    baseList.map(async (base) => {
-      const modelList = getModelNameList(base);
-      const nameList = modelList.map((name) => `${base}/${name}`);
+    // System model
+    await Promise.all(
+      baseList.map(async (base) => {
+        const modelList = getModelNameList(base);
+        const nameList = modelList.map((name) => `${base}/${name}`);
 
-      await Promise.all(
-        nameList.map(async (name) => {
-          const fileContent = (await import(`./${name}`))?.default as SystemModelItemType;
+        await Promise.all(
+          nameList.map(async (name) => {
+            const fileContent = (await import(`./${name}`))?.default as SystemModelItemType;
 
-          const dbModel = dbModels.find((item) => item.model === fileContent.model);
+            const dbModel = dbModels.find((item) => item.model === fileContent.model);
 
-          const model: any = {
-            ...fileContent,
-            ...dbModel?.metadata,
-            type: dbModel?.metadata?.type || base,
-            isCustom: false
-          };
+            const model: any = {
+              ...fileContent,
+              ...dbModel?.metadata,
+              type: dbModel?.metadata?.type || base,
+              isCustom: false
+            };
 
-          pushModel(model);
-        })
-      );
-    })
-  );
+            pushModel(model);
+          })
+        );
+      })
+    );
 
-  // Custom model
-  dbModels.forEach((dbModel) => {
-    if (global.systemModelList.find((item) => item.model === dbModel.model)) return;
+    // Custom model
+    dbModels.forEach((dbModel) => {
+      if (global.systemModelList.find((item) => item.model === dbModel.model)) return;
 
-    pushModel({
-      ...dbModel.metadata,
-      isCustom: true
+      pushModel({
+        ...dbModel.metadata,
+        isCustom: true
+      });
     });
-  });
 
-  console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
+    console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
+  } catch (error) {
+    console.error('Load models error', error);
+    // @ts-ignore
+    global.systemModelList = undefined;
+  }
 };
 
 export const watchSystemModelUpdate = () => {

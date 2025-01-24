@@ -58,8 +58,14 @@ const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const {
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    feConfigs
+  } = useSystemStore();
 
   const isRoot = userInfo?.username === 'root';
 
@@ -378,7 +384,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 <Tr color={'myGray.600'}>
                   <Th fontSize={'xs'}>{t('common:model.name')}</Th>
                   <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
-                  <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+                  {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
                   <Th fontSize={'xs'}>
                     <Box
                       cursor={'pointer'}
@@ -396,16 +402,33 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                   <Tr key={item.model} _hover={{ bg: 'myGray.50' }}>
                     <Td fontSize={'sm'}>
                       <HStack>
-                        <Avatar src={item.avatar} w={'1.2rem'} />
-                        <CopyBox value={item.name} color={'myGray.900'}>
+                        <Avatar src={item.avatar} w={'1.2rem'} borderRadius={'50%'} />
+                        <CopyBox value={item.name} color={'myGray.900'} fontWeight={'500'}>
                           {item.name}
                         </CopyBox>
+                      </HStack>
+                      <HStack mt={2}>
+                        {item.contextToken && (
+                          <MyTag type="borderFill" colorSchema="blue" py={0.5}>
+                            {Math.floor(item.contextToken / 1000)}k
+                          </MyTag>
+                        )}
+                        {item.vision && (
+                          <MyTag type="borderFill" colorSchema="green" py={0.5}>
+                            {t('account:model.vision_tag')}
+                          </MyTag>
+                        )}
+                        {item.toolChoice && (
+                          <MyTag type="borderFill" colorSchema="adora" py={0.5}>
+                            {t('account:model.tool_choice_tag')}
+                          </MyTag>
+                        )}
                       </HStack>
                     </Td>
                     <Td>
                       <MyTag colorSchema={item.tagColor as any}>{item.typeLabel}</MyTag>
                     </Td>
-                    <Td fontSize={'sm'}>{item.priceLabel}</Td>
+                    {feConfigs?.isPlus && <Td fontSize={'sm'}>{item.priceLabel}</Td>}
                     <Td fontSize={'sm'}>
                       <Switch
                         size={'sm'}

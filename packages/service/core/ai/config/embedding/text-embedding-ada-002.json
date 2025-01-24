@@ -4,7 +4,7 @@
   "name": "text-embedding-ada-002",
 
   "defaultToken": 512,
-  "maxToken": 3000,
+  "maxToken": 8000,
 
   "charsPointsPrice": 0
 }
