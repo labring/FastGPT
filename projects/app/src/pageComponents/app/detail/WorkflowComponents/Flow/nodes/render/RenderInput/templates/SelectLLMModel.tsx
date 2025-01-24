@@ -5,6 +5,7 @@ import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
+import { getWebDefaultModel } from '@/web/common/system/utils';
 
 const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
   const { llmModelList } = useSystemStore();
@@ -21,6 +22,9 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
       }),
     [llmModelList, item.llmModelType]
   );
+  const defaultModel = useMemo(() => {
+    return getWebDefaultModel(modelList).model;
+  }, [modelList]);
 
   const onChangeModel = useCallback(
     (e: string) => {
@@ -38,10 +42,10 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
   );
 
   useEffect(() => {
-    if (!item.value && modelList.length > 0) {
-      onChangeModel(modelList[0].model);
+    if (!modelList.find((model) => model.model === item.value) && !!defaultModel) {
+      onChangeModel(defaultModel);
     }
-  }, []);
+  }, [defaultModel, item.value, modelList, onChangeModel]);
 
   const Render = useMemo(() => {
     return (

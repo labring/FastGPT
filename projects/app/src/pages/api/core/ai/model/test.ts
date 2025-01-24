@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
+import { findModelFromAlldata, getReRankModel } from '@fastgpt/service/core/ai/model';
 import {
   EmbeddingModelItemType,
   LLMModelItemType,
@@ -120,6 +120,7 @@ const testSTTModel = async (model: STTModelType) => {
 
 const testReRankModel = async (model: ReRankModelItemType) => {
   await reRankRecall({
+    model,
     query: 'Hi',
     documents: [{ id: '1', text: 'Hi' }]
   });

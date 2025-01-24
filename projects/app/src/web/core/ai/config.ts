@@ -10,6 +10,9 @@ export const getSystemModelList = () => GET<listResponse>('/core/ai/model/list')
 export const getSystemModelDetail = (model: string) =>
   GET<SystemModelItemType>('/core/ai/model/detail', { model });
 
+export const getSystemModelDefaultConfig = (model: string) =>
+  GET<SystemModelItemType>('/core/ai/model/getDefaultConfig', { model });
+
 export const putSystemModel = (data: updateBody) => PUT('/core/ai/model/update', data);
 
 export const deleteSystemModel = (data: deleteQuery) => DELETE('/core/ai/model/delete', data);

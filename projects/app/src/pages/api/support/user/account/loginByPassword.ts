@@ -70,4 +70,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 }
 
-export default NextAPI(useIPFrequencyLimit(120, 10, true), handler);
+export default NextAPI(
+  useIPFrequencyLimit({ id: 'login-by-password', seconds: 120, limit: 10, force: true }),
+  handler
+);

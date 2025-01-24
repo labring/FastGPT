@@ -33,6 +33,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteSystemModel,
   getModelConfigJson,
+  getSystemModelDefaultConfig,
   getSystemModelDetail,
   getSystemModelList,
   getTestModel,
@@ -56,6 +57,7 @@ import { putUpdateWithJson } from '@/web/core/ai/config';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useRefresh } from '../../../../../../packages/web/hooks/useRefresh';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -173,7 +175,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {item.charsPointsPrice || 0}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
           </Flex>
@@ -526,9 +528,10 @@ const ModelEditModal = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { register, getValues, setValue, handleSubmit, watch } = useForm<SystemModelItemType>({
-    defaultValues: modelData
-  });
+  const { register, getValues, setValue, handleSubmit, watch, reset } =
+    useForm<SystemModelItemType>({
+      defaultValues: modelData
+    });
 
   const isCustom = !!modelData.isCustom;
   const isLLMModel = modelData?.type === ModelTypeEnum.llm;
@@ -575,6 +578,22 @@ const ModelEditModal = ({
     }
   );
 
+  const [key, setKey] = useState(0);
+  const { runAsync: loadDefaultConfig, loading: loadingDefaultConfig } = useRequest2(
+    getSystemModelDefaultConfig,
+    {
+      onSuccess(res) {
+        reset({
+          ...getValues(),
+          ...res
+        });
+        setTimeout(() => {
+          setKey((prev) => prev + 1);
+        }, 0);
+      }
+    }
+  );
+
   return (
     <MyModal
       iconSrc={'modal/edit'}
@@ -586,7 +605,7 @@ const ModelEditModal = ({
       h={'100%'}
     >
       <ModalBody>
-        <Flex gap={4}>
+        <Flex gap={4} key={key}>
           <TableContainer flex={'1'}>
             <Table>
               <Thead>
@@ -1007,6 +1026,16 @@ const ModelEditModal = ({
         </Flex>
       </ModalBody>
       <ModalFooter>
+        {!modelData.isCustom && (
+          <Button
+            isLoading={loadingDefaultConfig}
+            variant={'whiteBase'}
+            mr={4}
+            onClick={() => loadDefaultConfig(modelData.model)}
+          >
+            {t('account:reset_default')}
+          </Button>
+        )}
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>

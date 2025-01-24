@@ -13,12 +13,14 @@ import dynamic from 'next/dynamic';
 import { Box } from '@chakra-ui/react';
 import { CodeClassNameEnum } from './utils';
 
-const CodeLight = dynamic(() => import('./CodeLight'), { ssr: false });
+const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
 const MdImage = dynamic(() => import('./img/Image'), { ssr: false });
 const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: false });
 const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false });
 const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { ssr: false });
+const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
+const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -138,6 +140,12 @@ function Code(e: any) {
           {children}
         </IframeHtmlCodeBlock>
       );
+    }
+    if (codeType === CodeClassNameEnum.video) {
+      return <VideoBlock code={strChildren} />;
+    }
+    if (codeType === CodeClassNameEnum.audio) {
+      return <AudioBlock code={strChildren} />;
     }
 
     return (

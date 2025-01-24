@@ -69,7 +69,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         usingReRank: false,
         limit: 5000,
         similarity: 0,
-        datasetSearchUsingExtensionQuery: true,
+        datasetSearchUsingExtensionQuery: false,
         datasetSearchExtensionModel: defaultModels.llm?.model,
         datasetSearchExtensionBg: ''
       }
