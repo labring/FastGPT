@@ -18,7 +18,10 @@ async function handler(
   // send to pro
   const { token } = req.query;
   const result = await POST<any>(`support/outLink/dingtalk/${token}`, req.body, {
-    headers: req.headers as any
+    headers: {
+      timestamp: (req.headers.timestamp as string) ?? '',
+      sign: (req.headers.sign as string) ?? ''
+    }
   });
 
   return result;
