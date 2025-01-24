@@ -3,7 +3,7 @@
   "model": "llama-3.3-70b-versatile",
   "name": "Groq-llama-3.3-70b-versatile",
 
-  "maxContext": 125000,
+  "maxContext": 128000,
   "maxResponse": 8000,
   "quoteMaxToken": 60000,
   "maxTemperature": 1.2,

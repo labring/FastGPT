@@ -3,7 +3,7 @@
   "model": "gpt-4o",
   "name": "GPT-4o",
 
-  "maxContext": 125000,
+  "maxContext": 128000,
   "maxResponse": 4000,
   "quoteMaxToken": 60000,
   "maxTemperature": 1.2,

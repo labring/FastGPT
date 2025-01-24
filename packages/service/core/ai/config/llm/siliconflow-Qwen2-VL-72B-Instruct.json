@@ -4,7 +4,7 @@
   "name": "Qwen/Qwen2-VL-72B-Instruct",
   "maxContext": 32000,
   "maxResponse": 4000,
-  "quoteMaxToken": 30000,
+  "quoteMaxToken": 32000,
   "maxTemperature": 1,
   "charsPointsPrice": 0,
   "censor": false,

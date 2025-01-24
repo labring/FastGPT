@@ -51,6 +51,7 @@
   "model.request_auth_tip": "When making a request to a custom request address, carry the request header: Authorization: Bearer xxx to make the request.",
   "model.request_url": "Custom url",
   "model.request_url_tip": "If this value is filled in, a request will be made directly to this address without going through OneAPI",
+  "model.test_model": "Model testing",
   "model.tool_choice": "Tool choice",
   "model.tool_choice_tag": "ToolCall",
   "model.tool_choice_tip": "If the model supports tool calling, turn on this switch",

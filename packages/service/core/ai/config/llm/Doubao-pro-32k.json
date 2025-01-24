@@ -5,7 +5,7 @@
 
   "maxContext": 32000,
   "maxResponse": 4000,
-  "quoteMaxToken": 30000,
+  "quoteMaxToken": 32000,
   "maxTemperature": 1,
 
   "vision": false,

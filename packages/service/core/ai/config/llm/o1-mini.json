@@ -3,7 +3,7 @@
   "model": "o1-mini",
   "name": "o1-mini",
 
-  "maxContext": 125000,
+  "maxContext": 128000,
   "maxResponse": 4000,
   "quoteMaxToken": 120000,
   "maxTemperature": 1.2,

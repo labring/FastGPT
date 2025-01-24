@@ -35,6 +35,7 @@ import {
   getModelConfigJson,
   getSystemModelDetail,
   getSystemModelList,
+  getTestModel,
   putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -246,6 +247,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     );
   }, [systemModelList]);
 
+  const { runAsync: onTestModel, loading: testingModel } = useRequest2(getTestModel, {
+    manual: true,
+    successToast: t('common:common.Success')
+  });
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(putSystemModel, {
     onSuccess: refreshModels
   });
@@ -298,7 +303,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onClose: onCloseJsonConfig
   } = useDisclosure();
 
-  const isLoading = loadingModels || loadingData || updatingModel;
+  const isLoading = loadingModels || loadingData || updatingModel || testingModel;
 
   const [showModelId, setShowModelId] = useState(true);
 
@@ -463,7 +468,13 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>
                       <HStack>
                         <MyIconButton
+                          icon={'core/chat/sendLight'}
+                          tip={t('account:model.test_model')}
+                          onClick={() => onTestModel(item.model)}
+                        />
+                        <MyIconButton
                           icon={'common/settingLight'}
+                          tip={t('account:model.edit_model')}
                           onClick={() => onEditModel(item.model)}
                         />
                         {item.isCustom && (
@@ -587,24 +598,6 @@ const ModelEditModal = ({
               </Thead>
               <Tbody>
                 <Tr>
-                  <Td>{t('common:model.provider')}</Td>
-                  <Td textAlign={'right'}>
-                    {isCustom ? (
-                      <MySelect
-                        value={provider}
-                        onchange={(value) => setValue('provider', value)}
-                        list={providerList.current}
-                        {...InputStyles}
-                      />
-                    ) : (
-                      <HStack justifyContent={'flex-end'}>
-                        <Avatar src={providerData.avatar} w={'1rem'} />
-                        <Box>{t(providerData.name)}</Box>
-                      </HStack>
-                    )}
-                  </Td>
-                </Tr>
-                <Tr>
                   <Td>
                     <HStack spacing={1}>
                       <Box>{t('account:model.model_id')}</Box>
@@ -617,6 +610,17 @@ const ModelEditModal = ({
                     ) : (
                       modelData?.model
                     )}
+                  </Td>
+                </Tr>
+                <Tr>
+                  <Td>{t('common:model.provider')}</Td>
+                  <Td textAlign={'right'}>
+                    <MySelect
+                      value={provider}
+                      onchange={(value) => setValue('provider', value)}
+                      list={providerList.current}
+                      {...InputStyles}
+                    />
                   </Td>
                 </Tr>
                 <Tr>

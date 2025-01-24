@@ -50,6 +50,7 @@
   "model.request_auth_tip": "向自訂請求地址發起請求時候，攜帶請求頭：Authorization: Bearer xxx 進行請求",
   "model.request_url": "自訂請求地址",
   "model.request_url_tip": "如果填入該值，則會直接向該位址發起請求，不經過 OneAPI",
+  "model.test_model": "模型測試",
   "model.tool_choice": "支援工具調用",
   "model.tool_choice_tag": "工具調用",
   "model.tool_choice_tip": "如果該模型支援工具調用，則開啟該開關",

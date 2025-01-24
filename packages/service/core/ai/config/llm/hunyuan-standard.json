@@ -3,7 +3,7 @@
   "model": "hunyuan-standard",
   "name": "hunyuan-standard",
 
-  "maxContext": 30000,
+  "maxContext": 32000,
   "maxResponse": 2000,
   "quoteMaxToken": 20000,
   "maxTemperature": 1,
