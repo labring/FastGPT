@@ -1,43 +1,41 @@
 import { SystemModelItemType } from './type';
 
-export const getFirstLLMModel = () => {
-  return Array.from(global.llmModelMap.values())[0];
-};
+export const getDefaultLLMModel = () => global?.systemDefaultModel.llm!;
 export const getLLMModel = (model?: string) => {
-  if (!model) return getFirstLLMModel();
-  return global.llmModelMap.get(model) || getFirstLLMModel();
+  if (!model) return getDefaultLLMModel();
+  return global.llmModelMap.get(model) || getDefaultLLMModel();
 };
 
 export const getDatasetModel = (model?: string) => {
   return (
     Array.from(global.llmModelMap.values())
       ?.filter((item) => item.datasetProcess)
-      ?.find((item) => item.model === model || item.name === model) ?? getFirstLLMModel()
+      ?.find((item) => item.model === model || item.name === model) ?? getDefaultLLMModel()
   );
 };
 
-export const getFirstEmbeddingModel = () => Array.from(global.embeddingModelMap.values())[0];
+export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
 export const getEmbeddingModel = (model?: string) => {
-  if (!model) return getFirstEmbeddingModel();
-  return global.embeddingModelMap.get(model) || getFirstEmbeddingModel();
+  if (!model) return getDefaultEmbeddingModel();
+  return global.embeddingModelMap.get(model) || getDefaultEmbeddingModel();
 };
 
-export const getFirstTTSModel = () => Array.from(global.ttsModelMap.values())[0];
+export const getDefaultTTSModel = () => global?.systemDefaultModel.tts!;
 export function getTTSModel(model?: string) {
-  if (!model) return getFirstTTSModel();
-  return global.ttsModelMap.get(model) || getFirstTTSModel();
+  if (!model) return getDefaultTTSModel();
+  return global.ttsModelMap.get(model) || getDefaultTTSModel();
 }
 
-export const getFirstSTTModel = () => Array.from(global.sttModelMap.values())[0];
+export const getDefaultSTTModel = () => global?.systemDefaultModel.stt!;
 export function getSTTModel(model?: string) {
-  if (!model) return getFirstSTTModel();
-  return global.sttModelMap.get(model) || getFirstSTTModel();
+  if (!model) return getDefaultSTTModel();
+  return global.sttModelMap.get(model) || getDefaultSTTModel();
 }
 
-export const getFirstReRankModel = () => Array.from(global.reRankModelMap.values())[0];
+export const getDefaultRerankModel = () => global?.systemDefaultModel.rerank!;
 export function getReRankModel(model?: string) {
-  if (!model) return getFirstReRankModel();
-  return global.reRankModelMap.get(model) || getFirstReRankModel();
+  if (!model) return getDefaultRerankModel();
+  return global.reRankModelMap.get(model) || getDefaultRerankModel();
 }
 
 export const findAIModel = (model: string): SystemModelItemType | undefined => {

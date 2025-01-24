@@ -16,6 +16,7 @@ type BaseModelItemType = {
 
   isActive?: boolean;
   isCustom?: boolean;
+  isDefault?: boolean;
 
   // If has requestUrl, it will request the model directly
   requestUrl?: string;

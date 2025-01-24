@@ -1,0 +1,49 @@
+{
+  "provider": "Yi",
+  "list": [
+    {
+      "model": "yi-lightning",
+      "name": "yi-lightning",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 12000,
+      "maxTemperature": 1,
+      "vision": false,
+      "toolChoice": false,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    },
+    {
+      "model": "yi-vision-v2",
+      "name": "yi-vision-v2",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 12000,
+      "maxTemperature": 1,
+      "vision": true,
+      "toolChoice": false,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    }
+  ]
+}

@@ -48,7 +48,7 @@ type FormType = {
 const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { llmModelList } = useSystemStore();
+  const { defaultModels } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { pushDatasetTestItem } = useSearchTestStore();
   const [inputType, setInputType] = useState<'text' | 'file'>('text');
@@ -70,7 +70,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: true,
-        datasetSearchExtensionModel: llmModelList[0].model,
+        datasetSearchExtensionModel: defaultModels.llm?.model,
         datasetSearchExtensionBg: ''
       }
     }

@@ -20,6 +20,14 @@ export type SystemModelItemType =
   | STTModelType
   | ReRankModelItemType;
 
+export type SystemDefaultModelType = {
+  [ModelTypeEnum.llm]?: LLMModelItemType;
+  [ModelTypeEnum.embedding]?: EmbeddingModelItemType;
+  [ModelTypeEnum.tts]?: TTSModelType;
+  [ModelTypeEnum.stt]?: STTModelType;
+  [ModelTypeEnum.rerank]?: ReRankModelItemType;
+};
+
 declare global {
   var systemModelList: SystemModelItemType[];
   // var systemModelMap: Map<string, SystemModelItemType>;
@@ -30,4 +38,5 @@ declare global {
   var reRankModelMap: Map<string, ReRankModelItemType>;
 
   var systemActiveModelList: SystemModelItemType[];
+  var systemDefaultModel: SystemDefaultModelType;
 }

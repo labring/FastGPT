@@ -19,7 +19,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const { t } = useTranslation();
-  const { llmModelList } = useSystemStore();
+  const { defaultModels } = useSystemStore();
 
   const [data, setData] = useState<DatasetParamsProps>({
     searchMode: DatasetSearchModeEnum.embedding,
@@ -27,7 +27,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     similarity: 0.5,
     usingReRank: false,
     datasetSearchUsingExtensionQuery: true,
-    datasetSearchExtensionModel: llmModelList[0]?.model,
+    datasetSearchExtensionModel: defaultModels.llm?.model,
     datasetSearchExtensionBg: ''
   });
 
@@ -45,7 +45,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     });
 
     return maxTokens;
-  }, [nodeList, llmModelList]);
+  }, [nodeList]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 

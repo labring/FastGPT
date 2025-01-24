@@ -1,0 +1,47 @@
+{
+  "provider": "Groq",
+  "list": [
+    {
+      "model": "llama-3.1-8b-instant",
+      "name": "Groq-llama-3.1-8b-instant",
+      "maxContext": 128000,
+      "maxResponse": 8000,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1.2,
+      "vision": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "type": "llm"
+    },
+    {
+      "model": "llama-3.3-70b-versatile",
+      "name": "Groq-llama-3.3-70b-versatile",
+      "maxContext": 128000,
+      "maxResponse": 8000,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1.2,
+      "vision": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "type": "llm"
+    }
+  ]
+}
