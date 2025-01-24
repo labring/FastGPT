@@ -5,6 +5,7 @@ import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 export type updateDefaultQuery = {};
 
@@ -22,10 +23,12 @@ async function handler(
   req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>,
   res: ApiResponseType<any>
 ): Promise<updateDefaultResponse> {
+  await authSystemAdmin({ req });
+
   const { llm, embedding, tts, stt, rerank } = req.body;
 
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.updateMany({}, { $set: { 'metadata.isDefault': false } }, { session });
+    await MongoSystemModel.updateMany({}, { $unset: { 'metadata.isDefault': 1 } }, { session });
 
     if (llm) {
       await MongoSystemModel.updateOne(

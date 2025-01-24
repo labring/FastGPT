@@ -69,10 +69,6 @@ export const useAudioPlay = (
 
       if (!response.body || !response.ok) {
         const data = await response.json();
-        toast({
-          status: 'error',
-          title: getErrText(data, t('common:core.chat.Audio Speech Error'))
-        });
         return Promise.reject(data);
       }
       return response.body;

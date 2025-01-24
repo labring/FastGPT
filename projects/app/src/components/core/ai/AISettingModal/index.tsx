@@ -80,7 +80,9 @@ const AIChatSettingsModal = ({
   const temperature = watch('temperature');
   const useVision = watch('aiChatVision');
 
-  const selectedModel = getWebLLMModel(model);
+  const selectedModel = useMemo(() => {
+    return getWebLLMModel(model);
+  }, [model]);
   const llmSupportVision = !!selectedModel?.vision;
 
   const tokenLimit = useMemo(() => {
@@ -244,7 +246,7 @@ const AIChatSettingsModal = ({
           </Box>
           <Box flex={'1 0 0'}>
             <InputSlider
-              min={100}
+              min={0}
               max={tokenLimit}
               step={200}
               isDisabled={maxToken === undefined}

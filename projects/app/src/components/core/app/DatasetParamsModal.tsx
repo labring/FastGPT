@@ -65,7 +65,7 @@ const DatasetParamsModal = ({
   const theme = useTheme();
   const { toast } = useToast();
   const { teamPlanStatus } = useUserStore();
-  const { reRankModelList, llmModelList } = useSystemStore();
+  const { reRankModelList, llmModelList, defaultModels } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
@@ -82,7 +82,7 @@ const DatasetParamsModal = ({
       searchMode,
       usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
       datasetSearchUsingExtensionQuery,
-      datasetSearchExtensionModel: datasetSearchExtensionModel || chatModelSelectList[0]?.value,
+      datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
       datasetSearchExtensionBg
     }
   });
