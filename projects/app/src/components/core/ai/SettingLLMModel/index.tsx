@@ -7,8 +7,8 @@ import AISettingModal, { AIChatSettingsModalProps } from '@/components/core/ai/A
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useMount } from 'ahooks';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { getWebDefaultModel } from '@/web/common/system/utils';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -24,7 +24,7 @@ const SettingLLMModel = ({
   ...props
 }: AIChatSettingsModalProps & Props) => {
   const { t } = useTranslation();
-  const { llmModelList, defaultModels } = useSystemStore();
+  const { llmModelList } = useSystemStore();
 
   const model = defaultData.model;
 
@@ -39,16 +39,19 @@ const SettingLLMModel = ({
       }),
     [llmModelList, llmModelType]
   );
+  const defaultModel = useMemo(() => {
+    return getWebDefaultModel(modelList).model;
+  }, [modelList]);
 
   // Set default model
   useEffect(() => {
-    if (!llmModelList.find((item) => item.model === model) && !!defaultModels.llm) {
+    if (!modelList.find((item) => item.model === model) && !!defaultModel) {
       onChange({
         ...defaultData,
-        model: defaultModels.llm.model
+        model: defaultModel
       });
     }
-  }, [model, defaultData, llmModelList, defaultModels.llm, onChange]);
+  }, [modelList, model, defaultModel, onChange]);
 
   const {
     isOpen: isOpenAIChatSetting,

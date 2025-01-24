@@ -1,3 +1,4 @@
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useSystemStore } from './useSystemStore';
 
 export const downloadFetch = async ({
@@ -43,5 +44,15 @@ export const downloadFetch = async ({
 
 export const getWebLLMModel = (model?: string) => {
   const list = useSystemStore.getState().llmModelList;
-  return list.find((item) => item.model === model || item.name === model) ?? list[0];
+  const defaultModels = useSystemStore.getState().defaultModels;
+
+  return list.find((item) => item.model === model || item.name === model) ?? defaultModels.llm!;
+};
+export const getWebDefaultModel = (llmList: LLMModelItemType[] = []) => {
+  const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
+  const defaultModels = useSystemStore.getState().defaultModels;
+
+  return defaultModels.llm && list.find((item) => item.model === defaultModels.llm?.model)
+    ? defaultModels.llm
+    : list[0];
 };

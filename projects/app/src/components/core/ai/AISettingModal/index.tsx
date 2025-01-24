@@ -80,7 +80,9 @@ const AIChatSettingsModal = ({
   const temperature = watch('temperature');
   const useVision = watch('aiChatVision');
 
-  const selectedModel = getWebLLMModel(model);
+  const selectedModel = useMemo(() => {
+    return getWebLLMModel(model);
+  }, [model]);
   const llmSupportVision = !!selectedModel?.vision;
 
   const tokenLimit = useMemo(() => {

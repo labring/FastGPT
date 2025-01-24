@@ -21,6 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
 import ApiDatasetForm from '../ApiDatasetForm';
+import { getWebDefaultModel } from '@/web/common/system/utils';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -79,7 +80,7 @@ const CreateModal = ({
       name: '',
       intro: '',
       vectorModel: defaultModels.embedding?.model,
-      agentModel: defaultModels.llm?.model
+      agentModel: getWebDefaultModel(datasetModelList)?.model
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
