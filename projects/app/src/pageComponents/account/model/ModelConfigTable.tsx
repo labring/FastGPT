@@ -173,7 +173,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         priceLabel: (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
+              {item.charsPointsPrice || 0}
             </Box>
             {` ${t('common:support.wallet.subscription.point')} / 60${t('common:unit.seconds')}`}
           </Flex>
