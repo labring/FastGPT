@@ -244,7 +244,7 @@ const AIChatSettingsModal = ({
           </Box>
           <Box flex={'1 0 0'}>
             <InputSlider
-              min={100}
+              min={0}
               max={tokenLimit}
               step={200}
               isDisabled={maxToken === undefined}
