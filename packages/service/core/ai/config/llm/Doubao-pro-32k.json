@@ -9,7 +9,7 @@
   "maxTemperature": 1,
 
   "vision": false,
-  "toolChoice": false,
+  "toolChoice": true,
   "functionCall": false,
   "defaultSystemChatPrompt": "",
 
