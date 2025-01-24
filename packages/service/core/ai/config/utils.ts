@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
 import { ModelProviderType } from '@fastgpt/global/core/ai/provider';
+import { findModelFromAlldata } from '../model';
 
 /* 
   TODO: 分优先级读取：
@@ -138,6 +139,28 @@ export const loadSystemModels = async (init = false) => {
     // @ts-ignore
     global.systemModelList = undefined;
   }
+};
+
+export const getSystemModelConfig = async (model: string): Promise<SystemModelItemType> => {
+  const modelData = findModelFromAlldata(model);
+  if (!modelData) return Promise.reject('Model is not found');
+  if (modelData.isCustom) return Promise.reject('Custom model not data');
+
+  // Read file
+  const fileContent = (await import(`./provider/${modelData.provider}`))?.default as {
+    provider: ModelProviderType;
+    list: SystemModelItemType[];
+  };
+
+  const config = fileContent.list.find((item) => item.model === model);
+
+  if (!config) return Promise.reject('Model config is not found');
+
+  return {
+    ...config,
+    provider: modelData.provider,
+    isCustom: false
+  };
 };
 
 export const watchSystemModelUpdate = () => {
