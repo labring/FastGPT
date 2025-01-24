@@ -13,6 +13,7 @@
   "every_month": "Moon",
   "export_confirm": "Export confirmation",
   "export_confirm_tip": "There are currently {{total}} usage records in total. Are you sure to export?",
+  "export_title": "Time,Members,Type,Project name,AI points",
   "feishu": "Feishu",
   "generation_time": "Generation time",
   "input_token_length": "input tokens",

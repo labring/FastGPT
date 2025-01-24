@@ -43,24 +43,47 @@ const UsageTableList = ({
 
   const { dateRange, selectTmbIds, isSelectAllTmb, usageSources, isSelectAllSource, projectName } =
     filterParams;
-  const requestParans = useMemo(
-    () => ({
+  const requestParams = useMemo(() => {
+    const appNameMap = {
+      ['core.app.Question Guide']: t('common:core.app.Question Guide'),
+      ['common:support.wallet.usage.Audio Speech']: t('common:support.wallet.usage.Audio Speech'),
+      ['support.wallet.usage.Whisper']: t('common:support.wallet.usage.Whisper'),
+      ['support.wallet.moduleName.index']: t('common:support.wallet.moduleName.index'),
+      ['support.wallet.moduleName.qa']: t('common:support.wallet.moduleName.qa'),
+      ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
+      ['common:core.module.template.ai_chat']: t('common:core.module.template.ai_chat')
+    };
+
+    const sourcesMap = Object.fromEntries(
+      Object.entries(UsageSourceMap).map(([key, config]) => [
+        key,
+        {
+          label: t(config.label as any)
+        }
+      ])
+    );
+    const title = t('account_usage:export_title');
+
+    return {
       dateStart: dateRange.from || new Date(),
       dateEnd: addDays(dateRange.to || new Date(), 1),
       sources: isSelectAllSource ? undefined : usageSources,
+      sourcesMap,
+      appNameMap,
+      title,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName
-    }),
-    [
-      dateRange.from,
-      dateRange.to,
-      isSelectAllSource,
-      isSelectAllTmb,
-      projectName,
-      selectTmbIds,
-      usageSources
-    ]
-  );
+    };
+  }, [
+    dateRange.from,
+    dateRange.to,
+    isSelectAllSource,
+    isSelectAllTmb,
+    projectName,
+    selectTmbIds,
+    usageSources,
+    t
+  ]);
 
   const {
     data: usages,
@@ -69,8 +92,8 @@ const UsageTableList = ({
     total
   } = usePagination(getUserUsages, {
     pageSize: 20,
-    params: requestParans,
-    refreshDeps: [requestParans]
+    params: requestParams,
+    refreshDeps: [requestParams]
   });
 
   const [usageDetail, setUsageDetail] = useState<UsageItemType>();
@@ -80,11 +103,11 @@ const UsageTableList = ({
       await downloadFetch({
         url: `/api/proApi/support/wallet/usage/exportUsage`,
         filename: `usage.csv`,
-        body: requestParans
+        body: requestParams
       });
     },
     {
-      refreshDeps: [requestParans]
+      refreshDeps: [requestParams]
     }
   );
 
