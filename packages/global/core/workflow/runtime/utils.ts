@@ -176,6 +176,7 @@ export const checkNodeRunStatus = ({
       }
       visited.add(edge.source);
 
+      // 递归检测后面的 edge，如果有其中一个成环，则返回 true
       const nextEdges = allEdges.filter((item) => item.target === edge.source);
       return nextEdges.some((nextEdge) => checkIsCircular(nextEdge, new Set(visited)));
     };
