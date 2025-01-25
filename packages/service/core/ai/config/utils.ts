@@ -13,6 +13,7 @@ import {
 import { debounce } from 'lodash';
 import { ModelProviderType } from '@fastgpt/global/core/ai/provider';
 import { findModelFromAlldata } from '../model';
+import { reloadFastGPTConfigBuffer } from '../../../common/system/config/controller';
 
 /* 
   TODO: 分优先级读取：
@@ -170,7 +171,10 @@ export const watchSystemModelUpdate = () => {
     'change',
     debounce(async () => {
       try {
+        // Main node will reload twice
         await loadSystemModels(true);
+        // All node reaload buffer
+        await reloadFastGPTConfigBuffer();
       } catch (error) {}
     }, 500)
   );

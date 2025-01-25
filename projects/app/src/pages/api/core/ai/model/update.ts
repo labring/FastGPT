@@ -2,7 +2,6 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { delay } from '@fastgpt/global/common/system/utils';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
