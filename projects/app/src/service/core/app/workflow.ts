@@ -6,9 +6,10 @@ export const getChatModelNameListByModules = (nodes: StoreNodeItemType[]): strin
   const modelList = nodes
     .map((item) => {
       const model = item.inputs.find((input) => input.key === NodeInputKeyEnum.aiModel)?.value;
-      return getLLMModel(model)?.name || '';
+      return model ? getLLMModel(model)?.name : '';
     })
     .filter(Boolean);
-
+  console.log(JSON.stringify(nodes, null, 2), '---=');
+  console.log(modelList, '---=');
   return Array.from(new Set(modelList));
 };
