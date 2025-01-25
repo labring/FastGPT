@@ -2,6 +2,7 @@ import fs from 'fs';
 import { getAxiosConfig } from '../config';
 import axios from 'axios';
 import FormData from 'form-data';
+import { getSTTModel } from '../model';
 
 export const aiTranscriptions = async ({
   model,
@@ -14,13 +15,21 @@ export const aiTranscriptions = async ({
   data.append('model', model);
   data.append('file', fileStream);
 
+  const modelData = getSTTModel(model);
   const aiAxiosConfig = getAxiosConfig();
+
   const { data: result } = await axios<{ text: string }>({
     method: 'post',
-    baseURL: aiAxiosConfig.baseUrl,
-    url: '/audio/transcriptions',
+    ...(modelData.requestUrl
+      ? { url: modelData.requestUrl }
+      : {
+          baseURL: aiAxiosConfig.baseUrl,
+          url: modelData.requestUrl || '/audio/transcriptions'
+        }),
     headers: {
-      Authorization: aiAxiosConfig.authorization,
+      Authorization: modelData.requestAuth
+        ? `Bearer ${modelData.requestAuth}`
+        : aiAxiosConfig.authorization,
       ...data.getHeaders()
     },
     data: data

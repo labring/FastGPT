@@ -13,7 +13,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@fastgpt/global/core/ai/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ModelTypeEnum, getLLMModel } from '../../../ai/model';
+import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -22,6 +22,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
 import { llmCompletionsBodyFormat } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
+import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;

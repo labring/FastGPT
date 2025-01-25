@@ -25,7 +25,7 @@ const { definePartsStyle: tablePart, defineMultiStyleConfig: tableMultiStyle } =
 const { definePartsStyle: radioParts, defineMultiStyleConfig: radioStyle } =
   createMultiStyleConfigHelpers(radioAnatomy.keys);
 
-const shadowLight = '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)';
+export const shadowLight = '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)';
 
 // 按键
 const Button = defineStyleConfig({

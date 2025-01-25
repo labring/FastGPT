@@ -4,7 +4,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { TrackModel } from '@fastgpt/service/common/middle/tracks/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 
 export type pushQuery = {};
 
@@ -38,7 +38,7 @@ async function handler(
   return TrackModel.create(data);
 }
 
-export default NextAPI(useReqFrequencyLimit(1, 5), handler);
+export default NextAPI(useIPFrequencyLimit({ id: 'push-tracks', seconds: 1, limit: 5 }), handler);
 
 export const config = {
   api: {

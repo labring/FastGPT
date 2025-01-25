@@ -101,6 +101,7 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
+  const data = err?.response?.data || err;
 
   if (!err) {
     return Promise.reject({ message: '未知错误' });
@@ -108,8 +109,12 @@ function responseError(err: any) {
   if (typeof err === 'string') {
     return Promise.reject({ message: err });
   }
+  if (typeof data === 'string') {
+    return Promise.reject(data);
+  }
+
   // 有报错响应
-  if (err?.code in TOKEN_ERROR_CODE || err?.response?.data?.code in TOKEN_ERROR_CODE) {
+  if (data?.code in TOKEN_ERROR_CODE) {
     if (!['/chat/share', '/chat/team', '/login'].includes(window.location.pathname)) {
       clearToken();
       window.location.replace(
@@ -120,18 +125,18 @@ function responseError(err: any) {
     return Promise.reject({ message: i18nT('common:unauth_token') });
   }
   if (
-    err?.statusText === TeamErrEnum.aiPointsNotEnough ||
-    err?.statusText === TeamErrEnum.datasetSizeNotEnough ||
-    err?.statusText === TeamErrEnum.datasetAmountNotEnough ||
-    err?.statusText === TeamErrEnum.appAmountNotEnough
+    data?.statusText === TeamErrEnum.aiPointsNotEnough ||
+    data?.statusText === TeamErrEnum.datasetSizeNotEnough ||
+    data?.statusText === TeamErrEnum.datasetAmountNotEnough ||
+    data?.statusText === TeamErrEnum.appAmountNotEnough ||
+    data?.statusText === TeamErrEnum.pluginAmountNotEnough ||
+    data?.statusText === TeamErrEnum.websiteSyncNotEnough ||
+    data?.statusText === TeamErrEnum.reRankNotEnough
   ) {
-    useSystemStore.getState().setNotSufficientModalType(err.statusText);
-    return Promise.reject(err);
+    useSystemStore.getState().setNotSufficientModalType(data.statusText);
+    return Promise.reject(data);
   }
-  if (err?.response?.data) {
-    return Promise.reject(err?.response?.data);
-  }
-  return Promise.reject(err);
+  return Promise.reject(data);
 }
 
 /* 创建请求实例 */

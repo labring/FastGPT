@@ -6,7 +6,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum, getLLMModel, getVectorModel } from '../../../ai/model';
+import { getLLMModel, getEmbeddingModel } from '../../../ai/model';
 import { searchDatasetData } from '../../../dataset/search/controller';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,6 +18,7 @@ import { checkTeamReRankPermission } from '../../../../support/permission/teamLi
 import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -110,7 +111,7 @@ export async function dispatchDatasetSearch(
   // console.log(concatQueries, rewriteQuery, aiExtensionResult);
 
   // get vector
-  const vectorModel = getVectorModel(
+  const vectorModel = getEmbeddingModel(
     (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
   );
 
@@ -138,7 +139,7 @@ export async function dispatchDatasetSearch(
   const { totalPoints, modelName } = formatModelChars2Points({
     model: vectorModel.model,
     inputTokens: tokens,
-    modelType: ModelTypeEnum.vector
+    modelType: ModelTypeEnum.embedding
   });
   const responseData: DispatchNodeResponseType & { totalPoints: number } = {
     totalPoints,

@@ -1,9 +1,9 @@
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
-import AccountContainer from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import TeamSelector from '../components/TeamSelector';
+import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';

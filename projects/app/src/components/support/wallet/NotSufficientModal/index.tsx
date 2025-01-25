@@ -3,8 +3,8 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import { NotSufficientModalType, useSystemStore } from '@/web/common/system/useSystemStore';
-import ExtraPlan from '@/pages/price/components/ExtraPlan';
-import StandardPlan from '@/pages/price/components/Standard';
+import ExtraPlan from '@/pageComponents/price/ExtraPlan';
+import StandardPlan from '@/pageComponents/price/Standard';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -29,7 +29,10 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
     [TeamErrEnum.datasetSizeNotEnough]: t('common:support.wallet.Dataset_not_sufficient'),
     [TeamErrEnum.datasetAmountNotEnough]: t('common:support.wallet.Dataset_amount_not_sufficient'),
     [TeamErrEnum.teamMemberOverSize]: t('common:support.wallet.Team_member_over_size'),
-    [TeamErrEnum.appAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient')
+    [TeamErrEnum.appAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient'),
+    [TeamErrEnum.pluginAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient'),
+    [TeamErrEnum.websiteSyncNotEnough]: t('common:code_error.team_error.website_sync_not_enough'),
+    [TeamErrEnum.reRankNotEnough]: t('common:code_error.team_error.re_rank_not_enough')
   };
 
   return (

@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import ParentPaths from '@/components/common/folder/Path';
-import List from './component/List';
+import List from '@/pageComponents/dataset/list/List';
 import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
@@ -24,7 +24,7 @@ import {
   getCollaboratorList
 } from '@/web/core/dataset/api/collaborator';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { CreateDatasetType } from './component/CreateModal';
+import { CreateDatasetType } from '@/pageComponents/dataset/list/CreateModal';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -34,7 +34,7 @@ const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
 
-const CreateModal = dynamic(() => import('./component/CreateModal'));
+const CreateModal = dynamic(() => import('@/pageComponents/dataset/list/CreateModal'));
 
 const Dataset = () => {
   const { isPc } = useSystem();

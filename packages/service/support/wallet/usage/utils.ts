@@ -1,5 +1,5 @@
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ModelTypeEnum, getModelMap } from '../../../core/ai/model';
+import { findAIModel } from '../../../core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export const formatModelChars2Points = ({
   model,
@@ -14,7 +14,7 @@ export const formatModelChars2Points = ({
   modelType: `${ModelTypeEnum}`;
   multiple?: number;
 }) => {
-  const modelData = getModelMap?.[modelType]?.(model) as LLMModelItemType;
+  const modelData = findAIModel(model);
   if (!modelData) {
     return {
       totalPoints: 0,

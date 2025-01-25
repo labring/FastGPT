@@ -7,7 +7,9 @@ export enum CodeClassNameEnum {
   files = 'files',
   latex = 'latex',
   iframe = 'iframe',
-  html = 'html'
+  html = 'html',
+  video = 'video',
+  audio = 'audio'
 }
 
 function htmlTableToLatex(html: string) {

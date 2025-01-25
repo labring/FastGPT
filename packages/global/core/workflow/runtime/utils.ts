@@ -176,6 +176,7 @@ export const checkNodeRunStatus = ({
       }
       visited.add(edge.source);
 
+      // 递归检测后面的 edge，如果有其中一个成环，则返回 true
       const nextEdges = allEdges.filter((item) => item.target === edge.source);
       return nextEdges.some((nextEdge) => checkIsCircular(nextEdge, new Set(visited)));
     };
@@ -207,20 +208,28 @@ export const checkNodeRunStatus = ({
     currentNode: node
   });
 
-  // check skip（其中一组边，全 skip）
+  // check active（其中一组边，至少有一个 active，且没有 waiting 即可运行）
+  if (
+    commonEdges.length > 0 &&
+    commonEdges.some((item) => item.status === 'active') &&
+    commonEdges.every((item) => item.status !== 'waiting')
+  ) {
+    return 'run';
+  }
+  if (
+    recursiveEdges.length > 0 &&
+    recursiveEdges.some((item) => item.status === 'active') &&
+    recursiveEdges.every((item) => item.status !== 'waiting')
+  ) {
+    return 'run';
+  }
+
+  // check skip（其中一组边，全是 skiped 则跳过运行）
   if (commonEdges.length > 0 && commonEdges.every((item) => item.status === 'skipped')) {
     return 'skip';
   }
   if (recursiveEdges.length > 0 && recursiveEdges.every((item) => item.status === 'skipped')) {
     return 'skip';
-  }
-
-  // check active（有一类边，不全是 wait 即可运行）
-  if (commonEdges.length > 0 && commonEdges.every((item) => item.status !== 'waiting')) {
-    return 'run';
-  }
-  if (recursiveEdges.length > 0 && recursiveEdges.every((item) => item.status !== 'waiting')) {
-    return 'run';
   }
 
   return 'wait';

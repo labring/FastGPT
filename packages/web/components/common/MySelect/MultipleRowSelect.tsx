@@ -58,7 +58,6 @@ export const MultipleRowSelect = ({
       const selectedValue = cloneValue[index];
       const selectedIndex = list.findIndex((item) => item.value === selectedValue);
       const children = list[selectedIndex]?.children || [];
-      const hasChildren = list.some((item) => item.children && item.children?.length > 0);
 
       // Store current scroll position before update
       const currentScrollTop = MenuRef.current[index]?.scrollTop;
@@ -84,54 +83,58 @@ export const MultipleRowSelect = ({
             overflowY={'auto'}
             whiteSpace={'nowrap'}
           >
-            {list.map((item) => (
-              <Flex
-                key={item.value}
-                ref={(ref) => {
-                  if (item.value === selectedValue) {
-                    SelectedItemRef.current[index] = ref;
-                  }
-                }}
-                py={1.5}
-                _notLast={{ mb: 1 }}
-                cursor={'pointer'}
-                px={1.5}
-                borderRadius={'sm'}
-                _hover={{
-                  bg: 'primary.50'
-                }}
-                onClick={() => {
-                  const newValue = [...cloneValue];
+            {list.map((item) => {
+              const hasChildren = item.children && item.children.length > 0;
 
-                  if (item.value === selectedValue) {
-                    for (let i = index; i < newValue.length; i++) {
-                      newValue[i] = undefined;
+              return (
+                <Flex
+                  key={item.value}
+                  ref={(ref) => {
+                    if (item.value === selectedValue) {
+                      SelectedItemRef.current[index] = ref;
                     }
-                    setCloneValue(newValue);
-                    onSelect(newValue);
-                  } else {
-                    newValue[index] = item.value;
-                    setCloneValue(newValue);
+                  }}
+                  py={1.5}
+                  _notLast={{ mb: 1 }}
+                  cursor={'pointer'}
+                  px={1.5}
+                  borderRadius={'sm'}
+                  _hover={{
+                    bg: 'primary.50'
+                  }}
+                  onClick={() => {
+                    const newValue = [...cloneValue];
 
-                    if (changeOnEverySelect || !hasChildren) {
+                    if (item.value === selectedValue) {
+                      for (let i = index; i < newValue.length; i++) {
+                        newValue[i] = undefined;
+                      }
+                      setCloneValue(newValue);
                       onSelect(newValue);
-                    }
+                    } else {
+                      newValue[index] = item.value;
+                      setCloneValue(newValue);
 
-                    if (!hasChildren) {
-                      onClose();
+                      if (changeOnEverySelect || !hasChildren) {
+                        onSelect(newValue);
+                      }
+
+                      if (!hasChildren) {
+                        onClose();
+                      }
                     }
-                  }
-                }}
-                {...(item.value === selectedValue
-                  ? {
-                      bg: 'primary.50',
-                      color: 'primary.600'
-                    }
-                  : {})}
-              >
-                {item.label}
-              </Flex>
-            ))}
+                  }}
+                  {...(item.value === selectedValue
+                    ? {
+                        bg: 'primary.50',
+                        color: 'primary.600'
+                      }
+                    : {})}
+                >
+                  {item.label}
+                </Flex>
+              );
+            })}
             {list.length === 0 && (
               <EmptyTip
                 text={emptyTip ?? t('common:common.MultipleRowSelect.No data')}

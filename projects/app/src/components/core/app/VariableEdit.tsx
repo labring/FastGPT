@@ -30,7 +30,7 @@ import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/ut
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import InputTypeConfig from '@/pages/app/detail/components/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
+import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 export const defaultVariable: VariableItemType = {

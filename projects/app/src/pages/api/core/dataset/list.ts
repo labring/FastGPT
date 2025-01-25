@@ -18,7 +18,7 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 
 export type GetDatasetListBody = {
   parentId: ParentIdType;
@@ -172,7 +172,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         name: dataset.name,
         intro: dataset.intro,
         type: dataset.type,
-        vectorModel: getVectorModel(dataset.vectorModel),
+        vectorModel: getEmbeddingModel(dataset.vectorModel),
         inheritPermission: dataset.inheritPermission,
         tmbId: dataset.tmbId,
         updateTime: dataset.updateTime,

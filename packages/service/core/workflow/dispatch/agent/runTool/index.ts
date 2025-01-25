@@ -4,7 +4,7 @@ import type {
   DispatchNodeResultType,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { ModelTypeEnum, getLLMModel } from '../../../../ai/model';
+import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
 import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
@@ -30,6 +30,7 @@ import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { Prompt_DocumentQuote } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { postTextCensor } from '../../../../../common/api/requestPlusApi';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;

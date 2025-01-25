@@ -80,7 +80,9 @@ const AIChatSettingsModal = ({
   const temperature = watch('temperature');
   const useVision = watch('aiChatVision');
 
-  const selectedModel = getWebLLMModel(model);
+  const selectedModel = useMemo(() => {
+    return getWebLLMModel(model);
+  }, [model]);
   const llmSupportVision = !!selectedModel?.vision;
 
   const tokenLimit = useMemo(() => {
@@ -244,7 +246,7 @@ const AIChatSettingsModal = ({
           </Box>
           <Box flex={'1 0 0'}>
             <InputSlider
-              min={100}
+              min={0}
               max={tokenLimit}
               step={200}
               isDisabled={maxToken === undefined}
@@ -307,12 +309,11 @@ const AIChatSettingsModal = ({
         )}
         {showVisionSwitch && (
           <Flex {...FlexItemStyles} h={'25px'}>
-            <Box {...LabelStyles}>
+            <Box {...LabelStyles} w={llmSupportVision ? '9rem' : 'auto'}>
               <Flex alignItems={'center'}>
                 {t('app:llm_use_vision')}
                 <QuestionTip ml={1} label={t('app:llm_use_vision_tip')}></QuestionTip>
               </Flex>
-
               {llmSupportVision ? (
                 <Switch
                   isChecked={useVision}
@@ -323,7 +324,7 @@ const AIChatSettingsModal = ({
                   }}
                 />
               ) : (
-                <Box fontSize={'sm'} color={'myGray.500'}>
+                <Box ml={3} fontSize={'sm'} color={'myGray.500'}>
                   {t('app:llm_not_support_vision')}
                 </Box>
               )}

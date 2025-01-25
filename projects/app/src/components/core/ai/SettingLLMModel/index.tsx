@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
@@ -7,8 +7,8 @@ import AISettingModal, { AIChatSettingsModalProps } from '@/components/core/ai/A
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useMount } from 'ahooks';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { getWebDefaultModel } from '@/web/common/system/utils';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -39,15 +39,19 @@ const SettingLLMModel = ({
       }),
     [llmModelList, llmModelType]
   );
+  const defaultModel = useMemo(() => {
+    return getWebDefaultModel(modelList).model;
+  }, [modelList]);
+
   // Set default model
-  useMount(() => {
-    if (!model && modelList.length > 0) {
+  useEffect(() => {
+    if (!modelList.find((item) => item.model === model) && !!defaultModel) {
       onChange({
         ...defaultData,
-        model: modelList[0].model
+        model: defaultModel
       });
     }
-  });
+  }, [modelList, model, defaultModel, onChange]);
 
   const {
     isOpen: isOpenAIChatSetting,

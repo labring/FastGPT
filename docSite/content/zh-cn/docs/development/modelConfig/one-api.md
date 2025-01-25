@@ -94,70 +94,16 @@ CHAT_API_KEY=sk-xxxxxx
 
 ![](/imgs/oneapi-demo1.png)
 
-### 2. 修改 FastGPT 配置文件
+### 2. 修改 FastGPT 模型配置
 
-可以在 `/projects/app/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json）,按下面内容修改配置文件，最新/更具体的配置说明，可查看[FastGPT 配置文件说明](/docs/development/configuration)。
+打开 FastGPT 模型配置，启动文心千帆模型，如果希望未内置，可以通过新增模型来配置。
 
-配置模型关键点在于`model` 需要与 OneAPI 渠道中的模型一致。
-
-```json
-{
-  "llmModels": [ // 语言模型配置
-    {
-      "model": "ERNIE-Bot", // 这里的模型需要对应 One API 的模型
-      "name": "文心一言", // 对外展示的名称
-      "avatar": "/imgs/model/openai.svg", // 模型的logo
-      "maxContext": 16000, // 最大上下文
-      "maxResponse": 4000, // 最大回复
-      "quoteMaxToken": 13000, // 最大引用内容
-      "maxTemperature": 1.2, // 最大温度
-      "charsPointsPrice": 0, 
-      "censor": false,
-      "vision": false, // 是否支持图片输入
-      "datasetProcess": true, // 是否设置为知识库处理模型
-      "usedInClassify": true, // 是否用于问题分类
-      "usedInExtractFields": true, // 是否用于字段提取
-      "usedInToolCall": true, // 是否用于工具调用
-      "usedInQueryExtension": true, // 是否用于问题优化
-      "toolChoice": true, // 是否支持工具选择
-      "functionCall": false, // 是否支持函数调用
-      "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
-      "customExtractPrompt": "", // 自定义内容提取提示词
-      "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig":{}  // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
-    }
-  ],
-  "vectorModels": [ // 向量模型配置
-    {
-      "model": "text-embedding-ada-002",
-      "name": "Embedding-2",
-      "avatar": "/imgs/model/openai.svg",
-      "charsPointsPrice": 0,
-      "defaultToken": 700,
-      "maxToken": 3000,
-      "weight": 100
-    },
-  ]
-}
-```
-
-### 3. 重启 FastGPT
-
-**Docker 版本**
-
-```bash
-docker-compose down
-docker-compose up -d
-```
-
-**Sealos 版本**
-
-直接找到 FastGPT 服务，点击重启即可。
+![alt text](/imgs/image-103.png)
 
 
 ## 其他服务商接入参考
 
-这章介绍一些提供商接入 OneAPI 的教程，配置后不要忘记修改 FastGPT 配置文件。
+这章介绍一些提供商接入 OneAPI 的教程，配置后不要忘记在 FastGPT 模型配置中启用。
 
 ### 阿里通义千问
 

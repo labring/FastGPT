@@ -18,7 +18,7 @@ import {
 } from '@fastgpt/service/common/string/tiktoken/index';
 import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
-import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
+import { llmCompletionsBodyFormat, llmStreamResponseToText } from '@fastgpt/service/core/ai/utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -44,7 +44,7 @@ export async function generateQA(): Promise<any> {
         {
           mode: TrainingModeEnum.qa,
           retryCount: { $gte: 0 },
-          lockTime: { $lte: addMinutes(new Date(), -6) }
+          lockTime: { $lte: addMinutes(new Date(), -10) }
         },
         {
           lockTime: new Date(),
@@ -120,12 +120,12 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
           model: modelData.model,
           temperature: 0.3,
           messages: await loadRequestMessages({ messages, useVision: false }),
-          stream: false
+          stream: true
         },
         modelData
       )
     });
-    const answer = chatResponse.choices?.[0].message?.content || '';
+    const answer = await llmStreamResponseToText(chatResponse);
 
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 

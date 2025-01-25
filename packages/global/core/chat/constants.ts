@@ -75,5 +75,3 @@ export enum ChatStatusEnum {
   running = 'running',
   finish = 'finish'
 }
-
-export const MARKDOWN_QUOTE_SIGN = 'QUOTE SIGN';

@@ -6,15 +6,15 @@ import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chak
 import SideBar from '@/components/SideBar';
 import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
-import ChatHistorySlider from './components/ChatHistorySlider';
-import ChatHeader from './components/ChatHeader';
+import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
+import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useTranslation } from 'next-i18next';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import SliderApps from './components/SliderApps';
+import SliderApps from '@/pageComponents/chat/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -33,7 +33,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useMount } from 'ahooks';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-const CustomPluginRunBox = dynamic(() => import('./components/CustomPluginRunBox'));
+const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
 

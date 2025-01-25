@@ -16,7 +16,7 @@ import { Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
 import { replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
-import { ModelTypeEnum, getLLMModel } from '../../../ai/model';
+import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
 import {
@@ -28,6 +28,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { llmCompletionsBodyFormat } from '../../../ai/utils';
+import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];

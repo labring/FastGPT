@@ -38,14 +38,17 @@ import StandardPlanContentList from '@/components/support/wallet/StandardPlanCon
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import AccountContainer from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useRouter } from 'next/router';
-import TeamSelector from '../components/TeamSelector';
+import TeamSelector from '@/pageComponents/account/TeamSelector';
 
-const StandDetailModal = dynamic(() => import('./components/standardDetailModal'), { ssr: false });
-const ConversionModal = dynamic(() => import('./components/ConversionModal'));
-const UpdatePswModal = dynamic(() => import('./components/UpdatePswModal'));
+const StandDetailModal = dynamic(
+  () => import('@/pageComponents/account/info/standardDetailModal'),
+  { ssr: false }
+);
+const ConversionModal = dynamic(() => import('@/pageComponents/account/info/ConversionModal'));
+const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
 const UpdateNotification = dynamic(
   () => import('@/components/support/user/inform/UpdateNotificationModal')
 );

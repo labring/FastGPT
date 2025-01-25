@@ -1,0 +1,49 @@
+{
+  "provider": "Intern",
+  "list": [
+    {
+      "model": "internlm2-pro-chat",
+      "name": "internlm2-pro-chat",
+      "maxContext": 32000,
+      "maxResponse": 8000,
+      "quoteMaxToken": 32000,
+      "maxTemperature": 1,
+      "vision": false,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    },
+    {
+      "model": "internlm3-8b-instruct",
+      "name": "internlm3-8b-instruct",
+      "maxContext": 32000,
+      "maxResponse": 8000,
+      "quoteMaxToken": 32000,
+      "maxTemperature": 1,
+      "vision": false,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    }
+  ]
+}

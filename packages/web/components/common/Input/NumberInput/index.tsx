@@ -26,11 +26,12 @@ const MyNumberInput = (props: Props) => {
       {...restProps}
       onChange={(e) => {
         if (!onChange) return;
-        if (e === '') {
+        const numE = Number(e);
+        if (isNaN(numE)) {
           // @ts-ignore
           onChange('');
         } else {
-          onChange(Number(e));
+          onChange(numE);
         }
       }}
     >

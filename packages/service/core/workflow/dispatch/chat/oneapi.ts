@@ -33,7 +33,7 @@ import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWriteController } from '../../../../common/response';
-import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
+import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -47,6 +47,7 @@ import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/syst
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -280,11 +281,12 @@ async function filterDatasetQuote({
 }) {
   function getValue(item: SearchDataResponseItemType, index: number) {
     return replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
+      id: item.id,
       q: item.q,
       a: item.a,
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
-      sourceId: String(item.sourceId || 'UnKnow'),
+      sourceId: String(item.sourceId || ''),
       index: index + 1
     });
   }

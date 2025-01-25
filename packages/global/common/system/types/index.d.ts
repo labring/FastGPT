@@ -3,7 +3,7 @@ import type {
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
-  VectorModelItemType,
+  EmbeddingModelItemType,
   AudioSpeechModels,
   STTModelType,
   ReRankModelItemType
@@ -31,11 +31,13 @@ export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
   systemEnv: SystemEnvType;
   subPlans?: SubPlanType;
-  llmModels: ChatModelItemType[];
-  vectorModels: VectorModelItemType[];
-  reRankModels: ReRankModelItemType[];
-  audioSpeechModels: AudioSpeechModelType[];
-  whisperModel: STTModelType;
+
+  // Abandon
+  llmModels?: ChatModelItemType[];
+  vectorModels?: EmbeddingModelItemType[];
+  reRankModels?: ReRankModelItemType[];
+  audioSpeechModels?: TTSModelType[];
+  whisperModel?: STTModelType;
 };
 
 export type FastGPTFeConfigsType = {

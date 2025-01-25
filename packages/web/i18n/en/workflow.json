@@ -133,7 +133,7 @@
   "question_classification": "Classify",
   "question_optimization": "Query extension",
   "quote_content_placeholder": "The structure of the reference content can be customized to better suit different scenarios. \nSome variables can be used for template configuration\n\n{{q}} - main content\n\n{{a}} - auxiliary data\n\n{{source}} - source name\n\n{{sourceId}} - source ID\n\n{{index}} - nth reference",
-  "quote_content_tip": "The structure of the reference content can be customized to better suit different scenarios. Some variables can be used for template configuration:\n\n{{q}} - main content\n{{a}} - auxiliary data\n{{source}} - source name\n{{sourceId}} - source ID\n{{index}} - nth reference\nThey are all optional and the following are the default values:\n\n{{default}}",
+  "quote_content_tip": "The structure of the reference content can be customized to better suit different scenarios. Some variables can be used for template configuration:\n\n{{id}} - the unique id of the reference data\n{{q}} - main content\n{{a}} - auxiliary data\n{{source}} - source name\n{{sourceId}} - source ID\n{{index}} - nth reference\n\nThey are all optional and the following are the default values:\n\n{{default}}",
   "quote_num": "Dataset",
   "quote_prompt_tip": "You can use {{quote}} to insert a quote content template and {{question}} to insert a question (Role=user).\n\nThe following are the default values:\n\n{{default}}",
   "quote_role_system_tip": "Please note that the {{question}} variable is removed from the \"Quote Template Prompt Words\"",

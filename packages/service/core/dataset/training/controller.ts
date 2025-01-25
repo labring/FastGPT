@@ -7,7 +7,7 @@ import type {
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
-import { getLLMModel, getVectorModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
 import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -70,7 +70,7 @@ export async function pushDataListToTrainingQueue({
     if (!agentModelData) {
       return Promise.reject(`File model ${agentModel} is inValid`);
     }
-    const vectorModelData = getVectorModel(vectorModel);
+    const vectorModelData = getEmbeddingModel(vectorModel);
     if (!vectorModelData) {
       return Promise.reject(`Vector model ${vectorModel} is inValid`);
     }

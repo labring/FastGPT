@@ -3,16 +3,16 @@ import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { Box, Flex, HStack, VStack } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
-import { useQuery } from '@tanstack/react-query';
 
-import StandardPlan from './components/Standard';
-import ExtraPlan from './components/ExtraPlan';
-import PointsCard from './components/Points';
-import FAQ from './components/FAQ';
+import StandardPlan from '@/pageComponents/price/Standard';
+import ExtraPlan from '@/pageComponents/price/ExtraPlan';
+import PointsCard from '@/pageComponents/price/Points';
+import FAQ from '@/pageComponents/price/FAQ';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const PriceBox = () => {
   const { userInfo } = useUserStore();
@@ -20,8 +20,9 @@ const PriceBox = () => {
   const { feConfigs } = useSystemStore();
   const router = useRouter();
 
-  const { data: teamSubPlan } = useQuery(['getTeamPlanStatus'], getTeamPlanStatus, {
-    enabled: !!userInfo
+  const { data: teamSubPlan } = useRequest2(getTeamPlanStatus, {
+    manual: false,
+    refreshDeps: [userInfo]
   });
 
   const onPaySuccess = () => {

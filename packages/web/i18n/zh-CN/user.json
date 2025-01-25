@@ -112,10 +112,5 @@
   "team.org.org": "部门",
   "team.manage_collaborators": "管理协作者",
   "team.no_collaborators": "暂无协作者",
-  "team.write_role_member": "可写权限",
-  "usage.feishu": "飞书",
-  "usage.dingtalk": "钉钉",
-  "usage.official_account": "公众号",
-  "usage.share": "分享链接",
-  "usage.wecom": "企业微信"
+  "team.write_role_member": "可写权限"
 }

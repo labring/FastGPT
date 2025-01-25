@@ -28,11 +28,11 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import LoginForm from './components/LoginForm/LoginForm';
+import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 
-const RegisterForm = dynamic(() => import('./components/RegisterForm'));
-const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
-const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
+const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
+const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
+const WechatForm = dynamic(() => import('@/pageComponents/login/LoginForm/WechatForm'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const ipDetectURL = 'https://qifu-api.baidubce.com/ip/local/geo/v1/district';

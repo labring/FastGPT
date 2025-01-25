@@ -34,7 +34,7 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 <a href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt" rel="external" target="_blank"><img src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
-### 开始部署
+### 1. 开始部署
 
 由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
 
@@ -52,27 +52,15 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 ![](/imgs/sealos2.png)
 
-### 登录
+### 2. 登录
 
 用户名：`root`
 
 密码是刚刚一键部署时设置的`root_password`
 
-### 修改配置文件和环境变量
+### 3. 配置模型
 
-在 Sealos 中，你可以打开`应用管理`（App Launchpad）看到部署的 FastGPT，可以打开`数据库`（Database）看到对应的数据库。
-
-在`应用管理`中，选中 FastGPT，点击变更，可以看到对应的环境变量和配置文件。
-
-![](/imgs/fastgptonsealos1.png)
-
-{{% alert icon="🤖 " context="success" %}}
-在 Sealos 上，FastGPT 一共运行了 1 个服务和 2 个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
-{{% /alert %}}
-
-### 更新
-
-点击变更或重启会自动拉取镜像更新，请确保镜像`tag`正确。建议不要使用`latest`，改成固定版本号。
+[点击查看模型配置教程](/docs/development/modelConfig/intro/)
 
 ## 收费
 
@@ -88,7 +76,20 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 
 点击右侧的详情，可以查看对应应用的详细信息。
 
+### 修改配置文件和环境变量
+
+在 Sealos 中，你可以打开`应用管理`（App Launchpad）看到部署的 FastGPT，可以打开`数据库`（Database）看到对应的数据库。
+
+在`应用管理`中，选中 FastGPT，点击变更，可以看到对应的环境变量和配置文件。
+
+![](/imgs/fastgptonsealos1.png)
+
+{{% alert icon="🤖 " context="success" %}}
+在 Sealos 上，FastGPT 一共运行了 1 个服务和 2 个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
+{{% /alert %}}
+
 ### 如何更新/升级 FastGPT
+
 [升级脚本文档](https://doc.tryfastgpt.ai/docs/development/upgrading/)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级！！！！！
 
 例如，目前是4.5 版本，要升级到4.5.1，就先把镜像版本改成v4.5.1，执行一下升级脚本，等待完成后再继续升级。如果目标版本不需要执行初始化，则可以跳过。
@@ -147,8 +148,6 @@ SYSTEM_FAVICON 可以是一个网络地址
 ![](/imgs/onsealos7.png)
 
 ![](/imgs/onsealos8.png)
-
-### 管理后台(已合并到plus)
 
 ### 商业版镜像配置文件
 

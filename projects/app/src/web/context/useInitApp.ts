@@ -63,7 +63,7 @@ export const useInitApp = () => {
 
   useRequest2(initFetch, {
     manual: false,
-    pollingInterval: 300000
+    pollingInterval: 300000 // 5 minutes refresh
   });
 
   useEffect(() => {

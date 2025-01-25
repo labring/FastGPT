@@ -8,7 +8,8 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
-import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { getDefaultSTTModel } from '@fastgpt/service/core/ai/model';
 
 const upload = getUploadModel({
   maxSize: 5
@@ -36,7 +37,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     filePaths = [file.path];
 
-    if (!global.whisperModel) {
+    if (!getDefaultSTTModel()) {
       throw new Error('whisper model not found');
     }
 
@@ -65,7 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     // }
 
     const result = await aiTranscriptions({
-      model: global.whisperModel.model,
+      model: getDefaultSTTModel().model,
       fileStream: fs.createReadStream(file.path)
     });
 
@@ -89,7 +90,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   removeFilesByPaths(filePaths);
 }
 
-export default NextAPI(useReqFrequencyLimit(1, 1), handler);
+export default NextAPI(
+  useIPFrequencyLimit({ id: 'transcriptions', seconds: 1, limit: 1 }),
+  handler
+);
 
 export const config = {
   api: {

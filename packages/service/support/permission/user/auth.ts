@@ -5,6 +5,10 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { AuthModeType, AuthResponseType } from '../type';
 import { NullPermission } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { authCert } from '../auth/common';
+import { MongoUser } from '../../user/schema';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { ApiRequestProps } from '../../../type/next';
 
 /* auth user role  */
 export async function authUserPer(props: AuthModeType): Promise<
@@ -34,3 +38,19 @@ export async function authUserPer(props: AuthModeType): Promise<
     tmb
   };
 }
+
+export const authSystemAdmin = async ({ req }: { req: ApiRequestProps }) => {
+  try {
+    const result = await authCert({ req, authToken: true });
+    const user = await MongoUser.findOne({
+      _id: result.userId
+    });
+
+    if (user && user.username !== 'root') {
+      return Promise.reject(ERROR_ENUM.unAuthorization);
+    }
+    return result;
+  } catch (error) {
+    throw error;
+  }
+};

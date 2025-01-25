@@ -7,14 +7,14 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
 import { i18nT } from '../../../web/i18n/utils';
 import { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
+import { getLLMModel } from './model';
 
 export const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
 
 export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number }) => {
   const { userKey, timeout } = props || {};
 
-  const baseUrl =
-    userKey?.baseUrl || global?.systemEnv?.oneapiUrl || process.env.ONEAPI_URL || openaiBaseUrl;
+  const baseUrl = userKey?.baseUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl;
   const apiKey = userKey?.key || global?.systemEnv?.chatApiKey || process.env.CHAT_API_KEY || '';
 
   return new OpenAI({
@@ -29,8 +29,7 @@ export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number
 export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   const { userKey } = props || {};
 
-  const baseUrl =
-    userKey?.baseUrl || global?.systemEnv?.oneapiUrl || process.env.ONEAPI_URL || openaiBaseUrl;
+  const baseUrl = userKey?.baseUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl;
   const apiKey = userKey?.key || global?.systemEnv?.chatApiKey || process.env.CHAT_API_KEY || '';
 
   return {
@@ -63,12 +62,23 @@ export const createChatCompletion = async <T extends CompletionsBodyType>({
   getEmptyResponseTip: () => string;
 }> => {
   try {
+    const modelConstantsData = getLLMModel(body.model);
+
     const formatTimeout = timeout ? timeout : body.stream ? 60000 : 600000;
     const ai = getAIApi({
       userKey,
       timeout: formatTimeout
     });
-    const response = await ai.chat.completions.create(body, options);
+    const response = await ai.chat.completions.create(body, {
+      ...options,
+      ...(modelConstantsData.requestUrl ? { path: modelConstantsData.requestUrl } : {}),
+      headers: {
+        ...options?.headers,
+        ...(modelConstantsData.requestAuth
+          ? { Authorization: `Bearer ${modelConstantsData.requestAuth}` }
+          : {})
+      }
+    });
 
     const isStreamResponse =
       typeof response === 'object' &&

@@ -18,30 +18,30 @@ export const UsageSourceMap = {
     label: i18nT('common:core.chat.logs.online')
   },
   [UsageSourceEnum.api]: {
-    label: 'Api'
+    label: 'API'
   },
   [UsageSourceEnum.shareLink]: {
     label: i18nT('common:core.chat.logs.free_login')
   },
   [UsageSourceEnum.training]: {
-    label: 'dataset.Training Name'
+    label: i18nT('common:dataset.Training Name')
   },
   [UsageSourceEnum.cronJob]: {
     label: i18nT('common:cron_job_run_app')
   },
   [UsageSourceEnum.feishu]: {
-    label: i18nT('user:usage.feishu')
+    label: i18nT('account_usage:feishu')
   },
   [UsageSourceEnum.official_account]: {
-    label: i18nT('user:usage.official_account')
+    label: i18nT('account_usage:official_account')
   },
   [UsageSourceEnum.share]: {
-    label: i18nT('user:usage.share')
+    label: i18nT('account_usage:share')
   },
   [UsageSourceEnum.wecom]: {
-    label: i18nT('user:usage.wecom')
+    label: i18nT('account_usage:wecom')
   },
   [UsageSourceEnum.dingtalk]: {
-    label: i18nT('user:usage.dingtalk')
+    label: i18nT('account_usage:dingtalk')
   }
 };
