@@ -40,7 +40,7 @@ export async function generateVector(): Promise<any> {
         {
           mode: TrainingModeEnum.chunk,
           retryCount: { $gte: 0 },
-          lockTime: { $lte: addMinutes(new Date(), -6) }
+          lockTime: { $lte: addMinutes(new Date(), -3) }
         },
         {
           lockTime: new Date(),
