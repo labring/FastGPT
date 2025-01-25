@@ -3,7 +3,7 @@
   "list": [
     {
       "model": "gemini-1.5-flash",
-      "name": "Gemini-1.5-flash",
+      "name": "gemini-1.5-flash",
       "maxContext": 1000000,
       "maxResponse": 8000,
       "quoteMaxToken": 60000,
@@ -25,7 +25,7 @@
     },
     {
       "model": "gemini-1.5-pro",
-      "name": "Gemini-1.5-pro",
+      "name": "gemini-1.5-pro",
       "maxContext": 2000000,
       "maxResponse": 8000,
       "quoteMaxToken": 60000,
@@ -47,7 +47,29 @@
     },
     {
       "model": "gemini-2.0-flash-exp",
-      "name": "Gemini-2.0-flash-exp",
+      "name": "gemini-2.0-flash-exp",
+      "maxContext": 1000000,
+      "maxResponse": 8000,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1,
+      "vision": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    },
+    {
+      "model": "gemini-2.0-flash-thinking-exp-1219",
+      "name": "gemini-2.0-flash-thinking-exp-1219",
       "maxContext": 1000000,
       "maxResponse": 8000,
       "quoteMaxToken": 60000,
@@ -69,7 +91,7 @@
     },
     {
       "model": "gemini-2.0-flash-thinking-exp-01-21",
-      "name": "Gemini-2.0-flash-thinking-exp",
+      "name": "gemini-2.0-flash-thinking-exp-01-21",
       "maxContext": 1000000,
       "maxResponse": 8000,
       "quoteMaxToken": 60000,
