@@ -2,7 +2,8 @@ import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
-  ChatCompletionMessageParam
+  ChatCompletionMessageParam,
+  StreamChatType
 } from '@fastgpt/global/core/ai/type';
 import { countGptMessagesTokens } from '../../common/string/tiktoken';
 import { getLLMModel } from './model';
@@ -86,4 +87,13 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
   // console.log(requestBody);
 
   return requestBody as InferCompletionsBody<T>;
+};
+
+export const llmStreamResponseToText = async (response: StreamChatType) => {
+  let answer = '';
+  for await (const part of response) {
+    const content = part.choices?.[0]?.delta?.content || '';
+    answer += content;
+  }
+  return answer;
 };
