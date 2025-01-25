@@ -39,3 +39,13 @@ export const updateFastGPTConfigBuffer = async () => {
 
   global.systemInitBufferId = res.createTime.getTime().toString();
 };
+
+export const reloadFastGPTConfigBuffer = async () => {
+  const res = await MongoSystemConfigs.findOne({
+    type: SystemConfigsTypeEnum.fastgpt
+  }).sort({
+    createTime: -1
+  });
+  if (!res) return;
+  global.systemInitBufferId = res.createTime.getTime().toString();
+};
