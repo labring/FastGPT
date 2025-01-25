@@ -4,9 +4,9 @@ import { useTranslation } from 'next-i18next';
 import { Box, ModalBody } from '@chakra-ui/react';
 import { checkBalancePayResult } from '@/web/support/wallet/bill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export type QRPayProps = {
   readPrice: number;
@@ -54,35 +54,16 @@ const QRCodePayModal = ({
     drawCode();
   }, [drawCode]);
 
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    const check = async () => {
-      try {
-        const res = await checkBalancePayResult(billId);
-        if (res) {
-          try {
-            await onSuccess?.();
-            toast({
-              title: res,
-              status: 'success'
-            });
-            return clearTimeout(timer);
-          } catch (error) {
-            toast({
-              title: getErrText(error),
-              status: 'error'
-            });
-          }
-        }
-      } catch (error) {}
-      clearTimeout(timer);
-      timer = setTimeout(check, 2000);
-    };
-
-    check();
-
-    return () => clearTimeout(timer);
-  }, [billId, drawCode, onSuccess, toast]);
+  useRequest2(() => checkBalancePayResult(billId), {
+    manual: false,
+    pollingInterval: 2000,
+    onSuccess: (res) => {
+      if (res) {
+        onSuccess?.();
+      }
+    },
+    errorToast: ''
+  });
 
   return (
     <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/pay.svg">
