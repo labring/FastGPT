@@ -339,35 +339,12 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       });
     });
 
-    const entryNodeSet = new Set(entryNodeIds);
-    const canReachEntry = (
-      edge: RuntimeEdgeItemType,
-      visited: Set<string> = new Set()
-    ): boolean => {
-      const target = edge.target;
-      if (entryNodeSet.has(target)) return true;
-
-      if (visited.has(target)) return false;
-
-      visited.add(target);
-      const canReach = runtimeEdges
-        .filter((e) => e.source === target)
-        .some((nextEdge) => canReachEntry(nextEdge, new Set(visited)));
-
-      visited.delete(target);
-      return canReach;
-    };
-
     const interactiveResult: WorkflowInteractiveResponseType = {
       ...interactiveResponse,
       entryNodeIds,
       memoryEdges: runtimeEdges.map((edge) => ({
         ...edge,
-        status: entryNodeSet.has(edge.target)
-          ? 'active'
-          : canReachEntry(edge)
-            ? edge.status
-            : 'waiting' // 未执行过的边，重置状态为waiting
+        status: entryNodeIds.includes(edge.target) ? 'active' : edge.status
       })),
       nodeOutputs
     };
