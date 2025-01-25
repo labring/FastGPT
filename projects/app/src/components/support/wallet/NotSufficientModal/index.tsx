@@ -29,7 +29,10 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
     [TeamErrEnum.datasetSizeNotEnough]: t('common:support.wallet.Dataset_not_sufficient'),
     [TeamErrEnum.datasetAmountNotEnough]: t('common:support.wallet.Dataset_amount_not_sufficient'),
     [TeamErrEnum.teamMemberOverSize]: t('common:support.wallet.Team_member_over_size'),
-    [TeamErrEnum.appAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient')
+    [TeamErrEnum.appAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient'),
+    [TeamErrEnum.pluginAmountNotEnough]: t('common:support.wallet.App_amount_not_sufficient'),
+    [TeamErrEnum.websiteSyncNotEnough]: t('common:code_error.team_error.website_sync_not_enough'),
+    [TeamErrEnum.reRankNotEnough]: t('common:code_error.team_error.re_rank_not_enough')
   };
 
   return (
