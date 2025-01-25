@@ -4,7 +4,7 @@ import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
-import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
+import { loadSystemModels, updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 
 export type deleteQuery = {
   model: string;
@@ -34,8 +34,7 @@ async function handler(
 
   await MongoSystemModel.deleteOne({ model });
 
-  await loadSystemModels(true);
-  await updateFastGPTConfigBuffer();
+  await updatedReloadSystemModel();
 
   return {};
 }

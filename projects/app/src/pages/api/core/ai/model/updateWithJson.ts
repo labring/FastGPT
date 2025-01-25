@@ -4,8 +4,7 @@ import { SystemModelSchemaType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
-import { updateFastGPTConfigBuffer } from '@fastgpt/service/common/system/config/controller';
-import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
+import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 
 export type updateWithJsonQuery = {};
 
@@ -55,8 +54,7 @@ async function handler(
     }
   });
 
-  await loadSystemModels(true);
-  await updateFastGPTConfigBuffer();
+  await updatedReloadSystemModel();
 
   return {};
 }

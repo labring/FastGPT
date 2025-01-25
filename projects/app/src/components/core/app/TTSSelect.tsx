@@ -70,7 +70,7 @@ const TTSSelect = ({
     const provider = selectorList.find((item) => item.value === formatValue[0]) || selectorList[0];
     const voice = provider.children.find((item) => item.value === formatValue[1]);
     return (
-      <Box minW={'150px'} maxW={'220px'} className="textEllipsis">
+      <Box maxW={'220px'} className="textEllipsis">
         {voice ? (
           <Flex alignItems={'center'}>
             <Box>{provider.label}</Box>
@@ -141,7 +141,7 @@ const TTSSelect = ({
             <FormLabel>{t('common:core.app.tts.Speech model')}</FormLabel>
             <MultipleRowSelect
               rowMinWidth="160px"
-              label={formLabel}
+              label={<Box minW={'150px'}>{formLabel}</Box>}
               value={formatValue}
               list={selectorList}
               onSelect={onclickChange}
