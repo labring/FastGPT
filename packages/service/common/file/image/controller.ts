@@ -40,7 +40,7 @@ export async function uploadMongoImg({
     expiredTime: forever ? undefined : addHours(new Date(), 1)
   });
 
-  return `${process.env.FE_DOMAIN || ''}${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
+  return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
 
 const getIdFromPath = (path?: string) => {

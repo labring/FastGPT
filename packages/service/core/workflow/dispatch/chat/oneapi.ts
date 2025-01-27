@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/utils';
+import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -124,9 +124,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject(i18nT('chat:AI_input_is_empty'));
   }
 
+  const max_tokens = computedMaxToken({
+    model: modelConstantsData,
+    maxToken
+  });
+
   const [{ filterMessages }] = await Promise.all([
     getChatMessages({
       model: modelConstantsData,
+      maxTokens: max_tokens,
       histories: chatHistories,
       useDatasetQuote: quoteQA !== undefined,
       datasetQuoteText,
@@ -137,8 +143,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userFiles,
       documentQuoteText
     }),
+    // Censor = true and system key, will check content
     (() => {
-      // censor model and system key
       if (modelConstantsData.censor && !externalProvider.openaiAccount?.key) {
         return postTextCensor({
           text: `${systemPrompt}
@@ -149,18 +155,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     })()
   ]);
 
-  const [requestMessages, max_tokens] = await Promise.all([
-    loadRequestMessages({
-      messages: filterMessages,
-      useVision: modelConstantsData.vision && aiChatVision,
-      origin: requestOrigin
-    }),
-    computedMaxToken({
-      model: modelConstantsData,
-      maxToken,
-      filterMessages
-    })
-  ]);
+  const requestMessages = await loadRequestMessages({
+    messages: filterMessages,
+    useVision: modelConstantsData.vision && aiChatVision,
+    origin: requestOrigin
+  });
 
   const requestBody = llmCompletionsBodyFormat(
     {
@@ -367,6 +366,7 @@ async function getMultiInput({
 
 async function getChatMessages({
   model,
+  maxTokens = 0,
   aiChatQuoteRole,
   datasetQuotePrompt = '',
   datasetQuoteText,
@@ -378,6 +378,7 @@ async function getChatMessages({
   documentQuoteText
 }: {
   model: LLMModelItemType;
+  maxTokens?: number;
   // dataset quote
   aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
@@ -444,9 +445,9 @@ async function getChatMessages({
 
   const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
 
-  const filterMessages = await filterGPTMessageByMaxTokens({
+  const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,
-    maxTokens: model.maxContext - 300 // filter token. not response maxToken
+    maxContext: model.maxContext - maxTokens // filter token. not response maxToken
   });
 
   return {
