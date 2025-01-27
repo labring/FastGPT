@@ -25,7 +25,8 @@ export enum ChatItemValueTypeEnum {
   text = 'text',
   file = 'file',
   tool = 'tool',
-  interactive = 'interactive'
+  interactive = 'interactive',
+  reasoning = 'reasoning'
 }
 
 export enum ChatSourceEnum {

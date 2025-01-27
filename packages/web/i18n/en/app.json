@@ -109,6 +109,7 @@
   "publish_channel": "Publish",
   "publish_success": "Publish Successful",
   "question_guide_tip": "After the conversation, 3 guiding questions will be generated for you.",
+  "reasoning_response": "Output thinking",
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
   "search_app": "Search apps",
   "setting_app": "Workflow",

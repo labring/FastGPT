@@ -364,12 +364,14 @@ export function replaceEditorVariable({
 
 export const textAdaptGptResponse = ({
   text,
+  reasoning_content,
   model = '',
   finish_reason = null,
   extraData = {}
 }: {
   model?: string;
-  text: string | null;
+  text?: string | null;
+  reasoning_content?: string | null;
   finish_reason?: null | 'stop';
   extraData?: Object;
 }) => {
@@ -381,10 +383,11 @@ export const textAdaptGptResponse = ({
     model,
     choices: [
       {
-        delta:
-          text === null
-            ? {}
-            : { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: text },
+        delta: {
+          role: ChatCompletionRequestMessageRoleEnum.Assistant,
+          content: text,
+          ...(reasoning_content && { reasoning_content })
+        },
         index: 0,
         finish_reason
       }

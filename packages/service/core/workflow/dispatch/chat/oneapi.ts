@@ -58,6 +58,7 @@ export type ChatProps = ModuleDispatchProps<
 >;
 export type ChatResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
+  [NodeOutputKeyEnum.reasoningText]?: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
@@ -87,6 +88,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate,
       quotePrompt,
       aiChatVision,
+      aiChatReasoning,
       fileUrlList: fileLinks, // node quote file links
       stringQuoteText //abandon
     }
@@ -182,34 +184,42 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   });
 
-  const { answerText } = await (async () => {
+  const { answerText, reasoningText } = await (async () => {
     if (res && isStreamResponse) {
       // sse response
-      const { answer } = await streamResponse({
+      const { answer, reasoning } = await streamResponse({
         res,
         stream: response,
+        aiChatReasoning,
         workflowStreamResponse
       });
 
       return {
-        answerText: answer
+        answerText: answer,
+        reasoningText: reasoning
       };
     } else {
       const unStreamResponse = response as ChatCompletion;
       const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-
+      const reasoning = aiChatReasoning
+        ? // @ts-ignore
+          unStreamResponse.choices?.[0]?.message?.reasoning_content || ''
+        : '';
       if (stream) {
         // Some models do not support streaming
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.fastAnswer,
-          data: textAdaptGptResponse({
-            text: answer
-          })
-        });
+        reasoning &&
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: answer,
+              reasoning_content: reasoning
+            })
+          });
       }
 
       return {
-        answerText: answer
+        answerText: answer,
+        reasoningText: reasoning
       };
     }
   })();
@@ -240,6 +250,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   return {
     answerText,
+    reasoningText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
@@ -458,33 +469,43 @@ async function getChatMessages({
 async function streamResponse({
   res,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  aiChatReasoning
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  aiChatReasoning?: boolean;
 }) {
   const write = responseWriteController({
     res,
     readStream: stream
   });
   let answer = '';
+  let reasoning = '';
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();
       break;
     }
+
     const content = part.choices?.[0]?.delta?.content || '';
     answer += content;
+
+    const reasoningContent = aiChatReasoning
+      ? part.choices?.[0]?.delta?.reasoning_content || ''
+      : '';
+    reasoning += reasoningContent;
 
     workflowStreamResponse?.({
       write,
       event: SseResponseEventEnum.answer,
       data: textAdaptGptResponse({
-        text: content
+        text: content,
+        reasoning_content: reasoningContent
       })
     });
   }
 
-  return { answer };
+  return { answer, reasoning };
 }

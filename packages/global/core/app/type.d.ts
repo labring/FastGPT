@@ -117,6 +117,7 @@ export type SettingAIDataType = {
   isResponseAnswerText?: boolean;
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
 };
 
 // variable
