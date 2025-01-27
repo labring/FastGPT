@@ -209,7 +209,7 @@ export const GPTMessages2Chats = (
               content: item.content
             }
           });
-        } else if (Array.isArray(item.content)) {
+        } else {
           item.content.forEach((item) => {
             if (item.type === 'text') {
               value.push({
