@@ -95,15 +95,16 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   } = props;
   const { files: inputFiles } = chatValue2RuntimePrompt(query); // Chat box input files
 
-  stream = stream && isResponseAnswerText;
-
-  const chatHistories = getHistories(history, histories);
-  quoteQA = checkQuoteQAValue(quoteQA);
-
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
+
+  stream = stream && isResponseAnswerText;
+  aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
+
+  const chatHistories = getHistories(history, histories);
+  quoteQA = checkQuoteQAValue(quoteQA);
 
   const [{ datasetQuoteText }, { documentQuoteText, userFiles }] = await Promise.all([
     filterDatasetQuote({
