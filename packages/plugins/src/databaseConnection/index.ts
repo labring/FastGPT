@@ -59,7 +59,10 @@ const main = async ({
         port: parseInt(port, 10),
         database: databaseName,
         user,
-        password
+        password,
+        options: {
+          trustServerCertificate: true
+        }
       });
 
       result = await pool.query(sql);
