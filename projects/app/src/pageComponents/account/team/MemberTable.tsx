@@ -169,8 +169,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       </Flex>
 
       <Box flex={'1 0 0'} overflow={'auto'}>
-        <TableContainer overflow={'unset'} fontSize={'sm'}>
-          <MemberScrollData>
+        <MemberScrollData>
+          <TableContainer overflow={'unset'} fontSize={'sm'}>
             <Table overflow={'unset'}>
               <Thead>
                 <Tr bgColor={'white !important'}>
@@ -246,9 +246,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 ))}
               </Tbody>
             </Table>
-          </MemberScrollData>
-          <ConfirmRemoveMemberModal />
-        </TableContainer>
+            <ConfirmRemoveMemberModal />
+          </TableContainer>
+        </MemberScrollData>
       </Box>
 
       <ConfirmLeaveTeamModal />

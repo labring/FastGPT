@@ -2,6 +2,7 @@
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "Delete_all": "Clear All Lexicon",
   "LLM_model_response_empty": "The model flow response is empty, please check whether the model flow output is normal.",
+  "ai_reasoning": "Thinking process",
   "chat_history": "Conversation History",
   "chat_input_guide_lexicon_is_empty": "Lexicon not configured yet",
   "chat_test_app": "Debug-{{name}}",

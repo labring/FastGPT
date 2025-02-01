@@ -1,5 +1,5 @@
 import { createChatCompletion } from '../../../../ai/config';
-import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../../chat/utils';
+import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
 import {
   ChatCompletion,
   StreamChatType,
@@ -196,21 +196,20 @@ export const runToolWithPromptCall = async (
     return Promise.reject('Prompt call invalid input');
   }
 
-  const filterMessages = await filterGPTMessageByMaxTokens({
+  const max_tokens = computedMaxToken({
+    model: toolModel,
+    maxToken
+  });
+  const filterMessages = await filterGPTMessageByMaxContext({
     messages,
-    maxTokens: toolModel.maxContext - 500 // filter token. not response maxToken
+    maxContext: toolModel.maxContext - (max_tokens || 0) // filter token. not response maxToken
   });
 
-  const [requestMessages, max_tokens] = await Promise.all([
+  const [requestMessages] = await Promise.all([
     loadRequestMessages({
       messages: filterMessages,
       useVision: toolModel.vision && aiChatVision,
       origin: requestOrigin
-    }),
-    computedMaxToken({
-      model: toolModel,
-      maxToken,
-      filterMessages
     })
   ]);
   const requestBody = llmCompletionsBodyFormat(

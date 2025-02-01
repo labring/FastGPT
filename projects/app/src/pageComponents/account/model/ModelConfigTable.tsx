@@ -803,6 +803,10 @@ const ModelEditModal = ({
                           <JsonEditor
                             value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                             onChange={(e) => {
+                              if (!e) {
+                                setValue('defaultConfig', undefined);
+                                return;
+                              }
                               try {
                                 setValue('defaultConfig', JSON.parse(e));
                               } catch (error) {
@@ -1009,6 +1013,10 @@ const ModelEditModal = ({
                         value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                         resize
                         onChange={(e) => {
+                          if (!e) {
+                            setValue('defaultConfig', undefined);
+                            return;
+                          }
                           try {
                             setValue('defaultConfig', JSON.parse(e));
                           } catch (error) {

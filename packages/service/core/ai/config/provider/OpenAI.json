@@ -50,10 +50,10 @@
       "maxContext": 128000,
       "maxResponse": 4000,
       "quoteMaxToken": 120000,
-      "maxTemperature": 1.2,
+      "maxTemperature": null,
       "vision": false,
       "toolChoice": false,
-      "functionCall": true,
+      "functionCall": false,
       "defaultSystemChatPrompt": "",
       "datasetProcess": true,
       "usedInClassify": true,
@@ -63,8 +63,10 @@
       "customExtractPrompt": "",
       "usedInToolCall": true,
       "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null
+        "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
       },
       "type": "llm"
     },
@@ -74,10 +76,10 @@
       "maxContext": 128000,
       "maxResponse": 4000,
       "quoteMaxToken": 120000,
-      "maxTemperature": 1.2,
+      "maxTemperature": null,
       "vision": false,
       "toolChoice": false,
-      "functionCall": true,
+      "functionCall": false,
       "defaultSystemChatPrompt": "",
       "datasetProcess": true,
       "usedInClassify": true,
@@ -87,9 +89,10 @@
       "customExtractPrompt": "",
       "usedInToolCall": true,
       "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null,
         "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
       },
       "type": "llm"
     },
@@ -99,10 +102,10 @@
       "maxContext": 195000,
       "maxResponse": 8000,
       "quoteMaxToken": 120000,
-      "maxTemperature": 1.2,
+      "maxTemperature": null,
       "vision": false,
       "toolChoice": false,
-      "functionCall": true,
+      "functionCall": false,
       "defaultSystemChatPrompt": "",
       "datasetProcess": true,
       "usedInClassify": true,
@@ -112,9 +115,10 @@
       "customExtractPrompt": "",
       "usedInToolCall": true,
       "defaultConfig": {
-        "temperature": 1,
-        "max_tokens": null,
         "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
       },
       "type": "llm"
     },
