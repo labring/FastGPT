@@ -208,14 +208,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         : '';
       if (stream) {
         // Some models do not support streaming
-        reasoning &&
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: answer,
-              reasoning_content: reasoning
-            })
-          });
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: answer,
+            reasoning_content: reasoning
+          })
+        });
       }
 
       return {
