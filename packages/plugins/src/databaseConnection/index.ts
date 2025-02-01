@@ -1,5 +1,6 @@
 import { Client as PgClient } from 'pg'; // PostgreSQL 客户端
 import mysql from 'mysql2/promise'; // MySQL 客户端
+import mssql from 'mssql'; // SQL Server 客户端
 
 type Props = {
   databaseType: string;
@@ -52,6 +53,20 @@ const main = async ({
       const [rows] = await connection.execute(sql);
       result = rows;
       await connection.end();
+    } else if (databaseType === 'Microsoft SQL Server') {
+      const pool = await mssql.connect({
+        server: host,
+        port: parseInt(port, 10),
+        database: databaseName,
+        user,
+        password,
+        options: {
+          trustServerCertificate: true
+        }
+      });
+
+      result = await pool.query(sql);
+      await pool.close();
     }
     return {
       result
