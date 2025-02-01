@@ -804,7 +804,7 @@ const ModelEditModal = ({
                             value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                             onChange={(e) => {
                               if (!e) {
-                                setValue('defaultConfig', undefined);
+                                setValue('defaultConfig', {});
                                 return;
                               }
                               try {
@@ -1014,7 +1014,7 @@ const ModelEditModal = ({
                         resize
                         onChange={(e) => {
                           if (!e) {
-                            setValue('defaultConfig', undefined);
+                            setValue('defaultConfig', {});
                             return;
                           }
                           try {
