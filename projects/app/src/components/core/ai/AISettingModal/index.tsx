@@ -72,6 +72,7 @@ const AIChatSettingsModal = ({
     defaultValues: defaultData
   });
   const model = watch('model');
+  const reasoning = watch(NodeInputKeyEnum.aiChatReasoning);
   const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showVisionSwitch = watch(NodeInputKeyEnum.aiChatVision) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
@@ -84,6 +85,8 @@ const AIChatSettingsModal = ({
     return getWebLLMModel(model);
   }, [model]);
   const llmSupportVision = !!selectedModel?.vision;
+  const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
+  const llmSupportReasoning = !!selectedModel?.reasoning;
 
   const tokenLimit = useMemo(() => {
     return selectedModel?.maxResponse || 4096;
@@ -258,36 +261,51 @@ const AIChatSettingsModal = ({
             />
           </Box>
         </Flex>
-        <Flex {...FlexItemStyles}>
-          <Box {...LabelStyles}>
-            <Flex alignItems={'center'}>
-              {t('app:temperature')}
-              <QuestionTip label={t('app:temperature_tip')} />
-            </Flex>
-            <Switch
-              isChecked={temperature !== undefined}
-              size={'sm'}
-              onChange={(e) => {
-                setValue('temperature', e.target.checked ? 0 : undefined);
-              }}
-            />
-          </Box>
-
-          <Box flex={'1 0 0'}>
-            <InputSlider
-              min={0}
-              max={10}
-              step={1}
-              value={temperature}
-              isDisabled={temperature === undefined}
-              onChange={(e) => {
-                setValue(NodeInputKeyEnum.aiChatTemperature, e);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        </Flex>
-
+        {llmSupportTemperature && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>
+                {t('app:temperature')}
+                <QuestionTip label={t('app:temperature_tip')} />
+              </Flex>
+              <Switch
+                isChecked={temperature !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue('temperature', e.target.checked ? 0 : undefined);
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <InputSlider
+                min={0}
+                max={10}
+                step={1}
+                value={temperature}
+                isDisabled={temperature === undefined}
+                onChange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatTemperature, e);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportReasoning && (
+          <Flex {...FlexItemStyles} h={'25px'}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>{t('app:reasoning_response')}</Flex>
+              <Switch
+                isChecked={reasoning || false}
+                size={'sm'}
+                onChange={(e) => {
+                  const value = e.target.checked;
+                  setValue(NodeInputKeyEnum.aiChatReasoning, value);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
         {showResponseAnswerText && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>

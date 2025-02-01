@@ -29,10 +29,11 @@ export type LLMModelItemType = PriceType &
     maxContext: number;
     maxResponse: number;
     quoteMaxToken: number;
-    maxTemperature: number;
+    maxTemperature?: number;
 
     censor?: boolean;
     vision?: boolean;
+    reasoning?: boolean;
 
     // diff function model
     datasetProcess?: boolean; // dataset

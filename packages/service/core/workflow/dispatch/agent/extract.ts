@@ -1,5 +1,5 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { filterGPTMessageByMaxTokens, loadRequestMessages } from '../../../chat/utils';
+import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import {
   countMessagesTokens,
@@ -175,9 +175,9 @@ ${description ? `- ${description}` : ''}
     }
   ];
   const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
-  const filterMessages = await filterGPTMessageByMaxTokens({
+  const filterMessages = await filterGPTMessageByMaxContext({
     messages: adaptMessages,
-    maxTokens: extractModel.maxContext
+    maxContext: extractModel.maxContext
   });
   const requestMessages = await loadRequestMessages({
     messages: filterMessages,

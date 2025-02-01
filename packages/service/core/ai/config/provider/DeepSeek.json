@@ -27,8 +27,9 @@
       "maxContext": 64000,
       "maxResponse": 4096,
       "quoteMaxToken": 60000,
-      "maxTemperature": 1.5,
+      "maxTemperature": null,
       "vision": false,
+      "reasoning": true,
       "toolChoice": false,
       "functionCall": false,
       "defaultSystemChatPrompt": "",
@@ -39,9 +40,7 @@
       "usedInQueryExtension": true,
       "customExtractPrompt": "",
       "usedInToolCall": true,
-      "defaultConfig": {
-        "temperature": null
-      },
+      "defaultConfig": {},
       "fieldMap": {},
       "type": "llm"
     }

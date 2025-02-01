@@ -38,7 +38,9 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
         (input) => input.key === NodeInputKeyEnum.aiChatIsResponseText
       )?.value,
       aiChatVision:
-        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatVision)?.value ?? true
+        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatVision)?.value ?? true,
+      aiChatReasoning:
+        inputs.find((input) => input.key === NodeInputKeyEnum.aiChatReasoning)?.value ?? true
     }),
     [inputs]
   );

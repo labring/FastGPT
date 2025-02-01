@@ -220,6 +220,7 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatMaxToken]?: number;
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
+  [NodeInputKeyEnum.aiChatReasoning]?: boolean;
 
   [NodeInputKeyEnum.aiChatQuoteRole]?: AiChatQuoteRoleType;
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;
