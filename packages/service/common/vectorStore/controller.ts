@@ -3,12 +3,14 @@ import { PgVectorCtrl } from './pg/class';
 import { getVectorsByText } from '../../core/ai/embedding';
 import { InsertVectorProps } from './controller.d';
 import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
+import { MILVUS_ADDRESS, MOCHOW_ADDRESS, PG_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
+import { MochowCtrl } from './mochow/class';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
+  if (MOCHOW_ADDRESS) return new MochowCtrl();
 
   return new PgVectorCtrl();
 };
