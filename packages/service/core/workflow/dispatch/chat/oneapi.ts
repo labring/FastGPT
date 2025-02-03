@@ -88,7 +88,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quoteTemplate,
       quotePrompt,
       aiChatVision,
-      aiChatReasoning,
+      aiChatReasoning = true,
       fileUrlList: fileLinks, // node quote file links
       stringQuoteText //abandon
     }
