@@ -142,15 +142,18 @@ ${toolResponse}`}
 );
 const RenderResoningContent = React.memo(function RenderResoningContent({
   content,
-  showAnimation
+  isChatting,
+  isLastResponseValue
 }: {
   content: string;
-  showAnimation: boolean;
+  isChatting: boolean;
+  isLastResponseValue: boolean;
 }) {
   const { t } = useTranslation();
+  const showAnimation = isChatting && isLastResponseValue;
 
   return (
-    <Accordion allowToggle defaultIndex={0}>
+    <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
         <AccordionButton
           w={'auto'}
@@ -343,7 +346,8 @@ const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
   if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning)
     return (
       <RenderResoningContent
-        showAnimation={isChatting && isLastResponseValue}
+        isChatting={isChatting}
+        isLastResponseValue={isLastResponseValue}
         content={value.reasoning.content}
       />
     );
