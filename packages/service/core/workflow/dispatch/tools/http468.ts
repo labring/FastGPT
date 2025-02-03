@@ -244,7 +244,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       if (!httpJsonBody) return {};
       if (httpContentType === ContentTypes.json) {
         httpJsonBody = replaceJsonBodyString(httpJsonBody);
-        console.log(httpJsonBody);
         return json5.parse(httpJsonBody);
       }
 

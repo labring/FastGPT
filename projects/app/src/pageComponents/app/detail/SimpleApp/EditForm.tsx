@@ -138,9 +138,16 @@ const EditForm = ({
                   model: appForm.aiSettings.model,
                   temperature: appForm.aiSettings.temperature,
                   maxToken: appForm.aiSettings.maxToken,
-                  maxHistories: appForm.aiSettings.maxHistories
+                  maxHistories: appForm.aiSettings.maxHistories,
+                  aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true
                 }}
-                onChange={({ model, temperature, maxToken, maxHistories }: SettingAIDataType) => {
+                onChange={({
+                  model,
+                  temperature,
+                  maxToken,
+                  maxHistories,
+                  aiChatReasoning = false
+                }) => {
                   setAppForm((state) => ({
                     ...state,
                     aiSettings: {
@@ -148,7 +155,8 @@ const EditForm = ({
                       model,
                       temperature,
                       maxToken,
-                      maxHistories: maxHistories ?? 6
+                      maxHistories: maxHistories ?? 6,
+                      aiChatReasoning
                     }
                   }));
                 }}
