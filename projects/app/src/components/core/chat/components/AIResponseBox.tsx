@@ -186,7 +186,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
           borderColor={'myGray.300'}
           color={'myGray.500'}
         >
-          <Markdown source={content} />
+          <Markdown source={content} showAnimation={showAnimation} />
         </AccordionPanel>
       </AccordionItem>
     </Accordion>
