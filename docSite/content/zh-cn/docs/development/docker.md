@@ -7,6 +7,13 @@ toc: true
 weight: 707
 ---
 
+## 前置知识
+
+1. 基础的网络知识：端口，防火墙……  
+2. Docker 和 Docker Compose 基础知识  
+3. 大模型相关接口和参数
+4. RAG 相关知识：向量模型，向量数据库，向量检索
+
 ## 部署架构图
 
 ![](/imgs/sealos-fastgpt.webp)

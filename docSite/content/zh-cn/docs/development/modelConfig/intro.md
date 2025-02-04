@@ -44,8 +44,8 @@ weight: 744
 
 ### 核心配置
 
-- 模型 ID：实际发出请求的`model`值，全局唯一。
-- 自定义请求地址/Token：如果需要绕过`OneAPI`，可以设置自定义请求地址和 Token。一般情况下不需要，如果 OneAPI 不支持某些模型，可以使用该特性。
+- 模型 ID：接口请求时候，Body 中`model`字段的值，全局唯一。
+- 自定义请求地址/Key：如果需要绕过`OneAPI`，可以设置自定义请求地址和 Token。一般情况下不需要，如果 OneAPI 不支持某些模型，可以使用该特性。
 
 ### 模型类型
 
@@ -206,7 +206,7 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 
 ![alt text](/imgs/image-105.png)
 
-## 模型接入示例
+## 特殊接入示例
 
 ### ReRank 模型接入
 
@@ -226,6 +226,36 @@ FastGPT 页面上提供了每类模型的简单测试，可以初步检查模型
 #### 私有部署模型
 
 [点击查看部署 ReRank 模型教程](/docs/development/custom-models/bge-rerank/)
+
+### 接入语音识别模型
+
+OneAPI 的语言识别接口，无法正确的识别其他模型（会始终识别成 whisper-1），所以如果想接入其他模型，可以通过自定义请求地址来实现。例如，接入硅基流动的 `FunAudioLLM/SenseVoiceSmall` 模型，可以参考如下配置：
+
+点击模型编辑：
+
+![alt text](/imgs/image-106.png)
+
+填写硅基流动的地址：`https://api.siliconflow.cn/v1/audio/transcriptions`，并填写硅基流动的 API Key。
+
+![alt text](/imgs/image-107.png)
+
+## 其他配置项说明
+
+### 自定义请求地址
+
+如果填写了该值，则可以允许你绕过 OneAPI，直接向自定义请求地址发起请求。需要填写完整的请求地址，例如：
+
+- LLM: {{host}}/v1/chat/completions
+- Embedding: {{host}}/v1/embeddings
+- STT: {{host}}/v1/audio/transcriptions
+- TTS: {{host}}/v1/audio/speech
+- Rerank: {{host}}/v1/rerank
+
+自定义请求 Key，则是向自定义请求地址发起请求时候，携带请求头：Authorization: Bearer xxx 进行请求。
+
+所有接口均遵循 OpenAI 提供的模型格式，可参考 [OpenAI API 文档](https://platform.openai.com/docs/api-reference/introduction) 进行配置。
+
+由于 OpenAI 没有提供 ReRank 模型，遵循的是 Cohere 的格式。[点击查看接口请求示例](/docs/development/faq/#如何检查模型问题)
 
 
 ## 旧版模型配置说明
