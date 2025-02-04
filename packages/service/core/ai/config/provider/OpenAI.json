@@ -1,0 +1,252 @@
+{
+  "provider": "OpenAI",
+  "list": [
+    {
+      "model": "gpt-4o-mini",
+      "name": "GPT-4o-mini",
+      "maxContext": 128000,
+      "maxResponse": 16000,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1.2,
+      "vision": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    },
+    {
+      "model": "gpt-4o",
+      "name": "GPT-4o",
+      "maxContext": 128000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1.2,
+      "vision": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    },
+    {
+      "model": "o3-mini",
+      "name": "o3-mini",
+      "maxContext": 200000,
+      "maxResponse": 100000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": null,
+      "vision": false,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {
+        "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
+      },
+      "type": "llm"
+    },
+    {
+      "model": "o1-mini",
+      "name": "o1-mini",
+      "maxContext": 128000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": null,
+      "vision": false,
+      "toolChoice": false,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {
+        "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
+      },
+      "type": "llm"
+    },
+    {
+      "model": "o1",
+      "name": "o1",
+      "maxContext": 195000,
+      "maxResponse": 8000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": null,
+      "vision": true,
+      "toolChoice": false,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {
+        "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
+      },
+      "type": "llm"
+    },
+    {
+      "model": "o1-preview",
+      "name": "o1-preview",
+      "maxContext": 128000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 120000,
+      "maxTemperature": null,
+      "vision": false,
+      "toolChoice": false,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {
+        "stream": false
+      },
+      "fieldMap": {
+        "max_tokens": "max_completion_tokens"
+      },
+      "type": "llm"
+    },
+    {
+      "model": "gpt-3.5-turbo",
+      "name": "gpt-3.5-turbo",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "vision": false,
+      "toolChoice": true,
+      "functionCall": true,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "type": "llm"
+    },
+    {
+      "model": "gpt-4-turbo",
+      "name": "gpt-4-turbo",
+      "maxContext": 128000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1.2,
+      "vision": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "type": "llm"
+    },
+    {
+      "model": "text-embedding-3-large",
+      "name": "text-embedding-3-large",
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "defaultConfig": {
+        "dimensions": 1024
+      },
+      "type": "embedding"
+    },
+    {
+      "model": "text-embedding-3-small",
+      "name": "text-embedding-3-small",
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "type": "embedding"
+    },
+    {
+      "model": "text-embedding-ada-002",
+      "name": "text-embedding-ada-002",
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "type": "embedding"
+    },
+    {
+      "model": "tts-1",
+      "name": "TTS1",
+      "voices": [
+        {
+          "label": "Alloy",
+          "value": "alloy"
+        },
+        {
+          "label": "Echo",
+          "value": "echo"
+        },
+        {
+          "label": "Fable",
+          "value": "fable"
+        },
+        {
+          "label": "Onyx",
+          "value": "onyx"
+        },
+        {
+          "label": "Nova",
+          "value": "nova"
+        },
+        {
+          "label": "Shimmer",
+          "value": "shimmer"
+        }
+      ],
+      "type": "tts"
+    },
+    {
+      "model": "whisper-1",
+      "name": "whisper-1",
+      "type": "stt"
+    }
+  ]
+}

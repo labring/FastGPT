@@ -204,6 +204,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     { inputs = [] }: RuntimeNodeItemType,
     {
       answerText = '',
+      reasoningText,
       responseData,
       nodeDispatchUsages,
       toolResponses,
@@ -213,6 +214,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }: Omit<
       DispatchNodeResultType<{
         [NodeOutputKeyEnum.answerText]?: string;
+        [NodeOutputKeyEnum.reasoningText]?: string;
         [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
       }>,
       'nodeResponse'
@@ -239,17 +241,27 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     // Histories store
     if (assistantResponses) {
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
-    } else if (answerText) {
-      // save assistant text response
-      const isResponseAnswerText =
-        inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-      if (isResponseAnswerText) {
+    } else {
+      if (reasoningText) {
         chatAssistantResponse.push({
-          type: ChatItemValueTypeEnum.text,
-          text: {
-            content: answerText
+          type: ChatItemValueTypeEnum.reasoning,
+          reasoning: {
+            content: reasoningText
           }
         });
+      }
+      if (answerText) {
+        // save assistant text response
+        const isResponseAnswerText =
+          inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+        if (isResponseAnswerText) {
+          chatAssistantResponse.push({
+            type: ChatItemValueTypeEnum.text,
+            text: {
+              content: answerText
+            }
+          });
+        }
       }
     }
 

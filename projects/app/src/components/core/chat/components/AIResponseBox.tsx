@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Flex,
+  HStack,
   Textarea
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -139,6 +140,58 @@ ${toolResponse}`}
   },
   (prevProps, nextProps) => isEqual(prevProps, nextProps)
 );
+const RenderResoningContent = React.memo(function RenderResoningContent({
+  content,
+  isChatting,
+  isLastResponseValue
+}: {
+  content: string;
+  isChatting: boolean;
+  isLastResponseValue: boolean;
+}) {
+  const { t } = useTranslation();
+  const showAnimation = isChatting && isLastResponseValue;
+
+  return (
+    <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
+      <AccordionItem borderTop={'none'} borderBottom={'none'}>
+        <AccordionButton
+          w={'auto'}
+          bg={'white'}
+          borderRadius={'md'}
+          borderWidth={'1px'}
+          borderColor={'myGray.200'}
+          boxShadow={'1'}
+          pl={3}
+          pr={2.5}
+          py={1}
+          _hover={{
+            bg: 'auto'
+          }}
+        >
+          <HStack mr={2} spacing={1}>
+            <MyIcon name={'core/chat/think'} w={'0.85rem'} />
+            <Box fontSize={'sm'}>{t('chat:ai_reasoning')}</Box>
+          </HStack>
+
+          {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
+          <AccordionIcon color={'myGray.600'} ml={5} />
+        </AccordionButton>
+        <AccordionPanel
+          py={0}
+          pr={0}
+          pl={3}
+          mt={2}
+          borderLeft={'2px solid'}
+          borderColor={'myGray.300'}
+          color={'myGray.500'}
+        >
+          <Markdown source={content} showAnimation={showAnimation} />
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
+  );
+});
 const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive
 }: {
@@ -289,6 +342,14 @@ const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text)
     return (
       <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
+    );
+  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning)
+    return (
+      <RenderResoningContent
+        isChatting={isChatting}
+        isLastResponseValue={isLastResponseValue}
+        content={value.reasoning.content}
+      />
     );
   if (value.type === ChatItemValueTypeEnum.tool && value.tools)
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;

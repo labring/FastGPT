@@ -11,7 +11,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import { useContextSelector } from 'use-context-selector';
-import AppListContextProvider, { AppListContext } from './components/context';
+import AppListContextProvider, { AppListContext } from '@/pageComponents/app/list/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
@@ -22,22 +22,22 @@ import {
   getCollaboratorList,
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
-import type { CreateAppType } from './components/CreateModal';
+import type { CreateAppType } from '@/pageComponents/app/list/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import TemplateMarketModal from './components/TemplateMarketModal';
+import TemplateMarketModal from '@/pageComponents/app/list/TemplateMarketModal';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import JsonImportModal from './components/JsonImportModal';
+import JsonImportModal from '@/pageComponents/app/list/JsonImportModal';
 
-const CreateModal = dynamic(() => import('./components/CreateModal'));
+const CreateModal = dynamic(() => import('@/pageComponents/app/list/CreateModal'));
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
-const HttpEditModal = dynamic(() => import('./components/HttpPluginEditModal'));
-const List = dynamic(() => import('./components/List'));
+const HttpEditModal = dynamic(() => import('@/pageComponents/app/list/HttpPluginEditModal'));
+const List = dynamic(() => import('@/pageComponents/app/list/List'));
 
 const MyApps = () => {
   const { t } = useTranslation();

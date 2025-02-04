@@ -70,14 +70,23 @@ export type SystemChatItemType = {
   obj: ChatRoleEnum.System;
   value: SystemChatItemValueItemType[];
 };
+
 export type AIChatItemValueItemType = {
-  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool | ChatItemValueTypeEnum.interactive;
+  type:
+    | ChatItemValueTypeEnum.text
+    | ChatItemValueTypeEnum.reasoning
+    | ChatItemValueTypeEnum.tool
+    | ChatItemValueTypeEnum.interactive;
   text?: {
+    content: string;
+  };
+  reasoning?: {
     content: string;
   };
   tools?: ToolModuleResponseItemType[];
   interactive?: WorkflowInteractiveResponseType;
 };
+
 export type AIChatItemType = {
   obj: ChatRoleEnum.AI;
   value: AIChatItemValueItemType[];

@@ -1,78 +1,64 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Flex,
-  Box,
-  Button
-} from '@chakra-ui/react';
+import { Flex, Box, HStack } from '@chakra-ui/react';
 import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
-import { getUserUsages } from '@/web/support/wallet/usage/api';
-import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
-import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
-import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
-import { addDays } from 'date-fns';
-import dynamic from 'next/dynamic';
+import { addDays, startOfMonth, startOfWeek } from 'date-fns';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import { formatNumber } from '@fastgpt/global/common/math/tools';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import AccountContainer from '../components/AccountContainer';
+import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import MultipleSelect, {
+  useMultipleSelect
+} from '@fastgpt/web/components/common/MySelect/MultipleSelect';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
 
-const UsageDetail = dynamic(() => import('./UsageDetail'));
+import UsageTableList from '@/pageComponents/account/usage/UsageTable';
+import { UnitType } from '@/pageComponents/account/usage/type';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+const UsageDashboard = dynamic(() => import('@/pageComponents/account/usage/Dashboard'));
+
+export enum UsageTabEnum {
+  detail = 'detail',
+  dashboard = 'dashboard'
+}
 
 const UsageTable = () => {
   const { t } = useTranslation();
-  const { Loading } = useLoading();
+  const { userInfo } = useUserStore();
+  const { isPc } = useSystem();
+  const router = useRouter();
+  const { usageTab = UsageTabEnum.detail } = router.query as { usageTab: `${UsageTabEnum}` };
+
+  const [unit, setUnit] = useState<UnitType>('day');
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const [usageSource, setUsageSource] = useState<UsageSourceEnum | ''>('');
-  const { isPc } = useSystem();
-  const { userInfo } = useUserStore();
-  const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 
-  const sourceList = useMemo(
-    () =>
-      [
-        { label: t('account_usage:all'), value: '' },
-        ...Object.entries(UsageSourceMap).map(([key, value]) => ({
-          label: t(value.label as any),
-          value: key
-        }))
-      ] as {
-        label: never;
-        value: UsageSourceEnum | '';
-      }[],
-    [t]
-  );
-
-  const [selectTmbId, setSelectTmbId] = useState(userInfo?.team?.tmbId);
-  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
+  const { data: members, ScrollData, total: memberTotal } = useScrollPagination(getTeamMembers, {});
+  const {
+    value: selectTmbIds,
+    setValue: setSelectTmbIds,
+    isSelectAll: isSelectAllTmb,
+    setIsSelectAll: setIsSelectAllTmb
+  } = useMultipleSelect<string>([], true);
   const tmbList = useMemo(
     () =>
       members.map((item) => ({
         label: (
-          <Flex alignItems={'center'}>
-            <Avatar src={item.avatar} w={'16px'} mr={1} />
-            {item.memberName}
-          </Flex>
+          <HStack spacing={1} color={'myGray.500'}>
+            <Avatar src={item.avatar} w={'1.2rem'} mr={1} rounded={'full'} />
+            <Box>{item.memberName}</Box>
+          </HStack>
         ),
         value: item.tmbId
       })),
@@ -80,121 +66,195 @@ const UsageTable = () => {
   );
 
   const {
-    data: usages,
-    isLoading,
-    Pagination,
-    getData
-  } = usePagination(getUserUsages, {
-    pageSize: isPc ? 20 : 10,
-    params: {
-      dateStart: dateRange.from || new Date(),
-      dateEnd: addDays(dateRange.to || new Date(), 1),
-      source: usageSource as UsageSourceEnum,
-      teamMemberId: selectTmbId ?? ''
-    },
-    defaultRequest: false
-  });
+    value: usageSources,
+    setValue: setUsageSources,
+    isSelectAll: isSelectAllSource,
+    setIsSelectAll: setIsSelectAllSource
+  } = useMultipleSelect<UsageSourceEnum>(Object.values(UsageSourceEnum), true);
+  const sourceList = useMemo(
+    () =>
+      Object.entries(UsageSourceMap).map(([key, value]) => ({
+        label: t(value.label as any),
+        value: key as UsageSourceEnum
+      })),
+    [t]
+  );
+
+  const [projectName, setProjectName] = useState<string>('');
+  const [inputValue, setInputValue] = useState('');
+
+  const Tabs = useMemo(
+    () => (
+      <FillRowTabs
+        list={[
+          { label: t('account_usage:usage_detail'), value: 'detail' },
+          { label: t('account_usage:dashboard'), value: 'dashboard' }
+        ]}
+        py={1}
+        value={usageTab}
+        onChange={(e) => {
+          router.replace({
+            query: {
+              ...router.query,
+              usageTab: e
+            }
+          });
+        }}
+      />
+    ),
+    [router, t, usageTab]
+  );
+
+  const Selectors = useMemo(
+    () => (
+      <Flex flexDir={['column', 'row']} alignItems={'center'} gap={3}>
+        <Flex alignItems={'center'} gap={2}>
+          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+            {t('common:user.Time')}
+          </Box>
+          <DateRangePicker
+            defaultDate={dateRange}
+            dateRange={dateRange}
+            position="bottom"
+            onSuccess={setDateRange}
+          />
+          {/* {usageTab === UsageTabEnum.dashboard && (
+            <MySelect<UnitType>
+              bg={'myGray.50'}
+              minH={'32px'}
+              height={'32px'}
+              fontSize={'mini'}
+              ml={1}
+              list={[
+                { label: t('account_usage:every_day'), value: 'day' },
+                { label: t('account_usage:every_month'), value: 'month' }
+              ]}
+              value={unit}
+              onchange={setUnit}
+            />
+          )} */}
+        </Flex>
+        {userInfo?.team?.permission.hasManagePer && (
+          <Flex alignItems={'center'} gap={2}>
+            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+              {t('account_usage:member')}
+            </Box>
+            <Box>
+              <MultipleSelect<string>
+                list={tmbList}
+                value={selectTmbIds}
+                onSelect={(val) => {
+                  setSelectTmbIds(val as string[]);
+                }}
+                itemWrap={false}
+                height={'32px'}
+                bg={'myGray.50'}
+                w={'160px'}
+                ScrollData={ScrollData}
+                isSelectAll={isSelectAllTmb}
+                setIsSelectAll={setIsSelectAllTmb}
+              />
+            </Box>
+          </Flex>
+        )}
+        <Flex alignItems={'center'} gap={2}>
+          <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.900'}>
+            {t('account_usage:source')}
+          </Box>
+          <Box>
+            <MultipleSelect<UsageSourceEnum>
+              list={sourceList}
+              value={usageSources}
+              onSelect={setUsageSources}
+              isSelectAll={isSelectAllSource}
+              setIsSelectAll={setIsSelectAllSource}
+              itemWrap={false}
+              height={'32px'}
+              bg={'myGray.50'}
+              w={'160px'}
+            />
+          </Box>
+        </Flex>
+        {/* {usageTab === UsageTabEnum.detail && (
+          <Flex alignItems={'center'}>
+            <Box
+              fontSize={'mini'}
+              fontWeight={'medium'}
+              color={'myGray.900'}
+              mr={4}
+              whiteSpace={'nowrap'}
+            >
+              {t('common:user.Application Name')}
+            </Box>
+            <SearchInput
+              placeholder={t('common:user.Application Name')}
+              w={'160px'}
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+            />
+          </Flex>
+        )} */}
+      </Flex>
+    ),
+    [
+      t,
+      dateRange,
+      usageTab,
+      unit,
+      userInfo?.team?.permission.hasManagePer,
+      tmbList,
+      selectTmbIds,
+      ScrollData,
+      isSelectAllTmb,
+      setIsSelectAllTmb,
+      sourceList,
+      usageSources,
+      setUsageSources,
+      isSelectAllSource,
+      setIsSelectAllSource,
+      setSelectTmbIds
+    ]
+  );
 
   useEffect(() => {
-    getData(1);
-  }, [usageSource, selectTmbId]);
+    const timer = setTimeout(() => {
+      setProjectName(inputValue);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [inputValue]);
+
+  const filterParams = useMemo(
+    () => ({
+      dateRange,
+      selectTmbIds,
+      projectName,
+      isSelectAllTmb,
+      usageSources,
+      isSelectAllSource,
+      unit
+    }),
+    [dateRange, isSelectAllSource, unit, isSelectAllTmb, projectName, selectTmbIds, usageSources]
+  );
 
   return (
     <AccountContainer>
-      <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
-        <Flex
-          flexDir={['column', 'row']}
-          gap={2}
-          w={'100%'}
-          px={[3, 8]}
-          alignItems={['flex-end', 'center']}
-        >
-          {tmbList.length > 1 && userInfo?.team?.permission.hasManagePer && (
-            <Flex alignItems={'center'}>
-              <Box mr={2} flexShrink={0}>
-                {t('account_usage:member')}
-              </Box>
-              <MySelect
-                size={'sm'}
-                minW={'100px'}
-                ScrollData={ScrollData}
-                list={tmbList}
-                value={selectTmbId}
-                onchange={setSelectTmbId}
-              />
-            </Flex>
-          )}
-          <Box flex={'1'} />
-          <Flex alignItems={'center'} gap={3}>
-            <DateRangePicker
-              defaultDate={dateRange}
-              position="bottom"
-              onChange={setDateRange}
-              onSuccess={() => getData(1)}
-            />
-            <Pagination />
-          </Flex>
-        </Flex>
-        <TableContainer
-          mt={2}
-          px={[3, 8]}
-          position={'relative'}
-          flex={'1 0 0'}
-          h={0}
-          overflowY={'auto'}
-        >
-          <Table>
-            <Thead>
-              <Tr>
-                {/* <Th>{t('account_usage:user.team.Member Name')}</Th> */}
-                <Th>{t('account_usage:user_type')}</Th>
-                <Th>
-                  <MySelect<UsageSourceEnum | ''>
-                    list={sourceList}
-                    value={usageSource}
-                    size={'sm'}
-                    onchange={(e) => {
-                      setUsageSource(e);
-                    }}
-                    w={'130px'}
-                  ></MySelect>
-                </Th>
-                <Th>{t('account_usage:project_name')}</Th>
-                <Th>{t('account_usage:total_points')}</Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
-            <Tbody fontSize={'sm'}>
-              {usages.map((item) => (
-                <Tr key={item.id}>
-                  {/* <Td>{item.memberName}</Td> */}
-                  <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                  <Td>{t(UsageSourceMap[item.source]?.label as any) || '-'}</Td>
-                  <Td>{t(item.appName as any) || '-'}</Td>
-                  <Td>{formatNumber(item.totalPoints) || 0}</Td>
-                  <Td>
-                    <Button
-                      size={'sm'}
-                      variant={'whitePrimary'}
-                      onClick={() => setUsageDetail(item)}
-                    >
-                      {t('account_usage:details')}
-                    </Button>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-          {!isLoading && usages.length === 0 && (
-            <EmptyTip text={t('account_usage:no_usage_records')}></EmptyTip>
-          )}
-        </TableContainer>
-
-        <Loading loading={isLoading} fixed={false} />
-        {!!usageDetail && (
-          <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
+      <Box
+        px={[3, 8]}
+        pt={[0, 4]}
+        pb={[0, 4]}
+        h={'full'}
+        overflow={'hidden'}
+        display={'flex'}
+        flexDirection={'column'}
+      >
+        {usageTab === UsageTabEnum.detail && (
+          <UsageTableList filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
         )}
-      </Flex>
+        {usageTab === UsageTabEnum.dashboard && (
+          <UsageDashboard filterParams={filterParams} Tabs={Tabs} Selectors={Selectors} />
+        )}
+      </Box>
     </AccountContainer>
   );
 };

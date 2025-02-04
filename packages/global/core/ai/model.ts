@@ -1,9 +1,18 @@
 import { i18nT } from '../../../web/i18n/utils';
-import type { LLMModelItemType, STTModelType, VectorModelItemType } from './model.d';
+import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.d';
 import { getModelProvider, ModelProviderIdType } from './provider';
+
+export enum ModelTypeEnum {
+  llm = 'llm',
+  embedding = 'embedding',
+  tts = 'tts',
+  stt = 'stt',
+  rerank = 'rerank'
+}
 
 export const defaultQAModels: LLMModelItemType[] = [
   {
+    type: ModelTypeEnum.llm,
     provider: 'OpenAI',
     model: 'gpt-4o-mini',
     name: 'gpt-4o-mini',
@@ -24,8 +33,9 @@ export const defaultQAModels: LLMModelItemType[] = [
   }
 ];
 
-export const defaultVectorModels: VectorModelItemType[] = [
+export const defaultVectorModels: EmbeddingModelItemType[] = [
   {
+    type: ModelTypeEnum.embedding,
     provider: 'OpenAI',
     model: 'text-embedding-3-small',
     name: 'Embedding-2',
@@ -36,12 +46,15 @@ export const defaultVectorModels: VectorModelItemType[] = [
   }
 ];
 
-export const defaultWhisperModel: STTModelType = {
-  provider: 'OpenAI',
-  model: 'whisper-1',
-  name: 'whisper-1',
-  charsPointsPrice: 0
-};
+export const defaultSTTModels: STTModelType[] = [
+  {
+    type: ModelTypeEnum.stt,
+    provider: 'OpenAI',
+    model: 'whisper-1',
+    name: 'whisper-1',
+    charsPointsPrice: 0
+  }
+];
 
 export const getModelFromList = (
   modelList: { provider: ModelProviderIdType; name: string; model: string }[],
@@ -55,15 +68,10 @@ export const getModelFromList = (
   };
 };
 
-export enum ModelTypeEnum {
-  chat = 'chat',
-  embedding = 'embedding',
-  tts = 'tts',
-  stt = 'stt'
-}
 export const modelTypeList = [
-  { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.chat },
+  { label: i18nT('common:model.type.chat'), value: ModelTypeEnum.llm },
   { label: i18nT('common:model.type.embedding'), value: ModelTypeEnum.embedding },
   { label: i18nT('common:model.type.tts'), value: ModelTypeEnum.tts },
-  { label: i18nT('common:model.type.stt'), value: ModelTypeEnum.stt }
+  { label: i18nT('common:model.type.stt'), value: ModelTypeEnum.stt },
+  { label: i18nT('common:model.type.reRank'), value: ModelTypeEnum.rerank }
 ];

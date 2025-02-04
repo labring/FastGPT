@@ -2,6 +2,7 @@
   "AI_input_is_empty": "傳送至 AI 節點的內容為空",
   "Delete_all": "清除所有詞彙",
   "LLM_model_response_empty": "模型流程回應為空，請檢查模型流程輸出是否正常",
+  "ai_reasoning": "思考過程",
   "chat_history": "對話紀錄",
   "chat_input_guide_lexicon_is_empty": "尚未設定詞彙庫",
   "chat_test_app": "調試-{{name}}",

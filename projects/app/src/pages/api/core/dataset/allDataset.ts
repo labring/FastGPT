@@ -1,6 +1,6 @@
 import type { NextApiRequest } from 'next';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -31,7 +31,7 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
     _id: item._id,
     avatar: item.avatar,
     name: item.name,
-    vectorModel: getVectorModel(item.vectorModel)
+    vectorModel: getEmbeddingModel(item.vectorModel)
   }));
 }
 

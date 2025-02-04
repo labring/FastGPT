@@ -2,12 +2,22 @@ import { ErrType } from '../errorCode';
 import { i18nT } from '../../../../web/i18n/utils';
 /* team: 503000 */
 export enum UserErrEnum {
+  notUser = 'notUser',
+  userExist = 'userExist',
   unAuthRole = 'unAuthRole',
   account_psw_error = 'account_psw_error',
   balanceNotEnough = 'balanceNotEnough',
   unAuthSso = 'unAuthSso'
 }
 const errList = [
+  {
+    statusText: UserErrEnum.notUser,
+    message: i18nT('common:code_error.account_not_found')
+  },
+  {
+    statusText: UserErrEnum.userExist,
+    message: i18nT('common:code_error.account_exist')
+  },
   {
     statusText: UserErrEnum.account_psw_error,
     message: i18nT('common:code_error.account_error')

@@ -14,7 +14,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 
 import { useTranslation } from 'next-i18next';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
@@ -50,6 +50,8 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
   const MemberScrollData = useContextSelector(TeamContext, (v) => v.MemberScrollData);
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
+
+  const selectedMembersRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState(group?.members || []);
 
   const [searchKey, setSearchKey] = useState('');
@@ -155,7 +157,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                 setSearchKey(e.target.value);
               }}
             />
-            <MemberScrollData mt={3} flex={'1 0 0'} h={0}>
+            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
               {filtered.map((member) => {
                 return (
                   <HStack
@@ -185,7 +187,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
             <Box mt={2}>{t('common:chosen') + ': ' + members.length}</Box>
-            <MemberScrollData mt={3} flex={'1 0 0'} h={0}>
+            <MemberScrollData ScrollContainerRef={selectedMembersRef} mt={3} flex={'1 0 0'} h={0}>
               {members.map((member) => {
                 return (
                   <HStack

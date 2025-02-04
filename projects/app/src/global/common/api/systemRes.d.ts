@@ -1,6 +1,6 @@
 import type {
   LLMModelItemType,
-  VectorModelItemType,
+  EmbeddingModelItemType,
   AudioSpeechModels,
   STTModelType,
   ReRankModelItemType
@@ -8,15 +8,15 @@ import type {
 
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
 
 export type InitDateResponse = {
   bufferId?: string;
-  llmModels: LLMModelItemType[];
-  vectorModels: VectorModelItemType[];
-  audioSpeechModels: AudioSpeechModels[];
-  reRankModels: ReRankModelItemType[];
-  whisperModel: STTModelType;
-  feConfigs: FastGPTFeConfigsType;
+
+  feConfigs?: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
+
+  activeModelList?: SystemModelItemType[];
+  defaultModels?: SystemDefaultModelType;
 };

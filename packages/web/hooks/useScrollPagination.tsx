@@ -304,7 +304,7 @@ export function useScrollPagination<
       );
 
       return (
-        <MyBox {...props} ref={ref} overflow={'overlay'} isLoading={isLoading}>
+        <MyBox ref={ref} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}

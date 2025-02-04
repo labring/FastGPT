@@ -6,6 +6,7 @@ import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/t
 export type generatingMessageProps = {
   event: SseResponseEventEnum;
   text?: string;
+  reasoningText?: string;
   name?: string;
   status?: 'running' | 'finish';
   tool?: ToolModuleResponseItemType;

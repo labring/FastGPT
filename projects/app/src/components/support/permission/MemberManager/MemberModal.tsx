@@ -353,8 +353,9 @@ function MemberModal({
                             _hover={{
                               bgColor: 'myGray.200'
                             }}
-                            onClick={() => {
+                            onClick={(e) => {
                               setParentPath(getOrgChildrenPath(org));
+                              e.stopPropagation();
                             }}
                           />
                         )}
