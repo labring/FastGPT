@@ -2,32 +2,23 @@ import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
-  ChatCompletionMessageParam
+  StreamChatType
 } from '@fastgpt/global/core/ai/type';
-import { countGptMessagesTokens } from '../../common/string/tiktoken';
 import { getLLMModel } from './model';
 
-export const computedMaxToken = async ({
+/* 
+  Count response max token
+*/
+export const computedMaxToken = ({
   maxToken,
-  model,
-  filterMessages = []
+  model
 }: {
   maxToken?: number;
   model: LLMModelItemType;
-  filterMessages: ChatCompletionMessageParam[];
 }) => {
   if (maxToken === undefined) return;
 
   maxToken = Math.min(maxToken, model.maxResponse);
-  const tokensLimit = model.maxContext;
-
-  /* count response max token */
-  const promptsToken = await countGptMessagesTokens(filterMessages);
-  maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
-
-  if (maxToken <= 0) {
-    maxToken = 200;
-  }
   return maxToken;
 };
 
@@ -39,6 +30,7 @@ export const computedTemperature = ({
   model: LLMModelItemType;
   temperature: number;
 }) => {
+  if (typeof model.maxTemperature !== 'number') return undefined;
   temperature = +(model.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
 
@@ -86,4 +78,13 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
   // console.log(requestBody);
 
   return requestBody as InferCompletionsBody<T>;
+};
+
+export const llmStreamResponseToText = async (response: StreamChatType) => {
+  let answer = '';
+  for await (const part of response) {
+    const content = part.choices?.[0]?.delta?.content || '';
+    answer += content;
+  }
+  return answer;
 };

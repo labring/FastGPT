@@ -2,7 +2,7 @@
 import { PgVectorCtrl } from './pg/class';
 import { getVectorsByText } from '../../core/ai/embedding';
 import { InsertVectorProps } from './controller.d';
-import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
 
@@ -28,7 +28,7 @@ export const insertDatasetDataVector = async ({
   ...props
 }: InsertVectorProps & {
   query: string;
-  model: VectorModelItemType;
+  model: EmbeddingModelItemType;
 }) => {
   const { vectors, tokens } = await getVectorsByText({
     model,

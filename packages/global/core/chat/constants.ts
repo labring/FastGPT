@@ -25,7 +25,8 @@ export enum ChatItemValueTypeEnum {
   text = 'text',
   file = 'file',
   tool = 'tool',
-  interactive = 'interactive'
+  interactive = 'interactive',
+  reasoning = 'reasoning'
 }
 
 export enum ChatSourceEnum {
@@ -75,5 +76,3 @@ export enum ChatStatusEnum {
   running = 'running',
   finish = 'finish'
 }
-
-export const MARKDOWN_QUOTE_SIGN = 'QUOTE SIGN';

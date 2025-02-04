@@ -2,7 +2,12 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getLLMModel, getVectorModel, getDatasetModel } from '@fastgpt/service/core/ai/model';
+import {
+  getLLMModel,
+  getEmbeddingModel,
+  getDatasetModel,
+  getDefaultEmbeddingModel
+} from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
@@ -27,7 +32,7 @@ async function handler(
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = global.vectorModels[0].model,
+    vectorModel = getDefaultEmbeddingModel().model,
     agentModel = getDatasetModel().model,
     apiServer,
     feishuServer,
@@ -56,7 +61,7 @@ async function handler(
   ]);
 
   // check model valid
-  const vectorModelStore = getVectorModel(vectorModel);
+  const vectorModelStore = getEmbeddingModel(vectorModel);
   const agentModelStore = getLLMModel(agentModel);
   if (!vectorModelStore || !agentModelStore) {
     return Promise.reject(DatasetErrEnum.invalidVectorModelOrQAModel);

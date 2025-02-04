@@ -3,8 +3,8 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySelect, { SelectProps } from '@fastgpt/web/components/common/MySelect';
-import { HUGGING_FACE_ICON, LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import { Box, Flex, HStack, useDisclosure } from '@chakra-ui/react';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
+import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
@@ -22,7 +22,8 @@ type Props = SelectProps & {
 
 const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
-  const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
+  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
+    useSystemStore();
 
   const avatarSize = useMemo(() => {
     const size = {
@@ -35,7 +36,16 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   }, [props.size]);
 
   const avatarList = list.map((item) => {
-    const modelData = getModelFromList([...llmModelList, ...vectorModelList], item.value);
+    const modelData = getModelFromList(
+      [
+        ...llmModelList,
+        ...embeddingModelList,
+        ...ttsModelList,
+        ...sttModelList,
+        ...reRankModelList
+      ],
+      item.value
+    );
 
     return {
       value: item.value,
@@ -54,20 +64,6 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
     };
   });
 
-  const expandList = useMemo(() => {
-    return feConfigs?.show_pay
-      ? avatarList.concat({
-          label: (
-            <Flex alignItems={'center'}>
-              <Avatar borderRadius={'0'} mr={2} src={LOGO_ICON} w={avatarSize} />
-              <Box>{t('common:support.user.Price')}</Box>
-            </Flex>
-          ),
-          value: 'price'
-        })
-      : avatarList;
-  }, [feConfigs.show_pay, avatarList, avatarSize, t]);
-
   return (
     <Box
       css={{
@@ -82,7 +78,8 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
             <MySelect
               className="nowheel"
               isDisabled={!!disableTip}
-              list={expandList}
+              list={avatarList}
+              h={'40px'}
               {...props}
               onchange={(e) => {
                 if (e === 'price') {
@@ -100,7 +97,8 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
 };
 const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
-  const { llmModelList, vectorModelList } = useSystemStore();
+  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
+    useSystemStore();
   const [value, setValue] = useState<string[]>([]);
 
   const avatarSize = useMemo(() => {
@@ -136,7 +134,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }));
 
     for (const item of list) {
-      const modelData = getModelFromList([...llmModelList, ...vectorModelList], item.value);
+      const modelData = getModelFromList([...llmModelList, ...embeddingModelList], item.value);
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
         renderList[renderList.length - 1];
@@ -148,7 +146,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, llmModelList, t, vectorModelList]);
+  }, [avatarSize, list, llmModelList, t, embeddingModelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -158,7 +156,16 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   );
 
   const SelectedModel = useMemo(() => {
-    const modelData = getModelFromList([...llmModelList, ...vectorModelList], props.value);
+    const modelData = getModelFromList(
+      [
+        ...llmModelList,
+        ...embeddingModelList,
+        ...ttsModelList,
+        ...sttModelList,
+        ...reRankModelList
+      ],
+      props.value
+    );
 
     setValue([modelData.provider, props.value]);
 
@@ -174,7 +181,15 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
         <Box>{modelData?.name}</Box>
       </HStack>
     );
-  }, [avatarSize, llmModelList, props.value, vectorModelList]);
+  }, [
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    props.value,
+    avatarSize
+  ]);
 
   return (
     <Box
@@ -192,7 +207,9 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
           value={value}
           rowMinWidth="160px"
           ButtonProps={{
-            isDisabled: !!disableTip
+            isDisabled: !!disableTip,
+            h: '40px',
+            ...props
           }}
         />
       </MyTooltip>

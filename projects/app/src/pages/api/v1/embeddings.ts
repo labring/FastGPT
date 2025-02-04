@@ -4,7 +4,7 @@ import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
-import { getVectorModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { NextAPI } from '@/service/middleware/entry';
@@ -36,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
   const { tokens, vectors } = await getVectorsByText({
     input: query,
-    model: getVectorModel(model),
+    model: getEmbeddingModel(model),
     type
   });
 

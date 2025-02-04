@@ -1,0 +1,48 @@
+{
+  "provider": "DeepSeek",
+  "list": [
+    {
+      "model": "deepseek-chat",
+      "name": "Deepseek-chat",
+      "maxContext": 64000,
+      "maxResponse": 4096,
+      "quoteMaxToken": 60000,
+      "maxTemperature": 1.5,
+      "vision": false,
+      "toolChoice": true,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "type": "llm"
+    },
+    {
+      "model": "deepseek-reasoner",
+      "name": "Deepseek-reasoner",
+      "maxContext": 64000,
+      "maxResponse": 4096,
+      "quoteMaxToken": 60000,
+      "maxTemperature": null,
+      "vision": false,
+      "reasoning": true,
+      "toolChoice": false,
+      "functionCall": false,
+      "defaultSystemChatPrompt": "",
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "customCQPrompt": "",
+      "usedInExtractFields": true,
+      "usedInQueryExtension": true,
+      "customExtractPrompt": "",
+      "usedInToolCall": true,
+      "defaultConfig": {},
+      "fieldMap": {},
+      "type": "llm"
+    }
+  ]
+}

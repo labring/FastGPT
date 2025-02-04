@@ -6,12 +6,14 @@ import { MongoSystemPlugin } from '@fastgpt/service/core/app/plugin/systemPlugin
 import { debounce } from 'lodash';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
+import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
   refetchSystemPlugins();
   createDatasetTrainingMongoWatch();
   refetchAppTemplates();
+  watchSystemModelUpdate();
 };
 
 const reloadConfigWatch = () => {

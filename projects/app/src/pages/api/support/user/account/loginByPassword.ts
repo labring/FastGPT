@@ -5,7 +5,7 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { useReqFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
@@ -70,4 +70,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 }
 
-export default NextAPI(useReqFrequencyLimit(120, 10, true), handler);
+export default NextAPI(
+  useIPFrequencyLimit({ id: 'login-by-password', seconds: 120, limit: 10, force: true }),
+  handler
+);

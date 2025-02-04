@@ -16,7 +16,8 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       temperature: 0,
       isResponseAnswerText: true,
       maxHistories: 6,
-      maxToken: 4000
+      maxToken: 4000,
+      aiChatReasoning: true
     },
     dataset: {
       datasets: [],

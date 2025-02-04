@@ -23,11 +23,11 @@ images: []
 ![](/imgs/faq1.png)
 这是索引模型的长度限制，通过任何方式部署都一样的，但不同索引模型的配置不一样，可以在后台修改参数。
 
-### sealos怎么挂载 小程序配置文件
+### 怎么挂载小程序配置文件
 
-新增配置文件：/app/projects/app/public/xxxx.txt
+将验证文件，挂载到指定位置：/app/projects/app/public/xxxx.txt
 
-如图:
+然后重启。例如:
 
 ![](/imgs/faq2.png)
 
