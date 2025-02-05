@@ -92,7 +92,10 @@ export const loadRequestMessages = async ({
     const baseURL = process.env.FE_DOMAIN;
     if (!baseURL) return text;
     // 匹配 /api/system/img/xxx.xx 的图片链接，并追加 baseURL
-    return text.replace(/(\/api\/system\/img\/[^\s.]*\.[^\s]*)/g, (match, p1) => `${baseURL}${p1}`);
+    return text.replace(
+      /(?<!https?:\/\/[^\s]*)(?:\/api\/system\/img\/[^\s.]*\.[^\s]*)/g,
+      (match) => `${baseURL}${match}`
+    );
   };
   const parseSystemMessage = (
     content: string | ChatCompletionContentPartText[]
