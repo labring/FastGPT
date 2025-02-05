@@ -58,6 +58,7 @@ import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useRefresh } from '../../../../../../packages/web/hooks/useRefresh';
+import { Prompt_CQJson, Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -983,7 +984,9 @@ const ModelEditModal = ({
                     <Td>
                       <HStack spacing={1}>
                         <Box>{t('account:model.custom_cq_prompt')}</Box>
-                        <QuestionTip label={t('account:model.custom_cq_prompt_tip')} />
+                        <QuestionTip
+                          label={t('account:model.custom_cq_prompt_tip', { prompt: Prompt_CQJson })}
+                        />
                       </HStack>
                     </Td>
                     <Td textAlign={'right'}>
@@ -994,7 +997,11 @@ const ModelEditModal = ({
                     <Td>
                       <HStack spacing={1}>
                         <Box>{t('account:model.custom_extract_prompt')}</Box>
-                        <QuestionTip label={t('account:model.custom_extract_prompt_tip')} />
+                        <QuestionTip
+                          label={t('account:model.custom_extract_prompt_tip', {
+                            prompt: Prompt_ExtractJson
+                          })}
+                        />
                       </HStack>
                     </Td>
                     <Td textAlign={'right'}>
