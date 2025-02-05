@@ -9,7 +9,6 @@ export const getChatModelNameListByModules = (nodes: StoreNodeItemType[]): strin
       return model ? getLLMModel(model)?.name : '';
     })
     .filter(Boolean);
-  console.log(JSON.stringify(nodes, null, 2), '---=');
-  console.log(modelList, '---=');
+
   return Array.from(new Set(modelList));
 };
