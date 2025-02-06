@@ -63,6 +63,13 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 
   const model = connectionMongo.model<T>(name, schema);
 
+  // Sync index
+  syncMongoIndex(model);
+
+  return model;
+};
+
+const syncMongoIndex = async (model: Model<any>) => {
   if (process.env.SYNC_INDEX !== '0' && process.env.NODE_ENV !== 'test') {
     try {
       model.syncIndexes({ background: true });
@@ -70,8 +77,6 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
       addLog.error('Create index error', error);
     }
   }
-
-  return model;
 };
 
 export const ReadPreference = connectionMongo.mongo.ReadPreference;

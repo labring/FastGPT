@@ -24,7 +24,7 @@ export const aiTranscriptions = async ({
       ? { url: modelData.requestUrl }
       : {
           baseURL: aiAxiosConfig.baseUrl,
-          url: modelData.requestUrl || '/audio/transcriptions'
+          url: '/audio/transcriptions'
         }),
     headers: {
       Authorization: modelData.requestAuth
