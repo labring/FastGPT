@@ -49,6 +49,8 @@
   "model.output_price": "Output price",
   "model.output_price_tip": "The language model output price. If this item is configured, the model comprehensive price will be invalid.",
   "model.param_name": "Parameter name",
+  "model.reasoning": "Support output thinking",
+  "model.reasoning_tip": "For example, Deepseek-reasoner can output the thinking process.",
   "model.request_auth": "Custom key",
   "model.request_auth_tip": "When making a request to a custom request address, carry the request header: Authorization: Bearer xxx to make the request.",
   "model.request_url": "Custom url",

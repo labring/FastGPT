@@ -32,12 +32,14 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
           model: model.model,
           input: [input]
         },
-        model.requestUrl && model.requestAuth
+        model.requestUrl
           ? {
               path: model.requestUrl,
-              headers: {
-                Authorization: `Bearer ${model.requestAuth}`
-              }
+              headers: model.requestAuth
+                ? {
+                    Authorization: `Bearer ${model.requestAuth}`
+                  }
+                : undefined
             }
           : {}
       )
