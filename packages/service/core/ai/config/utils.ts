@@ -11,7 +11,11 @@ import {
   ReRankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
-import { ModelProviderType } from '@fastgpt/global/core/ai/provider';
+import {
+  getModelProvider,
+  ModelProviderIdType,
+  ModelProviderType
+} from '@fastgpt/global/core/ai/provider';
 import { findModelFromAlldata } from '../model';
 import {
   reloadFastGPTConfigBuffer,
@@ -91,7 +95,7 @@ export const loadSystemModels = async (init = false) => {
     await Promise.all(
       providerList.map(async (name) => {
         const fileContent = (await import(`./provider/${name}`))?.default as {
-          provider: ModelProviderType;
+          provider: ModelProviderIdType;
           list: SystemModelItemType[];
         };
 
@@ -101,7 +105,7 @@ export const loadSystemModels = async (init = false) => {
           const modelData: any = {
             ...fileModel,
             ...dbModel?.metadata,
-            provider: dbModel?.metadata?.provider || fileContent.provider,
+            provider: getModelProvider(dbModel?.metadata?.provider || fileContent.provider).id,
             type: dbModel?.metadata?.type || fileModel.type,
             isCustom: false
           };
