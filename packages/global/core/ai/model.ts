@@ -61,6 +61,9 @@ export const getModelFromList = (
   model: string
 ) => {
   const modelData = modelList.find((item) => item.model === model) ?? modelList[0];
+  if (!modelData) {
+    throw new Error('No Key model is configured');
+  }
   const provider = getModelProvider(modelData.provider);
   return {
     ...modelData,

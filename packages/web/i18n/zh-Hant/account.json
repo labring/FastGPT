@@ -48,6 +48,8 @@
   "model.output_price": "模型輸出價格",
   "model.output_price_tip": "語言模型輸出價格，如果配置了該項，則模型綜合價格會失效",
   "model.param_name": "參數名",
+  "model.reasoning": "支持輸出思考",
+  "model.reasoning_tip": "例如 Deepseek-reasoner，可以輸出思考過程。",
   "model.request_auth": "自訂請求 Key",
   "model.request_auth_tip": "向自訂請求地址發起請求時候，攜帶請求頭：Authorization: Bearer xxx 進行請求",
   "model.request_url": "自訂請求地址",

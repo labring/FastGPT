@@ -73,6 +73,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   const showUpdateNotification =
     isUpdateNotification &&
+    feConfigs?.bind_notification_method &&
+    feConfigs?.bind_notification_method.length > 0 &&
     !userInfo?.team.notificationAccount &&
     !!userInfo?.team.permission.isOwner;
 

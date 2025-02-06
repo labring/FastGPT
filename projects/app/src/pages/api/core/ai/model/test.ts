@@ -66,9 +66,11 @@ const testLLMModel = async (model: LLMModelItemType) => {
     },
     {
       ...(model.requestUrl ? { path: model.requestUrl } : {}),
-      headers: {
-        ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {})
-      }
+      headers: model.requestAuth
+        ? {
+            Authorization: `Bearer ${model.requestAuth}`
+          }
+        : undefined
     }
   );
 
@@ -98,12 +100,14 @@ const testTTSModel = async (model: TTSModelType) => {
       response_format: 'mp3',
       speed: 1
     },
-    model.requestUrl && model.requestAuth
+    model.requestUrl
       ? {
           path: model.requestUrl,
-          headers: {
-            Authorization: `Bearer ${model.requestAuth}`
-          }
+          headers: model.requestAuth
+            ? {
+                Authorization: `Bearer ${model.requestAuth}`
+              }
+            : undefined
         }
       : {}
   );

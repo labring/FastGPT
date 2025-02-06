@@ -26,7 +26,7 @@ export function reRankRecall({
     return Promise.reject('no rerank model');
   }
 
-  const { baseUrl, authorization } = getAxiosConfig({});
+  const { baseUrl, authorization } = getAxiosConfig();
 
   let start = Date.now();
   return POST<PostReRankResponse>(
@@ -38,7 +38,7 @@ export function reRankRecall({
     },
     {
       headers: {
-        Authorization: model.requestAuth ? model.requestAuth : authorization
+        Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization
       },
       timeout: 30000
     }
