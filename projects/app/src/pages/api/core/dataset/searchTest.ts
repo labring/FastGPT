@@ -15,6 +15,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
+import { agentSearchDatasetData } from '@fastgpt/service/core/dataset/search/agent';
 
 async function handler(req: NextApiRequest) {
   const {
@@ -59,6 +60,7 @@ async function handler(req: NextApiRequest) {
   });
 
   const { searchRes, tokens, ...result } = await searchDatasetData({
+    histories: [],
     teamId,
     reRankQuery: rewriteQuery,
     queries: concatQueries,
