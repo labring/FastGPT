@@ -1,4 +1,4 @@
-import React, { useMemo, useTransition } from 'react';
+import React, { useEffect, useMemo, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -116,6 +116,25 @@ const EditForm = ({
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel?.quoteMaxToken]);
+  // Force close image select when model not support vision
+  useEffect(() => {
+    if (!selectedModel.vision) {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          ...(state.chatConfig.fileSelectConfig
+            ? {
+                fileSelectConfig: {
+                  ...state.chatConfig.fileSelectConfig,
+                  canSelectImg: false
+                }
+              }
+            : {})
+        }
+      }));
+    }
+  }, [selectedModel]);
 
   return (
     <>
