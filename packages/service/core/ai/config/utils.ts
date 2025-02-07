@@ -31,7 +31,10 @@ import { delay } from '@fastgpt/global/common/system/utils';
 export const loadSystemModels = async (init = false) => {
   const getProviderList = () => {
     const currentFileUrl = new URL(import.meta.url);
-    const modelsPath = path.join(path.dirname(currentFileUrl.pathname), 'provider');
+    const modelsPath = path.join(
+      path.dirname(currentFileUrl.pathname.replace(/^\/+/, '')),
+      'provider'
+    );
 
     return fs.readdirSync(modelsPath) as string[];
   };
