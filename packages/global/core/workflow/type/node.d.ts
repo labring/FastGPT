@@ -28,6 +28,7 @@ export type FlowNodeCommonType = {
   parentNodeId?: string;
   flowNodeType: FlowNodeTypeEnum; // render node card
   abandon?: boolean; // abandon node
+  error?: string; // error message
 
   avatar?: string;
   name: string;

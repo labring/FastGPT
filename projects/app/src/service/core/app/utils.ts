@@ -22,6 +22,17 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { AppSchema } from '@fastgpt/global/core/app/type';
+import { NextApiRequest } from 'next';
+import {
+  getChildAppPreviewNode,
+  splitCombinePluginId
+} from '@fastgpt/service/core/app/plugin/controller';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app
@@ -125,3 +136,35 @@ export const getScheduleTriggerApp = async () => {
     })
   );
 };
+
+const checkItem = async (item: StoreNodeItemType, req: NextApiRequest) => {
+  const { pluginId } = item;
+  if (!pluginId) return item;
+
+  try {
+    const { source } = await splitCombinePluginId(pluginId);
+    if (source === PluginSourceEnum.personal) {
+      await authApp({
+        req,
+        authToken: true,
+        appId: pluginId,
+        per: ReadPermissionVal
+      });
+    }
+
+    const preview = await getChildAppPreviewNode({ id: pluginId });
+    return { ...item, ...preview };
+  } catch (error: any) {
+    return { ...item, isError: true, error };
+  }
+};
+
+export const checkApp = async (app: AppSchema, req: NextApiRequest) => ({
+  ...app,
+  modules: await Promise.all(app.modules.map((m) => checkItem(m, req)))
+});
+
+export const checkAppVersion = async (version: AppVersionSchemaType, req: NextApiRequest) => ({
+  ...version,
+  nodes: await Promise.all(version.nodes.map((n) => checkItem(n, req)))
+});

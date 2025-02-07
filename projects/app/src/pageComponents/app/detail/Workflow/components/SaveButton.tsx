@@ -16,12 +16,7 @@ const SaveButton = ({
 }: {
   isLoading: boolean;
   onClickSave: (options: { isPublish?: boolean; versionName?: string }) => Promise<void>;
-  checkData?: (hideTip?: boolean) =>
-    | {
-        nodes: StoreNodeItemType[];
-        edges: StoreEdgeItemType[];
-      }
-    | undefined;
+  checkData?: () => boolean | undefined;
 }) => {
   const { t } = useTranslation();
   const [isSave, setIsSave] = useState(false);

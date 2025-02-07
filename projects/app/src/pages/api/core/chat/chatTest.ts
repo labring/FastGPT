@@ -45,6 +45,8 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
+import { checkApp } from '@/service/core/app/utils';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -95,6 +97,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       appId,
       per: ReadPermissionVal
     });
+
+    const checkedApp = await checkApp({ ...app, modules: nodes }, req);
+    if (checkedApp.modules.some((module) => checkAppUnExistError(module.error))) {
+      throw new Error('Run failed: Application components missing');
+    }
 
     const isPlugin = app.type === AppTypeEnum.plugin;
 

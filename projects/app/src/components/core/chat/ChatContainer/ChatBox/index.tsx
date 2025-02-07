@@ -146,6 +146,7 @@ const ChatBox = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
+  const hasError = useContextSelector(ChatBoxContext, (v) => v.hasError);
 
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
@@ -857,7 +858,8 @@ const ChatBox = ({
         chatBoxData?.app?.chatConfig?.autoExecute?.open &&
         chatStarted &&
         chatRecords.length === 0 &&
-        isChatRecordsLoaded
+        isChatRecordsLoaded &&
+        !hasError
       ) {
         sendPrompt({
           text: chatBoxData?.app?.chatConfig?.autoExecute?.defaultPrompt || 'AUTO_EXECUTE',

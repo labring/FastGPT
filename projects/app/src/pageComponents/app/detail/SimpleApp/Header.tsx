@@ -30,6 +30,7 @@ import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -48,6 +49,7 @@ const Header = ({
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const { toast } = useToast();
   const router = useRouter();
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
@@ -231,7 +233,20 @@ const Header = ({
                   variant={'whitePrimary'}
                   onClick={setIsShowHistories}
                 />
-                <SaveButton isLoading={loading} onClickSave={onClickSave} />
+                <SaveButton
+                  isLoading={loading}
+                  onClickSave={onClickSave}
+                  checkData={() => {
+                    const hasErrors = appForm.selectedTools.some((tool) => tool.error);
+                    if (hasErrors) {
+                      toast({
+                        title: t('app:app.error.publish_unExist_app'),
+                        status: 'warning'
+                      });
+                    }
+                    return !hasErrors;
+                  }}
+                />
               </>
             )}
           </Flex>

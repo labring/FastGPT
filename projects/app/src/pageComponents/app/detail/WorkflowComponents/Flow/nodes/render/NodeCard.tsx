@@ -99,6 +99,9 @@ const NodeCard = (props: Props) => {
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
+      if (!!node?.error) {
+        return undefined;
+      }
       if (
         node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
         node?.flowNodeType === FlowNodeTypeEnum.appModule
@@ -286,6 +289,22 @@ const NodeCard = (props: Props) => {
                   )}
                 </UseGuideModal>
               )}
+              {!!node?.error && (
+                <MyTooltip label={t('app:app.modules.not_found_tips')}>
+                  <Flex
+                    bg={'red.100'}
+                    color={'red.700'}
+                    alignItems={'center'}
+                    h={8}
+                    px={2}
+                    rounded={'6px'}
+                    fontSize={'xs'}
+                    fontWeight={'medium'}
+                  >
+                    <Box>{t('app:app.modules.not_found')}</Box>
+                  </Flex>
+                </MyTooltip>
+              )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
@@ -297,6 +316,7 @@ const NodeCard = (props: Props) => {
   }, [
     node?.flowNodeType,
     node?.courseUrl,
+    node?.error,
     showToolHandle,
     nodeId,
     isFolded,

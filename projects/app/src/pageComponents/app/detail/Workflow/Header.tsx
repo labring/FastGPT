@@ -200,7 +200,7 @@ const Header = () => {
                 <SaveButton
                   isLoading={loading}
                   onClickSave={onClickSave}
-                  checkData={flowData2StoreDataAndCheck}
+                  checkData={() => !!flowData2StoreDataAndCheck()}
                 />
               )}
             </HStack>

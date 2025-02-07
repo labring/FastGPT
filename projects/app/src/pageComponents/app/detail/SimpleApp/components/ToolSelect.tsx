@@ -14,6 +14,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from './ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 
 const ToolSelect = ({
   appForm,
@@ -92,16 +93,27 @@ const ToolSelect = ({
               }}
             >
               <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-              <Box
-                ml={2}
-                flex={'1 0 0'}
-                w={0}
-                className={'textEllipsis'}
-                fontSize={'sm'}
-                color={'myGray.900'}
-              >
-                {item.name}
-              </Box>
+              <Flex flex={'1 0 0'} ml={2} gap={2}>
+                <Box maxW={24} className={'textEllipsis'} fontSize={'sm'} color={'myGray.900'}>
+                  {item.name}
+                </Box>
+                {checkAppUnExistError(item.error) && (
+                  <MyTooltip label={t('app:app.modules.not_found_tips')}>
+                    <Flex
+                      bg={'red.100'}
+                      color={'red.700'}
+                      alignItems={'center'}
+                      h={6}
+                      px={2}
+                      rounded={'6px'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                    >
+                      <Box>{t('app:app.modules.not_found')}</Box>
+                    </Flex>
+                  </MyTooltip>
+                )}
+              </Flex>
               <DeleteIcon
                 onClick={(e) => {
                   e.stopPropagation();

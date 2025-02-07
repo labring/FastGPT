@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import type { InitChatResponse, InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
@@ -11,8 +10,8 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { checkApp } from '@/service/core/app/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let { chatId, shareId, outLinkUid } = req.query as InitOutLinkChatProps;
@@ -41,6 +40,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
+  const checkedApp = await checkApp(app, req);
+  const hasError = checkedApp.modules.some((module) => module.error);
+
   jsonRes<InitChatResponse>(res, {
     data: {
       chatId,
@@ -60,7 +62,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         avatar: app.avatar,
         intro: app.intro,
         type: app.type,
-        pluginInputs
+        pluginInputs,
+        hasError
       }
     }
   });

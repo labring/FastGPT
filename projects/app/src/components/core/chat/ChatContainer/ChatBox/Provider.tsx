@@ -61,6 +61,7 @@ type useChatStoreType = ChatProviderProps & {
   chatInputGuide: ChatInputGuideConfigType;
   getHistoryResponseData: ({ dataId }: { dataId: string }) => Promise<ChatHistoryItemResType[]>;
   fileSelectConfig: AppFileSelectConfigType;
+  hasError?: boolean;
 
   appId: string;
   chatId: string;
@@ -86,6 +87,7 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     autoSend: false,
     autoTTSResponse: false
   },
+  hasError: false,
   autoTTSResponse: false,
   startSegmentedAudio: function (): Promise<any> {
     throw new Error('Function not implemented.');
@@ -169,6 +171,7 @@ const Provider = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
   );
+  const hasError = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.hasError);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
@@ -227,6 +230,7 @@ const Provider = ({
     questionGuide,
     ttsConfig,
     fileSelectConfig,
+    hasError,
     whisperConfig,
     autoTTSResponse,
     startSegmentedAudio,
