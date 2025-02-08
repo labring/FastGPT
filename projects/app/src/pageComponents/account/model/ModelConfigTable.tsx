@@ -819,6 +819,19 @@ const ModelEditModal = ({
                     <Tr>
                       <Td>
                         <HStack spacing={1}>
+                          <Box>{t('account:model.normalization')}</Box>
+                          <QuestionTip label={t('account:model.normalization_tip')} />
+                        </HStack>
+                      </Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('normalization')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>
+                        <HStack spacing={1}>
                           <Box>{t('account:model.default_token')}</Box>
                           <QuestionTip label={t('account:model.default_token_tip')} />
                         </HStack>

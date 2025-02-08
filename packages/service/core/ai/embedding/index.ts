@@ -56,7 +56,14 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
 
         const [tokens, vectors] = await Promise.all([
           countPromptTokens(input),
-          Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
+          Promise.all(
+            res.data
+              .map((item) => unityDimensional(item.embedding))
+              .map((item) => {
+                if (model.normalization) return normalization(item);
+                return item;
+              })
+          )
         ]);
 
         return {
@@ -86,4 +93,16 @@ function unityDimensional(vector: number[]) {
   const zeroVector = new Array(1536 - vectorLen).fill(0);
 
   return resultVector.concat(zeroVector);
+}
+// normalization processing
+function normalization(vector: number[]) {
+  if (vector.some((item) => item > 1)) {
+    // Calculate the Euclidean norm (L2 norm)
+    const norm = Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0));
+
+    // Normalize the vector by dividing each component by the norm
+    return vector.map((val) => val / norm);
+  }
+
+  return vector;
 }

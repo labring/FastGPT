@@ -294,14 +294,16 @@
       "name": "Doubao-embedding-large",
       "defaultToken": 512,
       "maxToken": 4096,
-      "type": "embedding"
+      "type": "embedding",
+      "normalization": true
     },
     {
       "model": "Doubao-embedding",
       "name": "Doubao-embedding",
       "defaultToken": 512,
       "maxToken": 4096,
-      "type": "embedding"
+      "type": "embedding",
+      "normalization": true
     }
   ]
 }

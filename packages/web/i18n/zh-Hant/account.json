@@ -45,6 +45,8 @@
   "model.max_temperature": "最大溫度",
   "model.model_id": "模型ID",
   "model.model_id_tip": "模型的唯一標識，也就是實際請求到服務商model 的值，需要與 OneAPI 頻道中的模型對應。",
+  "model.normalization": "歸一化處理",
+  "model.normalization_tip": "如果Embedding API 未對向量值進行歸一化，可以啟用該開關，系統會進行歸一化處理。\n\n未歸一化的 API，表現為向量檢索得分會大於 1。",
   "model.output_price": "模型輸出價格",
   "model.output_price_tip": "語言模型輸出價格，如果配置了該項，則模型綜合價格會失效",
   "model.param_name": "參數名",

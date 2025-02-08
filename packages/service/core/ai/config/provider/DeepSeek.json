@@ -7,12 +7,9 @@
       "maxContext": 64000,
       "maxResponse": 8000,
       "quoteMaxToken": 60000,
-      "maxTemperature": 1.5,
+      "maxTemperature": 1,
       "showTopP": true,
-      "responseFormatList": [
-        "text",
-        "json_object"
-      ],
+      "responseFormatList": ["text", "json_object"],
       "showStopSign": true,
       "vision": false,
       "toolChoice": true,
