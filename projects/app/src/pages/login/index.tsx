@@ -29,6 +29,7 @@ import { GET } from '@/web/common/api/request';
 import { getDocPath } from '@/web/common/system/doc';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
@@ -41,12 +42,13 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { lastRoute = '' } = router.query as { lastRoute: string };
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, llmModelList } = useSystemStore();
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
   const { setUserInfo } = useUserStore();
   const { setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { isPc } = useSystem();
+  const { toast } = useToast();
 
   const {
     isOpen: isOpenCookiesDrawer,
@@ -60,6 +62,16 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const loginSuccess = useCallback(
     (res: ResLogin) => {
       setUserInfo(res.user);
+
+      // Check that the model is available
+      if (res.user.username === 'root' && llmModelList?.length === 0) {
+        toast({
+          status: 'warning',
+          title: t('login:model_not_config')
+        });
+        router.push('/account/model');
+        return;
+      }
 
       const decodeLastRoute = decodeURIComponent(lastRoute);
       // 检查是否是当前的 route

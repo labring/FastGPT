@@ -1,20 +1,21 @@
 {
   "Chinese_ip_tip": "It is detected that you are a mainland Chinese IP, click to jump to visit the mainland China version.",
   "Login": "Login",
+  "agree": "agree",
+  "cookies_tip": " This website uses cookies to provide a better service experience. By continuing to use the site, you agree to our Cookie Policy.",
   "forget_password": "Find Password",
   "login_failed": "Login failed",
   "login_success": "Login successful",
+  "model_not_config": "It is detected that the system has not configured the model, please configure the model before using it",
   "no_remind": "Don't remind again",
   "password_condition": "Password maximum 60 characters",
   "password_tip": "Password must be at least 6 characters long and contain at least two combinations: numbers, letters, or special characters",
   "policy_tip": "By using this service, you agree to our",
   "privacy": "Privacy Policy",
+  "privacy_policy": "Privacy Policy",
   "redirect": "Jump",
   "register": "Register",
   "root_password_placeholder": "The root user password is the value of the environment variable DEFAULT_ROOT_PSW",
   "terms": "Terms",
-  "use_root_login": "Log in as root user",
-  "agree": "agree",
-  "cookies_tip": " This website uses cookies to provide a better service experience. By continuing to use the site, you agree to our Cookie Policy.",
-  "privacy_policy": "Privacy Policy"
+  "use_root_login": "Log in as root user"
 }
