@@ -221,6 +221,10 @@ export type AIChatNodeProps = {
   [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
   [NodeInputKeyEnum.aiChatVision]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
+  [NodeInputKeyEnum.aiChatTopP]?: number;
+  [NodeInputKeyEnum.aiChatStopSign]?: string;
+  [NodeInputKeyEnum.aiChatResponseFormat]?: string;
+  [NodeInputKeyEnum.aiChatJsonSchema]?: string;
 
   [NodeInputKeyEnum.aiChatQuoteRole]?: AiChatQuoteRoleType;
   [NodeInputKeyEnum.aiChatQuoteTemplate]?: string;

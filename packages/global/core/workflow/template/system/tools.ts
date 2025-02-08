@@ -43,14 +43,12 @@ export const ToolModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.aiChatTemperature,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
-      value: undefined,
       valueType: WorkflowIOValueTypeEnum.number
     },
     {
       key: NodeInputKeyEnum.aiChatMaxToken,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
-      value: undefined,
       valueType: WorkflowIOValueTypeEnum.number
     },
     {
@@ -59,6 +57,30 @@ export const ToolModule: FlowNodeTemplateType = {
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: true
+    },
+    {
+      key: NodeInputKeyEnum.aiChatTopP,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      key: NodeInputKeyEnum.aiChatStopSign,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.aiChatResponseFormat,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.aiChatJsonSchema,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
     },
 
     {

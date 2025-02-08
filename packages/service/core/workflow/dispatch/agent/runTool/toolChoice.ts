@@ -93,7 +93,15 @@ export const runToolWithToolChoice = async (
     stream,
     externalProvider,
     workflowStreamResponse,
-    params: { temperature, maxToken, aiChatVision }
+    params: {
+      temperature,
+      maxToken,
+      aiChatVision,
+      aiChatTopP,
+      aiChatStopSign,
+      aiChatResponseFormat,
+      aiChatJsonSchema
+    }
   } = workflowProps;
 
   if (maxRunToolTimes <= 0 && response) {
@@ -263,12 +271,16 @@ export const runToolWithToolChoice = async (
   const requestBody = llmCompletionsBodyFormat(
     {
       model: toolModel.model,
-      temperature,
-      max_tokens,
       stream,
       messages: requestMessages,
       tools,
-      tool_choice: 'auto'
+      tool_choice: 'auto',
+      temperature,
+      max_tokens,
+      top_p: aiChatTopP,
+      stop: aiChatStopSign,
+      response_format: aiChatResponseFormat,
+      json_schema: aiChatJsonSchema
     },
     toolModel
   );

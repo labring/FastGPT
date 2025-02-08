@@ -54,7 +54,15 @@ export const runToolWithPromptCall = async (
     externalProvider,
     stream,
     workflowStreamResponse,
-    params: { temperature, maxToken, aiChatVision }
+    params: {
+      temperature,
+      maxToken,
+      aiChatVision,
+      aiChatTopP,
+      aiChatStopSign,
+      aiChatResponseFormat,
+      aiChatJsonSchema
+    }
   } = workflowProps;
 
   if (interactiveEntryToolParams) {
@@ -215,10 +223,14 @@ export const runToolWithPromptCall = async (
   const requestBody = llmCompletionsBodyFormat(
     {
       model: toolModel.model,
+      stream,
+      messages: requestMessages,
       temperature,
       max_tokens,
-      stream,
-      messages: requestMessages
+      top_p: aiChatTopP,
+      stop: aiChatStopSign,
+      response_format: aiChatResponseFormat,
+      json_schema: aiChatJsonSchema
     },
     toolModel
   );

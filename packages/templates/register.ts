@@ -7,7 +7,12 @@ import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 
 const getTemplateNameList = () => {
   const currentFileUrl = new URL(import.meta.url);
-  const templatesPath = path.join(path.dirname(currentFileUrl.pathname), 'src');
+  const filePath = decodeURIComponent(
+    process.platform === 'win32'
+      ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
+      : currentFileUrl.pathname
+  );
+  const templatesPath = path.join(path.dirname(filePath), 'src');
 
   return fs.readdirSync(templatesPath) as string[];
 };

@@ -18,7 +18,8 @@ import {
   Thead,
   Tr,
   Table,
-  FlexProps
+  FlexProps,
+  Input
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -31,13 +32,15 @@ import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
 );
 
 const FlexItemStyles: FlexProps = {
-  mt: 5,
+  mt: 4,
   alignItems: 'center',
   h: '35px'
 };
@@ -68,7 +71,7 @@ const AIChatSettingsModal = ({
   const [refresh, setRefresh] = useState(false);
   const { feConfigs } = useSystemStore();
 
-  const { handleSubmit, getValues, setValue, watch } = useForm({
+  const { handleSubmit, getValues, setValue, watch, register } = useForm({
     defaultValues: defaultData
   });
   const model = watch('model');
@@ -87,6 +90,17 @@ const AIChatSettingsModal = ({
   const llmSupportVision = !!selectedModel?.vision;
   const llmSupportTemperature = typeof selectedModel?.maxTemperature === 'number';
   const llmSupportReasoning = !!selectedModel?.reasoning;
+
+  const topP = watch(NodeInputKeyEnum.aiChatTopP);
+  const llmSupportTopP = !!selectedModel?.showTopP;
+
+  const stopSign = watch(NodeInputKeyEnum.aiChatStopSign);
+  const llmSupportStopSign = !!selectedModel?.showStopSign;
+
+  const responseFormat = watch(NodeInputKeyEnum.aiChatResponseFormat);
+  const jsonSchema = watch(NodeInputKeyEnum.aiChatJsonSchema);
+  const llmSupportResponseFormat =
+    !!selectedModel?.responseFormatList && selectedModel?.responseFormatList.length > 0;
 
   const tokenLimit = useMemo(() => {
     return selectedModel?.maxResponse || 4096;
@@ -146,7 +160,7 @@ const AIChatSettingsModal = ({
         </Flex>
 
         <TableContainer
-          my={5}
+          my={4}
           bg={'primary.50'}
           borderRadius={'lg'}
           borderWidth={'1px'}
@@ -291,6 +305,110 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
+        {llmSupportTopP && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>
+                <Box mr={0.5}>Top_p</Box>
+                <QuestionTip label={t('app:show_top_p_tip')} />
+              </Flex>
+              <Switch
+                isChecked={topP !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatTopP, e.target.checked ? 1 : undefined);
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <InputSlider
+                min={0}
+                max={1}
+                step={0.1}
+                value={topP}
+                isDisabled={topP === undefined}
+                onChange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatTopP, e);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportStopSign && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>
+                <Box mr={0.5}>{t('app:stop_sign')}</Box>
+              </Flex>
+              <Switch
+                isChecked={stopSign !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatStopSign, e.target.checked ? '' : undefined);
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <Input
+                isDisabled={stopSign === undefined}
+                size={'sm'}
+                {...register(NodeInputKeyEnum.aiChatStopSign)}
+                placeholder={t('app:stop_sign_placeholder')}
+                bg={'myGray.25'}
+              />
+            </Box>
+          </Flex>
+        )}
+        {llmSupportResponseFormat && selectedModel?.responseFormatList && (
+          <Flex {...FlexItemStyles}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>{t('app:response_format')}</Flex>
+              <Switch
+                isChecked={responseFormat !== undefined}
+                size={'sm'}
+                onChange={(e) => {
+                  setValue(
+                    NodeInputKeyEnum.aiChatResponseFormat,
+                    e.target.checked ? selectedModel?.responseFormatList?.[0] : undefined
+                  );
+                }}
+              />
+            </Box>
+            <Box flex={'1 0 0'}>
+              <MySelect<string>
+                isDisabled={responseFormat === undefined}
+                size={'sm'}
+                bg={'myGray.25'}
+                list={selectedModel.responseFormatList.map((item) => ({
+                  value: item,
+                  label: item
+                }))}
+                value={responseFormat}
+                onchange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatResponseFormat, e);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {/* Json schema */}
+        {responseFormat === 'json_schema' && (
+          <Flex {...FlexItemStyles} h="auto">
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>JSON Schema</Flex>
+            </Box>
+            <Box flex={'1 0 0'}>
+              <JsonEditor
+                value={jsonSchema || ''}
+                onChange={(e) => {
+                  setValue(NodeInputKeyEnum.aiChatJsonSchema, e);
+                }}
+                bg={'myGray.25'}
+              />
+            </Box>
+          </Flex>
+        )}
         {llmSupportReasoning && (
           <Flex {...FlexItemStyles} h={'25px'}>
             <Box {...LabelStyles}>
@@ -301,25 +419,6 @@ const AIChatSettingsModal = ({
                 onChange={(e) => {
                   const value = e.target.checked;
                   setValue(NodeInputKeyEnum.aiChatReasoning, value);
-                }}
-              />
-            </Box>
-          </Flex>
-        )}
-        {showResponseAnswerText && (
-          <Flex {...FlexItemStyles} h={'25px'}>
-            <Box {...LabelStyles}>
-              <Flex alignItems={'center'}>
-                {t('app:stream_response')}
-                <QuestionTip ml={1} label={t('app:stream_response_tip')}></QuestionTip>
-              </Flex>
-              <Switch
-                isChecked={getValues(NodeInputKeyEnum.aiChatIsResponseText)}
-                size={'sm'}
-                onChange={(e) => {
-                  const value = e.target.checked;
-                  setValue(NodeInputKeyEnum.aiChatIsResponseText, value);
-                  setRefresh((state) => !state);
                 }}
               />
             </Box>
@@ -346,6 +445,25 @@ const AIChatSettingsModal = ({
                   {t('app:llm_not_support_vision')}
                 </Box>
               )}
+            </Box>
+          </Flex>
+        )}
+        {showResponseAnswerText && (
+          <Flex {...FlexItemStyles} h={'25px'}>
+            <Box {...LabelStyles}>
+              <Flex alignItems={'center'}>
+                {t('app:stream_response')}
+                <QuestionTip ml={1} label={t('app:stream_response_tip')}></QuestionTip>
+              </Flex>
+              <Switch
+                isChecked={getValues(NodeInputKeyEnum.aiChatIsResponseText)}
+                size={'sm'}
+                onChange={(e) => {
+                  const value = e.target.checked;
+                  setValue(NodeInputKeyEnum.aiChatIsResponseText, value);
+                  setRefresh((state) => !state);
+                }}
+              />
             </Box>
           </Flex>
         )}

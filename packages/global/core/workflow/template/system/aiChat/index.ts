@@ -63,14 +63,12 @@ export const AiChatModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.aiChatTemperature,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
-      value: undefined,
       valueType: WorkflowIOValueTypeEnum.number
     },
     {
       key: NodeInputKeyEnum.aiChatMaxToken,
       renderTypeList: [FlowNodeInputTypeEnum.hidden], // Set in the pop-up window
       label: '',
-      value: undefined,
       valueType: WorkflowIOValueTypeEnum.number
     },
 
@@ -98,6 +96,30 @@ export const AiChatModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: true
     },
+    {
+      key: NodeInputKeyEnum.aiChatTopP,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      key: NodeInputKeyEnum.aiChatStopSign,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.aiChatResponseFormat,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.aiChatJsonSchema,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
     // settings modal ---
     {
       ...Input_Template_System_Prompt,
@@ -108,7 +130,6 @@ export const AiChatModule: FlowNodeTemplateType = {
     Input_Template_History,
     Input_Template_Dataset_Quote,
     Input_Template_File_Link_Prompt,
-
     { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
   ],
   outputs: [
