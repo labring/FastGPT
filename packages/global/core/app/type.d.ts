@@ -74,13 +74,17 @@ export type AppDetailType = AppSchema & {
 export type AppSimpleEditFormType = {
   // templateId: string;
   aiSettings: {
-    model: string;
-    systemPrompt?: string | undefined;
-    temperature?: number;
-    maxToken?: number;
-    isResponseAnswerText: boolean;
+    [NodeInputKeyEnum.aiModel]: string;
+    [NodeInputKeyEnum.aiSystemPrompt]?: string | undefined;
+    [NodeInputKeyEnum.aiChatTemperature]?: number;
+    [NodeInputKeyEnum.aiChatMaxToken]?: number;
+    [NodeInputKeyEnum.aiChatIsResponseText]: boolean;
     maxHistories: number;
-    [NodeInputKeyEnum.aiChatReasoning]?: boolean;
+    [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
+    [NodeInputKeyEnum.aiChatTopP]?: number;
+    [NodeInputKeyEnum.aiChatStopSign]?: string;
+    [NodeInputKeyEnum.aiChatResponseFormat]?: string;
+    [NodeInputKeyEnum.aiChatJsonSchema]?: string;
   };
   dataset: {
     datasets: SelectedDatasetType;
@@ -119,6 +123,10 @@ export type SettingAIDataType = {
   maxHistories?: number;
   [NodeInputKeyEnum.aiChatVision]?: boolean; // Is open vision mode
   [NodeInputKeyEnum.aiChatReasoning]?: boolean; // Is open reasoning mode
+  [NodeInputKeyEnum.aiChatTopP]?: number;
+  [NodeInputKeyEnum.aiChatStopSign]?: string;
+  [NodeInputKeyEnum.aiChatResponseFormat]?: string;
+  [NodeInputKeyEnum.aiChatJsonSchema]?: string;
 };
 
 // variable

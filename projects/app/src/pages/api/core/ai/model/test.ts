@@ -16,6 +16,7 @@ import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
+import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
 
 export type testQuery = { model: string };
 
@@ -57,22 +58,23 @@ export default NextAPI(handler);
 
 const testLLMModel = async (model: LLMModelItemType) => {
   const ai = getAIApi({});
-  const response = await ai.chat.completions.create(
+  const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
       messages: [{ role: 'user', content: 'hi' }],
       stream: false,
       max_tokens: 10
     },
-    {
-      ...(model.requestUrl ? { path: model.requestUrl } : {}),
-      headers: model.requestAuth
-        ? {
-            Authorization: `Bearer ${model.requestAuth}`
-          }
-        : undefined
-    }
+    model
   );
+  const response = await ai.chat.completions.create(requestBody, {
+    ...(model.requestUrl ? { path: model.requestUrl } : {}),
+    headers: model.requestAuth
+      ? {
+          Authorization: `Bearer ${model.requestAuth}`
+        }
+      : undefined
+  });
 
   const responseText = response.choices?.[0]?.message?.content;
 

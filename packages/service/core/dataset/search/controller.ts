@@ -23,8 +23,10 @@ import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 
 type SearchDatasetDataProps = {
+  histories?: ChatItemType[];
   teamId: string;
   model: string;
   similarity?: number; // min distance

@@ -60,6 +60,10 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 ### 3. 配置模型
 
+### 4. 配置模型
+
+务必先配置至少一组模型，否则系统无法正常使用。
+
 [点击查看模型配置教程](/docs/development/modelConfig/intro/)
 
 ## 收费

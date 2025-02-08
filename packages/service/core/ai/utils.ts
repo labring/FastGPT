@@ -37,9 +37,14 @@ export const computedTemperature = ({
   return temperature;
 };
 
-type CompletionsBodyType =
+type CompletionsBodyType = (
   | ChatCompletionCreateParamsNonStreaming
-  | ChatCompletionCreateParamsStreaming;
+  | ChatCompletionCreateParamsStreaming
+) & {
+  response_format?: any;
+  json_schema?: string;
+  stop?: string;
+};
 type InferCompletionsBody<T> = T extends { stream: true }
   ? ChatCompletionCreateParamsStreaming
   : ChatCompletionCreateParamsNonStreaming;
@@ -53,6 +58,10 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
     return body as InferCompletionsBody<T>;
   }
 
+  const response_format = body.response_format;
+  const json_schema = body.json_schema ?? undefined;
+  const stop = body.stop ?? undefined;
+
   const requestBody: T = {
     ...body,
     temperature:
@@ -62,7 +71,14 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
             temperature: body.temperature
           })
         : undefined,
-    ...modelData?.defaultConfig
+    ...modelData?.defaultConfig,
+    response_format: response_format
+      ? {
+          type: response_format,
+          json_schema
+        }
+      : undefined,
+    stop: stop?.split('|')
   };
 
   // field map

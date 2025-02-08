@@ -6,6 +6,7 @@
   "forget_password": "忘記密碼？",
   "login_failed": "登入失敗",
   "login_success": "登入成功",
+  "model_not_config": "檢測到系統未配置模型，請先配置模型後再使用",
   "no_remind": "不再提醒",
   "password_condition": "密碼最多 60 個字元",
   "password_tip": "密碼至少 6 位，且至少包含兩種組合：數字、字母或特殊字符",

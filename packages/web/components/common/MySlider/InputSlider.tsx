@@ -27,7 +27,7 @@ const InputSlider = ({
       valLen * 0.8 + min,
       valLen * 0.985 + min
     ];
-  }, []);
+  }, [max, min]);
 
   return (
     <HStack zIndex={10} spacing={3}>

@@ -31,10 +31,12 @@ import { delay } from '@fastgpt/global/common/system/utils';
 export const loadSystemModels = async (init = false) => {
   const getProviderList = () => {
     const currentFileUrl = new URL(import.meta.url);
-    const modelsPath = path.join(
-      path.dirname(currentFileUrl.pathname.replace(/^\/+/, '')),
-      'provider'
+    const filePath = decodeURIComponent(
+      process.platform === 'win32'
+        ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
+        : currentFileUrl.pathname
     );
+    const modelsPath = path.join(path.dirname(filePath), 'provider');
 
     return fs.readdirSync(modelsPath) as string[];
   };
@@ -150,6 +152,7 @@ export const loadSystemModels = async (init = false) => {
     console.error('Load models error', error);
     // @ts-ignore
     global.systemModelList = undefined;
+    return Promise.reject(error);
   }
 };
 

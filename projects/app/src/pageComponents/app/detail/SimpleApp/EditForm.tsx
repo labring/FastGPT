@@ -1,4 +1,4 @@
-import React, { useMemo, useTransition } from 'react';
+import React, { useEffect, useMemo, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -116,6 +116,25 @@ const EditForm = ({
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel?.quoteMaxToken]);
+  // Force close image select when model not support vision
+  useEffect(() => {
+    if (!selectedModel.vision) {
+      setAppForm((state) => ({
+        ...state,
+        chatConfig: {
+          ...state.chatConfig,
+          ...(state.chatConfig.fileSelectConfig
+            ? {
+                fileSelectConfig: {
+                  ...state.chatConfig.fileSelectConfig,
+                  canSelectImg: false
+                }
+              }
+            : {})
+        }
+      }));
+    }
+  }, [selectedModel]);
 
   return (
     <>
@@ -139,24 +158,18 @@ const EditForm = ({
                   temperature: appForm.aiSettings.temperature,
                   maxToken: appForm.aiSettings.maxToken,
                   maxHistories: appForm.aiSettings.maxHistories,
-                  aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true
+                  aiChatReasoning: appForm.aiSettings.aiChatReasoning ?? true,
+                  aiChatTopP: appForm.aiSettings.aiChatTopP,
+                  aiChatStopSign: appForm.aiSettings.aiChatStopSign,
+                  aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
+                  aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
                 }}
-                onChange={({
-                  model,
-                  temperature,
-                  maxToken,
-                  maxHistories,
-                  aiChatReasoning = false
-                }) => {
+                onChange={({ maxHistories = 6, aiChatReasoning = true, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
                     aiSettings: {
                       ...state.aiSettings,
-                      model,
-                      temperature,
-                      maxToken,
-                      maxHistories: maxHistories ?? 6,
-                      aiChatReasoning
+                      ...data
                     }
                   }));
                 }}

@@ -120,7 +120,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
   run(data: Props) {
     // watch memory
-    addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
+    // addLog.debug(`${this.name} worker queueLength: ${this.workerQueue.length}`);
 
     return new Promise<Response>((resolve, reject) => {
       /* 

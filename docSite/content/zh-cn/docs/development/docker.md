@@ -11,7 +11,7 @@ weight: 707
 
 1. 基础的网络知识：端口，防火墙……  
 2. Docker 和 Docker Compose 基础知识  
-3. 大模型相关接口和参数
+3. 大模型相关接口和参数  
 4. RAG 相关知识：向量模型，向量数据库，向量检索
 
 ## 部署架构图
@@ -210,6 +210,8 @@ docker restart oneapi
 首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志里会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
 
 ### 6. 配置模型
+
+务必先配置至少一组模型，否则系统无法正常使用。
 
 [点击查看模型配置教程](/docs/development/modelConfig/intro/)
 
