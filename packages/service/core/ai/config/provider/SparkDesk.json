@@ -19,7 +19,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "generalv3",
@@ -39,7 +41,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "pro-128k",
@@ -59,7 +63,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "generalv3.5",
@@ -79,7 +85,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "max-32k",
@@ -101,7 +109,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "4.0Ultra",
@@ -123,7 +133,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     }
   ]
 }

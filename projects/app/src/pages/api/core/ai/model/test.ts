@@ -57,7 +57,9 @@ async function handler(
 export default NextAPI(handler);
 
 const testLLMModel = async (model: LLMModelItemType) => {
-  const ai = getAIApi({});
+  const ai = getAIApi({
+    timeout: 10000
+  });
   const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
@@ -93,7 +95,9 @@ const testEmbeddingModel = async (model: EmbeddingModelItemType) => {
 };
 
 const testTTSModel = async (model: TTSModelType) => {
-  const ai = getAIApi();
+  const ai = getAIApi({
+    timeout: 10000
+  });
   await ai.audio.speech.create(
     {
       model: model.model,

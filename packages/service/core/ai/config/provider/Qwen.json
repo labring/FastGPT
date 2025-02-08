@@ -21,7 +21,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "qwen-plus",
@@ -43,7 +46,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "qwen-vl-plus",
@@ -63,7 +69,9 @@
       "usedInQueryExtension": true,
       "customExtractPrompt": "",
       "usedInToolCall": true,
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "qwen-max",
@@ -85,7 +93,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "qwen-vl-max",
@@ -107,7 +118,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "qwen-coder-turbo",
@@ -129,7 +142,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "qwen2.5-7b-instruct",
@@ -151,7 +166,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "qwen2.5-14b-instruct",
@@ -173,7 +191,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "qwen2.5-32b-instruct",
@@ -195,7 +216,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "qwen2.5-72b-instruct",
@@ -217,7 +241,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     }
   ]
 }

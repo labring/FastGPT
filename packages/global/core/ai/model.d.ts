@@ -64,6 +64,7 @@ export type EmbeddingModelItemType = PriceType &
     maxToken: number; // model max token
     weight: number; // training weight
     hidden?: boolean; // Disallow creation
+    normalization?: boolean; // normalization processing
     defaultConfig?: Record<string, any>; // post request config
     dbConfig?: Record<string, any>; // Custom parameters for storage
     queryConfig?: Record<string, any>; // Custom parameters for query

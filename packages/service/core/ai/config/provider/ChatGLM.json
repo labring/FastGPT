@@ -8,6 +8,12 @@
       "maxResponse": 4000,
       "quoteMaxToken": 120000,
       "maxTemperature": 0.99,
+      "showTopP": true,
+      "responseFormatList": [
+        "text",
+        "json_object"
+      ],
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -30,6 +36,12 @@
       "maxResponse": 4000,
       "quoteMaxToken": 120000,
       "maxTemperature": 0.99,
+      "showTopP": true,
+      "responseFormatList": [
+        "text",
+        "json_object"
+      ],
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -52,6 +64,12 @@
       "maxResponse": 4000,
       "quoteMaxToken": 900000,
       "maxTemperature": 0.99,
+      "showTopP": true,
+      "responseFormatList": [
+        "text",
+        "json_object"
+      ],
+      "showStopSign": true,
       "vision": false,
       "toolChoice": false,
       "functionCall": false,
@@ -74,6 +92,12 @@
       "maxResponse": 4000,
       "quoteMaxToken": 120000,
       "maxTemperature": 0.99,
+      "showTopP": true,
+      "responseFormatList": [
+        "text",
+        "json_object"
+      ],
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -96,6 +120,8 @@
       "maxResponse": 1000,
       "quoteMaxToken": 6000,
       "maxTemperature": 0.99,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": true,
       "toolChoice": false,
       "functionCall": false,
@@ -118,6 +144,8 @@
       "maxResponse": 1000,
       "quoteMaxToken": 6000,
       "maxTemperature": 0.99,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": true,
       "toolChoice": false,
       "functionCall": false,
