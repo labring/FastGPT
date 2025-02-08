@@ -21,7 +21,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "moonshot-v1-32k",
@@ -43,7 +46,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     },
     {
       "model": "moonshot-v1-128k",
@@ -65,7 +71,10 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true,
+      "responseFormatList": ["text", "json_object"]
     }
   ]
 }

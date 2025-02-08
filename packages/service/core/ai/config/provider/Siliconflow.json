@@ -21,7 +21,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Qwen/Qwen2-VL-72B-Instruct",
@@ -42,7 +44,9 @@
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
       "defaultConfig": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "deepseek-ai/DeepSeek-V2.5",
@@ -64,7 +68,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "BAAI/bge-m3",

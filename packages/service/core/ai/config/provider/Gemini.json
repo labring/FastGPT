@@ -21,7 +21,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "gemini-1.5-pro",
@@ -43,7 +45,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "gemini-2.0-flash-exp",
@@ -65,7 +69,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "gemini-2.0-flash-thinking-exp-1219",
@@ -87,7 +93,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "gemini-2.0-flash-thinking-exp-01-21",
@@ -109,7 +117,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "gemini-exp-1206",
@@ -131,7 +141,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "text-embedding-004",

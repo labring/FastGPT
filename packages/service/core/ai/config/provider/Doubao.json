@@ -8,6 +8,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 32000,
       "maxTemperature": 1,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -30,6 +32,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 32000,
       "maxTemperature": 1,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -52,6 +56,8 @@
       "maxResponse": 12000,
       "quoteMaxToken": 256000,
       "maxTemperature": 1,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -74,6 +80,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 32000,
       "maxTemperature": 1,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": true,
       "toolChoice": true,
       "functionCall": false,
@@ -96,6 +104,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 4000,
       "maxTemperature": 1,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -118,6 +128,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 32000,
       "maxTemperature": 1,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": false,
@@ -153,7 +165,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Doubao-vision-lite-32k",
@@ -175,7 +189,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Doubao-pro-4k",
@@ -197,7 +213,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Doubao-pro-32k",
@@ -219,7 +237,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Doubao-pro-128k",
@@ -241,7 +261,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Doubao-vision-pro-32k",
@@ -263,21 +285,25 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "Doubao-embedding-large",
       "name": "Doubao-embedding-large",
       "defaultToken": 512,
       "maxToken": 4096,
-      "type": "embedding"
+      "type": "embedding",
+      "normalization": true
     },
     {
       "model": "Doubao-embedding",
       "name": "Doubao-embedding",
       "defaultToken": 512,
       "maxToken": 4096,
-      "type": "embedding"
+      "type": "embedding",
+      "normalization": true
     }
   ]
 }

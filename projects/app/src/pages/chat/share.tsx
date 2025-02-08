@@ -241,7 +241,11 @@ const OutLink = (props: Props) => {
 
   return (
     <>
-      <NextHead title={props.appName || 'AI'} desc={props.appIntro} icon={props.appAvatar} />
+      <NextHead
+        title={props.appName || data?.app?.name || 'AI'}
+        desc={props.appIntro || data?.app?.intro}
+        icon={props.appAvatar || data?.app?.avatar}
+      />
       <PageContainer
         isLoading={loading}
         {...(isEmbed
