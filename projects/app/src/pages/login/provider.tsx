@@ -97,7 +97,7 @@ const provider = () => {
       await clearToken();
       router.prefetch('/app/list');
 
-      if (loginStore && state !== loginStore.state) {
+      if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({
           status: 'warning',
           title: t('common:support.user.login.security_failed')
