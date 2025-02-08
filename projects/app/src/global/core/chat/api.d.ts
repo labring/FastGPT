@@ -52,7 +52,6 @@ export type InitChatResponse = {
     canUse?: boolean;
     type: `${AppTypeEnum}`;
     pluginInputs: FlowNodeInputItemType[];
-    hasError?: boolean;
   };
 };
 

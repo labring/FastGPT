@@ -40,9 +40,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
-  const checkedApp = await checkApp(app, req);
-  const hasError = checkedApp.modules.some((module) => module.error);
-
   jsonRes<InitChatResponse>(res, {
     data: {
       chatId,
@@ -62,8 +59,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         avatar: app.avatar,
         intro: app.intro,
         type: app.type,
-        pluginInputs,
-        hasError
+        pluginInputs
       }
     }
   });

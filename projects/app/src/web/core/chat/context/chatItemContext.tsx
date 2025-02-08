@@ -27,7 +27,6 @@ type ChatBoxDataType = {
     type: `${AppTypeEnum}`;
     pluginInputs: FlowNodeInputItemType[];
     chatModels?: string[];
-    hasError?: boolean;
   };
 };
 

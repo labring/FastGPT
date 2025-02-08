@@ -59,8 +59,6 @@ import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatc
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
-import { checkApp } from '@/service/core/app/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -196,10 +194,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     })();
     const isPlugin = app.type === AppTypeEnum.plugin;
-    const checkedApp = await checkApp(app, req);
-    if (checkedApp.modules.some((module) => checkAppUnExistError(module.error))) {
-      throw new Error('Run failed: Application components missing');
-    }
 
     // Check message type
     if (isPlugin) {

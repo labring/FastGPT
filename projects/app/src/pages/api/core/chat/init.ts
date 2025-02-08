@@ -49,9 +49,6 @@ async function handler(
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
-  const checkedApp = await checkApp(app, req);
-  const hasError = checkedApp.modules.some((module) => module.error);
-
   return {
     chatId,
     appId,
@@ -71,8 +68,7 @@ async function handler(
       avatar: app.avatar,
       intro: app.intro,
       type: app.type,
-      pluginInputs,
-      hasError
+      pluginInputs
     }
   };
 }

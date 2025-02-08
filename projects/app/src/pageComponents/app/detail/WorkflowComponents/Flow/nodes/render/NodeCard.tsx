@@ -292,8 +292,7 @@ const NodeCard = (props: Props) => {
               {!!node?.error && (
                 <MyTooltip label={t('app:app.modules.not_found_tips')}>
                   <Flex
-                    bg={'red.100'}
-                    color={'red.700'}
+                    bg={'red.50'}
                     alignItems={'center'}
                     h={8}
                     px={2}
@@ -301,7 +300,8 @@ const NodeCard = (props: Props) => {
                     fontSize={'xs'}
                     fontWeight={'medium'}
                   >
-                    <Box>{t('app:app.modules.not_found')}</Box>
+                    <MyIcon name={'common/errorFill'} w={'16px'} mr={1} />
+                    <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
                   </Flex>
                 </MyTooltip>
               )}

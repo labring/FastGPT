@@ -61,47 +61,56 @@ const ToolSelect = ({
         gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
         gridGap={[2, 4]}
       >
-        {appForm.selectedTools.map((item) => (
-          <MyTooltip key={item.id} label={item.intro}>
-            <Flex
-              overflow={'hidden'}
-              alignItems={'center'}
-              p={2.5}
-              bg={'white'}
-              boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-              borderRadius={'md'}
-              border={theme.borders.base}
-              _hover={{
-                ...hoverDeleteStyles,
-                borderColor: 'primary.300'
-              }}
-              cursor={'pointer'}
-              onClick={() => {
-                if (
-                  item.inputs
-                    .filter((input) => !childAppSystemKey.includes(input.key))
-                    .every(
-                      (input) =>
-                        input.toolDescription ||
-                        input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
-                        input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-                    )
-                ) {
-                  return;
-                }
-                setConfigTool(item);
-              }}
-            >
-              <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-              <Flex flex={'1 0 0'} ml={2} gap={2}>
-                <Box maxW={24} className={'textEllipsis'} fontSize={'sm'} color={'myGray.900'}>
+        {appForm.selectedTools.map((item) => {
+          const hasError = checkAppUnExistError(item.error);
+          return (
+            <MyTooltip key={item.id} label={item.intro}>
+              <Flex
+                overflow={'hidden'}
+                alignItems={'center'}
+                p={2.5}
+                bg={'white'}
+                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                borderRadius={'md'}
+                border={theme.borders.base}
+                borderColor={hasError ? 'red.600' : ''}
+                _hover={{
+                  ...hoverDeleteStyles,
+                  borderColor: hasError ? 'red.600' : 'primary.300'
+                }}
+                cursor={'pointer'}
+                onClick={() => {
+                  if (
+                    item.inputs
+                      .filter((input) => !childAppSystemKey.includes(input.key))
+                      .every(
+                        (input) =>
+                          input.toolDescription ||
+                          input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
+                          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+                      ) ||
+                    hasError
+                  ) {
+                    return;
+                  }
+                  setConfigTool(item);
+                }}
+              >
+                <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
+                <Box
+                  flex={'1 0 0'}
+                  ml={2}
+                  gap={2}
+                  className={'textEllipsis'}
+                  fontSize={'sm'}
+                  color={'myGray.900'}
+                >
                   {item.name}
                 </Box>
-                {checkAppUnExistError(item.error) && (
+                {hasError && (
                   <MyTooltip label={t('app:app.modules.not_found_tips')}>
                     <Flex
-                      bg={'red.100'}
-                      color={'red.700'}
+                      bg={'red.50'}
                       alignItems={'center'}
                       h={6}
                       px={2}
@@ -109,23 +118,25 @@ const ToolSelect = ({
                       fontSize={'xs'}
                       fontWeight={'medium'}
                     >
-                      <Box>{t('app:app.modules.not_found')}</Box>
+                      <MyIcon name={'common/errorFill'} w={'16px'} mr={1} />
+                      <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
                     </Flex>
                   </MyTooltip>
                 )}
+                <DeleteIcon
+                  ml={2}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAppForm((state: AppSimpleEditFormType) => ({
+                      ...state,
+                      selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
+                    }));
+                  }}
+                />
               </Flex>
-              <DeleteIcon
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAppForm((state: AppSimpleEditFormType) => ({
-                    ...state,
-                    selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
-                  }));
-                }}
-              />
-            </Flex>
-          </MyTooltip>
-        ))}
+            </MyTooltip>
+          );
+        })}
       </Grid>
 
       {isOpenToolsSelect && (
