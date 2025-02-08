@@ -21,7 +21,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-lite",
@@ -43,7 +45,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-pro",
@@ -65,7 +69,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-standard",
@@ -87,7 +93,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-turbo-vision",
@@ -109,7 +117,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-turbo",
@@ -131,7 +141,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-vision",
@@ -153,7 +165,9 @@
       "usedInToolCall": true,
       "defaultConfig": {},
       "fieldMap": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "hunyuan-embedding",

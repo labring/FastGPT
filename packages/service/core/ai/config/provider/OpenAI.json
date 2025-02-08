@@ -9,7 +9,11 @@
       "quoteMaxToken": 60000,
       "maxTemperature": 1.2,
       "showTopP": true,
-      "responseFormatList": ["text", "json_object", "json_schema"],
+      "responseFormatList": [
+        "text",
+        "json_object",
+        "json_schema"
+      ],
       "showStopSign": true,
       "vision": true,
       "toolChoice": true,
@@ -32,6 +36,13 @@
       "maxResponse": 4000,
       "quoteMaxToken": 60000,
       "maxTemperature": 1.2,
+      "showTopP": true,
+      "responseFormatList": [
+        "text",
+        "json_object",
+        "json_schema"
+      ],
+      "showStopSign": true,
       "vision": true,
       "toolChoice": true,
       "functionCall": true,
@@ -71,7 +82,9 @@
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
       },
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "o1-mini",
@@ -97,7 +110,9 @@
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
       },
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "o1",
@@ -123,7 +138,9 @@
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
       },
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "o1-preview",
@@ -149,7 +166,9 @@
       "fieldMap": {
         "max_tokens": "max_completion_tokens"
       },
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "gpt-3.5-turbo",
@@ -158,6 +177,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 13000,
       "maxTemperature": 1.2,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": false,
       "toolChoice": true,
       "functionCall": true,
@@ -178,6 +199,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 60000,
       "maxTemperature": 1.2,
+      "showTopP": true,
+      "showStopSign": true,
       "vision": true,
       "toolChoice": true,
       "functionCall": true,

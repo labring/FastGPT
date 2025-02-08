@@ -19,7 +19,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1-8k",
@@ -39,7 +41,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1-32k",
@@ -59,7 +63,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1-128k",
@@ -79,7 +85,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1-256k",
@@ -99,7 +107,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1o-vision-32k",
@@ -119,7 +129,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1v-8k",
@@ -139,7 +151,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-1v-32k",
@@ -159,7 +173,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-2-mini",
@@ -179,7 +195,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-2-16k",
@@ -199,7 +217,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-2-16k-exp",
@@ -219,7 +239,9 @@
       "customCQPrompt": "",
       "customExtractPrompt": "",
       "defaultSystemChatPrompt": "",
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "step-tts-mini",

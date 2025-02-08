@@ -20,7 +20,9 @@
       "customExtractPrompt": "",
       "usedInToolCall": true,
       "defaultConfig": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     },
     {
       "model": "llama-3.3-70b-versatile",
@@ -41,7 +43,9 @@
       "customExtractPrompt": "",
       "usedInToolCall": true,
       "defaultConfig": {},
-      "type": "llm"
+      "type": "llm",
+      "showTopP": true,
+      "showStopSign": true
     }
   ]
 }
