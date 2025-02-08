@@ -39,7 +39,7 @@ function embedChatbot() {
   iframe.id = chatWindowId;
   iframe.src = botSrc;
   iframe.style.cssText =
-    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 80px; right: 60px; width: 375px; height: 667px; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
+    'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; width: 375px; height: 667px; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
   iframe.style.visibility = defaultOpen ? 'unset' : 'hidden';
 
   document.body.appendChild(iframe);
@@ -63,6 +63,47 @@ function embedChatbot() {
   let chatBtnDown = false;
   let chatBtnMouseX;
   let chatBtnMouseY;
+
+  const updateChatWindowPosition = () => {
+    const chatWindow = document.getElementById(chatWindowId);
+    const btn = ChatBtn.getBoundingClientRect();
+    const [vw, vh, ww, wh] = [
+      window.innerWidth,
+      window.innerHeight,
+      chatWindow.offsetWidth,
+      chatWindow.offsetHeight
+    ];
+
+    const directions = [
+      {
+        // 左下
+        check: () => btn.left >= ww && vh - btn.bottom >= wh,
+        pos: () => [vw - btn.left, vh - btn.bottom - wh]
+      },
+      {
+        // 右上
+        check: () => vw - btn.right >= ww && btn.top >= wh,
+        pos: () => [vw - btn.right - ww, vh - btn.top]
+      },
+      {
+        // 右下
+        check: () => vw - btn.right >= ww && vh - btn.bottom >= wh,
+        pos: () => [vw - btn.right - ww, vh - btn.bottom - wh]
+      },
+      {
+        // 左上
+        check: () => true,
+        pos: () => [vw - btn.left, vh - btn.top]
+      }
+    ];
+
+    const [right, bottom] = directions.find((d) => d.check()).pos();
+    Object.assign(chatWindow.style, {
+      right: `${right}px`,
+      bottom: `${bottom}px`
+    });
+  };
+
   ChatBtn.addEventListener('click', function () {
     if (chatBtnDragged) {
       chatBtnDragged = false;
@@ -73,6 +114,7 @@ function embedChatbot() {
     if (!chatWindow) return;
     const visibilityVal = chatWindow.style.visibility;
     if (visibilityVal === 'hidden') {
+      updateChatWindowPosition();
       chatWindow.style.visibility = 'unset';
       ChatBtnDiv.src = CloseIcon;
     } else {
@@ -83,13 +125,12 @@ function embedChatbot() {
 
   ChatBtn.addEventListener('mousedown', (e) => {
     e.stopPropagation();
-
-    if (!chatBtnMouseX && !chatBtnMouseY) {
-      chatBtnMouseX = e.clientX;
-      chatBtnMouseY = e.clientY;
-    }
-
+    chatBtnMouseX = e.clientX;
+    chatBtnMouseY = e.clientY;
     chatBtnDown = true;
+
+    ChatBtn.initialRight = parseInt(ChatBtn.style.right) || 60;
+    ChatBtn.initialBottom = parseInt(ChatBtn.style.bottom) || 30;
   });
 
   window.addEventListener('mousemove', (e) => {
@@ -97,10 +138,17 @@ function embedChatbot() {
     if (!canDrag || !chatBtnDown) return;
 
     chatBtnDragged = true;
-    const transformX = e.clientX - chatBtnMouseX;
-    const transformY = e.clientY - chatBtnMouseY;
 
-    ChatBtn.style.transform = `translate3d(${transformX}px, ${transformY}px, 0)`;
+    const deltaX = e.clientX - chatBtnMouseX;
+    const deltaY = e.clientY - chatBtnMouseY;
+
+    let newRight = ChatBtn.initialRight - deltaX;
+    let newBottom = ChatBtn.initialBottom - deltaY;
+
+    ChatBtn.style.right = `${newRight}px`;
+    ChatBtn.style.bottom = `${newBottom}px`;
+
+    updateChatWindowPosition();
   });
 
   window.addEventListener('mouseup', (e) => {
@@ -111,4 +159,3 @@ function embedChatbot() {
   document.body.appendChild(ChatBtn);
 }
 window.addEventListener('load', embedChatbot);
-
