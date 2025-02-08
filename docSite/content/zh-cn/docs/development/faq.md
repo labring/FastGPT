@@ -130,7 +130,7 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 ## 四、常见模型问题
 
-### 如何检查模型问题
+### 如何检查模型可用性问题
 
 1. 私有部署模型，先确认部署的模型是否正常。
 2. 通过 CURL 请求，直接测试上游模型是否正常运行（云端模型或私有模型均进行测试）
@@ -403,3 +403,7 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
   "tool_choice": "auto"
 }'
 ```
+
+### 向量检索得分大于 1
+
+由于模型没有归一化导致的。目前仅支持归一化的模型。

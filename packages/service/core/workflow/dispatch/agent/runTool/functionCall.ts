@@ -46,7 +46,15 @@ export const runToolWithFunctionCall = async (
     externalProvider,
     stream,
     workflowStreamResponse,
-    params: { temperature, maxToken, aiChatVision }
+    params: {
+      temperature,
+      maxToken,
+      aiChatVision,
+      aiChatTopP,
+      aiChatStopSign,
+      aiChatResponseFormat,
+      aiChatJsonSchema
+    }
   } = workflowProps;
 
   // Interactive
@@ -204,12 +212,18 @@ export const runToolWithFunctionCall = async (
   const requestBody = llmCompletionsBodyFormat(
     {
       model: toolModel.model,
-      temperature,
-      max_tokens,
+
       stream,
       messages: requestMessages,
       functions,
-      function_call: 'auto'
+      function_call: 'auto',
+
+      temperature,
+      max_tokens,
+      top_p: aiChatTopP,
+      stop: aiChatStopSign,
+      response_format: aiChatResponseFormat,
+      json_schema: aiChatJsonSchema
     },
     toolModel
   );

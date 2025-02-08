@@ -89,6 +89,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt,
       aiChatVision,
       aiChatReasoning = true,
+      aiChatTopP,
+      aiChatStopSign,
+      aiChatResponseFormat,
+      aiChatJsonSchema,
+
       fileUrlList: fileLinks, // node quote file links
       stringQuoteText //abandon
     }
@@ -100,6 +105,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
+  aiChatVision = modelConstantsData.vision && aiChatVision;
   stream = stream && isResponseAnswerText;
   aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
 
@@ -160,17 +166,21 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const requestMessages = await loadRequestMessages({
     messages: filterMessages,
-    useVision: modelConstantsData.vision && aiChatVision,
+    useVision: aiChatVision,
     origin: requestOrigin
   });
 
   const requestBody = llmCompletionsBodyFormat(
     {
       model: modelConstantsData.model,
+      stream,
+      messages: requestMessages,
       temperature,
       max_tokens,
-      stream,
-      messages: requestMessages
+      top_p: aiChatTopP,
+      stop: aiChatStopSign,
+      response_format: aiChatResponseFormat as any,
+      json_schema: aiChatJsonSchema
     },
     modelConstantsData
   );
@@ -259,11 +269,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       outputTokens: outputTokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
-      historyPreview: getHistoryPreview(
-        chatCompleteMessages,
-        10000,
-        modelConstantsData.vision && aiChatVision
-      ),
+      historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
       contextTotalLen: completeMessages.length
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [

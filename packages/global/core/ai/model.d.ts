@@ -26,10 +26,15 @@ type BaseModelItemType = {
 export type LLMModelItemType = PriceType &
   BaseModelItemType & {
     type: ModelTypeEnum.llm;
+    // Model params
     maxContext: number;
     maxResponse: number;
     quoteMaxToken: number;
     maxTemperature?: number;
+
+    showTopP?: boolean;
+    responseFormatList?: string[];
+    showStopSign?: boolean;
 
     censor?: boolean;
     vision?: boolean;

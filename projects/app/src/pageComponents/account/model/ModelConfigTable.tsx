@@ -767,6 +767,51 @@ const ModelEditModal = ({
                         </Flex>
                       </Td>
                     </Tr>
+                    <Tr>
+                      <Td>
+                        <HStack spacing={1}>
+                          <Box>{t('account:model.show_top_p')}</Box>
+                        </HStack>
+                      </Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('showTopP')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>
+                        <HStack spacing={1}>
+                          <Box>{t('account:model.show_stop_sign')}</Box>
+                        </HStack>
+                      </Td>
+                      <Td textAlign={'right'}>
+                        <Flex justifyContent={'flex-end'}>
+                          <Switch {...register('showStopSign')} />
+                        </Flex>
+                      </Td>
+                    </Tr>
+                    <Tr>
+                      <Td>{t('account:model.response_format')}</Td>
+                      <Td textAlign={'right'}>
+                        <JsonEditor
+                          value={JSON.stringify(getValues('responseFormatList'), null, 2)}
+                          resize
+                          onChange={(e) => {
+                            if (!e) {
+                              setValue('responseFormatList', []);
+                              return;
+                            }
+                            try {
+                              setValue('responseFormatList', JSON.parse(e));
+                            } catch (error) {
+                              console.error(error);
+                            }
+                          }}
+                          {...InputStyles}
+                        />
+                      </Td>
+                    </Tr>
                   </>
                 )}
                 {isEmbeddingModel && (

@@ -142,6 +142,10 @@ export enum NodeInputKeyEnum {
   aiChatVision = 'aiChatVision',
   stringQuoteText = 'stringQuoteText',
   aiChatReasoning = 'aiChatReasoning',
+  aiChatTopP = 'aiChatTopP',
+  aiChatStopSign = 'aiChatStopSign',
+  aiChatResponseFormat = 'aiChatResponseFormat',
+  aiChatJsonSchema = 'aiChatJsonSchema',
 
   // dataset
   datasetSelectList = 'datasets',
