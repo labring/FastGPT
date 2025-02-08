@@ -13,7 +13,6 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { checkApp } from '@/service/core/app/utils';
 
 async function handler(req: ApiRequestProps<InitTeamChatProps>, res: NextApiResponse) {
   let { teamId, appId, chatId, teamToken } = req.query;

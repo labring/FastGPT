@@ -118,7 +118,7 @@ const ToolSelect = ({
                       fontSize={'xs'}
                       fontWeight={'medium'}
                     >
-                      <MyIcon name={'common/errorFill'} w={'16px'} mr={1} />
+                      <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
                       <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
                     </Flex>
                   </MyTooltip>

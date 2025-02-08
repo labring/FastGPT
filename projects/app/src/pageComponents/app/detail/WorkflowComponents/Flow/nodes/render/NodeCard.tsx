@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -99,7 +99,7 @@ const NodeCard = (props: Props) => {
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
-      if (!!node?.error) {
+      if (node?.error) {
         return undefined;
       }
       if (
@@ -300,7 +300,7 @@ const NodeCard = (props: Props) => {
                     fontSize={'xs'}
                     fontWeight={'medium'}
                   >
-                    <MyIcon name={'common/errorFill'} w={'16px'} mr={1} />
+                    <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
                     <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
                   </Flex>
                 </MyTooltip>

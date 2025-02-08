@@ -354,6 +354,7 @@ export function form2AppWorkflow(
             avatar: tool.avatar,
             flowNodeType: tool.flowNodeType,
             showStatus: tool.showStatus,
+            error: tool.error,
             position: {
               x: 500 + 500 * (i + 1),
               y: 545
