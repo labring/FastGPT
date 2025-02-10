@@ -238,6 +238,22 @@ export const WholeResponseContent = ({
           label={t('common:core.chat.response.search using reRank')}
           value={`${activeModule?.searchUsingReRank}`}
         />
+        {activeModule.queryExtensionResult && (
+          <>
+            <Row
+              label={t('common:core.chat.response.Extension model')}
+              value={activeModule.queryExtensionResult.model}
+            />
+            <Row
+              label={t('chat:query_extension_IO_tokens')}
+              value={`${activeModule.queryExtensionResult.inputTokens}/${activeModule.queryExtensionResult.outputTokens}`}
+            />
+            <Row
+              label={t('common:support.wallet.usage.Extension result')}
+              value={activeModule.queryExtensionResult.query}
+            />
+          </>
+        )}
         <Row
           label={t('common:core.chat.response.Extension model')}
           value={activeModule?.extensionModel}

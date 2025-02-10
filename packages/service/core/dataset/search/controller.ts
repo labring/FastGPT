@@ -713,10 +713,10 @@ export const defaultSearchDatasetData = async ({
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
 
-  const extensionModel =
-    datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
-      ? getLLMModel(datasetSearchExtensionModel)
-      : undefined;
+  const extensionModel = datasetSearchUsingExtensionQuery
+    ? getLLMModel(datasetSearchExtensionModel)
+    : undefined;
+
   const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
     query,
     extensionModel,
