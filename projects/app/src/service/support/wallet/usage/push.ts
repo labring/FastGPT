@@ -95,7 +95,10 @@ export const pushGenerateVectorUsage = ({
   source = UsageSourceEnum.fastgpt,
   extensionModel,
   extensionInputTokens,
-  extensionOutputTokens
+  extensionOutputTokens,
+  deepSearchModel,
+  deepSearchInputTokens,
+  deepSearchOutputTokens
 }: {
   billId?: string;
   teamId: string;
@@ -107,6 +110,10 @@ export const pushGenerateVectorUsage = ({
   extensionModel?: string;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
+
+  deepSearchModel?: string;
+  deepSearchInputTokens?: number;
+  deepSearchOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
     modelType: ModelTypeEnum.embedding,
@@ -131,8 +138,25 @@ export const pushGenerateVectorUsage = ({
       extensionModelName: modelName
     };
   })();
+  const { deepSearchTotalPoints, deepSearchModelName } = (() => {
+    if (!deepSearchModel || !deepSearchInputTokens)
+      return {
+        deepSearchTotalPoints: 0,
+        deepSearchModelName: ''
+      };
+    const { totalPoints, modelName } = formatModelChars2Points({
+      modelType: ModelTypeEnum.llm,
+      model: deepSearchModel,
+      inputTokens: deepSearchInputTokens,
+      outputTokens: deepSearchOutputTokens
+    });
+    return {
+      deepSearchTotalPoints: totalPoints,
+      deepSearchModelName: modelName
+    };
+  })();
 
-  const totalPoints = totalVector + extensionTotalPoints;
+  const totalPoints = totalVector + extensionTotalPoints + deepSearchTotalPoints;
 
   // 插入 Bill 记录
   if (billId) {
@@ -148,12 +172,12 @@ export const pushGenerateVectorUsage = ({
     createUsage({
       teamId,
       tmbId,
-      appName: 'support.wallet.moduleName.index',
+      appName: i18nT('common:support.wallet.moduleName.index'),
       totalPoints,
       source,
       list: [
         {
-          moduleName: 'support.wallet.moduleName.index',
+          moduleName: i18nT('common:support.wallet.moduleName.index'),
           amount: totalVector,
           model: vectorModelName,
           inputTokens
@@ -161,11 +185,22 @@ export const pushGenerateVectorUsage = ({
         ...(extensionModel !== undefined
           ? [
               {
-                moduleName: 'core.module.template.Query extension',
+                moduleName: i18nT('common:core.module.template.Query extension'),
                 amount: extensionTotalPoints,
                 model: extensionModelName,
                 inputTokens: extensionInputTokens,
                 outputTokens: extensionOutputTokens
+              }
+            ]
+          : []),
+        ...(deepSearchModel !== undefined
+          ? [
+              {
+                moduleName: i18nT('common:deep_rag_search'),
+                amount: deepSearchTotalPoints,
+                model: deepSearchModelName,
+                inputTokens: deepSearchInputTokens,
+                outputTokens: deepSearchOutputTokens
               }
             ]
           : [])

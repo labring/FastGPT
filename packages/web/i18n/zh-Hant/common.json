@@ -876,6 +876,7 @@
   "dataset.dataset_name": "知識庫名稱",
   "dataset.deleteFolderTips": "確認刪除此資料夾及其包含的所有知識庫？刪除後資料無法復原，請確認！",
   "dataset.test.noResult": "搜尋結果為空",
+  "deep_rag_search": "深度搜索",
   "delete_api": "確認刪除此 API 金鑰？\n刪除後該金鑰將立即失效，對應的對話記錄不會被刪除，請確認！",
   "error.Create failed": "建立失敗",
   "error.code_error": "驗證碼錯誤",
