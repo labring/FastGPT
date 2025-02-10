@@ -14,6 +14,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from './ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 
 const ToolSelect = ({
   appForm,
@@ -60,60 +61,83 @@ const ToolSelect = ({
         gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
         gridGap={[2, 4]}
       >
-        {appForm.selectedTools.map((item) => (
-          <MyTooltip key={item.id} label={item.intro}>
-            <Flex
-              overflow={'hidden'}
-              alignItems={'center'}
-              p={2.5}
-              bg={'white'}
-              boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-              borderRadius={'md'}
-              border={theme.borders.base}
-              _hover={{
-                ...hoverDeleteStyles,
-                borderColor: 'primary.300'
-              }}
-              cursor={'pointer'}
-              onClick={() => {
-                if (
-                  item.inputs
-                    .filter((input) => !childAppSystemKey.includes(input.key))
-                    .every(
-                      (input) =>
-                        input.toolDescription ||
-                        input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
-                        input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
-                    )
-                ) {
-                  return;
-                }
-                setConfigTool(item);
-              }}
-            >
-              <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-              <Box
-                ml={2}
-                flex={'1 0 0'}
-                w={0}
-                className={'textEllipsis'}
-                fontSize={'sm'}
-                color={'myGray.900'}
-              >
-                {item.name}
-              </Box>
-              <DeleteIcon
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAppForm((state: AppSimpleEditFormType) => ({
-                    ...state,
-                    selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
-                  }));
+        {appForm.selectedTools.map((item) => {
+          const hasError = checkAppUnExistError(item.pluginData?.error);
+
+          return (
+            <MyTooltip key={item.id} label={item.intro}>
+              <Flex
+                overflow={'hidden'}
+                alignItems={'center'}
+                p={2.5}
+                bg={'white'}
+                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                borderRadius={'md'}
+                border={theme.borders.base}
+                borderColor={hasError ? 'red.600' : ''}
+                _hover={{
+                  ...hoverDeleteStyles,
+                  borderColor: hasError ? 'red.600' : 'primary.300'
                 }}
-              />
-            </Flex>
-          </MyTooltip>
-        ))}
+                cursor={'pointer'}
+                onClick={() => {
+                  if (
+                    item.inputs
+                      .filter((input) => !childAppSystemKey.includes(input.key))
+                      .every(
+                        (input) =>
+                          input.toolDescription ||
+                          input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
+                          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+                      ) ||
+                    hasError
+                  ) {
+                    return;
+                  }
+                  setConfigTool(item);
+                }}
+              >
+                <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
+                <Box
+                  flex={'1 0 0'}
+                  ml={2}
+                  gap={2}
+                  className={'textEllipsis'}
+                  fontSize={'sm'}
+                  color={'myGray.900'}
+                >
+                  {item.name}
+                </Box>
+                {hasError && (
+                  <MyTooltip label={t('app:app.modules.not_found_tips')}>
+                    <Flex
+                      bg={'red.50'}
+                      alignItems={'center'}
+                      h={6}
+                      px={2}
+                      rounded={'6px'}
+                      fontSize={'xs'}
+                      fontWeight={'medium'}
+                    >
+                      <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+                      <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
+                    </Flex>
+                  </MyTooltip>
+                )}
+                <DeleteIcon
+                  ml={2}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setAppForm((state: AppSimpleEditFormType) => ({
+                      ...state,
+                      selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
+                    }));
+                  }}
+                />
+              </Flex>
+            </MyTooltip>
+          );
+        })}
       </Grid>
 
       {isOpenToolsSelect && (

@@ -1,4 +1,12 @@
-import { Dispatch, ReactNode, SetStateAction, useCallback, useMemo, useState } from 'react';
+import {
+  Dispatch,
+  ReactNode,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState
+} from 'react';
 import { createContext } from 'use-context-selector';
 import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
@@ -14,6 +22,8 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -84,6 +94,7 @@ export const AppContext = createContext<AppContextType>({
 
 const AppContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const router = useRouter();
   const { appId, currentTab = TabEnum.appEdit } = router.query as {
     appId: string;
@@ -193,6 +204,16 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       )(),
     [appDetail.name, deleteApp, openConfirmDel, t]
   );
+
+  // check app unExist error
+  useEffect(() => {
+    if (appDetail.modules.some((module) => checkAppUnExistError(module.pluginData?.error))) {
+      toast({
+        title: t('app:app.error.unExist_app'),
+        status: 'error'
+      });
+    }
+  }, [appDetail.modules, t, toast]);
 
   const contextValue: AppContextType = useMemo(
     () => ({

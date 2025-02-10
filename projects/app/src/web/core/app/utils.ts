@@ -388,6 +388,7 @@ export function form2AppWorkflow(
             },
             // 这里不需要固定版本，给一个不存在的版本，每次都会用最新版
             version: defaultNodeVersion,
+            pluginData: tool.pluginData,
             inputs: tool.inputs.map((input) => {
               // Special key value
               if (input.key === NodeInputKeyEnum.forbidStream) {

@@ -30,6 +30,12 @@ import PublishHistories from '../PublishHistoriesSlider';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import {
+  checkWorkflowNodeAndConnection,
+  storeEdgesRenderEdge,
+  storeNode2FlowNode
+} from '@/web/core/workflow/utils';
 
 const Header = ({
   forbiddenSaveSnapshot,
@@ -48,6 +54,7 @@ const Header = ({
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const { toast } = useToast();
   const router = useRouter();
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
@@ -231,7 +238,26 @@ const Header = ({
                   variant={'whitePrimary'}
                   onClick={setIsShowHistories}
                 />
-                <SaveButton isLoading={loading} onClickSave={onClickSave} />
+                <SaveButton
+                  isLoading={loading}
+                  onClickSave={onClickSave}
+                  checkData={() => {
+                    const { nodes: storeNodes, edges: storeEdges } = form2AppWorkflow(appForm, t);
+
+                    const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
+                    const edges = storeEdges.map((item) => storeEdgesRenderEdge({ edge: item }));
+
+                    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+
+                    if (checkResults) {
+                      toast({
+                        title: t('app:app.error.publish_unExist_app'),
+                        status: 'warning'
+                      });
+                    }
+                    return !checkResults;
+                  }}
+                />
               </>
             )}
           </Flex>

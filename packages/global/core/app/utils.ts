@@ -7,6 +7,8 @@ import { StoreNodeItemType } from '../workflow/type/node';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
+import { AppErrEnum } from '../../common/error/code/app';
+import { PluginErrEnum } from '../../common/error/code/plugin';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
@@ -117,7 +119,8 @@ export const appWorkflow2Form = ({
         version: node.version,
         inputs: node.inputs,
         outputs: node.outputs,
-        templateType: FlowNodeTemplateTypeEnum.other
+        templateType: FlowNodeTemplateTypeEnum.other,
+        pluginData: node.pluginData
       });
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
@@ -146,4 +149,19 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppSimpleEditFor
     return AppTypeEnum.plugin;
   }
   return '';
+};
+
+export const checkAppUnExistError = (error?: string) => {
+  const unExistError: Array<string> = [
+    AppErrEnum.unAuthApp,
+    AppErrEnum.unExist,
+    PluginErrEnum.unAuth,
+    PluginErrEnum.unExist
+  ];
+
+  if (!!error && unExistError.includes(error)) {
+    return error;
+  } else {
+    return undefined;
+  }
 };
