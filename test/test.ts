@@ -1,4 +1,4 @@
-import { MongoUser } from 'packages/service/support/user/schema';
+import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { it, expect } from 'vitest';
 
 it('should be a test', async () => {
@@ -14,4 +14,5 @@ it('should be able to connect to mongo', async () => {
   });
   const user = await MongoUser.findOne({ username: 'test' });
   expect(user).toBeDefined();
+  expect(user?.username).toBe('test');
 });
