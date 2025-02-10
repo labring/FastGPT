@@ -67,12 +67,6 @@ const NodeInputSelect = ({
       title: t('common:core.workflow.inputType.dynamicTargetInput')
     },
     {
-      type: FlowNodeInputTypeEnum.selectApp,
-      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.selectApp].icon,
-
-      title: t('common:core.workflow.inputType.Manual select')
-    },
-    {
       type: FlowNodeInputTypeEnum.selectLLMModel,
       icon: FlowNodeInputMap[FlowNodeInputTypeEnum.selectLLMModel].icon,
 

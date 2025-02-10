@@ -214,6 +214,7 @@ const InputTypeConfig = ({
               </Box>
             ) : (
               <Box fontSize={'14px'} mb={2}>
+                {/* @ts-ignore */}
                 {defaultValueType ? t(FlowValueTypeMap[defaultValueType]?.label as any) : ''}
               </Box>
             )}

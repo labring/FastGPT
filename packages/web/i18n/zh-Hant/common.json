@@ -883,6 +883,7 @@
   "error.inheritPermissionError": "繼承權限錯誤",
   "error.invalid_params": "參數無效",
   "error.missingParams": "參數不足",
+  "error.send_auth_code_too_frequently": "請勿頻繁獲取驗證碼",
   "error.too_many_request": "請求太頻繁了，請稍後重試",
   "error.upload_file_error_filename": "{{name}} 上傳失敗",
   "error.upload_image_error": "上傳文件失敗",

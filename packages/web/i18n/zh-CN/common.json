@@ -886,6 +886,7 @@
   "error.inheritPermissionError": "权限继承错误",
   "error.invalid_params": "参数无效",
   "error.missingParams": "参数缺失",
+  "error.send_auth_code_too_frequently": "请勿频繁获取验证码",
   "error.too_many_request": "请求太频繁了，请稍后重试",
   "error.upload_file_error_filename": "{{name}} 上传失败",
   "error.upload_image_error": "上传文件失败",

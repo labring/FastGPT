@@ -1,5 +1,5 @@
 import { getCaptchaPic } from '@/web/support/user/api';
-import { Button, Input, Image, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
+import { Button, Input, ModalBody, ModalFooter, Skeleton } from '@chakra-ui/react';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -16,7 +16,7 @@ const SendCodeAuthModal = ({
   onClose: () => void;
 
   onSending: boolean;
-  onSendCode: (params_0: { username: string; captcha: string }) => Promise<void>;
+  onSendCode: (e: { username: string; captcha: string }) => Promise<void>;
 }) => {
   const { t } = useTranslation();
 
@@ -63,11 +63,16 @@ const SendCodeAuthModal = ({
         </Button>
         <Button
           isLoading={onSending}
-          onClick={handleSubmit(({ code }) => {
-            return onSendCode({ username, captcha: code }).then(() => {
-              onClose();
-            });
-          })}
+          onClick={handleSubmit(
+            ({ code }) => {
+              return onSendCode({ username, captcha: code }).then(() => {
+                onClose();
+              });
+            },
+            (err) => {
+              console.log(err);
+            }
+          )}
         >
           {t('common:common.Confirm')}
         </Button>

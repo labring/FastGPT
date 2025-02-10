@@ -21,19 +21,6 @@ type SearchDatasetDataProps = {
   searchMode?: `${DatasetSearchModeEnum}`;
   usingReRank?: boolean;
   reRankQuery: string;
-
-  /* 
-      {
-        tags: {
-          $and: ["str1","str2"],
-          $or: ["str1","str2",null] null means no tags
-        },
-        createTime: {
-          $gte: 'xx',
-          $lte: 'xxx'
-        }
-      }
-    */
   collectionFilterMatch?: string;
 };
 
@@ -45,7 +32,7 @@ const analyzeQuery = async ({ query, histories }: { query: string; histories: Ch
 FastGPT 是低代码AI应用构建平台，支持通过语义相似度实现精准数据检索。用户正在利用该功能开发数据检索应用。
 
 ## 任务目标
-基于用户历史对话和知识背景，生成多维度检索方案，确保覆盖核心语义及潜在关联维度。
+基于用户历史对话和知识背景，生成子查询逐步推理，确保覆盖核心语义及潜在关联维度。
 
 ## 工作流程
 1. 问题解构阶段
@@ -147,23 +134,18 @@ const checkQuery = async ({
   const modelData = getLLMModel('gpt-4o-mini');
 
   const systemFewShot = `
-## 知识背景
-FastGPT 是低代码AI应用构建平台，支持通过语义相似度实现精准数据检索。用户正在利用该功能开发数据检索应用。
-
-## 查询结果
-${searchResult.map((item) => item.q + item.a).join('---\n---')}
-
 ## 任务目标
-检查"检索结果"是否覆盖用户的问题，如果无法覆盖用户问题，则再次生成检索方案。
+检查"检索结果"是否覆盖用户的问题，如果无法覆盖用户问题，则再次生成子检索推理，帮助用户进一步深度检索。
 
 ## 工作流程
 1. 检查检索结果是否覆盖用户的问题
 2. 如果检索结果覆盖用户问题，则直接输出："Done"
-3. 如果无法覆盖用户问题，则结合用户问题和检索结果，生成进一步的检索方案，进行深度检索
+3. 如果检索结果，并不是最终答案，则进一步生成子检索进行推理
+4. 如果检索结果完全不相关，则直接输出："Done"
 
 ## 输出规范
 
-1. 每个查询均为完整的查询语句
+1. 每个子查询均为完整的查询语句，确保语言通顺，语义完整
 2. 通过序号来表示多个检索内容
 
 ## 输出示例1
@@ -172,6 +154,12 @@ Done
 ## 输出示例2
 1. 环界云计算的办公地址
 2. 环界云计算的注册地址在哪里
+
+## 知识背景
+FastGPT 是低代码AI应用构建平台，支持通过语义相似度实现精准数据检索。用户正在利用该功能开发数据检索应用。
+
+## 本次检索结果
+${searchResult.map((item) => item.q + item.a).join('---\n---')}
 
 ## 任务开始
 `.trim();
@@ -191,7 +179,7 @@ Done
       content: queries.join('\n')
     }
   ] as any;
-  console.log(messages);
+
   const { response: result } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
@@ -204,7 +192,7 @@ Done
     )
   });
   let answer = result.choices?.[0]?.message?.content || '';
-  console.log(answer);
+
   if (answer.includes('Done')) {
     return [];
   }

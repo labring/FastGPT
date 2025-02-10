@@ -883,6 +883,7 @@
   "error.inheritPermissionError": "Inherit permission Error",
   "error.invalid_params": "Invalid parameter",
   "error.missingParams": "Insufficient parameters",
+  "error.send_auth_code_too_frequently": "Please do not obtain verification code frequently",
   "error.too_many_request": "Too many request",
   "error.upload_file_error_filename": "{{name}} Upload Failed",
   "error.upload_image_error": "File upload failed",
