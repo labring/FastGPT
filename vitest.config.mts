@@ -14,7 +14,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve('projects/app/src')
+      '@': resolve('projects/app/src'),
+      '@fastgpt': resolve('packages'),
+      '@test': resolve('test')
     }
   }
 });

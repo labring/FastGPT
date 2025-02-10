@@ -1,13 +1,14 @@
 import { readFileSync } from 'fs';
-import mongoose from 'packages/service/common/mongo';
-import { connectMongo } from 'packages/service/common/mongo/init';
-import { initGlobalVariables } from 'projects/app/src/service/common/system';
+import mongoose from '@fastgpt/service/common/mongo';
+import { connectMongo } from '@fastgpt/service/common/mongo/init';
+import { initGlobalVariables } from '@/service/common/system';
 import { afterAll, beforeAll, vi } from 'vitest';
 import { setup, teardown } from 'vitest-mongodb';
 import setupModels from './setupModels';
+import './mocks';
 
 vi.stubEnv('NODE_ENV', 'test');
-vi.mock(import('packages/service/common/mongo'), async (importOriginal) => {
+vi.mock(import('@fastgpt/service/common/mongo'), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
@@ -22,7 +23,7 @@ vi.mock(import('packages/service/common/mongo'), async (importOriginal) => {
   };
 });
 
-vi.mock(import('projects/app/src/service/common/system'), async (importOriginal) => {
+vi.mock(import('@/service/common/system'), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
@@ -30,7 +31,7 @@ vi.mock(import('projects/app/src/service/common/system'), async (importOriginal)
       return '0.0.0';
     },
     readConfigData: async () => {
-      return readFileSync('projects/app/src/data/config.json', 'utf-8');
+      return readFileSync('@/data/config.json', 'utf-8');
     },
     initSystemConfig: async () => {
       // read env from projects/app/.env
