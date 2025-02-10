@@ -92,6 +92,7 @@
     "mockingoose": "^2.16.2",
     "mongodb-memory-server": "^10.0.0",
     "nextjs-node-loader": "^1.1.5",
-    "typescript": "^5.1.3"
+    "typescript": "^5.1.3",
+    "vitest": "^3.0.2"
   }
 }
