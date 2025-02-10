@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useMarkdownWidth } from '../hooks';
 
 const AudioBlock = ({ code: audioUrl }: { code: string }) => {
   const { width, Ref } = useMarkdownWidth();
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     fetch(audioUrl?.trim(), {
@@ -13,8 +14,7 @@ const AudioBlock = ({ code: audioUrl }: { code: string }) => {
       .then((response) => response.blob())
       .then((blob) => {
         const url = URL.createObjectURL(blob);
-        const audio = document.getElementById('player');
-        audio?.setAttribute('src', url);
+        audioRef?.current?.setAttribute('src', url);
       })
       .catch((err) => {
         console.log(err);
@@ -22,8 +22,8 @@ const AudioBlock = ({ code: audioUrl }: { code: string }) => {
   }, [audioUrl]);
 
   return (
-    <Box w={width} ref={Ref}>
-      <audio id="player" controls style={{ width: '100%' }} />
+    <Box w={width} ref={Ref} my={4}>
+      <audio ref={audioRef} controls style={{ width: '100%' }} />
     </Box>
   );
 };
