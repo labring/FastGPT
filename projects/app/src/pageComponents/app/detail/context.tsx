@@ -207,7 +207,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   // check app unExist error
   useEffect(() => {
-    if (appDetail.modules.some((module) => checkAppUnExistError(module.error))) {
+    if (appDetail.modules.some((module) => checkAppUnExistError(module.pluginData?.error))) {
       toast({
         title: t('app:app.error.unExist_app'),
         status: 'error'

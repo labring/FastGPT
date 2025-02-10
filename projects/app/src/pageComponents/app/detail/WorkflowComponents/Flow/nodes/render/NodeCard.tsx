@@ -99,17 +99,15 @@ const NodeCard = (props: Props) => {
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
-      if (node?.error) {
+      if (node?.pluginData?.error) {
         return undefined;
       }
+
       if (
         node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
         node?.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
-        if (!node?.pluginId) return;
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
-
-        return template;
+        return { ...node, ...node.pluginData };
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
@@ -144,10 +142,13 @@ const NodeCard = (props: Props) => {
 
   const { runAsync: onClickSyncVersion } = useRequest2(
     async () => {
-      if (!!nodeTemplate) {
+      if (!node?.pluginId) return;
+      const template = await getPreviewPluginNode({ appId: node.pluginId });
+
+      if (!!template) {
         onResetNode({
           id: nodeId,
-          node: nodeTemplate
+          node: template
         });
       }
       onCloseConfirmSync();
@@ -289,7 +290,7 @@ const NodeCard = (props: Props) => {
                   )}
                 </UseGuideModal>
               )}
-              {!!node?.error && (
+              {!!node?.pluginData?.error && (
                 <MyTooltip label={t('app:app.modules.not_found_tips')}>
                   <Flex
                     bg={'red.50'}
@@ -316,7 +317,7 @@ const NodeCard = (props: Props) => {
   }, [
     node?.flowNodeType,
     node?.courseUrl,
-    node?.error,
+    node?.pluginData?.error,
     showToolHandle,
     nodeId,
     isFolded,

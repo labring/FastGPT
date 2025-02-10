@@ -62,7 +62,8 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {appForm.selectedTools.map((item) => {
-          const hasError = checkAppUnExistError(item.error);
+          const hasError = checkAppUnExistError(item.pluginData?.error);
+
           return (
             <MyTooltip key={item.id} label={item.intro}>
               <Flex

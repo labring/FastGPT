@@ -349,7 +349,7 @@ export const checkWorkflowNodeAndConnection = ({
         edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === node.data.nodeId
     );
 
-    if (!!data.error) {
+    if (data.pluginData?.error) {
       return [data.nodeId];
     }
 

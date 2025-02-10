@@ -28,7 +28,6 @@ export type FlowNodeCommonType = {
   parentNodeId?: string;
   flowNodeType: FlowNodeTypeEnum; // render node card
   abandon?: boolean; // abandon node
-  error?: string; // error message
 
   avatar?: string;
   name: string;
@@ -44,6 +43,17 @@ export type FlowNodeCommonType = {
   pluginId?: string;
   isFolder?: boolean;
   // pluginType?: AppTypeEnum;
+  pluginData?: PluginDataType;
+};
+
+export type PluginDataType = {
+  version: string;
+  diagram?: string;
+  userGuide?: string;
+  courseUrl?: string;
+  name?: string;
+  avatar?: string;
+  error?: string;
 };
 
 type HandleType = {

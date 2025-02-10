@@ -32,7 +32,7 @@ import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { PluginDataType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app
@@ -153,9 +153,25 @@ const checkItem = async (item: StoreNodeItemType, req: NextApiRequest) => {
     }
 
     const preview = await getChildAppPreviewNode({ id: pluginId });
-    return { ...item, ...preview };
+    return {
+      ...item,
+      pluginData: {
+        version: preview.version,
+        diagram: preview.diagram,
+        userGuide: preview.userGuide,
+        courseUrl: preview.courseUrl,
+        name: preview.name,
+        avatar: preview.avatar
+      }
+    };
   } catch (error: any) {
-    return { ...item, isError: true, error };
+    return {
+      ...item,
+      isError: true,
+      pluginData: {
+        error
+      } as PluginDataType
+    };
   }
 };
 
