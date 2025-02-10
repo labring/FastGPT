@@ -74,9 +74,9 @@ const testWorkflow = async (path: string) => {
 
 it('Workflow test: simple workflow', async () => {
   // create a simple app
-  await testWorkflow('projects/app/src/test/simple.json');
+  await testWorkflow('projects/app/src/test/workflow/simple.json');
 });
 
 it('Workflow test: output test', async () => {
-  console.log(await testWorkflow('projects/app/src/test/loopTest.json'));
+  console.log(await testWorkflow('projects/app/src/test/workflow/loopTest.json'));
 });
