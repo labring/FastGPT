@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -99,14 +99,15 @@ const NodeCard = (props: Props) => {
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
+      if (node?.pluginData?.error) {
+        return undefined;
+      }
+
       if (
         node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
         node?.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
-        if (!node?.pluginId) return;
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
-
-        return template;
+        return { ...node, ...node.pluginData };
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
@@ -141,10 +142,13 @@ const NodeCard = (props: Props) => {
 
   const { runAsync: onClickSyncVersion } = useRequest2(
     async () => {
-      if (!!nodeTemplate) {
+      if (!node?.pluginId) return;
+      const template = await getPreviewPluginNode({ appId: node.pluginId });
+
+      if (!!template) {
         onResetNode({
           id: nodeId,
-          node: nodeTemplate
+          node: template
         });
       }
       onCloseConfirmSync();
@@ -286,6 +290,22 @@ const NodeCard = (props: Props) => {
                   )}
                 </UseGuideModal>
               )}
+              {!!node?.pluginData?.error && (
+                <MyTooltip label={t('app:app.modules.not_found_tips')}>
+                  <Flex
+                    bg={'red.50'}
+                    alignItems={'center'}
+                    h={8}
+                    px={2}
+                    rounded={'6px'}
+                    fontSize={'xs'}
+                    fontWeight={'medium'}
+                  >
+                    <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+                    <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
+                  </Flex>
+                </MyTooltip>
+              )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />
           </Box>
@@ -297,6 +317,7 @@ const NodeCard = (props: Props) => {
   }, [
     node?.flowNodeType,
     node?.courseUrl,
+    node?.pluginData?.error,
     showToolHandle,
     nodeId,
     isFolded,

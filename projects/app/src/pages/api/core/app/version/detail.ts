@@ -5,6 +5,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { checkNode } from '@/service/core/app/utils';
 
 type Props = {
   versionId: string;
@@ -17,7 +18,7 @@ async function handler(
 ): Promise<AppVersionSchemaType> {
   const { versionId, appId } = req.query as Props;
 
-  await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { app } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
   const result = await MongoAppVersion.findById(versionId).lean();
 
   if (!result) {
@@ -26,6 +27,9 @@ async function handler(
 
   return {
     ...result,
+    nodes: await Promise.all(
+      result.nodes.map((n) => checkNode({ node: n, ownerTmbId: app.tmbId }))
+    ),
     versionName: result?.versionName || formatTime2YMDHM(result?.time)
   };
 }
