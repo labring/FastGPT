@@ -152,15 +152,16 @@ export const getAppType = (config?: WorkflowTemplateBasicType | AppSimpleEditFor
 };
 
 export const checkAppUnExistError = (error?: string) => {
-  return (
-    !!error &&
-    (
-      [
-        AppErrEnum.unAuthApp,
-        AppErrEnum.unExist,
-        PluginErrEnum.unAuth,
-        PluginErrEnum.unExist
-      ] as Array<string>
-    ).includes(error)
-  );
+  const unExistError: Array<string> = [
+    AppErrEnum.unAuthApp,
+    AppErrEnum.unExist,
+    PluginErrEnum.unAuth,
+    PluginErrEnum.unExist
+  ];
+
+  if (!!error && unExistError.includes(error)) {
+    return error;
+  } else {
+    return undefined;
+  }
 };

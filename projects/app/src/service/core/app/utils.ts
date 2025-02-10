@@ -22,7 +22,6 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { AppSchema } from '@fastgpt/global/core/app/type';
 import {
   getChildAppPreviewNode,
   splitCombinePluginId
@@ -30,7 +29,6 @@ import {
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { PluginDataType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const getScheduleTriggerApp = async () => {
@@ -136,9 +134,15 @@ export const getScheduleTriggerApp = async () => {
   );
 };
 
-const checkItem = async (item: StoreNodeItemType, ownerTmbId: string) => {
-  const { pluginId } = item;
-  if (!pluginId) return item;
+export const checkNode = async ({
+  node,
+  ownerTmbId
+}: {
+  node: StoreNodeItemType;
+  ownerTmbId: string;
+}) => {
+  const { pluginId } = node;
+  if (!pluginId) return node;
 
   try {
     const { source } = await splitCombinePluginId(pluginId);
@@ -152,7 +156,7 @@ const checkItem = async (item: StoreNodeItemType, ownerTmbId: string) => {
 
     const preview = await getChildAppPreviewNode({ id: pluginId });
     return {
-      ...item,
+      ...node,
       pluginData: {
         version: preview.version,
         diagram: preview.diagram,
@@ -164,7 +168,7 @@ const checkItem = async (item: StoreNodeItemType, ownerTmbId: string) => {
     };
   } catch (error: any) {
     return {
-      ...item,
+      ...node,
       isError: true,
       pluginData: {
         error
@@ -172,19 +176,3 @@ const checkItem = async (item: StoreNodeItemType, ownerTmbId: string) => {
     };
   }
 };
-
-export const checkApp = async ({ app, ownerTmbId }: { app: AppSchema; ownerTmbId: string }) => ({
-  ...app,
-  modules: await Promise.all(app.modules.map((m) => checkItem(m, ownerTmbId)))
-});
-
-export const checkAppVersion = async ({
-  version,
-  ownerTmbId
-}: {
-  version: AppVersionSchemaType;
-  ownerTmbId: string;
-}) => ({
-  ...version,
-  nodes: await Promise.all(version.nodes.map((n) => checkItem(n, ownerTmbId)))
-});

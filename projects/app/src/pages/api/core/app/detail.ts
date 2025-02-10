@@ -3,7 +3,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { checkApp } from '@/service/core/app/utils';
+import { checkNode } from '@/service/core/app/utils';
 
 /* 获取应用详情 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -23,7 +23,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     };
   }
 
-  return checkApp({ app, ownerTmbId: app.tmbId });
+  return {
+    ...app,
+    modules: await Promise.all(
+      app.modules.map((node) => checkNode({ node, ownerTmbId: app.tmbId }))
+    )
+  };
 }
 
 export default NextAPI(handler);

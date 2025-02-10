@@ -5,7 +5,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { checkAppVersion } from '@/service/core/app/utils';
+import { checkNode } from '@/service/core/app/utils';
 
 type Props = {
   versionId: string;
@@ -25,10 +25,11 @@ async function handler(
     return Promise.reject('version not found');
   }
 
-  const checkedResult = await checkAppVersion({ version: result, ownerTmbId: app.tmbId });
-
   return {
-    ...checkedResult,
+    ...result,
+    nodes: await Promise.all(
+      result.nodes.map((n) => checkNode({ node: n, ownerTmbId: app.tmbId }))
+    ),
     versionName: result?.versionName || formatTime2YMDHM(result?.time)
   };
 }

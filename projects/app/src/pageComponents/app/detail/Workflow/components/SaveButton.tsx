@@ -6,8 +6,6 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SaveAndPublishModal from '../../WorkflowComponents/Flow/components/SaveAndPublish';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 const SaveButton = ({
   isLoading,
