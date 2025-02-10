@@ -1,10 +1,10 @@
 import { readFileSync } from 'fs';
-import { ModelTypeEnum } from 'packages/global/core/ai/model';
 import mongoose from 'packages/service/common/mongo';
 import { connectMongo } from 'packages/service/common/mongo/init';
 import { initGlobalVariables } from 'projects/app/src/service/common/system';
 import { afterAll, beforeAll, vi } from 'vitest';
 import { setup, teardown } from 'vitest-mongodb';
+import setupModels from './setupModels';
 
 vi.stubEnv('NODE_ENV', 'test');
 vi.mock(import('packages/service/common/mongo'), async (importOriginal) => {
@@ -77,31 +77,7 @@ beforeAll(async () => {
   }
   systemEnv.oneapiUrl = systemEnv['ONEAPI_URL'];
   global.systemEnv = systemEnv as any;
-  global.llmModelMap = new Map<string, any>();
-  global.systemDefaultModel = {
-    llm: {
-      type: ModelTypeEnum.llm,
-      model: 'gpt-4o-mini',
-      name: 'gpt-4o-mini',
-      avatar: 'gpt-4o-mini',
-      isActive: true,
-      isDefault: true,
-      isCustom: false,
-      requestUrl: undefined,
-      requestAuth: undefined,
-      customCQPrompt: '',
-      customExtractPrompt: '',
-      defaultSystemChatPrompt: undefined,
-      fieldMap: undefined,
-      defaultConfig: undefined,
-      provider: 'OpenAI',
-      functionCall: false,
-      toolChoice: false,
-      maxContext: 4096,
-      maxResponse: 4096,
-      quoteMaxToken: 2048
-    }
-  };
+  await setupModels();
 });
 
 afterAll(async () => {
