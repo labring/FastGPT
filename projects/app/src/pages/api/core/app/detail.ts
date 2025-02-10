@@ -23,7 +23,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     };
   }
 
-  return checkApp(app, req);
+  return checkApp({ app, ownerTmbId: app.tmbId });
 }
 
 export default NextAPI(handler);

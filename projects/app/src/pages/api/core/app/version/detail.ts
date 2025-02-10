@@ -18,14 +18,14 @@ async function handler(
 ): Promise<AppVersionSchemaType> {
   const { versionId, appId } = req.query as Props;
 
-  await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  const { app } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
   const result = await MongoAppVersion.findById(versionId).lean();
 
   if (!result) {
     return Promise.reject('version not found');
   }
 
-  const checkedResult = await checkAppVersion(result, req);
+  const checkedResult = await checkAppVersion({ version: result, ownerTmbId: app.tmbId });
 
   return {
     ...checkedResult,
