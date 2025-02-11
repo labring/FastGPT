@@ -21,7 +21,7 @@ export class PgVectorCtrl {
         CREATE EXTENSION IF NOT EXISTS vector;
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
             id BIGSERIAL PRIMARY KEY,
-            vector VECTOR(1536) NOT NULL,
+            halfvector HALFVEC(1536) NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
             collection_id VARCHAR(50) NOT NULL,
@@ -30,14 +30,15 @@ export class PgVectorCtrl {
       `);
 
       await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
-      );
-      await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
       );
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
+      // TODO: enable halfvector index
+      // await PgClient.query(
+      //   `CREATE INDEX CONCURRENTLY IF NOT EXISTS halfvector_index ON ${DatasetVectorTableName} USING hnsw (halfvector halfvec_ip_ops) WITH (m = 32, ef_construction = 128);`
+      // );
 
       addLog.info('init pg successful');
     } catch (error) {
@@ -48,10 +49,12 @@ export class PgVectorCtrl {
     const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
 
     try {
+      // TODO: remove vector
       const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
         values: [
           [
             { key: 'vector', value: `[${vector}]` },
+            { key: 'halfvector', value: `[${vector}]` },
             { key: 'team_id', value: String(teamId) },
             { key: 'dataset_id', value: String(datasetId) },
             { key: 'collection_id', value: String(collectionId) }
@@ -177,12 +180,27 @@ export class PgVectorCtrl {
       // );
       // console.log(explan[2].rows);
 
+      // TODO: use halfvector
+      // const results: any = await PgClient.query(
+      //   `
+      //         BEGIN;
+      //           SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
+      //           select id, collection_id, halfvector <#> '[${vector}]' AS score
+      //             from ${DatasetVectorTableName}
+      //             where team_id='${teamId}'
+      //               AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+      //               ${filterCollectionIdSql}
+      //               ${forbidCollectionSql}
+      //             order by score limit ${limit};
+      //         COMMIT;`
+      // );
+
       const results: any = await PgClient.query(
         `
         BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
-          select id, collection_id, vector <#> '[${vector}]' AS score 
-            from ${DatasetVectorTableName} 
+          select id, collection_id, vector <#> '[${vector}]' AS score
+            from ${DatasetVectorTableName}
             where team_id='${teamId}'
               AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               ${filterCollectionIdSql}
