@@ -33,8 +33,10 @@ export enum WorkflowIOValueTypeEnum {
   dynamic = 'dynamic',
 
   // plugin special type
-  selectApp = 'selectApp',
-  selectDataset = 'selectDataset'
+  selectDataset = 'selectDataset',
+
+  // abandon
+  selectApp = 'selectApp'
 }
 
 export const toolValueTypeList = [

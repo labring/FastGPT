@@ -106,10 +106,12 @@ const InputTypeConfig = ({
     ...listValue[index]
   }));
 
-  const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
-    label: t(item.label as any),
-    value: item.value
-  }));
+  const valueTypeSelectList = Object.values(FlowValueTypeMap)
+    .filter((item) => !item.abandon)
+    .map((item) => ({
+      label: t(item.label as any),
+      value: item.value
+    }));
 
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
@@ -214,7 +216,6 @@ const InputTypeConfig = ({
               </Box>
             ) : (
               <Box fontSize={'14px'} mb={2}>
-                {/* @ts-ignore */}
                 {defaultValueType ? t(FlowValueTypeMap[defaultValueType]?.label as any) : ''}
               </Box>
             )}
