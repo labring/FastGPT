@@ -121,7 +121,7 @@ const SimpleEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} setPast={setPast} />
       ) : (
-        <Box flex={'1 0 0'} h={0} mt={[4, 0]}>
+        <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]}>
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Box>
