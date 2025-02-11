@@ -88,7 +88,7 @@ try {
   ChatSchema.index({ appId: 1, chatId: 1 });
 
   // get chat logs;
-  ChatSchema.index({ teamId: 1, appId: 1, updateTime: -1 });
+  ChatSchema.index({ teamId: 1, appId: 1, updateTime: -1, sources: 1 });
   // get share chat history
   ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1 });
 
