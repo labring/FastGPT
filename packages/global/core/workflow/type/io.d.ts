@@ -1,3 +1,4 @@
+import { LLMModelItemType } from '../../ai/model.d';
 import { LLMModelTypeEnum } from '../../ai/constants';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
@@ -76,6 +77,12 @@ export type FlowNodeOutputItemType = {
   description?: string;
   defaultValue?: any;
   required?: boolean;
+
+  invalid?: boolean;
+  invalidCondition?: (e: {
+    inputs: FlowNodeInputItemType[];
+    llmModelList: LLMModelItemType[];
+  }) => boolean;
 
   // component params
   customFieldConfig?: CustomFieldConfigType;

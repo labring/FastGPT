@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useMarkdownWidth } from '../hooks';
 
 const VideoBlock = ({ code: videoUrl }: { code: string }) => {
   const { width, Ref } = useMarkdownWidth();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     fetch(videoUrl?.trim(), {
@@ -13,8 +14,7 @@ const VideoBlock = ({ code: videoUrl }: { code: string }) => {
       .then((response) => response.blob())
       .then((blob) => {
         const url = URL.createObjectURL(blob);
-        const video = document.getElementById('player');
-        video?.setAttribute('src', url);
+        videoRef?.current?.setAttribute('src', url);
       })
       .catch((err) => {
         console.log(err);
@@ -22,8 +22,8 @@ const VideoBlock = ({ code: videoUrl }: { code: string }) => {
   }, [videoUrl]);
 
   return (
-    <Box w={width} ref={Ref}>
-      <video id="player" controls />
+    <Box w={width} ref={Ref} my={4} borderRadius={'md'} overflow={'hidden'}>
+      <video ref={videoRef} controls />
     </Box>
   );
 };

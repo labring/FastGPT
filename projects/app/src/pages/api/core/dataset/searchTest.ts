@@ -1,12 +1,12 @@
-import type { NextApiRequest } from 'next';
-import type { SearchTestProps } from '@/global/core/dataset/api.d';
+import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { searchDatasetData } from '@fastgpt/service/core/dataset/search/controller';
+import {
+  deepRagSearch,
+  defaultSearchDatasetData
+} from '@fastgpt/service/core/dataset/search/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 import {
   checkTeamAIPoints,
   checkTeamReRankPermission
@@ -15,9 +15,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
-import { agentSearchDatasetData } from '@fastgpt/service/core/dataset/search/agent';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
-async function handler(req: NextApiRequest) {
+async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
   const {
     datasetId,
     text,
@@ -26,10 +26,15 @@ async function handler(req: NextApiRequest) {
     searchMode,
     usingReRank,
 
-    datasetSearchUsingExtensionQuery = true,
+    datasetSearchUsingExtensionQuery = false,
     datasetSearchExtensionModel,
-    datasetSearchExtensionBg = ''
-  } = req.body as SearchTestProps;
+    datasetSearchExtensionBg,
+
+    datasetDeepSearch = false,
+    datasetDeepSearchModel,
+    datasetDeepSearchMaxTimes,
+    datasetDeepSearchBg
+  } = req.body;
 
   if (!datasetId || !text) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -48,29 +53,31 @@ async function handler(req: NextApiRequest) {
   // auth balance
   await checkTeamAIPoints(teamId);
 
-  // query extension
-  const extensionModel =
-    datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
-      ? getLLMModel(datasetSearchExtensionModel)
-      : undefined;
-  const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
-    query: text,
-    extensionModel,
-    extensionBg: datasetSearchExtensionBg
-  });
-
-  const { searchRes, tokens, ...result } = await searchDatasetData({
+  const searchData = {
     histories: [],
     teamId,
-    reRankQuery: rewriteQuery,
-    queries: concatQueries,
+    reRankQuery: text,
+    queries: [text],
     model: dataset.vectorModel,
     limit: Math.min(limit, 20000),
     similarity,
     datasetIds: [datasetId],
     searchMode,
     usingReRank: usingReRank && (await checkTeamReRankPermission(teamId))
-  });
+  };
+  const { searchRes, tokens, queryExtensionResult, deepSearchResult, ...result } = datasetDeepSearch
+    ? await deepRagSearch({
+        ...searchData,
+        datasetDeepSearchModel,
+        datasetDeepSearchMaxTimes,
+        datasetDeepSearchBg
+      })
+    : await defaultSearchDatasetData({
+        ...searchData,
+        datasetSearchUsingExtensionQuery,
+        datasetSearchExtensionModel,
+        datasetSearchExtensionBg
+      });
 
   // push bill
   const { totalPoints } = pushGenerateVectorUsage({
@@ -80,12 +87,16 @@ async function handler(req: NextApiRequest) {
     model: dataset.vectorModel,
     source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
-    ...(aiExtensionResult &&
-      extensionModel && {
-        extensionModel: extensionModel.name,
-        extensionInputTokens: aiExtensionResult.inputTokens,
-        extensionOutputTokens: aiExtensionResult.outputTokens
-      })
+    ...(queryExtensionResult && {
+      extensionModel: queryExtensionResult.model,
+      extensionInputTokens: queryExtensionResult.inputTokens,
+      extensionOutputTokens: queryExtensionResult.outputTokens
+    }),
+    ...(deepSearchResult && {
+      deepSearchModel: deepSearchResult.model,
+      deepSearchInputTokens: deepSearchResult.inputTokens,
+      deepSearchOutputTokens: deepSearchResult.outputTokens
+    })
   });
   if (apikey) {
     updateApiKeyUsage({
@@ -97,7 +108,7 @@ async function handler(req: NextApiRequest) {
   return {
     list: searchRes,
     duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-    queryExtensionModel: aiExtensionResult?.model,
+    queryExtensionModel: queryExtensionResult?.model,
     ...result
   };
 }

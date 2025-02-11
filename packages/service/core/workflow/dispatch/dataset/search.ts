@@ -6,13 +6,11 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { getLLMModel, getEmbeddingModel } from '../../../ai/model';
-import { searchDatasetData } from '../../../dataset/search/controller';
+import { getEmbeddingModel } from '../../../ai/model';
+import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search/controller';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getHistories } from '../utils';
-import { datasetSearchQueryExtension } from '../../../dataset/search/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { checkTeamReRankPermission } from '../../../../support/permission/teamLimit';
 import { MongoDataset } from '../../../dataset/schema';
@@ -27,11 +25,17 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
+  [NodeInputKeyEnum.collectionFilterMatch]: string;
+  [NodeInputKeyEnum.authTmbId]: boolean;
+
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]: string;
-  [NodeInputKeyEnum.collectionFilterMatch]: string;
-  [NodeInputKeyEnum.authTmbId]: boolean;
+
+  [NodeInputKeyEnum.datasetDeepSearch]?: boolean;
+  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
+  [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 }>;
 export type DatasetSearchResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
@@ -52,12 +56,17 @@ export async function dispatchDatasetSearch(
       usingReRank,
       searchMode,
       userChatInput,
+      authTmbId = false,
+      collectionFilterMatch,
 
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel,
       datasetSearchExtensionBg,
-      collectionFilterMatch,
-      authTmbId = false
+
+      datasetDeepSearch,
+      datasetDeepSearchModel,
+      datasetDeepSearchMaxTimes,
+      datasetDeepSearchBg
     }
   } = props as DatasetSearchProps;
 
@@ -85,25 +94,12 @@ export async function dispatchDatasetSearch(
     return emptyResult;
   }
 
-  // query extension
-  const extensionModel = datasetSearchUsingExtensionQuery
-    ? getLLMModel(datasetSearchExtensionModel)
-    : undefined;
-
-  const [{ concatQueries, rewriteQuery, aiExtensionResult }, datasetIds] = await Promise.all([
-    datasetSearchQueryExtension({
-      query: userChatInput,
-      extensionModel,
-      extensionBg: datasetSearchExtensionBg,
-      histories: getHistories(6, histories)
-    }),
-    authTmbId
-      ? filterDatasetsByTmbId({
-          datasetIds: datasets.map((item) => item.datasetId),
-          tmbId
-        })
-      : Promise.resolve(datasets.map((item) => item.datasetId))
-  ]);
+  const datasetIds = authTmbId
+    ? await filterDatasetsByTmbId({
+        datasetIds: datasets.map((item) => item.datasetId),
+        tmbId
+      })
+    : await Promise.resolve(datasets.map((item) => item.datasetId));
 
   if (datasetIds.length === 0) {
     return emptyResult;
@@ -116,15 +112,11 @@ export async function dispatchDatasetSearch(
   );
 
   // start search
-  const {
-    searchRes,
-    tokens,
-    usingSimilarityFilter,
-    usingReRank: searchUsingReRank
-  } = await searchDatasetData({
+  const searchData = {
+    histories,
     teamId,
-    reRankQuery: `${rewriteQuery}`,
-    queries: concatQueries,
+    reRankQuery: userChatInput,
+    queries: [userChatInput],
     model: vectorModel.model,
     similarity,
     limit,
@@ -132,59 +124,106 @@ export async function dispatchDatasetSearch(
     searchMode,
     usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
     collectionFilterMatch
-  });
+  };
+  const {
+    searchRes,
+    tokens,
+    usingSimilarityFilter,
+    usingReRank: searchUsingReRank,
+    queryExtensionResult,
+    deepSearchResult
+  } = datasetDeepSearch
+    ? await deepRagSearch({
+        ...searchData,
+        datasetDeepSearchModel,
+        datasetDeepSearchMaxTimes,
+        datasetDeepSearchBg
+      })
+    : await defaultSearchDatasetData({
+        ...searchData,
+        datasetSearchUsingExtensionQuery,
+        datasetSearchExtensionModel,
+        datasetSearchExtensionBg
+      });
 
   // count bill results
+  const nodeDispatchUsages: ChatNodeUsageType[] = [];
   // vector
-  const { totalPoints, modelName } = formatModelChars2Points({
-    model: vectorModel.model,
-    inputTokens: tokens,
-    modelType: ModelTypeEnum.embedding
+  const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
+    formatModelChars2Points({
+      model: vectorModel.model,
+      inputTokens: tokens,
+      modelType: ModelTypeEnum.embedding
+    });
+  nodeDispatchUsages.push({
+    totalPoints: embeddingTotalPoints,
+    moduleName: node.name,
+    model: embeddingModelName,
+    inputTokens: tokens
   });
+  // Query extension
+  const { totalPoints: queryExtensionTotalPoints } = (() => {
+    if (queryExtensionResult) {
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: queryExtensionResult.model,
+        inputTokens: queryExtensionResult.inputTokens,
+        outputTokens: queryExtensionResult.outputTokens,
+        modelType: ModelTypeEnum.llm
+      });
+      nodeDispatchUsages.push({
+        totalPoints,
+        moduleName: i18nT('common:core.module.template.Query extension'),
+        model: modelName,
+        inputTokens: queryExtensionResult.inputTokens,
+        outputTokens: queryExtensionResult.outputTokens
+      });
+      return {
+        totalPoints
+      };
+    }
+    return {
+      totalPoints: 0
+    };
+  })();
+  // Deep search
+  const { totalPoints: deepSearchTotalPoints } = (() => {
+    if (deepSearchResult) {
+      const { totalPoints, modelName } = formatModelChars2Points({
+        model: deepSearchResult.model,
+        inputTokens: deepSearchResult.inputTokens,
+        outputTokens: deepSearchResult.outputTokens,
+        modelType: ModelTypeEnum.llm
+      });
+      nodeDispatchUsages.push({
+        totalPoints,
+        moduleName: i18nT('common:deep_rag_search'),
+        model: modelName,
+        inputTokens: deepSearchResult.inputTokens,
+        outputTokens: deepSearchResult.outputTokens
+      });
+      return {
+        totalPoints
+      };
+    }
+    return {
+      totalPoints: 0
+    };
+  })();
+  const totalPoints = embeddingTotalPoints + queryExtensionTotalPoints + deepSearchTotalPoints;
+
   const responseData: DispatchNodeResponseType & { totalPoints: number } = {
     totalPoints,
-    query: concatQueries.join('\n'),
-    model: modelName,
+    query: userChatInput,
+    model: vectorModel.model,
     inputTokens: tokens,
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
     searchUsingReRank: searchUsingReRank,
-    quoteList: searchRes
+    quoteList: searchRes,
+    queryExtensionResult,
+    deepSearchResult
   };
-  const nodeDispatchUsages: ChatNodeUsageType[] = [
-    {
-      totalPoints,
-      moduleName: node.name,
-      model: modelName,
-      inputTokens: tokens
-    }
-  ];
-
-  if (aiExtensionResult) {
-    const { totalPoints, modelName } = formatModelChars2Points({
-      model: aiExtensionResult.model,
-      inputTokens: aiExtensionResult.inputTokens,
-      outputTokens: aiExtensionResult.outputTokens,
-      modelType: ModelTypeEnum.llm
-    });
-
-    responseData.totalPoints += totalPoints;
-    responseData.inputTokens = aiExtensionResult.inputTokens;
-    responseData.outputTokens = aiExtensionResult.outputTokens;
-    responseData.extensionModel = modelName;
-    responseData.extensionResult =
-      aiExtensionResult.extensionQueries?.join('\n') ||
-      JSON.stringify(aiExtensionResult.extensionQueries);
-
-    nodeDispatchUsages.push({
-      totalPoints,
-      moduleName: 'core.module.template.Query extension',
-      model: modelName,
-      inputTokens: aiExtensionResult.inputTokens,
-      outputTokens: aiExtensionResult.outputTokens
-    });
-  }
 
   return {
     quoteQA: searchRes,

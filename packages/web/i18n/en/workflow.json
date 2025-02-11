@@ -139,6 +139,7 @@
   "quote_role_system_tip": "Please note that the {{question}} variable is removed from the \"Quote Template Prompt Words\"",
   "quote_role_user_tip": "Please pay attention to adding the {{question}} variable in the \"Quote Template Prompt Word\"",
   "raw_response": "Raw Response",
+  "reasoning_text": "Thinking text",
   "regex": "Regex",
   "reply_text": "Reply Text",
   "request_error": "Request Error",
