@@ -139,6 +139,7 @@
   "quote_role_system_tip": "請注意從「引用範本提示詞」中移除 {{question}} 變數",
   "quote_role_user_tip": "請注意在「引用範本提示詞」中加入 {{question}} 變數",
   "raw_response": "原始回應",
+  "reasoning_text": "思考過程",
   "regex": "正規表達式",
   "reply_text": "回覆文字",
   "request_error": "請求錯誤",

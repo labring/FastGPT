@@ -77,6 +77,9 @@ export type FlowNodeOutputItemType = {
   defaultValue?: any;
   required?: boolean;
 
+  invalid?: boolean;
+  invalidCondition?: (inputs: FlowNodeInputItemType[]) => boolean;
+
   // component params
   customFieldConfig?: CustomFieldConfigType;
 };

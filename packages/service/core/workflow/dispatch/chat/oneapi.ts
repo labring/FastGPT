@@ -269,6 +269,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       outputTokens: outputTokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
+      reasoningText,
       historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
       contextTotalLen: completeMessages.length
     },

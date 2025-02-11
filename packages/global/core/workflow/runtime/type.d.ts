@@ -123,6 +123,7 @@ export type DispatchNodeResponseType = {
   temperature?: number;
   maxToken?: number;
   quoteList?: SearchDataResponseItemType[];
+  reasoningText?: string;
   historyPreview?: {
     obj: `${ChatRoleEnum}`;
     value: string;
