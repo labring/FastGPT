@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -14,6 +14,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import dynamic from 'next/dynamic';
 import { defaultOutput } from './FieldEditModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const FieldEditModal = dynamic(() => import('./FieldEditModal'));
 
@@ -25,12 +26,39 @@ const RenderOutput = ({
   flowOutputList: FlowNodeOutputItemType[];
 }) => {
   const { t } = useTranslation();
+  const { llmModelList } = useSystemStore();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const outputString = useMemo(() => JSON.stringify(flowOutputList), [flowOutputList]);
   const copyOutputs = useMemo(() => {
     return JSON.parse(outputString) as FlowNodeOutputItemType[];
   }, [outputString]);
+
+  // Condition check
+  const inputs = useContextSelector(WorkflowContext, (v) => {
+    const node = v.nodeList.find((node) => node.nodeId === nodeId);
+    return JSON.stringify(node?.inputs);
+  });
+  useEffect(() => {
+    flowOutputList.forEach((output) => {
+      if (!output.invalidCondition || !inputs) return;
+      const parsedInputs = JSON.parse(inputs);
+
+      const invalid = output.invalidCondition({
+        inputs: parsedInputs,
+        llmModelList
+      });
+      onChangeNode({
+        nodeId,
+        type: 'replaceOutput',
+        key: output.key,
+        value: {
+          ...output,
+          invalid
+        }
+      });
+    });
+  }, [copyOutputs, nodeId, inputs, llmModelList]);
 
   const [editField, setEditField] = useState<FlowNodeOutputItemType>();
 
@@ -129,12 +157,14 @@ const RenderOutput = ({
     return (
       <>
         {renderOutputs.map((output, i) => {
-          return output.label ? (
+          return output.label && output.invalid !== true ? (
             <FormLabel
               key={output.key}
               required={output.required}
-              mb={i === renderOutputs.length - 1 ? 0 : 4}
               position={'relative'}
+              _notLast={{
+                mb: 4
+              }}
             >
               <OutputLabel nodeId={nodeId} output={output} />
             </FormLabel>

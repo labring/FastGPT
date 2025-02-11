@@ -7,7 +7,7 @@ toc: true
 weight: 234
 ---
 
-知识库搜索具体参数说明，以及内部逻辑请移步：[FastGPT知识库搜索方案](/docs/course/data_search/)
+知识库搜索具体参数说明，以及内部逻辑请移步：[FastGPT知识库搜索方案](/docs/guide/knowledge_base/rag/)
 
 ## 特点
 
@@ -27,7 +27,7 @@ weight: 234
 
 ### 输入 - 搜索参数
 
-[点击查看参数介绍](/docs/course/data_search/#搜索参数)
+[点击查看参数介绍](/docs/guide/knowledge_base/dataset_engine/#搜索参数)
 
 ### 输出 - 引用内容
 

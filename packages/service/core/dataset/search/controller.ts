@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { recallFromVectorStore } from '../../../common/vectorStore/controller';
 import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel } from '../../ai/model';
+import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import {
   DatasetDataTextSchemaType,
@@ -24,18 +24,22 @@ import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { POST } from '../../../common/api/plusRequest';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { datasetSearchQueryExtension } from './utils';
 
-type SearchDatasetDataProps = {
-  histories?: ChatItemType[];
+export type SearchDatasetDataProps = {
+  histories: ChatItemType[];
   teamId: string;
   model: string;
-  similarity?: number; // min distance
-  limit: number; // max Token limit
   datasetIds: string[];
-  searchMode?: `${DatasetSearchModeEnum}`;
-  usingReRank?: boolean;
   reRankQuery: string;
   queries: string[];
+
+  [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
+  [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
+  [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
 
   /* 
     {
@@ -52,7 +56,96 @@ type SearchDatasetDataProps = {
   collectionFilterMatch?: string;
 };
 
-export async function searchDatasetData(props: SearchDatasetDataProps) {
+export type SearchDatasetDataResponse = {
+  searchRes: SearchDataResponseItemType[];
+  tokens: number;
+  searchMode: `${DatasetSearchModeEnum}`;
+  limit: number;
+  similarity: number;
+  usingReRank: boolean;
+  usingSimilarityFilter: boolean;
+
+  queryExtensionResult?: {
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    query: string;
+  };
+  deepSearchResult?: { model: string; inputTokens: number; outputTokens: number };
+};
+
+export const datasetDataReRank = async ({
+  data,
+  query
+}: {
+  data: SearchDataResponseItemType[];
+  query: string;
+}): Promise<SearchDataResponseItemType[]> => {
+  const results = await reRankRecall({
+    query,
+    documents: data.map((item) => ({
+      id: item.id,
+      text: `${item.q}\n${item.a}`
+    }))
+  });
+
+  if (results.length === 0) {
+    return Promise.reject('Rerank error');
+  }
+
+  // add new score to data
+  const mergeResult = results
+    .map((item, index) => {
+      const target = data.find((dataItem) => dataItem.id === item.id);
+      if (!target) return null;
+      const score = item.score || 0;
+
+      return {
+        ...target,
+        score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
+      };
+    })
+    .filter(Boolean) as SearchDataResponseItemType[];
+
+  return mergeResult;
+};
+export const filterDatasetDataByMaxTokens = async (
+  data: SearchDataResponseItemType[],
+  maxTokens: number
+) => {
+  const filterMaxTokensResult = await (async () => {
+    // Count tokens
+    const tokensScoreFilter = await Promise.all(
+      data.map(async (item) => ({
+        ...item,
+        tokens: await countPromptTokens(item.q + item.a)
+      }))
+    );
+
+    const results: SearchDataResponseItemType[] = [];
+    let totalTokens = 0;
+
+    for await (const item of tokensScoreFilter) {
+      totalTokens += item.tokens;
+
+      if (totalTokens > maxTokens + 500) {
+        break;
+      }
+      results.push(item);
+      if (totalTokens > maxTokens) {
+        break;
+      }
+    }
+
+    return results.length === 0 ? data.slice(0, 1) : results;
+  })();
+
+  return filterMaxTokensResult;
+};
+
+export async function searchDatasetData(
+  props: SearchDatasetDataProps
+): Promise<SearchDatasetDataResponse> {
   let {
     teamId,
     reRankQuery,
@@ -457,47 +550,6 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       tokenLen: 0
     };
   };
-  const reRankSearchResult = async ({
-    data,
-    query
-  }: {
-    data: SearchDataResponseItemType[];
-    query: string;
-  }): Promise<SearchDataResponseItemType[]> => {
-    try {
-      const results = await reRankRecall({
-        query,
-        documents: data.map((item) => ({
-          id: item.id,
-          text: `${item.q}\n${item.a}`
-        }))
-      });
-
-      if (results.length === 0) {
-        usingReRank = false;
-        return [];
-      }
-
-      // add new score to data
-      const mergeResult = results
-        .map((item, index) => {
-          const target = data.find((dataItem) => dataItem.id === item.id);
-          if (!target) return null;
-          const score = item.score || 0;
-
-          return {
-            ...target,
-            score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
-          };
-        })
-        .filter(Boolean) as SearchDataResponseItemType[];
-
-      return mergeResult;
-    } catch (error) {
-      usingReRank = false;
-      return [];
-    }
-  };
   const multiQueryRecall = async ({
     embeddingLimit,
     fullTextLimit
@@ -582,10 +634,15 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       set.add(str);
       return true;
     });
-    return reRankSearchResult({
-      query: reRankQuery,
-      data: filterSameDataResults
-    });
+    try {
+      return datasetDataReRank({
+        query: reRankQuery,
+        data: filterSameDataResults
+      });
+    } catch (error) {
+      usingReRank = false;
+      return [];
+    }
   })();
 
   // embedding recall and fullText recall rrf concat
@@ -630,31 +687,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   })();
 
   // token filter
-  const filterMaxTokensResult = await (async () => {
-    const tokensScoreFilter = await Promise.all(
-      scoreFilter.map(async (item) => ({
-        ...item,
-        tokens: await countPromptTokens(item.q + item.a)
-      }))
-    );
-
-    const results: SearchDataResponseItemType[] = [];
-    let totalTokens = 0;
-
-    for await (const item of tokensScoreFilter) {
-      totalTokens += item.tokens;
-
-      if (totalTokens > maxTokens + 500) {
-        break;
-      }
-      results.push(item);
-      if (totalTokens > maxTokens) {
-        break;
-      }
-    }
-
-    return results.length === 0 ? scoreFilter.slice(0, 1) : results;
-  })();
+  const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
 
   return {
     searchRes: filterMaxTokensResult,
@@ -666,3 +699,53 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     usingSimilarityFilter
   };
 }
+
+export type DefaultSearchDatasetDataProps = SearchDatasetDataProps & {
+  [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
+  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+};
+export const defaultSearchDatasetData = async ({
+  datasetSearchUsingExtensionQuery,
+  datasetSearchExtensionModel,
+  datasetSearchExtensionBg,
+  ...props
+}: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
+  const query = props.queries[0];
+
+  const extensionModel = datasetSearchUsingExtensionQuery
+    ? getLLMModel(datasetSearchExtensionModel)
+    : undefined;
+
+  const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+    query,
+    extensionModel,
+    extensionBg: datasetSearchExtensionBg
+  });
+
+  const result = await searchDatasetData({
+    ...props,
+    reRankQuery: rewriteQuery,
+    queries: concatQueries
+  });
+
+  return {
+    ...result,
+    queryExtensionResult: aiExtensionResult
+      ? {
+          model: aiExtensionResult.model,
+          inputTokens: aiExtensionResult.inputTokens,
+          outputTokens: aiExtensionResult.outputTokens,
+          query: concatQueries.join('\n')
+        }
+      : undefined
+  };
+};
+
+export type DeepRagSearchProps = SearchDatasetDataProps & {
+  [NodeInputKeyEnum.datasetDeepSearchModel]?: string;
+  [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
+  [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
+};
+export const deepRagSearch = (data: DeepRagSearchProps) =>
+  POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);

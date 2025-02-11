@@ -106,7 +106,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   }
 
   aiChatVision = modelConstantsData.vision && aiChatVision;
-  stream = stream && isResponseAnswerText;
   aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
 
   const chatHistories = getHistories(history, histories);
@@ -202,6 +201,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         res,
         stream: response,
         aiChatReasoning,
+        isResponseAnswerText,
         workflowStreamResponse
       });
 
@@ -212,19 +212,27 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     } else {
       const unStreamResponse = response as ChatCompletion;
       const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-      const reasoning = aiChatReasoning
-        ? // @ts-ignore
-          unStreamResponse.choices?.[0]?.message?.reasoning_content || ''
-        : '';
+      // @ts-ignore
+      const reasoning = unStreamResponse.choices?.[0]?.message?.reasoning_content || '';
+
+      // Some models do not support streaming
       if (stream) {
-        // Some models do not support streaming
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.fastAnswer,
-          data: textAdaptGptResponse({
-            text: answer,
-            reasoning_content: reasoning
-          })
-        });
+        if (isResponseAnswerText && answer) {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              text: answer
+            })
+          });
+        }
+        if (aiChatReasoning && reasoning) {
+          workflowStreamResponse?.({
+            event: SseResponseEventEnum.fastAnswer,
+            data: textAdaptGptResponse({
+              reasoning_content: reasoning
+            })
+          });
+        }
       }
 
       return {
@@ -269,6 +277,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       outputTokens: outputTokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
+      reasoningText,
       historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
       contextTotalLen: completeMessages.length
     },
@@ -476,12 +485,14 @@ async function streamResponse({
   res,
   stream,
   workflowStreamResponse,
-  aiChatReasoning
+  aiChatReasoning,
+  isResponseAnswerText
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
   aiChatReasoning?: boolean;
+  isResponseAnswerText?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -497,20 +508,27 @@ async function streamResponse({
 
     const content = part.choices?.[0]?.delta?.content || '';
     answer += content;
+    if (isResponseAnswerText && content) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: content
+        })
+      });
+    }
 
-    const reasoningContent = aiChatReasoning
-      ? part.choices?.[0]?.delta?.reasoning_content || ''
-      : '';
+    const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
     reasoning += reasoningContent;
-
-    workflowStreamResponse?.({
-      write,
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        text: content,
-        reasoning_content: reasoningContent
-      })
-    });
+    if (aiChatReasoning && reasoningContent) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          reasoning_content: reasoningContent
+        })
+      });
+    }
   }
 
   return { answer, reasoning };

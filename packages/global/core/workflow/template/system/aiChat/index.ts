@@ -151,6 +151,20 @@ export const AiChatModule: FlowNodeTemplateType = {
       description: i18nT('common:core.module.output.description.Ai response content'),
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: NodeOutputKeyEnum.reasoningText,
+      key: NodeOutputKeyEnum.reasoningText,
+      required: false,
+      label: i18nT('workflow:reasoning_text'),
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.static,
+      invalid: true,
+      invalidCondition: ({ inputs, llmModelList }) => {
+        const model = inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value;
+        const modelItem = llmModelList.find((item) => item.model === model);
+        return modelItem?.reasoning !== true;
+      }
     }
   ]
 };

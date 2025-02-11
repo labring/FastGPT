@@ -179,6 +179,12 @@ export const streamFetch = ({
           })();
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
+            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            onMessage({
+              event,
+              reasoningText
+            });
+
             const text = parseJson.choices?.[0]?.delta?.content || '';
             for (const item of text) {
               pushDataToQueue({
@@ -186,13 +192,13 @@ export const streamFetch = ({
                 text: item
               });
             }
-
+          } else if (event === SseResponseEventEnum.fastAnswer) {
             const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
             onMessage({
               event,
               reasoningText
             });
-          } else if (event === SseResponseEventEnum.fastAnswer) {
+
             const text = parseJson.choices?.[0]?.delta?.content || '';
             pushDataToQueue({
               event,

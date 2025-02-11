@@ -23,7 +23,6 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import { workflowSystemVariables } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
@@ -164,12 +163,13 @@ const EditForm = ({
                   aiChatResponseFormat: appForm.aiSettings.aiChatResponseFormat,
                   aiChatJsonSchema: appForm.aiSettings.aiChatJsonSchema
                 }}
-                onChange={({ maxHistories = 6, aiChatReasoning = true, ...data }) => {
+                onChange={({ maxHistories = 6, ...data }) => {
                   setAppForm((state) => ({
                     ...state,
                     aiSettings: {
                       ...state.aiSettings,
-                      ...data
+                      ...data,
+                      maxHistories
                     }
                   }));
                 }}

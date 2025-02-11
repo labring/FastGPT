@@ -33,8 +33,10 @@ export enum WorkflowIOValueTypeEnum {
   dynamic = 'dynamic',
 
   // plugin special type
-  selectApp = 'selectApp',
-  selectDataset = 'selectDataset'
+  selectDataset = 'selectDataset',
+
+  // abandon
+  selectApp = 'selectApp'
 }
 
 export const toolValueTypeList = [
@@ -158,6 +160,10 @@ export enum NodeInputKeyEnum {
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',
   collectionFilterMatch = 'collectionFilterMatch',
   authTmbId = 'authTmbId',
+  datasetDeepSearch = 'datasetDeepSearch',
+  datasetDeepSearchModel = 'datasetDeepSearchModel',
+  datasetDeepSearchMaxTimes = 'datasetDeepSearchMaxTimes',
+  datasetDeepSearchBg = 'datasetDeepSearchBg',
 
   // concat dataset
   datasetQuoteList = 'system_datasetQuoteList',
