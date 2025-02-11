@@ -672,7 +672,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
     "appId": "appId",
     "offset": 0,
     "pageSize": 20,
-    "source: "api"
+    "source": "api"
 }'
 ```
 
