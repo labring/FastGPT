@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import { Box, css, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
@@ -43,33 +43,15 @@ const SettingLLMModel = ({
     return getWebDefaultModel(modelList).model;
   }, [modelList]);
 
-  const onChangeModelData = useCallback(
-    (e: SettingAIDataType, refreshReasoning = true) => {
-      const modelData = llmModelList.find((item) => item.model === e.model)!;
-      if (modelData) {
-        if (modelData.reasoning !== true) {
-          e.aiChatReasoning = false;
-        } else if (refreshReasoning) {
-          e.aiChatReasoning = true;
-        }
-        onChange(e);
-      }
-    },
-    [onChange, llmModelList]
-  );
-
   // Set default model
   useEffect(() => {
     if (!modelList.find((item) => item.model === model) && !!defaultModel) {
-      onChangeModelData(
-        {
-          ...defaultData,
-          model: defaultModel
-        },
-        true
-      );
+      onChange({
+        ...defaultData,
+        model: defaultModel
+      });
     }
-  }, [modelList, model, defaultModel, onChangeModelData]);
+  }, [modelList, model, defaultModel, onChange]);
 
   const {
     isOpen: isOpenAIChatSetting,
@@ -96,13 +78,10 @@ const SettingLLMModel = ({
               label: item.name
             }))}
             onchange={(e) => {
-              onChangeModelData(
-                {
-                  ...defaultData,
-                  model: e
-                },
-                true
-              );
+              onChange({
+                ...defaultData,
+                model: e
+              });
             }}
           />
         </Box>
@@ -120,7 +99,8 @@ const SettingLLMModel = ({
         <AISettingModal
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
-            onChangeModelData(e, false);
+            console.log(e);
+            onChange(e);
             onCloseAIChatSetting();
           }}
           defaultData={defaultData}
