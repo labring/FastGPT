@@ -15,7 +15,8 @@ import { Types } from 'mongoose';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
@@ -89,6 +90,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
             },
             {
               $project: {
+                value: 1,
                 userGoodFeedback: 1,
                 userBadFeedback: 1,
                 customFeedbacks: 1,
@@ -136,6 +138,16 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
                 cond: { $ifNull: ['$$item.adminFeedback', false] }
               }
             }
+          },
+          chatDetails: {
+            $map: {
+              input: '$chatitems',
+              as: 'item',
+              in: {
+                id: '$$item._id',
+                value: '$$item.value'
+              }
+            }
           }
         }
       },
@@ -153,7 +165,8 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           customFeedbacksCount: 1,
           markCount: 1,
           outLinkUid: 1,
-          tmbId: 1
+          tmbId: 1,
+          chatDetails: 1
         }
       }
     ],
@@ -181,8 +194,47 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     const userFeedbackCount = doc.userGoodFeedbackCount || doc.userBadFeedbackCount || '-';
     const customFeedbacksCount = doc.customFeedbacksCount || '-';
     const markCount = doc.markCount;
+    const chatDetails = doc.chatDetails.map(
+      (chat: { id: string; value: AIChatItemValueItemType[] }) => {
+        return chat.value.map((item) => {
+          if ([ChatItemValueTypeEnum.text, ChatItemValueTypeEnum.reasoning].includes(item.type)) {
+            return item;
+          }
+          if (item.type === ChatItemValueTypeEnum.tool) {
+            const newTools = item.tools?.map((tool) => {
+              const { functionName, toolAvatar, ...rest } = tool;
+              return {
+                ...rest
+              };
+            });
 
-    const res = `\n"${time}","${source}","${tmb}","${title}","${messageCount}","${userFeedbackCount}","${customFeedbacksCount}","${markCount}"`;
+            return {
+              ...item,
+              tools: newTools
+            };
+          }
+          if (item.type === ChatItemValueTypeEnum.interactive) {
+            const newInteractive = {
+              type: item.interactive?.type,
+              params: item.interactive?.params
+            };
+
+            return {
+              ...item,
+              interactive: newInteractive
+            };
+          }
+        });
+      }
+    );
+    let chatDetailsStr = '';
+    try {
+      chatDetailsStr = JSON.stringify(chatDetails);
+    } catch (e) {
+      addLog.error(`export chat logs error`, e);
+    }
+
+    const res = `\n"${time}","${source}","${tmb}","${title}","${messageCount}","${userFeedbackCount}","${customFeedbacksCount}","${markCount}","${chatDetailsStr}"`;
 
     write(res);
   });
