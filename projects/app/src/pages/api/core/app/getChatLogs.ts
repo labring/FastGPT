@@ -12,6 +12,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 async function handler(
   req: NextApiRequest,
@@ -20,7 +21,9 @@ async function handler(
   const {
     appId,
     dateStart = addDays(new Date(), -7),
-    dateEnd = new Date()
+    dateEnd = new Date(),
+    sources,
+    logTitle
   } = req.body as GetAppChatLogsParams;
 
   const { pageSize = 20, offset } = parsePaginationRequest(req);
@@ -38,7 +41,14 @@ async function handler(
     updateTime: {
       $gte: new Date(dateStart),
       $lte: new Date(dateEnd)
-    }
+    },
+    ...(sources && { source: { $in: sources } }),
+    ...(logTitle && {
+      $or: [
+        { title: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } },
+        { customTitle: { $regex: new RegExp(`${replaceRegChars(logTitle)}`, 'i') } }
+      ]
+    })
   };
 
   const [list, total] = await Promise.all([
@@ -127,6 +137,7 @@ async function handler(
             _id: 1,
             id: '$chatId',
             title: 1,
+            customTitle: 1,
             source: 1,
             time: '$updateTime',
             messageCount: { $size: '$chatitems' },

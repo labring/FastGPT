@@ -40,6 +40,7 @@ export type AppLogsListItemType = {
   source: string;
   time: Date;
   title: string;
+  customTitle: string;
   messageCount: number;
   userGoodFeedbackCount: number;
   userBadFeedbackCount: number;
