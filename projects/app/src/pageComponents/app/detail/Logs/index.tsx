@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Flex,
   Box,
@@ -35,6 +35,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
+import { debounce } from 'lodash';
 
 const DetailLogsModal = dynamic(() => import('./DetailLogsModal'));
 
@@ -50,6 +51,15 @@ const Logs = () => {
 
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const [logTitle, setLogTitle] = useState<string>();
+  const [inputValue, setInputValue] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLogTitle(inputValue);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [inputValue]);
 
   const {
     value: chatSources,
@@ -162,8 +172,8 @@ const Logs = () => {
           <SearchInput
             placeholder={t('app:logs_title')}
             w={'240px'}
-            value={logTitle}
-            onChange={(e) => setLogTitle(e.target.value)}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
           />
         </Flex>
         <Box flex={'1'} />

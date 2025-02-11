@@ -229,7 +229,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
     );
     let chatDetailsStr = '';
     try {
-      chatDetailsStr = JSON.stringify(chatDetails);
+      chatDetailsStr = JSON.stringify(chatDetails).replace(/"/g, '""').replace(/\n/g, '\\n');
     } catch (e) {
       addLog.error(`export chat logs error`, e);
     }
@@ -252,6 +252,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
 }
 
 export default NextAPI(
-  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 2, limit: 1, force: true }),
+  useIPFrequencyLimit({ id: 'export-chat-logs', seconds: 60, limit: 1, force: true }),
   handler
 );
