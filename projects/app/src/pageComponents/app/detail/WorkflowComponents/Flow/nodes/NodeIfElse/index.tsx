@@ -3,7 +3,7 @@ import NodeCard from '../render/NodeCard';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeProps, Position } from 'reactflow';
+import { NodeProps, Position, useViewport } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { useContextSelector } from 'use-context-selector';
@@ -18,6 +18,7 @@ import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/
 const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
+  const { zoom } = useViewport();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
 
@@ -63,6 +64,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               nodeId={nodeId}
             />
           )}
+          zoom={zoom}
         >
           {(provided) => (
             <Box {...provided.droppableProps} ref={provided.innerRef}>

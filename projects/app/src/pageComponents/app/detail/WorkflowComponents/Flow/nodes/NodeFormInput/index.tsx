@@ -1,6 +1,6 @@
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo, useState } from 'react';
-import { NodeProps } from 'reactflow';
+import { NodeProps, useViewport } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
@@ -38,11 +38,17 @@ import InputFormEditModal, { defaultFormInput } from './InputFormEditModal';
 import RenderOutput from '../render/RenderOutput';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import DndDrag, {
+  Draggable,
+  DraggableProvided,
+  DraggableStateSnapshot
+} from '@fastgpt/web/components/common/DndDrag';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs, outputs } = data;
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { zoom } = useViewport();
 
   const [editField, setEditField] = useState<UserInputFormItemType>();
 
@@ -159,53 +165,79 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     <Th>{t('user:operations')}</Th>
                   </Tr>
                 </Thead>
-                <Tbody>
+                <DndDrag<UserInputFormItemType>
+                  onDragEndCb={(list) => {
+                    const sortedOutputs = [
+                      outputs[0],
+                      ...outputs.slice(1).sort((a, b) => {
+                        const aIndex = list.findIndex((item) => item.key === a.key);
+                        const bIndex = list.findIndex((item) => item.key === b.key);
+                        return aIndex - bIndex;
+                      })
+                    ];
+
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key,
+                      value: {
+                        ...props,
+                        key,
+                        value: list
+                      }
+                    });
+                    onChangeNode({
+                      nodeId,
+                      type: 'attr',
+                      key: 'outputs',
+                      value: sortedOutputs
+                    });
+                  }}
+                  dataList={inputs}
+                  renderClone={(provided, snapshot, rubric) => {
+                    const item = inputs[rubric.source.index];
+                    const icon = FlowNodeInputMap[item.type as FlowNodeInputTypeEnum]?.icon;
+
+                    return (
+                      <TableItem
+                        provided={provided}
+                        snapshot={snapshot}
+                        item={item}
+                        icon={icon}
+                        setEditField={setEditField}
+                        onDelete={onDelete}
+                      />
+                    );
+                  }}
+                  isTable
+                  zoom={zoom}
+                >
                   {inputs.map((item, index) => {
                     const icon = FlowNodeInputMap[item.type as FlowNodeInputTypeEnum]?.icon;
                     return (
-                      <Tr key={index}>
-                        <Td>
-                          <Flex alignItems={'center'} fontSize={'mini'} fontWeight={'medium'}>
-                            {!!icon && (
-                              <MyIcon name={icon as any} w={'14px'} mr={1} color={'myGray.400'} />
-                            )}
-                            {item.label}
-                          </Flex>
-                        </Td>
-                        <Td>{item.description || '-'}</Td>
-                        <Td>
-                          {item.required ? (
-                            <Flex alignItems={'center'}>
-                              <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
-                            </Flex>
-                          ) : (
-                            '-'
-                          )}
-                        </Td>
-                        <Td>
-                          <Flex>
-                            <MyIconButton
-                              icon={'common/settingLight'}
-                              onClick={() => setEditField(item)}
-                            />
-                            <MyIconButton
-                              icon={'delete'}
-                              hoverColor={'red.500'}
-                              onClick={() => onDelete(item.key)}
-                            />
-                          </Flex>
-                        </Td>
-                      </Tr>
+                      <Draggable key={item.key} draggableId={item.key} index={index}>
+                        {(provided, snapshot) => (
+                          <TableItem
+                            provided={provided}
+                            snapshot={snapshot}
+                            key={item.key}
+                            item={item}
+                            icon={icon}
+                            setEditField={setEditField}
+                            onDelete={onDelete}
+                          />
+                        )}
+                      </Draggable>
                     );
                   })}
-                </Tbody>
+                </DndDrag>
               </Table>
             </TableContainer>
           </Box>
         );
       }
     }),
-    [t, editField, onChangeNode, nodeId, outputs]
+    [t, editField, zoom, onChangeNode, nodeId, outputs]
   );
 
   return (
@@ -223,3 +255,54 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 };
 
 export default React.memo(NodeFormInput);
+
+const TableItem = ({
+  provided,
+  snapshot,
+  item,
+  icon,
+  setEditField,
+  onDelete
+}: {
+  provided: DraggableProvided;
+  snapshot: DraggableStateSnapshot;
+  item: UserInputFormItemType;
+  icon: string;
+  setEditField: (item: UserInputFormItemType) => void;
+  onDelete: (valueKey: string) => void;
+}) => {
+  return (
+    <Tr
+      ref={provided.innerRef}
+      {...provided.draggableProps}
+      {...provided.dragHandleProps}
+      style={{
+        ...provided.draggableProps.style,
+        opacity: snapshot.isDragging ? 0.8 : 1
+      }}
+    >
+      <Td>
+        <Flex alignItems={'center'} fontSize={'mini'} fontWeight={'medium'} whiteSpace={'nowrap'}>
+          {!!icon && <MyIcon name={icon as any} w={'14px'} mr={1} color={'myGray.400'} />}
+          {item.label}
+        </Flex>
+      </Td>
+      <Td>{item.description || '-'}</Td>
+      <Td>
+        {item.required ? (
+          <Flex alignItems={'center'}>
+            <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
+          </Flex>
+        ) : (
+          '-'
+        )}
+      </Td>
+      <Td>
+        <Flex>
+          <MyIconButton icon={'common/settingLight'} onClick={() => setEditField(item)} />
+          <MyIconButton icon={'delete'} hoverColor={'red.500'} onClick={() => onDelete(item.key)} />
+        </Flex>
+      </Td>
+    </Tr>
+  );
+};
