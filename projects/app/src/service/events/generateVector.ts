@@ -193,7 +193,8 @@ const rebuildData = async ({
             billId: trainingData.billId,
             mode: TrainingModeEnum.chunk,
             model: trainingData.model,
-            dataId: newRebuildingData._id
+            dataId: newRebuildingData._id,
+            retryCount: 50
           }
         ],
         { session }
