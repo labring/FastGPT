@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import type { InitChatResponse, InitOutLinkChatProps } from '@/global/core/chat/api.d';
+import type { InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -39,29 +38,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??
     [];
 
-  jsonRes<InitChatResponse>(res, {
-    data: {
-      chatId,
-      appId: app._id,
-      title: chat?.title,
-      userAvatar: getRandomUserAvatar(),
-      variables: chat?.variables,
-      app: {
-        chatConfig: getAppChatConfig({
-          chatConfig,
-          systemConfigNode: getGuideModule(nodes),
-          storeVariables: chat?.variableList,
-          storeWelcomeText: chat?.welcomeText,
-          isPublicFetch: false
-        }),
-        name: app.name,
-        avatar: app.avatar,
-        intro: app.intro,
-        type: app.type,
-        pluginInputs
-      }
+  return {
+    chatId,
+    appId: app._id,
+    title: chat?.title,
+    userAvatar: getRandomUserAvatar(),
+    variables: chat?.variables,
+    app: {
+      chatConfig: getAppChatConfig({
+        chatConfig,
+        systemConfigNode: getGuideModule(nodes),
+        storeVariables: chat?.variableList,
+        storeWelcomeText: chat?.welcomeText,
+        isPublicFetch: false
+      }),
+      name: app.name,
+      avatar: app.avatar,
+      intro: app.intro,
+      type: app.type,
+      pluginInputs
     }
-  });
+  };
 }
 
 export default NextAPI(handler);

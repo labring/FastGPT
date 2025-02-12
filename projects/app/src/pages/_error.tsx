@@ -4,10 +4,12 @@ import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box } from '@chakra-ui/react';
 import { TrackEventName } from '@/web/common/system/constants';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 function Error() {
   const router = useRouter();
-  const { lastRoute } = useSystemStore();
+  const { toast } = useToast();
+  const { lastRoute, llmModelList, embeddingModelList } = useSystemStore();
 
   useEffect(() => {
     setTimeout(() => {
@@ -20,8 +22,34 @@ function Error() {
       });
     }, 1000);
 
+    let modelError = false;
+    if (llmModelList.length === 0) {
+      modelError = true;
+      toast({
+        title: '未配置语言模型',
+        status: 'error'
+      });
+    } else if (!llmModelList.some((item) => item.datasetProcess)) {
+      modelError = true;
+      toast({
+        title: '未配置知识库文件处理模型',
+        status: 'error'
+      });
+    }
+    if (embeddingModelList.length === 0) {
+      modelError = true;
+      toast({
+        title: '未配置索引模型',
+        status: 'error'
+      });
+    }
+
     setTimeout(() => {
-      router.back();
+      if (modelError) {
+        router.push('/account/model');
+      } else {
+        router.push('/app/list');
+      }
     }, 2000);
   }, []);
 
