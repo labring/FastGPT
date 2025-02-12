@@ -9,7 +9,8 @@ import {
   Th,
   Td,
   TableContainer,
-  Stack
+  Stack,
+  Tbody
 } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
@@ -30,7 +31,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useReactFlow, useViewport } from 'reactflow';
 import DndDrag, {
   Draggable,
   DraggableProvided,
@@ -60,14 +60,15 @@ export const addVariable = () => {
 
 const VariableEdit = ({
   variables = [],
-  onChange
+  onChange,
+  zoom = 1
 }: {
   variables?: VariableItemType[];
   onChange: (data: VariableItemType[]) => void;
+  zoom?: number;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { zoom } = useViewport();
 
   const form = useForm<VariableItemType>();
   const { setValue, reset, watch, getValues } = form;
@@ -222,24 +223,27 @@ const VariableEdit = ({
                   variables={variables}
                 />
               )}
-              isTable
-              zoom={zoom}
             >
-              {formatVariables.map((item, index) => (
-                <Draggable key={item.id} draggableId={item.id} index={index}>
-                  {(provided, snapshot) => (
-                    <TableItem
-                      provided={provided}
-                      snapshot={snapshot}
-                      item={item}
-                      reset={reset}
-                      onChange={onChange}
-                      variables={variables}
-                      key={item.id}
-                    />
-                  )}
-                </Draggable>
-              ))}
+              {({ provided, snapshot, draggingItemHeight }) => (
+                <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                  {formatVariables.map((item, index) => (
+                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                      {(provided, snapshot) => (
+                        <TableItem
+                          provided={provided}
+                          snapshot={snapshot}
+                          item={item}
+                          reset={reset}
+                          onChange={onChange}
+                          variables={variables}
+                          key={item.id}
+                        />
+                      )}
+                    </Draggable>
+                  ))}
+                  {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
+                </Tbody>
+              )}
             </DndDrag>
           </Table>
         </TableContainer>

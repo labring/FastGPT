@@ -1,5 +1,5 @@
 import { Box, Tbody } from '@chakra-ui/react';
-import React, { ReactNode, useState } from 'react';
+import React, { ReactElement, ReactNode, useState } from 'react';
 import {
   DragDropContext,
   Droppable,
@@ -14,22 +14,19 @@ export * from 'react-beautiful-dnd';
 type Props<T = any> = {
   onDragEndCb: (result: T[]) => void;
   renderClone?: DraggableChildrenFn;
-  children:
-    | ((provided: DroppableProvided, snapshot: DroppableStateSnapshot) => ReactNode)
-    | ReactNode;
+  children: ({
+    provided,
+    snapshot,
+    draggingItemHeight
+  }: {
+    provided: DroppableProvided;
+    snapshot: DroppableStateSnapshot;
+    draggingItemHeight: number;
+  }) => ReactElement<HTMLElement, string>;
   dataList: T[];
-  isTable?: boolean;
-  zoom?: number;
 };
 
-function DndDrag<T>({
-  children,
-  renderClone,
-  onDragEndCb,
-  dataList,
-  isTable = false,
-  zoom = 1
-}: Props<T>) {
+function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
   const onDragStart = (start: DragStart) => {
@@ -56,19 +53,7 @@ function DndDrag<T>({
   return (
     <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <Droppable droppableId="droppable" renderClone={renderClone}>
-        {(provided, snapshot) => {
-          return isTable ? (
-            <Tbody {...provided.droppableProps} ref={provided.innerRef}>
-              {typeof children !== 'function' && children}
-              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
-            </Tbody>
-          ) : (
-            <Box {...provided.droppableProps} ref={provided.innerRef}>
-              {typeof children === 'function' && children(provided, snapshot)}
-              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
-            </Box>
-          );
-        }}
+        {(provided, snapshot) => children({ provided, snapshot, draggingItemHeight })}
       </Droppable>
     </DragDropContext>
   );
