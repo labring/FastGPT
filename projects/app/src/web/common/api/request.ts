@@ -10,6 +10,7 @@ import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -27,41 +28,48 @@ interface ResponseDataType {
 
 const maxQuantityMap: Record<
   string,
-  {
-    amount: number;
-    sign: AbortController;
-  }
+  | undefined
+  | {
+      id: string;
+      sign: AbortController;
+    }[]
 > = {};
 
+/* 
+  Every request generates a unique sign
+  If the number of requests exceeds maxQuantity, cancel the earliest request and initiate a new request
+*/
 function checkMaxQuantity({ url, maxQuantity }: { url: string; maxQuantity?: number }) {
-  if (maxQuantity) {
-    const item = maxQuantityMap[url];
-    const controller = new AbortController();
+  if (!maxQuantity) return {};
+  const item = maxQuantityMap[url];
+  const id = getNanoid();
+  const sign = new AbortController();
 
-    if (item) {
-      if (item.amount >= maxQuantity) {
-        !item.sign?.signal?.aborted && item.sign?.abort?.();
-        maxQuantityMap[url] = {
-          amount: 1,
-          sign: controller
-        };
-      } else {
-        item.amount++;
-      }
-    } else {
-      maxQuantityMap[url] = {
-        amount: 1,
-        sign: controller
-      };
+  if (item && item.length > 0) {
+    if (item.length >= maxQuantity) {
+      const firstSign = item.shift();
+      firstSign?.sign.abort();
     }
-    return controller;
+    item.push({ id, sign });
+  } else {
+    maxQuantityMap[url] = [{ id, sign }];
   }
+  return {
+    id,
+    abortSignal: sign?.signal
+  };
 }
-function requestFinish({ url }: { url: string }) {
+
+function requestFinish({ signId, url }: { signId?: string; url: string }) {
   const item = maxQuantityMap[url];
   if (item) {
-    item.amount--;
-    if (item.amount <= 0) {
+    if (signId) {
+      const index = item.findIndex((item) => item.id === signId);
+      if (index !== -1) {
+        item.splice(index, 1);
+      }
+    }
+    if (item.length <= 0) {
       delete maxQuantityMap[url];
     }
   }
@@ -165,7 +173,7 @@ function request(
     }
   }
 
-  const controller = checkMaxQuantity({ url, maxQuantity });
+  const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity });
 
   return instance
     .request({
@@ -174,13 +182,13 @@ function request(
       method,
       data: ['POST', 'PUT'].includes(method) ? data : undefined,
       params: !['POST', 'PUT'].includes(method) ? data : undefined,
-      signal: cancelToken?.signal ?? controller?.signal,
+      signal: cancelToken?.signal ?? abortSignal,
       withCredentials,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
     .catch((err) => responseError(err))
-    .finally(() => requestFinish({ url }));
+    .finally(() => requestFinish({ signId, url }));
 }
 
 /**

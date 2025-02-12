@@ -227,12 +227,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
         });
       }
     );
-    let chatDetailsStr = '';
-    try {
-      chatDetailsStr = JSON.stringify(chatDetails).replace(/"/g, '""').replace(/\n/g, '\\n');
-    } catch (e) {
-      addLog.error(`export chat logs error`, e);
-    }
+    let chatDetailsStr = JSON.stringify(chatDetails).replace(/"/g, '""').replace(/\n/g, '\\n');
 
     const res = `\n"${time}","${source}","${tmb}","${title}","${messageCount}","${userFeedbackCount}","${customFeedbacksCount}","${markCount}","${chatDetailsStr}"`;
 
