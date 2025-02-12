@@ -142,7 +142,7 @@ export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
   if (quoteQA.length === 0) {
     return [];
   }
-  if (quoteQA.some((item) => !item.q)) {
+  if (quoteQA.some((item) => typeof item !== 'object' || !item.q)) {
     return undefined;
   }
   return quoteQA;

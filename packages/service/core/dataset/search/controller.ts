@@ -635,7 +635,7 @@ export async function searchDatasetData(
       return true;
     });
     try {
-      return datasetDataReRank({
+      return await datasetDataReRank({
         query: reRankQuery,
         data: filterSameDataResults
       });
