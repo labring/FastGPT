@@ -417,7 +417,7 @@ const InputTypeConfig = ({
                 );
               }}
             >
-              {({ provided, snapshot, draggingItemHeight }) => (
+              {({ provided }) => (
                 <Box
                   {...provided.droppableProps}
                   ref={provided.innerRef}
@@ -487,7 +487,6 @@ const InputTypeConfig = ({
                       )}
                     </Draggable>
                   ))}
-                  {snapshot.isDraggingOver && <Box height={`${draggingItemHeight}px`} />}
                 </Box>
               )}
             </DndDrag>

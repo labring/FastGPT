@@ -16,17 +16,16 @@ type Props<T = any> = {
   renderClone?: DraggableChildrenFn;
   children: ({
     provided,
-    snapshot,
-    draggingItemHeight
+    snapshot
   }: {
     provided: DroppableProvided;
     snapshot: DroppableStateSnapshot;
-    draggingItemHeight: number;
   }) => ReactElement<HTMLElement, string>;
   dataList: T[];
+  zoom?: number;
 };
 
-function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) {
+function DndDrag<T>({ children, renderClone, onDragEndCb, dataList, zoom = 1 }: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
   const onDragStart = (start: DragStart) => {
@@ -53,7 +52,12 @@ function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) 
   return (
     <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <Droppable droppableId="droppable" renderClone={renderClone}>
-        {(provided, snapshot) => children({ provided, snapshot, draggingItemHeight })}
+        {(provided, snapshot) => (
+          <>
+            {children({ provided, snapshot })}
+            {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
+          </>
+        )}
       </Droppable>
     </DragDropContext>
   );
