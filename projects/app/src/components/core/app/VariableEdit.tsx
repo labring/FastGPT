@@ -204,8 +204,8 @@ const VariableEdit = ({
             <Thead>
               <Tr>
                 <Th>{t('workflow:Variable_name')}</Th>
-                <Th>{t('common:common.Require Input')}</Th>
-                <Th>{t('common:common.Operation')}</Th>
+                <Th>{t('common:Required_input')}</Th>
+                <Th>{t('common:Operation')}</Th>
               </Tr>
             </Thead>
             <DndDrag<VariableItemType>

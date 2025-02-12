@@ -25,6 +25,9 @@ export function reRankRecall({
   if (!model) {
     return Promise.reject('no rerank model');
   }
+  if (documents.length === 0) {
+    return Promise.resolve([]);
+  }
 
   const { baseUrl, authorization } = getAxiosConfig();
 

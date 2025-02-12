@@ -76,10 +76,8 @@ const SelectMarkCollection = ({
                       }}
                     >
                       <Flex alignItems={'center'} h={'38px'}>
-                        <Avatar src={item.avatar} w={['24px', '28px', '32px']}></Avatar>
-                        <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg']}>
-                          {item.name}
-                        </Box>
+                        <Avatar src={item.avatar} w={'2rem'} borderRadius={'sm'}></Avatar>
+                        <Box ml={3}>{item.name}</Box>
                       </Flex>
                       <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
                         <MyIcon mr={1} name="kbTest" w={'12px'} />

@@ -76,7 +76,7 @@ const FolderSlideCard = ({
           <MyDivider my={6} />
 
           <Box>
-            <FormLabel>{t('common:common.Operation')}</FormLabel>
+            <FormLabel>{t('common:Operation')}</FormLabel>
 
             <Button
               variant={'transparentBase'}

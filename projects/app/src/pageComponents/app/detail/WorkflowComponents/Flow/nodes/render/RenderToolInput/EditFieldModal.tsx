@@ -88,7 +88,7 @@ const EditFieldModal = ({
     <MyModal isOpen iconSrc="modal/edit" title={t('workflow:tool_field')} onClose={onClose}>
       <ModalBody>
         <Flex alignItems={'center'} mb={5}>
-          <Box flex={'0 0 80px'}>{t('common:common.Require Input')}</Box>
+          <Box flex={'0 0 80px'}>{t('common:Required_input')}</Box>
           <Switch {...register('required')} />
         </Flex>
         <Flex alignItems={'center'} mb={5}>
