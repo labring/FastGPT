@@ -30,12 +30,12 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useReactFlow, useViewport } from 'reactflow';
 import DndDrag, {
   Draggable,
   DraggableProvided,
   DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
+import { useViewport } from 'reactflow';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
@@ -60,14 +60,16 @@ export const addVariable = () => {
 
 const VariableEdit = ({
   variables = [],
-  onChange
+  onChange,
+  isWorkflow
 }: {
   variables?: VariableItemType[];
   onChange: (data: VariableItemType[]) => void;
+  isWorkflow?: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { zoom } = useViewport();
+  const { zoom } = isWorkflow ? useViewport() : { zoom: 1 };
 
   const form = useForm<VariableItemType>();
   const { setValue, reset, watch, getValues } = form;

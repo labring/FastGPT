@@ -134,7 +134,7 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
     }));
   });
 
-  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
+  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} isWorkflow />;
 }
 
 function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {
