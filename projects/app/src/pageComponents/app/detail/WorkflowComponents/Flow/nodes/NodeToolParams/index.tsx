@@ -70,7 +70,7 @@ const NodeToolParams = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     {t('workflow:tool_params.params_description')}
                   </Th>
                   <Th p={0} px={4} bg={'myGray.50'} borderBottomRightRadius={'none !important'}>
-                    {t('common:common.Operation')}
+                    {t('common:Operation')}
                   </Th>
                 </Tr>
               </Thead>
