@@ -223,8 +223,9 @@ const VariableEdit = ({
                   variables={variables}
                 />
               )}
+              zoom={zoom}
             >
-              {({ provided, snapshot, draggingItemHeight }) => (
+              {({ provided }) => (
                 <Tbody {...provided.droppableProps} ref={provided.innerRef}>
                   {formatVariables.map((item, index) => (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
@@ -241,7 +242,6 @@ const VariableEdit = ({
                       )}
                     </Draggable>
                   ))}
-                  {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
                 </Tbody>
               )}
             </DndDrag>

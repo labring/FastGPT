@@ -62,8 +62,9 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   index={rubric.source.index}
                 />
               )}
+              zoom={zoom}
             >
-              {({ provided, snapshot, draggingItemHeight }) => (
+              {({ provided }) => (
                 <Box ref={provided.innerRef} {...provided.droppableProps}>
                   {options.map((item, i) => (
                     <Draggable key={item.key} index={i} draggableId={item.key}>
@@ -80,7 +81,6 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       )}
                     </Draggable>
                   ))}
-                  {snapshot.isDraggingOver && <Box height={`${draggingItemHeight}px`} />}
                 </Box>
               )}
             </DndDrag>
