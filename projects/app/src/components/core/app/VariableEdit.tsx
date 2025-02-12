@@ -1,11 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   Box,
   Button,
   Flex,
   Table,
   Thead,
-  Tbody,
   Tr,
   Th,
   Td,
@@ -20,9 +19,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useForm } from 'react-hook-form';
+import { useForm, UseFormReset } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -32,6 +30,14 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodePluginIO/InputTypeConfig';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import { useReactFlow, useViewport } from 'reactflow';
+import DndDrag, {
+  Draggable,
+  DraggableProvided,
+  DraggableStateSnapshot
+} from '@fastgpt/web/components/common/DndDrag';
+
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const defaultVariable: VariableItemType = {
   id: nanoid(),
@@ -61,6 +67,7 @@ const VariableEdit = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { zoom } = useViewport();
 
   const form = useForm<VariableItemType>();
   const { setValue, reset, watch, getValues } = form;
@@ -166,7 +173,7 @@ const VariableEdit = ({
   );
 
   return (
-    <Box>
+    <Box className="nodrag">
       {/* Row box */}
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
@@ -200,48 +207,40 @@ const VariableEdit = ({
                 <Th>{t('common:common.Operation')}</Th>
               </Tr>
             </Thead>
-            <Tbody>
+            <DndDrag<VariableItemType>
+              onDragEndCb={(list) => {
+                onChange(list);
+              }}
+              dataList={formatVariables}
+              renderClone={(provided, snapshot, rubric) => (
+                <TableItem
+                  provided={provided}
+                  snapshot={snapshot}
+                  item={formatVariables[rubric.source.index]}
+                  reset={reset}
+                  onChange={onChange}
+                  variables={variables}
+                />
+              )}
+              isTable
+              zoom={zoom}
+            >
               {formatVariables.map((item, index) => (
-                <Tr key={item.id}>
-                  <Td fontWeight={'medium'}>
-                    <Flex alignItems={'center'}>
-                      <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={2} />
-                      {item.key}
-                    </Flex>
-                  </Td>
-                  <Td>
-                    <Flex alignItems={'center'}>
-                      {item.required ? (
-                        <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
-                      ) : (
-                        ''
-                      )}
-                    </Flex>
-                  </Td>
-                  <Td>
-                    <Flex>
-                      <MyIconButton
-                        icon={'common/settingLight'}
-                        onClick={() => {
-                          const formattedItem = {
-                            ...item,
-                            list: item.enums || []
-                          };
-                          reset(formattedItem);
-                        }}
-                      />
-                      <MyIconButton
-                        icon={'delete'}
-                        hoverColor={'red.500'}
-                        onClick={() =>
-                          onChange(variables.filter((variable) => variable.id !== item.id))
-                        }
-                      />
-                    </Flex>
-                  </Td>
-                </Tr>
+                <Draggable key={item.id} draggableId={item.id} index={index}>
+                  {(provided, snapshot) => (
+                    <TableItem
+                      provided={provided}
+                      snapshot={snapshot}
+                      item={item}
+                      reset={reset}
+                      onChange={onChange}
+                      variables={variables}
+                      key={item.id}
+                    />
+                  )}
+                </Draggable>
               ))}
-            </Tbody>
+            </DndDrag>
           </Table>
         </TableContainer>
       )}
@@ -336,6 +335,67 @@ const VariableEdit = ({
         </MyModal>
       )}
     </Box>
+  );
+};
+
+const TableItem = ({
+  provided,
+  snapshot,
+  item,
+  reset,
+  onChange,
+  variables
+}: {
+  provided: DraggableProvided;
+  snapshot: DraggableStateSnapshot;
+  item: VariableItemType & {
+    icon?: string;
+  };
+  reset: UseFormReset<VariableItemType>;
+  onChange: (data: VariableItemType[]) => void;
+  variables: VariableItemType[];
+}) => {
+  return (
+    <Tr
+      ref={provided.innerRef}
+      {...provided.draggableProps}
+      {...provided.dragHandleProps}
+      style={{
+        ...provided.draggableProps.style,
+        opacity: snapshot.isDragging ? 0.8 : 1
+      }}
+    >
+      <Td fontWeight={'medium'}>
+        <Flex alignItems={'center'}>
+          <MyIcon name={item.icon as any} w={'16px'} color={'myGray.400'} mr={1} />
+          {item.key}
+        </Flex>
+      </Td>
+      <Td>
+        <Flex alignItems={'center'}>
+          {item.required ? <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} /> : ''}
+        </Flex>
+      </Td>
+      <Td>
+        <Flex>
+          <MyIconButton
+            icon={'common/settingLight'}
+            onClick={() => {
+              const formattedItem = {
+                ...item,
+                list: item.enums || []
+              };
+              reset(formattedItem);
+            }}
+          />
+          <MyIconButton
+            icon={'delete'}
+            hoverColor={'red.500'}
+            onClick={() => onChange(variables.filter((variable) => variable.id !== item.id))}
+          />
+        </Flex>
+      </Td>
+    </Tr>
   );
 };
 

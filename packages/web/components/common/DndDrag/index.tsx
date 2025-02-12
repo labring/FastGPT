@@ -1,23 +1,35 @@
-import { Box } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import { Box, Tbody } from '@chakra-ui/react';
+import React, { ReactNode, useState } from 'react';
 import {
   DragDropContext,
-  DroppableProps,
   Droppable,
   DraggableChildrenFn,
   DragStart,
-  DropResult
+  DropResult,
+  DroppableProvided,
+  DroppableStateSnapshot
 } from 'react-beautiful-dnd';
 export * from 'react-beautiful-dnd';
 
 type Props<T = any> = {
   onDragEndCb: (result: T[]) => void;
   renderClone?: DraggableChildrenFn;
-  children: DroppableProps['children'];
+  children:
+    | ((provided: DroppableProvided, snapshot: DroppableStateSnapshot) => ReactNode)
+    | ReactNode;
   dataList: T[];
+  isTable?: boolean;
+  zoom?: number;
 };
 
-function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) {
+function DndDrag<T>({
+  children,
+  renderClone,
+  onDragEndCb,
+  dataList,
+  isTable = false,
+  zoom = 1
+}: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
   const onDragStart = (start: DragStart) => {
@@ -45,10 +57,15 @@ function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) 
     <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
       <Droppable droppableId="droppable" renderClone={renderClone}>
         {(provided, snapshot) => {
-          return (
+          return isTable ? (
+            <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+              {typeof children !== 'function' && children}
+              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
+            </Tbody>
+          ) : (
             <Box {...provided.droppableProps} ref={provided.innerRef}>
-              {children(provided, snapshot)}
-              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight}px`} />}
+              {typeof children === 'function' && children(provided, snapshot)}
+              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
             </Box>
           );
         }}
