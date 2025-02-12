@@ -209,8 +209,9 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       />
                     );
                   }}
+                  zoom={zoom}
                 >
-                  {({ provided, snapshot, draggingItemHeight }) => (
+                  {({ provided }) => (
                     <Tbody {...provided.droppableProps} ref={provided.innerRef}>
                       {inputs.map((item, index) => {
                         const icon = FlowNodeInputMap[item.type as FlowNodeInputTypeEnum]?.icon;
@@ -230,7 +231,6 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           </Draggable>
                         );
                       })}
-                      {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
                     </Tbody>
                   )}
                 </DndDrag>
