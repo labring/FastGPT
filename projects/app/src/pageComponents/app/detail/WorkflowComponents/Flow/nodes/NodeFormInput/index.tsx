@@ -209,27 +209,30 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       />
                     );
                   }}
-                  isTable
-                  zoom={zoom}
                 >
-                  {inputs.map((item, index) => {
-                    const icon = FlowNodeInputMap[item.type as FlowNodeInputTypeEnum]?.icon;
-                    return (
-                      <Draggable key={item.key} draggableId={item.key} index={index}>
-                        {(provided, snapshot) => (
-                          <TableItem
-                            provided={provided}
-                            snapshot={snapshot}
-                            key={item.key}
-                            item={item}
-                            icon={icon}
-                            setEditField={setEditField}
-                            onDelete={onDelete}
-                          />
-                        )}
-                      </Draggable>
-                    );
-                  })}
+                  {({ provided, snapshot, draggingItemHeight }) => (
+                    <Tbody {...provided.droppableProps} ref={provided.innerRef}>
+                      {inputs.map((item, index) => {
+                        const icon = FlowNodeInputMap[item.type as FlowNodeInputTypeEnum]?.icon;
+                        return (
+                          <Draggable key={item.key} draggableId={item.key} index={index}>
+                            {(provided, snapshot) => (
+                              <TableItem
+                                provided={provided}
+                                snapshot={snapshot}
+                                key={item.key}
+                                item={item}
+                                icon={icon}
+                                setEditField={setEditField}
+                                onDelete={onDelete}
+                              />
+                            )}
+                          </Draggable>
+                        );
+                      })}
+                      {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
+                    </Tbody>
+                  )}
                 </DndDrag>
               </Table>
             </TableContainer>

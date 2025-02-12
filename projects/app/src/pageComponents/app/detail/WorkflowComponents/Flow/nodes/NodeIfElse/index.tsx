@@ -64,9 +64,8 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               nodeId={nodeId}
             />
           )}
-          zoom={zoom}
         >
-          {(provided) => (
+          {({ provided, snapshot, draggingItemHeight }) => (
             <Box {...provided.droppableProps} ref={provided.innerRef}>
               {ifElseList.map((conditionItem, conditionIndex) => (
                 <Draggable
@@ -87,6 +86,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   )}
                 </Draggable>
               ))}
+              {snapshot.isDraggingOver && <Box height={`${draggingItemHeight / zoom}px`} />}
             </Box>
           )}
         </DndDrag>
