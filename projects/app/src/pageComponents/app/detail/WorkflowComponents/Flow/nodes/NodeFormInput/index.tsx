@@ -161,7 +161,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   <Tr>
                     <Th>{t('workflow:user_form_input_name')}</Th>
                     <Th>{t('workflow:user_form_input_description')}</Th>
-                    <Th>{t('common:common.Require Input')}</Th>
+                    <Th>{t('common:Required_input')}</Th>
                     <Th>{t('user:operations')}</Th>
                   </Tr>
                 </Thead>
