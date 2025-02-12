@@ -63,8 +63,8 @@ export async function authChatCrud({
         authType: AuthUserTypeEnum.teamDomain
       };
 
-    const chat = await MongoChat.findOne({ appId, chatId, outLinkUid: uid }).lean();
-    if (!chat)
+    const chat = await MongoChat.findOne({ appId, chatId }).lean();
+    if (!chat) {
       return {
         teamId: spaceTeamId,
         tmbId,
@@ -72,6 +72,9 @@ export async function authChatCrud({
         ...defaultResponseShow,
         authType: AuthUserTypeEnum.teamDomain
       };
+    }
+
+    if (chat.outLinkUid !== uid) return Promise.reject(ChatErrEnum.unAuthChat);
 
     return {
       teamId: spaceTeamId,
@@ -104,7 +107,8 @@ export async function authChatCrud({
       };
     }
 
-    const chat = await MongoChat.findOne({ appId, chatId, outLinkUid: uid }).lean();
+    const chat = await MongoChat.findOne({ appId, chatId }).lean();
+
     if (!chat) {
       return {
         teamId: String(outLinkConfig.teamId),
@@ -116,6 +120,7 @@ export async function authChatCrud({
         authType: AuthUserTypeEnum.outLink
       };
     }
+    if (chat.outLinkUid !== uid) return Promise.reject(ChatErrEnum.unAuthChat);
     return {
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
