@@ -26,7 +26,7 @@ export const simpleText = (text = '') => {
 };
 
 export const valToStr = (val: any) => {
-  if (val === undefined) return 'undefined';
+  if (val === undefined) return '';
   if (val === null) return 'null';
 
   if (typeof val === 'object') return JSON.stringify(val);

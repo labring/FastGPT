@@ -38,10 +38,10 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.abandon_httpUrl]: string;
   [NodeInputKeyEnum.httpMethod]: string;
   [NodeInputKeyEnum.httpReqUrl]: string;
-  [NodeInputKeyEnum.httpHeaders]: PropsArrType[];
-  [NodeInputKeyEnum.httpParams]: PropsArrType[];
-  [NodeInputKeyEnum.httpJsonBody]: string;
-  [NodeInputKeyEnum.httpFormBody]: PropsArrType[];
+  [NodeInputKeyEnum.httpHeaders]?: PropsArrType[];
+  [NodeInputKeyEnum.httpParams]?: PropsArrType[];
+  [NodeInputKeyEnum.httpJsonBody]?: string;
+  [NodeInputKeyEnum.httpFormBody]?: PropsArrType[];
   [NodeInputKeyEnum.httpContentType]: ContentTypes;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
   [NodeInputKeyEnum.httpTimeout]?: number;
@@ -76,10 +76,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
-      system_httpHeader: httpHeader,
+      system_httpHeader: httpHeader = [],
       system_httpParams: httpParams = [],
-      system_httpJsonBody: httpJsonBody,
-      system_httpFormBody: httpFormBody,
+      system_httpJsonBody: httpJsonBody = '',
+      system_httpFormBody: httpFormBody = [],
       system_httpContentType: httpContentType = ContentTypes.json,
       system_httpTimeout: httpTimeout = 60,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,

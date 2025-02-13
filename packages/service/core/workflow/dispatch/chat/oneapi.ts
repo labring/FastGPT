@@ -51,7 +51,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
-    [NodeInputKeyEnum.userChatInput]: string;
+    [NodeInputKeyEnum.userChatInput]?: string;
     [NodeInputKeyEnum.history]?: ChatItemType[] | number;
     [NodeInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
@@ -81,7 +81,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       maxToken,
       history = 6,
       quoteQA,
-      userChatInput,
+      userChatInput = '',
       isResponseAnswerText = true,
       systemPrompt = '',
       aiChatQuoteRole = 'system',
