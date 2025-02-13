@@ -15,7 +15,7 @@ export type InitDateResponse = {
 
   feConfigs?: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
-  systemVersion: string;
+  systemVersion?: string;
 
   activeModelList?: SystemModelItemType[];
   defaultModels?: SystemDefaultModelType;
