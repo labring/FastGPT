@@ -8,11 +8,9 @@ import {
   ModalBody,
   ModalFooter,
   Switch,
-  Textarea,
   useTheme
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import MySlider from '@/components/Slider';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -110,12 +108,17 @@ const DatasetParamsModal = ({
 
   useEffect(() => {
     if (datasetSearchUsingCfrForm) {
-      !queryExtensionModel &&
-        setValue('datasetSearchExtensionModel', chatModelSelectList[0]?.value);
+      !queryExtensionModel && setValue('datasetSearchExtensionModel', defaultModels.llm?.model);
     } else {
       setValue('datasetSearchExtensionModel', '');
     }
-  }, [chatModelSelectList, datasetSearchUsingCfrForm, queryExtensionModel, setValue]);
+  }, [
+    chatModelSelectList,
+    datasetSearchUsingCfrForm,
+    defaultModels.llm?.model,
+    queryExtensionModel,
+    setValue
+  ]);
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
