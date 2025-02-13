@@ -73,18 +73,16 @@ function embedChatbot() {
       chatWindow.offsetHeight
     ];
 
-    let right;
+    let right = 0;
     if (btn.left >= ww) {
-      right = vw - btn.left + 10;
+      right = vw - btn.left + 10; // 左侧有空间则放在左侧，间距 10
     } else if (vw - btn.right >= ww) {
-      right = vw - btn.right - ww - 10;
-    } else {
-      right = Math.min(vw - ww, 20);
+      right = vw - btn.right - ww - 10; // 右侧有空间则放在右侧
     }
 
-    let bottom = Math.max(30, vh - btn.bottom);
+    let bottom = Math.max(30, vh - btn.bottom); // 聊天窗口底部和按钮对齐，最少 30
     if (btn.top < wh) {
-      bottom = Math.min(bottom, vh - wh - 30);
+      bottom = Math.min(bottom, vh - wh - 30); // 确保聊天窗口不超出顶部
     }
 
     chatWindow.style.right = `${right}px`;
