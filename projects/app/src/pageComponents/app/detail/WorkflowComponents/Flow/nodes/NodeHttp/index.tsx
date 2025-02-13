@@ -34,7 +34,6 @@ import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
