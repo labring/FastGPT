@@ -6,6 +6,19 @@ import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gri
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { stream2Encoding } from '@fastgpt/service/common/file/gridfs/utils';
 
+const previewableExtensions = [
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'bmp',
+  'webp',
+  'txt',
+  'log',
+  'csv',
+  'md',
+  'json'
+];
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
@@ -38,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     })();
 
     const extension = file.filename.split('.').pop() || '';
-    const disposition = ['html', 'htm'].includes(extension) ? 'attachment' : 'inline';
+    const disposition = previewableExtensions.includes(extension) ? 'inline' : 'attachment';
 
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
     res.setHeader('Cache-Control', 'public, max-age=31536000');

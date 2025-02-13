@@ -1,10 +1,8 @@
 import type { UserUpdateParams } from '@/types/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
-import { getTeamMembers } from '@/web/support/user/team/api';
 import type { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
-import type { OrgMemberSchemaType, OrgType } from '@fastgpt/global/support/user/team/org/type';
-import type { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import type { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { create } from 'zustand';

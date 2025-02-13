@@ -42,7 +42,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { lastRoute = '' } = router.query as { lastRoute: string };
-  const { feConfigs, llmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>(LoginPageTypeEnum.passwordLogin);
   const { setUserInfo } = useUserStore();
   const { setLastChatAppId } = useChatStore();
@@ -63,16 +63,6 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
     (res: ResLogin) => {
       setUserInfo(res.user);
 
-      // Check that the model is available
-      if (res.user.username === 'root' && llmModelList?.length === 0) {
-        toast({
-          status: 'warning',
-          title: t('login:model_not_config')
-        });
-        router.push('/account/model');
-        return;
-      }
-
       const decodeLastRoute = decodeURIComponent(lastRoute);
       // 检查是否是当前的 route
       const navigateTo =
@@ -81,7 +71,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
         router.push(navigateTo);
       }, 300);
     },
-    [setUserInfo, llmModelList?.length, lastRoute, toast, t, router]
+    [setUserInfo, lastRoute, router]
   );
 
   const DynamicComponent = useMemo(() => {
