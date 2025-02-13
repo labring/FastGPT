@@ -25,7 +25,6 @@ function embedChatbot() {
   ChatBtn.style.cssText =
     'position: fixed; bottom: 30px; right: 60px; width: 40px; height: 40px; cursor: pointer; z-index: 2147483647; transition: 0;';
 
-  // btn icon
   const ChatBtnDiv = document.createElement('img');
   ChatBtnDiv.src = defaultOpen ? CloseIcon : MessageIcon;
   ChatBtnDiv.setAttribute('width', '100%');
@@ -74,34 +73,22 @@ function embedChatbot() {
       chatWindow.offsetHeight
     ];
 
-    const directions = [
-      {
-        // 左下
-        check: () => btn.left >= ww && vh - btn.bottom >= wh,
-        pos: () => [vw - btn.left, vh - btn.bottom - wh]
-      },
-      {
-        // 右上
-        check: () => vw - btn.right >= ww && btn.top >= wh,
-        pos: () => [vw - btn.right - ww, vh - btn.top]
-      },
-      {
-        // 右下
-        check: () => vw - btn.right >= ww && vh - btn.bottom >= wh,
-        pos: () => [vw - btn.right - ww, vh - btn.bottom - wh]
-      },
-      {
-        // 左上
-        check: () => true,
-        pos: () => [vw - btn.left, vh - btn.top]
-      }
-    ];
+    let right;
+    if (btn.left >= ww) {
+      right = vw - btn.left + 10;
+    } else if (vw - btn.right >= ww) {
+      right = vw - btn.right - ww - 10;
+    } else {
+      right = Math.min(vw - ww, 20);
+    }
 
-    const [right, bottom] = directions.find((d) => d.check()).pos();
-    Object.assign(chatWindow.style, {
-      right: `${right}px`,
-      bottom: `${bottom}px`
-    });
+    let bottom = Math.max(30, vh - btn.bottom);
+    if (btn.top < wh) {
+      bottom = Math.min(bottom, vh - wh - 30);
+    }
+
+    chatWindow.style.right = `${right}px`;
+    chatWindow.style.bottom = `${bottom}px`;
   };
 
   ChatBtn.addEventListener('click', function () {
@@ -143,6 +130,9 @@ function embedChatbot() {
 
     let newRight = ChatBtn.initialRight - deltaX;
     let newBottom = ChatBtn.initialBottom - deltaY;
+
+    newRight = Math.max(20, Math.min(window.innerWidth - 60, newRight));
+    newBottom = Math.max(30, Math.min(window.innerHeight - 70, newBottom));
 
     ChatBtn.style.right = `${newRight}px`;
     ChatBtn.style.bottom = `${newBottom}px`;
