@@ -100,7 +100,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
   const [value, setValue] = useState<string[]>([]);
-
+  console.log(props, value, '---');
   const avatarSize = useMemo(() => {
     const size = {
       sm: '1rem',
