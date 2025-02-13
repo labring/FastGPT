@@ -104,7 +104,7 @@ export const useSystemStore = create<State>()(
           return null;
         },
 
-        gitStar: 15600,
+        gitStar: 20000,
         async loadGitStar() {
           if (!get().feConfigs?.show_git) return;
           try {

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -12,6 +12,8 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useMount } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -50,8 +52,11 @@ export const navbarWidth = '64px';
 
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const { Loading } = useLoading();
-  const { loading, feConfigs, notSufficientModalType } = useSystemStore();
+  const { loading, feConfigs, notSufficientModalType, llmModelList, embeddingModelList } =
+    useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
@@ -81,6 +86,20 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   useMount(() => {
     setUserDefaultLng();
   });
+
+  // Check model invalid
+  useEffect(() => {
+    if (
+      userInfo?.username === 'root' &&
+      (llmModelList.length === 0 || embeddingModelList.length === 0)
+    ) {
+      toast({
+        status: 'warning',
+        title: t('login:model_not_config')
+      });
+      router.push('/account/model');
+    }
+  }, [embeddingModelList.length, llmModelList.length, router, t, toast, userInfo?.username]);
 
   return (
     <>

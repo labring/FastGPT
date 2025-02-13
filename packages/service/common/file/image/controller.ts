@@ -5,6 +5,7 @@ import { ClientSession, Types } from '../../../common/mongo';
 import { guessBase64ImageType } from '../utils';
 import { readFromSecondary } from '../../mongo/utils';
 import { addHours } from 'date-fns';
+import { imageFileType } from '@fastgpt/global/common/file/constants';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -31,6 +32,10 @@ export async function uploadMongoImg({
   const mime = `image/${base64Mime.match(base64MimeRegex)?.[1] ?? 'image/jpeg'}`;
   const binary = Buffer.from(base64Data, 'base64');
   const extension = mime.split('/')[1];
+
+  if (!imageFileType.includes(`.${extension}`)) {
+    return Promise.reject('Invalid image file type');
+  }
 
   const { _id } = await MongoImage.create({
     teamId,
