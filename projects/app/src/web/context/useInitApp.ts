@@ -78,7 +78,7 @@ export const useInitApp = () => {
       if (sourceDomain) return sourceDomain;
       return document.referrer;
     })();
-    console.log(formatSourceDomain, '-=-=');
+
     if (formatSourceDomain && !sessionStorage.getItem('sourceDomain')) {
       sessionStorage.setItem('sourceDomain', formatSourceDomain);
     }
