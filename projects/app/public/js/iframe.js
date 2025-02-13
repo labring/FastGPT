@@ -114,7 +114,6 @@ function embedChatbot() {
     if (!chatWindow) return;
     const visibilityVal = chatWindow.style.visibility;
     if (visibilityVal === 'hidden') {
-      updateChatWindowPosition();
       chatWindow.style.visibility = 'unset';
       ChatBtnDiv.src = CloseIcon;
     } else {
@@ -157,5 +156,6 @@ function embedChatbot() {
 
   ChatBtn.appendChild(ChatBtnDiv);
   document.body.appendChild(ChatBtn);
+  updateChatWindowPosition();
 }
 window.addEventListener('load', embedChatbot);
