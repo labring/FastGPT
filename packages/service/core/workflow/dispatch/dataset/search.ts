@@ -23,10 +23,10 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
-  [NodeInputKeyEnum.userChatInput]: string;
+  [NodeInputKeyEnum.userChatInput]?: string;
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
   [NodeInputKeyEnum.collectionFilterMatch]: string;
-  [NodeInputKeyEnum.authTmbId]: boolean;
+  [NodeInputKeyEnum.authTmbId]?: boolean;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]: string;
@@ -55,7 +55,7 @@ export async function dispatchDatasetSearch(
       limit = 1500,
       usingReRank,
       searchMode,
-      userChatInput,
+      userChatInput = '',
       authTmbId = false,
       collectionFilterMatch,
 

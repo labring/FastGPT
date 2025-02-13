@@ -292,13 +292,12 @@ export const getReferenceVariableValue = ({
 
 export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTypeEnum) => {
   if (!valueType) return val;
+  if (val === undefined || val === null) return;
   // Value type check, If valueType invalid, return undefined
   if (valueType.startsWith('array') && !Array.isArray(val)) return undefined;
   if (valueType === WorkflowIOValueTypeEnum.boolean) return Boolean(val);
   if (valueType === WorkflowIOValueTypeEnum.number) return Number(val);
   if (valueType === WorkflowIOValueTypeEnum.string) {
-    if (val === undefined) return 'undefined';
-    if (val === null) return 'null';
     return typeof val === 'object' ? JSON.stringify(val) : String(val);
   }
   if (

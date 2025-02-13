@@ -81,7 +81,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
         router.push(navigateTo);
       }, 300);
     },
-    [lastRoute, router, setUserInfo, llmModelList]
+    [setUserInfo, llmModelList?.length, lastRoute, toast, t, router]
   );
 
   const DynamicComponent = useMemo(() => {
