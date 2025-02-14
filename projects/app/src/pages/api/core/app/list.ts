@@ -197,7 +197,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         ...app,
         permission: Per,
-        privateApp
+        private: privateApp
       };
     })
     .filter((app) => app.permission.hasReadPer);
