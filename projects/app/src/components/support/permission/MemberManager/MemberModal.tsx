@@ -37,9 +37,11 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { getOrgList } from '@/web/support/user/team/org/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import MemberItemCard from './MemberItemCard';
+import { GetSearch } from '@/web/support/user/api';
 
 const HoverBoxStyle = {
-  bgColor: 'myGray.50',
+  bgcolor: 'mygray.50',
   cursor: 'pointer'
 };
 
@@ -72,6 +74,14 @@ function MemberModal({
 
   const [parentPath, setParentPath] = useState('');
 
+  const { runAsync: onSearch, data: searchedData } = useRequest2(() => GetSearch(searchText), {
+    manual: true,
+    debounceWait: 500,
+    onSuccess: (data) => {
+      console.log(data);
+    }
+  });
+
   const paths = useMemo(() => {
     const splitPath = parentPath.split('/').filter(Boolean);
     return splitPath
@@ -97,7 +107,10 @@ function MemberModal({
     return orgs.find((org) => org.pathId === currentOrgId);
   }, [orgs, parentPath]);
   const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
-    if (searchText) return orgs.filter((item) => item.name.includes(searchText));
+    if (searchText && searchedData) {
+      const orgids = searchedData.filter((item) => item.type === 'org').map((item) => item.id);
+      return orgs.filter((org) => orgids.includes(String(org._id)));
+    }
     if (!searchText && filterClass !== 'org') return [];
     if (parentPath === '') {
       setParentPath(`/${orgs[0].pathId}`);
@@ -110,27 +123,42 @@ function MemberModal({
         count:
           item.members.length + orgs.filter((org) => org.path === getOrgChildrenPath(item)).length
       }));
-  }, [orgs, searchText, filterClass, parentPath]);
+  }, [searchText, filterClass, parentPath, orgs, searchedData]);
 
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const filterMembers = useMemo(() => {
-    if (searchText) return members.filter((item) => item.memberName.includes(searchText));
+    if (searchText) {
+      return searchedData
+        ?.filter((item) => item.type === 'member')
+        .map((item) => ({
+          memberName: item.name,
+          tmbId: item.id,
+          ...item
+        }));
+    }
     if (!searchText && filterClass !== 'member' && filterClass !== 'org') return [];
-
     if (currentOrg && filterClass === 'org') {
       return members.filter((item) => currentOrg.members.find((v) => v.tmbId === item.tmbId));
     }
 
     return members;
-  }, [members, searchText, filterClass, currentOrg]);
+  }, [members, searchedData, searchText, filterClass, currentOrg]);
 
   const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
   const filterGroups = useMemo(() => {
-    if (searchText) return groups.filter((item) => item.name.includes(searchText));
+    if (searchText) {
+      return searchedData
+        ?.filter((item) => item.type === 'group')
+        .map((item) => ({
+          groupName: item.name,
+          _id: item.id,
+          ...item
+        }));
+    }
     if (!searchText && filterClass !== 'group') return [];
 
     return groups;
-  }, [groups, searchText, filterClass]);
+  }, [searchText, filterClass, groups, searchedData]);
 
   const permissionList = useContextSelector(CollaboratorContext, (v) => v.permissionList);
   const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
@@ -146,6 +174,7 @@ function MemberModal({
     CollaboratorContext,
     (v) => v.onUpdateCollaborators
   );
+
   const { runAsync: onConfirm, loading: isUpdating } = useRequest2(
     () =>
       onUpdateCollaborators({
@@ -233,7 +262,10 @@ function MemberModal({
             <SearchInput
               placeholder={t('user:search_group_org_user')}
               bgColor="myGray.50"
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                onSearch();
+              }}
             />
 
             <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
@@ -300,136 +332,115 @@ function MemberModal({
                 </Box>
               )}
 
-              {filterClass && (
-                <ScrollData
-                  flexDirection={'column'}
-                  gap={1}
-                  userSelect={'none'}
-                  height={'fit-content'}
-                >
-                  {filterOrgs.map((org) => {
-                    const onChange = () => {
-                      setSelectedOrgIdList((state) => {
-                        if (state.includes(org._id)) {
-                          return state.filter((v) => v !== org._id);
-                        }
-                        return [...state, org._id];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
-                    return (
-                      <HStack
-                        justifyContent="space-between"
-                        key={org._id}
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        onClick={onChange}
-                      >
-                        <Checkbox
-                          isChecked={selectedOrgIdList.includes(org._id)}
-                          pointerEvents="none"
-                        />
-                        <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
-                        <HStack ml="2" w="full" gap="5px">
-                          <Text>{org.name}</Text>
-                          {org.count && (
-                            <>
-                              <Tag size="sm" my="auto">
-                                {org.count}
-                              </Tag>
-                            </>
-                          )}
-                        </HStack>
-                        <PermissionTags permission={collaborator?.permission.value} />
+              <ScrollData
+                flexDirection={'column'}
+                gap={1}
+                userSelect={'none'}
+                height={'fit-content'}
+              >
+                {filterOrgs?.map((org) => {
+                  const onChange = () => {
+                    setSelectedOrgIdList((state) => {
+                      if (state.includes(org._id)) {
+                        return state.filter((v) => v !== org._id);
+                      }
+                      return [...state, org._id];
+                    });
+                  };
+                  const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
+                  return (
+                    <HStack
+                      justifyContent="space-between"
+                      key={org._id}
+                      py="2"
+                      px="3"
+                      borderRadius="sm"
+                      alignItems="center"
+                      _hover={HoverBoxStyle}
+                      onClick={onChange}
+                    >
+                      <Checkbox
+                        isChecked={selectedOrgIdList.includes(org._id)}
+                        pointerEvents="none"
+                      />
+                      <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
+                      <HStack ml="2" w="full" gap="5px">
+                        <Text>{org.name}</Text>
                         {org.count && (
-                          <MyIcon
-                            name="core/chat/chevronRight"
-                            w="16px"
-                            p="4px"
-                            rounded={'6px'}
-                            _hover={{
-                              bgColor: 'myGray.200'
-                            }}
-                            onClick={(e) => {
-                              setParentPath(getOrgChildrenPath(org));
-                              e.stopPropagation();
-                            }}
-                          />
+                          <>
+                            <Tag size="sm" my="auto">
+                              {org.count}
+                            </Tag>
+                          </>
                         )}
                       </HStack>
-                    );
-                  })}
-                  {filterMembers.map((member) => {
-                    const onChange = () => {
-                      setSelectedMembers((state) => {
-                        if (state.includes(member.tmbId)) {
-                          return state.filter((v) => v !== member.tmbId);
-                        }
-                        return [...state, member.tmbId];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
-                    return (
-                      <HStack
-                        justifyContent="space-between"
-                        key={member.tmbId}
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        onClick={onChange}
-                      >
-                        <Checkbox
-                          isChecked={selectedMemberIdList.includes(member.tmbId)}
-                          pointerEvents="none"
+                      <PermissionTags permission={collaborator?.permission.value} />
+                      {org.count && (
+                        <MyIcon
+                          name="core/chat/chevronRight"
+                          w="16px"
+                          p="4px"
+                          rounded={'6px'}
+                          _hover={{
+                            bgColor: 'myGray.200'
+                          }}
+                          onClick={(e) => {
+                            setParentPath(getOrgChildrenPath(org));
+                            e.stopPropagation();
+                          }}
                         />
-                        <MyAvatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                        <Box w="full" ml="2">
-                          {member.memberName}
-                        </Box>
-                        <PermissionTags permission={collaborator?.permission.value} />
-                      </HStack>
-                    );
-                  })}
-                  {filterGroups.map((group) => {
-                    const onChange = () => {
-                      setSelectedGroupIdList((state) => {
-                        if (state.includes(group._id)) {
-                          return state.filter((v) => v !== group._id);
-                        }
-                        return [...state, group._id];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
-                    return (
-                      <HStack
-                        justifyContent="space-between"
-                        key={group._id}
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        onClick={onChange}
-                      >
-                        <Checkbox
-                          isChecked={selectedGroupIdList.includes(group._id)}
-                          pointerEvents="none"
-                        />
-                        <MyAvatar src={group.avatar} w="1.5rem" borderRadius={'50%'} />
-                        <Box ml="2" w="full">
-                          {group.name === DefaultGroupName ? userInfo?.team.teamName : group.name}
-                        </Box>
-                        <PermissionTags permission={collaborator?.permission.value} />
-                      </HStack>
-                    );
-                  })}
-                </ScrollData>
-              )}
+                      )}
+                    </HStack>
+                  );
+                })}
+                {filterMembers?.map((member) => {
+                  const onChange = () => {
+                    setSelectedMembers((state) => {
+                      if (state.includes(member.tmbId)) {
+                        return state.filter((v) => v !== member.tmbId);
+                      }
+                      return [...state, member.tmbId];
+                    });
+                  };
+                  const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
+                  return (
+                    <MemberItemCard
+                      avatar={member.avatar}
+                      key={member.tmbId}
+                      name={member.memberName}
+                      permission={collaborator?.permission.value}
+                      onChange={onChange}
+                      isChecked={selectedMemberIdList.includes(member.tmbId)}
+                      orgs={orgs
+                        .filter((org) => org.members.find((v) => v.tmbId === member.tmbId))
+                        .map((org) => org.name)}
+                    />
+                  );
+                })}
+                {filterGroups?.map((group) => {
+                  const onChange = () => {
+                    setSelectedGroupIdList((state) => {
+                      if (state.includes(group._id)) {
+                        return state.filter((v) => v !== group._id);
+                      }
+                      return [...state, group._id];
+                    });
+                  };
+                  const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
+                  return (
+                    <MemberItemCard
+                      avatar={group.avatar}
+                      key={group._id}
+                      name={
+                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
+                      }
+                      permission={collaborator?.permission.value}
+                      onChange={onChange}
+                      isChecked={selectedGroupIdList.includes(group._id)}
+                    />
+                  );
+                })}
+              </ScrollData>
             </Flex>
           </Flex>
 
@@ -441,29 +452,22 @@ function MemberModal({
             <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
               {selectedList.map((item) => {
                 return (
-                  <HStack
-                    justifyContent="space-between"
+                  <MemberItemCard
                     key={item.id}
-                    py="2"
-                    px="3"
-                    borderRadius="sm"
-                    alignItems="center"
-                    _hover={HoverBoxStyle}
-                  >
-                    <MyAvatar src={item.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box w="full" ml="2">
-                      {item.name}
-                    </Box>
-                    <MyIcon
-                      name="common/closeLight"
-                      w="1rem"
-                      cursor={'pointer'}
-                      _hover={{
-                        color: 'red.600'
-                      }}
-                      onClick={item.onDelete}
-                    />
-                  </HStack>
+                    avatar={item.avatar}
+                    name={item.name ?? ''}
+                    onChange={item.onDelete}
+                    onDelete={item.onDelete}
+                    orgs={
+                      item.id.startsWith('member-')
+                        ? orgs
+                            .filter((org) =>
+                              org.members.find((v) => v.tmbId === item.id.replace('member-', ''))
+                            )
+                            .map((org) => org.name)
+                        : []
+                    }
+                  />
                 );
               })}
             </Flex>

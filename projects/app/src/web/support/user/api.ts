@@ -13,6 +13,7 @@ import {
   AccountRegisterBody,
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';
+import { SearchResponse } from '@/pages/api/support/user/search';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -92,3 +93,6 @@ export const getCaptchaPic = (username: string) =>
   }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
 
 export const postSyncMembers = () => POST('/proApi/support/user/team/org/sync');
+
+export const GetSearch = (searchKey: string) =>
+  GET<SearchResponse>('/support/user/search', { searchKey });

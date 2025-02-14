@@ -17,6 +17,7 @@ export type UserModelSchema = {
   fastgpt_sem?: {
     keyword: string;
   };
+  contact?: string;
 };
 
 export type UserType = {
@@ -29,6 +30,7 @@ export type UserType = {
   standardInfo?: standardInfoType;
   notificationAccount?: string;
   permission: TeamPermission;
+  contact?: string;
 };
 
 export type SourceMemberType = {
