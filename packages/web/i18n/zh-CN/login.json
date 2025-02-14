@@ -6,7 +6,6 @@
   "forget_password": "忘记密码?",
   "login_failed": "登录异常",
   "login_success": "登录成功",
-  "model_not_config": "检测到系统未配置模型，请先配置模型后再使用",
   "no_remind": "不再提醒",
   "password_condition": "密码最多 60 位",
   "password_tip": "密码至少 6 位，且至少包含两种组合：数字、字母或特殊字符",
