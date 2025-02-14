@@ -76,10 +76,7 @@ function MemberModal({
 
   const { runAsync: onSearch, data: searchedData } = useRequest2(() => GetSearch(searchText), {
     manual: true,
-    debounceWait: 500,
-    onSuccess: (data) => {
-      console.log(data);
-    }
+    debounceWait: 500
   });
 
   const paths = useMemo(() => {
@@ -403,6 +400,15 @@ function MemberModal({
                     });
                   };
                   const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
+                  const memberOrgs = orgs.filter((org) =>
+                    org.members.find((v) => v.tmbId === member.tmbId)
+                  );
+                  const memberPathIds = memberOrgs.map((org) =>
+                    (org.path + '/' + org.pathId).split('/').slice(0)
+                  );
+                  const memberOrgNames = memberPathIds.map((pathIds) =>
+                    pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
+                  );
                   return (
                     <MemberItemCard
                       avatar={member.avatar}
@@ -411,9 +417,7 @@ function MemberModal({
                       permission={collaborator?.permission.value}
                       onChange={onChange}
                       isChecked={selectedMemberIdList.includes(member.tmbId)}
-                      orgs={orgs
-                        .filter((org) => org.members.find((v) => v.tmbId === member.tmbId))
-                        .map((org) => org.name)}
+                      orgs={memberOrgNames}
                     />
                   );
                 })}
@@ -458,15 +462,20 @@ function MemberModal({
                     name={item.name ?? ''}
                     onChange={item.onDelete}
                     onDelete={item.onDelete}
-                    orgs={
-                      item.id.startsWith('member-')
-                        ? orgs
-                            .filter((org) =>
-                              org.members.find((v) => v.tmbId === item.id.replace('member-', ''))
-                            )
-                            .map((org) => org.name)
-                        : []
-                    }
+                    orgs={(() => {
+                      if (!item.id.startsWith('member-')) return [];
+                      const id = item.id.replace('member-', '');
+                      const memberOrgs = orgs.filter((org) =>
+                        org.members.find((v) => v.tmbId === id)
+                      );
+                      const memberPathIds = memberOrgs.map((org) =>
+                        (org.path + '/' + org.pathId).split('/').slice(0)
+                      );
+                      const memberOrgNames = memberPathIds.map((pathIds) =>
+                        pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
+                      );
+                      return memberOrgNames;
+                    })()}
                   />
                 );
               })}
