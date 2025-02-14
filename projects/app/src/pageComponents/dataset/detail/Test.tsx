@@ -39,6 +39,7 @@ type FormType = {
     similarity?: number;
     limit?: number;
     usingReRank?: boolean;
+    reRankModel?: string;
     datasetSearchUsingExtensionQuery?: boolean;
     datasetSearchExtensionModel?: string;
     datasetSearchExtensionBg?: string;
@@ -67,6 +68,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       searchParams: {
         searchMode: DatasetSearchModeEnum.embedding,
         usingReRank: false,
+        reRankModel: defaultModels.rerank?.model,
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: false,
@@ -105,6 +107,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           duration: res.duration,
           searchMode: res.searchMode,
           usingReRank: res.usingReRank,
+          reRankModel: res.reRankModel,
           limit: res.limit,
           similarity: res.similarity,
           queryExtensionModel: res.queryExtensionModel

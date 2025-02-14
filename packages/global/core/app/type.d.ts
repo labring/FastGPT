@@ -92,6 +92,7 @@ export type AppSimpleEditFormType = {
     similarity?: number;
     limit?: number;
     usingReRank?: boolean;
+    reRankModel?: string;
     datasetSearchUsingExtensionQuery?: boolean;
     datasetSearchExtensionModel?: string;
     datasetSearchExtensionBg?: string;

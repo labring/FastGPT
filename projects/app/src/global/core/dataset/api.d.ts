@@ -65,6 +65,7 @@ export type SearchTestProps = {
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
 
+  [NodeInputKeyEnum.datasetSearchReRankModel]?: string;
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
@@ -80,6 +81,7 @@ export type SearchTestResponse = {
   limit: number;
   searchMode: `${DatasetSearchModeEnum}`;
   usingReRank: boolean;
+  reRankModel?: string;
   similarity: number;
   queryExtensionModel?: string;
 };

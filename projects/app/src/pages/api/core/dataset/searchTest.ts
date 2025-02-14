@@ -25,6 +25,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     similarity,
     searchMode,
     usingReRank,
+    reRankModel,
 
     datasetSearchUsingExtensionQuery = false,
     datasetSearchExtensionModel,
@@ -63,7 +64,8 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     similarity,
     datasetIds: [datasetId],
     searchMode,
-    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId))
+    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
+    reRankModel
   };
   const { searchRes, tokens, queryExtensionResult, deepSearchResult, ...result } = datasetDeepSearch
     ? await deepRagSearch({

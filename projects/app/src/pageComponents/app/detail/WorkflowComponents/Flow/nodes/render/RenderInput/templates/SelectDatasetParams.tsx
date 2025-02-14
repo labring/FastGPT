@@ -26,6 +26,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     limit: 5,
     similarity: 0.5,
     usingReRank: false,
+    reRankModel: defaultModels.rerank?.model,
     datasetSearchUsingExtensionQuery: true,
     datasetSearchExtensionModel: defaultModels.llm?.model,
     datasetSearchExtensionBg: ''
