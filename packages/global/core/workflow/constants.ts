@@ -155,6 +155,7 @@ export enum NodeInputKeyEnum {
   datasetMaxTokens = 'limit',
   datasetSearchMode = 'searchMode',
   datasetSearchUsingReRank = 'usingReRank',
+  datasetSearchReRankModel = 'reRankModel',
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',

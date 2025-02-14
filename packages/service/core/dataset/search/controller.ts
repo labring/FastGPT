@@ -5,7 +5,12 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { recallFromVectorStore } from '../../../common/vectorStore/controller';
 import { getVectorsByText } from '../../ai/embedding';
-import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
+import {
+  getEmbeddingModel,
+  getDefaultRerankModel,
+  getLLMModel,
+  getReRankModel
+} from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import {
   DatasetDataTextSchemaType,
@@ -40,6 +45,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchReRankModel]?: string;
 
   /* 
     {
@@ -75,13 +81,16 @@ export type SearchDatasetDataResponse = {
 };
 
 export const datasetDataReRank = async ({
+  reRankModel,
   data,
   query
 }: {
+  reRankModel?: string;
   data: SearchDataResponseItemType[];
   query: string;
 }): Promise<SearchDataResponseItemType[]> => {
   const results = await reRankRecall({
+    model: getReRankModel(reRankModel),
     query,
     documents: data.map((item) => ({
       id: item.id,
@@ -155,6 +164,7 @@ export async function searchDatasetData(
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
     usingReRank = false,
+    reRankModel = getDefaultRerankModel().model,
     datasetIds = [],
     collectionFilterMatch
   } = props;
@@ -636,6 +646,7 @@ export async function searchDatasetData(
     });
     try {
       return await datasetDataReRank({
+        reRankModel,
         query: reRankQuery,
         data: filterSameDataResults
       });

@@ -12,12 +12,14 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetSearchModeEnum,
+  DatasetSearchModeMap
+} from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import MyRadio from '@/components/common/MyRadio';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -35,6 +37,7 @@ export type DatasetParamsProps = {
   limit?: number;
   similarity?: number;
   usingReRank?: boolean;
+  reRankModel?: string;
   datasetSearchUsingExtensionQuery?: boolean;
   datasetSearchExtensionModel?: string;
   datasetSearchExtensionBg?: string;
@@ -52,6 +55,7 @@ const DatasetParamsModal = ({
   limit,
   similarity,
   usingReRank,
+  reRankModel,
   maxTokens = defaultDatasetMaxTokens,
   datasetSearchUsingExtensionQuery,
   datasetSearchExtensionModel,
@@ -72,13 +76,18 @@ const DatasetParamsModal = ({
       value: item.model,
       label: item.name
     })))();
-
+  const reRankSelectList = (() =>
+    reRankModelList.map((item) => ({
+      value: item.model,
+      label: item.name
+    })))();
   const { register, setValue, getValues, handleSubmit, watch } = useForm<DatasetParamsProps>({
     defaultValues: {
       limit,
       similarity,
       searchMode,
       usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
+      reRankModel: reRankModel || defaultModels.rerank?.model,
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
       datasetSearchExtensionBg
@@ -88,6 +97,7 @@ const DatasetParamsModal = ({
   const queryExtensionModel = watch('datasetSearchExtensionModel');
   const cfbBgDesc = watch('datasetSearchExtensionBg');
   const usingReRankWatch = watch('usingReRank');
+  const reRankModelWatch = watch('reRankModel');
   const searchModeWatch = watch('searchMode');
 
   const searchModeList = useMemo(() => {
@@ -119,6 +129,14 @@ const DatasetParamsModal = ({
     queryExtensionModel,
     setValue
   ]);
+
+  useEffect(() => {
+    if (usingReRankWatch) {
+      !reRankModelWatch && setValue('reRankModel', defaultModels.rerank?.model);
+    } else {
+      setValue('reRankModel', '');
+    }
+  }, [reRankSelectList, usingReRankWatch, reRankModelWatch, setValue]);
 
   // 保证只有 80 左右个刻度。
   const maxTokenStep = useMemo(() => {
@@ -219,6 +237,23 @@ const DatasetParamsModal = ({
                   <Box position={'absolute'} top={0} right={0} bottom={0} left={0} zIndex={1}></Box>
                 </Box>
               </Flex>
+              {usingReRankWatch && (
+                <Flex mt={2} alignItems={'center'}>
+                  <FormLabel flex={['0 0 80px', '1 0 0']} ml={2}>
+                    {t('common:model.type.reRank')}
+                  </FormLabel>
+                  <Box flex={['1 0 0', '0 0 300px']}>
+                    <SelectAiModel
+                      width={'100%'}
+                      value={reRankModelWatch}
+                      list={reRankSelectList}
+                      onchange={(val: any) => {
+                        setValue('reRankModel', val);
+                      }}
+                    />
+                  </Box>
+                </Flex>
+              )}
             </>
           </>
         )}
