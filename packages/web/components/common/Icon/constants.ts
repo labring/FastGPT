@@ -389,6 +389,7 @@ export const iconPaths = {
   'model/openai': () => import('./icons/model/openai.svg'),
   'model/qwen': () => import('./icons/model/qwen.svg'),
   'model/siliconflow': () => import('./icons/model/siliconflow.svg'),
+  'model/ppio': () => import('./icons/model/ppio.svg'),
   'model/sparkDesk': () => import('./icons/model/sparkDesk.svg'),
   'model/stepfun': () => import('./icons/model/stepfun.svg'),
   'model/yi': () => import('./icons/model/yi.svg'),

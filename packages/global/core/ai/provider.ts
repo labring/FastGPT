@@ -22,6 +22,7 @@ export type ModelProviderIdType =
   | 'StepFun'
   | 'Yi'
   | 'Siliconflow'
+  | 'PPIO'
   | 'Ollama'
   | 'BAAI'
   | 'FishAudio'
@@ -166,6 +167,11 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'Siliconflow',
     name: i18nT('common:model_siliconflow'),
     avatar: 'model/siliconflow'
+  },
+  {
+    id: 'PPIO',
+    name: i18nT('common:model_ppio'),
+    avatar: 'model/ppio'
   },
   {
     id: 'Other',
