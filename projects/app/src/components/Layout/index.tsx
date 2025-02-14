@@ -89,17 +89,22 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   // Check model invalid
   useEffect(() => {
-    if (
-      userInfo?.username === 'root' &&
-      (llmModelList.length === 0 || embeddingModelList.length === 0)
-    ) {
-      toast({
-        status: 'warning',
-        title: t('login:model_not_config')
-      });
-      router.push('/account/model');
+    if (userInfo?.username === 'root') {
+      if (llmModelList.length === 0) {
+        toast({
+          status: 'warning',
+          title: t('common:llm_model_not_config')
+        });
+        router.push('/account/model');
+      } else if (embeddingModelList.length === 0) {
+        toast({
+          status: 'warning',
+          title: t('common:embedding_model_not_config')
+        });
+        router.push('/account/model');
+      }
     }
-  }, [embeddingModelList.length, llmModelList.length, router, t, toast, userInfo?.username]);
+  }, [embeddingModelList.length, llmModelList.length, userInfo?.username]);
 
   return (
     <>
