@@ -17,7 +17,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { delRemoveMember } from '@/web/support/user/team/api';
+import { delRemoveMember, updateStatus } from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
@@ -31,12 +31,36 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import { postSyncMembers } from '@/web/support/user/api';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import {
+  TeamMemberRoleEnum,
+  TeamMemberStatusEnum
+} from '@fastgpt/global/support/user/team/constant';
 import format from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
+
+const sortMembers = (a: TeamMemberItemType, b: TeamMemberItemType) => {
+  // 1. updateTime desc
+  // 2. status === leave to the end
+  if (a.status === 'leave' && b.status !== 'leave') {
+    return 1;
+  } else if (a.status !== 'leave' && b.status === 'leave') {
+    return -1;
+  } else {
+    if (a.updateTime && b.updateTime) {
+      if (a.updateTime > b.updateTime) {
+        return -1;
+      }
+      if (a.updateTime < b.updateTime) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+};
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
@@ -64,6 +88,12 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
     type: 'delete'
+  });
+
+  const { ConfirmModal: ConfirmRestoreMemberModal, openConfirm: openRestoreMember } = useConfirm({
+    type: 'common',
+    title: t('account_team:restore_tip_title'),
+    iconSrc: 'common/refreshLight'
   });
 
   const isSyncMember = feConfigs.register_method?.includes('sync');
@@ -94,9 +124,19 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     errorToast: t('account_team:sync_member_failed')
   });
 
+  const { runAsync: onRestore, loading: isUpdateInvite } = useRequest2(updateStatus, {
+    onSuccess() {
+      refetchMembers();
+    },
+    successToast: t('common:user.team.invite.Accepted'),
+    errorToast: t('common:user.team.invite.Reject')
+  });
+
+  const isLoading = isUpdateInvite || isSyncing;
+
   return (
     <>
-      {isSyncing && <MyLoading />}
+      {isLoading && <MyLoading />}
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
         <HStack>
@@ -191,7 +231,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {members?.map((member) => (
+                {members?.sort(sortMembers).map((member) => (
                   <Tr key={member.userId} overflow={'unset'}>
                     <Td>
                       <HStack>
@@ -201,6 +241,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           {member.status === 'waiting' && (
                             <Tag ml="2" colorSchema="yellow">
                               {t('account_team:waiting')}
+                            </Tag>
+                          )}
+                          {member.status === 'leave' && (
+                            <Tag ml="2" colorSchema="red">
+                              {t('account_team:leave')}
                             </Tag>
                           )}
                         </Box>
@@ -231,42 +276,67 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         </Box>
                       </VStack>
                     </Td>
-                    {!isSyncMember && (
-                      <Td>
-                        {userInfo?.team.permission.hasManagePer &&
-                          member.role !== TeamMemberRoleEnum.owner &&
-                          member.tmbId !== userInfo?.team.tmbId && (
-                            <Icon
-                              name={'common/trash'}
-                              cursor={'pointer'}
-                              w="1rem"
-                              p="1"
-                              borderRadius="sm"
-                              _hover={{
-                                color: 'red.600',
-                                bgColor: 'myGray.100'
-                              }}
-                              onClick={() => {
-                                openRemoveMember(
-                                  () =>
-                                    delRemoveMember(member.tmbId).then(() =>
-                                      Promise.all([refetchGroups(), refetchMembers()])
-                                    ),
-                                  undefined,
-                                  t('account_team:remove_tip', {
-                                    username: member.memberName
-                                  })
-                                )();
-                              }}
-                            />
-                          )}
-                      </Td>
-                    )}
+                    <Td>
+                      {userInfo?.team.permission.hasManagePer &&
+                        member.role !== TeamMemberRoleEnum.owner &&
+                        member.tmbId !== userInfo?.team.tmbId &&
+                        (member.status !== TeamMemberStatusEnum.leave ? (
+                          <Icon
+                            name={'common/trash'}
+                            cursor={'pointer'}
+                            w="1rem"
+                            p="1"
+                            borderRadius="sm"
+                            _hover={{
+                              color: 'red.600',
+                              bgColor: 'myGray.100'
+                            }}
+                            onClick={() => {
+                              openRemoveMember(
+                                () =>
+                                  delRemoveMember(member.tmbId).then(() =>
+                                    Promise.all([refetchGroups(), refetchMembers()])
+                                  ),
+                                undefined,
+                                t('account_team:remove_tip', {
+                                  username: member.memberName
+                                })
+                              )();
+                            }}
+                          />
+                        ) : (
+                          <Icon
+                            name={'common/refreshLight'}
+                            cursor={'pointer'}
+                            w="1rem"
+                            p="1"
+                            borderRadius="sm"
+                            _hover={{
+                              color: 'red.600',
+                              bgColor: 'myGray.100'
+                            }}
+                            onClick={() => {
+                              openRestoreMember(
+                                () =>
+                                  onRestore({
+                                    tmbId: member.tmbId,
+                                    status: TeamMemberStatusEnum.active
+                                  }),
+                                undefined,
+                                t('account_team:restore_tip', {
+                                  username: member.memberName
+                                })
+                              )();
+                            }}
+                          />
+                        ))}
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>
             </Table>
             <ConfirmRemoveMemberModal />
+            <ConfirmRestoreMemberModal />
           </TableContainer>
         </MemberScrollData>
       </Box>

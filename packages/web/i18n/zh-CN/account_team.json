@@ -26,7 +26,9 @@
   "owner": "所有者",
   "permission": "权限",
   "remark": "备注",
-  "remove_tip": "确认将 {{username}} 移出团队？",
+  "remove_tip": "确认将 {{username}} 移出团队？成员将被标记为“已离职”，不删除操作数据，账号下资源自动转让给团队所有者。",
+  "restore_tip": "确认将 {{username}} 加入团队吗？仅恢复该成员账号可用性及相关权限，无法恢复账号下资源。",
+  "restore_tip_title": "恢复确认",
   "retain_admin_permissions": "保留管理员权限",
   "search_member_group_name": "搜索成员/群组名称",
   "total_team_members": "共 {{amount}} 名成员",
@@ -40,5 +42,6 @@
   "sync_member_failed": "同步成员失败",
   "sync_member_success": "同步成员成功",
   "contact": "联系方式",
-  "join_update_time": "加入/更新时间"
+  "join_update_time": "加入/更新时间",
+  "leave": "已离职"
 }

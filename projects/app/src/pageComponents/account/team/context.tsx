@@ -91,7 +91,11 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshList: refetchMembers,
     total: memberTotal,
     ScrollData: MemberScrollData
-  } = useScrollPagination(getTeamMembers, {});
+  } = useScrollPagination(getTeamMembers, {
+    params: {
+      withLeaved: true
+    }
+  });
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
