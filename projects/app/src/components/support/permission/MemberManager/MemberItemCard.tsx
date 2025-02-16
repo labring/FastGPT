@@ -4,7 +4,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionTags from './PermissionTags';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import OrgTags from '../../user/team/OrgTags';
 
 function MemberItemCard({
   avatar,
@@ -49,26 +49,7 @@ function MemberItemCard({
             </Box>
             {permission && <PermissionTags permission={permission} />}
           </HStack>
-          {orgs && orgs.length > 0 && (
-            <MyPopover
-              trigger="hover"
-              Trigger={
-                <Box fontSize="sm" fontWeight={400} w="full" color="myGray.500">
-                  {orgs.map((org) => org.split('/').pop()).join(', ')}
-                </Box>
-              }
-            >
-              {() => (
-                <VStack gap="1" p="2" alignItems={'start'}>
-                  {orgs.map((org, index) => (
-                    <Box key={index} fontSize="sm" fontWeight={400} color="myGray.500" ml="2">
-                      {org.slice(1)}
-                    </Box>
-                  ))}
-                </VStack>
-              )}
-            </MyPopover>
-          )}
+          {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
         </VStack>
         {onDelete !== undefined && (
           <MyIcon

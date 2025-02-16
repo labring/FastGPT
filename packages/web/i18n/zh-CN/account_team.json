@@ -38,5 +38,7 @@
   "waiting": "待接受",
   "sync_immediately": "立即同步",
   "sync_member_failed": "同步成员失败",
-  "sync_member_success": "同步成员成功"
+  "sync_member_success": "同步成员成功",
+  "contact": "联系方式",
+  "join_update_time": "加入/更新时间"
 }

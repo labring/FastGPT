@@ -11,7 +11,8 @@ import {
   Th,
   Thead,
   Tr,
-  useDisclosure
+  useDisclosure,
+  VStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -19,7 +20,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
-import GroupTags from '@/components/support/permission/Group/GroupTags';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from './context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -32,6 +32,8 @@ import { delLeaveTeam } from '@/web/support/user/team/api';
 import { postSyncMembers } from '@/web/support/user/api';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import format from 'date-fns/format';
+import OrgTags from '@/components/support/user/team/OrgTags';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -43,14 +45,14 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { feConfigs, setNotSufficientModalType } = useSystemStore();
 
   const {
-    groups,
     refetchGroups,
     myTeams,
     refetchTeams,
     members,
     refetchMembers,
     onSwitchTeam,
-    MemberScrollData
+    MemberScrollData,
+    orgs
   } = useContextSelector(TeamContext, (v) => v);
 
   const {
@@ -177,7 +179,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <Th borderLeftRadius="6px" bgColor="myGray.100">
                     {t('account_team:user_name')}
                   </Th>
-                  <Th bgColor="myGray.100">{t('account_team:member_group')}</Th>
+                  <Th bgColor="myGray.100">{t('account_team:contact')}</Th>
+                  <Th bgColor="myGray.100">{t('account_team:org')}</Th>
+                  <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
+                  {/* <Th bgColor="myGray.100">{t('account_team:member_group')}</Th> */}
                   {!isSyncMember && (
                     <Th borderRightRadius="6px" bgColor="myGray.100">
                       {t('common:common.Action')}
@@ -186,14 +191,14 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {members?.map((item) => (
-                  <Tr key={item.userId} overflow={'unset'}>
+                {members?.map((member) => (
+                  <Tr key={member.userId} overflow={'unset'}>
                     <Td>
                       <HStack>
-                        <Avatar src={item.avatar} w={['18px', '22px']} borderRadius={'50%'} />
+                        <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
                         <Box className={'textEllipsis'}>
-                          {item.memberName}
-                          {item.status === 'waiting' && (
+                          {member.memberName}
+                          {member.status === 'waiting' && (
                             <Tag ml="2" colorSchema="yellow">
                               {t('account_team:waiting')}
                             </Tag>
@@ -201,21 +206,36 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         </Box>
                       </HStack>
                     </Td>
+                    <Td maxW={'300px'}>{member.contact || '-'}</Td>
                     <Td maxW={'300px'}>
-                      <GroupTags
-                        names={groups
-                          ?.filter((group) =>
-                            group.members.map((m) => m.tmbId).includes(item.tmbId)
-                          )
-                          .map((g) => g.name)}
-                        max={3}
-                      />
+                      {(() => {
+                        const memberOrgs = orgs.filter((org) =>
+                          org.members.find((v) => String(v.tmbId) === String(member.tmbId))
+                        );
+                        const memberPathIds = memberOrgs.map((org) =>
+                          (org.path + '/' + org.pathId).split('/').slice(0)
+                        );
+                        const memberOrgNames = memberPathIds.map((pathIds) =>
+                          pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
+                        );
+                        return <OrgTags orgs={memberOrgNames} type="tag" />;
+                      })()}
+                    </Td>
+                    <Td maxW={'300px'}>
+                      <VStack gap={0}>
+                        <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
+                        <Box>
+                          {member.updateTime
+                            ? format(new Date(member.updateTime), 'yyyy-MM-dd HH:mm:ss')
+                            : '-'}
+                        </Box>
+                      </VStack>
                     </Td>
                     {!isSyncMember && (
                       <Td>
                         {userInfo?.team.permission.hasManagePer &&
-                          item.role !== TeamMemberRoleEnum.owner &&
-                          item.tmbId !== userInfo?.team.tmbId && (
+                          member.role !== TeamMemberRoleEnum.owner &&
+                          member.tmbId !== userInfo?.team.tmbId && (
                             <Icon
                               name={'common/trash'}
                               cursor={'pointer'}
@@ -229,12 +249,12 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                               onClick={() => {
                                 openRemoveMember(
                                   () =>
-                                    delRemoveMember(item.tmbId).then(() =>
+                                    delRemoveMember(member.tmbId).then(() =>
                                       Promise.all([refetchGroups(), refetchMembers()])
                                     ),
                                   undefined,
                                   t('account_team:remove_tip', {
-                                    username: item.memberName
+                                    username: member.memberName
                                   })
                                 )();
                               }}

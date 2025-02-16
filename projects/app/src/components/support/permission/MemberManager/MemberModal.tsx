@@ -401,7 +401,7 @@ function MemberModal({
                   };
                   const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
                   const memberOrgs = orgs.filter((org) =>
-                    org.members.find((v) => v.tmbId === member.tmbId)
+                    org.members.find((v) => String(v.tmbId) === String(member.tmbId))
                   );
                   const memberPathIds = memberOrgs.map((org) =>
                     (org.path + '/' + org.pathId).split('/').slice(0)

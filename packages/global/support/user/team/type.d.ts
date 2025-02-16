@@ -34,6 +34,7 @@ export type TeamTagSchema = TeamTagItemType & {
   _id: string;
   teamId: string;
   createTime: Date;
+  updateTime?: Date;
 };
 
 export type TeamMemberSchema = {
@@ -41,6 +42,7 @@ export type TeamMemberSchema = {
   teamId: string;
   userId: string;
   createTime: Date;
+  updateTime?: Date;
   name: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
@@ -79,6 +81,9 @@ export type TeamMemberItemType = {
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   permission: TeamPermission;
+  contact?: string;
+  createTime: Date;
+  updateTime?: Date;
 };
 
 export type TeamTagItemType = {
