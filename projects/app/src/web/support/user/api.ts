@@ -7,13 +7,13 @@ import { UserType } from '@fastgpt/global/support/user/type.d';
 import type {
   FastLoginProps,
   OauthLoginProps,
-  PostLoginProps
+  PostLoginProps,
+  SearchResult
 } from '@fastgpt/global/support/user/api.d';
 import {
   AccountRegisterBody,
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';
-import { SearchResponse } from '@/pages/api/support/user/search';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -95,4 +95,4 @@ export const getCaptchaPic = (username: string) =>
 export const postSyncMembers = () => POST('/proApi/support/user/team/org/sync');
 
 export const GetSearch = (searchKey: string) =>
-  GET<SearchResponse>('/support/user/search', { searchKey });
+  GET<SearchResult>('/proApi/support/user/search', { searchKey });

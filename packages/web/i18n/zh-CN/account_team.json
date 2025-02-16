@@ -43,5 +43,6 @@
   "sync_member_success": "同步成员成功",
   "contact": "联系方式",
   "join_update_time": "加入/更新时间",
-  "leave": "已离职"
+  "leave": "已离职",
+  "search_member": "搜索成员"
 }

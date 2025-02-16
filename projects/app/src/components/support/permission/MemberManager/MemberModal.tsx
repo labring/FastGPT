@@ -76,7 +76,7 @@ function MemberModal({
 
   const { runAsync: onSearch, data: searchedData } = useRequest2(() => GetSearch(searchText), {
     manual: true,
-    debounceWait: 500
+    throttleWait: 500
   });
 
   const paths = useMemo(() => {
@@ -105,7 +105,7 @@ function MemberModal({
   }, [orgs, parentPath]);
   const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
     if (searchText && searchedData) {
-      const orgids = searchedData.filter((item) => item.type === 'org').map((item) => item.id);
+      const orgids = searchedData.orgs.map((item) => item._id);
       return orgs.filter((org) => orgids.includes(String(org._id)));
     }
     if (!searchText && filterClass !== 'org') return [];
@@ -125,13 +125,7 @@ function MemberModal({
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const filterMembers = useMemo(() => {
     if (searchText) {
-      return searchedData
-        ?.filter((item) => item.type === 'member')
-        .map((item) => ({
-          memberName: item.name,
-          tmbId: item.id,
-          ...item
-        }));
+      return searchedData?.members;
     }
     if (!searchText && filterClass !== 'member' && filterClass !== 'org') return [];
     if (currentOrg && filterClass === 'org') {
@@ -144,13 +138,11 @@ function MemberModal({
   const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
   const filterGroups = useMemo(() => {
     if (searchText) {
-      return searchedData
-        ?.filter((item) => item.type === 'group')
-        .map((item) => ({
-          groupName: item.name,
-          _id: item.id,
-          ...item
-        }));
+      return searchedData?.groups.map((item) => ({
+        groupName: item.name,
+        _id: item.id,
+        ...item
+      }));
     }
     if (!searchText && filterClass !== 'group') return [];
 

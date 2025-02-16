@@ -29,7 +29,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
-import { postSyncMembers } from '@/web/support/user/api';
+import { GetSearch, postSyncMembers } from '@/web/support/user/api';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import {
   TeamMemberRoleEnum,
@@ -38,6 +38,8 @@ import {
 import format from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { useState } from 'react';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -96,7 +98,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     iconSrc: 'common/refreshLight'
   });
 
+  const [searchText, setSearchText] = useState<string>('');
   const isSyncMember = feConfigs.register_method?.includes('sync');
+
+  const { runAsync: searchMembers, data: searchMembersData } = useRequest2(GetSearch, {
+    manual: true,
+    throttleWait: 500
+  });
 
   const { runAsync: onLeaveTeam } = useRequest2(
     async () => {
@@ -140,6 +148,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
         <HStack>
+          <SearchInput
+            placeholder={t('account_team:search_member')}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              searchMembers(e.target.value);
+            }}
+          />
           {userInfo?.team.permission.hasManagePer && feConfigs?.show_team_chat && (
             <Button
               variant={'whitePrimary'}
@@ -231,8 +246,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {members?.sort(sortMembers).map((member) => (
-                  <Tr key={member.userId} overflow={'unset'}>
+                {(searchText && searchMembersData
+                  ? searchMembersData.members
+                  : members?.sort(sortMembers)
+                ).map((member) => (
+                  <Tr key={member.tmbId} overflow={'unset'}>
                     <Td>
                       <HStack>
                         <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
