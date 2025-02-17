@@ -37,6 +37,7 @@ import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { delRemoveMember } from '@/web/support/user/team/api';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -75,7 +76,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo, isTeamAdmin } = useUserStore();
 
-  const { members, MemberScrollData } = useContextSelector(TeamContext, (v) => v);
+  const { members, MemberScrollData, refetchMembers } = useContextSelector(TeamContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
   const isSyncMember = feConfigs.register_method?.includes('sync');
@@ -148,13 +149,26 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   });
 
   // Delete member
-  const { ConfirmModal: ConfirmDeleteMember, openConfirm: openDeleteMemberModal } = useConfirm({
-    type: 'delete',
-    content: t('account_team:confirm_delete_member')
-  });
+  const { ConfirmModal: ConfirmDeleteMemberFromOrg, openConfirm: openDeleteMemberFromOrgModal } =
+    useConfirm({
+      type: 'delete'
+    });
+
+  const { ConfirmModal: ConfirmDeleteMemberFromTeam, openConfirm: openDeleteMemberFromTeamModal } =
+    useConfirm({
+      type: 'delete'
+    });
+
   const { runAsync: deleteMemberReq } = useRequest2(deleteOrgMember, {
     onSuccess: () => {
       refetchOrgs();
+    }
+  });
+
+  const { runAsync: deleteMemberFromTeamReq } = useRequest2(delRemoveMember, {
+    onSuccess: () => {
+      refetchOrgs();
+      refetchMembers();
     }
   });
 
@@ -183,11 +197,9 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                     <Th bg="myGray.100" borderLeftRadius="6px">
                       {t('common:Name')}
                     </Th>
-                    {!isSyncMember && (
-                      <Th bg="myGray.100" borderRightRadius="6px">
-                        {t('common:common.Action')}
-                      </Th>
-                    )}
+                    <Th bg="myGray.100" borderRightRadius="6px">
+                      {t('common:common.Action')}
+                    </Th>
                   </Tr>
                 </Thead>
                 <Tbody>
@@ -250,7 +262,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                           <MemberTag name={memberInfo.memberName} avatar={memberInfo.avatar} />
                         </Td>
                         <Td w={'6rem'}>
-                          {isTeamAdmin && !isSyncMember && (
+                          {isTeamAdmin && (
                             <MyMenu
                               trigger={'hover'}
                               Button={<IconButton name="more" />}
@@ -259,13 +271,37 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                   children: [
                                     {
                                       icon: 'delete',
-                                      label: t('account_team:delete'),
+                                      label: t('account_team:delete_from_team', {
+                                        username: memberInfo.memberName
+                                      }),
                                       type: 'danger',
-                                      onClick: () =>
-                                        openDeleteMemberModal(() =>
-                                          deleteMemberReq(currentOrg._id, member.tmbId)
-                                        )()
-                                    }
+                                      onClick: () => {
+                                        openDeleteMemberFromTeamModal(
+                                          () => deleteMemberFromTeamReq(member.tmbId),
+                                          undefined,
+                                          t('account_team:confirm_delete_from_team', {
+                                            username: memberInfo.memberName
+                                          })
+                                        )();
+                                      }
+                                    },
+                                    ...(isSyncMember
+                                      ? []
+                                      : [
+                                          {
+                                            icon: 'delete',
+                                            label: t('account_team:delete_from_org'),
+                                            type: 'danger' as const,
+                                            onClick: () =>
+                                              openDeleteMemberFromOrgModal(
+                                                () => deleteMemberReq(currentOrg._id, member.tmbId),
+                                                undefined,
+                                                t('account_team:confirm_delete_from_org', {
+                                                  username: memberInfo.memberName
+                                                })
+                                              )()
+                                          }
+                                        ])
                                   ]
                                 }
                               ]}
@@ -361,7 +397,8 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
       )}
 
       <ConfirmDeleteOrgModal />
-      <ConfirmDeleteMember />
+      <ConfirmDeleteMemberFromOrg />
+      <ConfirmDeleteMemberFromTeam />
     </>
   );
 }
