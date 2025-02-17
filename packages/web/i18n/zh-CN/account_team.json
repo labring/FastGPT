@@ -48,5 +48,6 @@
   "delete_from_team": "移出团队",
   "delete_from_org": "移出部门",
   "confirm_delete_from_team": "确认将 {{username}} 移出团队？",
-  "confirm_delete_from_org": "确认将 {{username}} 移出部门？"
+  "confirm_delete_from_org": "确认将 {{username}} 移出部门？",
+  "search_org": "搜索部门"
 }
