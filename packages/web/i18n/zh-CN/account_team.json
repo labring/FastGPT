@@ -44,5 +44,6 @@
   "contact": "联系方式",
   "join_update_time": "加入/更新时间",
   "leave": "已离职",
-  "search_member": "搜索成员"
+  "search_member": "搜索成员",
+  "export_members": "导出成员"
 }

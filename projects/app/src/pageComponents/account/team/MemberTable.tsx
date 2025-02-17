@@ -40,6 +40,7 @@ import OrgTags from '@/components/support/user/team/OrgTags';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useState } from 'react';
+import { downloadFetch } from '@/web/common/system/utils';
 
 const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -147,14 +148,16 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       {isLoading && <MyLoading />}
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
-        <HStack>
-          <SearchInput
-            placeholder={t('account_team:search_member')}
-            onChange={(e) => {
-              setSearchText(e.target.value);
-              searchMembers(e.target.value);
-            }}
-          />
+        <HStack alignItems={'center'}>
+          <Box width={'200px'}>
+            <SearchInput
+              placeholder={t('account_team:search_member')}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                searchMembers(e.target.value);
+              }}
+            />
+          </Box>
           {userInfo?.team.permission.hasManagePer && feConfigs?.show_team_chat && (
             <Button
               variant={'whitePrimary'}
@@ -222,6 +225,23 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:user_team_leave_team')}
             </Button>
           )}
+          {userInfo?.team.permission.hasManagePer && (
+            <Button
+              variant={'whitePrimary'}
+              size="md"
+              borderRadius={'md'}
+              ml={3}
+              leftIcon={<MyIcon name="export" w={'16px'} />}
+              onClick={() => {
+                downloadFetch({
+                  url: '/api/proApi/support/user/team/member/export',
+                  filename: `${userInfo.team.teamName}-${format(new Date(), 'yyyyMMddHHmmss')}.csv`
+                });
+              }}
+            >
+              {t('account_team:export_members')}
+            </Button>
+          )}
         </HStack>
       </Flex>
 
@@ -237,12 +257,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <Th bgColor="myGray.100">{t('account_team:contact')}</Th>
                   <Th bgColor="myGray.100">{t('account_team:org')}</Th>
                   <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
-                  {/* <Th bgColor="myGray.100">{t('account_team:member_group')}</Th> */}
-                  {!isSyncMember && (
-                    <Th borderRightRadius="6px" bgColor="myGray.100">
-                      {t('common:common.Action')}
-                    </Th>
-                  )}
+                  <Th borderRightRadius="6px" bgColor="myGray.100">
+                    {t('common:common.Action')}
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>

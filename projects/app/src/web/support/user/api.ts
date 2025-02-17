@@ -100,3 +100,5 @@ export const postSyncMembers = () => POST('/proApi/support/user/team/org/sync');
 
 export const GetSearch = (searchKey: string) =>
   GET<SearchResult>('/proApi/support/user/search', { searchKey });
+
+export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');
