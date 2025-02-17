@@ -262,11 +262,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
             </Box>
 
-            {userInfo?.permission.isOwner && (
-              <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
-                {t('account_info:change')}
-              </Button>
-            )}
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
+              {t('account_info:change')}
+            </Button>
           </Flex>
         )}
         {feConfigs.isPlus && (

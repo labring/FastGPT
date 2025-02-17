@@ -4,7 +4,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { updateContact } from '@/web/support/user/api';
+import { updateContact, updateNotificationAccount } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -15,7 +15,13 @@ type FormType = {
   verifyCode: string;
 };
 
-const UpdateContactModal = ({ onClose }: { onClose: () => void }) => {
+const UpdateContactModal = ({
+  onClose,
+  mode = 'contact'
+}: {
+  onClose: () => void;
+  mode?: 'contact' | 'notification_account';
+}) => {
   const { t } = useTranslation();
   const { initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
@@ -32,7 +38,14 @@ const UpdateContactModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
     (data: FormType) => {
-      return updateContact(data);
+      if (mode === 'contact') {
+        return updateContact(data);
+      } else {
+        return updateNotificationAccount({
+          account: data.contact,
+          verifyCode: data.verifyCode
+        });
+      }
     },
     {
       onSuccess() {
