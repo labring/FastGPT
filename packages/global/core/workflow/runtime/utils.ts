@@ -451,11 +451,21 @@ export const parseReasoningStreamContent = () => {
   /* 
     parseReasoning - 只控制是否主动解析 <think></think>，如果接口已经解析了，仍然会返回 think 内容。
   */
-  const parsePart = (part: ChatCompletionChunk, parseReasoning = false): [string, string] => {
-    const content = part.choices[0].delta.content || '';
+  const parsePart = (
+    part: {
+      choices: {
+        delta: {
+          content?: string;
+          reasoning_content?: string;
+        };
+      }[];
+    },
+    parseReasoning = false
+  ): [string, string] => {
+    const content = part.choices?.[0]?.delta?.content || '';
 
     // @ts-ignore
-    const reasoningContent = part.choices[0].delta.reasoning_content || '';
+    const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
     if (reasoningContent || !parseReasoning) {
       isInThinkTag = false;
       return [reasoningContent, content];
