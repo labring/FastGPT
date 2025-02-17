@@ -95,18 +95,15 @@ const TemplateMarketModal = ({
   const { runAsync: onUseTemplate, loading: isCreating } = useRequest2(
     async (template: AppTemplateSchemaType) => {
       const templateDetail = await getTemplateMarketItemDetail(template.templateId);
-      let workflow = templateDetail.workflow;
-      if (templateDetail.type === AppTypeEnum.simple) {
-        workflow = form2AppWorkflow(workflow, t);
-      }
+
       return postCreateApp({
         parentId,
         avatar: template.avatar,
         name: template.name,
         type: template.type as AppTypeEnum,
-        modules: workflow.nodes || [],
-        edges: workflow.edges || [],
-        chatConfig: workflow.chatConfig
+        modules: templateDetail.workflow.nodes || [],
+        edges: templateDetail.workflow.edges || [],
+        chatConfig: templateDetail.workflow.chatConfig
       }).then((res) => {
         webPushTrack.useAppTemplate({
           id: res,
