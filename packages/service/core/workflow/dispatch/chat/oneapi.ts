@@ -3,13 +3,13 @@ import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import {
+  parseReasoningContent,
+  parseReasoningStreamContent,
+  textAdaptGptResponse
+} from '@fastgpt/global/core/workflow/runtime/utils';
 import { createChatCompletion } from '../../../ai/config';
-import type {
-  ChatCompletion,
-  ChatCompletionMessageParam,
-  StreamChatType
-} from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
@@ -195,7 +195,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   });
 
   const { answerText, reasoningText } = await (async () => {
-    if (res && isStreamResponse) {
+    if (isStreamResponse) {
+      if (!res) {
+        return {
+          answerText: '',
+          reasoningText: ''
+        };
+      }
       // sse response
       const { answer, reasoning } = await streamResponse({
         res,
@@ -210,34 +216,49 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         reasoningText: reasoning
       };
     } else {
-      const unStreamResponse = response as ChatCompletion;
-      const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-      // @ts-ignore
-      const reasoning = unStreamResponse.choices?.[0]?.message?.reasoning_content || '';
+      const { content, reasoningContent } = (() => {
+        const content = response.choices?.[0]?.message?.content || '';
+        // @ts-ignore
+        const reasoningContent: string = response.choices?.[0]?.message?.reasoning_content || '';
+
+        // API already parse reasoning content
+        if (reasoningContent || !aiChatReasoning) {
+          return {
+            content,
+            reasoningContent
+          };
+        }
+
+        const [think, answer] = parseReasoningContent(content);
+        return {
+          content: answer,
+          reasoningContent: think
+        };
+      })();
 
       // Some models do not support streaming
       if (stream) {
-        if (isResponseAnswerText && answer) {
+        if (aiChatReasoning && reasoningContent) {
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              text: answer
+              reasoning_content: reasoningContent
             })
           });
         }
-        if (aiChatReasoning && reasoning) {
+        if (isResponseAnswerText && content) {
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              reasoning_content: reasoning
+              text: content
             })
           });
         }
       }
 
       return {
-        answerText: answer,
-        reasoningText: reasoning
+        answerText: content,
+        reasoningText: reasoningContent
       };
     }
   })();
@@ -267,7 +288,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   });
 
   return {
-    answerText,
+    answerText: answerText.trim(),
     reasoningText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
@@ -500,26 +521,18 @@ async function streamResponse({
   });
   let answer = '';
   let reasoning = '';
+  const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
+
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();
       break;
     }
 
-    const content = part.choices?.[0]?.delta?.content || '';
+    const [reasoningContent, content] = parsePart(part, aiChatReasoning);
     answer += content;
-    if (isResponseAnswerText && content) {
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: content
-        })
-      });
-    }
-
-    const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
     reasoning += reasoningContent;
+
     if (aiChatReasoning && reasoningContent) {
       workflowStreamResponse?.({
         write,
@@ -529,6 +542,21 @@ async function streamResponse({
         })
       });
     }
+
+    if (isResponseAnswerText && content) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: content
+        })
+      });
+    }
+  }
+
+  // if answer is empty, try to get value from startTagBuffer. (Cause: The response content is too short to exceed the minimum parse length)
+  if (answer === '') {
+    answer = getStartTagBuffer();
   }
 
   return { answer, reasoning };
