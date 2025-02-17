@@ -735,7 +735,7 @@ data 为集合的 ID。
 
 **4.8.19+**
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/listv2' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/listV2' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
