@@ -4,34 +4,35 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { updateNotificationAccount } from '@/web/support/user/api';
+import { updateContact } from '@/web/support/user/api';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type FormType = {
-  account: string;
+  contact: string;
   verifyCode: string;
 };
 
-const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
+const UpdateContactModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
 
   const { register, handleSubmit, watch } = useForm<FormType>({
     defaultValues: {
-      account: '',
+      contact: '',
       verifyCode: ''
     }
   });
-  const account = watch('account');
+
+  const account = watch('contact');
   const verifyCode = watch('verifyCode');
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
     (data: FormType) => {
-      return updateNotificationAccount(data);
+      return updateContact(data);
     },
     {
       onSuccess() {
@@ -75,7 +76,7 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
               <Input
                 flex={1}
                 bg={'myGray.50'}
-                {...register('account', { required: true })}
+                {...register('contact', { required: true })}
                 placeholder={placeholder}
               ></Input>
             </Flex>
@@ -108,4 +109,4 @@ const UpdateNotificationModal = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-export default UpdateNotificationModal;
+export default UpdateContactModal;
