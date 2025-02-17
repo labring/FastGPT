@@ -37,25 +37,26 @@ export const computedTemperature = ({
   return temperature;
 };
 
-type CompletionsBodyType = (
+type CompletionsBodyType =
   | ChatCompletionCreateParamsNonStreaming
-  | ChatCompletionCreateParamsStreaming
-) & {
-  response_format?: any;
-  json_schema?: string;
-  stop?: string;
-};
+  | ChatCompletionCreateParamsStreaming;
 type InferCompletionsBody<T> = T extends { stream: true }
   ? ChatCompletionCreateParamsStreaming
-  : ChatCompletionCreateParamsNonStreaming;
+  : T extends { stream: false }
+    ? ChatCompletionCreateParamsNonStreaming
+    : ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
 
 export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
-  body: T,
+  body: T & {
+    response_format?: any;
+    json_schema?: string;
+    stop?: string;
+  },
   model: string | LLMModelItemType
 ): InferCompletionsBody<T> => {
   const modelData = typeof model === 'string' ? getLLMModel(model) : model;
   if (!modelData) {
-    return body as InferCompletionsBody<T>;
+    return body as unknown as InferCompletionsBody<T>;
   }
 
   const response_format = body.response_format;
@@ -91,9 +92,7 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
     });
   }
 
-  // console.log(requestBody);
-
-  return requestBody as InferCompletionsBody<T>;
+  return requestBody as unknown as InferCompletionsBody<T>;
 };
 
 export const llmStreamResponseToText = async (response: StreamChatType) => {

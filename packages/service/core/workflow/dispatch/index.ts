@@ -243,12 +243,17 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
     } else {
       if (reasoningText) {
-        chatAssistantResponse.push({
-          type: ChatItemValueTypeEnum.reasoning,
-          reasoning: {
-            content: reasoningText
-          }
-        });
+        const isResponseReasoningText = inputs.find(
+          (item) => item.key === NodeInputKeyEnum.aiChatReasoning
+        )?.value;
+        if (isResponseReasoningText) {
+          chatAssistantResponse.push({
+            type: ChatItemValueTypeEnum.reasoning,
+            reasoning: {
+              content: reasoningText
+            }
+          });
+        }
       }
       if (answerText) {
         // save assistant text response
