@@ -15,8 +15,8 @@ weight: 705
 
 - [Git](http://git-scm.com/)
 - [Docker](https://www.docker.com/)（构建镜像）
-- [Node.js v18.17 / v20.x](http://nodejs.org)（版本尽量一样，可以使用nvm管理node版本）
-- [pnpm](https://pnpm.io/) 版本 8.6.0 (目前官方的开发环境)
+- [Node.js v20.14.0](http://nodejs.org)（版本尽量一样，可以使用nvm管理node版本）
+- [pnpm](https://pnpm.io/) 推荐版本 9.4.0 (目前官方的开发环境)
 - make命令: 根据不同平台，百度安装 (官方是GNU Make 4.3)
 
 ## 开始本地开发
