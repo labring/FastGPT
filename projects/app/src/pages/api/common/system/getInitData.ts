@@ -49,8 +49,7 @@ async function handler(
       return {
         feConfigs: global.feConfigs,
         subPlans: global.subPlans,
-        activeModelList,
-        defaultModels: global.systemDefaultModel
+        activeModelList
       };
     }
 

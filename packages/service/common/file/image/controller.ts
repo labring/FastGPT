@@ -26,15 +26,18 @@ export async function uploadMongoImg({
   const [base64Mime, base64Data] = base64Img.split(',');
   // Check if mime type is valid
   if (!base64MimeRegex.test(base64Mime)) {
-    return Promise.reject('Invalid image mime type');
+    return Promise.reject('Invalid image base64');
   }
 
   const mime = `image/${base64Mime.match(base64MimeRegex)?.[1] ?? 'image/jpeg'}`;
   const binary = Buffer.from(base64Data, 'base64');
-  const extension = mime.split('/')[1];
+  let extension = mime.split('/')[1];
+  if (extension.startsWith('x-')) {
+    extension = extension.substring(2); // Remove 'x-' prefix
+  }
 
-  if (!imageFileType.includes(`.${extension}`)) {
-    return Promise.reject('Invalid image file type');
+  if (!extension || !imageFileType.includes(`.${extension}`)) {
+    return Promise.reject(`Invalid image file type: ${mime}`);
   }
 
   const { _id } = await MongoImage.create({
