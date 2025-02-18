@@ -13,9 +13,11 @@ import { useRouter } from 'next/router';
 
 const TeamSelector = ({
   showManage,
+  afterSwitchTeam,
   ...props
 }: ButtonProps & {
   showManage?: boolean;
+  afterSwitchTeam?: () => void;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -36,6 +38,7 @@ const TeamSelector = ({
     {
       onFinally: () => {
         setLoading(false);
+        afterSwitchTeam?.();
       },
       errorToast: t('common:user.team.Switch Team Failed')
     }
