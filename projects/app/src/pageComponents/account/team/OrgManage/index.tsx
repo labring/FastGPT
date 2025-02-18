@@ -39,7 +39,6 @@ import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/consta
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -127,7 +126,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
       .map((id) => {
         const org = orgs.find((org) => org.pathId === id)!;
 
-        if (org.path === '') return;
+        if (org?.path === '') return;
 
         return {
           parentId: getOrgChildrenPath(org),
@@ -325,11 +324,15 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                   {
                                     children: [
                                       {
-                                        icon: 'delete',
+                                        menuItemStyles: {
+                                          _hover: {
+                                            color: 'red.600',
+                                            backgroundColor: 'red.50'
+                                          }
+                                        },
                                         label: t('account_team:delete_from_team', {
                                           username: memberInfo.memberName
                                         }),
-                                        type: 'danger',
                                         onClick: () => {
                                           openDeleteMemberFromTeamModal(
                                             () => deleteMemberFromTeamReq(member.tmbId),
@@ -344,9 +347,13 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                         ? []
                                         : [
                                             {
-                                              icon: 'delete',
+                                              menuItemStyles: {
+                                                _hover: {
+                                                  color: 'red.600',
+                                                  bgColor: 'red.50'
+                                                }
+                                              },
                                               label: t('account_team:delete_from_org'),
-                                              type: 'danger' as const,
                                               onClick: () =>
                                                 openDeleteMemberFromOrgModal(
                                                   () =>

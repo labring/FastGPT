@@ -75,7 +75,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { ConfirmModal: ConfirmRestoreMemberModal, openConfirm: openRestoreMember } = useConfirm({
     type: 'common',
     title: t('account_team:restore_tip_title'),
-    iconSrc: 'common/refreshLight',
+    iconSrc: 'common/confirm/restoreTip',
     iconColor: 'primary.500'
   });
 
@@ -258,7 +258,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                               </Tag>
                             )}
                             {member.status === 'leave' && (
-                              <Tag ml="2" colorSchema="red">
+                              <Tag ml="2" colorSchema="gray">
                                 {t('account_team:leave')}
                               </Tag>
                             )}
@@ -266,7 +266,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         </HStack>
                       </Td>
                       <Td maxW={'300px'}>{member.contact || '-'}</Td>
-                      <Td maxW={'300px'}>
+                      <Td maxWidth="300px">
                         {(() => {
                           const memberOrgs = orgs.filter((org) =>
                             org.members.find((v) => String(v.tmbId) === String(member.tmbId))
@@ -320,13 +320,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                             />
                           ) : (
                             <Icon
-                              name={'common/refreshLight'}
+                              name={'common/confirm/restoreTip'}
                               cursor={'pointer'}
                               w="1rem"
                               p="1"
                               borderRadius="sm"
                               _hover={{
-                                color: 'red.600',
+                                color: 'primary.500',
                                 bgColor: 'myGray.100'
                               }}
                               onClick={() => {

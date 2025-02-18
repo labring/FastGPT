@@ -127,7 +127,7 @@ function EditModal({
         <Box color={'myGray.800'} fontWeight={'bold'} mt={4}>
           {t('account_team:notification_recieve')}
         </Box>
-        <HStack>
+        <HStack w="full" justifyContent={'space-between'}>
           {(() => {
             return notificationAccount ? (
               <Box width="full">{notificationAccount}</Box>
@@ -142,9 +142,7 @@ function EditModal({
                 width={'fit-content'}
               >
                 <Icon name="common/info" w="1rem" />
-                <Box width="fit-content">
-                  {t('account_info:please_bind_notification_receiving_path')}
-                </Box>
+                <Box width="fit-content">{t('account_info:please_bind_contact')}</Box>
               </HStack>
             );
           })()}

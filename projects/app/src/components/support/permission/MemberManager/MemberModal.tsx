@@ -229,6 +229,7 @@ function MemberModal({
       iconSrc={addOnly ? 'keyPrimary' : 'modal/AddClb'}
       title={addOnly ? t('user:team.add_permission') : t('user:team.add_collaborator')}
       minW="800px"
+      maxW={'60vw'}
       h={'100%'}
       maxH={'90vh'}
       isCentered

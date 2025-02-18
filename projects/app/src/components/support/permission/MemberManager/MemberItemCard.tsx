@@ -29,11 +29,11 @@ function MemberItemCard({
     <>
       <HStack
         justifyContent="space-between"
-        key={key}
-        py="1"
-        px="3"
-        borderRadius="sm"
         alignItems="center"
+        key={key}
+        px="3"
+        py="2"
+        borderRadius="sm"
         _hover={{
           bgColor: 'myGray.50',
           cursor: 'pointer'
@@ -42,15 +42,12 @@ function MemberItemCard({
       >
         {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
         <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
+
         <VStack w="full" gap={0}>
-          <HStack w="full" ml="2">
-            <Box w="full" mt={orgs && orgs.length > 0 ? '2' : ''}>
-              {name}
-            </Box>
-            {permission && <PermissionTags permission={permission} />}
-          </HStack>
-          {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
+          <Box w="full">{name}</Box>
+          <Box w="full">{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
         </VStack>
+        {permission && <PermissionTags permission={permission} />}
         {onDelete !== undefined && (
           <MyIcon
             name="common/closeLight"

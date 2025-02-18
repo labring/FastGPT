@@ -76,7 +76,11 @@ const UpdateContactModal = ({
         isOpen
         iconSrc="common/settingLight"
         w={'32rem'}
-        title={t('common:support.user.info.notification_receiving_hint')}
+        title={
+          mode === 'notification_account'
+            ? t('common:support.user.info.notification_receiving_hint')
+            : t('account_info:contact')
+        }
       >
         <ModalBody px={10}>
           <Flex flexDirection="column">
