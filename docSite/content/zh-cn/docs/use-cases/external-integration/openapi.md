@@ -20,7 +20,7 @@ weight: 502
 ![](/imgs/fastgpt-api1.jpg)
 
 {{% alert icon="🍅" context="success" %}}
-Tips: 安全起见，你可以设置一个额度或者过期时间，放置 key 被滥用。
+Tips: 安全起见，你可以设置一个额度或者过期时间，防止 key 被滥用。
 {{% /alert %}}
 
 
