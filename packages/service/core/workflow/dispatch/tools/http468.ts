@@ -398,41 +398,6 @@ async function fetchData({
   };
 }
 
-// function replaceVariable(text: string, obj: Record<string, any>) {
-//   for (const [key, value] of Object.entries(obj)) {
-//     if (value === undefined) {
-//       text = text.replace(new RegExp(`{{(${key})}}`, 'g'), UNDEFINED_SIGN);
-//     } else {
-//       const replacement = JSON.stringify(value);
-//       const unquotedReplacement =
-//         replacement.startsWith('"') && replacement.endsWith('"')
-//           ? replacement.slice(1, -1)
-//           : replacement;
-//       text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => unquotedReplacement);
-//     }
-//   }
-//   return text || '';
-// }
-// function removeUndefinedSign(obj: Record<string, any>) {
-//   for (const key in obj) {
-//     if (obj[key] === UNDEFINED_SIGN) {
-//       obj[key] = undefined;
-//     } else if (Array.isArray(obj[key])) {
-//       obj[key] = obj[key].map((item: any) => {
-//         if (item === UNDEFINED_SIGN) {
-//           return undefined;
-//         } else if (typeof item === 'object') {
-//           removeUndefinedSign(item);
-//         }
-//         return item;
-//       });
-//     } else if (typeof obj[key] === 'object') {
-//       removeUndefinedSign(obj[key]);
-//     }
-//   }
-//   return obj;
-// }
-
 // Replace some special response from system plugin
 async function replaceSystemPluginResponse({
   response,
