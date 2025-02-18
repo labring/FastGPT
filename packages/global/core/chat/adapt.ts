@@ -349,7 +349,7 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
   };
   value.forEach((item) => {
     if (item.type === 'file' && item.file) {
-      prompt.files?.push(item.file);
+      prompt.files.push(item.file);
     } else if (item.text) {
       prompt.text += item.text.content;
     }

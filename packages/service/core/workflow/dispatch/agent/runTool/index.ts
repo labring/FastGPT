@@ -334,7 +334,7 @@ const getMultiInput = async ({
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url))
+    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
   };
 };
 
