@@ -270,7 +270,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const AIMessages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content: answerText
+      content: answerText,
+      reasoning_text: reasoningText // reasoning_text is only recorded for response, but not for request
     }
   ];
 

@@ -20,7 +20,7 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { pushChatUsage } from '@/service/support/wallet/usage/push';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
@@ -423,7 +423,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     // add record
-    const { totalPoints } = pushChatUsage({
+    const { totalPoints } = createChatUsage({
       appName: app.name,
       appId: app._id,
       teamId,
