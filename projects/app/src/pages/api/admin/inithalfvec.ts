@@ -27,8 +27,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     let rowsUpdated;
+    let retryCount = 0;
     do {
-      rowsUpdated = await PgClient.query(`
+      try {
+        rowsUpdated = await PgClient.query(`
             WITH updated AS (
               UPDATE ${DatasetVectorTableName}
               SET halfvector = vector::halfvec(1536)
@@ -42,8 +44,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             )
             SELECT count(*) FROM updated;
           `);
-      console.log('rowsUpdated:', rowsUpdated.rows[0].count);
-    } while (rowsUpdated.rows[0].count > 0);
+        console.log('rowsUpdated:', rowsUpdated.rows[0].count);
+      } catch (error) {
+        console.error('Error updating halfvector:', error);
+        retryCount++;
+      }
+    } while (retryCount < 3 && rowsUpdated!.rows[0].count > 0);
+
+    if (retryCount >= 3) {
+      console.error('Failed to update halfvector after 3 retries');
+      return jsonRes(res, {
+        code: 500,
+        error: 'Failed to update halfvector after 3 retries'
+      });
+    }
+
+    console.log('halfvector column updated');
 
     // 设置halfvector字段为非空
     await PgClient.query(
