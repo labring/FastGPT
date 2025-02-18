@@ -77,8 +77,6 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 可参考项目根目录下的 `dev.md`，第一次编译运行可能会有点慢，需要点耐心哦
 
 ```bash
-# 给自动化脚本代码执行权限(非 linux 系统, 可以手动执行里面的 postinstall.sh 文件内容)
-chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 # 如果提示 isolate-vm 安装失败，可以参考：https://github.com/laverdet/isolated-vm?tab=readme-ov-file#requirements
 pnpm i
