@@ -110,7 +110,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
-  const { userInfo, updateUserInfo, teamPlanStatus } = useUserStore();
+  const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -284,7 +284,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
+              <TeamSelector height={'28px'} w={'100%'} showManage afterSwitchTeam={initUserInfo} />
             </Flex>
           </Flex>
         )}
