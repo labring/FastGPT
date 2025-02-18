@@ -284,7 +284,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage afterSwitchTeam={initUserInfo} />
+              <TeamSelector height={'28px'} w={'100%'} showManage onChange={initUserInfo} />
             </Flex>
           </Flex>
         )}
