@@ -232,9 +232,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
     }
 
-    if (toolResponses !== undefined) {
+    if (toolResponses !== undefined && toolResponses !== null) {
       if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
-      if (typeof toolResponses === 'object' && Object.keys(toolResponses).length === 0) return;
+      if (
+        !Array.isArray(toolResponses) &&
+        typeof toolResponses === 'object' &&
+        Object.keys(toolResponses).length === 0
+      )
+        return;
       toolRunResponse = toolResponses;
     }
 

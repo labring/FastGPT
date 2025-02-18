@@ -88,7 +88,7 @@ const Team = () => {
               </Box>
             </Flex>
             <Flex align={'center'} ml={6}>
-              <TeamSelector height={'28px'} afterSwitchTeam={refetchMembers} />
+              <TeamSelector height={'28px'} onChange={refetchMembers} />
             </Flex>
             {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
               <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>

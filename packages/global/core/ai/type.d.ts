@@ -46,6 +46,7 @@ export type ChatCompletionMessageParam = (
   | CustomChatCompletionToolMessageParam
   | CustomChatCompletionAssistantMessageParam
 ) & {
+  reasoning_text?: string;
   dataId?: string;
   hideInUI?: boolean;
 };
