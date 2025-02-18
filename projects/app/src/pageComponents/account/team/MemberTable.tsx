@@ -75,7 +75,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { ConfirmModal: ConfirmRestoreMemberModal, openConfirm: openRestoreMember } = useConfirm({
     type: 'common',
     title: t('account_team:restore_tip_title'),
-    iconSrc: 'common/refreshLight'
+    iconSrc: 'common/refreshLight',
+    iconColor: 'primary.500'
   });
 
   const [searchText, setSearchText] = useState<string>('');
