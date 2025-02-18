@@ -297,7 +297,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
-      {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} />}
+      {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
       <File
         onSelect={(e) =>
           onSelectImage(e, {

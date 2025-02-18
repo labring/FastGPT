@@ -148,7 +148,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
           {!!userInfo && <SystemMsgModal />}
           {showUpdateNotification && (
-            <UpdateContact onClose={() => setIsUpdateNotification(false)} />
+            <UpdateContact onClose={() => setIsUpdateNotification(false)} mode="contact" />
           )}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
