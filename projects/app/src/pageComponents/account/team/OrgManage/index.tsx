@@ -39,6 +39,7 @@ import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/consta
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));

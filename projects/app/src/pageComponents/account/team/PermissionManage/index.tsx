@@ -40,9 +40,8 @@ import CollaboratorContextProvider, {
 } from '@/components/support/permission/MemberManager/context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { GetSearch } from '@/web/support/user/api';
+import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 
 function PermissionManage({
   Tabs,
@@ -73,7 +72,7 @@ function PermissionManage({
 
   const [searchKey, setSearchKey] = useState('');
 
-  const { data: searchResult } = useRequest2(() => GetSearch(searchKey), {
+  const { data: searchResult } = useRequest2(() => GetSearchUserGroupOrg(searchKey), {
     manual: false,
     throttleWait: 500,
     refreshDeps: [searchKey]

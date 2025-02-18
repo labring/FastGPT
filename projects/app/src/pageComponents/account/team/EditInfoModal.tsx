@@ -44,10 +44,11 @@ function EditModal({
 }) {
   const { t } = useTranslation();
 
-  const { register, setValue, handleSubmit, watch, getValues } = useForm<CreateTeamProps>({
+  const { register, setValue, handleSubmit, watch } = useForm<CreateTeamProps>({
     defaultValues: defaultData
   });
   const avatar = watch('avatar');
+  const notificationAccount = watch('notificationAccount');
 
   const {
     File,
@@ -128,7 +129,6 @@ function EditModal({
         </Box>
         <HStack>
           {(() => {
-            const { notificationAccount } = getValues();
             return notificationAccount ? (
               <Box width="full">{notificationAccount}</Box>
             ) : (

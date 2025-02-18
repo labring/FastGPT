@@ -38,7 +38,7 @@ import { getGroupList } from '@/web/support/user/team/group/api';
 import { getOrgList } from '@/web/support/user/team/org/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
-import { GetSearch } from '@/web/support/user/api';
+import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 
 const HoverBoxStyle = {
   bgcolor: 'mygray.50',
@@ -74,9 +74,10 @@ function MemberModal({
 
   const [parentPath, setParentPath] = useState('');
 
-  const { runAsync: onSearch, data: searchedData } = useRequest2(() => GetSearch(searchText), {
-    manual: true,
-    throttleWait: 500
+  const { data: searchedData } = useRequest2(() => GetSearchUserGroupOrg(searchText), {
+    manual: false,
+    throttleWait: 500,
+    refreshDeps: [searchText]
   });
 
   const paths = useMemo(() => {
@@ -251,10 +252,7 @@ function MemberModal({
             <SearchInput
               placeholder={t('user:search_group_org_user')}
               bgColor="myGray.50"
-              onChange={(e) => {
-                setSearchText(e.target.value);
-                onSearch();
-              }}
+              onChange={(e) => setSearchText(e.target.value)}
             />
 
             <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>

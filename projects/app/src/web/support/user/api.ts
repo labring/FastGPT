@@ -98,7 +98,13 @@ export const getCaptchaPic = (username: string) =>
 
 export const postSyncMembers = () => POST('/proApi/support/user/team/org/sync');
 
-export const GetSearch = (searchKey: string) =>
-  GET<SearchResult>('/proApi/support/user/search', { searchKey });
+export const GetSearchUserGroupOrg = (
+  searchKey: string,
+  options?: {
+    members?: boolean;
+    orgs?: boolean;
+    groups?: boolean;
+  }
+) => GET<SearchResult>('/proApi/support/user/search', { searchKey, ...options });
 
 export const ExportMembers = () => GET<{ csv: string }>('/proApi/support/user/team/member/export');

@@ -17,10 +17,10 @@ type FormType = {
 
 const UpdateContactModal = ({
   onClose,
-  mode = 'contact'
+  mode
 }: {
   onClose: () => void;
-  mode?: 'contact' | 'notification_account';
+  mode: 'contact' | 'notification_account';
 }) => {
   const { t } = useTranslation();
   const { initUserInfo } = useUserStore();
