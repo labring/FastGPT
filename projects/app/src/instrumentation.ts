@@ -16,7 +16,8 @@ export async function register() {
         { getSystemPluginCb },
         { startMongoWatch },
         { startCron },
-        { startTrainingQueue }
+        { startTrainingQueue },
+        { checkSystemVersion }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/system/tools'),
@@ -26,7 +27,8 @@ export async function register() {
         import('@/service/core/app/plugin'),
         import('@/service/common/system/volumnMongoWatch'),
         import('@/service/common/system/cron'),
-        import('@/service/core/dataset/training/utils')
+        import('@/service/core/dataset/training/utils'),
+        import('@fastgpt/service/common/system/info/controllers')
       ]);
 
       // 执行初始化流程
@@ -43,6 +45,8 @@ export async function register() {
       initAppTemplateTypes();
       getSystemPluginCb();
       startMongoWatch();
+      await checkSystemVersion();
+
       startCron();
       startTrainingQueue(true);
 
