@@ -111,6 +111,16 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
+  const modelList = useMemo(() => {
+    return [
+      ...llmModelList,
+      ...embeddingModelList,
+      ...ttsModelList,
+      ...sttModelList,
+      ...reRankModelList
+    ];
+  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]);
+
   const [value, setValue] = useState<string[]>([]);
 
   const avatarSize = useMemo(() => {
@@ -145,13 +155,6 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
       children: []
     }));
 
-    const modelList = [
-      ...llmModelList,
-      ...embeddingModelList,
-      ...ttsModelList,
-      ...sttModelList,
-      ...reRankModelList
-    ];
     for (const item of list) {
       const modelData = getModelFromList(modelList, item.value);
       const provider =
@@ -165,7 +168,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, llmModelList, ttsModelList, sttModelList, reRankModelList]);
+  }, [avatarSize, list, modelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -175,16 +178,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   );
 
   const SelectedModel = useMemo(() => {
-    const modelData = getModelFromList(
-      [
-        ...llmModelList,
-        ...embeddingModelList,
-        ...ttsModelList,
-        ...sttModelList,
-        ...reRankModelList
-      ],
-      props.value
-    );
+    const modelData = getModelFromList(modelList, props.value);
 
     setValue([modelData.provider, props.value]);
 
@@ -200,15 +194,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
         <Box>{modelData?.name}</Box>
       </HStack>
     );
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    props.value,
-    avatarSize
-  ]);
+  }, [modelList, props.value, avatarSize]);
 
   return (
     <Box
