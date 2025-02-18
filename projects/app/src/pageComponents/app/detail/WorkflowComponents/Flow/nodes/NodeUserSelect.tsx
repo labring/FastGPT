@@ -148,13 +148,12 @@ const OptionItem = ({
       mb={4}
       ref={provided.innerRef}
       {...provided.draggableProps}
-      {...provided.dragHandleProps}
       style={{
         ...provided.draggableProps.style,
         opacity: snapshot.isDragging ? 0.8 : 1
       }}
     >
-      <HStack spacing={1}>
+      <HStack spacing={1} {...provided.dragHandleProps}>
         <MyTooltip label={t('common:common.Delete')}>
           <MyIcon
             mt={0.5}

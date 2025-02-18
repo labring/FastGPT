@@ -1,5 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useSystemStore } from './useSystemStore';
+import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
 export const downloadFetch = async ({
   url,
@@ -12,7 +13,7 @@ export const downloadFetch = async ({
 }) => {
   if (body) {
     // fetch data with POST method if body exists
-    const response = await fetch(url, {
+    const response = await fetch(getWebReqUrl(url), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
