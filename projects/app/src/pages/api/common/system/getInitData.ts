@@ -44,12 +44,23 @@ async function handler(
       defaultModels: global.systemDefaultModel
     };
   } catch (error) {
+    const referer = req.headers.referer;
+    if (referer?.includes('/price')) {
+      return {
+        feConfigs: global.feConfigs,
+        subPlans: global.subPlans,
+        activeModelList,
+        defaultModels: global.systemDefaultModel
+      };
+    }
+
     const unAuthBufferId = global.systemInitBufferId ? `unAuth_${global.systemInitBufferId}` : '';
     if (bufferId && unAuthBufferId === bufferId) {
       return {
         bufferId: unAuthBufferId
       };
     }
+
     return {
       bufferId: unAuthBufferId,
       feConfigs: global.feConfigs
