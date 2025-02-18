@@ -197,7 +197,11 @@ export const loadRequestMessages = async ({
                 addLog.info(`Filter invalid image: ${imgUrl}`);
                 return;
               }
-            } catch (error) {
+            } catch (error: any) {
+              if (error?.response?.status === 405) {
+                return item;
+              }
+              addLog.warn(`Filter invalid image: ${imgUrl}`, { error });
               return;
             }
           }

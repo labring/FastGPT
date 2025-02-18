@@ -372,7 +372,7 @@
   "core.app.tip.Add a intro to app": "快来给应用一个介绍~",
   "core.app.tip.chatNodeSystemPromptTip": "在此输入提示词",
   "core.app.tip.systemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可通过输入 / 插入选择变量\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
-  "core.app.tip.variableTip": "可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等",
+  "core.app.tip.variableTip": "可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n输入框中，可通过 / 激活变量选择，例如：提示词、限定词等",
   "core.app.tip.welcomeTextTip": "每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记：\n[快捷按键]：用户点击后可以直接发送该问题",
   "core.app.tool_label.doc": "使用文档",
   "core.app.tool_label.github": "GitHub地址",
