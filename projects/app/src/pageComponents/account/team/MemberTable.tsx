@@ -194,19 +194,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {t('account_team:user_team_invite_member')}
             </Button>
           )}
-          {!userInfo?.team.permission.isOwner && (
-            <Button
-              variant={'whitePrimary'}
-              size="md"
-              borderRadius={'md'}
-              ml={3}
-              leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
-              onClick={() => openLeaveConfirm(onLeaveTeam)()}
-            >
-              {t('account_team:user_team_leave_team')}
-            </Button>
-          )}
-          {userInfo?.team.permission.hasManagePer && (
+          {userInfo?.team.permission.isOwner && isSyncMember && (
             <Button
               variant={'whitePrimary'}
               size="md"
@@ -221,6 +209,18 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               }}
             >
               {t('account_team:export_members')}
+            </Button>
+          )}
+          {!userInfo?.team.permission.isOwner && (
+            <Button
+              variant={'whitePrimary'}
+              size="md"
+              borderRadius={'md'}
+              ml={3}
+              leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
+              onClick={() => openLeaveConfirm(onLeaveTeam)()}
+            >
+              {t('account_team:user_team_leave_team')}
             </Button>
           )}
         </HStack>

@@ -383,6 +383,7 @@ export async function searchDatasetData(
       ).lean()
     ]);
 
+    const set = new Map<string, number>();
     const formatResult = results
       .map((item, index) => {
         const collection = collections.find((col) => String(col._id) === String(item.collectionId));
@@ -398,8 +399,6 @@ export async function searchDatasetData(
           return;
         }
 
-        const score = item?.score || 0;
-
         const result: SearchDataResponseItemType = {
           id: String(data._id),
           updateTime: data.updateTime,
@@ -409,12 +408,24 @@ export async function searchDatasetData(
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
           ...getCollectionSourceData(collection),
-          score: [{ type: SearchScoreTypeEnum.embedding, value: score, index }]
+          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
         };
 
         return result;
       })
-      .filter(Boolean) as SearchDataResponseItemType[];
+      .filter((item) => {
+        if (!item) return false;
+        if (set.has(item.id)) return false;
+        set.set(item.id, 1);
+        return true;
+      })
+      .map((item, index) => {
+        if (!item) return;
+        return {
+          ...item,
+          score: item.score.map((item) => ({ ...item, index }))
+        };
+      }) as SearchDataResponseItemType[];
 
     return {
       embeddingRecallResults: formatResult,
@@ -717,11 +728,12 @@ export const defaultSearchDatasetData = async ({
     ? getLLMModel(datasetSearchExtensionModel)
     : undefined;
 
-  const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
-    query,
-    extensionModel,
-    extensionBg: datasetSearchExtensionBg
-  });
+  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
+    await datasetSearchQueryExtension({
+      query,
+      extensionModel,
+      extensionBg: datasetSearchExtensionBg
+    });
 
   const result = await searchDatasetData({
     ...props,
@@ -736,7 +748,7 @@ export const defaultSearchDatasetData = async ({
           model: aiExtensionResult.model,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
-          query: concatQueries.join('\n')
+          query: extensionQueries.join('\n')
         }
       : undefined
   };

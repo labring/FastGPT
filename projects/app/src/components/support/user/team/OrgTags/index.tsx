@@ -18,12 +18,18 @@ function OrgTags({ orgs, type = 'simple' }: { orgs: string[]; type?: 'simple' | 
       }
     >
       {type === 'simple' ? (
-        <Box fontSize="sm" fontWeight={400} w="full" color="myGray.500" whiteSpace={'nowrap'}>
+        <Box
+          className="textEllipsis"
+          fontSize="xs"
+          fontWeight={400}
+          w="full"
+          color="myGray.400"
+          whiteSpace={'nowrap'}
+        >
           {orgs
             .map((org) => org.split('/').pop())
             .join(', ')
             .slice(0, 30)}
-          {orgs.length > 1 && '...'}
         </Box>
       ) : (
         <Flex direction="row" gap="1" p="2" alignItems={'start'} wrap={'wrap'}>

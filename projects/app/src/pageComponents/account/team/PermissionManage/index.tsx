@@ -87,7 +87,7 @@ function PermissionManage({
     const groupList = collaboratorList.filter(
       (item) =>
         Object.keys(item).includes('groupId') &&
-        (!searchKey || searchResult?.groups.find((group) => group.groupId === item.groupId))
+        (!searchKey || searchResult?.groups.find((group) => group._id === item.groupId))
     );
     const orgList = collaboratorList.filter(
       (item) =>
