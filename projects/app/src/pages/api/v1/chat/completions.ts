@@ -352,7 +352,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           newTitle,
           shareId,
           outLinkUid: outLinkUserId,
-          source: sourceName || source,
+          source: source,
+          sourceName: sourceName || '',
           content: [userQuestion, aiResponse],
           metadata: {
             originIp,
