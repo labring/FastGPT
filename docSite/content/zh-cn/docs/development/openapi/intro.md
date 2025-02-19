@@ -1,6 +1,6 @@
 ---
-title: 'Api Key 使用与鉴权'
-description: 'FastGPT Api Key 使用与鉴权'
+title: 'OpenAPI 介绍'
+description: 'FastGPT OpenAPI 介绍'
 icon: 'key'
 draft: false
 toc: true
@@ -26,6 +26,7 @@ FastGPT 的 API Key **有 2 类**，一类是全局通用的 key (无法直接�
 |        通用key               |           应用特定 key            |
 | --------------------- | --------------------- |
 | ![](/imgs/fastgpt-api2.jpg) | ![](/imgs/fastgpt-api1.jpg) |
+
 
 ## 基本配置
 

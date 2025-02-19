@@ -302,65 +302,64 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     // save chat
-    if (chatId) {
-      const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
-      const source = (() => {
-        if (shareId) {
-          return ChatSourceEnum.share;
-        }
-        if (authType === 'apikey') {
-          return ChatSourceEnum.api;
-        }
-        if (spaceTeamId) {
-          return ChatSourceEnum.team;
-        }
-        return ChatSourceEnum.online;
-      })();
-
-      const isInteractiveRequest = !!getLastInteractiveValue(histories);
-      const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
-
-      const newTitle = isPlugin
-        ? variables.cTime ?? getSystemTime(timezone)
-        : getChatTitleFromChatMessage(userQuestion);
-
-      const aiResponse: AIChatItemType & { dataId?: string } = {
-        dataId: responseChatItemId,
-        obj: ChatRoleEnum.AI,
-        value: assistantResponses,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
-      };
-
-      if (isInteractiveRequest) {
-        await updateInteractiveChat({
-          chatId,
-          appId: app._id,
-          userInteractiveVal,
-          aiResponse,
-          newVariables
-        });
-      } else {
-        await saveChat({
-          chatId,
-          appId: app._id,
-          teamId,
-          tmbId: tmbId,
-          nodes,
-          appChatConfig: chatConfig,
-          variables: newVariables,
-          isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
-          newTitle,
-          shareId,
-          outLinkUid: outLinkUserId,
-          source: source,
-          sourceName: sourceName || '',
-          content: [userQuestion, aiResponse],
-          metadata: {
-            originIp,
-            ...metadata
-          }
-        });
+    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
+    const source = (() => {
+      if (shareId) {
+        return ChatSourceEnum.share;
       }
+      if (authType === 'apikey') {
+        return ChatSourceEnum.api;
+      }
+      if (spaceTeamId) {
+        return ChatSourceEnum.team;
+      }
+      return ChatSourceEnum.online;
+    })();
+
+    const isInteractiveRequest = !!getLastInteractiveValue(histories);
+    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
+
+    const newTitle = isPlugin
+      ? variables.cTime ?? getSystemTime(timezone)
+      : getChatTitleFromChatMessage(userQuestion);
+
+    const aiResponse: AIChatItemType & { dataId?: string } = {
+      dataId: responseChatItemId,
+      obj: ChatRoleEnum.AI,
+      value: assistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+    };
+
+    const saveChatId = chatId || getNanoid(24);
+    if (isInteractiveRequest) {
+      await updateInteractiveChat({
+        chatId: saveChatId,
+        appId: app._id,
+        userInteractiveVal,
+        aiResponse,
+        newVariables
+      });
+    } else {
+      await saveChat({
+        chatId: saveChatId,
+        appId: app._id,
+        teamId,
+        tmbId: tmbId,
+        nodes,
+        appChatConfig: chatConfig,
+        variables: newVariables,
+        isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
+        newTitle,
+        shareId,
+        outLinkUid: outLinkUserId,
+        source,
+        sourceName: sourceName || '',
+        content: [userQuestion, aiResponse],
+        metadata: {
+          originIp,
+          ...metadata
+        }
+      });
     }
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);

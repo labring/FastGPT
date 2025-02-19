@@ -43,10 +43,10 @@ function MemberItemCard({
         {isChecked !== undefined && <Checkbox isChecked={isChecked} pointerEvents="none" />}
         <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
 
-        <VStack w="full" gap={0}>
-          <Box w="full">{name}</Box>
-          <Box w="full">{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
-        </VStack>
+        <Box w="full">
+          <Box fontSize={'sm'}>{name}</Box>
+          <Box lineHeight={1}>{orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}</Box>
+        </Box>
         {permission && <PermissionTags permission={permission} />}
         {onDelete !== undefined && (
           <MyIcon
