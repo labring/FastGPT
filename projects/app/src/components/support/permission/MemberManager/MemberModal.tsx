@@ -41,7 +41,7 @@ import MemberItemCard from './MemberItemCard';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 
 const HoverBoxStyle = {
-  bgcolor: 'mygray.50',
+  bgColor: 'myGray.50',
   cursor: 'pointer'
 };
 
