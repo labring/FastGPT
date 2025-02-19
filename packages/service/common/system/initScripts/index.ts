@@ -1,32 +1,32 @@
 export const initScripts: Record<string, () => Promise<boolean>> = {
-  '4.8.21': () => {
-    console.log('initScripts v4.8.21');
-    return Promise.resolve(true);
-  },
-  '4.8.22': () => {
-    console.log('initScripts v4.8.22');
-    return Promise.resolve(true);
-  },
-  '4.8.23': () => {
-    console.log('initScripts v4.8.23');
-    return Promise.resolve(true);
-  },
-  '4.8.24': () => {
-    console.log('initScripts v4.8.24');
-    return Promise.resolve(true);
-  },
-  '4.9.0': () => {
-    console.log('initScripts v4.9.0');
-    return Promise.resolve(true);
-  },
-  '4.9.1': () => {
-    console.log('initScripts v4.9.1');
-    return Promise.resolve(true);
-  },
-  '5.0.0': () => {
-    console.log('initScripts v5.0.0');
-    return Promise.resolve(true);
-  }
+  // '4.8.21': () => {
+  //   console.log('initScripts v4.8.21');
+  //   return Promise.resolve(true);
+  // },
+  // '4.8.22': () => {
+  //   console.log('initScripts v4.8.22');
+  //   return Promise.resolve(true);
+  // },
+  // '4.8.23': () => {
+  //   console.log('initScripts v4.8.23');
+  //   return Promise.resolve(true);
+  // },
+  // '4.8.24': () => {
+  //   console.log('initScripts v4.8.24');
+  //   return Promise.resolve(true);
+  // },
+  // '4.9.0': () => {
+  //   console.log('initScripts v4.9.0');
+  //   return Promise.resolve(true);
+  // },
+  // '4.9.1': () => {
+  //   console.log('initScripts v4.9.1');
+  //   return Promise.resolve(true);
+  // },
+  // '5.0.0': () => {
+  //   console.log('initScripts v5.0.0');
+  //   return Promise.resolve(true);
+  // }
 };
 
 export const versionList = Object.keys(initScripts);
