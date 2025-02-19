@@ -92,8 +92,8 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     total: memberTotal,
     ScrollData: MemberScrollData
   } = useScrollPagination(getTeamMembers, {
+    pageSize: 20,
     params: {
-      pageSize: 20,
       withLeaved: true
     }
   });
