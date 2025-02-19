@@ -11,17 +11,16 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
   const users = await MongoUser.find();
   const teams = await MongoTeam.find();
-  try {
-    for await (const user of users) {
+  for await (const user of users) {
+    try {
       const team = teams.find((team) => String(team.ownerId) === String(user._id));
-      if (team) {
+      if (team && !user.contact) {
         user.contact = team.notificationAccount;
       }
       await user.save();
+    } catch (error) {
+      console.error(error);
     }
-  } catch (error) {
-    console.error(error);
-    return { success: false };
   }
 
   return { success: true };
