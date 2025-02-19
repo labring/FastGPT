@@ -7,6 +7,12 @@ toc: true
 weight: 852
 ---
 
+# 如何获取 AppId
+
+可在应用详情的路径里获取 AppId。
+
+![](/imgs/appid.png)
+
 # 发起对话
 
 {{% alert icon="🤖 " context="success" %}}
@@ -102,8 +108,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 {{% alert context="info" %}}
 - headers.Authorization: Bearer {{apikey}}
 - chatId: string | undefined 。
-  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。 不会将你的记录存储到数据库中，你也无法在记录汇总中查阅到。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
+  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
+  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
 - messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
 - responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
 - detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。

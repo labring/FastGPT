@@ -78,7 +78,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     isUpdateNotification &&
     feConfigs?.bind_notification_method &&
     feConfigs?.bind_notification_method.length > 0 &&
-    !userInfo?.team.notificationAccount &&
+    !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
 
   useMount(() => {
