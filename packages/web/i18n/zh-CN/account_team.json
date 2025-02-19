@@ -1,7 +1,6 @@
 {
   "action": "操作",
   "confirm_delete_group": "确认删除群组？",
-  "confirm_delete_member": "确认删除成员？",
   "confirm_delete_org": "确认删除该部门？",
   "confirm_leave_team": "确认离开该团队？  \n退出后，您在该团队所有的资源均转让给团队所有者。",
   "create_group": "创建群组",
@@ -26,7 +25,9 @@
   "owner": "所有者",
   "permission": "权限",
   "remark": "备注",
-  "remove_tip": "确认将 {{username}} 移出团队？",
+  "remove_tip": "确认将 {{username}} 移出团队？成员将被标记为“已离职”，不删除操作数据，账号下资源自动转让给团队所有者。",
+  "restore_tip": "确认将 {{username}} 加入团队吗？仅恢复该成员账号可用性及相关权限，无法恢复账号下资源。",
+  "restore_tip_title": "恢复确认",
   "retain_admin_permissions": "保留管理员权限",
   "search_member_group_name": "搜索成员/群组名称",
   "total_team_members": "共 {{amount}} 名成员",
@@ -38,5 +39,17 @@
   "waiting": "待接受",
   "sync_immediately": "立即同步",
   "sync_member_failed": "同步成员失败",
-  "sync_member_success": "同步成员成功"
+  "sync_member_success": "同步成员成功",
+  "contact": "联系方式",
+  "join_update_time": "加入/更新时间",
+  "leave": "已离职",
+  "search_member": "搜索成员",
+  "export_members": "导出成员",
+  "delete_from_team": "移出团队",
+  "delete_from_org": "移出部门",
+  "confirm_delete_from_team": "确认将 {{username}} 移出团队？",
+  "confirm_delete_from_org": "确认将 {{username}} 移出部门？",
+  "search_org": "搜索部门",
+  "notification_recieve": "团队通知接收",
+  "set_name_avatar": "团队头像 & 团队名"
 }

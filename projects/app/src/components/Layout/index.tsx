@@ -21,9 +21,7 @@ const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/U
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
-const UpdateNotification = dynamic(
-  () => import('@/components/support/user/inform/UpdateNotificationModal')
-);
+const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -156,7 +154,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
           {!!userInfo && <SystemMsgModal />}
           {showUpdateNotification && (
-            <UpdateNotification onClose={() => setIsUpdateNotification(false)} />
+            <UpdateContact onClose={() => setIsUpdateNotification(false)} mode="contact" />
           )}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
