@@ -406,9 +406,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         return assistantResponses;
       })();
+      const error = flowResponses[flowResponses.length - 1]?.error;
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
+        error,
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
