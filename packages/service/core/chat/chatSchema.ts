@@ -54,6 +54,9 @@ const ChatSchema = new Schema({
     type: String,
     required: true
   },
+  sourceName: {
+    type: String
+  },
   shareId: {
     type: String
   },

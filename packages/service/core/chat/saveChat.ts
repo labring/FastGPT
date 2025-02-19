@@ -23,6 +23,7 @@ type Props = {
   isUpdateUseTime: boolean;
   newTitle: string;
   source: string;
+  sourceName: string;
   shareId?: string;
   outLinkUid?: string;
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
@@ -40,6 +41,7 @@ export async function saveChat({
   isUpdateUseTime,
   newTitle,
   source,
+  sourceName,
   shareId,
   outLinkUid,
   content,
@@ -96,6 +98,7 @@ export async function saveChat({
             pluginInputs,
             title: newTitle,
             source,
+            sourceName,
             shareId,
             outLinkUid,
             metadata: metadataUpdate,
