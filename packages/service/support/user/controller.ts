@@ -46,6 +46,7 @@ export async function getUserDetail({
     promotionRate: user.promotionRate,
     team: tmb,
     notificationAccount: tmb.notificationAccount,
-    permission: tmb.permission
+    permission: tmb.permission,
+    contact: user.contact
   };
 }

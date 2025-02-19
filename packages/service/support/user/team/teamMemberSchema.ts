@@ -36,6 +36,9 @@ const TeamMemberSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+  updateTime: {
+    type: Date
+  },
   defaultTeam: {
     type: Boolean,
     default: false
