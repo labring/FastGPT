@@ -16,13 +16,13 @@ async function handler(
   const user = await getUserDetail({ tmbId });
 
   // Remove sensitive information
-  if (user.team.lafAccount) {
-    user.team.lafAccount = {
-      appid: user.team.lafAccount.appid,
-      token: '',
-      pat: ''
-    };
-  }
+  // if (user.team.lafAccount) {
+  //   user.team.lafAccount = {
+  //     appid: user.team.lafAccount.appid,
+  //     token: '',
+  //     pat: ''
+  //   };
+  // }
   if (user.team.openaiAccount) {
     user.team.openaiAccount = {
       key: '',
