@@ -11,12 +11,6 @@ importers:
       '@chakra-ui/cli':
         specifier: ^2.4.1
         version: 2.4.1
-      '@types/crypto-js':
-        specifier: ^4.2.2
-        version: 4.2.2
-      crypto-js:
-        specifier: ^4.2.0
-        version: 4.2.0
       husky:
         specifier: ^8.0.3
         version: 8.0.3
@@ -93,6 +87,9 @@ importers:
 
   packages/plugins:
     dependencies:
+      '@types/crypto-js':
+        specifier: ^4.2.2
+        version: 4.2.2
       '@types/pg':
         specifier: ^8.6.6
         version: 8.11.10
@@ -102,6 +99,9 @@ importers:
       cheerio:
         specifier: 1.0.0-rc.12
         version: 1.0.0-rc.12
+      crypto-js:
+        specifier: ^4.2.0
+        version: 4.2.0
       duck-duck-scrape:
         specifier: ^2.2.5
         version: 2.2.5
@@ -465,6 +465,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^4.24.10
         version: 4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@types/crypto-js':
+        specifier: ^4.2.2
+        version: 4.2.2
       '@types/jest':
         specifier: ^29.5.2
         version: 29.5.12
@@ -477,6 +480,9 @@ importers:
       axios:
         specifier: ^1.5.1
         version: 1.7.2
+      crypto-js:
+        specifier: ^4.2.0
+        version: 4.2.0
       date-fns:
         specifier: 2.30.0
         version: 2.30.0

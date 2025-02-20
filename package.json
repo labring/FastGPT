@@ -15,8 +15,6 @@
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
-    "@types/crypto-js": "^4.2.2",
-    "crypto-js": "^4.2.0",
     "husky": "^8.0.3",
     "i18next": "23.11.5",
     "lint-staged": "^13.3.0",
