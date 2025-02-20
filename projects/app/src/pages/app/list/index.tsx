@@ -31,6 +31,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import TemplateMarketModal from '@/pageComponents/app/list/TemplateMarketModal';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import JsonImportModal from '@/pageComponents/app/list/JsonImportModal';
+import WorkorderButton from '@/components/support/workorder/WorkorderButton';
 
 const CreateModal = dynamic(() => import('@/pageComponents/app/list/CreateModal'));
 const EditFolderModal = dynamic(
@@ -214,55 +215,55 @@ const MyApps = () => {
             {(folderDetail
               ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
               : userInfo?.team.permission.hasWritePer) && (
-              <MyMenu
-                size="md"
-                Button={
-                  <Button variant={'primary'} leftIcon={<AddIcon />}>
-                    <Box>{t('common:common.Create New')}</Box>
-                  </Button>
-                }
-                menuList={[
-                  {
-                    children: [
-                      {
-                        icon: 'core/app/simpleBot',
-                        label: t('app:type.Simple bot'),
-                        description: t('app:type.Create simple bot tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.simple)
-                      },
-                      {
-                        icon: 'core/app/type/workflowFill',
-                        label: t('app:type.Workflow bot'),
-                        description: t('app:type.Create workflow tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.workflow)
-                      },
-                      {
-                        icon: 'core/app/type/pluginFill',
-                        label: t('app:type.Plugin'),
-                        description: t('app:type.Create one plugin tip'),
-                        onClick: () => setCreateAppType(AppTypeEnum.plugin)
-                      },
-                      {
-                        icon: 'core/app/type/httpPluginFill',
-                        label: t('app:type.Http plugin'),
-                        description: t('app:type.Create http plugin tip'),
-                        onClick: onOpenCreateHttpPlugin
-                      }
-                    ]
-                  },
-                  {
-                    children: [
-                      {
-                        icon: 'core/app/type/jsonImport',
-                        label: t('app:type.Import from json'),
-                        description: t('app:type.Import from json tip'),
-                        onClick: onOpenJsonImportModal
-                      }
-                    ]
-                  },
-                  ...(isPc
-                    ? []
-                    : [
+                <MyMenu
+                  size="md"
+                  Button={
+                    <Button variant={'primary'} leftIcon={<AddIcon />}>
+                      <Box>{t('common:common.Create New')}</Box>
+                    </Button>
+                  }
+                  menuList={[
+                    {
+                      children: [
+                        {
+                          icon: 'core/app/simpleBot',
+                          label: t('app:type.Simple bot'),
+                          description: t('app:type.Create simple bot tip'),
+                          onClick: () => setCreateAppType(AppTypeEnum.simple)
+                        },
+                        {
+                          icon: 'core/app/type/workflowFill',
+                          label: t('app:type.Workflow bot'),
+                          description: t('app:type.Create workflow tip'),
+                          onClick: () => setCreateAppType(AppTypeEnum.workflow)
+                        },
+                        {
+                          icon: 'core/app/type/pluginFill',
+                          label: t('app:type.Plugin'),
+                          description: t('app:type.Create one plugin tip'),
+                          onClick: () => setCreateAppType(AppTypeEnum.plugin)
+                        },
+                        {
+                          icon: 'core/app/type/httpPluginFill',
+                          label: t('app:type.Http plugin'),
+                          description: t('app:type.Create http plugin tip'),
+                          onClick: onOpenCreateHttpPlugin
+                        }
+                      ]
+                    },
+                    {
+                      children: [
+                        {
+                          icon: 'core/app/type/jsonImport',
+                          label: t('app:type.Import from json'),
+                          description: t('app:type.Import from json tip'),
+                          onClick: onOpenJsonImportModal
+                        }
+                      ]
+                    },
+                    ...(isPc
+                      ? []
+                      : [
                         {
                           children: [
                             {
@@ -274,18 +275,18 @@ const MyApps = () => {
                           ]
                         }
                       ]),
-                  {
-                    children: [
-                      {
-                        icon: FolderIcon,
-                        label: t('common:Folder'),
-                        onClick: () => setEditFolder({})
-                      }
-                    ]
-                  }
-                ]}
-              />
-            )}
+                    {
+                      children: [
+                        {
+                          icon: FolderIcon,
+                          label: t('common:Folder'),
+                          onClick: () => setEditFolder({})
+                        }
+                      ]
+                    }
+                  ]}
+                />
+              )}
           </Flex>
 
           {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
@@ -393,6 +394,7 @@ const MyApps = () => {
       )}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
+
   );
 };
 
@@ -400,6 +402,7 @@ function ContextRender() {
   return (
     <AppListContextProvider>
       <MyApps />
+      <WorkorderButton />
     </AppListContextProvider>
   );
 }
