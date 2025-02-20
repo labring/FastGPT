@@ -133,7 +133,7 @@ services:
       - sandbox
     restart: always
     environment:
-      # 前端访问地址: http://localhost:3000
+      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
       - FE_DOMAIN=
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
       - DEFAULT_ROOT_PSW=1234
