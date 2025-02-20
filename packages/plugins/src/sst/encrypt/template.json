@@ -1,0 +1,431 @@
+{
+  "author": "",
+  "version": "481",
+  "name": "随身厅接口入参加密",
+  "avatar": "core/workflow/template/duckduckgo",
+  "intro": "随身厅接口入参加密组件，已预设默认秘钥及偏移量，同时支持自定义秘钥及偏移量。",
+  "showStatus": false,
+  "weight": 11,
+  "isTool": true,
+  "templateType": "tools",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "workflow:template.plugin_start",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 766.961660568843,
+          "y": -69.05298493910118
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "params",
+            "label": "params",
+            "description": "需要进行加解密的参数",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "需要进行加解密的参数"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "key",
+            "label": "key",
+            "description": "3DES秘钥",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "3DES秘钥"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "iv",
+            "label": "iv",
+            "description": "3DES偏移量",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "3DES偏移量"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "params",
+            "valueType": "string",
+            "key": "params",
+            "label": "params",
+            "type": "hidden"
+          },
+          {
+            "id": "key",
+            "valueType": "string",
+            "key": "key",
+            "label": "key",
+            "type": "hidden"
+          },
+          {
+            "id": "iv",
+            "valueType": "string",
+            "key": "iv",
+            "label": "iv",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "common:core.module.template.self_output",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 2235.2506526944103,
+          "y": -24.55298493910118
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "result",
+            "label": "result",
+            "isToolOutput": true,
+            "description": "",
+            "required": true,
+            "value": [
+              "lyXDyDKRINUb",
+              "httpRawResponse"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "pluginConfig",
+        "name": "随身厅数据3DES加密",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": 181.29996668364595,
+          "y": -34.05298493910118
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "lyXDyDKRINUb",
+        "name": "调用加密插件",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1448.731924744154,
+          "y": -338.0529849391012
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "sst/encrypt",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n  \"params\": {{$pluginInput.params$}},\n  \"key\": \"{{$pluginInput.key$}}\",\n  \"iv\": \"{{$pluginInput.iv$}}\"\n}",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "输出字段提取",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
+            "valueDesc": ""
+          },
+          {
+            "id": "jGHtcOnJ7gcp",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "lyXDyDKRINUb",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "lyXDyDKRINUb-target-left"
+      },
+      {
+        "source": "lyXDyDKRINUb",
+        "target": "pluginOutput",
+        "sourceHandle": "lyXDyDKRINUb-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": ""
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "随身厅数据3DES加密组件，已预设默认秘钥及偏移量，同时支持自定义秘钥及偏移量。",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "67b549026a95b548ad87e8d0"
+    }
+  }
+}

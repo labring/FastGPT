@@ -1,0 +1,540 @@
+{
+  "author": "",
+  "version": "481",
+  "name": "生成随身厅签名",
+  "avatar": "core/workflow/template/duckduckgo",
+  "intro": "生成随身厅签名信息，已预设默认IP(127.0.0.1)、版本号(1.0)、时间戳(获取当前时间)、签名秘钥，同时支持自定义IP、版本号、时间戳、秘钥。",
+  "showStatus": false,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "workflow:template.plugin_start",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 676.245081487594,
+          "y": -92.05298493910118
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "timestamp",
+            "label": "timestamp",
+            "description": "时间戳",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "时间戳"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "version",
+            "label": "version",
+            "description": "版本号",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "版本号"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "client_ip",
+            "label": "client_ip",
+            "description": "客户端IP",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "客户端IP"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "app_id",
+            "label": "app_id",
+            "description": "随身厅应用ID",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "随身厅应用ID"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "key",
+            "label": "key",
+            "description": "签名秘钥",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "签名秘钥"
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "params",
+            "label": "params",
+            "description": "业务参数",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "业务参数"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "timestamp",
+            "valueType": "number",
+            "key": "timestamp",
+            "label": "timestamp",
+            "type": "hidden"
+          },
+          {
+            "id": "version",
+            "valueType": "string",
+            "key": "version",
+            "label": "version",
+            "type": "hidden"
+          },
+          {
+            "id": "client_ip",
+            "valueType": "string",
+            "key": "client_ip",
+            "label": "client_ip",
+            "type": "hidden"
+          },
+          {
+            "id": "app_id",
+            "valueType": "string",
+            "key": "app_id",
+            "label": "app_id",
+            "type": "hidden"
+          },
+          {
+            "id": "sign_md5_key",
+            "valueType": "string",
+            "key": "key",
+            "label": "key",
+            "type": "hidden"
+          },
+          {
+            "id": "params",
+            "valueType": "string",
+            "key": "params",
+            "label": "params",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "common:core.module.template.self_output",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 2046.5839723658887,
+          "y": 12.44701506089882
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "result",
+            "label": "result",
+            "isToolOutput": true,
+            "description": "测试输出",
+            "required": true,
+            "value": [
+              "pguz9UW3HrLS",
+              "httpRawResponse"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "pluginConfig",
+        "name": "生成随身厅签名",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": 170.5580043217558,
+          "y": 62.94701506089882
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "pguz9UW3HrLS",
+        "name": "调用签名插件",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1270.1280052660848,
+          "y": -361.0529849391012
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "sst/sign",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": [
+              "custom"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": "{\n  \"timestamp\": {{$pluginInput.timestamp$}},\n  \"version\": \"{{$pluginInput.version$}}\",\n  \"client_ip\": \"{{$pluginInput.client_ip$}}\",\n  \"app_id\": \"{{$pluginInput.app_id$}}\",\n  \"key\": \"{{$pluginInput.sign_md5_key$}}\",\n  \"params\": {{$pluginInput.params$}}\n}",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "输出字段提取",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
+            "valueDesc": ""
+          },
+          {
+            "id": "kkgQIAQs6cWl",
+            "valueType": "number",
+            "type": "dynamic",
+            "key": "timestamp",
+            "label": "timestamp"
+          },
+          {
+            "id": "cnUm2OboJck9",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "version",
+            "label": "version"
+          },
+          {
+            "id": "qapdXkr51X2D",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "client_ip",
+            "label": "client_ip"
+          },
+          {
+            "id": "flh0YwlXYenH",
+            "valueType": "string",
+            "type": "dynamic",
+            "key": "result",
+            "label": "result"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "pguz9UW3HrLS",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "pguz9UW3HrLS-target-left"
+      },
+      {
+        "source": "pguz9UW3HrLS",
+        "target": "pluginOutput",
+        "sourceHandle": "pguz9UW3HrLS-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": ""
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "生成随身厅签名信息，已预设默认IP(127.0.0.1)、版本号(1.0)、时间戳(获取当前时间)、签名秘钥，同时支持自定义IP、版本号、时间戳、秘钥。",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "67b3f6c1d1e40d5814d238e0"
+    }
+  }
+}

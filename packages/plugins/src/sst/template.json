@@ -1,0 +1,16 @@
+{
+  "author": "",
+  "version": "481",
+  "name": "随身厅服务",
+  "avatar": "core/workflow/template/duckduckgo",
+  "intro": "随身厅相关服务，提供随身厅相关插件。",
+  "showStatus": false,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [],
+    "edges": []
+  }
+}
