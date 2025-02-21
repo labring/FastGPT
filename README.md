@@ -90,24 +90,66 @@ $ mkdir -p oneapi
 $ docker compose up -d
 ```
 
-### Run the `sandbox`
+Check the docker container status, fix some problems if necessary.
 
-@see ./ForkedFastGPT/dev.md
+>
+> oneapi initial username: `root`, password: `123456`
+>
 
-```bash
-$ 
+Then:
+
+```mermaid
+stateDiagram-v2
+    direction TB
+    classDef yourState font-style:italic,font-weight:bold,fill:white
+
+    Host --> running
+
+    state running-in-containers {
+        state Container <<fork>> 
+            fa: network exposed
+            fa --> Container
+            --
+            Container --> pg: 5432
+            Container --> mo: 27017
+            Container --> on: 3001
+            pg: Pgvector
+            on: OneAPI
+            mo: MongoDB
+            my: MySQL
+            on --> my: 3306
+    }
 ```
 
-### Run `fastgpt`
+### Started to develop
+
 
 **Configuration**
 
 ```bash
 $ cp project/app/env.template project/app/.env.local
+$ cp project/app/data/config.json project/app/data/config.local.json
 ```
 
-**Run**
+Modify the `.env.local` file based on current environment.
+
+>
+> Check `https://doc.tryfastgpt.ai/docs/development/intro/#4-初始配置` for instructions.
+>
+
 
 ```bash
-$ 
+
+……
+
 ```
+
+@see ./ForkedFastGPT/dev.md
+
+## 2. Deploy to the server
+
+
+```bash
+docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app
+```
+
