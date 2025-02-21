@@ -156,7 +156,7 @@ export const checkNodeRunStatus = ({
     区分普通连线和递归连线
     递归连线：可以通过往上查询 nodes，最终追溯到自身
   */
-  const splitEdges2WorkflowEdges = ({
+  const splitWorkflowEdges = ({
     sourceEdges,
     allEdges,
     currentNode
@@ -167,32 +167,51 @@ export const checkNodeRunStatus = ({
   }) => {
     const commonEdges: RuntimeEdgeItemType[] = [];
     const recursiveEdges: RuntimeEdgeItemType[] = [];
+    const cyclicEdgeGroups: RuntimeEdgeItemType[][] = [];
 
-    const checkIsCircular = (edge: RuntimeEdgeItemType, visited: Set<string>): boolean => {
+    const findCycle = (
+      edge: RuntimeEdgeItemType,
+      visited: Set<string>,
+      path: RuntimeEdgeItemType[]
+    ): RuntimeEdgeItemType[] | null => {
+      // 找到一个环,返回环的路径
       if (edge.source === currentNode.nodeId) {
-        return true; // 检测到环,并且环中包含当前节点
+        return [...path, edge];
       }
+      // 节点已访问过但没形成环,返回 null
       if (visited.has(edge.source)) {
-        return false; // 检测到环,但不包含当前节点(子节点成环)
+        return null;
       }
       visited.add(edge.source);
 
-      // 递归检测后面的 edge，如果有其中一个成环，则返回 true
+      // 递归检测后面的 edge
       const nextEdges = allEdges.filter((item) => item.target === edge.source);
-      return nextEdges.some((nextEdge) => checkIsCircular(nextEdge, new Set(visited)));
+      for (const nextEdge of nextEdges) {
+        const cycle = findCycle(nextEdge, new Set(visited), [...path, edge]);
+        if (cycle) {
+          return cycle;
+        }
+      }
+
+      return null;
     };
 
     sourceEdges.forEach((edge) => {
-      if (checkIsCircular(edge, new Set([currentNode.nodeId]))) {
+      const cycle = findCycle(edge, new Set([currentNode.nodeId]), []);
+      if (cycle) {
         recursiveEdges.push(edge);
+        cyclicEdgeGroups.push(cycle);
       } else {
         commonEdges.push(edge);
       }
     });
 
-    return { commonEdges, recursiveEdges };
+    return {
+      commonEdges,
+      recursiveEdges,
+      cyclicEdgeGroups
+    };
   };
-
   const runtimeNodeSourceEdge = filterWorkflowEdges(runtimeEdges).filter(
     (item) => item.target === node.nodeId
   );
@@ -203,7 +222,7 @@ export const checkNodeRunStatus = ({
   }
 
   // Classify edges
-  const { commonEdges, recursiveEdges } = splitEdges2WorkflowEdges({
+  const { commonEdges, recursiveEdges, cyclicEdgeGroups } = splitWorkflowEdges({
     sourceEdges: runtimeNodeSourceEdge,
     allEdges: runtimeEdges,
     currentNode: node
@@ -220,7 +239,13 @@ export const checkNodeRunStatus = ({
   if (
     recursiveEdges.length > 0 &&
     recursiveEdges.some((item) => item.status === 'active') &&
-    recursiveEdges.every((item) => item.status !== 'waiting')
+    recursiveEdges.every((item) => {
+      const currentCycle = cyclicEdgeGroups.find((group) => group.includes(item));
+      return (
+        item.status !== 'waiting' ||
+        (item.status === 'waiting' && currentCycle?.every((edge) => edge.status === 'waiting')) // 未进入这个环
+      );
+    })
   ) {
     return 'run';
   }
