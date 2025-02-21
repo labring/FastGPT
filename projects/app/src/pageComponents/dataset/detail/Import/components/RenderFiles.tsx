@@ -14,10 +14,7 @@ import {
 import { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import { useI18n } from '@/web/context/I18n';
-
-const PreviewRawText = dynamic(() => import('./PreviewRawText'));
 
 export const RenderUploadFiles = ({
   files,

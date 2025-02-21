@@ -21,7 +21,7 @@ const FileLocal = () => {
   return (
     <>
       {activeStep === 0 && <SelectFile />}
-      {activeStep === 1 && <PreviewData showPreviewChunks />}
+      {activeStep === 1 && <PreviewData />}
       {activeStep === 2 && <Upload />}
     </>
   );
