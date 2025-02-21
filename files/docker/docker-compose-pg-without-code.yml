@@ -1,0 +1,100 @@
+# FIXME: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion
+version: '3.3'
+services:
+  # db
+  pg:
+    image: pgvector/pgvector:0.7.0-pg15 # docker hub
+    container_name: fastgpt-pg
+    restart: always
+    ports: # 生产环境建议不要暴露
+      - 5432:5432
+    networks:
+      - fastgpt
+    environment:
+      - POSTGRES_USER=username
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./pg/data:/var/lib/postgresql/data
+  mongo:
+    image: mongo:5.0.18 # dockerhub
+    container_name: fastgpt-mongo
+    restart: always
+    ports:
+      - 27017:27017
+    networks:
+      - fastgpt
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - ./mongo/data:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        # 启动MongoDB服务
+        exec docker-entrypoint.sh "$$@" &
+
+        # 等待MongoDB服务启动
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        # 执行初始化副本集的脚本
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+
+        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
+        wait $$!
+
+  # oneapi
+  mysql:
+    image: mysql:8.0.36
+    container_name: fastgpt-mysql
+    restart: always
+    ports:
+      - 3306:3306
+    networks:
+      - fastgpt
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      # 默认root密码，仅首次运行有效
+      MYSQL_ROOT_PASSWORD: oneapimmysql
+      MYSQL_DATABASE: oneapi
+    volumes:
+      - ./mysql:/var/lib/mysql
+  oneapi:
+    container_name: fastgpt-oneapi
+    image: ghcr.io/songquanpeng/one-api:v0.6.7
+    ports:
+      - 3001:3000
+    depends_on:
+      - mysql
+    networks:
+      - fastgpt
+    restart: always
+    environment:
+      - SQL_DSN=root:oneapimmysql@tcp(fastgpt-mysql:3306)/oneapi
+      - SESSION_SECRET=oneapikey
+      - MEMORY_CACHE_ENABLED=true
+      - BATCH_UPDATE_ENABLED=true
+      - BATCH_UPDATE_INTERVAL=10
+      - INITIAL_ROOT_TOKEN=fastgpt
+    volumes:
+      - ./oneapi:/data
+networks:
+  fastgpt:
