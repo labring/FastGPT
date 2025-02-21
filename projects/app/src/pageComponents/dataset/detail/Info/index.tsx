@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Flex, Switch, Input } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -37,6 +37,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
+  const { feConfigs, datasetModelList, embeddingModelList, getVllmModelList } = useSystemStore();
+
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
   const refetchDatasetTraining = useContextSelector(
@@ -50,7 +52,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { feConfigs, datasetModelList, embeddingModelList } = useSystemStore();
+  const vllmModelList = useMemo(() => getVllmModelList(), [getVllmModelList]);
+  const vlmModel = watch('vlmModel');
+
   const { ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -69,7 +73,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        agentModel: data.agentModel,
+        agentModel: data.agentModel?.model,
+        vlmModel: data.vlmModel?.model,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -224,6 +229,31 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             />
           </Box>
         </Box>
+
+        {feConfigs?.isPlus && (
+          <Box pt={5}>
+            <FormLabel fontSize={'mini'} fontWeight={'500'}>
+              {t('dataset:vllm_model')}
+            </FormLabel>
+            <Box pt={2}>
+              <AIModelSelector
+                w={'100%'}
+                value={vlmModel?.model}
+                list={vllmModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                fontSize={'mini'}
+                onchange={(e) => {
+                  const vlmModel = vllmModelList.find((item) => item.model === e);
+                  if (!vlmModel) return;
+                  setValue('vlmModel', vlmModel);
+                  return handleSubmit((data) => onSave({ ...data, vlmModel }))();
+                }}
+              />
+            </Box>
+          </Box>
+        )}
 
         {feConfigs?.isPlus && (
           <Flex alignItems={'center'} pt={5}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -7,7 +7,14 @@ import {
   ModalBody,
   ModalFooter,
   Textarea,
-  useDisclosure
+  useDisclosure,
+  Checkbox,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+  HStack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -18,7 +25,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
-import Preview from '../components/Preview';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
@@ -26,10 +32,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { shadowLight } from '@fastgpt/web/styles/theme';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
-function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
+function DataProcess() {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, datasetModelList, getVllmModelList } = useSystemStore();
 
   const {
     goToNext,
@@ -47,6 +55,10 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
   const mode = watch('mode');
   const way = watch('way');
 
+  const vllmModelList = useMemo(() => getVllmModelList(), [getVllmModelList]);
+  const llmModel = watch('llmModel');
+  const vlmModel = watch('vlmModel');
+
   const {
     isOpen: isOpenCustomPrompt,
     onOpen: onOpenCustomPrompt,
@@ -55,7 +67,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
 
   const trainingModeList = useMemo(() => {
     const list = Object.entries(TrainingTypeMap);
-    return list;
+    return list.filter(([key]) => key !== TrainingModeEnum.auto);
   }, []);
 
   const onSelectTrainWay = useCallback(
@@ -71,197 +83,308 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
     [feConfigs?.isPlus, setValue, t, toast]
   );
 
+  const Title = useCallback(({ title }: { title: string }) => {
+    return (
+      <AccordionButton bg={'none !important'} p={2}>
+        <Box w={'3px'} h={'16px'} bg={'primary.600'} borderRadius={'2px'} mr={2} />
+        <Box color={'myGray.900'} flex={'1 0 0'} textAlign={'left'}>
+          {title}
+        </Box>
+        <AccordionIcon />
+      </AccordionButton>
+    );
+  }, []);
+
+  // Adapt auto training
+  useEffect(() => {
+    if (mode === TrainingModeEnum.auto) {
+      setValue('autoIndexes', true);
+      setValue('mode', TrainingModeEnum.chunk);
+    }
+  }, [mode, setValue]);
+
+  const showFileParseSetting = feConfigs?.showCustomPdfParse || feConfigs?.isPlus;
+
   return (
-    <Box h={'100%'} display={['block', 'flex']} fontSize={'sm'}>
-      <Box
-        flex={'1 0 0'}
-        minW={['auto', '500px']}
-        maxW={'600px'}
-        h={['auto', '100%']}
-        overflow={'auto'}
-        pr={[0, 3]}
-      >
-        <Flex alignItems={'center'}>
-          <MyIcon name={'common/settingLight'} w={'20px'} />
-          <Box fontSize={'md'}>{t('dataset:data_process_setting')}</Box>
-        </Flex>
+    <>
+      <Box flex={'1 0 0'} maxW={['90vw', '640px']} m={'auto'} overflow={'auto'}>
+        <Accordion allowToggle allowMultiple reduceMotion defaultIndex={[0, 1, 2]}>
+          {showFileParseSetting && (
+            <AccordionItem border={'none'} borderBottom={'base'} pb={4}>
+              <Title title={t('dataset:import_file_parse_setting')} />
 
-        <Box display={['block', 'flex']} mt={4} alignItems={'center'}>
-          <FormLabel flex={'0 0 100px'}>{t('dataset:training_mode')}</FormLabel>
-          <LeftRadio
-            list={trainingModeList.map(([key, value]) => ({
-              title: t(value.label as any),
-              value: key,
-              tooltip: t(value.tooltip as any)
-            }))}
-            px={3}
-            py={2}
-            value={mode}
-            onChange={onSelectTrainWay}
-            defaultBg="white"
-            activeBg="white"
-            display={'flex'}
-            flexWrap={'wrap'}
-          />
-        </Box>
-
-        <Box display={['block', 'flex']} mt={5}>
-          <FormLabel flex={'0 0 100px'}>{t('dataset:data_process_params')}</FormLabel>
-          <LeftRadio
-            list={[
-              {
-                title: t('common:core.dataset.import.Auto process'),
-                desc: t('common:core.dataset.import.Auto process desc'),
-                value: ImportProcessWayEnum.auto
-              },
-              {
-                title: t('dataset:custom_data_process_params'),
-                desc: t('dataset:custom_data_process_params_desc'),
-                value: ImportProcessWayEnum.custom,
-                children: way === ImportProcessWayEnum.custom && (
-                  <Box mt={5}>
-                    {showChunkInput && chunkSizeField && (
-                      <Box>
-                        <Flex alignItems={'center'}>
-                          <Box>{t('dataset:ideal_chunk_length')}</Box>
-                          <QuestionTip label={t('dataset:ideal_chunk_length_tips')} />
-                        </Flex>
-                        <Box
-                          mt={1}
-                          css={{
-                            '& > span': {
-                              display: 'block'
-                            }
-                          }}
-                        >
-                          <MyTooltip
-                            label={t('common:core.dataset.import.Chunk Range', {
-                              min: minChunkSize,
-                              max: maxChunkSize
-                            })}
-                          >
-                            <MyNumberInput
-                              name={chunkSizeField}
-                              min={minChunkSize}
-                              max={maxChunkSize}
-                              size={'sm'}
-                              step={100}
-                              value={chunkSize}
-                              onChange={(e) => {
-                                if (e === undefined) return;
-                                setValue(chunkSizeField, +e);
-                              }}
-                            />
-                          </MyTooltip>
-                        </Box>
-                      </Box>
-                    )}
-
-                    <Box mt={3}>
-                      <Box>
-                        {t('common:core.dataset.import.Custom split char')}
-                        <QuestionTip
-                          label={t('common:core.dataset.import.Custom split char Tips')}
-                        />
-                      </Box>
-                      <Box mt={1}>
-                        <Input
-                          size={'sm'}
-                          bg={'myGray.50'}
-                          defaultValue={''}
-                          placeholder="\n;======;==SPLIT=="
-                          {...register('customSplitChar')}
-                        />
-                      </Box>
-                    </Box>
-
-                    {showPromptInput && (
-                      <Box mt={3}>
-                        <Box>{t('common:core.dataset.collection.QA Prompt')}</Box>
-                        <Box
-                          position={'relative'}
-                          py={2}
-                          px={3}
-                          bg={'myGray.50'}
-                          fontSize={'xs'}
-                          whiteSpace={'pre-wrap'}
-                          border={'1px'}
-                          borderColor={'borderColor.base'}
+              <AccordionPanel p={2}>
+                <Box
+                  border={'1px solid'}
+                  borderColor={'primary.600'}
+                  borderRadius={'md'}
+                  boxShadow={shadowLight}
+                  p={4}
+                >
+                  {feConfigs.showCustomPdfParse && (
+                    <HStack spacing={1}>
+                      <Checkbox {...register('customPdfParse')}>
+                        <FormLabel>{t('dataset:pdf_enhance_parse')}</FormLabel>
+                      </Checkbox>
+                      <QuestionTip label={t('dataset:pdf_enhance_parse_tips')} />
+                      {feConfigs?.show_pay && (
+                        <MyTag
+                          type={'borderSolid'}
+                          borderColor={'myGray.200'}
+                          bg={'myGray.100'}
+                          color={'primary.600'}
+                          py={1.5}
                           borderRadius={'md'}
-                          maxH={'140px'}
-                          overflow={'auto'}
-                          _hover={{
-                            '& .mask': {
-                              display: 'block'
-                            }
-                          }}
+                          px={3}
+                          whiteSpace={'wrap'}
+                          ml={1}
                         >
-                          {getValues('qaPrompt')}
+                          {t('dataset:pdf_enhance_parse_price', {
+                            price: feConfigs.customPdfParsePrice || 0
+                          })}
+                        </MyTag>
+                      )}
+                    </HStack>
+                  )}
+                  {feConfigs?.isPlus && (
+                    <HStack spacing={1} mt={3}>
+                      <Checkbox {...register('imageAutoParse')}>
+                        <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                      </Checkbox>
+                      <QuestionTip label={t('dataset:image_auto_parse_tips')} />
+                    </HStack>
+                  )}
+                </Box>
+              </AccordionPanel>
+            </AccordionItem>
+          )}
 
-                          <Box
-                            display={'none'}
-                            className="mask"
-                            position={'absolute'}
-                            top={0}
-                            right={0}
-                            bottom={0}
-                            left={0}
-                            background={
-                              'linear-gradient(182deg, rgba(255, 255, 255, 0.00) 1.76%, #FFF 84.07%)'
-                            }
-                          >
-                            <Button
-                              size="xs"
-                              variant={'whiteBase'}
-                              leftIcon={<MyIcon name={'edit'} w={'13px'} />}
-                              color={'black'}
-                              position={'absolute'}
-                              right={2}
-                              bottom={2}
-                              onClick={onOpenCustomPrompt}
-                            >
-                              {t('common:core.dataset.import.Custom prompt')}
-                            </Button>
-                          </Box>
-                        </Box>
-                      </Box>
-                    )}
+          <AccordionItem mt={4} border={'none'}>
+            <Title title={t('dataset:import_data_process_setting')} />
+
+            <AccordionPanel p={2}>
+              <Box mt={2}>
+                <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
+                  {t('dataset:training_mode')}
+                </Box>
+                <LeftRadio
+                  list={trainingModeList.map(([key, value]) => ({
+                    title: t(value.label as any),
+                    value: key,
+                    tooltip: t(value.tooltip as any)
+                  }))}
+                  px={3}
+                  py={2.5}
+                  value={mode}
+                  onChange={onSelectTrainWay}
+                  defaultBg="white"
+                  activeBg="white"
+                  gridTemplateColumns={'repeat(2, 1fr)'}
+                />
+              </Box>
+              {feConfigs?.isPlus && mode === TrainingModeEnum.chunk && (
+                <Box mt={6}>
+                  <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
+                    {t('dataset:enhanced_indexes')}
                   </Box>
-                )
-              }
-            ]}
-            px={3}
-            py={3}
-            defaultBg="white"
-            activeBg="white"
-            value={way}
-            w={'100%'}
-            onChange={(e) => {
-              setValue('way', e);
-            }}
-          ></LeftRadio>
-        </Box>
+                  <HStack spacing={0.5}>
+                    <Checkbox {...register('autoIndexes')}>
+                      <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
+                    </Checkbox>
+                    <QuestionTip label={t('dataset:auto_indexes_tips')} />
+                  </HStack>
+                </Box>
+              )}
+              <Box mt={6}>
+                <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
+                  {t('dataset:params_setting')}
+                </Box>
+                <LeftRadio
+                  list={[
+                    {
+                      title: t('dataset:default_params'),
+                      desc: t('dataset:default_params_desc'),
+                      value: ImportProcessWayEnum.auto
+                    },
+                    {
+                      title: t('dataset:custom_data_process_params'),
+                      desc: t('dataset:custom_data_process_params_desc'),
+                      value: ImportProcessWayEnum.custom,
+                      children: way === ImportProcessWayEnum.custom && (
+                        <Box mt={5}>
+                          {showChunkInput && chunkSizeField && (
+                            <Box>
+                              <Flex alignItems={'center'}>
+                                <Box>{t('dataset:ideal_chunk_length')}</Box>
+                                <QuestionTip label={t('dataset:ideal_chunk_length_tips')} />
+                              </Flex>
+                              <Box
+                                mt={1}
+                                css={{
+                                  '& > span': {
+                                    display: 'block'
+                                  }
+                                }}
+                              >
+                                <MyTooltip
+                                  label={t('common:core.dataset.import.Chunk Range', {
+                                    min: minChunkSize,
+                                    max: maxChunkSize
+                                  })}
+                                >
+                                  <MyNumberInput
+                                    name={chunkSizeField}
+                                    min={minChunkSize}
+                                    max={maxChunkSize}
+                                    size={'sm'}
+                                    step={100}
+                                    value={chunkSize}
+                                    onChange={(e) => {
+                                      if (e === undefined) return;
+                                      setValue(chunkSizeField, +e);
+                                    }}
+                                  />
+                                </MyTooltip>
+                              </Box>
+                            </Box>
+                          )}
 
-        {feConfigs?.show_pay && (
-          <Box mt={5} pl={[0, '100px']} gap={3}>
-            <MyTag colorSchema={'gray'} py={1.5} borderRadius={'md'} px={3} whiteSpace={'wrap'}>
-              {priceTip}
-            </MyTag>
-          </Box>
-        )}
+                          <Box mt={3}>
+                            <Box>
+                              {t('common:core.dataset.import.Custom split char')}
+                              <QuestionTip
+                                label={t('common:core.dataset.import.Custom split char Tips')}
+                              />
+                            </Box>
+                            <Box mt={1}>
+                              <Input
+                                size={'sm'}
+                                bg={'myGray.50'}
+                                defaultValue={''}
+                                placeholder="\n;======;==SPLIT=="
+                                {...register('customSplitChar')}
+                              />
+                            </Box>
+                          </Box>
 
-        <Flex mt={5} gap={3} justifyContent={'flex-end'}>
-          <Button
-            onClick={() => {
-              goToNext();
-            }}
-          >
-            {t('common:common.Next Step')}
-          </Button>
-        </Flex>
-      </Box>
-      <Box flex={'1 0 0'} w={['auto', '0']} h={['auto', '100%']} pl={[0, 3]}>
-        <Preview showPreviewChunks={showPreviewChunks} />
+                          {showPromptInput && (
+                            <Box mt={3}>
+                              <Box>{t('common:core.dataset.collection.QA Prompt')}</Box>
+                              <Box
+                                position={'relative'}
+                                py={2}
+                                px={3}
+                                bg={'myGray.50'}
+                                fontSize={'xs'}
+                                whiteSpace={'pre-wrap'}
+                                border={'1px'}
+                                borderColor={'borderColor.base'}
+                                borderRadius={'md'}
+                                maxH={'140px'}
+                                overflow={'auto'}
+                                _hover={{
+                                  '& .mask': {
+                                    display: 'block'
+                                  }
+                                }}
+                              >
+                                {getValues('qaPrompt')}
+
+                                <Box
+                                  display={'none'}
+                                  className="mask"
+                                  position={'absolute'}
+                                  top={0}
+                                  right={0}
+                                  bottom={0}
+                                  left={0}
+                                  background={
+                                    'linear-gradient(182deg, rgba(255, 255, 255, 0.00) 1.76%, #FFF 84.07%)'
+                                  }
+                                >
+                                  <Button
+                                    size="xs"
+                                    variant={'whiteBase'}
+                                    leftIcon={<MyIcon name={'edit'} w={'13px'} />}
+                                    color={'black'}
+                                    position={'absolute'}
+                                    right={2}
+                                    bottom={2}
+                                    onClick={onOpenCustomPrompt}
+                                  >
+                                    {t('common:core.dataset.import.Custom prompt')}
+                                  </Button>
+                                </Box>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      )
+                    }
+                  ]}
+                  gridGap={3}
+                  px={3}
+                  py={3}
+                  defaultBg="white"
+                  activeBg="white"
+                  value={way}
+                  w={'100%'}
+                  onChange={(e) => {
+                    setValue('way', e);
+                  }}
+                />
+              </Box>
+            </AccordionPanel>
+          </AccordionItem>
+
+          {/* <AccordionItem mt={4} border={'none'}>
+            <Title title={t('dataset:import_model_config')} />
+            <AccordionPanel p={2} fontSize={'sm'}>
+              <Box>
+                <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+                <Box mt={1}>
+                  <AIModelSelector
+                    w={'100%'}
+                    value={llmModel}
+                    list={datasetModelList.map((item) => ({
+                      label: item.name,
+                      value: item.model
+                    }))}
+                    onchange={(e) => {
+                      setValue('llmModel', e);
+                    }}
+                  />
+                </Box>
+              </Box>
+              <Box pt={5}>
+                <Box>{t('dataset:vllm_model')}</Box>
+                <Box mt={1}>
+                  <AIModelSelector
+                    w={'100%'}
+                    value={vlmModel}
+                    list={vllmModelList.map((item) => ({
+                      label: item.name,
+                      value: item.model
+                    }))}
+                    onchange={(e) => {
+                      setValue('vlmModel', e);
+                    }}
+                  />
+                </Box>
+              </Box>
+            </AccordionPanel>
+          </AccordionItem> */}
+
+          <Flex mt={5} gap={3} justifyContent={'flex-end'}>
+            <Button
+              onClick={() => {
+                goToNext();
+              }}
+            >
+              {t('common:common.Next Step')}
+            </Button>
+          </Flex>
+        </Accordion>
       </Box>
 
       {isOpenCustomPrompt && (
@@ -273,7 +396,7 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
           onClose={onCloseCustomPrompt}
         />
       )}
-    </Box>
+    </>
   );
 }
 

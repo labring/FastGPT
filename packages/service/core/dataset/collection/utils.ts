@@ -160,6 +160,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   })();
   const rawText = await readDatasetSourceRawText({
     teamId: collection.teamId,
+    tmbId: collection.tmbId,
     ...sourceReadType
   });
 

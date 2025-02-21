@@ -161,6 +161,9 @@ export async function createOneCollection({
   datasetId,
   type,
 
+  customPdfParse,
+  imageParse,
+
   trainingType = TrainingModeEnum.chunk,
   chunkSize = 512,
   chunkSplitter,
@@ -196,6 +199,8 @@ export async function createOneCollection({
         name,
         type,
 
+        customPdfParse,
+        imageParse,
         trainingType,
         chunkSize,
         chunkSplitter,

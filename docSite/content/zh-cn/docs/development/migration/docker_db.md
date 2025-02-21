@@ -7,9 +7,18 @@ draft: false
 images: []
 ---
 
-## Copy文件
+## 1. 停止服务
+
+```bash
+docker-compose down
+```
+
+
+## 2. Copy文件夹
 
 Docker 部署数据库都会通过 volume 挂载本地的目录进入容器，如果要迁移，直接复制这些目录即可。
 
 `PG 数据`: pg/data
 `Mongo 数据`: mongo/data
+
+直接把pg 和 mongo目录全部复制走即可。

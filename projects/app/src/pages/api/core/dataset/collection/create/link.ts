@@ -19,6 +19,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     chunkSize = 512,
     chunkSplitter,
     qaPrompt,
+    imageParse,
     ...body
   } = req.body as LinkCreateDatasetCollectionParams;
 
@@ -54,6 +55,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
         webPageSelector: body?.metadata?.webPageSelector
       },
 
+      imageParse,
       trainingType,
       chunkSize,
       chunkSplitter,

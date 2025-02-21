@@ -23,6 +23,8 @@ async function handler(
     chunkSize = 512,
     chunkSplitter,
     qaPrompt,
+    customPdfParse,
+    imageParse,
     ...body
   } = req.body;
 
@@ -37,8 +39,10 @@ async function handler(
   // 1. read file
   const { rawText, filename } = await readFileContentFromMongo({
     teamId,
+    tmbId,
     bucketName: BucketNameEnum.dataset,
-    fileId
+    fileId,
+    customPdfParse
   });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
@@ -56,6 +60,8 @@ async function handler(
       },
 
       // special metadata
+      customPdfParse,
+      imageParse,
       trainingType,
       chunkSize,
       chunkSplitter,

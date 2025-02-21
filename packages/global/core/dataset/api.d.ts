@@ -10,8 +10,10 @@ export type DatasetUpdateBody = {
   name?: string;
   avatar?: string;
   intro?: string;
-  agentModel?: LLMModelItemType;
   status?: DatasetSchemaType['status'];
+
+  agentModel?: string;
+  vlmModel?: string;
 
   websiteConfig?: DatasetSchemaType['websiteConfig'];
   externalReadUrl?: DatasetSchemaType['externalReadUrl'];
@@ -27,6 +29,8 @@ export type DatasetUpdateBody = {
 /* ================= collection ===================== */
 export type DatasetCollectionChunkMetadataType = {
   parentId?: string;
+  customPdfParse?: boolean;
+  imageParse?: boolean;
   trainingType?: TrainingModeEnum;
   chunkSize?: number;
   chunkSplitter?: string;

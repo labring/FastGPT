@@ -25,6 +25,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   permission: new DatasetPermission(),
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],
+  vlmModel: defaultQAModels[0],
   inheritPermission: true
 };
 

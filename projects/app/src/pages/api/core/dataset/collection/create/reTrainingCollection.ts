@@ -29,7 +29,9 @@ async function handler(
     trainingType = TrainingModeEnum.chunk,
     chunkSize = 512,
     chunkSplitter,
-    qaPrompt
+    qaPrompt,
+    customPdfParse,
+    imageParse
   } = req.body;
 
   if (!collectionId) {
@@ -37,7 +39,7 @@ async function handler(
   }
 
   // 凭证校验
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -84,7 +86,9 @@ async function handler(
   })();
 
   const rawText = await readDatasetSourceRawText({
-    teamId: collection.teamId,
+    teamId,
+    tmbId,
+    customPdfParse,
     ...sourceReadType
   });
 
@@ -105,6 +109,9 @@ async function handler(
         datasetId: collection.dataset._id,
         name: collection.name,
         type: collection.type,
+
+        customPdfParse,
+        imageParse,
 
         fileId: collection.fileId,
         rawLink: collection.rawLink,

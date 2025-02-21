@@ -22,6 +22,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     chunkSize = 512,
     chunkSplitter,
     qaPrompt,
+    imageParse,
     ...body
   } = req.body as ApiDatasetCreateDatasetCollectionParams;
 
@@ -56,7 +57,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     feishuServer,
     yuqueServer,
     apiFileId,
-    teamId
+    teamId,
+    tmbId
   });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
@@ -69,6 +71,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       tmbId,
       type: DatasetCollectionTypeEnum.apiFile,
       name: name,
+      imageParse,
       trainingType,
       chunkSize,
       chunkSplitter,

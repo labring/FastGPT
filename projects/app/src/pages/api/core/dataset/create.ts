@@ -6,7 +6,8 @@ import {
   getLLMModel,
   getEmbeddingModel,
   getDatasetModel,
-  getDefaultEmbeddingModel
+  getDefaultEmbeddingModel,
+  getVllmModel
 } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -32,8 +33,9 @@ async function handler(
     intro,
     type = DatasetTypeEnum.dataset,
     avatar,
-    vectorModel = getDefaultEmbeddingModel().model,
-    agentModel = getDatasetModel().model,
+    vectorModel = getDefaultEmbeddingModel()?.model,
+    agentModel = getDatasetModel()?.model,
+    vlmModel = getVllmModel()?.model,
     apiServer,
     feishuServer,
     yuqueServer
@@ -63,8 +65,11 @@ async function handler(
   // check model valid
   const vectorModelStore = getEmbeddingModel(vectorModel);
   const agentModelStore = getLLMModel(agentModel);
-  if (!vectorModelStore || !agentModelStore) {
-    return Promise.reject(DatasetErrEnum.invalidVectorModelOrQAModel);
+  if (!vectorModelStore) {
+    return Promise.reject(`System not embedding model`);
+  }
+  if (!agentModelStore) {
+    return Promise.reject(`System not llm model`);
   }
 
   // check limit
@@ -81,6 +86,7 @@ async function handler(
           tmbId,
           vectorModel,
           agentModel,
+          vlmModel,
           avatar,
           type,
           apiServer,

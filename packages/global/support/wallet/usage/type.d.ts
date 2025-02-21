@@ -7,6 +7,7 @@ export type UsageListItemCountType = {
   outputTokens?: number;
   charsLength?: number;
   duration?: number;
+  pages?: number;
 
   // deprecated
   tokens?: number;

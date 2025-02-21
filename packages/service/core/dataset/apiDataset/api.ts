@@ -108,7 +108,15 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return formattedFiles;
   };
 
-  const getFileContent = async ({ teamId, apiFileId }: { teamId: string; apiFileId: string }) => {
+  const getFileContent = async ({
+    teamId,
+    tmbId,
+    apiFileId
+  }: {
+    teamId: string;
+    tmbId: string;
+    apiFileId: string;
+  }) => {
     const data = await request<APIFileContentResponse>(
       `/v1/file/content`,
       { id: apiFileId },
@@ -123,6 +131,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     if (previewUrl) {
       const rawText = await readFileRawTextByUrl({
         teamId,
+        tmbId,
         url: previewUrl,
         relatedId: apiFileId
       });

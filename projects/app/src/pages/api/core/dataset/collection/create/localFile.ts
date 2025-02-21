@@ -48,8 +48,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     // 1. read file
     const { rawText } = await readRawTextByLocalFile({
       teamId,
+      tmbId,
       path: file.path,
       encoding: file.encoding,
+      customPdfParse: collectionData.customPdfParse,
       metadata: {
         ...fileMetadata,
         relatedId: relatedImgId

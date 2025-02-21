@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   // 1. read file
   const { rawText, filename } = await readFileContentFromMongo({
     teamId,
+    tmbId,
     bucketName: BucketNameEnum.dataset,
     fileId,
     isQAImport: true

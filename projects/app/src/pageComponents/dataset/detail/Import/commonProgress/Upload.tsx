@@ -102,7 +102,8 @@ const Upload = () => {
           chunkSize,
           chunkSplitter: customSplitChar,
           qaPrompt,
-
+          customPdfParse: processParamsForm.getValues('customPdfParse'),
+          imageParse: processParamsForm.getValues('imageAutoParse'),
           name: item.sourceName
         };
         if (importSource === ImportDataSourceEnum.reTraining) {
@@ -272,7 +273,7 @@ const Upload = () => {
       <Flex justifyContent={'flex-end'} mt={4}>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
           {totalFilesCount > 0 &&
-            `${t('common:core.dataset.import.Total files', {
+            `${t('dataset:total_num_files', {
               total: totalFilesCount
             })} | `}
           {buttonText}

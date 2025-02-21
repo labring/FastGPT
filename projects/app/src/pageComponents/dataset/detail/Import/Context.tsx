@@ -46,6 +46,13 @@ export type ImportFormType = {
   customSplitChar: string;
   qaPrompt: string;
   webSelector: string;
+
+  llmModel?: string;
+  vlmModel?: string;
+
+  customPdfParse: boolean;
+  imageAutoParse: boolean;
+  autoIndexes: boolean;
 };
 
 export const DatasetImportContext = createContext<DatasetImportContextType>({
@@ -88,72 +95,93 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const modeSteps: Record<ImportDataSourceEnum, { title: string }[]> = {
     [ImportDataSourceEnum.reTraining]: [
       { title: t('dataset:core.dataset.import.Adjust parameters') },
-      { title: t('common:core.dataset.import.Upload data') }
+      {
+        title: t('dataset:import_data_preview')
+      },
+      { title: t('dataset:import_confirm') }
     ],
     [ImportDataSourceEnum.fileLocal]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.fileLink]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.fileCustom]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.csvTable]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.externalFile]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.apiDataset]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ]
   };
@@ -174,7 +202,14 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       qaChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
       customSplitChar: '',
       qaPrompt: Prompt_AgentQA.description,
-      webSelector: ''
+      webSelector: '',
+      customPdfParse: false,
+
+      llmModel: datasetDetail.agentModel?.model,
+      vlmModel: datasetDetail.vlmModel?.model,
+
+      imageAutoParse: false,
+      autoIndexes: false
     }
   });
 

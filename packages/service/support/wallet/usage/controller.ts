@@ -165,3 +165,31 @@ export const createTrainingUsage = async ({
 
   return { billId: String(_id) };
 };
+
+export const createPdfParseUsage = async ({
+  teamId,
+  tmbId,
+  pages
+}: {
+  teamId: string;
+  tmbId: string;
+  pages: number;
+}) => {
+  const unitPrice = global.systemEnv?.customPdfParse?.price || 0;
+  const totalPoints = pages * unitPrice;
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: i18nT('account_usage:pdf_enhanced_parse'),
+    totalPoints,
+    source: UsageSourceEnum.pdfParse,
+    list: [
+      {
+        moduleName: i18nT('account_usage:pdf_enhanced_parse'),
+        amount: totalPoints,
+        pages
+      }
+    ]
+  });
+};

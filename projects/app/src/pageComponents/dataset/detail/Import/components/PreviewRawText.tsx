@@ -11,6 +11,7 @@ import { DatasetImportContext } from '../Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getPreviewSourceReadType } from '../utils';
+import Markdown from '@/components/Markdown';
 
 const PreviewRawText = ({
   previewSource,
@@ -68,8 +69,8 @@ const PreviewRawText = ({
       isLoading={isLoading}
       px={0}
     >
-      <Box whiteSpace={'pre-wrap'} overflowY={'auto'} px={5} fontSize={'sm'}>
-        {rawText}
+      <Box overflowY={'auto'} px={5} fontSize={'sm'}>
+        <Markdown source={rawText} />
       </Box>
     </MyRightDrawer>
   );

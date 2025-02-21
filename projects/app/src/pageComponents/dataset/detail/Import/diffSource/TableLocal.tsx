@@ -91,7 +91,7 @@ const SelectFile = React.memo(function SelectFile() {
           }}
         >
           {selectFiles.length > 0
-            ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
+            ? `${t('dataset:total_num_files', { total: selectFiles.length })} | `
             : ''}
           {t('common:common.Next Step')}
         </Button>

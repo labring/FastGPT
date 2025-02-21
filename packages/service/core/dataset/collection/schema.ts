@@ -36,6 +36,8 @@ const DatasetCollectionSchema = new Schema({
     enum: Object.keys(DatasetCollectionTypeMap),
     required: true
   },
+  customPdfParse: Boolean,
+  imageParse: Boolean,
   name: {
     type: String,
     required: true

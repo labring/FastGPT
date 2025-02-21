@@ -98,7 +98,7 @@ const LeftRadio = ({
                 fontSize={'sm'}
               >
                 <Box>{typeof item.title === 'string' ? t(item.title as any) : item.title}</Box>
-                {!!item.tooltip && <QuestionTip label={item.tooltip} ml={1} color={'myGray.600'} />}
+                {!!item.tooltip && <QuestionTip label={item.tooltip} color={'myGray.600'} />}
               </HStack>
             </Flex>
             {!!item.desc && (

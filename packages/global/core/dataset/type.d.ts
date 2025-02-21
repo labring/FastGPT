@@ -23,11 +23,14 @@ export type DatasetSchemaType = {
 
   avatar: string;
   name: string;
-  vectorModel: string;
-  agentModel: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
   status: `${DatasetStatusEnum}`;
+
+  vectorModel: string;
+  agentModel: string;
+  vlmModel?: string;
+
   websiteConfig?: {
     url: string;
     selector: string;
@@ -56,6 +59,8 @@ export type DatasetCollectionSchemaType = {
   updateTime: Date;
   forbid?: boolean;
 
+  customPdfParse?: boolean;
+  imageParse?: boolean;
   trainingType: TrainingModeEnum;
   chunkSize: number;
   chunkSplitter?: string;
@@ -169,9 +174,10 @@ export type DatasetListItemType = {
   sourceMember?: SourceMemberType;
 };
 
-export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
+export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {
   vectorModel: EmbeddingModelItemType;
   agentModel: LLMModelItemType;
+  vlmModel?: LLMModelItemType;
   permission: DatasetPermission;
 };
 

@@ -62,8 +62,16 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: formatTime2YMDHM(collection.updateTime)
       },
       {
+        label: t('dataset:collection_metadata_custom_pdf_parse'),
+        value: collection.customPdfParse ? 'Yes' : 'No'
+      },
+      {
         label: t('common:core.dataset.collection.metadata.Raw text length'),
         value: collection.rawTextLength ?? '-'
+      },
+      {
+        label: t('dataset:collection_metadata_image_parse'),
+        value: collection.imageParse ? 'Yes' : 'No'
       },
       {
         label: t('dataset:collection.Training type'),
@@ -110,7 +118,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
           item.label &&
           item.value && (
             <Flex key={i} alignItems={'center'} mb={4} wordBreak={'break-all'} fontSize={'sm'}>
-              <Box color={'myGray.500'} flex={'0 0 70px'}>
+              <Box color={'myGray.500'} flex={'0 0 90px'}>
                 {item.label}
               </Box>
               <Box>{item.value}</Box>
