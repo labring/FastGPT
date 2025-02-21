@@ -91,9 +91,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       tasks.push(asyncUpdate);
     }
 
-    // randomize task list
-    tasks.sort(() => Math.random() - 0.5);
-
     let currentIdx = 0;
     const executor = async () => {
       console.log(`Executing tasks from: ${currentIdx}`);
@@ -107,7 +104,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
     };
 
-    const maxConcurrency = 20;
+    const maxConcurrency = 32;
     const promises = [];
     for (let i = 0; i < maxConcurrency; ++i) {
       promises.push(executor());
