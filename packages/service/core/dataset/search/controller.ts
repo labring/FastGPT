@@ -200,6 +200,54 @@ export async function searchDatasetData(
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
   };
+  async function getAllCollectionIds(
+    teamId: string,
+    parentCollectionIds: string[],
+    readFromSecondary: any = {}
+  ): Promise<string[]> {
+    if (!parentCollectionIds.length) {
+      return [];
+    }
+    const collections = await MongoDatasetCollection.find(
+      {
+        teamId,
+        _id: { $in: parentCollectionIds }
+      },
+      '_id type',
+      {
+        ...readFromSecondary
+      }
+    ).lean();
+
+    const resultIds = collections.map((item) => String(item._id));
+
+    const folderIds = collections
+      .filter((item) => item.type === 'folder')
+      .map((item) => String(item._id));
+
+    if (folderIds.length) {
+      const childCollections = await MongoDatasetCollection.find(
+        {
+          teamId,
+          parentId: { $in: folderIds }
+        },
+        '_id',
+        {
+          ...readFromSecondary
+        }
+      ).lean();
+
+      const childIds = await getAllCollectionIds(
+        teamId,
+        childCollections.map((item) => String(item._id)),
+        readFromSecondary
+      );
+
+      resultIds.push(...childIds);
+    }
+
+    return resultIds;
+  }
   /* 
     Collection metadata filter
     标签过滤：
@@ -329,7 +377,7 @@ export async function searchDatasetData(
       if (tagCollectionIdList && createTimeCollectionIdList) {
         return tagCollectionIdList.filter((id) => createTimeCollectionIdList!.includes(id));
       } else if (tagCollectionIdList) {
-        return tagCollectionIdList;
+        return await getAllCollectionIds(teamId, tagCollectionIdList, readFromSecondary);
       } else if (createTimeCollectionIdList) {
         return createTimeCollectionIdList;
       }
