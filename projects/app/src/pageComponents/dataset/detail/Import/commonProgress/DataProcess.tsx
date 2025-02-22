@@ -19,8 +19,11 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
-import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionDataProcessModeMap
+} from '@fastgpt/global/core/dataset/constants';
+import { ChunkSettingModeEnum } from '@/web/core/dataset/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -28,7 +31,6 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -37,27 +39,20 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 
 function DataProcess() {
   const { t } = useTranslation();
-  const { feConfigs, datasetModelList, getVllmModelList } = useSystemStore();
+  const { feConfigs } = useSystemStore();
 
   const {
     goToNext,
     processParamsForm,
     chunkSizeField,
     minChunkSize,
-    showChunkInput,
-    showPromptInput,
     maxChunkSize,
     priceTip,
     chunkSize
   } = useContextSelector(DatasetImportContext, (v) => v);
   const { getValues, setValue, register, watch } = processParamsForm;
-  const { toast } = useToast();
-  const mode = watch('mode');
-  const way = watch('way');
-
-  const vllmModelList = useMemo(() => getVllmModelList(), [getVllmModelList]);
-  const llmModel = watch('llmModel');
-  const vlmModel = watch('vlmModel');
+  const trainingType = watch('trainingType');
+  const chunkSettingMode = watch('chunkSettingMode');
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -66,22 +61,15 @@ function DataProcess() {
   } = useDisclosure();
 
   const trainingModeList = useMemo(() => {
-    const list = Object.entries(TrainingTypeMap);
-    return list.filter(([key]) => key !== TrainingModeEnum.auto);
+    const list = Object.entries(DatasetCollectionDataProcessModeMap);
+    return list
+      .filter(([key]) => key !== DatasetCollectionDataProcessModeEnum.auto)
+      .map(([key, value]) => ({
+        title: t(value.label as any),
+        value: key as DatasetCollectionDataProcessModeEnum,
+        tooltip: t(value.tooltip as any)
+      }));
   }, []);
-
-  const onSelectTrainWay = useCallback(
-    (e: TrainingModeEnum) => {
-      if (!feConfigs?.isPlus && !TrainingTypeMap[e]?.openSource) {
-        return toast({
-          status: 'warning',
-          title: t('common:common.system.Commercial version function')
-        });
-      }
-      setValue('mode', e);
-    },
-    [feConfigs?.isPlus, setValue, t, toast]
-  );
 
   const Title = useCallback(({ title }: { title: string }) => {
     return (
@@ -97,18 +85,19 @@ function DataProcess() {
 
   // Adapt auto training
   useEffect(() => {
-    if (mode === TrainingModeEnum.auto) {
+    if (trainingType === DatasetCollectionDataProcessModeEnum.auto) {
       setValue('autoIndexes', true);
-      setValue('mode', TrainingModeEnum.chunk);
+      setValue('trainingType', DatasetCollectionDataProcessModeEnum.chunk);
     }
-  }, [mode, setValue]);
+  }, [trainingType, setValue]);
 
   const showFileParseSetting = feConfigs?.showCustomPdfParse || feConfigs?.isPlus;
+  const showQAPromptInput = trainingType === DatasetCollectionDataProcessModeEnum.qa;
 
   return (
     <>
       <Box flex={'1 0 0'} maxW={['90vw', '640px']} m={'auto'} overflow={'auto'}>
-        <Accordion allowToggle allowMultiple reduceMotion defaultIndex={[0, 1, 2]}>
+        <Accordion allowMultiple reduceMotion defaultIndex={[0, 1, 2]}>
           {showFileParseSetting && (
             <AccordionItem border={'none'} borderBottom={'base'} pb={4}>
               <Title title={t('dataset:import_file_parse_setting')} />
@@ -167,22 +156,20 @@ function DataProcess() {
                 <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
                   {t('dataset:training_mode')}
                 </Box>
-                <LeftRadio
-                  list={trainingModeList.map(([key, value]) => ({
-                    title: t(value.label as any),
-                    value: key,
-                    tooltip: t(value.tooltip as any)
-                  }))}
+                <LeftRadio<DatasetCollectionDataProcessModeEnum>
+                  list={trainingModeList}
                   px={3}
                   py={2.5}
-                  value={mode}
-                  onChange={onSelectTrainWay}
+                  value={trainingType}
+                  onChange={(e) => {
+                    setValue('trainingType', e);
+                  }}
                   defaultBg="white"
                   activeBg="white"
                   gridTemplateColumns={'repeat(2, 1fr)'}
                 />
               </Box>
-              {feConfigs?.isPlus && mode === TrainingModeEnum.chunk && (
+              {feConfigs?.isPlus && trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
                 <Box mt={6}>
                   <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
                     {t('dataset:enhanced_indexes')}
@@ -199,55 +186,49 @@ function DataProcess() {
                 <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
                   {t('dataset:params_setting')}
                 </Box>
-                <LeftRadio
+                <LeftRadio<ChunkSettingModeEnum>
                   list={[
                     {
                       title: t('dataset:default_params'),
                       desc: t('dataset:default_params_desc'),
-                      value: ImportProcessWayEnum.auto
+                      value: ChunkSettingModeEnum.auto
                     },
                     {
                       title: t('dataset:custom_data_process_params'),
                       desc: t('dataset:custom_data_process_params_desc'),
-                      value: ImportProcessWayEnum.custom,
-                      children: way === ImportProcessWayEnum.custom && (
+                      value: ChunkSettingModeEnum.custom,
+                      children: chunkSettingMode === ChunkSettingModeEnum.custom && (
                         <Box mt={5}>
-                          {showChunkInput && chunkSizeField && (
-                            <Box>
-                              <Flex alignItems={'center'}>
-                                <Box>{t('dataset:ideal_chunk_length')}</Box>
-                                <QuestionTip label={t('dataset:ideal_chunk_length_tips')} />
-                              </Flex>
-                              <Box
-                                mt={1}
-                                css={{
-                                  '& > span': {
-                                    display: 'block'
-                                  }
-                                }}
+                          <Box>
+                            <Flex alignItems={'center'}>
+                              <Box>{t('dataset:ideal_chunk_length')}</Box>
+                              <QuestionTip label={t('dataset:ideal_chunk_length_tips')} />
+                            </Flex>
+                            <Box
+                              mt={1}
+                              css={{
+                                '& > span': {
+                                  display: 'block'
+                                }
+                              }}
+                            >
+                              <MyTooltip
+                                label={t('common:core.dataset.import.Chunk Range', {
+                                  min: minChunkSize,
+                                  max: maxChunkSize
+                                })}
                               >
-                                <MyTooltip
-                                  label={t('common:core.dataset.import.Chunk Range', {
-                                    min: minChunkSize,
-                                    max: maxChunkSize
-                                  })}
-                                >
-                                  <MyNumberInput
-                                    name={chunkSizeField}
-                                    min={minChunkSize}
-                                    max={maxChunkSize}
-                                    size={'sm'}
-                                    step={100}
-                                    value={chunkSize}
-                                    onChange={(e) => {
-                                      if (e === undefined) return;
-                                      setValue(chunkSizeField, +e);
-                                    }}
-                                  />
-                                </MyTooltip>
-                              </Box>
+                                <MyNumberInput
+                                  register={register}
+                                  name={chunkSizeField}
+                                  min={minChunkSize}
+                                  max={maxChunkSize}
+                                  size={'sm'}
+                                  step={100}
+                                />
+                              </MyTooltip>
                             </Box>
-                          )}
+                          </Box>
 
                           <Box mt={3}>
                             <Box>
@@ -267,7 +248,7 @@ function DataProcess() {
                             </Box>
                           </Box>
 
-                          {showPromptInput && (
+                          {showQAPromptInput && (
                             <Box mt={3}>
                               <Box>{t('common:core.dataset.collection.QA Prompt')}</Box>
                               <Box
@@ -327,10 +308,10 @@ function DataProcess() {
                   py={3}
                   defaultBg="white"
                   activeBg="white"
-                  value={way}
+                  value={chunkSettingMode}
                   w={'100%'}
                   onChange={(e) => {
-                    setValue('way', e);
+                    setValue('chunkSettingMode', e);
                   }}
                 />
               </Box>

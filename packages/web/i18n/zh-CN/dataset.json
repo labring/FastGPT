@@ -10,6 +10,7 @@
   "collection.Create update time": "创建/更新时间",
   "collection.Training type": "训练模式",
   "collection_data_count": "数据量",
+  "collection.training_type": "处理模式",
   "collection_metadata_custom_pdf_parse": "PDF增强解析",
   "collection_metadata_image_parse": "图片标注",
   "collection_not_support_retraining": "该集合类型不支持重新调整参数",

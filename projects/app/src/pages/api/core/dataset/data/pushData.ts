@@ -7,9 +7,13 @@ import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getTrainingModeByCollection } from '@fastgpt/global/core/dataset/collection/utils';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const body = req.body as PushDatasetDataProps;
+  // Adapter 4.9.0
+  body.trainingType = body.trainingType || body.trainingMode;
+
   const { collectionId, data } = body;
 
   if (!collectionId || !Array.isArray(data)) {
@@ -32,7 +36,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   // auth dataset limit
   await checkDatasetLimit({
     teamId,
-    insertLen: predictDataLimitLength(collection.trainingType, data)
+    insertLen: predictDataLimitLength(getTrainingModeByCollection(collection), data)
   });
 
   return pushDataListToTrainingQueue({

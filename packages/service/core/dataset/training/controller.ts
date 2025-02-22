@@ -1,16 +1,16 @@
 import { MongoDatasetTraining } from './schema';
 import type {
   PushDatasetDataChunkProps,
-  PushDatasetDataProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVllmModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
 import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -28,11 +28,7 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
 export const pushDataListToTrainingQueueByCollectionId = async ({
   collectionId,
   ...props
-}: {
-  teamId: string;
-  tmbId: string;
-  session?: ClientSession;
-} & PushDatasetDataProps) => {
+}: Omit<PushDataToTrainingQueueProps, 'datasetId' | 'agentModel' | 'vectorModel'>) => {
   const {
     dataset: { _id: datasetId, agentModel, vectorModel }
   } = await getCollectionWithDataset(collectionId);
@@ -55,27 +51,15 @@ export async function pushDataListToTrainingQueue({
   data,
   prompt,
   billId,
-  trainingMode = TrainingModeEnum.chunk,
+  mode = TrainingModeEnum.chunk,
   session
-}: {
-  teamId: string;
-  tmbId: string;
-  datasetId: string;
-  agentModel: string;
-  vectorModel: string;
-  session?: ClientSession;
-} & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
+}: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
   const { model, maxToken, weight } = await (async () => {
-    const agentModelData = getLLMModel(agentModel);
-    if (!agentModelData) {
-      return Promise.reject(`File model ${agentModel} is inValid`);
-    }
-    const vectorModelData = getEmbeddingModel(vectorModel);
-    if (!vectorModelData) {
-      return Promise.reject(`Vector model ${vectorModel} is inValid`);
-    }
-
-    if (trainingMode === TrainingModeEnum.chunk) {
+    if (mode === TrainingModeEnum.chunk) {
+      const vectorModelData = getEmbeddingModel(vectorModel);
+      if (!vectorModelData) {
+        return Promise.reject(`Vector model ${vectorModel} is inValid`);
+      }
       return {
         maxToken: vectorModelData.maxToken * 1.5,
         model: vectorModelData.model,
@@ -83,7 +67,11 @@ export async function pushDataListToTrainingQueue({
       };
     }
 
-    if (trainingMode === TrainingModeEnum.qa || trainingMode === TrainingModeEnum.auto) {
+    if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
+      const agentModelData = getLLMModel(agentModel);
+      if (!agentModelData) {
+        return Promise.reject(`File model ${agentModel} is inValid`);
+      }
       return {
         maxToken: agentModelData.maxContext * 0.8,
         model: agentModelData.model,
@@ -91,8 +79,24 @@ export async function pushDataListToTrainingQueue({
       };
     }
 
-    return Promise.reject(`Training mode "${trainingMode}" is inValid`);
+    if (mode === TrainingModeEnum.image) {
+      const vllmModelData = getVllmModel(vectorModel);
+      if (!vllmModelData) {
+        return Promise.reject(`Vector model ${vectorModel} is inValid`);
+      }
+      return {
+        maxToken: vllmModelData.maxContext * 0.8,
+        model: vllmModelData.model,
+        weight: 0
+      };
+    }
+
+    return Promise.reject(`Training mode "${mode}" is inValid`);
   })();
+  // Filter redundant params
+  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.auto) {
+    prompt = undefined;
+  }
 
   // filter repeat or equal content
   const set = new Set();
@@ -158,7 +162,7 @@ export async function pushDataListToTrainingQueue({
           datasetId,
           collectionId,
           billId,
-          mode: trainingMode,
+          mode,
           prompt,
           model,
           q: item.q,

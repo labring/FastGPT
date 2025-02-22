@@ -8,7 +8,7 @@ import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
+import { ChunkSettingModeEnum } from '@/web/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { Box } from '@chakra-ui/react';
@@ -48,7 +48,7 @@ const ReTraining = () => {
       ]);
       processParamsForm.reset({
         mode: collection.trainingType,
-        way: ImportProcessWayEnum.auto,
+        way: ChunkSettingModeEnum.auto,
         embeddingChunkSize: collection.chunkSize,
         qaChunkSize: collection.chunkSize,
         customSplitChar: collection.chunkSplitter,

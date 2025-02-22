@@ -641,7 +641,7 @@
   "core.dataset.test.test result placeholder": "測試結果將顯示在這裡",
   "core.dataset.test.test result tip": "根據知識庫內容與測試文字的相似度進行排序。您可以根據測試結果調整相應的文字。\n注意：測試記錄中的資料可能已經被修改。點選某筆測試資料後將顯示最新資料。",
   "core.dataset.training.Agent queue": "問答訓練排隊中",
-  "core.dataset.training.Auto mode": "增強處理",
+  "core.dataset.training.Auto mode": "補充索引",
   "core.dataset.training.Auto mode Tip": "透過子索引以及呼叫模型產生相關問題與摘要，來增加資料區塊的語意豐富度，更有利於檢索。需要消耗更多的儲存空間並增加 AI 呼叫次數。",
   "core.dataset.training.Chunk mode": "直接分块",
   "core.dataset.training.Full": "預計超過 5 分鐘",

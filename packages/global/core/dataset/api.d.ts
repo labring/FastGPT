@@ -1,5 +1,5 @@
 import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
+import { DatasetCollectionTypeEnum, DatasetCollectionDataProcessModeEnum } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
 import { ParentIdType } from 'common/parentFolder/type';
 
@@ -31,7 +31,8 @@ export type DatasetCollectionChunkMetadataType = {
   parentId?: string;
   customPdfParse?: boolean;
   imageParse?: boolean;
-  trainingType?: TrainingModeEnum;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
+  autoIndexes?: boolean;
   chunkSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
@@ -135,9 +136,15 @@ export type PostWebsiteSyncParams = {
 export type PushDatasetDataProps = {
   collectionId: string;
   data: PushDatasetDataChunkProps[];
-  trainingMode: TrainingModeEnum;
+  trainingType?: DatasetCollectionDataProcessModeEnum;
+  autoIndexes?: boolean;
+  imageParse?: boolean;
   prompt?: string;
+
   billId?: string;
+
+  // Abandon
+  trainingMode?: DatasetCollectionDataProcessModeEnum;
 };
 export type PushDatasetDataResponse = {
   insertLen: number;

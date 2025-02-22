@@ -2,6 +2,7 @@ import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/mod
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import {
+  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetTypeEnum,
@@ -55,27 +56,21 @@ export type DatasetCollectionSchemaType = {
   parentId?: string;
   name: string;
   type: DatasetCollectionTypeEnum;
-  createTime: Date;
-  updateTime: Date;
-  forbid?: boolean;
-
-  customPdfParse?: boolean;
-  imageParse?: boolean;
-  trainingType: TrainingModeEnum;
-  chunkSize: number;
-  chunkSplitter?: string;
-  qaPrompt?: string;
-  ocrParse?: boolean;
-
   tags?: string[];
 
+  createTime: Date;
+  updateTime: Date;
+
+  // Status
+  forbid?: boolean;
+  nextSyncTime?: Date;
+
+  // Collection metadata
   fileId?: string; // local file id
   rawLink?: string; // link url
   externalFileId?: string; //external file id
   apiFileId?: string; // api file id
   externalFileUrl?: string; // external import url
-
-  nextSyncTime?: Date;
 
   rawTextLength?: number;
   hashRawText?: string;
@@ -85,6 +80,16 @@ export type DatasetCollectionSchemaType = {
 
     [key: string]: any;
   };
+
+  // Parse settings
+  customPdfParse?: boolean;
+  imageParse?: boolean;
+  // Chunk settings
+  autoIndexes?: boolean;
+  trainingType: DatasetCollectionDataProcessModeEnum;
+  chunkSize: number;
+  chunkSplitter?: string;
+  qaPrompt?: string;
 };
 
 export type DatasetCollectionTagsSchemaType = {

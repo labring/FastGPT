@@ -24,15 +24,7 @@ type RetrainingCollectionResponse = {
 async function handler(
   req: ApiRequestProps<reTrainingDatasetFileCollectionParams>
 ): Promise<RetrainingCollectionResponse> {
-  const {
-    collectionId,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt,
-    customPdfParse,
-    imageParse
-  } = req.body;
+  const { collectionId, customPdfParse, ...data } = req.body;
 
   if (!collectionId) {
     return Promise.reject(CommonErrEnum.missingParams);
@@ -104,6 +96,7 @@ async function handler(
       dataset: collection.dataset,
       rawText,
       createCollectionParams: {
+        ...data,
         teamId: collection.teamId,
         tmbId: collection.tmbId,
         datasetId: collection.dataset._id,
@@ -111,7 +104,6 @@ async function handler(
         type: collection.type,
 
         customPdfParse,
-        imageParse,
 
         fileId: collection.fileId,
         rawLink: collection.rawLink,
@@ -128,10 +120,6 @@ async function handler(
         parentId: collection.parentId,
 
         // special metadata
-        trainingType,
-        chunkSize,
-        chunkSplitter,
-        qaPrompt,
         metadata: collection.metadata
       }
     });

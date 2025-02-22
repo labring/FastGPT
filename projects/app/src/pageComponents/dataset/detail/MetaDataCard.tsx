@@ -7,7 +7,10 @@ import { useRouter } from 'next/router';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeMap,
+  DatasetCollectionTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -74,8 +77,12 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: collection.imageParse ? 'Yes' : 'No'
       },
       {
-        label: t('dataset:collection.Training type'),
-        value: t(TrainingTypeMap[collection.trainingType]?.label as any)
+        label: t('dataset:auto_indexes'),
+        value: collection.autoIndexes ? 'Yes' : 'No'
+      },
+      {
+        label: t('dataset:collection.training_type'),
+        value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
       },
       {
         label: t('common:core.dataset.collection.metadata.Chunk Size'),
@@ -107,8 +114,8 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       <Box fontSize={'md'} pb={4}>
         {t('common:core.dataset.collection.metadata.metadata')}
       </Box>
-      <Flex mb={4} wordBreak={'break-all'} fontSize={'sm'}>
-        <Box color={'myGray.500'} flex={'0 0 70px'}>
+      <Flex mb={3} wordBreak={'break-all'} fontSize={'sm'}>
+        <Box color={'myGray.500'} flex={'0 0 90px'}>
           {t('common:core.dataset.collection.id')}:
         </Box>
         <Box>{collection?._id}</Box>
@@ -117,7 +124,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         (item, i) =>
           item.label &&
           item.value && (
-            <Flex key={i} alignItems={'center'} mb={4} wordBreak={'break-all'} fontSize={'sm'}>
+            <Flex key={i} alignItems={'center'} mb={3} wordBreak={'break-all'} fontSize={'sm'}>
               <Box color={'myGray.500'} flex={'0 0 90px'}>
                 {item.label}
               </Box>

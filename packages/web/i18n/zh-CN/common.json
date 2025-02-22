@@ -645,7 +645,7 @@
   "core.dataset.test.test result placeholder": "测试结果将在这里展示",
   "core.dataset.test.test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。",
   "core.dataset.training.Agent queue": "QA 训练排队",
-  "core.dataset.training.Auto mode": "增强处理",
+  "core.dataset.training.Auto mode": "补充索引",
   "core.dataset.training.Auto mode Tip": "通过子索引以及调用模型生成相关问题与摘要，来增加数据块的语义丰富度，更利于检索。需要消耗更多的存储空间和增加 AI 调用次数。",
   "core.dataset.training.Chunk mode": "直接分块",
   "core.dataset.training.Full": "预计 5 分钟以上",

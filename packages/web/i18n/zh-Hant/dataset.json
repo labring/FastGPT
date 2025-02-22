@@ -10,6 +10,7 @@
   "collection.Create update time": "建立／更新時間",
   "collection.Training type": "分段模式",
   "collection_data_count": "數據量",
+  "collection.training_type": "處理模式",
   "collection_metadata_custom_pdf_parse": "PDF增強解析",
   "collection_metadata_image_parse": "圖片標註",
   "collection_not_support_retraining": "此集合類型不支援重新調整參數",

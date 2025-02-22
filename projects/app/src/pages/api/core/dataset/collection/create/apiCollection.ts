@@ -4,7 +4,8 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   TrainingModeEnum,
-  DatasetCollectionTypeEnum
+  DatasetCollectionTypeEnum,
+  DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
@@ -15,16 +16,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
-  const {
-    name,
-    apiFileId,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt,
-    imageParse,
-    ...body
-  } = req.body as ApiDatasetCreateDatasetCollectionParams;
+  const { name, apiFileId, ...body } = req.body as ApiDatasetCreateDatasetCollectionParams;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -71,11 +63,6 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       tmbId,
       type: DatasetCollectionTypeEnum.apiFile,
       name: name,
-      imageParse,
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt,
       apiFileId,
       metadata: {
         relatedImgId: apiFileId

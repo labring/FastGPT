@@ -4,23 +4,22 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
 import QuestionTip from '../MyTooltip/QuestionTip';
 
-// @ts-ignore
-interface Props extends GridProps {
+type Props<T> = GridProps & {
   list: {
     title: string;
     desc?: string;
-    value: any;
+    value: T;
     children?: React.ReactNode;
     tooltip?: string;
   }[];
   align?: 'flex-top' | 'center';
-  value: any;
+  value: T;
   defaultBg?: string;
   activeBg?: string;
   onChange: (e: any) => void;
-}
+};
 
-const LeftRadio = ({
+const LeftRadio = <T = any,>({
   list,
   value,
   align = 'flex-top',
@@ -30,7 +29,7 @@ const LeftRadio = ({
   activeBg = 'primary.50',
   onChange,
   ...props
-}: Props) => {
+}: Props<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
 
@@ -39,7 +38,7 @@ const LeftRadio = ({
       {list.map((item) => (
         <Flex
           alignItems={item.desc ? align : 'center'}
-          key={item.value}
+          key={item.value as any}
           cursor={'pointer'}
           userSelect={'none'}
           px={px}

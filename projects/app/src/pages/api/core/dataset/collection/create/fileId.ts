@@ -3,11 +3,10 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
-  DatasetCollectionTypeEnum,
-  TrainingModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -17,16 +16,7 @@ import { CreateCollectionResponse } from '@/global/core/dataset/api';
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
 ): CreateCollectionResponse {
-  const {
-    fileId,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt,
-    customPdfParse,
-    imageParse,
-    ...body
-  } = req.body;
+  const { fileId, customPdfParse, ...body } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -58,14 +48,7 @@ async function handler(
       metadata: {
         relatedImgId: fileId
       },
-
-      // special metadata
-      customPdfParse,
-      imageParse,
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt
+      customPdfParse
     },
 
     relatedId: fileId

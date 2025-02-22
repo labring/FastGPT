@@ -1,8 +1,8 @@
 /* 模型的知识库 */
-import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+import { connectionMongo, getMongoModel } from '../../../common/mongo';
+const { Schema } = connectionMongo;
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetCollectionName } from '../schema';
 import {
@@ -39,7 +39,7 @@ const TrainingDataSchema = new Schema({
   },
   mode: {
     type: String,
-    enum: Object.keys(TrainingTypeMap),
+    enum: Object.values(TrainingModeEnum),
     required: true
   },
   expireAt: {

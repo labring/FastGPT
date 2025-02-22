@@ -142,7 +142,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
-      trainingMode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.chunk,
       data: qaArr.map((item) => ({
         ...item,
         chunkIndex: data.chunkIndex
