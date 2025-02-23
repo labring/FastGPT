@@ -402,7 +402,6 @@ function ContextRender() {
   return (
     <AppListContextProvider>
       <MyApps />
-      <WorkorderButton />
     </AppListContextProvider>
   );
 }

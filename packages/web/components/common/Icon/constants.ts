@@ -161,6 +161,7 @@
  'core/chat/chatLight': () => import('./icons/core/chat/chatLight.svg'),
  'core/chat/chatModelTag': () => import('./icons/core/chat/chatModelTag.svg'),
  'core/chat/chevronDown': () => import('./icons/core/chat/chevronDown.svg'),
+ 'core/chat/chevronLeft': () => import('./icons/core/chat/chevronLeft.svg'),
  'core/chat/chevronRight': () => import('./icons/core/chat/chevronRight.svg'),
  'core/chat/chevronSelector': () => import('./icons/core/chat/chevronSelector.svg'),
  'core/chat/chevronUp': () => import('./icons/core/chat/chevronUp.svg'),
