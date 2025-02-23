@@ -1,4 +1,4 @@
-import { batchRun } from '../fn/utils';
+import { batchRun } from '../system/utils';
 import { getNanoid, simpleText } from './tools';
 import type { ImageType } from '../../../service/worker/readFile/type';
 

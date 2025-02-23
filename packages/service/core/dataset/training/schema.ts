@@ -25,7 +25,6 @@ const TrainingDataSchema = new Schema({
   },
   datasetId: {
     type: Schema.Types.ObjectId,
-    ref: DatasetCollectionName,
     required: true
   },
   collectionId: {
@@ -96,6 +95,13 @@ const TrainingDataSchema = new Schema({
     ],
     default: []
   }
+});
+
+TrainingDataSchema.virtual('dataset', {
+  ref: DatasetCollectionName,
+  localField: 'datasetId',
+  foreignField: '_id',
+  justOne: true
 });
 
 try {

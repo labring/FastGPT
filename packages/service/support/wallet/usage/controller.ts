@@ -117,14 +117,16 @@ export const createTrainingUsage = async ({
   billSource,
   vectorModel,
   agentModel,
+  vllmModel,
   session
 }: {
   teamId: string;
   tmbId: string;
   appName: string;
   billSource: UsageSourceEnum;
-  vectorModel: string;
-  agentModel: string;
+  vectorModel?: string;
+  agentModel?: string;
+  vllmModel?: string;
   session?: ClientSession;
 }) => {
   const [{ _id }] = await MongoUsage.create(
@@ -136,27 +138,46 @@ export const createTrainingUsage = async ({
         source: billSource,
         totalPoints: 0,
         list: [
-          {
-            moduleName: i18nT('common:support.wallet.moduleName.index'),
-            model: vectorModel,
-            amount: 0,
-            inputTokens: 0,
-            outputTokens: 0
-          },
-          {
-            moduleName: i18nT('common:support.wallet.moduleName.qa'),
-            model: agentModel,
-            amount: 0,
-            inputTokens: 0,
-            outputTokens: 0
-          },
-          {
-            moduleName: i18nT('common:core.dataset.training.Auto mode'),
-            model: agentModel,
-            amount: 0,
-            inputTokens: 0,
-            outputTokens: 0
-          }
+          ...(vectorModel
+            ? [
+                {
+                  moduleName: i18nT('account_usage:embedding_index'),
+                  model: vectorModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                }
+              ]
+            : []),
+          ...(agentModel
+            ? [
+                {
+                  moduleName: i18nT('account_usage:qa'),
+                  model: agentModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                },
+                {
+                  moduleName: i18nT('account_usage:auto_index'),
+                  model: agentModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                }
+              ]
+            : []),
+          ...(vllmModel
+            ? [
+                {
+                  moduleName: i18nT('account_usage:image_parse'),
+                  model: vllmModel,
+                  amount: 0,
+                  inputTokens: 0,
+                  outputTokens: 0
+                }
+              ]
+            : [])
         ]
       }
     ],

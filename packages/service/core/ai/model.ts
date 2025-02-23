@@ -13,7 +13,7 @@ export const getDatasetModel = (model?: string) => {
       ?.find((item) => item.model === model || item.name === model) ?? getDefaultLLMModel()
   );
 };
-export const getVllmModel = (model?: string) => {
+export const getVlmModel = (model?: string) => {
   return Array.from(global.llmModelMap.values())
     ?.filter((item) => item.vision)
     ?.find((item) => item.model === model || item.name === model);

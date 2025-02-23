@@ -1120,7 +1120,6 @@
   "support.wallet.invoice_detail": "发票详情",
   "support.wallet.invoice_info": "发票将在 3-7 个工作日内发送至邮箱，请耐心等待",
   "support.wallet.invoicing": "开票",
-  "support.wallet.moduleName.index": "索引生成",
   "support.wallet.moduleName.qa": "QA 拆分",
   "support.wallet.noBill": "无账单记录~",
   "support.wallet.no_invoice": "暂无开票记录",

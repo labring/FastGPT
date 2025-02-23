@@ -5,7 +5,7 @@ import fs from 'fs';
 import type { ImageType, ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
-import { batchRun } from '@fastgpt/global/common/fn/utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { htmlTable2Md, matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';

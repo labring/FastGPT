@@ -87,8 +87,8 @@ const UsageTableList = ({
               'common:support.wallet.usage.Audio Speech'
             ),
             ['support.wallet.usage.Whisper']: t('common:support.wallet.usage.Whisper'),
-            ['support.wallet.moduleName.index']: t('common:support.wallet.moduleName.index'),
-            ['support.wallet.moduleName.qa']: t('common:support.wallet.moduleName.qa'),
+            ['account_usage:embedding_index']: t('account_usage:embedding_index'),
+            ['account_usage:qa']: t('account_usage:qa'),
             ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
             ['common:core.module.template.ai_chat']: t('common:core.module.template.ai_chat')
           },

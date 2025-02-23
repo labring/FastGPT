@@ -151,6 +151,7 @@ export type DatasetTrainingSchemaType = {
   chunkIndex: number;
   weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
+  retryCount: number;
 };
 
 export type CollectionWithDatasetType = DatasetCollectionSchemaType & {

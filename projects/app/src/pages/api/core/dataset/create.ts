@@ -7,12 +7,11 @@ import {
   getEmbeddingModel,
   getDatasetModel,
   getDefaultEmbeddingModel,
-  getVllmModel
+  getVlmModel
 } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -35,7 +34,7 @@ async function handler(
     avatar,
     vectorModel = getDefaultEmbeddingModel()?.model,
     agentModel = getDatasetModel()?.model,
-    vlmModel = getVllmModel()?.model,
+    vlmModel,
     apiServer,
     feishuServer,
     yuqueServer

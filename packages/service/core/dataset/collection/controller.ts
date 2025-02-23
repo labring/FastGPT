@@ -19,14 +19,14 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { pushDataListToTrainingQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { addDays } from 'date-fns';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { getTrainingModeByCollection } from '@fastgpt/global/core/dataset/collection/utils';
+import { getTrainingModeByCollection } from './utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -111,6 +111,7 @@ export const createCollectionAndInsertData = async ({
       billSource: UsageSourceEnum.training,
       vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
       agentModel: getLLMModel(dataset.agentModel)?.name,
+      vllmModel: getVlmModel(dataset.vlmModel)?.name,
       session
     });
 
@@ -122,6 +123,7 @@ export const createCollectionAndInsertData = async ({
       collectionId,
       agentModel: dataset.agentModel,
       vectorModel: dataset.vectorModel,
+      vlmModel: dataset.vlmModel,
       mode: getTrainingModeByCollection({
         trainingType,
         autoIndexes: createCollectionParams.autoIndexes,

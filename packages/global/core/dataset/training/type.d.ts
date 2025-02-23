@@ -6,11 +6,14 @@ export type PushDataToTrainingQueueProps = {
   tmbId: string;
   datasetId: string;
   collectionId: string;
-  agentModel: string;
-  vectorModel: string;
+
   mode?: TrainingModeEnum;
   data: PushDatasetDataChunkProps[];
   prompt?: string;
+
+  agentModel: string;
+  vectorModel: string;
+  vlmModel?: string;
 
   billId?: string;
   session?: ClientSession;

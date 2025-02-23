@@ -6,7 +6,7 @@ import type {
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel, getVllmModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
 import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
@@ -28,16 +28,17 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
 export const pushDataListToTrainingQueueByCollectionId = async ({
   collectionId,
   ...props
-}: Omit<PushDataToTrainingQueueProps, 'datasetId' | 'agentModel' | 'vectorModel'>) => {
+}: Omit<PushDataToTrainingQueueProps, 'datasetId' | 'agentModel' | 'vectorModel' | 'vlmModel'>) => {
   const {
-    dataset: { _id: datasetId, agentModel, vectorModel }
+    dataset: { _id: datasetId, agentModel, vectorModel, vlmModel }
   } = await getCollectionWithDataset(collectionId);
   return pushDataListToTrainingQueue({
     ...props,
     datasetId,
     collectionId,
+    vectorModel,
     agentModel,
-    vectorModel
+    vlmModel
   });
 };
 
@@ -48,12 +49,24 @@ export async function pushDataListToTrainingQueue({
   collectionId,
   agentModel,
   vectorModel,
+  vlmModel,
   data,
   prompt,
   billId,
   mode = TrainingModeEnum.chunk,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+  const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
+    if (mode !== TrainingModeEnum.image) return mode;
+    // 检查内容中，是否包含 ![](xxx) 的图片格式
+    const text = data.q + data.a || '';
+    const regex = /!\[\]\((.*?)\)/g;
+    const match = text.match(regex);
+    if (match) {
+      return TrainingModeEnum.image;
+    }
+    return mode;
+  };
   const { model, maxToken, weight } = await (async () => {
     if (mode === TrainingModeEnum.chunk) {
       const vectorModelData = getEmbeddingModel(vectorModel);
@@ -80,9 +93,9 @@ export async function pushDataListToTrainingQueue({
     }
 
     if (mode === TrainingModeEnum.image) {
-      const vllmModelData = getVllmModel(vectorModel);
+      const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
-        return Promise.reject(`Vector model ${vectorModel} is inValid`);
+        return Promise.reject(`Vlm model ${vlmModel} is inValid`);
       }
       return {
         maxToken: vllmModelData.maxContext * 0.8,
@@ -162,7 +175,7 @@ export async function pushDataListToTrainingQueue({
           datasetId,
           collectionId,
           billId,
-          mode,
+          mode: getImageChunkMode(item, mode),
           prompt,
           model,
           q: item.q,
