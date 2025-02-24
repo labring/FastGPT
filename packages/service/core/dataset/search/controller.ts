@@ -200,6 +200,62 @@ export async function searchDatasetData(
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
   };
+
+  async function getAllCollectionIds({
+    teamId,
+    datasetIds,
+    parentCollectionIds
+  }: {
+    teamId: string;
+    datasetIds: string[];
+    parentCollectionIds: string[];
+  }): Promise<string[]> {
+    if (!parentCollectionIds.length) {
+      return [];
+    }
+    const collections = await MongoDatasetCollection.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        _id: { $in: parentCollectionIds }
+      },
+      '_id type',
+      {
+        ...readFromSecondary
+      }
+    ).lean();
+
+    const resultIds = new Set(collections.map((item) => String(item._id)));
+
+    const folderIds = collections
+      .filter((item) => item.type === 'folder')
+      .map((item) => String(item._id));
+
+    // Get all child collection ids
+    if (folderIds.length) {
+      const childCollections = await MongoDatasetCollection.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          parentId: { $in: folderIds }
+        },
+        '_id',
+        {
+          ...readFromSecondary
+        }
+      ).lean();
+
+      const childIds = await getAllCollectionIds({
+        teamId,
+        datasetIds,
+        parentCollectionIds: childCollections.map((item) => String(item._id))
+      });
+
+      childIds.forEach((id) => resultIds.add(id));
+    }
+
+    return Array.from(resultIds);
+  }
   /* 
     Collection metadata filter
     标签过滤：
@@ -326,13 +382,23 @@ export async function searchDatasetData(
       }
 
       // Concat tag and time
-      if (tagCollectionIdList && createTimeCollectionIdList) {
-        return tagCollectionIdList.filter((id) => createTimeCollectionIdList!.includes(id));
-      } else if (tagCollectionIdList) {
-        return tagCollectionIdList;
-      } else if (createTimeCollectionIdList) {
-        return createTimeCollectionIdList;
-      }
+      const finalIds = (() => {
+        if (tagCollectionIdList && createTimeCollectionIdList) {
+          return tagCollectionIdList.filter((id) =>
+            (createTimeCollectionIdList as string[]).includes(id)
+          );
+        }
+
+        return tagCollectionIdList || createTimeCollectionIdList;
+      })();
+
+      return finalIds
+        ? await getAllCollectionIds({
+            teamId,
+            datasetIds,
+            parentCollectionIds: finalIds
+          })
+        : undefined;
     } catch (error) {}
   };
   const embeddingRecall = async ({
