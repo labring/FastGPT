@@ -256,9 +256,7 @@ const CollectionCard = () => {
                       '-'
                     )}
                   </Td>
-                  <Td py={2}>
-                    {collection.dataAmount || '-'}/{collection.indexAmount || '-'}
-                  </Td>
+                  <Td py={2}>{collection.dataAmount || '-'}</Td>
                   <Td fontSize={'xs'} py={2} color={'myGray.500'}>
                     <Box>{formatTime2YMDHM(collection.createTime)}</Box>
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>

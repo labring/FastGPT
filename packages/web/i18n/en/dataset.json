@@ -7,7 +7,7 @@
   "close_auto_sync": "Are you sure you want to turn off automatic sync?",
   "collection.Create update time": "Creation/Update Time",
   "collection.Training type": "Training",
-  "collection_data_count": "Data/Index amount",
+  "collection_data_count": "Data amount",
   "collection_not_support_retraining": "This collection type does not support retuning parameters",
   "collection_not_support_sync": "This collection does not support synchronization",
   "collection_sync": "Sync data",

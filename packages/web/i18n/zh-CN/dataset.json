@@ -7,7 +7,7 @@
   "close_auto_sync": "确认关闭自动同步功能？",
   "collection.Create update time": "创建/更新时间",
   "collection.Training type": "训练模式",
-  "collection_data_count": "数据量/索引量",
+  "collection_data_count": "数据量",
   "collection_not_support_retraining": "该集合类型不支持重新调整参数",
   "collection_not_support_sync": "该集合不支持同步",
   "collection_sync": "立即同步",

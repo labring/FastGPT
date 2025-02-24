@@ -28,7 +28,6 @@ export type DatasetCollectionsListItemType = {
   permission: DatasetPermission;
 
   dataAmount: number;
-  indexAmount: number;
   trainingAmount: number;
 };
 

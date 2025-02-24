@@ -111,8 +111,7 @@ async function handler(
   const collectionIds = collections.map((item) => item._id);
 
   // Compute data amount
-  const [trainingAmount, dataAmount, indexAmount]: [
-    { _id: string; count: number }[],
+  const [trainingAmount, dataAmount]: [
     { _id: string; count: number }[],
     { _id: string; count: number }[]
   ] = await Promise.all([
@@ -155,32 +154,6 @@ async function handler(
       {
         ...readFromSecondary
       }
-    ),
-    MongoDatasetData.aggregate(
-      [
-        {
-          $match: {
-            teamId: match.teamId,
-            datasetId: match.datasetId,
-            collectionId: { $in: collectionIds }
-          }
-        },
-        {
-          $project: {
-            collectionId: 1,
-            indexesLength: { $size: '$indexes' }
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            count: { $sum: '$indexesLength' }
-          }
-        }
-      ],
-      {
-        ...readFromSecondary
-      }
     )
   ]);
 
@@ -194,8 +167,6 @@ async function handler(
       trainingAmount:
         trainingAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
-      indexAmount:
-        indexAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       permission
     }))
   );

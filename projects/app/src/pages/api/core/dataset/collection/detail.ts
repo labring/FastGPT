@@ -11,7 +11,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorStore/controller';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -34,20 +34,7 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
     collection?.fileId
       ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
       : undefined,
-    MongoDatasetData.aggregate([
-      {
-        $match: {
-          teamId: collection.teamId,
-          datasetId: collection.datasetId,
-          collectionId: collection._id
-        }
-      },
-      {
-        $project: {
-          indexesLength: { $size: '$indexes' }
-        }
-      }
-    ]).then((result) => result[0]?.indexesLength || 0)
+    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id)
   ]);
 
   return {
