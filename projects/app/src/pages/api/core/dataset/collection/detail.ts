@@ -11,6 +11,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -29,12 +30,29 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   });
 
   // get file
-  const file = collection?.fileId
-    ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
-    : undefined;
+  const [file, indexAmount] = await Promise.all([
+    collection?.fileId
+      ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
+      : undefined,
+    MongoDatasetData.aggregate([
+      {
+        $match: {
+          teamId: collection.teamId,
+          datasetId: collection.datasetId,
+          collectionId: collection._id
+        }
+      },
+      {
+        $project: {
+          indexesLength: { $size: '$indexes' }
+        }
+      }
+    ]).then((result) => result[0]?.indexesLength || 0)
+  ]);
 
   return {
     ...collection,
+    indexAmount: indexAmount ?? 0,
     ...getCollectionSourceData(collection),
     tags: await collectionTagsToTagLabel({
       datasetId: collection.datasetId,
