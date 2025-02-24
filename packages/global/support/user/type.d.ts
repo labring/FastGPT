@@ -27,7 +27,6 @@ export type UserType = {
   timezone: string;
   promotionRate: UserModelSchema['promotionRate'];
   team: TeamTmbItemType;
-  standardInfo?: standardInfoType;
   notificationAccount?: string;
   permission: TeamPermission;
   contact?: string;
