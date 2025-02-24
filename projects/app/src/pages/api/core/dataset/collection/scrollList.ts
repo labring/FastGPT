@@ -94,6 +94,7 @@ async function handler(
           ...item,
           dataAmount: 0,
           trainingAmount: 0,
+          indexAmount: 0,
           permission
         }))
       ),
