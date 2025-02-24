@@ -22,6 +22,9 @@ export type SystemModelItemType =
 
 export type SystemDefaultModelType = {
   [ModelTypeEnum.llm]?: LLMModelItemType;
+  datasetTextLLM?: LLMModelItemType;
+  datasetImageLLM?: LLMModelItemType;
+
   [ModelTypeEnum.embedding]?: EmbeddingModelItemType;
   [ModelTypeEnum.tts]?: TTSModelType;
   [ModelTypeEnum.stt]?: STTModelType;

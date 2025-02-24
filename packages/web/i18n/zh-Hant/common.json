@@ -876,6 +876,7 @@
   "dataset.dataset_name": "知識庫名稱",
   "dataset.deleteFolderTips": "確認刪除此資料夾及其包含的所有知識庫？刪除後資料無法復原，請確認！",
   "dataset.test.noResult": "搜尋結果為空",
+  "dataset_text_model_tip": "用於知識庫預處理階段的文本處理，例如自動補充索引、問答對提取。",
   "deep_rag_search": "深度搜索",
   "delete_api": "確認刪除此 API 金鑰？\n刪除後該金鑰將立即失效，對應的對話記錄不會被刪除，請確認！",
   "embedding_model_not_config": "檢測到沒有可用的索引模型",

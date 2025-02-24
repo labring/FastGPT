@@ -8,7 +8,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { getWebDefaultModel } from '@/web/common/system/utils';
+import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -40,7 +40,7 @@ const SettingLLMModel = ({
     [llmModelList, llmModelType]
   );
   const defaultModel = useMemo(() => {
-    return getWebDefaultModel(modelList).model;
+    return getWebDefaultLLMModel(modelList).model;
   }, [modelList]);
 
   // Set default model
