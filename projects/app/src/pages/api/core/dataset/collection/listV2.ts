@@ -77,6 +77,8 @@ async function handler(
       .sort({
         updateTime: -1
       })
+      .skip(offset)
+      .limit(pageSize)
       .lean();
 
     return {
