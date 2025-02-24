@@ -209,7 +209,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
       const newTitle = isPlugin
-        ? variables.cTime ?? getSystemTime(timezone)
+        ? (variables.cTime ?? getSystemTime(timezone))
         : getChatTitleFromChatMessage(userQuestion);
 
       const aiResponse: AIChatItemType & { dataId?: string } = {

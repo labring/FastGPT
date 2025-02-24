@@ -138,7 +138,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                       <MemberTag
                         name={
                           group.name === DefaultGroupName
-                            ? userInfo?.team.teamName ?? ''
+                            ? (userInfo?.team.teamName ?? '')
                             : group.name
                         }
                         avatar={group.avatar}
@@ -152,21 +152,21 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                     <MemberTag
                       name={
                         group.name === DefaultGroupName
-                          ? members.find((item) => item.role === 'owner')?.memberName ?? ''
-                          : members.find(
+                          ? (members.find((item) => item.role === 'owner')?.memberName ?? '')
+                          : (members.find(
                               (item) =>
                                 item.tmbId ===
                                 group.members.find((item) => item.role === 'owner')?.tmbId
-                            )?.memberName ?? ''
+                            )?.memberName ?? '')
                       }
                       avatar={
                         group.name === DefaultGroupName
-                          ? members.find((item) => item.role === 'owner')?.avatar ?? ''
-                          : members.find(
+                          ? (members.find((item) => item.role === 'owner')?.avatar ?? '')
+                          : (members.find(
                               (i) =>
                                 i.tmbId ===
                                 group.members.find((item) => item.role === 'owner')?.tmbId
-                            )?.avatar ?? ''
+                            )?.avatar ?? '')
                       }
                     />
                   </Td>

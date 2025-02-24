@@ -430,7 +430,7 @@ function MemberModal({
                     avatar={group.avatar}
                     key={group._id}
                     name={
-                      group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
+                      group.name === DefaultGroupName ? (userInfo?.team.teamName ?? '') : group.name
                     }
                     permission={collaborator?.permission.value}
                     onChange={onChange}

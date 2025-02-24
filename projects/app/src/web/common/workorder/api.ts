@@ -1,4 +1,5 @@
 import { GET } from '@/web/common/api/request';
-export const getWorkorderURL = () => GET<{
-  redirectUrl: string
-}>('/proApi/common/workorder/create');
+export const getWorkorderURL = () =>
+  GET<{
+    redirectUrl: string;
+  }>('/proApi/common/workorder/create');
