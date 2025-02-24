@@ -21,6 +21,7 @@ export const recallFromVectorStore = Vector.embRecall;
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 export const getVectorCountByTeamId = Vector.getVectorCountByTeamId;
 export const getVectorCountByDatasetId = Vector.getVectorCountByDatasetId;
+export const getVectorCountByCollectionId = Vector.getVectorCountByCollectionId;
 
 export const insertDatasetDataVector = async ({
   model,

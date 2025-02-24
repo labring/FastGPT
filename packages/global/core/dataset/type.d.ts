@@ -192,6 +192,7 @@ export type DatasetCollectionItemType = CollectionWithDatasetType & {
   sourceId?: string;
   file?: DatasetFileSchema;
   permission: DatasetPermission;
+  indexAmount: number;
 };
 
 /* ================= data ===================== */

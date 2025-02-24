@@ -5,7 +5,7 @@ import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { getWebDefaultModel } from '@/web/common/system/utils';
+import { getWebDefaultLLMModel } from '@/web/common/system/utils';
 
 const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
   const { llmModelList } = useSystemStore();
@@ -23,7 +23,7 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
     [llmModelList, item.llmModelType]
   );
   const defaultModel = useMemo(() => {
-    return getWebDefaultModel(modelList).model;
+    return getWebDefaultLLMModel(modelList).model;
   }, [modelList]);
 
   const onChangeModel = useCallback(

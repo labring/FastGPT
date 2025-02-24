@@ -59,7 +59,8 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   createTime: new Date(),
   trainingType: TrainingModeEnum.chunk,
   chunkSize: 0,
-  permission: new DatasetPermission()
+  permission: new DatasetPermission(),
+  indexAmount: 0
 };
 
 export enum ImportProcessWayEnum {

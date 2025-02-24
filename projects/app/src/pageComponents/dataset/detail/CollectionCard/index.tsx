@@ -195,7 +195,7 @@ const CollectionCard = () => {
               <Tr>
                 <Th py={4}>{t('common:common.Name')}</Th>
                 <Th py={4}>{t('dataset:collection.Training type')}</Th>
-                <Th py={4}>{t('common:dataset.collections.Data Amount')}</Th>
+                <Th py={4}>{t('dataset:collection_data_count')}</Th>
                 <Th py={4}>{t('dataset:collection.Create update time')}</Th>
                 <Th py={4}>{t('common:common.Status')}</Th>
                 <Th py={4}>{t('dataset:Enable')}</Th>

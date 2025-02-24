@@ -1,4 +1,4 @@
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { EmbeddingModelItemType, LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useSystemStore } from './useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
@@ -49,11 +49,21 @@ export const getWebLLMModel = (model?: string) => {
 
   return list.find((item) => item.model === model || item.name === model) ?? defaultModels.llm!;
 };
-export const getWebDefaultModel = (llmList: LLMModelItemType[] = []) => {
+export const getWebDefaultLLMModel = (llmList: LLMModelItemType[] = []) => {
   const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;
   const defaultModels = useSystemStore.getState().defaultModels;
 
   return defaultModels.llm && list.find((item) => item.model === defaultModels.llm?.model)
     ? defaultModels.llm
+    : list[0];
+};
+export const getWebDefaultEmbeddingModel = (embeddingList: EmbeddingModelItemType[] = []) => {
+  const list =
+    embeddingList.length > 0 ? embeddingList : useSystemStore.getState().embeddingModelList;
+  const defaultModels = useSystemStore.getState().defaultModels;
+
+  return defaultModels.embedding &&
+    list.find((item) => item.model === defaultModels.embedding?.model)
+    ? defaultModels.embedding
     : list[0];
 };

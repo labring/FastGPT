@@ -21,7 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
 import ApiDatasetForm from '../ApiDatasetForm';
-import { getWebDefaultModel } from '@/web/common/system/utils';
+import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -40,7 +40,6 @@ const CreateModal = ({
   type: CreateDatasetType;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
   const { defaultModels, embeddingModelList, datasetModelList } = useSystemStore();
   const { isPc } = useSystem();
@@ -79,8 +78,10 @@ const CreateModal = ({
       avatar: datasetTypeMap[type].icon,
       name: '',
       intro: '',
-      vectorModel: defaultModels.embedding?.model,
-      agentModel: getWebDefaultModel(datasetModelList)?.model
+      vectorModel:
+        defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
+      agentModel:
+        defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model
     }
   });
   const { register, setValue, handleSubmit, watch } = form;

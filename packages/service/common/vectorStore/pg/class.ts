@@ -242,4 +242,21 @@ export class PgVectorCtrl {
 
     return total;
   };
+  getVectorCountByCollectionId = async (
+    teamId: string,
+    datasetId: string,
+    collectionId: string
+  ) => {
+    const total = await PgClient.count(DatasetVectorTableName, {
+      where: [
+        ['team_id', String(teamId)],
+        'and',
+        ['dataset_id', String(datasetId)],
+        'and',
+        ['collection_id', String(collectionId)]
+      ]
+    });
+
+    return total;
+  };
 }
