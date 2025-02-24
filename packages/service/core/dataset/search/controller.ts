@@ -201,17 +201,22 @@ export async function searchDatasetData(
     };
   };
 
-  async function getAllCollectionIds(
-    teamId: string,
-    parentCollectionIds: string[],
-    readFromSecondary: any = {}
-  ): Promise<string[]> {
+  async function getAllCollectionIds({
+    teamId,
+    datasetIds,
+    parentCollectionIds
+  }: {
+    teamId: string;
+    datasetIds: string[];
+    parentCollectionIds: string[];
+  }): Promise<string[]> {
     if (!parentCollectionIds.length) {
       return [];
     }
     const collections = await MongoDatasetCollection.find(
       {
         teamId,
+        datasetId: { $in: datasetIds },
         _id: { $in: parentCollectionIds }
       },
       '_id type',
@@ -220,7 +225,7 @@ export async function searchDatasetData(
       }
     ).lean();
 
-    const resultIds = collections.map((item) => String(item._id));
+    const resultIds = new Set(collections.map((item) => String(item._id)));
 
     const folderIds = collections
       .filter((item) => item.type === 'folder')
@@ -231,6 +236,7 @@ export async function searchDatasetData(
       const childCollections = await MongoDatasetCollection.find(
         {
           teamId,
+          datasetId: { $in: datasetIds },
           parentId: { $in: folderIds }
         },
         '_id',
@@ -239,16 +245,16 @@ export async function searchDatasetData(
         }
       ).lean();
 
-      const childIds = await getAllCollectionIds(
+      const childIds = await getAllCollectionIds({
         teamId,
-        childCollections.map((item) => String(item._id)),
-        readFromSecondary
-      );
+        datasetIds,
+        parentCollectionIds: childCollections.map((item) => String(item._id))
+      });
 
-      resultIds.push(...childIds);
+      childIds.forEach((id) => resultIds.add(id));
     }
 
-    return resultIds;
+    return Array.from(resultIds);
   }
   /* 
     Collection metadata filter
@@ -376,13 +382,23 @@ export async function searchDatasetData(
       }
 
       // Concat tag and time
-      if (tagCollectionIdList && createTimeCollectionIdList) {
-        return tagCollectionIdList.filter((id) => createTimeCollectionIdList!.includes(id));
-      } else if (tagCollectionIdList) {
-        return await getAllCollectionIds(teamId, tagCollectionIdList, readFromSecondary);
-      } else if (createTimeCollectionIdList) {
-        return createTimeCollectionIdList;
-      }
+      const finalIds = (() => {
+        if (tagCollectionIdList && createTimeCollectionIdList) {
+          return tagCollectionIdList.filter((id) =>
+            (createTimeCollectionIdList as string[]).includes(id)
+          );
+        }
+
+        return tagCollectionIdList || createTimeCollectionIdList;
+      })();
+
+      return finalIds
+        ? await getAllCollectionIds({
+            teamId,
+            datasetIds,
+            parentCollectionIds: finalIds
+          })
+        : undefined;
     } catch (error) {}
   };
   const embeddingRecall = async ({
