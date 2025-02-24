@@ -143,7 +143,7 @@ export const filterWorkflowEdges = (edges: RuntimeEdgeItemType[]) => {
 
 /* 
   1. 输入线分类：普通线和递归线（可以追溯到自身）
-  2. 起始线全部非 waiting 执行，或递归线全部非 waiting 执行
+  2. 起始线全部非 waiting 执行，或递归线全部非 waiting 执行，或递归线所属的环全部 waiting 执行
 */
 export const checkNodeRunStatus = ({
   node,
@@ -153,7 +153,7 @@ export const checkNodeRunStatus = ({
   runtimeEdges: RuntimeEdgeItemType[];
 }) => {
   /* 
-    区分普通连线和递归连线
+    区分普通连线和递归连线，以及获取每条递归线所属的最小环
     递归连线：可以通过往上查询 nodes，最终追溯到自身
   */
   const splitWorkflowEdges = ({
