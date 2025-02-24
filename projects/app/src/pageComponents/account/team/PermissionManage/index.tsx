@@ -351,7 +351,7 @@ function PermissionManage({
                         <MemberTag
                           name={
                             group.name === DefaultGroupName
-                              ? (userInfo?.team.teamName ?? '')
+                              ? userInfo?.team.teamName ?? ''
                               : group.name
                           }
                           avatar={group.avatar}
