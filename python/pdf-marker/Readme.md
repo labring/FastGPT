@@ -81,12 +81,12 @@ export PROCESSES_PER_GPU="1"
     ```
 2. 运行容器
     ```bash
-    sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 model_pdf
+    sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" model_pdf
     ```
 ## 快速构建镜像
 ```dockerfile
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
-docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
 ```
 # 访问示例
 
