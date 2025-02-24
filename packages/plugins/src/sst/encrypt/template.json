@@ -25,6 +25,7 @@
         "inputs": [
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -48,6 +49,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -71,6 +73,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -171,8 +174,8 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1448.731924744154,
-          "y": -338.0529849391012
+          "x": 1434.3236807195576,
+          "y": -420.0529849391012
         },
         "version": "481",
         "inputs": [

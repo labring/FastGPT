@@ -25,15 +25,16 @@
         "inputs": [
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
-            "valueType": "number",
+            "valueType": "string",
             "canEdit": true,
             "key": "timestamp",
             "label": "timestamp",
             "description": "时间戳",
-            "defaultValue": "",
+            "defaultValue": "0",
             "list": [
               {
                 "label": "",
@@ -48,6 +49,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -71,6 +73,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -79,7 +82,7 @@
             "key": "client_ip",
             "label": "client_ip",
             "description": "客户端IP",
-            "defaultValue": "",
+            "defaultValue": "127.0.0.1",
             "list": [
               {
                 "label": "",
@@ -94,6 +97,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -117,6 +121,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -140,6 +145,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -165,7 +171,7 @@
         "outputs": [
           {
             "id": "timestamp",
-            "valueType": "number",
+            "valueType": "string",
             "key": "timestamp",
             "label": "timestamp",
             "type": "hidden"

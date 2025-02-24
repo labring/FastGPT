@@ -25,6 +25,7 @@
         "inputs": [
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -48,6 +49,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
@@ -71,6 +73,7 @@
           },
           {
             "renderTypeList": [
+              "input",
               "reference"
             ],
             "selectedTypeIndex": 0,
