@@ -14,6 +14,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import WorkorderButton from '../support/workorder/WorkorderButton';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -121,6 +122,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Auth>
                 <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
                   <Navbar unread={unread} />
+                  {feConfigs.show_workorder && <WorkorderButton />}
                 </Box>
                 <Box h={'100%'} ml={navbarWidth} overflow={'overlay'}>
                   {children}
