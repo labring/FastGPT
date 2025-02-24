@@ -81,13 +81,14 @@ export PROCESSES_PER_GPU="1"
     ```
 2. 运行容器
     ```bash
-    sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 model_pdf
+    sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" model_pdf
     ```
 ## 快速构建镜像
 ```dockerfile
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
-docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
 ```
+*注意*：参数PROCESSES_PER_GPU设置每张显卡上文件处理的并行数量，24G的显卡可以设置为2。在多显卡的环境中会自动切换显卡来运行多文件的并行处理。 
 # 访问示例
 
 用Post方法访问端口为 `7321 ` 的 `v1/parse/file` 服务
