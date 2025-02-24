@@ -31,7 +31,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import TemplateMarketModal from '@/pageComponents/app/list/TemplateMarketModal';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import JsonImportModal from '@/pageComponents/app/list/JsonImportModal';
-import WorkorderButton from '@/components/support/workorder/WorkorderButton';
 
 const CreateModal = dynamic(() => import('@/pageComponents/app/list/CreateModal'));
 const EditFolderModal = dynamic(

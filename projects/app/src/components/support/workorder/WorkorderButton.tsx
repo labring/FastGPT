@@ -1,4 +1,4 @@
-import { getWorkorderURL } from "@/web/support/workorder/api";
+import { getWorkorderURL } from "@/web/common/workorder/api";
 import { Box, Flex } from "@chakra-ui/react";
 import Icon from "@fastgpt/web/components/common/Icon";
 import { useRequest2 } from "@fastgpt/web/hooks/useRequest";
