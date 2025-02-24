@@ -8,12 +8,12 @@ import { i18nT } from '../../../../web/i18n/utils';
 import { pushConcatBillTask, pushReduceTeamAiPointsTask } from './utils';
 
 import { POST } from '../../../common/api/plusRequest';
-import { FastGPTProUrl } from '../../../common/system/constants';
+import { isFastGPTMainService } from '../../../common/system/constants';
 
 export async function createUsage(data: CreateUsageProps) {
   try {
     // In FastGPT server
-    if (FastGPTProUrl) {
+    if (isFastGPTMainService) {
       await POST('/support/wallet/usage/createUsage', data);
     } else if (global.reduceAiPointsQueue) {
       // In FastGPT pro server
@@ -31,7 +31,7 @@ export async function createUsage(data: CreateUsageProps) {
 export async function concatUsage(data: ConcatUsageProps) {
   try {
     // In FastGPT server
-    if (FastGPTProUrl) {
+    if (isFastGPTMainService) {
       await POST('/support/wallet/usage/concatUsage', data);
     } else if (global.reduceAiPointsQueue) {
       const {

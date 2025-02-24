@@ -730,7 +730,12 @@ const ModelEditModal = ({
                       <Td>{t('common:core.ai.Max context')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxContext" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="maxContext"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -740,6 +745,7 @@ const ModelEditModal = ({
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
                             register={register}
+                            isRequired
                             name="quoteMaxToken"
                             {...InputStyles}
                           />
@@ -750,7 +756,12 @@ const ModelEditModal = ({
                       <Td>{t('common:core.chat.response.module maxToken')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="maxResponse"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -760,6 +771,7 @@ const ModelEditModal = ({
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
                             register={register}
+                            isRequired
                             name="maxTemperature"
                             step={0.1}
                             {...InputStyles}
@@ -838,7 +850,12 @@ const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="defaultToken" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="defaultToken"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -846,7 +863,12 @@ const ModelEditModal = ({
                       <Td>{t('common:core.ai.Max context')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxToken" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="maxToken"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
