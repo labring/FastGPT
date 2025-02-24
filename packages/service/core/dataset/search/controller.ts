@@ -200,6 +200,7 @@ export async function searchDatasetData(
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
   };
+
   async function getAllCollectionIds(
     teamId: string,
     parentCollectionIds: string[],
@@ -225,6 +226,7 @@ export async function searchDatasetData(
       .filter((item) => item.type === 'folder')
       .map((item) => String(item._id));
 
+    // Get all child collection ids
     if (folderIds.length) {
       const childCollections = await MongoDatasetCollection.find(
         {
