@@ -1015,6 +1015,7 @@
   "plugin.go to laf": "去编写",
   "plugin.path": "路径",
   "prompt_input_placeholder": "请输入提示词",
+  "question_feedback": "工单咨询",
   "read_quote": "查看引用",
   "required": "必须",
   "resume_failed": "恢复失败",
@@ -1283,6 +1284,5 @@
   "xx_search_result": "{{key}} 的搜索结果",
   "yes": "是",
   "yesterday": "昨天",
-  "yesterday_detail_time": "昨天 {{time}}",
-  "question_feedback": "问题反馈"
+  "yesterday_detail_time": "昨天 {{time}}"
 }

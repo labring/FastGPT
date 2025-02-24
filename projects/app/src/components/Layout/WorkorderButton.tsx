@@ -1,33 +1,64 @@
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWorkorderURL } from '@/web/common/workorder/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex } from '@chakra-ui/react';
+import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useToggle } from 'ahooks';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import { useMemo } from 'react';
+
+const WorkOrderShowRouter: { [key: string]: boolean } = {
+  '/app/list': true,
+  '/dataset/list': true,
+  '/toolkit': true
+};
 
 function WorkorderButton() {
+  const router = useRouter();
   const [open, setOpen] = useToggle(true);
   const { t } = useTranslation();
 
-  const { data, runAsync } = useRequest2(getWorkorderURL, {
-    manual: true
+  const { feConfigs, subPlans } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+
+  const { isPc } = useSystem();
+
+  const { runAsync: onFeedback } = useRequest2(getWorkorderURL, {
+    manual: true,
+    onSuccess(data) {
+      if (data) {
+        window.open(data.redirectUrl);
+      }
+    }
   });
 
-  const onFeedback = async () => {
-    await runAsync();
-    if (data) {
-      window.open(data.redirectUrl);
-    }
-  };
-  return (
+  const showWorkorder = WorkOrderShowRouter[router.pathname];
+
+  const isPlanUser = useMemo(() => {
+    if (!teamPlanStatus) return false;
+    if (teamPlanStatus.standard?.currentSubLevel !== StandardSubLevelEnum.free) return true;
+    if (teamPlanStatus.datasetMaxSize !== subPlans?.standard?.free?.maxDatasetSize) return true;
+    if (teamPlanStatus.totalPoints !== subPlans?.standard?.free?.totalPoints) return true;
+    return false;
+  }, [
+    subPlans?.standard?.free?.maxDatasetSize,
+    subPlans?.standard?.free?.totalPoints,
+    teamPlanStatus
+  ]);
+
+  return showWorkorder && feConfigs?.show_workorder && isPlanUser && isPc ? (
     <>
       {open ? (
         <Flex
           position="fixed"
-          bottom="20%"
+          bottom="10%"
           right="0"
-          height="62px"
-          width="58px"
+          height="56px"
+          width="56px"
           zIndex={100}
           boxShadow="0px 12px 32px -4px #00175633"
           alignItems="center"
@@ -39,16 +70,16 @@ function WorkorderButton() {
           borderColor={'#DFE6F2'}
         >
           <Box
-            zIndex={101}
-            width="14px"
-            height="14px"
+            zIndex={10}
+            width="1rem"
+            height="1rem"
             position="absolute"
             left="-6px"
             top="-6px"
             borderRadius="full"
             background="white"
             border="1px"
-            borderColor={'myGray.25'}
+            borderColor={'myGray.100'}
             bgColor="myGray.25"
             _hover={{
               cursor: 'pointer',
@@ -73,8 +104,8 @@ function WorkorderButton() {
             borderBottomLeftRadius="8px"
             onClick={onFeedback}
           >
-            <Icon name="feedback" width="28px" height="28px" />
-            <Box fontSize="11px" fontWeight="500">
+            <Icon name="feedback" width="24px" height="24px" />
+            <Box fontSize="xs" fontWeight="500">
               {t('common:question_feedback')}
             </Box>
           </Flex>
@@ -82,7 +113,7 @@ function WorkorderButton() {
       ) : (
         <Flex
           position="fixed"
-          bottom="20%"
+          bottom="10%"
           right="0"
           height="44px"
           width="19px"
@@ -106,7 +137,7 @@ function WorkorderButton() {
         </Flex>
       )}
     </>
-  );
+  ) : null;
 }
 
 export default WorkorderButton;

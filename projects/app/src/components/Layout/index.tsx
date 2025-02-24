@@ -14,7 +14,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useDebounceEffect, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import WorkorderButton from '../support/workorder/WorkorderButton';
+import WorkorderButton from './WorkorderButton';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -57,7 +57,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { loading, feConfigs, notSufficientModalType, llmModelList, embeddingModelList } =
     useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
+  const { userInfo, teamPlanStatus, isUpdateNotification, setIsUpdateNotification } =
+    useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const isChatPage = useMemo(
@@ -122,7 +123,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               <Auth>
                 <Box h={'100%'} position={'fixed'} left={0} top={0} w={navbarWidth}>
                   <Navbar unread={unread} />
-                  {feConfigs.show_workorder && <WorkorderButton />}
                 </Box>
                 <Box h={'100%'} ml={navbarWidth} overflow={'overlay'}>
                   {children}
@@ -161,6 +161,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
+          <WorkorderButton />
         </>
       )}
 
