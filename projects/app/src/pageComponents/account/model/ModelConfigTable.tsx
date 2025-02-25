@@ -1358,4 +1358,81 @@ const DefaultModelModal = ({
   );
 };
 
+interface CreateModelMenuProps {
+  buttonText?: string;
+  buttonProps?: any;
+  onSuccess: () => void;
+}
+
+export const CreateModelMenu: React.FC<CreateModelMenuProps> = ({
+  buttonText,
+  buttonProps,
+  onSuccess
+}) => {
+  const { t } = useTranslation();
+  const { defaultModels } = useSystemStore();
+
+  const [editModelData, setEditModelData] = useState<SystemModelItemType>();
+
+  const onCreateModel = (type: ModelTypeEnum) => {
+    const defaultModel = defaultModels[type];
+
+    setEditModelData({
+      ...defaultModel,
+      model: '',
+      name: '',
+      charsPointsPrice: 0,
+      inputPrice: undefined,
+      outputPrice: undefined,
+      isCustom: true,
+      isActive: true,
+      // @ts-ignore
+      type
+    });
+  };
+
+  return (
+    <>
+      <MyMenu
+        trigger="hover"
+        size="sm"
+        Button={<Button {...buttonProps}>{buttonText || t('account:create_model')}</Button>}
+        menuList={[
+          {
+            children: [
+              {
+                label: t('common:model.type.chat'),
+                onClick: () => onCreateModel(ModelTypeEnum.llm)
+              },
+              {
+                label: t('common:model.type.embedding'),
+                onClick: () => onCreateModel(ModelTypeEnum.embedding)
+              },
+              {
+                label: t('common:model.type.tts'),
+                onClick: () => onCreateModel(ModelTypeEnum.tts)
+              },
+              {
+                label: t('common:model.type.stt'),
+                onClick: () => onCreateModel(ModelTypeEnum.stt)
+              },
+              {
+                label: t('common:model.type.reRank'),
+                onClick: () => onCreateModel(ModelTypeEnum.rerank)
+              }
+            ]
+          }
+        ]}
+      />
+      {!!editModelData && (
+        <ModelEditModal
+          modelData={editModelData}
+          onSuccess={onSuccess}
+          onClose={() => setEditModelData(undefined)}
+        />
+      )}
+    </>
+  );
+};
+
 export default ModelTable;

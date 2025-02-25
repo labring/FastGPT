@@ -6,6 +6,7 @@ import ModelTable from '@/components/core/ai/ModelTable';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useTranslation } from 'next-i18next';
+import ChannelList from '@/pageComponents/account/model/ChannelList';
 import dynamic from 'next/dynamic';
 
 const ModelConfigTable = dynamic(() => import('@/pageComponents/account/model/ModelConfigTable'));
@@ -22,8 +23,8 @@ const ModelProvider = () => {
       <FillRowTabs<TabType>
         list={[
           { label: t('account:active_model'), value: 'model' },
-          { label: t('account:config_model'), value: 'config' }
-          // { label: t('account:channel'), value: 'channel' }
+          { label: t('account:config_model'), value: 'config' },
+          { label: t('account:channel'), value: 'channel' }
         ]}
         value={tab}
         py={1}
@@ -37,6 +38,7 @@ const ModelProvider = () => {
       <Flex h={'100%'} flexDirection={'column'} gap={4} py={4} px={6}>
         {tab === 'model' && <ValidModelTable Tab={Tab} />}
         {tab === 'config' && <ModelConfigTable Tab={Tab} />}
+        {tab === 'channel' && <ChannelList Tab={Tab} />}
       </Flex>
     </AccountContainer>
   );
@@ -45,7 +47,7 @@ const ModelProvider = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account']))
+      ...(await serviceSideProps(content, ['account', 'account_model']))
     }
   };
 }

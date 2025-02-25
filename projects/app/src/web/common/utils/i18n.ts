@@ -20,3 +20,19 @@ export const langMap = {
     avatar: 'common/language/China'
   }
 };
+
+/**
+ * Get translation, if translation doesn't exist return the specified fallback
+ * @param key - Translation key
+ * @param fallback - Fallback text
+ * @param t - i18n translation function
+ */
+export const getTranslationWithFallback = (
+  namespace: string,
+  key: string,
+  fallback: string,
+  t: (key: string) => string
+): string => {
+  const translated = t(`${namespace}:${key}`);
+  return translated === key ? fallback : translated;
+};
