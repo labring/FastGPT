@@ -234,11 +234,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               borderColor={'transparent'}
               transform={'translateX(-11px)'}
               maxLength={20}
-              onBlur={(e) => {
+              onBlur={async (e) => {
                 const val = e.target.value;
                 if (val === userInfo?.team?.memberName) return;
                 try {
-                  putUpdateMemberName(val);
+                  await putUpdateMemberName(val);
+                  initUserInfo();
                 } catch (error) {}
               }}
             />
