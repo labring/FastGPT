@@ -1,4 +1,5 @@
 // @ts-nocheck
+
 export const iconPaths = {
   book: () => import('./icons/book.svg'),
   change: () => import('./icons/change.svg'),
@@ -32,8 +33,10 @@ export const iconPaths = {
   'common/customTitleLight': () => import('./icons/common/customTitleLight.svg'),
   'common/data': () => import('./icons/common/data.svg'),
   'common/dingtalkFill': () => import('./icons/common/dingtalkFill.svg'),
+  'common/disable': () => import('./icons/common/disable.svg'),
   'common/downArrowFill': () => import('./icons/common/downArrowFill.svg'),
   'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
+  'common/enable': () => import('./icons/common/enable.svg'),
   'common/errorFill': () => import('./icons/common/errorFill.svg'),
   'common/file/move': () => import('./icons/common/file/move.svg'),
   'common/folderFill': () => import('./icons/common/folderFill.svg'),

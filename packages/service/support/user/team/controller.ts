@@ -15,7 +15,7 @@ import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/use
 import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
+import { getAIApi } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
 import { refreshSourceAvatar } from '../../../common/file/image/controller';
 
@@ -152,7 +152,7 @@ export async function updateTeam({
   // auth openai key
   if (openaiAccount?.key) {
     console.log('auth user openai key', openaiAccount?.key);
-    const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
+    const baseUrl = openaiAccount?.baseUrl || 'https://api.openai.com/v1';
     openaiAccount.baseUrl = baseUrl;
 
     const ai = getAIApi({

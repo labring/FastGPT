@@ -11,13 +11,19 @@ import { i18nT } from '../../../web/i18n/utils';
 import { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getLLMModel } from './model';
 
-export const openaiBaseUrl = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1';
+const openaiBaseUrl =
+  process.env.OPENAI_BASE_URL || process.env.AIPROXY_API_ENDPOINT || 'https://api.openai.com/v1';
 
 export const getAIApi = (props?: { userKey?: OpenaiAccountType; timeout?: number }) => {
   const { userKey, timeout } = props || {};
 
   const baseUrl = userKey?.baseUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl;
-  const apiKey = userKey?.key || global?.systemEnv?.chatApiKey || process.env.CHAT_API_KEY || '';
+  const apiKey =
+    userKey?.key ||
+    global?.systemEnv?.chatApiKey ||
+    process.env.CHAT_API_KEY ||
+    process.env.AIPROXY_API_TOKEN ||
+    '';
 
   return new OpenAI({
     baseURL: baseUrl,
