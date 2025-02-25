@@ -3,7 +3,6 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
-import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -126,10 +125,6 @@ export async function generateVector(): Promise<any> {
     addLog.error(`[Vector Queue] Error`, err);
     reduceQueue();
 
-    if (await checkInvalidChunkAndLock({ err, data, errText: '向量模型调用失败' })) {
-      return generateVector();
-    }
-
     setTimeout(() => {
       generateVector();
     }, 1000);
@@ -193,7 +188,8 @@ const rebuildData = async ({
             billId: trainingData.billId,
             mode: TrainingModeEnum.chunk,
             model: trainingData.model,
-            dataId: newRebuildingData._id
+            dataId: newRebuildingData._id,
+            retryCount: 50
           }
         ],
         { session }

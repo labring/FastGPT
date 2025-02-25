@@ -111,7 +111,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             provider: OAuthEnum.wecom,
             icon: 'common/wecom',
             redirectUrl: isWecomWorkTerminal
-              ? `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${feConfigs?.oauth?.wecom?.corpid}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_base&agentid=${feConfigs?.oauth?.wecom?.agentid}&state=${state.current}#wechat_redirect`
+              ? `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${feConfigs?.oauth?.wecom?.corpid}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_privateinfo&agentid=${feConfigs?.oauth?.wecom?.agentid}&state=${state.current}#wechat_redirect`
               : `https://login.work.weixin.qq.com/wwlogin/sso/login?login_type=CorpApp&appid=${feConfigs?.oauth?.wecom?.corpid}&agentid=${feConfigs?.oauth?.wecom?.agentid}&redirect_uri=${redirectUri}&state=${state.current}`
           }
         ]

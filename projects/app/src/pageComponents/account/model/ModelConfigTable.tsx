@@ -59,6 +59,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useRefresh } from '../../../../../../packages/web/hooks/useRefresh';
 import { Prompt_CQJson, Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
@@ -730,7 +731,12 @@ const ModelEditModal = ({
                       <Td>{t('common:core.ai.Max context')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxContext" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="maxContext"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -740,6 +746,7 @@ const ModelEditModal = ({
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
                             register={register}
+                            isRequired
                             name="quoteMaxToken"
                             {...InputStyles}
                           />
@@ -750,7 +757,12 @@ const ModelEditModal = ({
                       <Td>{t('common:core.chat.response.module maxToken')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="maxResponse"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -760,6 +772,7 @@ const ModelEditModal = ({
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
                             register={register}
+                            isRequired
                             name="maxTemperature"
                             step={0.1}
                             {...InputStyles}
@@ -838,7 +851,12 @@ const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="defaultToken" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="defaultToken"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -846,7 +864,12 @@ const ModelEditModal = ({
                       <Td>{t('common:core.ai.Max context')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxToken" {...InputStyles} />
+                          <MyNumberInput
+                            register={register}
+                            isRequired
+                            name="maxToken"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -1214,6 +1237,7 @@ const DefaultModelModal = ({
   const {
     defaultModels,
     llmModelList,
+    datasetModelList,
     embeddingModelList,
     ttsModelList,
     sttModelList,
@@ -1334,6 +1358,29 @@ const DefaultModelModal = ({
             />
           </Box>
         </Box>
+        <MyDivider />
+        <Box>
+          <Flex {...labelStyles} alignItems={'center'}>
+            <Box mr={0.5}>{t('common:core.ai.model.Dataset Agent Model')}</Box>
+            <QuestionTip label={t('common:dataset_text_model_tip')} />
+          </Flex>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.datasetTextLLM?.model}
+              list={datasetModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  datasetTextLLM: datasetModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
@@ -1347,7 +1394,9 @@ const DefaultModelModal = ({
               [ModelTypeEnum.embedding]: defaultData.embedding?.model,
               [ModelTypeEnum.tts]: defaultData.tts?.model,
               [ModelTypeEnum.stt]: defaultData.stt?.model,
-              [ModelTypeEnum.rerank]: defaultData.rerank?.model
+              [ModelTypeEnum.rerank]: defaultData.rerank?.model,
+              datasetTextLLM: defaultData.datasetTextLLM?.model,
+              datasetImageLLM: defaultData.datasetImageLLM?.model
             })
           }
         >

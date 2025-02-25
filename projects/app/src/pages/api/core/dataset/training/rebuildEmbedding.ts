@@ -117,7 +117,8 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
                 billId,
                 mode: TrainingModeEnum.chunk,
                 model: vectorModel,
-                dataId: data._id
+                dataId: data._id,
+                retryCount: 50
               }
             ],
             {

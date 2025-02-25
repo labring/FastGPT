@@ -13,7 +13,7 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
     (e: SettingAIDataType) => {
       for (const key in e) {
         const input = inputs.find((input) => input.key === key);
-        input &&
+        if (input) {
           onChangeNode({
             nodeId,
             type: 'updateInput',
@@ -24,6 +24,7 @@ const SelectAiModelRender = ({ item, inputs = [], nodeId }: RenderInputProps) =>
               value: e[key]
             }
           });
+        }
       }
     },
     [inputs, nodeId, onChangeNode]

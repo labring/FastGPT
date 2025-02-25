@@ -93,7 +93,9 @@ export const useReference = ({
           ),
           value: node.nodeId,
           children: filterWorkflowNodeOutputsByType(node.outputs, valueType)
-            .filter((output) => output.id !== NodeOutputKeyEnum.addOutputParam)
+            .filter(
+              (output) => output.id !== NodeOutputKeyEnum.addOutputParam && output.invalid !== true
+            )
             .map((output) => {
               return {
                 label: t(output.label as any),

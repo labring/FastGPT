@@ -6,6 +6,7 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useUserStore } from '../support/user/useUserStore';
 
 export const useInitApp = () => {
   const router = useRouter();
@@ -16,6 +17,7 @@ export const useInitApp = () => {
     sourceDomain?: string;
   };
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
+  const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
@@ -62,6 +64,7 @@ export const useInitApp = () => {
   });
 
   useRequest2(initFetch, {
+    refreshDeps: [userInfo?.username],
     manual: false,
     pollingInterval: 300000 // 5 minutes refresh
   });
@@ -75,7 +78,7 @@ export const useInitApp = () => {
       if (sourceDomain) return sourceDomain;
       return document.referrer;
     })();
-    console.log(formatSourceDomain, '-=-=');
+
     if (formatSourceDomain && !sessionStorage.getItem('sourceDomain')) {
       sessionStorage.setItem('sourceDomain', formatSourceDomain);
     }

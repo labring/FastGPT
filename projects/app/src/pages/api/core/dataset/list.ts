@@ -177,7 +177,7 @@ async function handler(req: ApiRequestProps<GetDatasetListBody>) {
         tmbId: dataset.tmbId,
         updateTime: dataset.updateTime,
         permission: Per,
-        privateDataset
+        private: privateDataset
       };
     })
     .filter((app) => app.permission.hasReadPer);

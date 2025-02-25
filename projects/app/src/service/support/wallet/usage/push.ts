@@ -1,54 +1,9 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
-import { createUsage, concatUsage } from './controller';
+import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
-import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
-
-export const pushChatUsage = ({
-  appName,
-  appId,
-  pluginId,
-  teamId,
-  tmbId,
-  source,
-  flowUsages
-}: {
-  appName: string;
-  appId?: string;
-  pluginId?: string;
-  teamId: string;
-  tmbId: string;
-  source: UsageSourceEnum;
-  flowUsages: ChatNodeUsageType[];
-}) => {
-  const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
-  createUsage({
-    teamId,
-    tmbId,
-    appName,
-    appId,
-    pluginId,
-    totalPoints,
-    source,
-    list: flowUsages.map((item) => ({
-      moduleName: item.moduleName,
-      amount: item.totalPoints || 0,
-      model: item.model,
-      inputTokens: item.inputTokens,
-      outputTokens: item.outputTokens
-    }))
-  });
-  addLog.info(`finish completions`, {
-    source,
-    teamId,
-    totalPoints
-  });
-  return { totalPoints };
-};
 
 export const pushQAUsage = async ({
   teamId,
@@ -95,7 +50,10 @@ export const pushGenerateVectorUsage = ({
   source = UsageSourceEnum.fastgpt,
   extensionModel,
   extensionInputTokens,
-  extensionOutputTokens
+  extensionOutputTokens,
+  deepSearchModel,
+  deepSearchInputTokens,
+  deepSearchOutputTokens
 }: {
   billId?: string;
   teamId: string;
@@ -107,6 +65,10 @@ export const pushGenerateVectorUsage = ({
   extensionModel?: string;
   extensionInputTokens?: number;
   extensionOutputTokens?: number;
+
+  deepSearchModel?: string;
+  deepSearchInputTokens?: number;
+  deepSearchOutputTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
     modelType: ModelTypeEnum.embedding,
@@ -131,8 +93,25 @@ export const pushGenerateVectorUsage = ({
       extensionModelName: modelName
     };
   })();
+  const { deepSearchTotalPoints, deepSearchModelName } = (() => {
+    if (!deepSearchModel || !deepSearchInputTokens)
+      return {
+        deepSearchTotalPoints: 0,
+        deepSearchModelName: ''
+      };
+    const { totalPoints, modelName } = formatModelChars2Points({
+      modelType: ModelTypeEnum.llm,
+      model: deepSearchModel,
+      inputTokens: deepSearchInputTokens,
+      outputTokens: deepSearchOutputTokens
+    });
+    return {
+      deepSearchTotalPoints: totalPoints,
+      deepSearchModelName: modelName
+    };
+  })();
 
-  const totalPoints = totalVector + extensionTotalPoints;
+  const totalPoints = totalVector + extensionTotalPoints + deepSearchTotalPoints;
 
   // 插入 Bill 记录
   if (billId) {
@@ -148,12 +127,12 @@ export const pushGenerateVectorUsage = ({
     createUsage({
       teamId,
       tmbId,
-      appName: 'support.wallet.moduleName.index',
+      appName: i18nT('common:support.wallet.moduleName.index'),
       totalPoints,
       source,
       list: [
         {
-          moduleName: 'support.wallet.moduleName.index',
+          moduleName: i18nT('common:support.wallet.moduleName.index'),
           amount: totalVector,
           model: vectorModelName,
           inputTokens
@@ -161,11 +140,22 @@ export const pushGenerateVectorUsage = ({
         ...(extensionModel !== undefined
           ? [
               {
-                moduleName: 'core.module.template.Query extension',
+                moduleName: i18nT('common:core.module.template.Query extension'),
                 amount: extensionTotalPoints,
                 model: extensionModelName,
                 inputTokens: extensionInputTokens,
                 outputTokens: extensionOutputTokens
+              }
+            ]
+          : []),
+        ...(deepSearchModel !== undefined
+          ? [
+              {
+                moduleName: i18nT('common:deep_rag_search'),
+                amount: deepSearchTotalPoints,
+                model: deepSearchModelName,
+                inputTokens: deepSearchInputTokens,
+                outputTokens: deepSearchOutputTokens
               }
             ]
           : [])

@@ -226,7 +226,7 @@ const ChatBox = ({
               status,
               moduleName: name
             };
-          } else if (event === SseResponseEventEnum.answer && reasoningText) {
+          } else if (reasoningText) {
             if (lastValue.type === ChatItemValueTypeEnum.reasoning && lastValue.reasoning) {
               lastValue.reasoning.content += reasoningText;
               return {

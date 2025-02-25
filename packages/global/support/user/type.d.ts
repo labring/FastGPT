@@ -17,6 +17,7 @@ export type UserModelSchema = {
   fastgpt_sem?: {
     keyword: string;
   };
+  contact?: string;
 };
 
 export type UserType = {
@@ -26,9 +27,9 @@ export type UserType = {
   timezone: string;
   promotionRate: UserModelSchema['promotionRate'];
   team: TeamTmbItemType;
-  standardInfo?: standardInfoType;
   notificationAccount?: string;
   permission: TeamPermission;
+  contact?: string;
 };
 
 export type SourceMemberType = {

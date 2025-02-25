@@ -10,7 +10,6 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
-import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import {
   countGptMessagesTokens,
@@ -168,12 +167,8 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     reduceQueue();
     generateQA();
   } catch (err: any) {
-    addLog.error(`[QA Queue] Error`);
+    addLog.error(`[QA Queue] Error`, err);
     reduceQueue();
-
-    if (await checkInvalidChunkAndLock({ err, data, errText: 'QA模型调用失败' })) {
-      return generateQA();
-    }
 
     setTimeout(() => {
       generateQA();

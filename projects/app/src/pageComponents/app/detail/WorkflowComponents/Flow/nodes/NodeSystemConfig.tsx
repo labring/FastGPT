@@ -1,5 +1,5 @@
 import React, { Dispatch, useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import { NodeProps, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 
@@ -13,12 +13,7 @@ import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import {
-  AppChatConfigType,
-  AppDetailType,
-  AppQGConfigType,
-  VariableItemType
-} from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, AppDetailType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -133,8 +128,9 @@ function ChatStartVariable({ chatConfig: { variables = [] }, setAppDetail }: Com
       }
     }));
   });
+  const { zoom } = useViewport();
 
-  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
+  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} zoom={zoom} />;
 }
 
 function AutoExecute({ chatConfig: { autoExecute }, setAppDetail }: ComponentProps) {

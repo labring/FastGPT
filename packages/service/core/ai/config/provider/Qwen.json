@@ -245,6 +245,13 @@
       "showTopP": true,
       "showStopSign": true,
       "responseFormatList": ["text", "json_object"]
+    },
+    {
+      "model": "text-embedding-v3",
+      "name": "text-embedding-v3",
+      "defaultToken": 512,
+      "maxToken": 8000,
+      "type": "embedding"
     }
   ]
 }

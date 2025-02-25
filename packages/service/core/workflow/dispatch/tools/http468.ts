@@ -38,10 +38,10 @@ type HttpRequestProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.abandon_httpUrl]: string;
   [NodeInputKeyEnum.httpMethod]: string;
   [NodeInputKeyEnum.httpReqUrl]: string;
-  [NodeInputKeyEnum.httpHeaders]: PropsArrType[];
-  [NodeInputKeyEnum.httpParams]: PropsArrType[];
-  [NodeInputKeyEnum.httpJsonBody]: string;
-  [NodeInputKeyEnum.httpFormBody]: PropsArrType[];
+  [NodeInputKeyEnum.httpHeaders]?: PropsArrType[];
+  [NodeInputKeyEnum.httpParams]?: PropsArrType[];
+  [NodeInputKeyEnum.httpJsonBody]?: string;
+  [NodeInputKeyEnum.httpFormBody]?: PropsArrType[];
   [NodeInputKeyEnum.httpContentType]: ContentTypes;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
   [NodeInputKeyEnum.httpTimeout]?: number;
@@ -76,10 +76,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
-      system_httpHeader: httpHeader,
+      system_httpHeader: httpHeader = [],
       system_httpParams: httpParams = [],
-      system_httpJsonBody: httpJsonBody,
-      system_httpFormBody: httpFormBody,
+      system_httpJsonBody: httpJsonBody = '',
+      system_httpFormBody: httpFormBody = [],
       system_httpContentType: httpContentType = ContentTypes.json,
       system_httpTimeout: httpTimeout = 60,
       [NodeInputKeyEnum.addInputParam]: dynamicInput,
@@ -397,41 +397,6 @@ async function fetchData({
     rawResponse: response
   };
 }
-
-// function replaceVariable(text: string, obj: Record<string, any>) {
-//   for (const [key, value] of Object.entries(obj)) {
-//     if (value === undefined) {
-//       text = text.replace(new RegExp(`{{(${key})}}`, 'g'), UNDEFINED_SIGN);
-//     } else {
-//       const replacement = JSON.stringify(value);
-//       const unquotedReplacement =
-//         replacement.startsWith('"') && replacement.endsWith('"')
-//           ? replacement.slice(1, -1)
-//           : replacement;
-//       text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => unquotedReplacement);
-//     }
-//   }
-//   return text || '';
-// }
-// function removeUndefinedSign(obj: Record<string, any>) {
-//   for (const key in obj) {
-//     if (obj[key] === UNDEFINED_SIGN) {
-//       obj[key] = undefined;
-//     } else if (Array.isArray(obj[key])) {
-//       obj[key] = obj[key].map((item: any) => {
-//         if (item === UNDEFINED_SIGN) {
-//           return undefined;
-//         } else if (typeof item === 'object') {
-//           removeUndefinedSign(item);
-//         }
-//         return item;
-//       });
-//     } else if (typeof obj[key] === 'object') {
-//       removeUndefinedSign(obj[key]);
-//     }
-//   }
-//   return obj;
-// }
 
 // Replace some special response from system plugin
 async function replaceSystemPluginResponse({

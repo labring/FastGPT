@@ -106,10 +106,12 @@ const InputTypeConfig = ({
     ...listValue[index]
   }));
 
-  const valueTypeSelectList = Object.values(FlowValueTypeMap).map((item) => ({
-    label: t(item.label as any),
-    value: item.value
-  }));
+  const valueTypeSelectList = Object.values(FlowValueTypeMap)
+    .filter((item) => !item.abandon)
+    .map((item) => ({
+      label: t(item.label as any),
+      value: item.value
+    }));
 
   const showValueTypeSelect =
     inputType === FlowNodeInputTypeEnum.reference ||
@@ -415,7 +417,7 @@ const InputTypeConfig = ({
                 );
               }}
             >
-              {(provided) => (
+              {({ provided }) => (
                 <Box
                   {...provided.droppableProps}
                   ref={provided.innerRef}
@@ -485,9 +487,6 @@ const InputTypeConfig = ({
                       )}
                     </Draggable>
                   ))}
-                  <Box h="0" w="0">
-                    {provided.placeholder}
-                  </Box>
                 </Box>
               )}
             </DndDrag>

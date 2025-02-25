@@ -125,7 +125,12 @@ export const getEditorVariables = ({
     : sourceNodes
         .map((node) => {
           return node.outputs
-            .filter((output) => !!output.label && output.id !== NodeOutputKeyEnum.addOutputParam)
+            .filter(
+              (output) =>
+                !!output.label &&
+                output.invalid !== true &&
+                output.id !== NodeOutputKeyEnum.addOutputParam
+            )
             .map((output) => {
               return {
                 label: t((output.label as any) || ''),

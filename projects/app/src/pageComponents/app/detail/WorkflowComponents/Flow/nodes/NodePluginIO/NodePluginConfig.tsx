@@ -66,9 +66,6 @@ const NodePluginConfig = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       >
         <Container w={'360px'}>
           <Instruction {...componentsProps} />
-          <Box pt={4}>
-            <FileSelectConfig {...componentsProps} />
-          </Box>
         </Container>
       </NodeCard>
     );

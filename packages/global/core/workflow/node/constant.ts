@@ -140,7 +140,14 @@ export enum FlowNodeTypeEnum {
 }
 
 // node IO value type
-export const FlowValueTypeMap = {
+export const FlowValueTypeMap: Record<
+  WorkflowIOValueTypeEnum,
+  {
+    label: string;
+    value: WorkflowIOValueTypeEnum;
+    abandon?: boolean;
+  }
+> = {
   [WorkflowIOValueTypeEnum.string]: {
     label: 'String',
     value: WorkflowIOValueTypeEnum.string
@@ -189,10 +196,6 @@ export const FlowValueTypeMap = {
     label: i18nT('common:core.workflow.Dataset quote'),
     value: WorkflowIOValueTypeEnum.datasetQuote
   },
-  [WorkflowIOValueTypeEnum.selectApp]: {
-    label: i18nT('common:plugin.App'),
-    value: WorkflowIOValueTypeEnum.selectApp
-  },
   [WorkflowIOValueTypeEnum.selectDataset]: {
     label: i18nT('common:core.chat.Select dataset'),
     value: WorkflowIOValueTypeEnum.selectDataset
@@ -200,6 +203,11 @@ export const FlowValueTypeMap = {
   [WorkflowIOValueTypeEnum.dynamic]: {
     label: i18nT('common:core.workflow.dynamic_input'),
     value: WorkflowIOValueTypeEnum.dynamic
+  },
+  [WorkflowIOValueTypeEnum.selectApp]: {
+    label: 'selectApp',
+    value: WorkflowIOValueTypeEnum.selectApp,
+    abandon: true
   }
 };
 
@@ -218,4 +226,7 @@ export const datasetQuoteValueDesc = `{
   sourceId?: string;
   q: string;
   a: string
+}[]`;
+export const datasetSelectValueDesc = `{
+  datasetId: string;
 }[]`;

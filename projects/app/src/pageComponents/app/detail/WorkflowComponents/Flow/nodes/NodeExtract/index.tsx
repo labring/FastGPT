@@ -35,6 +35,7 @@ import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs, outputs, nodeId } = data;
@@ -71,7 +72,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             </Button>
           </Flex>
 
-          <TableContainer borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} mt={2}>
+          <TableContainer borderRadius={'md'} overflow={'auto'} borderWidth={'1px'} mt={2}>
             <Table variant={'workflow'}>
               <Thead>
                 <Tr>
@@ -85,19 +86,23 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 {extractKeys.map((item, index) => (
                   <Tr key={index}>
                     <Td>
-                      <Flex alignItems={'center'}>
+                      <Flex alignItems={'center'} maxW={'300px'} className={'textEllipsis'}>
                         <MyIcon name={'checkCircle'} w={'14px'} mr={1} color={'myGray.600'} />
                         {item.key}
                       </Flex>
                     </Td>
-                    <Td>{item.desc}</Td>
+                    <Td>
+                      <Box maxW={'300px'} whiteSpace={'pre-wrap'}>
+                        {item.desc}
+                      </Box>
+                    </Td>
                     <Td>
                       {item.required ? (
                         <Flex alignItems={'center'}>
                           <MyIcon name={'check'} w={'16px'} color={'myGray.900'} mr={2} />
                         </Flex>
                       ) : (
-                        ''
+                        '-'
                       )}
                     </Td>
                     <Td>
@@ -197,7 +202,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             const newOutput: FlowNodeOutputItemType = {
               id: getNanoid(),
               key: data.key,
-              label: `${t('common:extraction_results')}-${data.desc}`,
+              label: `${t('common:extraction_results')}-${data.key}`,
               valueType: data.valueType || WorkflowIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.static
             };

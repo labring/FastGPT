@@ -130,7 +130,7 @@ const QuoteItem = ({
                 <Box>
                   {t(SearchScoreTypeMap[score.primaryScore.type]?.label as any)}
                   {SearchScoreTypeMap[score.primaryScore.type]?.showScore
-                    ? ` ${score.primaryScore.value.toFixed(4)}`
+                    ? ` ${score.primaryScore.value?.toFixed(4)}`
                     : ''}
                 </Box>
               </Flex>

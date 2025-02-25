@@ -35,34 +35,46 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
     return props.size ? size[props.size] : size['md'];
   }, [props.size]);
 
-  const avatarList = list.map((item) => {
-    const modelData = getModelFromList(
-      [
-        ...llmModelList,
-        ...embeddingModelList,
-        ...ttsModelList,
-        ...sttModelList,
-        ...reRankModelList
-      ],
-      item.value
-    );
+  const avatarList = useMemo(
+    () =>
+      list.map((item) => {
+        const modelData = getModelFromList(
+          [
+            ...llmModelList,
+            ...embeddingModelList,
+            ...ttsModelList,
+            ...sttModelList,
+            ...reRankModelList
+          ],
+          item.value
+        );
 
-    return {
-      value: item.value,
-      label: (
-        <Flex alignItems={'center'} py={1}>
-          <Avatar
-            borderRadius={'0'}
-            mr={2}
-            src={modelData?.avatar || HUGGING_FACE_ICON}
-            fallbackSrc={HUGGING_FACE_ICON}
-            w={avatarSize}
-          />
-          <Box>{modelData.name}</Box>
-        </Flex>
-      )
-    };
-  });
+        return {
+          value: item.value,
+          label: (
+            <Flex alignItems={'center'} py={1}>
+              <Avatar
+                borderRadius={'0'}
+                mr={2}
+                src={modelData?.avatar || HUGGING_FACE_ICON}
+                fallbackSrc={HUGGING_FACE_ICON}
+                w={avatarSize}
+              />
+              <Box>{modelData.name}</Box>
+            </Flex>
+          )
+        };
+      }),
+    [
+      list,
+      llmModelList,
+      embeddingModelList,
+      ttsModelList,
+      sttModelList,
+      reRankModelList,
+      avatarSize
+    ]
+  );
 
   return (
     <Box
@@ -99,6 +111,16 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
+  const modelList = useMemo(() => {
+    return [
+      ...llmModelList,
+      ...embeddingModelList,
+      ...ttsModelList,
+      ...sttModelList,
+      ...reRankModelList
+    ];
+  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]);
+
   const [value, setValue] = useState<string[]>([]);
 
   const avatarSize = useMemo(() => {
@@ -134,7 +156,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }));
 
     for (const item of list) {
-      const modelData = getModelFromList([...llmModelList, ...embeddingModelList], item.value);
+      const modelData = getModelFromList(modelList, item.value);
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
         renderList[renderList.length - 1];
@@ -146,7 +168,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, llmModelList, t, embeddingModelList]);
+  }, [avatarSize, list, modelList]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -156,16 +178,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   );
 
   const SelectedModel = useMemo(() => {
-    const modelData = getModelFromList(
-      [
-        ...llmModelList,
-        ...embeddingModelList,
-        ...ttsModelList,
-        ...sttModelList,
-        ...reRankModelList
-      ],
-      props.value
-    );
+    const modelData = getModelFromList(modelList, props.value);
 
     setValue([modelData.provider, props.value]);
 
@@ -181,15 +194,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
         <Box>{modelData?.name}</Box>
       </HStack>
     );
-  }, [
-    llmModelList,
-    embeddingModelList,
-    ttsModelList,
-    sttModelList,
-    reRankModelList,
-    props.value,
-    avatarSize
-  ]);
+  }, [modelList, props.value, avatarSize]);
 
   return (
     <Box

@@ -43,6 +43,17 @@ export type FlowNodeCommonType = {
   pluginId?: string;
   isFolder?: boolean;
   // pluginType?: AppTypeEnum;
+  pluginData?: PluginDataType;
+};
+
+export type PluginDataType = {
+  version: string;
+  diagram?: string;
+  userGuide?: string;
+  courseUrl?: string;
+  name?: string;
+  avatar?: string;
+  error?: string;
 };
 
 type HandleType = {

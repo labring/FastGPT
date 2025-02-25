@@ -46,7 +46,16 @@ export const chats2GPTMessages = ({
 
   messages.forEach((item) => {
     const dataId = reserveId ? item.dataId : undefined;
-    if (item.obj === ChatRoleEnum.Human) {
+    if (item.obj === ChatRoleEnum.System) {
+      const content = item.value?.[0]?.text?.content;
+      if (content) {
+        results.push({
+          dataId,
+          role: ChatCompletionRequestMessageRoleEnum.System,
+          content
+        });
+      }
+    } else if (item.obj === ChatRoleEnum.Human) {
       const value = item.value
         .map((item) => {
           if (item.type === ChatItemValueTypeEnum.text) {
@@ -80,15 +89,6 @@ export const chats2GPTMessages = ({
         role: ChatCompletionRequestMessageRoleEnum.User,
         content: simpleUserContentPart(value)
       });
-    } else if (item.obj === ChatRoleEnum.System) {
-      const content = item.value?.[0]?.text?.content;
-      if (content) {
-        results.push({
-          dataId,
-          role: ChatCompletionRequestMessageRoleEnum.System,
-          content
-        });
-      }
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
 
@@ -349,7 +349,7 @@ export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): Runtime
   };
   value.forEach((item) => {
     if (item.type === 'file' && item.file) {
-      prompt.files?.push(item.file);
+      prompt.files.push(item.file);
     } else if (item.text) {
       prompt.text += item.text.content;
     }

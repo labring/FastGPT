@@ -29,10 +29,8 @@ import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import {
-  DatasetCollectionTypeEnum,
-  ImportDataSourceEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -76,19 +74,17 @@ const DataCard = () => {
   const [editDataId, setEditDataId] = useState<string>();
 
   // get file info
-  const { data: collection } = useQuery(
-    ['getDatasetCollectionById', collectionId],
-    () => getDatasetCollectionById(collectionId),
-    {
-      onError: () => {
-        router.replace({
-          query: {
-            datasetId
-          }
-        });
-      }
+  const { data: collection } = useRequest2(() => getDatasetCollectionById(collectionId), {
+    refreshDeps: [collectionId],
+    manual: false,
+    onError: () => {
+      router.replace({
+        query: {
+          datasetId
+        }
+      });
     }
-  );
+  });
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
@@ -182,7 +178,10 @@ const DataCard = () => {
           <Flex align={'center'} color={'myGray.500'}>
             <MyIcon name="common/list" mr={2} w={'18px'} />
             <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
-              {t('common:core.dataset.data.Total Amount', { total })}
+              {t('dataset:data_amount', {
+                dataAmount: total,
+                indexAmount: collection?.indexAmount ?? '-'
+              })}
             </Box>
           </Flex>
           <Box flex={1} mr={1} />

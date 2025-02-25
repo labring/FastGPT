@@ -11,7 +11,10 @@ import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { useMount } from 'ahooks';
+import { useDebounceEffect, useMount } from 'ahooks';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import WorkorderButton from './WorkorderButton';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -19,9 +22,7 @@ const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/U
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
-const UpdateNotification = dynamic(
-  () => import('@/components/support/user/inform/UpdateNotificationModal')
-);
+const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -50,10 +51,14 @@ export const navbarWidth = '64px';
 
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const { Loading } = useLoading();
-  const { loading, feConfigs, notSufficientModalType } = useSystemStore();
+  const { loading, feConfigs, notSufficientModalType, llmModelList, embeddingModelList } =
+    useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
+  const { userInfo, teamPlanStatus, isUpdateNotification, setIsUpdateNotification } =
+    useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const isChatPage = useMemo(
@@ -75,12 +80,37 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     isUpdateNotification &&
     feConfigs?.bind_notification_method &&
     feConfigs?.bind_notification_method.length > 0 &&
-    !userInfo?.team.notificationAccount &&
+    !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
 
   useMount(() => {
     setUserDefaultLng();
   });
+
+  // Check model invalid
+  useDebounceEffect(
+    () => {
+      if (userInfo?.username === 'root') {
+        if (llmModelList.length === 0) {
+          toast({
+            status: 'warning',
+            title: t('common:llm_model_not_config')
+          });
+          router.push('/account/model');
+        } else if (embeddingModelList.length === 0) {
+          toast({
+            status: 'warning',
+            title: t('common:embedding_model_not_config')
+          });
+          router.push('/account/model');
+        }
+      }
+    },
+    [embeddingModelList.length, llmModelList.length, userInfo?.username],
+    {
+      wait: 2000
+    }
+  );
 
   return (
     <>
@@ -126,11 +156,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
           {!!userInfo && <SystemMsgModal />}
           {showUpdateNotification && (
-            <UpdateNotification onClose={() => setIsUpdateNotification(false)} />
+            <UpdateContact onClose={() => setIsUpdateNotification(false)} mode="contact" />
           )}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
+          <WorkorderButton />
         </>
       )}
 

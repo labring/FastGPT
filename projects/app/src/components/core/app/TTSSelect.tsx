@@ -46,10 +46,11 @@ const TTSSelect = ({
             </HStack>
           ),
           value: model.model,
-          children: model.voices.map((voice) => ({
-            label: voice.label,
-            value: voice.value
-          }))
+          children:
+            model.voices?.map((voice) => ({
+              label: voice.label,
+              value: voice.value
+            })) || []
         };
       })
     ],

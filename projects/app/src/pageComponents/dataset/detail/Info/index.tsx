@@ -164,12 +164,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Flex>
 
         <Box mt={5} w={'100%'}>
-          <Flex alignItems={'center'} fontSize={'mini'}>
-            <FormLabel fontWeight={'500'} flex={'1 0 0'}>
+          <Flex alignItems={'center'}>
+            <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
               {t('common:core.ai.model.Vector Model')}
             </FormLabel>
             <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
-              <Box>
+              <Box fontSize={'mini'}>
                 {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
               </Box>
             </MyTooltip>

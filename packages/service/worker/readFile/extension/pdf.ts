@@ -56,14 +56,15 @@ export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Read
     }
   };
 
+  // @ts-ignore
   const loadingTask = pdfjs.getDocument(buffer.buffer);
   const doc = await loadingTask.promise;
 
   // Avoid OOM.
   let result = '';
   const pageArr = Array.from({ length: doc.numPages }, (_, i) => i + 1);
-  for await (const pageNo of pageArr) {
-    result += await readPDFPage(doc, pageNo);
+  for (let i = 0; i < pageArr.length; i++) {
+    result += await readPDFPage(doc, i + 1);
   }
 
   loadingTask.destroy();

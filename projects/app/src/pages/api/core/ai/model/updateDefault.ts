@@ -15,6 +15,8 @@ export type updateDefaultBody = {
   [ModelTypeEnum.tts]?: string;
   [ModelTypeEnum.stt]?: string;
   [ModelTypeEnum.rerank]?: string;
+  datasetTextLLM?: string;
+  datasetImageLLM?: string;
 };
 
 export type updateDefaultResponse = {};
@@ -25,15 +27,40 @@ async function handler(
 ): Promise<updateDefaultResponse> {
   await authSystemAdmin({ req });
 
-  const { llm, embedding, tts, stt, rerank } = req.body;
+  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM } = req.body;
 
   await mongoSessionRun(async (session) => {
-    await MongoSystemModel.updateMany({}, { $unset: { 'metadata.isDefault': 1 } }, { session });
+    // Remove all default flags
+    await MongoSystemModel.updateMany(
+      {},
+      {
+        $unset: {
+          'metadata.isDefault': 1,
+          'metadata.isDefaultDatasetTextModel': 1,
+          'metadata.isDefaultDatasetImageModel': 1
+        }
+      },
+      { session }
+    );
 
     if (llm) {
       await MongoSystemModel.updateOne(
         { model: llm },
         { $set: { 'metadata.isDefault': true } },
+        { session }
+      );
+    }
+    if (datasetTextLLM) {
+      await MongoSystemModel.updateOne(
+        { model: datasetTextLLM },
+        { $set: { 'metadata.isDefaultDatasetTextModel': true } },
+        { session }
+      );
+    }
+    if (datasetImageLLM) {
+      await MongoSystemModel.updateOne(
+        { model: datasetImageLLM },
+        { $set: { 'metadata.isDefaultDatasetImageModel': true } },
         { session }
       );
     }

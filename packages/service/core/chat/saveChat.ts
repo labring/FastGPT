@@ -1,6 +1,10 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
@@ -22,7 +26,8 @@ type Props = {
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
   newTitle: string;
-  source: string;
+  source: `${ChatSourceEnum}`;
+  sourceName?: string;
   shareId?: string;
   outLinkUid?: string;
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
@@ -40,6 +45,7 @@ export async function saveChat({
   isUpdateUseTime,
   newTitle,
   source,
+  sourceName,
   shareId,
   outLinkUid,
   content,
@@ -96,6 +102,7 @@ export async function saveChat({
             pluginInputs,
             title: newTitle,
             source,
+            sourceName,
             shareId,
             outLinkUid,
             metadata: metadataUpdate,

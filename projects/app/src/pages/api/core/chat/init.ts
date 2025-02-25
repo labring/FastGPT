@@ -43,7 +43,6 @@ async function handler(
 
   // get app and history
   const { nodes, chatConfig } = await getAppLatestVersion(app._id, app);
-
   const pluginInputs =
     chat?.pluginInputs ??
     nodes?.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput)?.inputs ??

@@ -1,5 +1,5 @@
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
-import { pushChatUsage } from '@/service/support/wallet/usage/push';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
@@ -22,6 +22,14 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import {
+  getChildAppPreviewNode,
+  splitCombinePluginId
+} from '@fastgpt/service/core/app/plugin/controller';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { PluginDataType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app
@@ -105,7 +113,7 @@ export const getScheduleTriggerApp = async () => {
             }
           ]
         });
-        pushChatUsage({
+        createChatUsage({
           appName: app.name,
           appId: app._id,
           teamId: String(app.teamId),
@@ -124,4 +132,47 @@ export const getScheduleTriggerApp = async () => {
       }
     })
   );
+};
+
+export const checkNode = async ({
+  node,
+  ownerTmbId
+}: {
+  node: StoreNodeItemType;
+  ownerTmbId: string;
+}) => {
+  const { pluginId } = node;
+  if (!pluginId) return node;
+
+  try {
+    const { source } = await splitCombinePluginId(pluginId);
+    if (source === PluginSourceEnum.personal) {
+      await authAppByTmbId({
+        tmbId: ownerTmbId,
+        appId: pluginId,
+        per: ReadPermissionVal
+      });
+    }
+
+    const preview = await getChildAppPreviewNode({ id: pluginId });
+    return {
+      ...node,
+      pluginData: {
+        version: preview.version,
+        diagram: preview.diagram,
+        userGuide: preview.userGuide,
+        courseUrl: preview.courseUrl,
+        name: preview.name,
+        avatar: preview.avatar
+      }
+    };
+  } catch (error: any) {
+    return {
+      ...node,
+      isError: true,
+      pluginData: {
+        error
+      } as PluginDataType
+    };
+  }
 };

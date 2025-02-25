@@ -9,6 +9,7 @@ import {
   InviteMemberProps,
   InviteMemberResponse,
   UpdateInviteProps,
+  UpdateStatusProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
@@ -31,7 +32,7 @@ export const putSwitchTeam = (teamId: string) =>
   PUT<string>(`/proApi/support/user/team/switch`, { teamId });
 
 /* --------------- team member ---------------- */
-export const getTeamMembers = (props: PaginationProps) =>
+export const getTeamMembers = (props: PaginationProps<{ withLeaved?: boolean }>) =>
   GET<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props);
 export const postInviteTeamMember = (data: InviteMemberProps) =>
   POST<InviteMemberResponse>(`/proApi/support/user/team/member/invite`, data);
@@ -41,6 +42,8 @@ export const delRemoveMember = (tmbId: string) =>
   DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
+export const updateStatus = (data: UpdateStatusProps) =>
+  PUT('/proApi/support/user/team/member/updateStatus', data);
 export const delLeaveTeam = () => DELETE('/proApi/support/user/team/member/leave');
 
 /* -------------- team collaborator -------------------- */

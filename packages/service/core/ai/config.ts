@@ -1,7 +1,9 @@
 import OpenAI from '@fastgpt/global/core/ai';
 import {
   ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming
+  ChatCompletionCreateParamsStreaming,
+  StreamChatType,
+  UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addLog } from '../../common/system/log';
@@ -38,29 +40,30 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   };
 };
 
-type CompletionsBodyType =
-  | ChatCompletionCreateParamsNonStreaming
-  | ChatCompletionCreateParamsStreaming;
-type InferResponseType<T extends CompletionsBodyType> =
-  T extends ChatCompletionCreateParamsStreaming
-    ? OpenAI.Chat.Completions.ChatCompletionChunk
-    : OpenAI.Chat.Completions.ChatCompletion;
-
-export const createChatCompletion = async <T extends CompletionsBodyType>({
+export const createChatCompletion = async ({
   body,
   userKey,
   timeout,
   options
 }: {
-  body: T;
+  body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
   options?: OpenAI.RequestOptions;
-}): Promise<{
-  response: InferResponseType<T>;
-  isStreamResponse: boolean;
-  getEmptyResponseTip: () => string;
-}> => {
+}): Promise<
+  {
+    getEmptyResponseTip: () => string;
+  } & (
+    | {
+        response: StreamChatType;
+        isStreamResponse: true;
+      }
+    | {
+        response: UnStreamChatType;
+        isStreamResponse: false;
+      }
+  )
+> => {
   try {
     const modelConstantsData = getLLMModel(body.model);
 
@@ -96,9 +99,17 @@ export const createChatCompletion = async <T extends CompletionsBodyType>({
       return i18nT('chat:LLM_model_response_empty');
     };
 
+    if (isStreamResponse) {
+      return {
+        response,
+        isStreamResponse: true,
+        getEmptyResponseTip
+      };
+    }
+
     return {
-      response: response as InferResponseType<T>,
-      isStreamResponse,
+      response,
+      isStreamResponse: false,
       getEmptyResponseTip
     };
   } catch (error) {

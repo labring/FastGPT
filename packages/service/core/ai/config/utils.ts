@@ -52,6 +52,12 @@ export const loadSystemModels = async (init = false) => {
         if (model.isDefault) {
           global.systemDefaultModel.llm = model;
         }
+        if (model.isDefaultDatasetTextModel) {
+          global.systemDefaultModel.datasetTextLLM = model;
+        }
+        if (model.isDefaultDatasetImageModel) {
+          global.systemDefaultModel.datasetImageLLM = model;
+        }
       } else if (model.type === ModelTypeEnum.embedding) {
         global.embeddingModelMap.set(model.model, model);
         global.embeddingModelMap.set(model.name, model);
@@ -133,6 +139,16 @@ export const loadSystemModels = async (init = false) => {
     // Default model check
     if (!global.systemDefaultModel.llm) {
       global.systemDefaultModel.llm = Array.from(global.llmModelMap.values())[0];
+    }
+    if (!global.systemDefaultModel.datasetTextLLM) {
+      global.systemDefaultModel.datasetTextLLM = Array.from(global.llmModelMap.values()).find(
+        (item) => item.datasetProcess
+      );
+    }
+    if (!global.systemDefaultModel.datasetImageLLM) {
+      global.systemDefaultModel.datasetImageLLM = Array.from(global.llmModelMap.values()).find(
+        (item) => item.vision
+      );
     }
     if (!global.systemDefaultModel.embedding) {
       global.systemDefaultModel.embedding = Array.from(global.embeddingModelMap.values())[0];

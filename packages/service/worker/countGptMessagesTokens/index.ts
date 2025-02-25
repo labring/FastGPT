@@ -72,7 +72,7 @@ parentPort?.on(
       };
 
       const total =
-        messages.reduce((sum, item) => {
+        messages.reduce((sum, item, index) => {
           // Evaluates the text of toolcall and functioncall
           const functionCallPrompt = (() => {
             let prompt = '';
@@ -100,7 +100,13 @@ parentPort?.on(
               .join('');
           })();
 
-          return sum + countPromptTokens(`${contentPrompt}${functionCallPrompt}`, item.role);
+          // Only the last message computed reasoning_text
+          const reasoningText = index === messages.length - 1 ? item.reasoning_text || '' : '';
+
+          return (
+            sum +
+            countPromptTokens(`${reasoningText}${contentPrompt}${functionCallPrompt}`, item.role)
+          );
         }, 0) +
         countToolsTokens(tools) +
         countToolsTokens(functionCall);

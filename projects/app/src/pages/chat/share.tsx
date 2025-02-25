@@ -111,11 +111,6 @@ const OutLink = (props: Props) => {
     {
       manual: false,
       refreshDeps: [shareId, outLinkAuthData, chatId],
-      onError(e: any) {
-        if (chatId) {
-          onChangeChatId('');
-        }
-      },
       onFinally() {
         forbidLoadChat.current = false;
       }
@@ -333,11 +328,11 @@ const Render = (props: Props) => {
     return () => {
       setOutLinkAuthData({});
     };
-  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+  }, [chatHistoryProviderParams.outLinkUid, shareId]);
   // Watch appId
   useEffect(() => {
     setAppId(appId);
-  }, [appId, setAppId]);
+  }, [appId]);
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>

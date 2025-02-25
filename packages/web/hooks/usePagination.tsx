@@ -53,7 +53,7 @@ export function usePagination<DataT, ResT = {}>(
   const isEmpty = total === 0 && !isLoading;
   const noMore = data.length >= totalDataLength;
 
-  const fetchData = useLockFn(
+  const fetchData = useMemoizedFn(
     async (num: number = pageNum, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && num !== 1) return;
       setTrue();
@@ -99,11 +99,12 @@ export function usePagination<DataT, ResT = {}>(
 
         onChange?.(num);
       } catch (error: any) {
-        toast({
-          title: getErrText(error, t('common:core.chat.error.data_error')),
-          status: 'error'
-        });
-        console.log(error);
+        if (error.code !== 'ERR_CANCELED') {
+          toast({
+            title: getErrText(error, t('common:core.chat.error.data_error')),
+            status: 'error'
+          });
+        }
       }
 
       setFalse();
@@ -246,7 +247,6 @@ export function usePagination<DataT, ResT = {}>(
   // Reload data
   const { runAsync: refresh } = useRequest(
     async () => {
-      setData([]);
       defaultRequest && fetchData(1);
     },
     {
