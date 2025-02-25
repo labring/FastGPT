@@ -111,15 +111,21 @@ export const readRawContentByFileBuffer = async ({
   // markdown data format
   if (imageList) {
     await batchRun(imageList, async (item) => {
-      const src = await uploadMongoImg({
-        base64Img: `data:${item.mime};base64,${item.base64}`,
-        teamId,
-        // expiredTime: addHours(new Date(), 1),
-        metadata: {
-          ...metadata,
-          mime: item.mime
+      const src = await (async () => {
+        try {
+          return await uploadMongoImg({
+            base64Img: `data:${item.mime};base64,${item.base64}`,
+            teamId,
+            // expiredTime: addHours(new Date(), 1),
+            metadata: {
+              ...metadata,
+              mime: item.mime
+            }
+          });
+        } catch (error) {
+          return '';
         }
-      });
+      })();
       rawText = rawText.replace(item.uuid, src);
       if (formatText) {
         formatText = formatText.replace(item.uuid, src);
