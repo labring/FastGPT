@@ -52,7 +52,6 @@ export const navbarWidth = '64px';
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { toast } = useToast();
   const { Loading } = useLoading();
   const { loading, feConfigs, notSufficientModalType, llmModelList, embeddingModelList } =
     useSystemStore();
@@ -88,6 +87,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   });
 
   // Check model invalid
+  const { toast } = useToast();
   useDebounceEffect(
     () => {
       if (userInfo?.username === 'root') {
@@ -96,13 +96,13 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          router.push('/account/model');
+          router.pathname !== '/account/model' && router.push('/account/model');
         } else if (embeddingModelList.length === 0) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          router.push('/account/model');
+          router.pathname !== '/account/model' && router.push('/account/model');
         }
       }
     },
