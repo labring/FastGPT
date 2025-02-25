@@ -270,7 +270,12 @@ export const UpdateChannelModal = function ({
               />
               <ModalBody w="full" h="full" m="0">
                 <Center w="full" h="full" alignSelf="center">
-                  <Spinner />
+                  <Spinner
+                    thickness="4px"
+                    speed="0.65s"
+                    emptyColor="myGray.100"
+                    color="primary.500"
+                  />
                 </Center>
               </ModalBody>
             </ModalContent>
