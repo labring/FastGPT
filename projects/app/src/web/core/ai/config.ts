@@ -5,6 +5,8 @@ import type { deleteQuery } from '@/pages/api/core/ai/model/delete';
 import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import type { updateWithJsonBody } from '@/pages/api/core/ai/model/updateWithJson';
 import type { updateDefaultBody } from '@/pages/api/core/ai/model/updateDefault';
+import { ChannelList, ChannelQueryParams } from '@/pages/api/aiproxyApi/channel/list';
+import { ChannelTypeMapName, CreateChannelRequest } from '@/global/aiproxy/types';
 
 export const getSystemModelList = () => GET<listResponse>('/core/ai/model/list');
 export const getSystemModelDetail = (model: string) =>
@@ -25,3 +27,20 @@ export const getTestModel = (model: String) => GET('/core/ai/model/test', { mode
 
 export const putUpdateDefaultModels = (data: updateDefaultBody) =>
   PUT('/core/ai/model/updateDefault', data);
+
+// channel management
+export const getChannels = (params: ChannelQueryParams) =>
+  GET<ChannelList>('aiproxyApi/channel/list', params);
+
+export const createChannel = (data: CreateChannelRequest) =>
+  POST<void>('aiproxyApi/channel/create', data);
+
+export const updateChannel = (id: string, data: CreateChannelRequest) =>
+  PUT<void>(`aiproxyApi/channel/${id}`, data);
+
+export const deleteChannel = (id: string) => DELETE<void>(`aiproxyApi/channel/${id}`);
+
+export const updateChannelStatus = (id: string, status: number) =>
+  POST<void>(`aiproxyApi/channel/${id}/status`, { status });
+
+export const getChannelTypeNames = () => GET<ChannelTypeMapName>('aiproxyApi/channel/type');
