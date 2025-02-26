@@ -206,8 +206,8 @@ importers:
         specifier: ^1.6.0
         version: 1.8.0
       mongoose:
-        specifier: ^7.0.2
-        version: 7.8.2
+        specifier: ^8.10.1
+        version: 8.10.2(socks@2.8.3)
       multer:
         specifier: 1.4.5-lts.1
         version: 1.4.5-lts.1
@@ -603,7 +603,7 @@ importers:
         version: 9.0.3
       '@shelf/jest-mongodb':
         specifier: ^4.3.2
-        version: 4.3.2(jest-environment-node@29.7.0)(mongodb@6.9.0(socks@2.8.3))
+        version: 4.3.2(jest-environment-node@29.7.0)(mongodb@6.13.1(socks@2.8.3))
       '@svgr/webpack':
         specifier: ^6.5.1
         version: 6.5.1
@@ -645,7 +645,7 @@ importers:
         version: 14.2.3(eslint@8.56.0)(typescript@5.5.3)
       mockingoose:
         specifier: ^2.16.2
-        version: 2.16.2(mongoose@7.8.2)
+        version: 2.16.2(mongoose@8.10.2(socks@2.8.3))
       mongodb-memory-server:
         specifier: ^10.0.0
         version: 10.1.0(socks@2.8.3)
@@ -4204,9 +4204,14 @@ packages:
     resolution: {integrity: sha512-ix0EwukN2EpC0SRWIj/7B5+A6uQMQy6KMREI9qQqvgpkV2frH63T0UDVd1SYedL6dNCmDBYB3QtXi4ISk9YT+g==}
     engines: {node: '>=14.20.1'}
 
+  bson@6.10.3:
+    resolution: {integrity: sha512-MTxGsqgYTwfshYWTRdmZRC+M7FnG1b4y7RO7p2k3X24Wq0yv1m77Wsj0BzlPzd/IowgESfsruQCUToa7vbOpPQ==}
+    engines: {node: '>=16.20.1'}
+
   bson@6.8.0:
     resolution: {integrity: sha512-iOJg8pr7wq2tg/zSlCCHMi3hMm5JTOxLTagf3zxhcenHsFp+c6uOs6K7W5UE7A4QIJGtqh/ZovFNMP4mOPJynQ==}
     engines: {node: '>=16.20.1'}
+    deprecated: a critical bug affecting only useBigInt64=true deserialization usage is fixed in bson@6.10.3
 
   buffer-alloc-unsafe@1.1.0:
     resolution: {integrity: sha512-TEM2iMIEQdJ2yjPJoSIsldnleVaAk1oW3DBVUykyOLsEsFmEc9kn+SFFPz+gl54KQNxlDnAwCXosOS9Okx2xAg==}
@@ -6507,8 +6512,8 @@ packages:
   jws@4.0.0:
     resolution: {integrity: sha512-KDncfTmOZoOMTFG4mBlG0qUIOlc03fmzH+ru6RgYVZhPkyiy/92Owlt/8UEN+a4TXR1FQetfIpJE8ApdvdVxTg==}
 
-  kareem@2.5.1:
-    resolution: {integrity: sha512-7jFxRVm+jD+rkq3kY0iZDJfsO2/t4BBPeEb2qKn2lR/9KhuksYk5hxzfRYWMPV8P/x2d0kHD306YyWLzjjH+uA==}
+  kareem@2.6.3:
+    resolution: {integrity: sha512-C3iHfuGUXK2u8/ipq9LfjFfXFxAZMQJJq7vLS45r3D9Y2xQ/m4S8zaR4zMLFWh9AsNPXmcFfUDhTEO8UIC/V6Q==}
     engines: {node: '>=12.0.0'}
 
   katex@0.16.11:
@@ -7159,6 +7164,33 @@ packages:
       snappy:
         optional: true
 
+  mongodb@6.13.1:
+    resolution: {integrity: sha512-gdq40tX8StmhP6akMp1pPoEVv+9jTYFSrga/g23JxajPAQhH39ysZrHGzQCSd9PEOnuEQEdjIWqxO7ZSwC0w7Q==}
+    engines: {node: '>=16.20.1'}
+    peerDependencies:
+      '@aws-sdk/credential-providers': ^3.632.0
+      '@mongodb-js/zstd': ^1.1.0 || ^2.0.0
+      gcp-metadata: ^5.2.0
+      kerberos: ^2.0.1
+      mongodb-client-encryption: '>=6.0.0 <7'
+      snappy: ^7.2.2
+      socks: ^2.7.1
+    peerDependenciesMeta:
+      '@aws-sdk/credential-providers':
+        optional: true
+      '@mongodb-js/zstd':
+        optional: true
+      gcp-metadata:
+        optional: true
+      kerberos:
+        optional: true
+      mongodb-client-encryption:
+        optional: true
+      snappy:
+        optional: true
+      socks:
+        optional: true
+
   mongodb@6.9.0:
     resolution: {integrity: sha512-UMopBVx1LmEUbW/QE0Hw18u583PEDVQmUmVzzBRH0o/xtE9DBRA5ZYLOjpLIa03i8FXjzvQECJcqoMvCXftTUA==}
     engines: {node: '>=16.20.1'}
@@ -7186,9 +7218,9 @@ packages:
       socks:
         optional: true
 
-  mongoose@7.8.2:
-    resolution: {integrity: sha512-/KDcZL84gg8hnmOHRRPK49WtxH3Xsph38c7YqvYPdxEB2OsDAXvwAknGxyEC0F2P3RJCqFOp+523iFCa0p3dfw==}
-    engines: {node: '>=14.20.1'}
+  mongoose@8.10.2:
+    resolution: {integrity: sha512-DvqfK1s/JLwP39ogXULC8ygNDdmDber5ZbxZzELYtkzl9VGJ3K5T2MCLdpTs9I9J6DnkDyIHJwt7IOyMxh/Adw==}
+    engines: {node: '>=16.20.1'}
 
   mpath@0.9.0:
     resolution: {integrity: sha512-ikJRQTk8hw5DEoFVxHG1Gn9T/xcjtdnOKIU1JTmGjZZlg9LST2mBLmcX3/ICIbgJydT2GOc15RnNy5mHmzfSew==}
@@ -8348,8 +8380,8 @@ packages:
     resolution: {integrity: sha512-fDW/EZ6Q9RiO8eFG8Hj+7u/oW+XrPTIChwCOM2+th2A6OblDtYYIpve9m+KvI9Z4C9qSEXlaGR6bTEYHReuglA==}
     engines: {node: '>= 0.4'}
 
-  sift@16.0.1:
-    resolution: {integrity: sha512-Wv6BjQ5zbhW7VFefWusVP33T/EM0vYikCaQ2qR8yULbsilAT8/wQaXvuQ3ptGLpoKx+lihJE3y2UTgKDyyNHZQ==}
+  sift@17.1.3:
+    resolution: {integrity: sha512-Rtlj66/b0ICeFzYTuNvX/EF1igRbbnGSvEyT79McoZa/DeGhMyC5pWKOEsZKnpkqtSeovd5FL/bjHWC3CIIvCQ==}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -12469,11 +12501,11 @@ snapshots:
 
   '@sec-ant/readable-stream@0.4.1': {}
 
-  '@shelf/jest-mongodb@4.3.2(jest-environment-node@29.7.0)(mongodb@6.9.0(socks@2.8.3))':
+  '@shelf/jest-mongodb@4.3.2(jest-environment-node@29.7.0)(mongodb@6.13.1(socks@2.8.3))':
     dependencies:
       debug: 4.3.4
       jest-environment-node: 29.7.0
-      mongodb: 6.9.0(socks@2.8.3)
+      mongodb: 6.13.1(socks@2.8.3)
       mongodb-memory-server: 9.2.0
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
@@ -13772,6 +13804,8 @@ snapshots:
 
   bson@5.5.1: {}
 
+  bson@6.10.3: {}
+
   bson@6.8.0: {}
 
   buffer-alloc-unsafe@1.1.0: {}
@@ -14913,7 +14947,7 @@ snapshots:
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1)(eslint@8.56.0)
       eslint-plugin-jsx-a11y: 6.9.0(eslint@8.56.0)
       eslint-plugin-react: 7.34.4(eslint@8.56.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@8.56.0)
@@ -14937,7 +14971,7 @@ snapshots:
       enhanced-resolve: 5.17.0
       eslint: 8.56.0
       eslint-module-utils: 2.8.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
-      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-plugin-import: 2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1)(eslint@8.56.0)
       fast-glob: 3.3.2
       get-tsconfig: 4.7.5
       is-core-module: 2.14.0
@@ -14959,7 +14993,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import@2.29.1(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0):
+  eslint-plugin-import@2.29.1(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.5.3))(eslint-import-resolver-typescript@3.6.1)(eslint@8.56.0):
     dependencies:
       array-includes: 3.1.8
       array.prototype.findlastindex: 1.2.5
@@ -16637,7 +16671,7 @@ snapshots:
       jwa: 2.0.0
       safe-buffer: 5.2.1
 
-  kareem@2.5.1: {}
+  kareem@2.6.3: {}
 
   katex@0.16.11:
     dependencies:
@@ -17564,9 +17598,9 @@ snapshots:
     dependencies:
       obliterator: 2.0.4
 
-  mockingoose@2.16.2(mongoose@7.8.2):
+  mockingoose@2.16.2(mongoose@8.10.2(socks@2.8.3)):
     dependencies:
-      mongoose: 7.8.2
+      mongoose: 8.10.2(socks@2.8.3)
 
   monaco-editor@0.50.0: {}
 
@@ -17660,6 +17694,14 @@ snapshots:
     optionalDependencies:
       '@mongodb-js/saslprep': 1.1.9
 
+  mongodb@6.13.1(socks@2.8.3):
+    dependencies:
+      '@mongodb-js/saslprep': 1.1.9
+      bson: 6.10.3
+      mongodb-connection-string-url: 3.0.1
+    optionalDependencies:
+      socks: 2.8.3
+
   mongodb@6.9.0(socks@2.8.3):
     dependencies:
       '@mongodb-js/saslprep': 1.1.9
@@ -17668,21 +17710,23 @@ snapshots:
     optionalDependencies:
       socks: 2.8.3
 
-  mongoose@7.8.2:
+  mongoose@8.10.2(socks@2.8.3):
     dependencies:
-      bson: 5.5.1
-      kareem: 2.5.1
-      mongodb: 5.9.2
+      bson: 6.10.3
+      kareem: 2.6.3
+      mongodb: 6.13.1(socks@2.8.3)
       mpath: 0.9.0
       mquery: 5.0.0
       ms: 2.1.3
-      sift: 16.0.1
+      sift: 17.1.3
     transitivePeerDependencies:
       - '@aws-sdk/credential-providers'
       - '@mongodb-js/zstd'
+      - gcp-metadata
       - kerberos
       - mongodb-client-encryption
       - snappy
+      - socks
       - supports-color
 
   mpath@0.9.0: {}
@@ -19015,7 +19059,7 @@ snapshots:
       get-intrinsic: 1.2.4
       object-inspect: 1.13.2
 
-  sift@16.0.1: {}
+  sift@17.1.3: {}
 
   siginfo@2.0.0: {}
 
