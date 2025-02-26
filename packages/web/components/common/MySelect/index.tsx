@@ -38,6 +38,7 @@ export type SelectProps<T = any> = ButtonProps & {
   isSearch?: boolean;
   list: {
     alias?: string;
+    icon?: string;
     label: string | React.ReactNode;
     description?: string;
     value: T;
@@ -142,7 +143,10 @@ const MySelect = <T = any,>(
               fontSize={'sm'}
               display={'block'}
             >
-              <Box>{item.label}</Box>
+              <Flex alignItems={'center'}>
+                {item.icon && <MyIcon mr={2} name={item.icon as any} w={'1rem'} />}
+                {item.label}
+              </Flex>
               {item.description && (
                 <Box color={'myGray.500'} fontSize={'xs'}>
                   {item.description}
@@ -197,7 +201,7 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'}>
-            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
+            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
             {isSearch && isOpen ? (
               <Input
                 ref={SearchInputRef}
@@ -205,7 +209,10 @@ const MySelect = <T = any,>(
                 variant={'unstyled'}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder={selectItem?.alias || selectItem?.label?.toString() || placeholder}
+                placeholder={
+                  selectItem?.alias ||
+                  (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                }
                 size={'sm'}
                 w={'100%'}
                 color={'myGray.700'}
@@ -216,7 +223,10 @@ const MySelect = <T = any,>(
                 }}
               />
             ) : (
-              selectItem?.alias || selectItem?.label || placeholder
+              <>
+                {selectItem?.icon && <MyIcon mr={2} name={selectItem.icon as any} w={'1rem'} />}
+                {selectItem?.alias || selectItem?.label || placeholder}
+              </>
             )}
           </Flex>
         </MenuButton>

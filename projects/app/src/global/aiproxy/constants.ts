@@ -45,7 +45,7 @@ export const aiproxyIdMap: Record<number, { label: string; provider: ModelProvid
     label: 'OpenAI',
     provider: 'OpenAI'
   },
-  2: {
+  3: {
     label: i18nT('account_model:azure'),
     provider: 'OpenAI'
   },
@@ -55,7 +55,7 @@ export const aiproxyIdMap: Record<number, { label: string; provider: ModelProvid
   },
   12: {
     label: 'Google Gemini(OpenAI)',
-    provider: 'OpenAI'
+    provider: 'Gemini'
   },
   24: {
     label: 'Google Gemini',
@@ -64,6 +64,10 @@ export const aiproxyIdMap: Record<number, { label: string; provider: ModelProvid
   28: {
     label: 'Mistral AI',
     provider: 'MistralAI'
+  },
+  29: {
+    label: 'Groq',
+    provider: 'Groq'
   },
   17: {
     label: '阿里云',
@@ -112,10 +116,6 @@ export const aiproxyIdMap: Record<number, { label: string; provider: ModelProvid
   32: {
     label: '阶跃星辰',
     provider: 'StepFun'
-  },
-  29: {
-    label: 'Groq',
-    provider: 'Groq'
   },
   43: {
     label: 'SiliconFlow',

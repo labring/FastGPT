@@ -37,7 +37,8 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import { postCreateChannel, putChannel } from '@/web/core/ai/channel';
+import { getChannelProviders, postCreateChannel, putChannel } from '@/web/core/ai/channel';
+import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
@@ -64,12 +65,35 @@ const EditChannelModal = ({
   });
 
   const providerType = watch('type');
-  const providerList = useMemo(() => {
-    return Object.entries(aiproxyIdMap).map(([key, value]) => ({
-      label: t(value.label as any),
-      value: Number(key)
-    }));
-  }, [t]);
+  const { data: providerList = [] } = useRequest2(
+    () =>
+      getChannelProviders().then((res) => {
+        return Object.entries(res)
+          .map(([key, value]) => {
+            const mapData = aiproxyIdMap[key as any] ?? {
+              label: value.name,
+              provider: 'Other'
+            };
+            const provider = getModelProvider(mapData.provider);
+            return {
+              order: provider.order,
+              defaultBaseUrl: value.defaultBaseUrl,
+              keyHelp: value.keyHelp,
+              icon: provider.avatar,
+              label: t(mapData.label as any),
+              value: Number(key)
+            };
+          })
+          .sort((a, b) => a.order - b.order);
+      }),
+    {
+      manual: false
+    }
+  );
+  const selectedProvider = useMemo(() => {
+    const res = providerList.find((item) => item.value === providerType);
+    return res;
+  }, [providerList, providerType]);
 
   const [editModelData, setEditModelData] = useState<SystemModelItemType>();
   const onCreateModel = (type: ModelTypeEnum) => {
@@ -152,20 +176,21 @@ const EditChannelModal = ({
       >
         <ModalBody>
           {/* Chnnel name */}
-          <Flex alignItems={'center'}>
+          <Box>
             <FormLabel required {...LabelStyles}>
               {t('account_model:channel_name')}
             </FormLabel>
-            <Input {...register('name', { required: true })} />
-          </Flex>
+            <Input mt={1} {...register('name', { required: true })} />
+          </Box>
           {/* Provider */}
-          <Flex alignItems={'center'} mt={4}>
+          <Box alignItems={'center'} mt={4}>
             <FormLabel required {...LabelStyles}>
               {t('account_model:channel_type')}
             </FormLabel>
-            <Box flex={'1 0 0'}>
+            <Box mt={1}>
               <MySelect
                 list={providerList}
+                placeholder={t('account_model:select_provider_placeholder')}
                 value={providerType}
                 isSearch
                 onchange={(val) => {
@@ -173,7 +198,7 @@ const EditChannelModal = ({
                 }}
               />
             </Box>
-          </Flex>
+          </Box>
           {/* Model */}
           <Box mt={4}>
             <Flex alignItems={'center'}>
@@ -219,12 +244,42 @@ const EditChannelModal = ({
           </Box>
           {/* url and key */}
           <Box mt={4}>
-            <FormLabel>{t('account_model:base_url')}</FormLabel>
-            <Input mt={1} {...register('base_url')} placeholder="https://api.openai.com/v1" />
+            <Flex alignItems={'center'}>
+              <FormLabel>{t('account_model:base_url')}</FormLabel>
+              {selectedProvider && (
+                <Flex alignItems={'center'} fontSize={'xs'}>
+                  <Box>{'('}</Box>
+                  <Box mr={1}>{t('account_model:default_url')}:</Box>
+                  <CopyBox value={selectedProvider?.defaultBaseUrl || ''}>
+                    {selectedProvider?.defaultBaseUrl || ''}
+                  </CopyBox>
+                  <Box>{')'}</Box>
+                </Flex>
+              )}
+            </Flex>
+            <Input
+              mt={1}
+              {...register('base_url')}
+              placeholder={selectedProvider?.defaultBaseUrl || 'https://api.openai.com/v1'}
+            />
           </Box>
           <Box mt={4}>
-            <FormLabel>{t('account_model:api_key')}</FormLabel>
-            <Input mt={1} {...register('key')} placeholder="sk-1234567890" />
+            <Flex alignItems={'center'}>
+              <FormLabel>{t('account_model:api_key')}</FormLabel>
+              {selectedProvider?.keyHelp && (
+                <Flex alignItems={'center'} fontSize={'xs'}>
+                  <Box>{'('}</Box>
+                  <Box mr={1}>{t('account_model:key_type')}</Box>
+                  <Box>{selectedProvider.keyHelp}</Box>
+                  <Box>{')'}</Box>
+                </Flex>
+              )}
+            </Flex>
+            <Input
+              mt={1}
+              {...register('key')}
+              placeholder={selectedProvider?.keyHelp || 'sk-1234567890'}
+            />
           </Box>
         </ModalBody>
         <ModalFooter>

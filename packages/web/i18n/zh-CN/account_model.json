@@ -14,14 +14,17 @@
   "clear_model": "清空模型",
   "copy_model_id_success": "已复制模型id",
   "create_channel": "新增渠道",
+  "default_url": "默认地址",
   "edit": "编辑",
   "edit_channel": "渠道配置",
   "enable_channel": "启用",
   "forbid_channel": "禁用",
+  "key_type": "API key 格式: ",
   "mapping": "模型映射",
   "mapping_tip": "需填写一个有效 Json。可在向实际地址发送请求时，对模型进行映射。例如：\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\n当 FastGPT 请求 gpt-4o 模型时，会向实际地址发送 gpt-4o-test 的模型，而不是 gpt-4o。",
   "model": "模型",
   "search_model": "搜索模型",
   "select_model_placeholder": "选择该渠道下可用的模型",
+  "select_provider_placeholder": "搜索厂商",
   "selected_model_empty": "至少选择一个模型"
 }

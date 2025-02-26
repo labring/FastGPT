@@ -1,4 +1,4 @@
-import { deleteChannel, getChannelList, putChannel } from '@/web/core/ai/channel';
+import { deleteChannel, getChannelList, putChannel, putChannelStatus } from '@/web/core/ai/channel';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import React, { useState } from 'react';
 import {
@@ -55,6 +55,14 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       refreshChannelList();
     }
   });
+  const { runAsync: updateChannelStatus, loading: loadingUpdateChannelStatus } = useRequest2(
+    putChannelStatus,
+    {
+      onSuccess: () => {
+        refreshChannelList();
+      }
+    }
+  );
 
   const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest2(deleteChannel, {
     manual: true,
@@ -63,7 +71,11 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   });
 
-  const isLoading = loadingChannelList || loadingUpdateChannel || loadingDeleteChannel;
+  const isLoading =
+    loadingChannelList ||
+    loadingUpdateChannel ||
+    loadingDeleteChannel ||
+    loadingUpdateChannelStatus;
 
   return (
     <>
@@ -138,10 +150,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                     icon: 'common/disable',
                                     label: t('account_model:forbid_channel'),
                                     onClick: () =>
-                                      updateChannel({
-                                        ...item,
-                                        status: ChannelStatusEnum.ChannelStatusDisabled
-                                      })
+                                      updateChannelStatus(
+                                        item.id,
+                                        ChannelStatusEnum.ChannelStatusDisabled
+                                      )
                                   }
                                 ]
                               : [
@@ -149,10 +161,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                     icon: 'common/enable',
                                     label: t('account_model:enable_channel'),
                                     onClick: () =>
-                                      updateChannel({
-                                        ...item,
-                                        status: ChannelStatusEnum.ChannelStatusEnabled
-                                      })
+                                      updateChannelStatus(
+                                        item.id,
+                                        ChannelStatusEnum.ChannelStatusEnabled
+                                      )
                                   }
                                 ]),
                             {

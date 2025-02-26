@@ -16,14 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { path = [], ...query } = req.query as any;
 
-    const queryStr = new URLSearchParams(query).toString();
-    const requestPath = queryStr
-      ? `/${path?.join('/')}?${new URLSearchParams(query).toString()}`
-      : `/${path?.join('/')}`;
-
-    if (!requestPath) {
+    if (!path.length) {
       throw new Error('url is empty');
     }
+
+    const url = `/${path.join('/')}`;
 
     const parsedUrl = new URL(baseUrl);
     delete req.headers?.cookie;
@@ -34,8 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       protocol: parsedUrl.protocol,
       hostname: parsedUrl.hostname,
       port: parsedUrl.port,
-      path: requestPath,
+      path: url,
       method: req.method,
+      searchParams: new URLSearchParams(query),
       headers: {
         ...req.headers,
         Authorization: `Bearer ${token}`

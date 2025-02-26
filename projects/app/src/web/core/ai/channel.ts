@@ -5,6 +5,7 @@ import {
   ChannelListResponseType,
   CreateChannelProps
 } from '@/global/aiproxy/type';
+import { ChannelStatusEnum } from '@/global/aiproxy/constants';
 
 interface ResponseDataType {
   success: boolean;
@@ -109,14 +110,31 @@ export const getChannelList = () =>
     perPage: 10
   });
 
+export const getChannelProviders = () =>
+  GET<
+    Record<
+      number,
+      {
+        defaultBaseUrl: string;
+        keyHelp: string;
+        name: string;
+      }
+    >
+  >('/channels/type_metas');
+
 export const postCreateChannel = (data: CreateChannelProps) =>
-  POST(`/channel`, {
+  POST(`/createChannel`, {
     type: data.type,
     name: data.name,
     base_url: data.base_url,
     models: data.models,
     model_mapping: data.model_mapping,
     key: data.key
+  });
+
+export const putChannelStatus = (id: number, status: ChannelStatusEnum) =>
+  POST(`/channel/${id}/status`, {
+    status
   });
 export const putChannel = (data: ChannelInfoType) =>
   PUT(`/channel/${data.id}`, {
