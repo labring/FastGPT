@@ -3,6 +3,7 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import {
   ChannelInfoType,
   ChannelListResponseType,
+  ChannelLogListItemType,
   CreateChannelProps
 } from '@/global/aiproxy/type';
 import { ChannelStatusEnum } from '@/global/aiproxy/constants';
@@ -149,3 +150,34 @@ export const putChannel = (data: ChannelInfoType) =>
   });
 
 export const deleteChannel = (id: number) => DELETE(`/channel/${id}`);
+
+export const getChannelLog = (params: {
+  channel?: string;
+  model_name?: string;
+  status?: 'all' | 'success' | 'error';
+  start_timestamp: number;
+  end_timestamp: number;
+  offset: number;
+  pageSize: number;
+}) =>
+  GET<{
+    logs: ChannelLogListItemType[];
+    total: number;
+  }>(`/logs/search`, {
+    ...params,
+    p: Math.floor(params.offset / params.pageSize) + 1,
+    per_page: params.pageSize,
+    offset: undefined,
+    pageSize: undefined
+  }).then((res) => {
+    return {
+      list: res.logs,
+      total: res.total
+    };
+  });
+
+export const getLogDetail = (id: number) =>
+  GET<{
+    request_body: string;
+    response_body: string;
+  }>(`/logs/detail/${id}`);

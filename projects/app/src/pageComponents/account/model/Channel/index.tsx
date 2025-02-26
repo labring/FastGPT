@@ -12,7 +12,7 @@ import {
   Box,
   Flex,
   Button,
-  Input
+  HStack
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -30,6 +30,8 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { getModelProvider } from '@fastgpt/global/core/ai/provider';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 
@@ -105,87 +107,101 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
               </Tr>
             </Thead>
             <Tbody>
-              {channelList.map((item) => (
-                <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
-                  <Td>{item.id}</Td>
-                  <Td>{item.name}</Td>
-                  <Td>{t(aiproxyIdMap[item.type]?.label as any) || 'Error'}</Td>
-                  <Td>
-                    <MyTag
-                      colorSchema={ChannelStautsMap[item.status]?.colorSchema as any}
-                      type="borderFill"
-                    >
-                      {t(ChannelStautsMap[item.status]?.label as any) ||
-                        t('account_model:channel_status_unknown')}
-                    </MyTag>
-                  </Td>
-                  <Td>
-                    <MyNumberInput
-                      defaultValue={item.priority || 0}
-                      min={0}
-                      max={100}
-                      h={'32px'}
-                      w={'80px'}
-                      onBlur={(e) => {
-                        const val = (() => {
-                          if (!e) return 0;
-                          return e;
-                        })();
-                        updateChannel({
-                          ...item,
-                          priority: val
-                        });
-                      }}
-                    />
-                  </Td>
-                  <Td>
-                    <MyMenu
-                      menuList={[
-                        {
-                          label: '',
-                          children: [
-                            ...(item.status === ChannelStatusEnum.ChannelStatusEnabled
-                              ? [
-                                  {
-                                    icon: 'common/disable',
-                                    label: t('account_model:forbid_channel'),
-                                    onClick: () =>
-                                      updateChannelStatus(
-                                        item.id,
-                                        ChannelStatusEnum.ChannelStatusDisabled
-                                      )
-                                  }
-                                ]
-                              : [
-                                  {
-                                    icon: 'common/enable',
-                                    label: t('account_model:enable_channel'),
-                                    onClick: () =>
-                                      updateChannelStatus(
-                                        item.id,
-                                        ChannelStatusEnum.ChannelStatusEnabled
-                                      )
-                                  }
-                                ]),
-                            {
-                              icon: 'common/settingLight',
-                              label: t('account_model:edit'),
-                              onClick: () => setEditChannel(item)
-                            },
-                            {
-                              type: 'danger',
-                              icon: 'delete',
-                              label: t('common:common.Delete'),
-                              onClick: () => onDeleteChannel(item.id)
-                            }
-                          ]
-                        }
-                      ]}
-                      Button={<MyIconButton icon={'more'} />}
-                    />
-                  </Td>
-                </Tr>
-              ))}
+              {channelList.map((item) => {
+                const providerData = aiproxyIdMap[item.type];
+                const provider = getModelProvider(providerData?.provider);
+
+                return (
+                  <Tr key={item.id} _hover={{ bg: 'myGray.100' }}>
+                    <Td>{item.id}</Td>
+                    <Td>{item.name}</Td>
+                    <Td>
+                      {providerData ? (
+                        <HStack>
+                          <MyIcon name={provider?.avatar as any} w={'1rem'} />
+                          <Box>{t(providerData?.label as any)}</Box>
+                        </HStack>
+                      ) : (
+                        'Invalid provider'
+                      )}
+                    </Td>
+                    <Td>
+                      <MyTag
+                        colorSchema={ChannelStautsMap[item.status]?.colorSchema as any}
+                        type="borderFill"
+                      >
+                        {t(ChannelStautsMap[item.status]?.label as any) ||
+                          t('account_model:channel_status_unknown')}
+                      </MyTag>
+                    </Td>
+                    <Td>
+                      <MyNumberInput
+                        defaultValue={item.priority || 0}
+                        min={0}
+                        max={100}
+                        h={'32px'}
+                        w={'80px'}
+                        onBlur={(e) => {
+                          const val = (() => {
+                            if (!e) return 0;
+                            return e;
+                          })();
+                          updateChannel({
+                            ...item,
+                            priority: val
+                          });
+                        }}
+                      />
+                    </Td>
+                    <Td>
+                      <MyMenu
+                        menuList={[
+                          {
+                            label: '',
+                            children: [
+                              ...(item.status === ChannelStatusEnum.ChannelStatusEnabled
+                                ? [
+                                    {
+                                      icon: 'common/disable',
+                                      label: t('account_model:forbid_channel'),
+                                      onClick: () =>
+                                        updateChannelStatus(
+                                          item.id,
+                                          ChannelStatusEnum.ChannelStatusDisabled
+                                        )
+                                    }
+                                  ]
+                                : [
+                                    {
+                                      icon: 'common/enable',
+                                      label: t('account_model:enable_channel'),
+                                      onClick: () =>
+                                        updateChannelStatus(
+                                          item.id,
+                                          ChannelStatusEnum.ChannelStatusEnabled
+                                        )
+                                    }
+                                  ]),
+                              {
+                                icon: 'common/settingLight',
+                                label: t('account_model:edit'),
+                                onClick: () => setEditChannel(item)
+                              },
+                              {
+                                type: 'danger',
+                                icon: 'delete',
+                                label: t('common:common.Delete'),
+                                onClick: () => onDeleteChannel(item.id)
+                              }
+                            ]
+                          }
+                        ]}
+                        Button={<MyIconButton icon={'more'} />}
+                      />
+                    </Td>
+                  </Tr>
+                );
+              })}
             </Tbody>
           </Table>
         </TableContainer>

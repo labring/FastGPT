@@ -28,3 +28,20 @@ export type CreateChannelProps = {
   base_url: string;
   models: string[];
 };
+
+// Log
+export type ChannelLogListItemType = {
+  token_name: string;
+  model: string;
+  request_id: string;
+  id: number;
+  channel: number;
+  mode: number;
+  created_at: number;
+  request_at: number;
+  code: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  endpoint: string;
+  content?: string;
+};
