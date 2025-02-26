@@ -18,6 +18,7 @@ export type UpdateDatasetDataProps = {
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
   })[];
+  chatItemId?: string;
 };
 
 export type PatchIndexesProps =

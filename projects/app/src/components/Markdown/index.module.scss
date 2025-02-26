@@ -21,6 +21,12 @@
     animation: blink 0.6s infinite;
   }
 }
+.updatedQuote {
+  background: linear-gradient(180deg, #2c9265 6.88%, #007b44 93.75%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
 @keyframes blink {
   from,
   to {

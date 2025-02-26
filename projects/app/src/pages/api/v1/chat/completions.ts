@@ -59,6 +59,7 @@ import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatc
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -327,7 +328,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses.map((item) => {
+        if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
+          // Filter quoteList q & a
+          return {
+            ...item,
+            quoteList: item.quoteList?.map((quote) => ({
+              ...quote,
+              q: '',
+              a: ''
+            }))
+          };
+        }
+
+        return item;
+      })
     };
 
     const saveChatId = chatId || getNanoid(24);

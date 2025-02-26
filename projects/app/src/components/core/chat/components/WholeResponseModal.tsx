@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
-import { QuoteList } from '../ChatContainer/ChatBox/components/QuoteModal';
+import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';

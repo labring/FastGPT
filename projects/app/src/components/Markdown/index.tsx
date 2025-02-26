@@ -31,6 +31,7 @@ type Props = {
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
+  isUpdatedQuote?: boolean;
 };
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -41,7 +42,13 @@ const Markdown = (props: Props) => {
 
   return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
 };
-const MarkdownRender = ({ source = '', showAnimation, isDisabled, forbidZhFormat }: Props) => {
+const MarkdownRender = ({
+  source = '',
+  showAnimation,
+  isDisabled,
+  forbidZhFormat,
+  isUpdatedQuote
+}: Props) => {
   const components = useMemo<any>(
     () => ({
       img: Image,
@@ -66,6 +73,7 @@ const MarkdownRender = ({ source = '', showAnimation, isDisabled, forbidZhFormat
       <ReactMarkdown
         className={`markdown ${styles.markdown}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${isUpdatedQuote ? `${styles.updatedQuote}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
         rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
