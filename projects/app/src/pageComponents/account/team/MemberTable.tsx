@@ -101,6 +101,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     {
       onSuccess() {
         refetchTeams();
+        refetchMembers();
       },
       errorToast: t('account_team:user_team_leave_team_failed')
     }
