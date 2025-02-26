@@ -40,6 +40,19 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
+  history: {
+    type: [
+      {
+        q: String,
+        a: String,
+        updateTime: Date,
+        currentChatItemId: String
+      }
+    ]
+  },
+  currentChatItemId: {
+    type: String
+  },
   indexes: {
     type: [
       {
