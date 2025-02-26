@@ -34,6 +34,7 @@ import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
+const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
 
 const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
   const { t } = useTranslation();
@@ -72,6 +73,8 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       refreshChannelList();
     }
   });
+
+  const [testModels, setTestModels] = useState<string[]>();
 
   const isLoading =
     loadingChannelList ||
@@ -159,6 +162,11 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           {
                             label: '',
                             children: [
+                              {
+                                icon: 'core/chat/sendLight',
+                                label: t('account_model:model_test'),
+                                onClick: () => setTestModels(item.models)
+                              },
                               ...(item.status === ChannelStatusEnum.ChannelStatusEnabled
                                 ? [
                                     {
@@ -214,6 +222,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           onSuccess={refreshChannelList}
         />
       )}
+      {!!testModels && <ModelTest models={testModels} onClose={() => setTestModels(undefined)} />}
     </>
   );
 };

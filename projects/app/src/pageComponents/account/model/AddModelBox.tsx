@@ -324,12 +324,7 @@ export const ModelEditModal = ({
                       <Td>{t('common:core.chat.response.module maxToken')}</Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput
-                            register={register}
-                            isRequired
-                            name="maxResponse"
-                            {...InputStyles}
-                          />
+                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
                         </Flex>
                       </Td>
                     </Tr>
@@ -339,7 +334,6 @@ export const ModelEditModal = ({
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
                             register={register}
-                            isRequired
                             name="maxTemperature"
                             step={0.1}
                             {...InputStyles}

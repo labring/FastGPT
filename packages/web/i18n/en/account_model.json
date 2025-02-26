@@ -29,12 +29,18 @@
   "mapping_tip": "A valid Json is required. \nThe model can be mapped when sending a request to the actual address. \nFor example:\n{\n  \n  \"gpt-4o\": \"gpt-4o-test\"\n\n}\n\nWhen FastGPT requests the gpt-4o model, the gpt-4o-test model is sent to the actual address, instead of gpt-4o.",
   "model": "Model",
   "model_name": "Model name",
+  "model_test": "Model testing",
   "model_tokens": "Input/Output tokens",
   "request_at": "Request time",
+  "request_duration": "Request duration: {{duration}}s",
+  "running_test": "In testing",
   "search_model": "Search for models",
   "select_channel": "Select a channel name",
   "select_model": "Select a model",
   "select_model_placeholder": "Select the model available under this channel",
   "select_provider_placeholder": "Search for manufacturers",
-  "selected_model_empty": "Choose at least one model"
+  "selected_model_empty": "Choose at least one model",
+  "start_test": "Start testing {{num}} models",
+  "test_failed": "There are {{num}} models that report errors",
+  "waiting_test": "Waiting for testing"
 }
