@@ -23,7 +23,7 @@ weight: 744
 
 {{% alert icon=" " context="info" %}}
 - [SiliconCloud(硅基流动)](https://cloud.siliconflow.cn/i/TR9Ym0c4): 提供开源模型调用的平台。
-- [Sealos AIProxy](https://hzh.sealos.run/?openapp=system-aiproxy): 提供国内各家模型代理，无需逐一申请 api。
+- [Sealos AIProxy](https://cloud.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy): 提供国内各家模型代理，无需逐一申请 api。
 {{% /alert %}}
 
 在 OneAPI 配置好模型后，你就可以打开 FastGPT 页面，启用对应模型了。
