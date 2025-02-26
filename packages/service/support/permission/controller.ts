@@ -178,7 +178,7 @@ export const getClbsAndGroupsWithInfo = async ({
   ]);
 
 export const delResourcePermissionById = (id: string) => {
-  return MongoResourcePermission.findByIdAndRemove(id);
+  return MongoResourcePermission.findByIdAndDelete(id);
 };
 export const delResourcePermission = ({
   session,
