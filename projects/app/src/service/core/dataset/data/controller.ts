@@ -163,7 +163,8 @@ export async function updateData2Dataset({
   q = '',
   a,
   indexes,
-  model
+  model,
+  chatItemId
 }: UpdateDatasetDataProps & { model: string }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
@@ -220,11 +221,7 @@ export async function updateData2Dataset({
     }
   }
 
-  // 4. Update mongo updateTime(便于脏数据检查器识别)
-  mongoData.updateTime = new Date();
-  await mongoData.save();
-
-  // 5. Insert vector
+  // insert vector
   const insertResult = await Promise.all(
     patchResult
       .filter((item) => item.type === 'create' || item.type === 'update')
@@ -251,9 +248,25 @@ export async function updateData2Dataset({
 
   // console.log(clonePatchResult2Insert);
   await mongoSessionRun(async (session) => {
-    // Update MongoData
+    // update mongo other data
+    mongoData.history =
+      q !== mongoData.q || a !== mongoData.a
+        ? [
+            {
+              q: mongoData.q,
+              a: mongoData.a,
+              updateTime: mongoData.updateTime,
+              currentChatItemId: mongoData.currentChatItemId
+            },
+            ...(mongoData.history?.slice(0, 9) || [])
+          ]
+        : mongoData.history;
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
+    mongoData.currentChatItemId = chatItemId || '';
+    // FullText tmp
+    // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
+    // @ts-ignore
     mongoData.indexes = newIndexes;
     await mongoData.save({ session });
 
@@ -276,6 +289,10 @@ export async function updateData2Dataset({
       });
     }
   });
+
+  // Update mongo updateTime(便于脏数据检查器识别)
+  mongoData.updateTime = new Date();
+  await mongoData.save();
 
   return {
     tokens
