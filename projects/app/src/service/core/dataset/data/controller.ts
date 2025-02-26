@@ -134,7 +134,8 @@ export async function updateData2Dataset({
   q = '',
   a,
   indexes,
-  model
+  model,
+  chatItemId
 }: UpdateDatasetDataProps & { model: string }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
@@ -207,10 +208,6 @@ export async function updateData2Dataset({
     }
   }
 
-  // update mongo updateTime
-  mongoData.updateTime = new Date();
-  await mongoData.save();
-
   // insert vector
   const clonePatchResult2Insert: PatchIndexesProps[] = JSON.parse(JSON.stringify(patchResult));
   const insertResult = await Promise.all(
@@ -240,8 +237,21 @@ export async function updateData2Dataset({
       .filter((item) => item.type !== 'delete')
       .map((item) => item.index);
     // update mongo other data
+    mongoData.history =
+      q !== mongoData.q || a !== mongoData.a
+        ? [
+            {
+              q: mongoData.q,
+              a: mongoData.a,
+              updateTime: mongoData.updateTime,
+              currentChatItemId: mongoData.currentChatItemId
+            },
+            ...(mongoData.history?.slice(0, 9) || [])
+          ]
+        : mongoData.history;
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
+    mongoData.currentChatItemId = chatItemId || '';
     // FullText tmp
     // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
     // @ts-ignore
@@ -267,6 +277,10 @@ export async function updateData2Dataset({
       });
     }
   });
+
+  // update mongo updateTime
+  mongoData.updateTime = new Date();
+  await mongoData.save();
 
   return {
     tokens

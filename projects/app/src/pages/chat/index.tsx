@@ -36,6 +36,7 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -58,6 +59,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -144,7 +147,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar>{Children}</SideBar>
+      <SideBar externalFolded={!!quoteData} setExternalFolded={() => setQuoteData(undefined)}>
+        {Children}
+      </SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -157,7 +162,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [appId, isOpenSlider, isPc, onCloseSlider, t]);
+  }, [t, isPc, appId, quoteData, isOpenSlider, onCloseSlider, setQuoteData]);
 
   return (
     <Flex h={'100%'}>
@@ -169,7 +174,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
+      <PageContainer
+        isLoading={loading}
+        flex={'1 0 0'}
+        w={0}
+        p={[0, '16px']}
+        pr={quoteData ? '8px !important' : '16px'}
+        position={'relative'}
+      >
         <Flex h={'100%'} flexDirection={['column', 'row']}>
           {/* pc always show history. */}
           {RenderHistorySlider}
@@ -215,6 +227,16 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           </Flex>
         </Flex>
       </PageContainer>
+      {quoteData && (
+        <PageContainer w={['full', '588px']} insertProps={{ bg: 'white' }}>
+          <ChatQuoteList
+            chatTime={quoteData.chatTime}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
+          />
+        </PageContainer>
+      )}
     </Flex>
   );
 };
@@ -278,6 +300,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showRouteToAppDetail={isStandalone !== '1'}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
+        isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>

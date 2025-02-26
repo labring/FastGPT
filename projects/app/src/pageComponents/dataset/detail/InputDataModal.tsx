@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, Button, Textarea, useTheme, Grid, HStack } from '@chakra-ui/react';
 import {
-  Control,
   FieldArrayWithId,
   UseFieldArrayAppend,
   UseFieldArrayRemove,
@@ -12,7 +11,6 @@ import {
 import {
   postInsertData2Dataset,
   putDatasetDataById,
-  delOneDatasetDataById,
   getDatasetCollectionById,
   getDatasetDataItemById
 } from '@/web/core/dataset/api';
@@ -53,12 +51,14 @@ enum TabEnum {
 const InputDataModal = ({
   collectionId,
   dataId,
+  chatItemId,
   defaultValue,
   onClose,
   onSuccess
 }: {
   collectionId: string;
   dataId?: string;
+  chatItemId?: string;
   defaultValue?: { q: string; a?: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
@@ -213,15 +213,16 @@ const InputDataModal = ({
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:common.error.unKnow'));
+      console.log(chatItemId);
 
-      // not exactly same
       await putDatasetDataById({
         dataId,
         ...e,
         indexes:
           e.indexes?.map((index) =>
             index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a, dataId: index.dataId }) : index
-          ) || []
+          ) || [],
+        chatItemId
       });
 
       return {
