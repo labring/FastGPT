@@ -64,7 +64,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
 export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   const [{ standardConstants }, appCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
-    MongoApp.count({
+    MongoApp.countDocuments({
       teamId,
       type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
     })

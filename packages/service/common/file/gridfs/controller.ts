@@ -18,10 +18,10 @@ export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
   MongoChatFileSchema;
 
-  return connectionMongo.connection.db.collection(`${bucket}.files`);
+  return connectionMongo.connection.db!.collection(`${bucket}.files`);
 }
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
-  return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db, {
+  return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
     bucketName: bucket,
     // @ts-ignore
     readPreference: ReadPreference.SECONDARY_PREFERRED // Read from secondary node
