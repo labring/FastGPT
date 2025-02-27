@@ -38,10 +38,12 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
     schema.post(op, function (this: any, result: any, next) {
       if (this._startTime) {
         const duration = Date.now() - this._startTime;
-
         const warnLogData = {
-          query: this._query,
-          op,
+          collectionName: this.collection?.name,
+          op: this.op,
+          ...(this._query && { query: this._query }),
+          ...(this._update && { update: this._update }),
+          ...(this._delete && { delete: this._delete }),
           duration
         };
 

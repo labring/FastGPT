@@ -42,7 +42,7 @@ const TTSSelect = ({
           label: (
             <HStack>
               <Avatar borderRadius={'0'} w={'1.25rem'} src={providerData.avatar} />
-              <Box>{t(providerData.name)}</Box>
+              <Box>{t(model.name as any)}</Box>
             </HStack>
           ),
           value: model.model,
