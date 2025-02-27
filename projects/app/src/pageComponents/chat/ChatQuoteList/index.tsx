@@ -1,20 +1,17 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import { ChatBoxContext } from '@/components/core/chat/ChatContainer/ChatBox/Provider';
 import {
   getCollectionSource,
-  getDatasetDataList,
-  getDatasetDataPermission
+  getDatasetDataPermission,
+  getLinkedDatasetData
 } from '@/web/core/dataset/api';
-import { Box, Button, Flex } from '@chakra-ui/react';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { GetDatasetDataListProps } from '@/pages/api/core/dataset/data/v2/list';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import { downloadFetch } from '@/web/common/system/utils';
 import { ChatItemContext, metadataType } from '@/web/core/chat/context/chatItemContext';
@@ -22,9 +19,12 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import ScoreTag from './ScoreTag';
 import QuoteItem from './ChatQuoteItem';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 
 const ChatQuoteList = ({
   chatTime,
@@ -41,6 +41,7 @@ const ChatQuoteList = ({
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
   const router = useRouter();
+  const containerRef = useRef<HTMLDivElement>(null);
   const quoteRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const { collectionId, datasetId, chatItemId, sourceId, sourceName } = metadata || {};
@@ -91,48 +92,103 @@ const ChatQuoteList = ({
 
   const currentQuoteItem = filterResults[quoteIndex];
 
-  const params = useMemo(
-    () =>
-      isFullTextReader
-        ? {
-            collectionId,
-            chatTime,
-            chatItemId,
-            shareId,
-            outLinkUid
-          }
-        : {
-            datasetDataIdList: filterResults.map((item) => item.id),
-            shareId,
-            outLinkUid
-          },
-    [isFullTextReader, filterResults, shareId, outLinkUid, collectionId, chatTime, chatItemId]
+  const getApiParams = useCallback(
+    (
+      options: {
+        initialId?: string;
+        anchorId?: string;
+        direction?: 'prev' | 'next';
+      } = {}
+    ) => {
+      const baseParams = {
+        pageSize: 15,
+        ...options
+      };
+
+      if (isFullTextReader) {
+        return {
+          ...baseParams,
+          collectionId,
+          chatTime,
+          chatItemId,
+          shareId,
+          outLinkUid
+        };
+      } else {
+        return {
+          ...baseParams,
+          datasetDataIdList: filterResults.map((item) => item.id),
+          shareId,
+          outLinkUid
+        };
+      }
+    },
+    [isFullTextReader, collectionId, chatTime, chatItemId, shareId, outLinkUid, filterResults]
+  );
+
+  // API 请求处理函数
+  const handleFetchInitial = useCallback(
+    async (initialId: string) => {
+      if (!isFullTextReader && (!filterResults.length || isPermissionLoading)) {
+        return { list: [], hasMorePrev: false, hasMoreNext: false };
+      }
+      const params = getApiParams({ initialId });
+      return await getLinkedDatasetData(params);
+    },
+    [getApiParams, isFullTextReader, filterResults, isPermissionLoading]
+  );
+
+  const handleFetchPrev = useCallback(
+    async (anchorId: string) => {
+      const params = getApiParams({ anchorId, direction: 'prev' });
+      return await getLinkedDatasetData(params);
+    },
+    [getApiParams]
+  );
+
+  const handleFetchNext = useCallback(
+    async (anchorId: string) => {
+      const params = getApiParams({ anchorId, direction: 'next' });
+      return await getLinkedDatasetData(params);
+    },
+    [getApiParams]
   );
 
   const {
-    data: datasetDataList,
-    ScrollData,
+    dataList: datasetDataList,
     isLoading,
-    refreshList,
-    fetchData
-  } = useScrollPagination(
-    async (data: GetDatasetDataListProps) => {
-      if (!permissionData && isOutlink && datasetId) {
-        return { list: [], total: 0 };
-      }
-      return await getDatasetDataList(data);
-    },
-    {
-      pageSize: 15,
-      params,
-      refreshDeps: [collectionId, chatTime, permissionData, isFullTextReader]
+    loadData,
+    initialLoadDone,
+    suppressScroll,
+    navigateToItem,
+    resetScrollState,
+    resetLoadState
+  } = useLinkedScroll({
+    containerRef,
+    itemRefs: quoteRefs,
+    fetchInitialData: handleFetchInitial,
+    fetchPrevData: isFullTextReader ? handleFetchPrev : undefined,
+    fetchNextData: isFullTextReader ? handleFetchNext : undefined,
+    initialId: currentQuoteItem?.id,
+    canLoadData: !isPermissionLoading,
+    dependencies: [collectionId]
+  });
+
+  useEffect(() => {
+    setQuoteIndex(0);
+    resetLoadState();
+  }, [collectionId, resetLoadState]);
+
+  useEffect(() => {
+    if (initialLoadDone && currentQuoteItem && !suppressScroll) {
+      navigateToItem(currentQuoteItem.id);
     }
-  );
+  }, [quoteIndex, initialLoadDone, currentQuoteItem, navigateToItem, suppressScroll]);
 
   const formatedDataList = useMemo(() => {
     if (isFullTextReader) {
       return datasetDataList.map((item) => {
-        const isCurrentSelected = currentQuoteItem.id === item._id;
+        const isCurrentSelected = currentQuoteItem?.id === item._id;
         const quoteIndex = filterResults.findIndex((res) => res.id === item._id);
 
         return {
@@ -165,33 +221,14 @@ const ChatQuoteList = ({
             score
           };
         })
-        .filter((item) => !!item)
+        .filter(Boolean)
         .sort((a, b) => {
           return (b.score.primaryScore?.value || 0) - (a.score.primaryScore?.value || 0);
         });
     }
-  }, [datasetDataList, filterResults, currentQuoteItem.id, isFullTextReader]);
+  }, [datasetDataList, filterResults, currentQuoteItem?.id, isFullTextReader]);
 
-  const scrollToQuote = useCallback(
-    async (index: number) => {
-      const currentQuoteItem = filterResults[index];
-      const dataIndex = datasetDataList.findIndex((item) => item._id === currentQuoteItem.id);
-
-      if (dataIndex !== -1) {
-        quoteRefs.current[dataIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        // 如果没有找到对应的数据，尝试加载更多数据
-        await fetchData();
-      }
-    },
-    [filterResults, datasetDataList]
-  );
-
-  useEffect(() => {
-    scrollToQuote(quoteIndex);
-  }, [quoteIndex, scrollToQuote]);
-
-  const { runAsync: handleDownload, loading } = useRequest2(async () => {
+  const { runAsync: handleDownload, loading: downloadLoading } = useRequest2(async () => {
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
       filename: 'parsed_content.md',
@@ -287,7 +324,7 @@ const ChatQuoteList = ({
                   canAccessRawData={canAccessRawData}
                   onDownload={handleDownload}
                   onRead={handleRead}
-                  isLoading={loading}
+                  isLoading={downloadLoading}
                 />
               )}
             </Flex>
@@ -333,7 +370,7 @@ const ChatQuoteList = ({
           </Flex>
 
           {/* 检索分数 */}
-          <ScoreTag {...formatScore(currentQuoteItem.score)} />
+          <ScoreTag {...formatScore(currentQuoteItem?.score)} />
 
           <Box flex={1} />
 
@@ -342,43 +379,56 @@ const ChatQuoteList = ({
             <NavButton
               direction="up"
               isDisabled={quoteIndex === 0}
-              onClick={() => setQuoteIndex(quoteIndex - 1)}
+              onClick={() => {
+                resetScrollState();
+                setQuoteIndex(quoteIndex - 1);
+              }}
             />
             <NavButton
               direction="down"
               isDisabled={quoteIndex === filterResults.length - 1}
-              onClick={() => setQuoteIndex(quoteIndex + 1)}
+              onClick={() => {
+                resetScrollState();
+                setQuoteIndex(quoteIndex + 1);
+              }}
             />
           </Flex>
         </Flex>
       )}
 
       {/* quote list */}
-      <Box flex={'1 0 0'} overflowY="auto" mt={2}>
-        <ScrollData px={5} py={1} isLoading={isLoading || isPermissionLoading}>
-          <Flex flexDir={'column'} gap={3}>
-            {formatedDataList.map((item, index) => {
-              return (
-                <QuoteItem
-                  key={index}
-                  index={index}
-                  item={item}
-                  setQuoteIndex={setQuoteIndex}
-                  quoteRefs={quoteRefs}
-                  isCurrentSelected={item.isCurrentSelected}
-                  quoteIndex={item.quoteIndex}
-                  chatItemId={chatItemId}
-                  score={item.score}
-                  icon={item.icon}
-                  isFullTextReader={isFullTextReader}
-                  canEditData={hasWritePer}
-                  refreshList={refreshList}
-                />
-              );
-            })}
-          </Flex>
-        </ScrollData>
-      </Box>
+      <MyBox
+        ref={containerRef}
+        flex={'1 0 0'}
+        overflowY="auto"
+        mt={2}
+        px={5}
+        py={1}
+        isLoading={isLoading || isPermissionLoading}
+      >
+        <Flex flexDir={'column'} gap={3}>
+          {formatedDataList.map((item, index) => (
+            <QuoteItem
+              key={index}
+              index={index}
+              item={item}
+              setQuoteIndex={(newIndex) => {
+                resetScrollState();
+                setQuoteIndex(newIndex);
+              }}
+              quoteRefs={quoteRefs}
+              isCurrentSelected={item.isCurrentSelected}
+              quoteIndex={item.quoteIndex}
+              chatItemId={chatItemId}
+              score={item.score}
+              icon={item.icon}
+              isFullTextReader={isFullTextReader}
+              canEditData={hasWritePer}
+              refreshList={() => currentQuoteItem?.id && loadData(currentQuoteItem.id)}
+            />
+          ))}
+        </Flex>
+      </MyBox>
     </Flex>
   );
 };
