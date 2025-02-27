@@ -67,6 +67,10 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
+import {
+  GetLinkedDatasetDataProps,
+  GetLinkedDatasetDataRes
+} from '@/pages/api/core/dataset/data/linkedList';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -184,6 +188,9 @@ export const getScrollCollectionList = (data: GetScrollCollectionsProps) =>
 /* get dataset list */
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
   POST<GetDatasetDataListRes>(`/core/dataset/data/v2/list`, data);
+
+export const getLinkedDatasetData = (data: GetLinkedDatasetDataProps) =>
+  POST<GetLinkedDatasetDataRes>(`/core/dataset/data/linkedList`, data);
 
 export const getDatasetDataPermission = (id?: string) =>
   GET<GetQuotePermissionResponse>(`/core/dataset/data/getPermission`, { id });
