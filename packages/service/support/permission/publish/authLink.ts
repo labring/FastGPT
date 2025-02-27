@@ -1,5 +1,5 @@
 import { AppDetailType } from '@fastgpt/global/core/app/type';
-import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { OutlinkAppType, OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import { parseHeaderCert } from '../controller';
 import { MongoOutLink } from '../../outLink/schema';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
@@ -54,11 +54,15 @@ export async function authOutLinkCrud({
 }
 
 /* outLink exist and it app exist */
-export async function authOutLinkValid({ shareId }: { shareId?: string }) {
+export async function authOutLinkValid<T extends OutlinkAppType = any>({
+  shareId
+}: {
+  shareId?: string;
+}) {
   if (!shareId) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
-  const outLinkConfig = await MongoOutLink.findOne({ shareId }).lean();
+  const outLinkConfig = await MongoOutLink.findOne({ shareId }).lean<OutLinkSchema<T>>();
 
   if (!outLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
@@ -66,6 +70,6 @@ export async function authOutLinkValid({ shareId }: { shareId?: string }) {
 
   return {
     appId: outLinkConfig.appId,
-    outLinkConfig
+    outLinkConfig: outLinkConfig
   };
 }
