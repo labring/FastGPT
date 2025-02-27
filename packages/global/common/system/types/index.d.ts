@@ -54,6 +54,7 @@ export type FastGPTFeConfigsType = {
   show_promotion?: boolean;
   show_team_chat?: boolean;
   show_compliance_copywriting?: boolean;
+  show_aiproxy?: boolean;
   concatMd?: string;
 
   docUrl?: string;

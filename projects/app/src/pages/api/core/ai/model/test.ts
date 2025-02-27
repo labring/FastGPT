@@ -60,6 +60,7 @@ const testLLMModel = async (model: LLMModelItemType) => {
   const ai = getAIApi({
     timeout: 10000
   });
+
   const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
