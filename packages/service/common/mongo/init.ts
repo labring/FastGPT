@@ -16,7 +16,7 @@ export async function connectMongo(): Promise<Mongoose> {
 
   console.log('mongo start connect');
   try {
-    connectionMongo.set('strictQuery', true);
+    connectionMongo.set('strictQuery', false);
 
     connectionMongo.connection.on('error', async (error) => {
       console.log('mongo error', error);
