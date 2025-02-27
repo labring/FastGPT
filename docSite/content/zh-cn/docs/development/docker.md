@@ -201,6 +201,8 @@ docker restart oneapi
 
 在OneApi中添加合适的AI模型渠道。[点击查看相关教程](/docs/development/modelconfig/one-api/)
 
+只需要添加模型即可，模板已经配置好了oneapi的连接地址和令牌，无需变更。
+
 ### 5. 访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
@@ -211,7 +213,7 @@ docker restart oneapi
 
 ### 6. 配置模型
 
-务必先配置至少一组模型，否则系统无法正常使用。
+登录FastGPT后，进入模型配置页面，务必先配置至少一个语言模型和一个向量模型，否则系统无法正常使用。
 
 [点击查看模型配置教程](/docs/development/modelConfig/intro/)
 
