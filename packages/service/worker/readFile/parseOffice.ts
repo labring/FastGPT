@@ -46,11 +46,9 @@ const parsePowerPoint = async ({
   // Returning an array of all the xml contents read using fs.readFileSync
   const xmlContentArray = await Promise.all(
     files.map((file) => {
-      try {
-        return fs.promises.readFile(`${decompressPath}/${file.path}`, encoding);
-      } catch (err) {
+      return fs.promises.readFile(`${decompressPath}/${file.path}`, encoding).catch(() => {
         return fs.promises.readFile(`${decompressPath}/${file.path}`, 'utf-8');
-      }
+      });
     })
   );
 
