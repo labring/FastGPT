@@ -178,7 +178,7 @@ export const useAudioPlay = (
 
               await new Promise((resolve) => {
                 sourceBuffer.onupdateend = resolve;
-                sourceBuffer.appendBuffer(value.buffer);
+                sourceBuffer.appendBuffer(value.buffer as any);
               });
             }
           } catch (error) {
@@ -311,7 +311,7 @@ export const useAudioPlay = (
 
             await new Promise((resolve) => {
               buffer.onupdateend = resolve;
-              buffer.appendBuffer(value.buffer);
+              buffer.appendBuffer(value.buffer as any);
             });
           }
         } catch (error) {
