@@ -118,7 +118,7 @@ brew install orbstack
 非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载配置文件和对应版本的`docker-compose.yml`，在这个文件夹中依据下载的配置文件运行docker，若作为本地开发使用推荐`docker-compose-pgvector`版本，并且自行拉取并运行`sandbox`和`fastgpt`，并在docker配置文件中注释掉`sandbox`和`fastgpt`的部分
 
 - [config.json](https://raw.githubusercontent.com/labring/FastGPT/refs/heads/main/projects/app/data/config.json)
-- [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/files/docker) (注意，不同向量库版本的文件不一样)
+- [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/deploy/docker) (注意，不同向量库版本的文件不一样)
 
 {{% alert icon="🤖" context="success" %}}
 
@@ -134,11 +134,11 @@ cd fastgpt
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 
 # pgvector 版本(测试推荐，简单快捷)
-curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-pgvector.yml
+curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml
 # milvus 版本
-# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-milvus.yml
+# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-milvus.yml
 # zilliz 版本
-# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-zilliz.yml
+# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-zilliz.yml
 ```
 
 ### 2. 修改环境变量
