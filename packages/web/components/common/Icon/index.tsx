@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { IconProps } from '@chakra-ui/react';
 import { Box, Icon } from '@chakra-ui/react';
 import { iconPaths } from './constants';
@@ -8,7 +8,7 @@ import { useRefresh } from '../../../hooks/useRefresh';
 const iconCache: Record<string, any> = {};
 
 const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType } & IconProps) => {
-  const { refresh } = useRefresh();
+  const [, setUpdate] = useState(0);
 
   useEffect(() => {
     if (iconCache[name]) {
@@ -20,7 +20,7 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
         const component = { as: icon.default };
         // Store in cache
         iconCache[name] = component;
-        refresh();
+        setUpdate((prev) => prev + 1); // force update
       })
       .catch((error) => console.log(error));
   }, [name]);

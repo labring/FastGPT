@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { request } from 'https';
+import { request as httpsRequest } from 'https';
+import { request as httpRequest } from 'http';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 
 const baseUrl = process.env.AIPROXY_API_ENDPOINT;
@@ -30,7 +31,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     delete req.headers?.host;
     delete req.headers?.origin;
 
-    const requestResult = request({
+    // Select request function based on protocol
+    const requestFn = parsedUrl.protocol === 'https:' ? httpsRequest : httpRequest;
+
+    const requestResult = requestFn({
       protocol: parsedUrl.protocol,
       hostname: parsedUrl.hostname,
       port: parsedUrl.port,

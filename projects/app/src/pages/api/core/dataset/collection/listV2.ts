@@ -14,6 +14,7 @@ import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 
 async function handler(
   req: NextApiRequest
@@ -115,7 +116,7 @@ async function handler(
     { _id: string; count: number }[],
     { _id: string; count: number }[]
   ] = await Promise.all([
-    MongoDatasetCollection.aggregate(
+    MongoDatasetTraining.aggregate(
       [
         {
           $match: {
