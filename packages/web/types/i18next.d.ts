@@ -18,6 +18,7 @@ import workflow from '../i18n/zh-CN/workflow.json';
 import user from '../i18n/zh-CN/user.json';
 import chat from '../i18n/zh-CN/chat.json';
 import login from '../i18n/zh-CN/login.json';
+import account_model from '../i18n/zh-CN/account_model.json';
 
 export interface I18nNamespaces {
   common: typeof common;
@@ -39,6 +40,7 @@ export interface I18nNamespaces {
   account: typeof account;
   account_team: typeof account_team;
   account_thirdParty: typeof account_thirdParty;
+  account_model: typeof account_model;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];
@@ -73,7 +75,8 @@ declare module 'i18next' {
       'account_promotion',
       'account_thirdParty',
       'account',
-      'account_team'
+      'account_team',
+      'account_model'
     ];
     resources: I18nNamespaces;
   }

@@ -100,6 +100,13 @@ const DateRangePicker = ({
               if (date?.to === undefined) {
                 date.to = date.from;
               }
+
+              if (date?.from) {
+                date.from = new Date(date.from.setHours(0, 0, 0, 0));
+              }
+              if (date?.to) {
+                date.to = new Date(date.to.setHours(23, 59, 59, 999));
+              }
               setRange(date);
               onChange?.(date);
             }}

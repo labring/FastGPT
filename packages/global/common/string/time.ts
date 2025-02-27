@@ -7,12 +7,14 @@ import { i18nT } from '../../../web/i18n/utils';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export const formatTime2YMDHMW = (time?: Date) => dayjs(time).format('YYYY-MM-DD HH:mm:ss dddd');
-export const formatTime2YMDHMS = (time?: Date) =>
+export const formatTime2YMDHMW = (time?: Date | number) =>
+  dayjs(time).format('YYYY-MM-DD HH:mm:ss dddd');
+export const formatTime2YMDHMS = (time?: Date | number) =>
   time ? dayjs(time).format('YYYY-MM-DD HH:mm:ss') : '';
-export const formatTime2YMDHM = (time?: Date) =>
+export const formatTime2YMDHM = (time?: Date | number) =>
   time ? dayjs(time).format('YYYY-MM-DD HH:mm') : '';
-export const formatTime2YMD = (time?: Date) => (time ? dayjs(time).format('YYYY-MM-DD') : '');
+export const formatTime2YMD = (time?: Date | number) =>
+  time ? dayjs(time).format('YYYY-MM-DD') : '';
 export const formatTime2HM = (time: Date = new Date()) => dayjs(time).format('HH:mm');
 
 /**

@@ -10,8 +10,9 @@ import React from 'react';
 import MyIcon from '../../Icon';
 import { UseFormRegister } from 'react-hook-form';
 
-type Props = Omit<NumberInputProps, 'onChange'> & {
+type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   onChange?: (e?: number) => any;
+  onBlur?: (e?: number) => any;
   placeholder?: string;
   register?: UseFormRegister<any>;
   name?: string;
@@ -19,11 +20,21 @@ type Props = Omit<NumberInputProps, 'onChange'> & {
 };
 
 const MyNumberInput = (props: Props) => {
-  const { register, name, onChange, placeholder, bg, ...restProps } = props;
+  const { register, name, onChange, onBlur, placeholder, bg, ...restProps } = props;
 
   return (
     <NumberInput
       {...restProps}
+      onBlur={(e) => {
+        if (!onBlur) return;
+        const numE = Number(e.target.value);
+        if (isNaN(numE)) {
+          // @ts-ignore
+          onBlur('');
+        } else {
+          onBlur(numE);
+        }
+      }}
       onChange={(e) => {
         if (!onChange) return;
         const numE = Number(e);
@@ -38,6 +49,8 @@ const MyNumberInput = (props: Props) => {
       <NumberInputField
         bg={bg}
         placeholder={placeholder}
+        h={restProps.h}
+        defaultValue={restProps.defaultValue}
         {...(register && name
           ? register(name, {
               required: props.isRequired,

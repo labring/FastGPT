@@ -98,7 +98,6 @@ const MultipleSelect = <T = any,>({
           return (
             <MenuItem
               key={i}
-              {...menuItemStyles}
               {...(isSelected
                 ? {
                     color: 'primary.600'
@@ -114,6 +113,7 @@ const MultipleSelect = <T = any,>({
               whiteSpace={'pre-wrap'}
               fontSize={'sm'}
               gap={2}
+              {...menuItemStyles}
             >
               <Checkbox isChecked={isSelected} />
               {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
@@ -204,6 +204,7 @@ const MultipleSelect = <T = any,>({
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
+                              e.preventDefault();
                               onclickItem(item.value);
                             }}
                           />
@@ -230,7 +231,6 @@ const MultipleSelect = <T = any,>({
           overflowY={'auto'}
         >
           <MenuItem
-            {...menuItemStyles}
             color={isSelectAll ? 'primary.600' : 'myGray.900'}
             onClick={(e) => {
               e.stopPropagation();
@@ -241,6 +241,7 @@ const MultipleSelect = <T = any,>({
             fontSize={'sm'}
             gap={2}
             mb={1}
+            {...menuItemStyles}
           >
             <Checkbox isChecked={isSelectAll} />
             <Box flex={'1 0 0'}>{t('common:common.All')}</Box>
