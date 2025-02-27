@@ -353,7 +353,7 @@ function EditLinkModal({
               <Flex alignItems={'center'} mt={4}>
                 <Flex flex={'0 0 90px'} alignItems={'center'}>
                   <FormLabel>QPM</FormLabel>
-                  <QuestionTip ml={1} label={publishT('qpm_tips' || '')}></QuestionTip>
+                  <QuestionTip ml={1} label={publishT('qpm_tips')}></QuestionTip>
                 </Flex>
                 <Input
                   max={1000}
@@ -418,7 +418,7 @@ function EditLinkModal({
               <FormLabel>{t('common:support.outlink.share.Response Quote')}</FormLabel>
               <QuestionTip
                 ml={1}
-                label={t('common:support.outlink.share.Response Quote tips' || '')}
+                label={t('common:support.outlink.share.Response Quote tips')}
               ></QuestionTip>
             </Flex>
             <Switch {...register('responseDetail')} isChecked={responseDetail} />
@@ -428,7 +428,7 @@ function EditLinkModal({
               <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
               <QuestionTip
                 ml={1}
-                label={t('common:support.outlink.share.show_complete_quote_tips' || '')}
+                label={t('common:support.outlink.share.show_complete_quote_tips')}
               ></QuestionTip>
             </Flex>
             <Switch
