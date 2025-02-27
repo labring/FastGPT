@@ -157,8 +157,7 @@ async function handler(
       }
     )
   ]);
-  console.log(trainingAmount);
-  console.log(dataAmount);
+
   const list = await Promise.all(
     collections.map(async (item) => ({
       ...item,
