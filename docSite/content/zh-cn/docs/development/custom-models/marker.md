@@ -19,7 +19,7 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 
 ### 1. 按照 Marker
 
-参考文档 [Marker 安装教程](https://github.com/labring/FastGPT/tree/main/python/pdf-marker)，安装 Marker 模型。封装的 API 已经适配了 FastGPT 自定义解析服务。
+参考文档 [Marker 安装教程](https://github.com/labring/FastGPT/tree/main/plugins/model/pdf-marker)，安装 Marker 模型。封装的 API 已经适配了 FastGPT 自定义解析服务。
 
 这里介绍快速 Docker 安装的方法：
 
