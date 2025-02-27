@@ -5,7 +5,6 @@ import {
   delOneDatasetDataById,
   getDatasetCollectionById
 } from '@/web/core/dataset/api';
-import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';

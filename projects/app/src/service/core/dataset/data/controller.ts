@@ -79,8 +79,18 @@ export async function insertData2Dataset({
     )
   );
 
-  // 2. Create mongo data
-  const [{ _id }] = await MongoDatasetData.create(
+  // Find the first node in the collection (head of the linked list)
+  const firstNode = await MongoDatasetData.findOne(
+    {
+      collectionId,
+      $or: [{ prevId: null }, { prevId: { $exists: false } }]
+    },
+    null,
+    { session }
+  );
+
+  // 2. Create mongo data with linked list pointers
+  const [newNode] = await MongoDatasetData.create(
     [
       {
         teamId,
@@ -89,8 +99,8 @@ export async function insertData2Dataset({
         collectionId,
         q,
         a,
-        // FullText tmp
-        // fullTextToken: jiebaSplit({ text: qaStr }),
+        prevId: null, // this is the new head node
+        nextId: firstNode ? firstNode._id : null, // link to the previous head node
         chunkIndex,
         indexes: indexes?.map((item, i) => ({
           ...item,
@@ -101,6 +111,11 @@ export async function insertData2Dataset({
     { session }
   );
 
+  // Update the previous head node to point to the new node
+  if (firstNode) {
+    await MongoDatasetData.findByIdAndUpdate(firstNode._id, { prevId: newNode._id }, { session });
+  }
+
   // 3. Create mongo data text
   await MongoDatasetDataText.create(
     [
@@ -108,7 +123,7 @@ export async function insertData2Dataset({
         teamId,
         datasetId,
         collectionId,
-        dataId: _id,
+        dataId: newNode._id,
         fullTextToken: jiebaSplit({ text: qaStr })
       }
     ],
@@ -116,7 +131,7 @@ export async function insertData2Dataset({
   );
 
   return {
-    insertId: _id,
+    insertId: newNode._id,
     tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
   };
 }
@@ -134,7 +149,8 @@ export async function updateData2Dataset({
   q = '',
   a,
   indexes,
-  model
+  model,
+  chatItemId
 }: UpdateDatasetDataProps & { model: string }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
@@ -207,10 +223,6 @@ export async function updateData2Dataset({
     }
   }
 
-  // update mongo updateTime
-  mongoData.updateTime = new Date();
-  await mongoData.save();
-
   // insert vector
   const clonePatchResult2Insert: PatchIndexesProps[] = JSON.parse(JSON.stringify(patchResult));
   const insertResult = await Promise.all(
@@ -240,8 +252,21 @@ export async function updateData2Dataset({
       .filter((item) => item.type !== 'delete')
       .map((item) => item.index);
     // update mongo other data
+    mongoData.history =
+      q !== mongoData.q || a !== mongoData.a
+        ? [
+            {
+              q: mongoData.q,
+              a: mongoData.a,
+              updateTime: mongoData.updateTime,
+              currentChatItemId: mongoData.currentChatItemId
+            },
+            ...(mongoData.history?.slice(0, 9) || [])
+          ]
+        : mongoData.history;
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
+    mongoData.currentChatItemId = chatItemId || '';
     // FullText tmp
     // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
     // @ts-ignore
@@ -268,6 +293,10 @@ export async function updateData2Dataset({
     }
   });
 
+  // update mongo updateTime
+  mongoData.updateTime = new Date();
+  await mongoData.save();
+
   return {
     tokens
   };
@@ -275,10 +304,21 @@ export async function updateData2Dataset({
 
 export const deleteDatasetData = async (data: DatasetDataItemType) => {
   await mongoSessionRun(async (session) => {
+    const nodeToDelete = await MongoDatasetData.findById(data.id).session(session);
+    if (!nodeToDelete) {
+      return;
+    }
+    const { prevId, nextId } = nodeToDelete;
+    if (prevId) {
+      await MongoDatasetData.findByIdAndUpdate(prevId, { nextId }, { session });
+    }
+    if (nextId) {
+      await MongoDatasetData.findByIdAndUpdate(nextId, { prevId }, { session });
+    }
     await MongoDatasetData.findByIdAndDelete(data.id, { session });
     await deleteDatasetDataVector({
       teamId: data.teamId,
-      idList: data.indexes.map((item) => item.dataId)
+      idList: nodeToDelete.indexes.map((item) => item.dataId)
     });
   });
 };

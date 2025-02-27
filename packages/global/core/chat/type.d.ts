@@ -133,6 +133,7 @@ export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemTy
 
 // Frontend type
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+  _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
