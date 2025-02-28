@@ -152,46 +152,21 @@ const checkInvalidData = async () => {
 
 // 删了data，没删 data_text
 const checkInvalidDataText = async () => {
-  const batchSize = 5000;
+  try {
+    const dataTexts = await MongoDatasetDataText.find({}, 'dataId').lean();
+    const dataIds = dataTexts.map((item) => String(item.dataId));
+    console.log('Total data_text dataIds:', dataIds.length);
 
-  let skip = 0;
-  let success = 0;
-  while (true) {
-    try {
-      const dataTexts = await MongoDatasetDataText.find({}).limit(batchSize).skip(skip).lean();
+    const datas = await MongoDatasetData.find({ _id: { $in: dataIds } }, '_id').lean();
+    const datasSet = new Set(datas.map((item) => String(item._id)));
+    console.log('Total data length:', datas.length);
 
-      if (dataTexts.length === 0) break;
-
-      const datas = await MongoDatasetData.find(
-        { _id: { $in: dataTexts.map((item) => item.dataId) } },
-        '_id'
-      ).lean();
-      const datasMap: Record<string, 1> = {};
-      for (const data of datas) {
-        datasMap[String(data._id)] = 1;
-      }
-
-      // 合并相同的 dataId
-      for await (const dataText of dataTexts) {
-        try {
-          const data = datasMap[String(dataText.dataId)];
-          if (!data) {
-            await retryFn(async () => {
-              await MongoDatasetDataText.deleteMany({ dataId: dataText.dataId });
-              console.log('清理无效的data_text', dataText.dataId);
-            });
-          }
-        } catch (error) {}
-      }
-
-      success += batchSize;
-      skip += batchSize;
-      console.log(`检测数据完成：${success}`);
-    } catch (error) {
-      console.log(error);
-      await delay(1000);
-    }
-  }
+    const unExistsSet = dataIds.filter((id) => !datasSet.has(id));
+    console.log('Total unExists dataIds:', unExistsSet.length);
+    await MongoDatasetDataText.deleteMany({
+      dataId: { $in: unExistsSet }
+    });
+  } catch (error) {}
 };
 
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
