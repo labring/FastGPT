@@ -109,14 +109,17 @@ const checkInvalidData = async () => {
 
       if (datas.length === 0) break;
 
+      // 批量获取集合
+      const collections = await MongoDatasetCollection.find(
+        { _id: { $in: datas.map((data) => data.collectionId) } },
+        '_id'
+      ).lean();
+      // 逐一删除无效的集合内容
       for await (const data of datas) {
         try {
           await retryFn(async () => {
-            const collectionExists = await MongoDatasetCollection.findById(
-              data.collectionId,
-              '_id'
-            ).lean();
-            if (!collectionExists) {
+            const col = collections.find((item) => String(item._id) === String(data.collectionId));
+            if (!col) {
               console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
               await retryFn(async () => {
                 await MongoDatasetTraining.deleteMany({
@@ -159,7 +162,7 @@ const checkInvalidData = async () => {
 
 // 删了data，没删 data_text
 const checkInvalidDataText = async () => {
-  const batchSize = 500;
+  const batchSize = 1000;
 
   let skip = 0;
   let success = 0;
@@ -181,16 +184,20 @@ const checkInvalidDataText = async () => {
 
       if (dataTexts.length === 0) break;
 
+      const datas = await MongoDatasetData.find(
+        { _id: { $in: dataTexts.map((item) => item.dataId) } },
+        '_id'
+      ).lean();
       // 合并相同的 dataId
       for await (const dataText of dataTexts) {
         try {
-          await retryFn(async () => {
-            const data = await MongoDatasetData.findById(dataText.dataId, '_id').lean();
-            if (!data) {
+          const data = datas.find((item) => String(item._id) === String(dataText.dataId));
+          if (!data) {
+            await retryFn(async () => {
               await MongoDatasetDataText.deleteMany({ dataId: dataText.dataId });
               console.log('清理无效的data_text', dataText.dataId);
-            }
-          });
+            });
+          }
         } catch (error) {}
       }
 
