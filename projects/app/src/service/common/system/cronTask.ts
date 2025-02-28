@@ -143,11 +143,6 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
             datasetId: item.datasetId,
             collectionId: item.collectionId
           });
-          await MongoDatasetData.deleteMany({
-            teamId: item.teamId,
-            datasetId: item.datasetId,
-            collectionId: item.collectionId
-          });
           await MongoDatasetDataText.deleteMany({
             teamId: item.teamId,
             datasetId: item.datasetId,
@@ -157,6 +152,11 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
             teamId: item.teamId,
             datasetIds: [item.datasetId],
             collectionIds: [item.collectionId]
+          });
+          await MongoDatasetData.deleteMany({
+            teamId: item.teamId,
+            datasetId: item.datasetId,
+            collectionId: item.collectionId
           });
         });
       }
