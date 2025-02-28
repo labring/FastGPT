@@ -83,78 +83,65 @@ const checkInvalidCollection = async () => {
 
 // 删了集合，没删 data
 const checkInvalidData = async () => {
-  const batchSize = 500;
-
-  let skip = 0;
-  let success = 0;
-  while (true) {
-    try {
-      const datas = (await MongoDatasetData.aggregate([
-        {
-          $group: {
-            _id: '$collectionId',
-            teamId: { $first: '$teamId' },
-            datasetId: { $first: '$datasetId' },
-            collectionId: { $first: '$collectionId' }
-          }
-        },
-        { $skip: skip },
-        { $limit: batchSize }
-      ])) as {
-        _id: string;
-        teamId: string;
-        datasetId: string;
-        collectionId: string;
-      }[];
-
-      if (datas.length === 0) break;
-
-      // 批量获取集合
-      const collections = await MongoDatasetCollection.find(
-        { _id: { $in: datas.map((data) => data.collectionId) } },
-        '_id'
-      ).lean();
-      // 逐一删除无效的集合内容
-      for await (const data of datas) {
-        try {
-          const col = collections.find((item) => String(item._id) === String(data.collectionId));
-          if (!col) {
-            console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
-            await retryFn(async () => {
-              await MongoDatasetTraining.deleteMany({
-                teamId: data.teamId,
-                datasetId: data.datasetId,
-                collectionId: data.collectionId
-              });
-              await MongoDatasetDataText.deleteMany({
-                teamId: data.teamId,
-                datasetId: data.datasetId,
-                collectionId: data.collectionId
-              });
-              await deleteDatasetDataVector({
-                teamId: data.teamId,
-                datasetIds: [data.datasetId],
-                collectionIds: [data.collectionId]
-              });
-              await MongoDatasetData.deleteMany({
-                teamId: data.teamId,
-                datasetId: data.datasetId,
-                collectionId: data.collectionId
-              });
-            });
-          }
-        } catch (error) {
-          console.log(error);
+  try {
+    const datas = (await MongoDatasetData.aggregate([
+      {
+        $group: {
+          _id: '$collectionId',
+          teamId: { $first: '$teamId' },
+          datasetId: { $first: '$datasetId' },
+          collectionId: { $first: '$collectionId' }
         }
       }
+    ])) as {
+      _id: string;
+      teamId: string;
+      datasetId: string;
+      collectionId: string;
+    }[];
 
-      success += batchSize;
-      skip += batchSize;
-      console.log(`检测集合完成：${success}`);
-    } catch (error) {
-      console.log(error);
-      await delay(1000);
+    // 批量获取集合
+    const collections = await MongoDatasetCollection.find(
+      { _id: { $in: datas.map((data) => data.collectionId) } },
+      '_id'
+    ).lean();
+    // 逐一删除无效的集合内容
+    for await (const data of datas) {
+      try {
+        const col = collections.find((item) => String(item._id) === String(data.collectionId));
+        if (!col) {
+          console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
+          await retryFn(async () => {
+            await MongoDatasetTraining.deleteMany({
+              teamId: data.teamId,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
+            });
+            await MongoDatasetDataText.deleteMany({
+              teamId: data.teamId,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
+            });
+            await deleteDatasetDataVector({
+              teamId: data.teamId,
+              datasetIds: [data.datasetId],
+              collectionIds: [data.collectionId]
+            });
+            await MongoDatasetData.deleteMany({
+              teamId: data.teamId,
+              datasetId: data.datasetId,
+              collectionId: data.collectionId
+            });
+          });
+        }
+      } catch (error) {
+        console.log(error);
+      }
     }
+
+    console.log(`检测集合完成`);
+  } catch (error) {
+    console.log(error);
   }
 };
 
@@ -166,19 +153,7 @@ const checkInvalidDataText = async () => {
   let success = 0;
   while (true) {
     try {
-      const dataTexts = (await MongoDatasetDataText.aggregate([
-        {
-          $group: {
-            _id: '$dataId',
-            dataId: { $first: '$dataId' }
-          }
-        },
-        { $skip: skip },
-        { $limit: batchSize }
-      ])) as {
-        _id: string;
-        dataId: string;
-      }[];
+      const dataTexts = await MongoDatasetDataText.find({}).limit(batchSize).skip(skip).lean();
 
       if (dataTexts.length === 0) break;
 
