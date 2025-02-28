@@ -153,14 +153,17 @@ const checkInvalidData = async () => {
 // 删了data，没删 data_text
 const checkInvalidDataText = async () => {
   try {
+    // 获取所有索引层的 dataId
     const dataTexts = await MongoDatasetDataText.find({}, 'dataId').lean();
     const dataIds = dataTexts.map((item) => String(item.dataId));
     console.log('Total data_text dataIds:', dataIds.length);
 
+    // 获取数据层的 dataId
     const datas = await MongoDatasetData.find({}, '_id').lean();
     const datasSet = new Set(datas.map((item) => String(item._id)));
     console.log('Total data length:', datas.length);
 
+    // 存在索引层，不存在数据层的 dataId，说明数据已经被删了
     const unExistsSet = dataIds.filter((id) => !datasSet.has(id));
     console.log('Total unExists dataIds:', unExistsSet.length);
     await MongoDatasetDataText.deleteMany({
