@@ -10,7 +10,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { delOnlyCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -89,6 +89,13 @@ async function handler(
   });
 
   return mongoSessionRun(async (session) => {
+    await delCollection({
+      collections: [collection],
+      session,
+      delImg: false,
+      delFile: false
+    });
+
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
       rawText,
@@ -120,10 +127,6 @@ async function handler(
         qaPrompt,
         metadata: collection.metadata
       }
-    });
-    await delOnlyCollection({
-      collections: [collection],
-      session
     });
 
     return { collectionId };

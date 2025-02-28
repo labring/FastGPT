@@ -35,7 +35,7 @@ async function checkInvalidImg(start: Date, end: Date, limit = 50) {
           'metadata.relatedImgId': image.metadata?.relatedId
         },
         '_id'
-      );
+      ).lean();
 
       if (!collection) {
         await image.deleteOne();

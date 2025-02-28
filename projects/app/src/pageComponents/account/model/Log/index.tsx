@@ -119,7 +119,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       },
       ...res
     ];
-  }, [systemModelList]);
+  }, [systemModelList, t]);
 
   const { data, isLoading, ScrollData } = useScrollPagination(getChannelLog, {
     pageSize: 20,
