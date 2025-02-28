@@ -152,7 +152,7 @@ const checkInvalidData = async () => {
 
 // 删了data，没删 data_text
 const checkInvalidDataText = async () => {
-  const batchSize = 1000;
+  const batchSize = 5000;
 
   let skip = 0;
   let success = 0;
@@ -166,10 +166,15 @@ const checkInvalidDataText = async () => {
         { _id: { $in: dataTexts.map((item) => item.dataId) } },
         '_id'
       ).lean();
+      const datasMap: Record<string, 1> = {};
+      for (const data of datas) {
+        datasMap[String(data._id)] = 1;
+      }
+
       // 合并相同的 dataId
       for await (const dataText of dataTexts) {
         try {
-          const data = datas.find((item) => String(item._id) === String(dataText.dataId));
+          const data = datasMap[String(dataText.dataId)];
           if (!data) {
             await retryFn(async () => {
               await MongoDatasetDataText.deleteMany({ dataId: dataText.dataId });
@@ -202,7 +207,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const endTime = addHours(new Date(), start);
         const startTime = addHours(new Date(), end);
         console.log('清理无效的集合');
-        // await checkInvalidCollection();
+        await checkInvalidCollection();
         console.log('清理无效的数据');
         await checkInvalidData();
         console.log('清理无效的data_text');
