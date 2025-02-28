@@ -1,5 +1,5 @@
 import '../../__mocks__/base';
-import { getTestRequest } from '@/test/utils';
+import { getTestRequest } from '@fastgpt/service/test/utils';
 import handler, { OutLinkUpdateBody, OutLinkUpdateQuery } from './update';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
