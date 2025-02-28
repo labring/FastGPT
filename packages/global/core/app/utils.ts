@@ -90,6 +90,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
+      defaultAppForm.dataset.reRankModel = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchReRankModel
+      );
       defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingExtensionQuery
