@@ -135,7 +135,6 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
     }
   );
 
-  console.log(testModelList);
   return (
     <MyModal
       iconSrc={'core/chat/sendLight'}
