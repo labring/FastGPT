@@ -154,7 +154,7 @@ export const deleteChannel = (id: number) => DELETE(`/channel/${id}`);
 export const getChannelLog = (params: {
   channel?: string;
   model_name?: string;
-  status?: 'all' | 'success' | 'error';
+  code_type?: 'all' | 'success' | 'error';
   start_timestamp: number;
   end_timestamp: number;
   offset: number;
@@ -164,11 +164,13 @@ export const getChannelLog = (params: {
     logs: ChannelLogListItemType[];
     total: number;
   }>(`/logs/search`, {
-    ...params,
+    channel: params.channel,
+    model_name: params.model_name,
+    code_type: params.code_type,
+    start_timestamp: params.start_timestamp,
+    end_timestamp: params.end_timestamp,
     p: Math.floor(params.offset / params.pageSize) + 1,
-    per_page: params.pageSize,
-    offset: undefined,
-    pageSize: undefined
+    per_page: params.pageSize
   }).then((res) => {
     return {
       list: res.logs,
