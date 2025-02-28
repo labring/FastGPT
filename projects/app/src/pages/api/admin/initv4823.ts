@@ -143,7 +143,7 @@ const checkInvalidData = async () => {
 
     console.log(`检测集合完成`);
   } catch (error) {
-    console.log(error);
+    console.log('checkInvalidData error', error);
   }
 };
 
@@ -166,7 +166,9 @@ const checkInvalidDataText = async () => {
     await MongoDatasetDataText.deleteMany({
       dataId: { $in: unExistsSet }
     });
-  } catch (error) {}
+  } catch (error) {
+    console.log('checkInvalidDataText error', error);
+  }
 };
 
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */

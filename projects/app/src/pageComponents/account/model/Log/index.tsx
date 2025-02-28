@@ -162,7 +162,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         content: item.content
       };
     });
-  }, [data]);
+  }, [channelList, data, systemModelList]);
 
   const [logDetail, setLogDetail] = useState<LogDetailType>();
 
