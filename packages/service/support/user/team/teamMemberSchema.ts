@@ -8,6 +8,7 @@ import {
   TeamCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
+import { InvitationCollectionName } from './invitationLink/schema';
 
 const TeamMemberSchema = new Schema({
   teamId: {
@@ -39,7 +40,10 @@ const TeamMemberSchema = new Schema({
   updateTime: {
     type: Date
   },
-
+  invitationLinkId: {
+    type: Schema.Types.ObjectId,
+    ref: InvitationCollectionName
+  },
   // Abandoned
   role: {
     type: String
