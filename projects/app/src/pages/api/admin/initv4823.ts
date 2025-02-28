@@ -157,7 +157,7 @@ const checkInvalidDataText = async () => {
     const dataIds = dataTexts.map((item) => String(item.dataId));
     console.log('Total data_text dataIds:', dataIds.length);
 
-    const datas = await MongoDatasetData.find({ _id: { $in: dataIds } }, '_id').lean();
+    const datas = await MongoDatasetData.find({}, '_id').lean();
     const datasSet = new Set(datas.map((item) => String(item._id)));
     console.log('Total data length:', datas.length);
 
