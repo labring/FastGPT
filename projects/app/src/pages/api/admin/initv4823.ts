@@ -99,7 +99,7 @@ const checkInvalidData = async () => {
       datasetId: string;
       collectionId: string;
     }[];
-
+    console.log('Total collection length', datas.length);
     // 批量获取集合
     const collections = await MongoDatasetCollection.find(
       { _id: { $in: datas.map((data) => data.collectionId) } },
