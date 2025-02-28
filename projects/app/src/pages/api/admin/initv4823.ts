@@ -99,16 +99,21 @@ const checkInvalidData = async () => {
       datasetId: string;
       collectionId: string;
     }[];
-    console.log('Total collection length', datas.length);
+    console.log('Total data collections length', datas.length);
     // 批量获取集合
     const collections = await MongoDatasetCollection.find(
       { _id: { $in: datas.map((data) => data.collectionId) } },
       '_id'
     ).lean();
+    console.log('Total collection length', collections.length);
+    const collectionMap: Record<string, DatasetCollectionSchemaType> = {};
+    for await (const collection of collections) {
+      collectionMap[collection._id] = collection;
+    }
     // 逐一删除无效的集合内容
     for await (const data of datas) {
       try {
-        const col = collections.find((item) => String(item._id) === String(data.collectionId));
+        const col = collectionMap[data.collectionId];
         if (!col) {
           console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
           await retryFn(async () => {
@@ -197,7 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const endTime = addHours(new Date(), start);
         const startTime = addHours(new Date(), end);
         console.log('清理无效的集合');
-        await checkInvalidCollection();
+        // await checkInvalidCollection();
         console.log('清理无效的数据');
         await checkInvalidData();
         console.log('清理无效的data_text');
