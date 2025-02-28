@@ -1,6 +1,6 @@
 import '../../__mocks__/base';
 import { root } from '../../__mocks__/db/init';
-import { getTestRequest } from '@/test/utils';
+import { getTestRequest } from '@fastgpt/service/test/utils';
 import type { OutLinkListQuery } from './list';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import handler from './list';
