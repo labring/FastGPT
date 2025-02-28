@@ -7,6 +7,7 @@ import { MongoDatasetTraining } from './training/schema';
 import { MongoDatasetData } from './data/schema';
 import { deleteDatasetDataVector } from '../../common/vectorStore/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -54,7 +55,7 @@ export async function getCollectionWithDataset(collectionId: string) {
     .populate<{ dataset: DatasetSchemaType }>('dataset')
     .lean();
   if (!data) {
-    return Promise.reject('Collection is not exist');
+    return Promise.reject(DatasetErrEnum.unExistCollection);
   }
   return data;
 }

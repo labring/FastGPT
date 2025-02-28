@@ -75,7 +75,7 @@ const TTSSelect = ({
         {voice ? (
           <Flex alignItems={'center'}>
             <Box>{provider.label}</Box>
-            <Box>-</Box>
+            <Box>/</Box>
             <Box>{voice.label}</Box>
           </Flex>
         ) : (
@@ -83,7 +83,7 @@ const TTSSelect = ({
         )}
       </Box>
     );
-  }, [formatValue, selectorList, t]);
+  }, [formatValue, selectorList]);
 
   const { playAudioByText, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({
     appId,

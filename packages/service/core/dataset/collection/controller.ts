@@ -277,7 +277,7 @@ export async function delCollection({
   // Delete training data
   await MongoDatasetTraining.deleteMany({
     teamId,
-    datasetIds: { $in: datasetIds },
+    datasetId: { $in: datasetIds },
     collectionId: { $in: collectionIds }
   });
 
@@ -288,12 +288,12 @@ export async function delCollection({
 
   // Delete dataset_datas
   await MongoDatasetData.deleteMany(
-    { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+    { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
     { session }
   );
   // Delete dataset_data_texts
   await MongoDatasetDataText.deleteMany(
-    { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+    { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
     { session }
   );
 
@@ -332,13 +332,13 @@ export async function delOnlyCollection({
   // delete training data
   await MongoDatasetTraining.deleteMany({
     teamId,
-    datasetIds: { $in: datasetIds },
+    datasetId: { $in: datasetIds },
     collectionId: { $in: collectionIds }
   });
 
   // delete dataset.datas
   await MongoDatasetData.deleteMany(
-    { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+    { teamId, datasetId: { $in: datasetIds }, collectionId: { $in: collectionIds } },
     { session }
   );
 

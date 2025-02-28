@@ -1,5 +1,5 @@
 import '@/pages/api/__mocks__/base';
-import { parseReasoningStreamContent } from '@fastgpt/global/core/workflow/runtime/utils';
+import { parseReasoningStreamContent } from '@fastgpt/service/core/ai/utils';
 
 test('Parse reasoning stream content test', async () => {
   const partList = [

@@ -1,6 +1,6 @@
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
-import { parseHeaderCertMock } from '@/test/utils';
+import { parseHeaderCertMock } from '@fastgpt/service/test/utils';
 import { initMockData, root } from './db/init';
 import { faker } from '@faker-js/faker/locale/zh_CN';
 
