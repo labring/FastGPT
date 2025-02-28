@@ -1,0 +1,38 @@
+# see https://docs.searxng.org/admin/settings/settings.html#settings-use-default-settings
+use_default_settings: true
+server:
+  # base_url is defined in the SEARXNG_BASE_URL environment variable, see .env and docker-compose.yml
+  secret_key: "01042f00ae8bb522a9c03d3e7e1910318208a2c9fbdd23a6315577a9c98553a8"  # change this!
+  limiter: false  # can be disabled for a private instance
+  image_proxy: true
+ui:
+  static_use_hash: true
+  # 启用 cn 分类
+  enabled_categories: [cn, general, images]  # 按需添加其他分类
+  # 或者定义分类显示顺序
+  categories_order: [cn, general, images]
+redis:
+  url: redis://redis:6379/0
+engines:
+    - name: bing
+      disabled: false
+      categories: cn
+    #- name: bilibili
+     # engine: bilibili
+     # shortcut: bil
+     # disabled: false
+     # categories: cn
+    - name : baidu
+      engine : json_engine
+      paging : True
+      first_page_num : 0
+      search_url : https://www.baidu.com/s?tn=json&wd={query}&pn={pageno}&rn=50
+      url_query : url
+      title_query : title
+      content_query : abs
+      categories : cn
+
+search:
+    formats:
+        - html
+        - json
