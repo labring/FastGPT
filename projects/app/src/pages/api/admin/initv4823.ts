@@ -117,34 +117,32 @@ const checkInvalidData = async () => {
       // 逐一删除无效的集合内容
       for await (const data of datas) {
         try {
-          await retryFn(async () => {
-            const col = collections.find((item) => String(item._id) === String(data.collectionId));
-            if (!col) {
-              console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
-              await retryFn(async () => {
-                await MongoDatasetTraining.deleteMany({
-                  teamId: data.teamId,
-                  datasetId: data.datasetId,
-                  collectionId: data.collectionId
-                });
-                await MongoDatasetDataText.deleteMany({
-                  teamId: data.teamId,
-                  datasetId: data.datasetId,
-                  collectionId: data.collectionId
-                });
-                await deleteDatasetDataVector({
-                  teamId: data.teamId,
-                  datasetIds: [data.datasetId],
-                  collectionIds: [data.collectionId]
-                });
-                await MongoDatasetData.deleteMany({
-                  teamId: data.teamId,
-                  datasetId: data.datasetId,
-                  collectionId: data.collectionId
-                });
+          const col = collections.find((item) => String(item._id) === String(data.collectionId));
+          if (!col) {
+            console.log('清理无效的知识库集合内容, collectionId', data.collectionId);
+            await retryFn(async () => {
+              await MongoDatasetTraining.deleteMany({
+                teamId: data.teamId,
+                datasetId: data.datasetId,
+                collectionId: data.collectionId
               });
-            }
-          });
+              await MongoDatasetDataText.deleteMany({
+                teamId: data.teamId,
+                datasetId: data.datasetId,
+                collectionId: data.collectionId
+              });
+              await deleteDatasetDataVector({
+                teamId: data.teamId,
+                datasetIds: [data.datasetId],
+                collectionIds: [data.collectionId]
+              });
+              await MongoDatasetData.deleteMany({
+                teamId: data.teamId,
+                datasetId: data.datasetId,
+                collectionId: data.collectionId
+              });
+            });
+          }
         } catch (error) {
           console.log(error);
         }
