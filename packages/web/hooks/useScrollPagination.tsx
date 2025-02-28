@@ -217,7 +217,7 @@ export function useScrollPagination<
       const offset = init ? 0 : data.length;
 
       setTrue();
-      console.log(offset);
+
       try {
         const res = await api({
           offset,
