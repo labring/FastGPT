@@ -4,6 +4,7 @@ import { ErrType } from '../errorCode';
 /* dataset: 501000 */
 export enum DatasetErrEnum {
   unExist = 'unExistDataset',
+  unExistCollection = 'unExistCollection',
   unAuthDataset = 'unAuthDataset',
   unCreateCollection = 'unCreateCollection',
   unAuthDatasetCollection = 'unAuthDatasetCollection',
@@ -27,6 +28,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.unExist,
     message: 'core.dataset.error.unExistDataset'
+  },
+  {
+    statusText: DatasetErrEnum.unExistCollection,
+    message: i18nT('common:error_collection_not_exist')
   },
   {
     statusText: DatasetErrEnum.unAuthDataset,

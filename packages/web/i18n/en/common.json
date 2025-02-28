@@ -888,6 +888,7 @@
   "error.upload_file_error_filename": "{{name}} Upload Failed",
   "error.upload_image_error": "File upload failed",
   "error.username_empty": "Account cannot be empty",
+  "error_collection_not_exist": "The collection does not exist",
   "extraction_results": "Extraction Results",
   "field_name": "Field Name",
   "free": "Free",

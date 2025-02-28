@@ -3,11 +3,8 @@ import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../chat
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  parseReasoningContent,
-  parseReasoningStreamContent,
-  textAdaptGptResponse
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { parseReasoningContent, parseReasoningStreamContent } from '../../../ai/utils';
 import { createChatCompletion } from '../../../ai/config';
 import type { ChatCompletionMessageParam, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
