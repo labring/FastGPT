@@ -21,6 +21,7 @@ export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   onOpenModal?: () => void;
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
+  defaultLanguage?: string;
 };
 
 const options = {
@@ -53,6 +54,7 @@ const MyEditor = ({
   variables = [],
   defaultHeight = 200,
   onOpenModal,
+  defaultLanguage,
   ...props
 }: Props) => {
   const [height, setHeight] = useState(defaultHeight);
@@ -118,7 +120,7 @@ const MyEditor = ({
     >
       <Editor
         height={'100%'}
-        defaultLanguage="typescript"
+        defaultLanguage={defaultLanguage}
         options={options as any}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
