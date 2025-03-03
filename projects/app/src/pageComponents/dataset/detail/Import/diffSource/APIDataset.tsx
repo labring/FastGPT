@@ -28,7 +28,7 @@ const APIDatasetCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomAPIFileInput />}
-      {activeStep === 1 && <DataProcess showPreviewChunks={true} />}
+      {activeStep === 1 && <DataProcess />}
       {activeStep === 2 && <Upload />}
     </>
   );
@@ -272,7 +272,7 @@ const CustomAPIFileInput = () => {
             onClick={onclickNext}
           >
             {selectFiles.length > 0
-              ? `${t('common:core.dataset.import.Total files', { total: selectFiles.length })} | `
+              ? `${t('dataset:total_num_files', { total: selectFiles.length })} | `
               : ''}
             {t('common:common.Next Step')}
           </Button>

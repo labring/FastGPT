@@ -1,6 +1,7 @@
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
+  ChatDispatchProps,
   DispatchNodeResultType,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
@@ -46,7 +47,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     query,
     requestOrigin,
     chatConfig,
-    runningAppInfo: { teamId },
+    runningUserInfo,
     externalProvider,
     params: {
       model,
@@ -99,10 +100,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   const globalFiles = chatValue2RuntimePrompt(query).files;
   const { documentQuoteText, userFiles } = await getMultiInput({
+    runningUserInfo,
     histories: chatHistories,
     requestOrigin,
     maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-    teamId,
     fileLinks,
     inputFiles: globalFiles,
     hasReadFilesTool
@@ -289,19 +290,19 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 };
 
 const getMultiInput = async ({
+  runningUserInfo,
   histories,
   fileLinks,
   requestOrigin,
   maxFiles,
-  teamId,
   inputFiles,
   hasReadFilesTool
 }: {
+  runningUserInfo: ChatDispatchProps['runningUserInfo'];
   histories: ChatItemType[];
   fileLinks?: string[];
   requestOrigin?: string;
   maxFiles: number;
-  teamId: string;
   inputFiles: UserChatItemValueItemType['file'][];
   hasReadFilesTool: boolean;
 }) => {
@@ -329,7 +330,8 @@ const getMultiInput = async ({
     urls,
     requestOrigin,
     maxFiles,
-    teamId
+    teamId: runningUserInfo.teamId,
+    tmbId: runningUserInfo.tmbId
   });
 
   return {
