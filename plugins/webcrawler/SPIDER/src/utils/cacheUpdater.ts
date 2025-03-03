@@ -1,4 +1,3 @@
-
 import NodeCache from 'node-cache';
 import { MongoClient } from 'mongodb';
 import crypto from 'crypto';
@@ -19,10 +18,15 @@ const connectToMongo = async () => {
 const createTTLIndex = async () => {
   try {
     const db = await connectToMongo();
-    await db.collection(collectionName).createIndex({ "updatedAt": 1 }, { expireAfterSeconds: parseInt(process.env.EXPIRE_AFTER_SECONDS || '9000') });
-    console.log("TTL index created successfully");
+    await db
+      .collection(collectionName)
+      .createIndex(
+        { updatedAt: 1 },
+        { expireAfterSeconds: parseInt(process.env.EXPIRE_AFTER_SECONDS || '9000') }
+      );
+    console.log('TTL index created successfully');
   } catch (error) {
-    console.error("Error creating TTL index:", error);
+    console.error('Error creating TTL index:', error);
   }
 };
 
@@ -53,11 +57,7 @@ const savePageToCache = async (url: string, content: string) => {
 
   try {
     const db = await connectToMongo();
-    await db.collection(collectionName).updateOne(
-      { url },
-      { $set: page },
-      { upsert: true }
-    ); // 更新持久化缓存
+    await db.collection(collectionName).updateOne({ url }, { $set: page }, { upsert: true }); // 更新持久化缓存
   } catch (error) {
     console.error('Error saving page to cache:', error);
     throw error;

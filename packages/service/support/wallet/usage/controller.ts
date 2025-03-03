@@ -160,7 +160,7 @@ export const createTrainingUsage = async ({
         ]
       }
     ],
-    { session }
+    { session, ordered: true }
   );
 
   return { billId: String(_id) };

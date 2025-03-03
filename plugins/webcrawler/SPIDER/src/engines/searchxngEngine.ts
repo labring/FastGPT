@@ -6,9 +6,13 @@ dotenv.config();
 
 const blacklistDomains = process.env.BLACKLIST ? JSON.parse(process.env.BLACKLIST) : [];
 
-export const fetchSearchResults = async (query: string, pageCount: number, searchUrlBase: string, categories: string) => {
-
-  const MAX_PAGES = (pageCount / 10 +1) * 2+1; // 最多搜索的页面数
+export const fetchSearchResults = async (
+  query: string,
+  pageCount: number,
+  searchUrlBase: string,
+  categories: string
+) => {
+  const MAX_PAGES = (pageCount / 10 + 1) * 2 + 1; // 最多搜索的页面数
   //如果searchUrlBase为空，返回空数组，pagecount是需要搜索结果的数量
   if (!searchUrlBase) {
     return { resultUrls: [], results: new Map() };
@@ -20,7 +24,9 @@ export const fetchSearchResults = async (query: string, pageCount: number, searc
   let pageIndex = 0;
 
   while (fetchedResultsCount < pageCount && pageIndex < MAX_PAGES) {
-    const searchUrl = new URL(`${searchUrlBase}?q=${encodeURIComponent(query)}&pageno=${pageIndex + 1}&format=json&categories=${categories}`);
+    const searchUrl = new URL(
+      `${searchUrlBase}?q=${encodeURIComponent(query)}&pageno=${pageIndex + 1}&format=json&categories=${categories}`
+    );
     console.log(`Fetching page ${pageIndex + 1} from SearchXNG: ${searchUrl.toString()}`);
     const response = await axios.get(searchUrl.toString());
     const jsonResults = response.data.results;
@@ -28,7 +34,10 @@ export const fetchSearchResults = async (query: string, pageCount: number, searc
     for (let index = 0; index < jsonResults.length; index++) {
       const result = jsonResults[index];
       const resultDomain = new URL(result.url).hostname;
-      if (blacklistDomains.some((domain: string) => resultDomain.endsWith(domain)) || resultDomain.includes('zhihu')) {
+      if (
+        blacklistDomains.some((domain: string) => resultDomain.endsWith(domain)) ||
+        resultDomain.includes('zhihu')
+      ) {
         continue;
       }
       resultUrls.push(result.url);

@@ -45,7 +45,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
           tmbId
         }
       ],
-      { session }
+      { session, ordered: true }
     );
 
     // update app

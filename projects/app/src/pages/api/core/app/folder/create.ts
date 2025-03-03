@@ -89,7 +89,8 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
           }
         ],
         {
-          session
+          session,
+          ordered: true
         }
       );
     }

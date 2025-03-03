@@ -13,12 +13,19 @@ interface CachedPage {
   updatedAt: Date;
 }
 
-export const performDeepSearch = async (clusterInstance: Cluster, resultUrls: string[], results: Map<string, any>, strategies: any[], detectWebsites: string[], pageCount: number) => {
+export const performDeepSearch = async (
+  clusterInstance: Cluster,
+  resultUrls: string[],
+  results: Map<string, any>,
+  strategies: any[],
+  detectWebsites: string[],
+  pageCount: number
+) => {
   const tasks = [];
 
   await clusterInstance.task(async ({ page, data: { searchUrl } }) => {
     try {
-      const cachedPage = await getCachedPage(searchUrl) as CachedPage | null;
+      const cachedPage = (await getCachedPage(searchUrl)) as CachedPage | null;
       if (cachedPage) {
         const result = results.get(searchUrl);
         if (result) {
@@ -29,18 +36,25 @@ export const performDeepSearch = async (clusterInstance: Cluster, resultUrls: st
       }
     } catch (error) {
       console.error(`从缓存获取页面 ${searchUrl} 时发生错误:`, error);
-      results.set(searchUrl, { url: searchUrl, error: (error as Error).message, crawlStatus: 'Failed' });
+      results.set(searchUrl, {
+        url: searchUrl,
+        error: (error as Error).message,
+        crawlStatus: 'Failed'
+      });
       return;
     }
 
     try {
       const response = await fetch(searchUrl, {
         headers: {
-          'User-Agent': new UserAgent({ deviceCategory: 'desktop', platform: 'Linux x86_64' }).toString(),
-          'Referer': 'https://www.google.com/',
+          'User-Agent': new UserAgent({
+            deviceCategory: 'desktop',
+            platform: 'Linux x86_64'
+          }).toString(),
+          Referer: 'https://www.google.com/',
           'Accept-Language': 'en-US,en;q=0.9',
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Connection': 'keep-alive',
+          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          Connection: 'keep-alive',
           'Cache-Control': 'no-cache'
         }
       });
@@ -66,7 +80,7 @@ export const performDeepSearch = async (clusterInstance: Cluster, resultUrls: st
     }
 
     try {
-      if (detectWebsites.some(website => searchUrl.includes(website))) {
+      if (detectWebsites.some((website) => searchUrl.includes(website))) {
         await setupPage(page);
       } else {
         const userAgent = new UserAgent({ deviceCategory: 'desktop', platform: 'Linux x86_64' });
@@ -118,7 +132,11 @@ export const performDeepSearch = async (clusterInstance: Cluster, resultUrls: st
 
       await updateCacheAsync(searchUrl, cleanedContent || '');
     } catch (error) {
-      results.set(searchUrl, { url: searchUrl, error: (error as Error).message, crawlStatus: 'Failed' });
+      results.set(searchUrl, {
+        url: searchUrl,
+        error: (error as Error).message,
+        crawlStatus: 'Failed'
+      });
     } finally {
       await page.close().catch(() => {});
     }

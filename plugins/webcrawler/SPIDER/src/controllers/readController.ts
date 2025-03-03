@@ -16,16 +16,16 @@ const blacklistDomains = process.env.BLACKLIST ? JSON.parse(process.env.BLACKLIS
 
 export const readPage = async (req: Request, res: Response): Promise<void> => {
   const { queryUrl } = req.query;
-  console.log("-------");
+  console.log('-------');
   console.log(queryUrl);
-  console.log("-------");
+  console.log('-------');
 
   if (!queryUrl) {
     res.status(400).json({
       status: 400,
       error: {
-        code: "MISSING_PARAM",
-        message: "缺少必要参数: queryUrl"
+        code: 'MISSING_PARAM',
+        message: '缺少必要参数: queryUrl'
       }
     });
     return;
@@ -36,8 +36,8 @@ export const readPage = async (req: Request, res: Response): Promise<void> => {
     res.status(403).json({
       status: 403,
       error: {
-        code: "BLACKLISTED_DOMAIN",
-        message: "该域名受到保护中"
+        code: 'BLACKLISTED_DOMAIN',
+        message: '该域名受到保护中'
       }
     });
     return;
@@ -46,11 +46,14 @@ export const readPage = async (req: Request, res: Response): Promise<void> => {
   try {
     const response = await fetch(queryUrl as string, {
       headers: {
-        'User-Agent': new UserAgent({ deviceCategory: 'desktop', platform: 'Linux x86_64' }).toString(),
-        'Referer': 'https://www.google.com/',
+        'User-Agent': new UserAgent({
+          deviceCategory: 'desktop',
+          platform: 'Linux x86_64'
+        }).toString(),
+        Referer: 'https://www.google.com/',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Connection': 'keep-alive',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        Connection: 'keep-alive',
         'Cache-Control': 'no-cache'
       }
     });
@@ -69,7 +72,7 @@ export const readPage = async (req: Request, res: Response): Promise<void> => {
       });
 
       await updateCacheAsync(queryUrl as string, cleanedContent || '');
-      console.log("Page read successfully");
+      console.log('Page read successfully');
       return;
     } else {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -79,23 +82,26 @@ export const readPage = async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
-    const browser = await puppeteer.launch({ 
-      ignoreDefaultArgs: ["--enable-automation"],
-      headless: true,  
-      executablePath: "/usr/bin/chromium",  // 明确指定 Chromium 路径
+    const browser = await puppeteer.launch({
+      ignoreDefaultArgs: ['--enable-automation'],
+      headless: true,
+      executablePath: '/usr/bin/chromium', // 明确指定 Chromium 路径
       pipe: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-dev-shm-usage',
-        '--disable-gpu',
-       // '--single-process' 
+        '--disable-gpu'
+        // '--single-process'
       ]
     });
     const page = await browser.newPage();
 
     // 检测是否需要特殊处理
-    if (typeof queryUrl === 'string' && detectWebsites.some(website => queryUrl.includes(website))) {
+    if (
+      typeof queryUrl === 'string' &&
+      detectWebsites.some((website) => queryUrl.includes(website))
+    ) {
       await setupPage(page);
     } else {
       const userAgent = new UserAgent({ deviceCategory: 'desktop', platform: 'Linux x86_64' });
@@ -128,14 +134,14 @@ export const readPage = async (req: Request, res: Response): Promise<void> => {
     });
 
     await updateCacheAsync(queryUrl as string, cleanedContent || '');
-    console.log("Page read successfully");
+    console.log('Page read successfully');
   } catch (error) {
     console.error(error);
     res.status(500).json({
       status: 500,
       error: {
-        code: "INTERNAL_SERVER_ERROR",
-        message: "读取页面时发生内部服务器错误"
+        code: 'INTERNAL_SERVER_ERROR',
+        message: '读取页面时发生内部服务器错误'
       }
     });
   }

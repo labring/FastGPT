@@ -37,7 +37,7 @@ export async function initRootUser(retry = 3): Promise<any> {
               password: hashStr(psw)
             }
           ],
-          { session }
+          { session, ordered: true }
         );
         rootId = _id;
       }
