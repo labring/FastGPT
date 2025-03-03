@@ -192,7 +192,7 @@ const rebuildData = async ({
             retryCount: 50
           }
         ],
-        { session }
+        { session, ordered: true }
       );
     }
   });

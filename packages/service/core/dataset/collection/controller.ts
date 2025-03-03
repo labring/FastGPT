@@ -216,7 +216,7 @@ export async function createOneCollection({
         nextSyncTime
       }
     ],
-    { session }
+    { session, ordered: true }
   );
 
   return collection;

@@ -88,7 +88,7 @@ async function handler(
           yuqueServer
         }
       ],
-      { session }
+      { session, ordered: true }
     );
     await refreshSourceAvatar(avatar, undefined, session);
 

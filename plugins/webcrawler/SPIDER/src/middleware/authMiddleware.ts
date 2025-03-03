@@ -4,7 +4,7 @@ const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   const bearerHeader = req.headers['authorization'];
 
   if (bearerHeader) {
-    console.log("bearerHeader:" + bearerHeader);
+    console.log('bearerHeader:' + bearerHeader);
     const bearer = bearerHeader.split(' ');
     const bearerToken = bearer[1];
 

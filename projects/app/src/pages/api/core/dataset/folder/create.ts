@@ -87,7 +87,7 @@ async function handler(
             permission: OwnerPermissionVal
           }
         ],
-        { session }
+        { session, ordered: true }
       );
     }
   });

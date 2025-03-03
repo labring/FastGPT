@@ -98,7 +98,7 @@ export async function insertData2Dataset({
         }))
       }
     ],
-    { session }
+    { session, ordered: true }
   );
 
   // 3. Create mongo data text
@@ -112,7 +112,7 @@ export async function insertData2Dataset({
         fullTextToken: jiebaSplit({ text: qaStr })
       }
     ],
-    { session }
+    { session, ordered: true }
   );
 
   return {
