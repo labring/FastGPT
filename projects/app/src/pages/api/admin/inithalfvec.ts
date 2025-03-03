@@ -4,19 +4,25 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
 import { DatasetVectorTableName } from '@fastgpt/service/common/vectorStore/constants';
+import { el } from 'date-fns/locale';
 
 async function setHalfvec() {
   const maxIdResult = await PgClient.query(
-    `SELECT MAX(id) as max_id FROM ${DatasetVectorTableName}`
+    `SELECT MAX(id) as max_id FROM ${DatasetVectorTableName} WHERE halfvector IS NULL`
   );
-  const maxId: number = maxIdResult.rows[0].max_id;
+  const maxId: number = parseInt(maxIdResult.rows[0].max_id);
+  const minIdResult = await PgClient.query(
+    `SELECT MIN(id) as min_id FROM ${DatasetVectorTableName} WHERE halfvector IS NULL`
+  );
+  const minId: number = parseInt(minIdResult.rows[0].min_id);
 
-  if (!maxId) {
+  if (!maxId || !minId) {
     throw new Error('No data found');
   }
+  console.log(`Update from: ${minId} to ${maxId}`);
 
   const batchSize = 32;
-  const numBatches = Math.ceil(maxId / batchSize);
+  const numBatches = Math.ceil((maxId - minId) / batchSize);
 
   const tasks: (() => Promise<void>)[] = [];
   let totalRowsUpdated = 0;
@@ -34,7 +40,7 @@ async function setHalfvec() {
   };
 
   for (let i = 0; i < numBatches; i++) {
-    const startId = i * batchSize;
+    const startId = minId + i * batchSize;
     const endId = startId + batchSize;
 
     const asyncUpdate = async () => {
@@ -46,9 +52,10 @@ async function setHalfvec() {
               `,
         false
       );
+      // console.log(startId, endId);
       if (rowsUpdated?.rowCount) {
         totalRowsUpdated += rowsUpdated.rowCount;
-        console.log(`Batch ${i + 1} - rowsUpdated: ${rowsUpdated.rowCount}`);
+        console.log(`Batch ${i + 1}/${numBatches} - rowsUpdated: ${rowsUpdated.rowCount}`);
       }
     };
 
