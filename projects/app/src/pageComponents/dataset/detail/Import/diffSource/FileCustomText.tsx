@@ -19,7 +19,7 @@ const CustomTet = () => {
   return (
     <>
       {activeStep === 0 && <CustomTextInput />}
-      {activeStep === 1 && <DataProcess showPreviewChunks />}
+      {activeStep === 1 && <DataProcess />}
       {activeStep === 2 && <Upload />}
     </>
   );
