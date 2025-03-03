@@ -13,6 +13,7 @@ import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
 import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
 import { SourceMemberType } from 'support/user/type';
+import { DatasetDataIndexTypeEnum } from './data/constants';
 
 export type DatasetSchemaType = {
   _id: string;
@@ -83,9 +84,9 @@ export type DatasetCollectionSchemaType = {
 
   // Parse settings
   customPdfParse?: boolean;
-  imageParse?: boolean;
   // Chunk settings
   autoIndexes?: boolean;
+  imageIndex?: boolean;
   trainingType: DatasetCollectionDataProcessModeEnum;
   chunkSize: number;
   chunkSplitter?: string;
@@ -100,7 +101,7 @@ export type DatasetCollectionTagsSchemaType = {
 };
 
 export type DatasetDataIndexItemType = {
-  defaultIndex: boolean;
+  type: `${DatasetDataIndexTypeEnum}`;
   dataId: string; // pg data id
   text: string;
 };

@@ -856,7 +856,6 @@
   "dataset.collections.Select Collection": "Select File",
   "dataset.collections.Select One Collection To Store": "Select a File to Store",
   "dataset.data.Can not edit": "No Edit Permission",
-  "dataset.data.Custom Index Number": "Custom Index {{number}}",
   "dataset.data.Default Index": "Default Index",
   "dataset.data.Delete Tip": "Confirm to Delete This Data?",
   "dataset.data.Index Placeholder": "Enter Index Text Content",

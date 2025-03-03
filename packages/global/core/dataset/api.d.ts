@@ -30,8 +30,8 @@ export type DatasetUpdateBody = {
 export type DatasetCollectionChunkMetadataType = {
   parentId?: string;
   customPdfParse?: boolean;
-  imageParse?: boolean;
   trainingType?: DatasetCollectionDataProcessModeEnum;
+  imageIndex?: boolean;
   autoIndexes?: boolean;
   chunkSize?: number;
   chunkSplitter?: string;
@@ -138,7 +138,7 @@ export type PushDatasetDataProps = {
   data: PushDatasetDataChunkProps[];
   trainingType?: DatasetCollectionDataProcessModeEnum;
   autoIndexes?: boolean;
-  imageParse?: boolean;
+  imageIndex?: boolean;
   prompt?: string;
 
   billId?: string;

@@ -86,9 +86,9 @@ const DatasetCollectionSchema = new Schema({
 
   // Parse settings
   customPdfParse: Boolean,
-  imageParse: Boolean,
 
   // Chunk settings
+  imageIndex: Boolean,
   autoIndexes: Boolean,
   trainingType: {
     type: String,

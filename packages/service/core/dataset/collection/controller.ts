@@ -34,6 +34,7 @@ export const createCollectionAndInsertData = async ({
   relatedId,
   createCollectionParams,
   isQAImport = false,
+  billId,
   session
 }: {
   dataset: DatasetSchemaType;
@@ -42,6 +43,7 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams: CreateOneCollectionParams;
 
   isQAImport?: boolean;
+  billId?: string;
   session?: ClientSession;
 }) => {
   // Adapter 4.9.0
@@ -76,7 +78,7 @@ export const createCollectionAndInsertData = async ({
       getTrainingModeByCollection({
         trainingType,
         autoIndexes: createCollectionParams.autoIndexes,
-        imageParse: createCollectionParams.imageParse
+        imageIndex: createCollectionParams.imageIndex
       }),
       chunks
     )
@@ -104,16 +106,20 @@ export const createCollectionAndInsertData = async ({
     });
 
     // 4. create training bill
-    const { billId } = await createTrainingUsage({
-      teamId,
-      tmbId,
-      appName: usageName,
-      billSource: UsageSourceEnum.training,
-      vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-      agentModel: getLLMModel(dataset.agentModel)?.name,
-      vllmModel: getVlmModel(dataset.vlmModel)?.name,
-      session
-    });
+    const traingBillId = await (async () => {
+      if (billId) return billId;
+      const { billId: newBillId } = await createTrainingUsage({
+        teamId,
+        tmbId,
+        appName: usageName,
+        billSource: UsageSourceEnum.training,
+        vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
+        agentModel: getLLMModel(dataset.agentModel)?.name,
+        vllmModel: getVlmModel(dataset.vlmModel)?.name,
+        session
+      });
+      return newBillId;
+    })();
 
     // 5. insert to training queue
     const insertResults = await pushDataListToTrainingQueue({
@@ -127,10 +133,10 @@ export const createCollectionAndInsertData = async ({
       mode: getTrainingModeByCollection({
         trainingType,
         autoIndexes: createCollectionParams.autoIndexes,
-        imageParse: createCollectionParams.imageParse
+        imageIndex: createCollectionParams.imageIndex
       }),
       prompt: qaPrompt,
-      billId,
+      billId: traingBillId,
       data: chunks.map((item, index) => ({
         ...item,
         chunkIndex: index
@@ -200,7 +206,7 @@ export async function createOneCollection({
 
   // Parse settings
   customPdfParse,
-  imageParse,
+  imageIndex,
 
   // Chunk settings
   trainingType = DatasetCollectionDataProcessModeEnum.chunk,
@@ -242,7 +248,7 @@ export async function createOneCollection({
 
         // Parse settings
         customPdfParse,
-        imageParse,
+        imageIndex,
 
         // Chunk settings
         trainingType,

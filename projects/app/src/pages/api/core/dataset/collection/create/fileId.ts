@@ -2,10 +2,7 @@ import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/co
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import {
-  DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 import { NextAPI } from '@/service/middleware/entry';

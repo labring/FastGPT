@@ -91,7 +91,7 @@ function DataProcess() {
     }
   }, [trainingType, setValue]);
 
-  const showFileParseSetting = feConfigs?.showCustomPdfParse || feConfigs?.isPlus;
+  const showFileParseSetting = feConfigs?.showCustomPdfParse;
   const showQAPromptInput = trainingType === DatasetCollectionDataProcessModeEnum.qa;
 
   return (
@@ -103,7 +103,9 @@ function DataProcess() {
               <Title title={t('dataset:import_file_parse_setting')} />
 
               <AccordionPanel p={2}>
-                <Box
+                <Flex
+                  flexDirection={'column'}
+                  gap={3}
                   border={'1px solid'}
                   borderColor={'primary.600'}
                   borderRadius={'md'}
@@ -135,15 +137,7 @@ function DataProcess() {
                       )}
                     </HStack>
                   )}
-                  {feConfigs?.isPlus && (
-                    <HStack spacing={1} mt={3}>
-                      <Checkbox {...register('imageAutoParse')}>
-                        <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
-                      </Checkbox>
-                      <QuestionTip label={t('dataset:image_auto_parse_tips')} />
-                    </HStack>
-                  )}
-                </Box>
+                </Flex>
               </AccordionPanel>
             </AccordionItem>
           )}
@@ -169,17 +163,27 @@ function DataProcess() {
                   gridTemplateColumns={'repeat(2, 1fr)'}
                 />
               </Box>
-              {feConfigs?.isPlus && trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
+              {trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
                 <Box mt={6}>
                   <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
                     {t('dataset:enhanced_indexes')}
                   </Box>
-                  <HStack spacing={0.5}>
-                    <Checkbox {...register('autoIndexes')}>
-                      <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
-                    </Checkbox>
-                    <QuestionTip label={t('dataset:auto_indexes_tips')} />
-                  </HStack>
+                  {feConfigs?.isPlus && (
+                    <HStack gap={[3, 7]}>
+                      <HStack flex={'1'} spacing={1}>
+                        <Checkbox {...register('autoIndexes')}>
+                          <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
+                        </Checkbox>
+                        <QuestionTip label={t('dataset:auto_indexes_tips')} />
+                      </HStack>
+                      <HStack flex={'1'} spacing={1}>
+                        <Checkbox {...register('imageIndex')}>
+                          <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                        </Checkbox>
+                        <QuestionTip label={t('dataset:image_auto_parse_tips')} />
+                      </HStack>
+                    </HStack>
+                  )}
                 </Box>
               )}
               <Box mt={6}>

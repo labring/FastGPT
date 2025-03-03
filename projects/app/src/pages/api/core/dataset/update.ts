@@ -214,7 +214,7 @@ const updateTraining = async ({
       $set: {
         model: agentModel,
         retryCount: 5,
-        lockTime: new Date()
+        lockTime: new Date('2000/1/1')
       }
     }
   );

@@ -47,17 +47,17 @@ const ReTraining = () => {
         }
       ]);
       processParamsForm.reset({
-        mode: collection.trainingType,
-        way: ChunkSettingModeEnum.auto,
+        customPdfParse: collection.customPdfParse,
+        trainingType: collection.trainingType,
+        imageIndex: collection.imageIndex,
+        autoIndexes: collection.autoIndexes,
+
+        chunkSettingMode: ChunkSettingModeEnum.auto,
         embeddingChunkSize: collection.chunkSize,
         qaChunkSize: collection.chunkSize,
         customSplitChar: collection.chunkSplitter,
         qaPrompt: collection.qaPrompt,
-        webSelector: collection.metadata?.webSelector,
-        customPdfParse: collection.customPdfParse,
-        imageAutoParse: collection.imageParse,
-        llmModel: datasetDetail.agentModel?.model,
-        vlmModel: datasetDetail.vlmModel?.model
+        webSelector: collection.metadata?.webSelector
       });
     }
   });

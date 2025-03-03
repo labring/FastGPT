@@ -859,7 +859,6 @@
   "dataset.collections.Select Collection": "选择文件",
   "dataset.collections.Select One Collection To Store": "选择一个文件进行存储",
   "dataset.data.Can not edit": "无编辑权限",
-  "dataset.data.Custom Index Number": "自定义索引{{number}}",
   "dataset.data.Default Index": "默认索引",
   "dataset.data.Delete Tip": "确认删除该条数据？",
   "dataset.data.Index Placeholder": "输入索引文本内容",

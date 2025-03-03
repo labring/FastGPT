@@ -41,9 +41,9 @@ type DatasetImportContextType = {
 type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
 export type ImportFormType = {
   customPdfParse: boolean;
-  imageAutoParse: boolean;
 
   trainingType: DatasetCollectionDataProcessModeEnum;
+  imageIndex: boolean;
   autoIndexes: boolean;
 
   chunkSettingMode: ChunkSettingModeEnum;
@@ -193,7 +193,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
   const processParamsForm = useForm<ImportFormType>({
     defaultValues: {
-      imageAutoParse: false,
+      imageIndex: false,
       autoIndexes: false,
 
       trainingType: DatasetCollectionDataProcessModeEnum.chunk,
@@ -262,7 +262,19 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
         uploadRate: 150
       };
     }
-  }, [agentModel, vectorModel, trainingType, autoIndexes, embeddingChunkSize, qaChunkSize]);
+  }, [
+    trainingType,
+    autoIndexes,
+    agentModel.maxResponse,
+    agentModel.maxContext,
+    agentModel.charsPointsPrice,
+    qaChunkSize,
+    t,
+    vectorModel.defaultToken,
+    vectorModel?.maxToken,
+    vectorModel.charsPointsPrice,
+    embeddingChunkSize
+  ]);
 
   const chunkSettingModeMap = useMemo(() => {
     if (chunkSettingMode === ChunkSettingModeEnum.auto) {
@@ -276,7 +288,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
         customSplitChar
       };
     }
-  }, [chunkSettingMode, TrainingModeMap]);
+  }, [chunkSettingMode, TrainingModeMap.autoChunkSize, TrainingModeMap.chunkSize, customSplitChar]);
 
   const contextValue = {
     ...TrainingModeMap,

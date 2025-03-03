@@ -107,9 +107,9 @@ const Upload = () => {
           name: item.sourceName,
 
           customPdfParse: processParamsForm.getValues('customPdfParse'),
-          imageParse: processParamsForm.getValues('imageAutoParse'),
 
           trainingType,
+          imageIndex: processParamsForm.getValues('imageIndex'),
           autoIndexes: processParamsForm.getValues('autoIndexes'),
           chunkSize,
           chunkSplitter: customSplitChar,

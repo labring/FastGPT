@@ -74,7 +74,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       },
       {
         label: t('dataset:collection_metadata_image_parse'),
-        value: collection.imageParse ? 'Yes' : 'No'
+        value: collection.imageIndex ? 'Yes' : 'No'
       },
       {
         label: t('dataset:auto_indexes'),

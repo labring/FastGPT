@@ -9,6 +9,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 export const DatasetTrainingCollectionName = 'dataset_trainings';
 
@@ -32,15 +33,13 @@ const TrainingDataSchema = new Schema({
     ref: DatasetColCollectionName,
     required: true
   },
-  billId: {
-    // concat bill
-    type: String
-  },
+  billId: String,
   mode: {
     type: String,
     enum: Object.values(TrainingModeEnum),
     required: true
   },
+
   expireAt: {
     // It will be deleted after 7 days
     type: Date,
@@ -87,6 +86,10 @@ const TrainingDataSchema = new Schema({
   indexes: {
     type: [
       {
+        type: {
+          type: String,
+          enum: Object.values(DatasetDataIndexTypeEnum)
+        },
         text: {
           type: String,
           required: true
@@ -100,6 +103,12 @@ const TrainingDataSchema = new Schema({
 TrainingDataSchema.virtual('dataset', {
   ref: DatasetCollectionName,
   localField: 'datasetId',
+  foreignField: '_id',
+  justOne: true
+});
+TrainingDataSchema.virtual('collection', {
+  ref: DatasetColCollectionName,
+  localField: 'collectionId',
   foreignField: '_id',
   justOne: true
 });

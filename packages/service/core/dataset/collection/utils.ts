@@ -227,15 +227,19 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   return DatasetCollectionSyncResultEnum.success;
 };
 
+/* 
+  QA: 独立进程
+  Chunk: Image Index -> Auto index -> chunk index
+*/
 export const getTrainingModeByCollection = (collection: {
   trainingType: DatasetCollectionSchemaType['trainingType'];
   autoIndexes?: DatasetCollectionSchemaType['autoIndexes'];
-  imageParse?: DatasetCollectionSchemaType['imageParse'];
+  imageIndex?: DatasetCollectionSchemaType['imageIndex'];
 }) => {
   if (collection.trainingType === DatasetCollectionDataProcessModeEnum.qa) {
     return TrainingModeEnum.qa;
   }
-  if (collection.imageParse && global.feConfigs?.isPlus) {
+  if (collection.imageIndex && global.feConfigs?.isPlus) {
     return TrainingModeEnum.image;
   }
   if (collection.autoIndexes && global.feConfigs?.isPlus) {
