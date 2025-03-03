@@ -118,7 +118,7 @@ export async function delImgByRelatedId({
 }: {
   teamId: string;
   relateIds: string[];
-  session: ClientSession;
+  session?: ClientSession;
 }) {
   if (relateIds.length === 0) return;
 
