@@ -152,6 +152,7 @@ export const putChannel = (data: ChannelInfoType) =>
 export const deleteChannel = (id: number) => DELETE(`/channel/${id}`);
 
 export const getChannelLog = (params: {
+  request_id?: string;
   channel?: string;
   model_name?: string;
   code_type?: 'all' | 'success' | 'error';
@@ -164,6 +165,7 @@ export const getChannelLog = (params: {
     logs: ChannelLogListItemType[];
     total: number;
   }>(`/logs/search`, {
+    request_id: params.request_id,
     channel: params.channel,
     model_name: params.model_name,
     code_type: params.code_type,

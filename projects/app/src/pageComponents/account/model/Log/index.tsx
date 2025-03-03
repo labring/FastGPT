@@ -32,6 +32,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 
 type LogDetailType = {
   id: number;
@@ -55,11 +56,13 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const isRoot = userInfo?.username === 'root';
   const [filterProps, setFilterProps] = useState<{
+    request_id?: string;
     channelId?: string;
     model?: string;
     code_type: 'all' | 'success' | 'error';
     dateRange: DateRangeType;
   }>({
+    request_id: '',
     code_type: 'all',
     dateRange: {
       from: (() => {
@@ -125,6 +128,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
     pageSize: 20,
     refreshDeps: [filterProps],
     params: {
+      request_id: filterProps.request_id,
       channel: filterProps.channelId,
       model_name: filterProps.model,
       code_type: filterProps.code_type,
@@ -172,6 +176,13 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         <Flex alignItems={'center'}>
           {Tab}
           <Box flex={1} />
+          <Box flex={'0 0 200px'}>
+            <SearchInput
+              placeholder={t('account_model:log_request_id_search')}
+              defaultValue={filterProps.request_id}
+              onBlur={(e) => setFilterProps({ ...filterProps, request_id: e.target.value })}
+            />
+          </Box>
         </Flex>
       )}
       <HStack spacing={4}>
