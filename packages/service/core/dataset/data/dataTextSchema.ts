@@ -40,6 +40,7 @@ try {
       default_language: 'none'
     }
   );
+  DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, collectionId: 1 });
   DatasetDataTextSchema.index({ dataId: 1 }, { unique: true });
 } catch (error) {
   console.log(error);

@@ -404,7 +404,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               </GridItem>
             )}
             {detailData?.response_body && (
-              <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px" colSpan={2}>
+              <GridItem display={'flex'} colSpan={2}>
                 <Title>Response Body</Title>
                 <Container>{detailData?.response_body}</Container>
               </GridItem>
