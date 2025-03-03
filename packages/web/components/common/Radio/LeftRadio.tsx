@@ -1,10 +1,9 @@
 import React from 'react';
 import { Box, Flex, useTheme, Grid, type GridProps, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '../MyTooltip';
 import QuestionTip from '../MyTooltip/QuestionTip';
 
-type Props<T> = GridProps & {
+type Props<T> = Omit<GridProps, 'onChange'> & {
   list: {
     title: string;
     desc?: string;
@@ -16,7 +15,7 @@ type Props<T> = GridProps & {
   value: T;
   defaultBg?: string;
   activeBg?: string;
-  onChange: (e: any) => void;
+  onChange: (e: T) => void;
 };
 
 const LeftRadio = <T = any,>({

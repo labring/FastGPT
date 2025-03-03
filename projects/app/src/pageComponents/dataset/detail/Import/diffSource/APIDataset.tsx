@@ -28,7 +28,7 @@ const APIDatasetCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomAPIFileInput />}
-      {activeStep === 1 && <DataProcess showPreviewChunks={true} />}
+      {activeStep === 1 && <DataProcess />}
       {activeStep === 2 && <Upload />}
     </>
   );
