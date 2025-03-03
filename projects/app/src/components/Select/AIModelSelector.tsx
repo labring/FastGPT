@@ -35,19 +35,18 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
     return props.size ? size[props.size] : size['md'];
   }, [props.size]);
 
-  const avatarList = useMemo(
-    () =>
-      list.map((item) => {
-        const modelData = getModelFromList(
-          [
-            ...llmModelList,
-            ...embeddingModelList,
-            ...ttsModelList,
-            ...sttModelList,
-            ...reRankModelList
-          ],
-          item.value
-        );
+  const avatarList = useMemo(() => {
+    const allModels = [
+      ...llmModelList,
+      ...embeddingModelList,
+      ...ttsModelList,
+      ...sttModelList,
+      ...reRankModelList
+    ];
+    return list
+      .map((item) => {
+        const modelData = getModelFromList(allModels, item.value)!;
+        if (!modelData) return;
 
         return {
           value: item.value,
@@ -64,17 +63,20 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
             </Flex>
           )
         };
-      }),
-    [
-      list,
-      llmModelList,
-      embeddingModelList,
-      ttsModelList,
-      sttModelList,
-      reRankModelList,
-      avatarSize
-    ]
-  );
+      })
+      .filter(Boolean) as {
+      value: any;
+      label: React.JSX.Element;
+    }[];
+  }, [
+    list,
+    llmModelList,
+    embeddingModelList,
+    ttsModelList,
+    sttModelList,
+    reRankModelList,
+    avatarSize
+  ]);
 
   return (
     <Box
@@ -91,6 +93,7 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
               className="nowheel"
               isDisabled={!!disableTip}
               list={avatarList}
+              placeholder={t('common:not_model_config')}
               h={'40px'}
               {...props}
               onchange={(e) => {
@@ -112,13 +115,15 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
   const modelList = useMemo(() => {
-    return [
+    const allModels = [
       ...llmModelList,
       ...embeddingModelList,
       ...ttsModelList,
       ...sttModelList,
       ...reRankModelList
     ];
+
+    return list.map((item) => getModelFromList(allModels, item.value)!).filter(Boolean);
   }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]);
 
   const [value, setValue] = useState<string[]>([]);
@@ -157,6 +162,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
 
     for (const item of list) {
       const modelData = getModelFromList(modelList, item.value);
+      if (!modelData) continue;
       const provider =
         renderList.find((item) => item.value === (modelData?.provider || 'Other')) ??
         renderList[renderList.length - 1];
@@ -179,6 +185,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
 
   const SelectedModel = useMemo(() => {
     const modelData = getModelFromList(modelList, props.value);
+    if (!modelData) return <>{t('common:not_model_config')}</>;
 
     setValue([modelData.provider, props.value]);
 

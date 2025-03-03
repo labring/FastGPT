@@ -34,7 +34,7 @@ const ExternalFileCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomLinkInput />}
-      {activeStep === 1 && <DataProcess showPreviewChunks={true} />}
+      {activeStep === 1 && <DataProcess />}
       {activeStep === 2 && <Upload />}
     </>
   );

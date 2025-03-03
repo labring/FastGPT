@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, Button, Textarea, useTheme, Grid, HStack } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, useTheme } from '@chakra-ui/react';
 import {
-  Control,
   FieldArrayWithId,
-  UseFieldArrayAppend,
   UseFieldArrayRemove,
   UseFormRegister,
   useFieldArray,
@@ -12,7 +10,6 @@ import {
 import {
   postInsertData2Dataset,
   putDatasetDataById,
-  delOneDatasetDataById,
   getDatasetCollectionById,
   getDatasetDataItemById
 } from '@/web/core/dataset/api';
@@ -24,7 +21,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { getDefaultIndex, getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
@@ -36,6 +33,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import styles from './styles.module.scss';
+import { getDatasetIndexMapData } from '@fastgpt/global/core/dataset/data/constants';
 
 export type InputDataType = {
   q: string;
@@ -218,10 +216,7 @@ const InputDataModal = ({
       await putDatasetDataById({
         dataId,
         ...e,
-        indexes:
-          e.indexes?.map((index) =>
-            index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a, dataId: index.dataId }) : index
-          ) || []
+        indexes: e.indexes
       });
 
       return {
@@ -296,7 +291,7 @@ const InputDataModal = ({
               p={0}
               onClick={() =>
                 appendIndexes({
-                  defaultIndex: false,
+                  type: 'custom',
                   text: '',
                   dataId: `${Date.now()}`
                 })
@@ -315,7 +310,6 @@ const InputDataModal = ({
             <DataIndex
               register={register}
               maxToken={maxToken}
-              appendIndexes={appendIndexes}
               removeIndexes={removeIndexes}
               indexes={indexes}
             />
@@ -424,13 +418,11 @@ const DataIndex = ({
   maxToken,
   register,
   indexes,
-  appendIndexes,
   removeIndexes
 }: {
   maxToken: number;
   register: UseFormRegister<InputDataType>;
   indexes: FieldArrayWithId<InputDataType, 'indexes', 'id'>[];
-  appendIndexes: UseFieldArrayAppend<InputDataType, 'indexes'>;
   removeIndexes: UseFieldArrayRemove;
 }) => {
   const { t } = useTranslation();
@@ -438,52 +430,41 @@ const DataIndex = ({
   return (
     <>
       <Flex mt={3} gap={3} flexDir={'column'}>
-        <Box
-          p={4}
-          borderRadius={'md'}
-          border={'1.5px solid var(--light-fastgpt-primary-opacity-01, rgba(51, 112, 255, 0.10))'}
-          bg={'primary.50'}
-        >
-          <Flex mb={2}>
-            <Box flex={1} fontWeight={'medium'} fontSize={'sm'} color={'primary.700'}>
-              {t('common:dataset.data.Default Index')}
-            </Box>
-          </Flex>
-          <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.600'}>
-            {t('common:core.dataset.data.Default Index Tip')}
-          </Box>
-        </Box>
         {indexes?.map((index, i) => {
+          const data = getDatasetIndexMapData(index.type);
           return (
-            !index.defaultIndex && (
-              <Box
-                key={index.dataId || i}
-                p={4}
-                borderRadius={'md'}
-                border={'1.5px solid var(--Gray-Modern-200, #E8EBF0)'}
-                bg={'myGray.25'}
-                _hover={{
-                  '& .delete': {
-                    display: 'block'
-                  }
-                }}
-              >
-                <Flex mb={2}>
-                  <Box flex={1} fontWeight={'medium'} fontSize={'sm'} color={'myGray.900'}>
-                    {t('dataset.data.Custom Index Number', { number: i })}
-                  </Box>
+            <Box
+              key={index.dataId || i}
+              p={4}
+              borderRadius={'md'}
+              border={'1.5px solid var(--Gray-Modern-200, #E8EBF0)'}
+              bg={'myGray.25'}
+              _hover={{
+                '& .delete': {
+                  display: 'block'
+                }
+              }}
+            >
+              <Flex mb={2}>
+                <Box flex={1} fontWeight={'medium'} fontSize={'sm'} color={'myGray.900'}>
+                  {t(data.label)}
+                </Box>
+                {index.type !== 'default' && (
                   <DeleteIcon
                     onClick={() => {
-                      if (indexes.length <= 1) {
-                        appendIndexes(getDefaultIndex({ dataId: `${Date.now()}` }));
-                      }
                       removeIndexes(i);
                     }}
                   />
-                </Flex>
-                <DataIndexTextArea index={i} maxToken={maxToken} register={register} />
-              </Box>
-            )
+                )}
+              </Flex>
+              <DataIndexTextArea
+                disabled={index.type === 'default'}
+                index={i}
+                value={index.text}
+                maxToken={maxToken}
+                register={register}
+              />
+            </Box>
           );
         })}
       </Flex>
@@ -491,14 +472,19 @@ const DataIndex = ({
   );
 };
 
+const textareaMinH = '40px';
 const DataIndexTextArea = ({
+  value,
   index,
   maxToken,
-  register
+  register,
+  disabled
 }: {
+  value: string;
   index: number;
   maxToken: number;
   register: UseFormRegister<InputDataType>;
+  disabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const TextareaDom = useRef<HTMLTextAreaElement | null>(null);
@@ -509,7 +495,7 @@ const DataIndexTextArea = ({
     onChange: onTextChange,
     onBlur
   } = register(`indexes.${index}.text`, { required: true });
-  const textareaMinH = '40px';
+
   useEffect(() => {
     if (TextareaDom.current) {
       TextareaDom.current.style.height = textareaMinH;
@@ -522,7 +508,12 @@ const DataIndexTextArea = ({
       e.target.style.height = `${e.target.scrollHeight + 5}px`;
     }
   }, []);
-  return (
+
+  return disabled ? (
+    <Box fontSize={'sm'} color={'myGray.500'} whiteSpace={'pre-wrap'}>
+      {value}
+    </Box>
+  ) : (
     <Textarea
       maxLength={maxToken}
       borderColor={'transparent'}

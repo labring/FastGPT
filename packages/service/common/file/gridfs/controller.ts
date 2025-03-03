@@ -186,20 +186,25 @@ export async function getDownloadStream({
 
 export const readFileContentFromMongo = async ({
   teamId,
+  tmbId,
   bucketName,
   fileId,
-  isQAImport = false
+  isQAImport = false,
+  customPdfParse = false
 }: {
   teamId: string;
+  tmbId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
   isQAImport?: boolean;
+  customPdfParse?: boolean;
 }): Promise<{
   rawText: string;
   filename: string;
 }> => {
+  const bufferId = `${fileId}-${customPdfParse}`;
   // read buffer
-  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: fileId }, undefined, {
+  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: bufferId }, undefined, {
     ...readFromSecondary
   }).lean();
   if (fileBuffer) {
@@ -227,9 +232,11 @@ export const readFileContentFromMongo = async ({
 
   // Get raw text
   const { rawText } = await readRawContentByFileBuffer({
+    customPdfParse,
     extension,
     isQAImport,
     teamId,
+    tmbId,
     buffer: fileBuffers,
     encoding,
     metadata: {
@@ -240,7 +247,7 @@ export const readFileContentFromMongo = async ({
   // < 14M
   if (fileBuffers.length < 14 * 1024 * 1024 && rawText.trim()) {
     MongoRawTextBuffer.create({
-      sourceId: fileId,
+      sourceId: bufferId,
       rawText,
       metadata: {
         filename: file.filename

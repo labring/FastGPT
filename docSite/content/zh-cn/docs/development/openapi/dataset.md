@@ -297,7 +297,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | --- | --- | --- |
 | datasetId | 知识库ID | ✅ |
 | parentId： | 父级ID，不填则默认为根目录 |  |
-| trainingType | 训练模式。chunk: 按文本长度进行分割;qa: QA拆分;auto: 增强训练 | ✅ |
+| trainingType | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取 | ✅ |
 | chunkSize | 预估块大小 |  |
 | chunkSplitter | 自定义最高优先分割符号 |  |
 | qaPrompt | qa拆分提示词 |  |
@@ -1079,7 +1079,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 --header 'Content-Type: application/json' \
 --data-raw '{
     "collectionId": "64663f451ba1676dbdef0499",
-    "trainingMode": "chunk",
+    "trainingType": "chunk",
     "prompt": "可选。qa 拆分引导词，chunk 模式下忽略",
     "billId": "可选。如果有这个值，本次的数据会被聚合到一个订单中，这个值可以重复使用。可以参考 [创建训练订单] 获取该值。",
     "data": [

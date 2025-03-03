@@ -45,7 +45,7 @@ ${content.slice(0, 100)}${content.length > 100 ? '......' : ''}
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
     requestOrigin,
-    runningAppInfo: { teamId },
+    runningUserInfo: { teamId, tmbId },
     histories,
     chatConfig,
     node: { version },
@@ -61,7 +61,8 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     urls: [...fileUrlList, ...filesFromHistories],
     requestOrigin,
     maxFiles,
-    teamId
+    teamId,
+    tmbId
   });
 
   return {
@@ -105,12 +106,14 @@ export const getFileContentFromLinks = async ({
   urls,
   requestOrigin,
   maxFiles,
-  teamId
+  teamId,
+  tmbId
 }: {
   urls: string[];
   requestOrigin?: string;
   maxFiles: number;
   teamId: string;
+  tmbId: string;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -205,6 +208,7 @@ export const getFileContentFromLinks = async ({
             extension,
             isQAImport: false,
             teamId,
+            tmbId,
             buffer,
             encoding
           });
