@@ -22,6 +22,7 @@
   "key_type": "API key 格式:",
   "log": "調用日誌",
   "log_detail": "日誌詳情",
+  "log_request_id_search": "根據 requestId 搜索",
   "log_status": "狀態",
   "mapping": "模型映射",
   "mapping_tip": "需填寫一個有效 Json。\n可在向實際地址發送請求時，對模型進行映射。\n例如：\n{\n  \n  \"gpt-4o\": \"gpt-4o-test\"\n\n}\n\n當 FastGPT 請求 gpt-4o 模型時，會向實際地址發送 gpt-4o-test 的模型，而不是 gpt-4o。",

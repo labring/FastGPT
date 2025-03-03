@@ -35,7 +35,7 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
   const { userKey } = props || {};
 
   const baseUrl = userKey?.baseUrl || global?.systemEnv?.oneapiUrl || openaiBaseUrl;
-  const apiKey = userKey?.key || global?.systemEnv?.chatApiKey || process.env.CHAT_API_KEY || '';
+  const apiKey = userKey?.key || global?.systemEnv?.chatApiKey || openaiBaseKey;
 
   return {
     baseUrl,

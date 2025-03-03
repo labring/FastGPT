@@ -24,6 +24,7 @@
   "key_type": "API key format:",
   "log": "Call log",
   "log_detail": "Log details",
+  "log_request_id_search": "Search by requestId",
   "log_status": "Status",
   "mapping": "Model Mapping",
   "mapping_tip": "A valid Json is required. \nThe model can be mapped when sending a request to the actual address. \nFor example:\n{\n  \n  \"gpt-4o\": \"gpt-4o-test\"\n\n}\n\nWhen FastGPT requests the gpt-4o model, the gpt-4o-test model is sent to the actual address, instead of gpt-4o.",
