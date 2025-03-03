@@ -24,20 +24,14 @@ type RetrainingCollectionResponse = {
 async function handler(
   req: ApiRequestProps<reTrainingDatasetFileCollectionParams>
 ): Promise<RetrainingCollectionResponse> {
-  const {
-    collectionId,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt
-  } = req.body;
+  const { collectionId, customPdfParse, ...data } = req.body;
 
   if (!collectionId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -84,7 +78,9 @@ async function handler(
   })();
 
   const rawText = await readDatasetSourceRawText({
-    teamId: collection.teamId,
+    teamId,
+    tmbId,
+    customPdfParse,
     ...sourceReadType
   });
 
@@ -100,11 +96,14 @@ async function handler(
       dataset: collection.dataset,
       rawText,
       createCollectionParams: {
+        ...data,
         teamId: collection.teamId,
         tmbId: collection.tmbId,
         datasetId: collection.dataset._id,
         name: collection.name,
         type: collection.type,
+
+        customPdfParse,
 
         fileId: collection.fileId,
         rawLink: collection.rawLink,
@@ -121,10 +120,6 @@ async function handler(
         parentId: collection.parentId,
 
         // special metadata
-        trainingType,
-        chunkSize,
-        chunkSplitter,
-        qaPrompt,
         metadata: collection.metadata
       }
     });

@@ -11,7 +11,10 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  ChatDispatchProps,
+  DispatchNodeResultType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
@@ -69,7 +72,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     histories,
     node: { name },
     query,
-    runningAppInfo: { teamId },
+    runningUserInfo,
     workflowStreamResponse,
     chatConfig,
     params: {
@@ -121,7 +124,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stringQuoteText,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      teamId
+      runningUserInfo
     })
   ]);
 
@@ -355,7 +358,7 @@ async function getMultiInput({
   stringQuoteText,
   requestOrigin,
   maxFiles,
-  teamId
+  runningUserInfo
 }: {
   histories: ChatItemType[];
   inputFiles: UserChatItemValueItemType['file'][];
@@ -363,7 +366,7 @@ async function getMultiInput({
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
   maxFiles: number;
-  teamId: string;
+  runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -400,7 +403,8 @@ async function getMultiInput({
     urls,
     requestOrigin,
     maxFiles,
-    teamId
+    teamId: runningUserInfo.teamId,
+    tmbId: runningUserInfo.tmbId
   });
 
   return {

@@ -6,7 +6,7 @@ import { FileCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getNanoid, hashStr } from '@fastgpt/global/common/string/tools';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { NextAPI } from '@/service/middleware/entry';
@@ -48,8 +48,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCo
     // 1. read file
     const { rawText } = await readRawTextByLocalFile({
       teamId,
+      tmbId,
       path: file.path,
       encoding: file.encoding,
+      customPdfParse: collectionData.customPdfParse,
       metadata: {
         ...fileMetadata,
         relatedId: relatedImgId

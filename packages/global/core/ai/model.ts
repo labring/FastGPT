@@ -22,7 +22,7 @@ export const defaultQAModels: LLMModelItemType[] = [
     maxTemperature: 1.2,
     charsPointsPrice: 0,
     censor: false,
-    vision: false,
+    vision: true,
     datasetProcess: true,
     toolChoice: true,
     functionCall: false,
@@ -59,10 +59,17 @@ export const defaultSTTModels: STTModelType[] = [
 export const getModelFromList = (
   modelList: { provider: ModelProviderIdType; name: string; model: string }[],
   model: string
-) => {
+):
+  | {
+      avatar: string;
+      provider: ModelProviderIdType;
+      name: string;
+      model: string;
+    }
+  | undefined => {
   const modelData = modelList.find((item) => item.model === model) ?? modelList[0];
   if (!modelData) {
-    throw new Error('No Key model is configured');
+    return;
   }
   const provider = getModelProvider(modelData.provider);
   return {
