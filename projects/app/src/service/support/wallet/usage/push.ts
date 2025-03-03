@@ -127,12 +127,12 @@ export const pushGenerateVectorUsage = ({
     createUsage({
       teamId,
       tmbId,
-      appName: i18nT('common:support.wallet.moduleName.index'),
+      appName: i18nT('account_usage:embedding_index'),
       totalPoints,
       source,
       list: [
         {
-          moduleName: i18nT('common:support.wallet.moduleName.index'),
+          moduleName: i18nT('account_usage:embedding_index'),
           amount: totalVector,
           model: vectorModelName,
           inputTokens
@@ -203,7 +203,7 @@ export const pushQuestionGuideUsage = ({
   });
 };
 
-export function pushAudioSpeechUsage({
+export const pushAudioSpeechUsage = ({
   appName = i18nT('common:support.wallet.usage.Audio Speech'),
   model,
   charsLength,
@@ -217,7 +217,7 @@ export function pushAudioSpeechUsage({
   teamId: string;
   tmbId: string;
   source: UsageSourceEnum;
-}) {
+}) => {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
     inputTokens: charsLength,
@@ -239,9 +239,9 @@ export function pushAudioSpeechUsage({
       }
     ]
   });
-}
+};
 
-export function pushWhisperUsage({
+export const pushWhisperUsage = ({
   teamId,
   tmbId,
   duration
@@ -249,7 +249,7 @@ export function pushWhisperUsage({
   teamId: string;
   tmbId: string;
   duration: number;
-}) {
+}) => {
   const whisperModel = getDefaultTTSModel();
 
   if (!whisperModel) return;
@@ -278,4 +278,4 @@ export function pushWhisperUsage({
       }
     ]
   });
-}
+};
