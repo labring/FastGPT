@@ -1,6 +1,6 @@
 import {
   DatasetCollectionTypeEnum,
-  TrainingModeEnum
+  DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
@@ -19,13 +19,14 @@ import { predictDataLimitLength } from '../../../../global/core/dataset/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createTrainingUsage } from '../../../support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { pushDataListToTrainingQueue } from '../training/controller';
 import { MongoImage } from '../../../common/file/image/schema';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { addDays } from 'date-fns';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
-import { delay, retryFn } from '@fastgpt/global/common/system/utils';
+import { retryFn } from '@fastgpt/global/common/system/utils';
+import { getTrainingModeByCollection } from './utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -33,6 +34,7 @@ export const createCollectionAndInsertData = async ({
   relatedId,
   createCollectionParams,
   isQAImport = false,
+  billId,
   session
 }: {
   dataset: DatasetSchemaType;
@@ -41,13 +43,21 @@ export const createCollectionAndInsertData = async ({
   createCollectionParams: CreateOneCollectionParams;
 
   isQAImport?: boolean;
+  billId?: string;
   session?: ClientSession;
 }) => {
+  // Adapter 4.9.0
+  if (createCollectionParams.trainingType === DatasetCollectionDataProcessModeEnum.auto) {
+    createCollectionParams.trainingType = DatasetCollectionDataProcessModeEnum.chunk;
+    createCollectionParams.autoIndexes = true;
+  }
+
   const teamId = createCollectionParams.teamId;
   const tmbId = createCollectionParams.tmbId;
   // Chunk split params
-  const trainingType = createCollectionParams.trainingType || TrainingModeEnum.chunk;
-  const chunkSize = createCollectionParams.chunkSize;
+  const trainingType =
+    createCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
+  const chunkSize = createCollectionParams.chunkSize || 512;
   const chunkSplitter = createCollectionParams.chunkSplitter;
   const qaPrompt = createCollectionParams.qaPrompt;
   const usageName = createCollectionParams.name;
@@ -56,7 +66,7 @@ export const createCollectionAndInsertData = async ({
   const chunks = rawText2Chunks({
     rawText,
     chunkLen: chunkSize,
-    overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
+    overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
     customReg: chunkSplitter ? [chunkSplitter] : [],
     isQAImport
   });
@@ -64,7 +74,14 @@ export const createCollectionAndInsertData = async ({
   // 2. auth limit
   await checkDatasetLimit({
     teamId,
-    insertLen: predictDataLimitLength(trainingType, chunks)
+    insertLen: predictDataLimitLength(
+      getTrainingModeByCollection({
+        trainingType,
+        autoIndexes: createCollectionParams.autoIndexes,
+        imageIndex: createCollectionParams.imageIndex
+      }),
+      chunks
+    )
   });
 
   const fn = async (session: ClientSession) => {
@@ -89,15 +106,20 @@ export const createCollectionAndInsertData = async ({
     });
 
     // 4. create training bill
-    const { billId } = await createTrainingUsage({
-      teamId,
-      tmbId,
-      appName: usageName,
-      billSource: UsageSourceEnum.training,
-      vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
-      agentModel: getLLMModel(dataset.agentModel)?.name,
-      session
-    });
+    const traingBillId = await (async () => {
+      if (billId) return billId;
+      const { billId: newBillId } = await createTrainingUsage({
+        teamId,
+        tmbId,
+        appName: usageName,
+        billSource: UsageSourceEnum.training,
+        vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
+        agentModel: getLLMModel(dataset.agentModel)?.name,
+        vllmModel: getVlmModel(dataset.vlmModel)?.name,
+        session
+      });
+      return newBillId;
+    })();
 
     // 5. insert to training queue
     const insertResults = await pushDataListToTrainingQueue({
@@ -107,9 +129,14 @@ export const createCollectionAndInsertData = async ({
       collectionId,
       agentModel: dataset.agentModel,
       vectorModel: dataset.vectorModel,
-      trainingMode: trainingType,
+      vlmModel: dataset.vlmModel,
+      mode: getTrainingModeByCollection({
+        trainingType,
+        autoIndexes: createCollectionParams.autoIndexes,
+        imageIndex: createCollectionParams.imageIndex
+      }),
       prompt: qaPrompt,
-      billId,
+      billId: traingBillId,
       data: chunks.map((item, index) => ({
         ...item,
         chunkIndex: index
@@ -161,10 +188,15 @@ export async function createOneCollection({
   datasetId,
   type,
 
-  trainingType = TrainingModeEnum.chunk,
-  chunkSize = 512,
-  chunkSplitter,
-  qaPrompt,
+  createTime,
+  updateTime,
+
+  hashRawText,
+  rawTextLength,
+  metadata = {},
+  tags,
+
+  nextSyncTime,
 
   fileId,
   rawLink,
@@ -172,15 +204,18 @@ export async function createOneCollection({
   externalFileUrl,
   apiFileId,
 
-  hashRawText,
-  rawTextLength,
-  metadata = {},
-  session,
-  tags,
+  // Parse settings
+  customPdfParse,
+  imageIndex,
 
-  createTime,
-  updateTime,
-  nextSyncTime
+  // Chunk settings
+  trainingType = DatasetCollectionDataProcessModeEnum.chunk,
+  autoIndexes,
+  chunkSize = 512,
+  chunkSplitter,
+  qaPrompt,
+
+  session
 }: CreateOneCollectionParams) {
   // Create collection tags
   const collectionTags = await createOrGetCollectionTags({ tags, teamId, datasetId, session });
@@ -196,11 +231,14 @@ export async function createOneCollection({
         name,
         type,
 
-        trainingType,
-        chunkSize,
-        chunkSplitter,
-        qaPrompt,
+        rawTextLength,
+        hashRawText,
+        tags: collectionTags,
         metadata,
+
+        createTime,
+        updateTime,
+        nextSyncTime,
 
         ...(fileId ? { fileId } : {}),
         ...(rawLink ? { rawLink } : {}),
@@ -208,13 +246,16 @@ export async function createOneCollection({
         ...(externalFileUrl ? { externalFileUrl } : {}),
         ...(apiFileId ? { apiFileId } : {}),
 
-        rawTextLength,
-        hashRawText,
-        tags: collectionTags,
+        // Parse settings
+        customPdfParse,
+        imageIndex,
 
-        createTime,
-        updateTime,
-        nextSyncTime
+        // Chunk settings
+        trainingType,
+        autoIndexes,
+        chunkSize,
+        chunkSplitter,
+        qaPrompt
       }
     ],
     { session, ordered: true }

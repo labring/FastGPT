@@ -29,7 +29,8 @@ import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  DatasetCollectionDataProcessModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -44,10 +45,7 @@ import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import {
-  checkCollectionIsFolder,
-  getTrainingTypeLabel
-} from '@fastgpt/global/core/dataset/collection/utils';
+import { checkCollectionIsFolder } from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -194,7 +192,7 @@ const CollectionCard = () => {
             <Thead draggable={false}>
               <Tr>
                 <Th py={4}>{t('common:common.Name')}</Th>
-                <Th py={4}>{t('dataset:collection.Training type')}</Th>
+                <Th py={4}>{t('dataset:collection.training_type')}</Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
                 <Th py={4}>{t('dataset:collection.Create update time')}</Th>
                 <Th py={4}>{t('common:common.Status')}</Th>
@@ -251,7 +249,14 @@ const CollectionCard = () => {
                   </Td>
                   <Td py={2}>
                     {!checkCollectionIsFolder(collection.type) ? (
-                      <>{t((getTrainingTypeLabel(collection.trainingType) || '-') as any)}</>
+                      <>
+                        {collection.trainingType
+                          ? t(
+                              (DatasetCollectionDataProcessModeMap[collection.trainingType]
+                                ?.label || '-') as any
+                            )
+                          : '-'}
+                      </>
                     ) : (
                       '-'
                     )}

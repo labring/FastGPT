@@ -23,7 +23,7 @@ const LinkCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomLinkImport />}
-      {activeStep === 1 && <DataProcess showPreviewChunks />}
+      {activeStep === 1 && <DataProcess />}
       {activeStep === 2 && <Upload />}
     </>
   );

@@ -13,14 +13,7 @@ import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
-  const {
-    link,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt,
-    ...body
-  } = req.body as LinkCreateDatasetCollectionParams;
+  const { link, ...body } = req.body as LinkCreateDatasetCollectionParams;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -53,12 +46,6 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
         relatedImgId: link,
         webPageSelector: body?.metadata?.webPageSelector
       },
-
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt,
-
       rawLink: link
     },
 

@@ -10,9 +10,8 @@ import { RenderUploadFiles } from '../components/RenderFiles';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 
-const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
-  loading: () => <Loading fixed={false} />
-});
+const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
+const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const fileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
@@ -23,8 +22,9 @@ const FileLocal = () => {
   return (
     <>
       {activeStep === 0 && <SelectFile />}
-      {activeStep === 1 && <DataProcess showPreviewChunks />}
-      {activeStep === 2 && <Upload />}
+      {activeStep === 1 && <DataProcess />}
+      {activeStep === 2 && <PreviewData />}
+      {activeStep === 3 && <Upload />}
     </>
   );
 };
@@ -64,12 +64,12 @@ const SelectFile = React.memo(function SelectFile() {
       />
 
       {/* render files */}
-      <RenderUploadFiles files={selectFiles} setFiles={setSelectFiles} showPreviewContent />
+      <RenderUploadFiles files={selectFiles} setFiles={setSelectFiles} />
 
       <Box textAlign={'right'} mt={5}>
         <Button isDisabled={successFiles.length === 0 || uploading} onClick={onclickNext}>
           {selectFiles.length > 0
-            ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
+            ? `${t('dataset:total_num_files', { total: selectFiles.length })} | `
             : ''}
           {t('common:common.Next Step')}
         </Button>
