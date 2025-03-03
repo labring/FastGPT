@@ -116,6 +116,7 @@ export type SystemEnvType = {
   openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
+  vlmMaxProcess: number;
   pgHNSWEfSearch: number;
   tokenWorkers: number; // token count max worker
 
