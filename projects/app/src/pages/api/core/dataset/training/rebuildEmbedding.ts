@@ -122,7 +122,8 @@ async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Resp
               }
             ],
             {
-              session
+              session,
+              ordered: true
             }
           );
         }
