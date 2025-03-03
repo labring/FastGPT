@@ -76,7 +76,7 @@
   "params_setting": "Parameter settings",
   "pdf_enhance_parse": "PDF enhancement analysis",
   "pdf_enhance_parse_price": "{{price}} points/page",
-  "pdf_enhance_parse_tips": "When parsing a PDF file, the PDF recognition model is called for recognition, which can be converted into Markdown and retained the pictures in the document, and can also identify the scanned files.",
+  "pdf_enhance_parse_tips": "Calling PDF recognition model for parsing, you can convert it into Markdown and retain pictures in the document. At the same time, you can also identify scanned documents, which will take a long time to identify them.",
   "permission.des.manage": "Can manage the entire knowledge base data and information",
   "permission.des.read": "View knowledge base content",
   "permission.des.write": "Ability to add and change knowledge base content",

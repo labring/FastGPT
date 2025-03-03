@@ -76,7 +76,7 @@
   "params_setting": "参数设置",
   "pdf_enhance_parse": "PDF增强解析",
   "pdf_enhance_parse_price": "{{price}}积分/页",
-  "pdf_enhance_parse_tips": "解析 PDF 文件时，调用 PDF 识别模型进行识别，可以将其转换成 Markdown 并保留文档中的图片，同时也可以对扫描件进行识别。",
+  "pdf_enhance_parse_tips": "调用 PDF 识别模型进行解析，可以将其转换成 Markdown 并保留文档中的图片，同时也可以对扫描件进行识别，识别时间较长。",
   "permission.des.manage": "可管理整个知识库数据和信息",
   "permission.des.read": "可查看知识库内容",
   "permission.des.write": "可增加和变更知识库内容",
