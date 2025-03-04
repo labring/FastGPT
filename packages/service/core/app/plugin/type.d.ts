@@ -25,6 +25,7 @@ export type SystemPluginConfigSchemaType = {
     templateType: string;
     associatedPluginId: string;
     userGuide: string;
+    authorName?: string;
   };
 };
 
