@@ -53,7 +53,7 @@ type State = {
   defaultModels: SystemDefaultModelType;
   llmModelList: LLMModelItemType[];
   datasetModelList: LLMModelItemType[];
-  getVllmModelList: () => LLMModelItemType[];
+  getVlmModelList: () => LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
   reRankModelList: ReRankModelItemType[];
@@ -135,7 +135,7 @@ export const useSystemStore = create<State>()(
         ttsModelList: [],
         reRankModelList: [],
         sttModelList: [],
-        getVllmModelList: () => {
+        getVlmModelList: () => {
           return get().llmModelList.filter((item) => item.vision);
         },
         initStaticData(res) {

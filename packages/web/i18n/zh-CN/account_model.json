@@ -43,5 +43,7 @@
   "selected_model_empty": "至少选择一个模型",
   "start_test": "开始测试{{num}}个模型",
   "test_failed": "有{{num}}个模型报错",
+  "vlm_model": "图片理解模型",
+  "vlm_model_tip": "用于知识库中对文档中的图片进行额外的索引生成",
   "waiting_test": "等待测试"
 }

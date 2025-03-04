@@ -110,7 +110,7 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
     </Box>
   );
 };
-const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
+const MultipleRowSelector = ({ list, onchange, disableTip, placeholder, ...props }: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
@@ -124,7 +124,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     ];
 
     return list.map((item) => getModelFromList(allModels, item.value)!).filter(Boolean);
-  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList]);
+  }, [llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList, list]);
 
   const [value, setValue] = useState<string[]>([]);
 
@@ -174,7 +174,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
     }
 
     return renderList.filter((item) => item.children.length > 0);
-  }, [avatarSize, list, modelList]);
+  }, [avatarSize, list, modelList, t]);
 
   const onSelect = useCallback(
     (e: string[]) => {
@@ -184,7 +184,9 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
   );
 
   const SelectedModel = useMemo(() => {
+    if (!props.value) return <>{t('common:not_model_config')}</>;
     const modelData = getModelFromList(modelList, props.value);
+
     if (!modelData) return <>{t('common:not_model_config')}</>;
 
     setValue([modelData.provider, props.value]);
@@ -201,7 +203,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
         <Box>{modelData?.name}</Box>
       </HStack>
     );
-  }, [modelList, props.value, avatarSize]);
+  }, [modelList, props.value, t, avatarSize]);
 
   return (
     <Box
@@ -217,6 +219,7 @@ const MultipleRowSelector = ({ list, onchange, disableTip, ...props }: Props) =>
           list={selectorList}
           onSelect={onSelect}
           value={value}
+          placeholder={placeholder}
           rowMinWidth="160px"
           ButtonProps={{
             isDisabled: !!disableTip,

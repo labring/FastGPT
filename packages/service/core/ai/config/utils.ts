@@ -163,6 +163,13 @@ export const loadSystemModels = async (init = false) => {
       global.systemDefaultModel.rerank = Array.from(global.reRankModelMap.values())[0];
     }
 
+    // Sort model list
+    global.systemActiveModelList.sort((a, b) => {
+      const providerA = getModelProvider(a.provider);
+      const providerB = getModelProvider(b.provider);
+      return providerA.order - providerB.order;
+    });
+
     console.log('Load models success', JSON.stringify(global.systemActiveModelList, null, 2));
   } catch (error) {
     console.error('Load models error', error);

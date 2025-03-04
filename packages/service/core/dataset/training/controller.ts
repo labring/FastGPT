@@ -11,6 +11,7 @@ import { addLog } from '../../../common/system/log';
 import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
+import { i18nT } from '../../../../web/i18n/utils';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -71,7 +72,7 @@ export async function pushDataListToTrainingQueue({
     if (mode === TrainingModeEnum.chunk) {
       const vectorModelData = getEmbeddingModel(vectorModel);
       if (!vectorModelData) {
-        return Promise.reject(`Vector model ${vectorModel} is inValid`);
+        return Promise.reject(i18nT('common:error_embedding_not_config'));
       }
       return {
         maxToken: vectorModelData.maxToken * 1.5,
@@ -83,7 +84,7 @@ export async function pushDataListToTrainingQueue({
     if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
       const agentModelData = getLLMModel(agentModel);
       if (!agentModelData) {
-        return Promise.reject(`File model ${agentModel} is inValid`);
+        return Promise.reject(i18nT('common:error_llm_not_config'));
       }
       return {
         maxToken: agentModelData.maxContext * 0.8,
@@ -95,7 +96,7 @@ export async function pushDataListToTrainingQueue({
     if (mode === TrainingModeEnum.image) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
-        return Promise.reject(`Vlm model ${vlmModel} is inValid`);
+        return Promise.reject(i18nT('common:error_vlm_not_config'));
       }
       return {
         maxToken: vllmModelData.maxContext * 0.8,
