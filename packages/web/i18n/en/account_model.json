@@ -43,5 +43,7 @@
   "selected_model_empty": "Choose at least one model",
   "start_test": "Start testing {{num}} models",
   "test_failed": "There are {{num}} models that report errors",
+  "vlm_model": "Vlm",
+  "vlm_model_tip": "Used to generate additional indexing of images in a document in the knowledge base",
   "waiting_test": "Waiting for testing"
 }

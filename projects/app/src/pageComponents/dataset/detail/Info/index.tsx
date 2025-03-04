@@ -37,7 +37,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
-  const { feConfigs, datasetModelList, embeddingModelList, getVllmModelList } = useSystemStore();
+  const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
 
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
@@ -52,7 +52,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const vllmModelList = useMemo(() => getVllmModelList(), [getVllmModelList]);
+  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
   const vlmModel = watch('vlmModel');
 
   const { ConfirmModal: ConfirmDelModal } = useConfirm({

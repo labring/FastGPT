@@ -124,6 +124,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stringQuoteText,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
       runningUserInfo
     })
   ]);
@@ -358,6 +359,7 @@ async function getMultiInput({
   stringQuoteText,
   requestOrigin,
   maxFiles,
+  customPdfParse,
   runningUserInfo
 }: {
   histories: ChatItemType[];
@@ -366,6 +368,7 @@ async function getMultiInput({
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
   maxFiles: number;
+  customPdfParse?: boolean;
   runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>
@@ -403,6 +406,7 @@ async function getMultiInput({
     urls,
     requestOrigin,
     maxFiles,
+    customPdfParse,
     teamId: runningUserInfo.teamId,
     tmbId: runningUserInfo.tmbId
   });
