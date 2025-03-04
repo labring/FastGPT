@@ -255,8 +255,8 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                 </Tr>
               </Thead>
               <Tbody>
-                {formatData.map((item) => (
-                  <Tr key={item.id}>
+                {formatData.map((item, index) => (
+                  <Tr key={index}>
                     <Td>{item.channelName}</Td>
                     <Td>{item.model}</Td>
                     <Td>
