@@ -35,21 +35,17 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { shadowLight } from '@fastgpt/web/styles/theme';
-import AIModelSelector from '@/components/Select/AIModelSelector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 function DataProcess() {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { toast } = useToast();
 
-  const {
-    goToNext,
-    processParamsForm,
-    chunkSizeField,
-    minChunkSize,
-    maxChunkSize,
-    priceTip,
-    chunkSize
-  } = useContextSelector(DatasetImportContext, (v) => v);
+  const { goToNext, processParamsForm, chunkSizeField, minChunkSize, maxChunkSize } =
+    useContextSelector(DatasetImportContext, (v) => v);
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { getValues, setValue, register, watch } = processParamsForm;
   const trainingType = watch('trainingType');
   const chunkSettingMode = watch('chunkSettingMode');
@@ -177,9 +173,16 @@ function DataProcess() {
                         <QuestionTip label={t('dataset:auto_indexes_tips')} />
                       </HStack>
                       <HStack flex={'1'} spacing={1}>
-                        <Checkbox {...register('imageIndex')}>
-                          <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
-                        </Checkbox>
+                        <MyTooltip
+                          label={!datasetDetail?.vlmModel ? t('common:error_vlm_not_config') : ''}
+                        >
+                          <Checkbox
+                            isDisabled={!datasetDetail?.vlmModel}
+                            {...register('imageIndex')}
+                          >
+                            <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                          </Checkbox>
+                        </MyTooltip>
                         <QuestionTip label={t('dataset:image_auto_parse_tips')} />
                       </HStack>
                     </HStack>
