@@ -298,6 +298,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | datasetId | 知识库ID | ✅ |
 | parentId： | 父级ID，不填则默认为根目录 |  |
 | trainingType | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取 | ✅ |
+| autoIndexes | 是否自动生成索引(仅商业版支持) |  |
+| imageIndex | 是否自动生成图片索引(仅商业版支持) |  |
 | chunkSize | 预估块大小 |  |
 | chunkSplitter | 自定义最高优先分割符号 |  |
 | qaPrompt | qa拆分提示词 |  |
