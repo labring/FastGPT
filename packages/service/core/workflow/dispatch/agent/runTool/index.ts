@@ -104,6 +104,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     histories: chatHistories,
     requestOrigin,
     maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
+    customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
     fileLinks,
     inputFiles: globalFiles,
     hasReadFilesTool
@@ -295,6 +296,7 @@ const getMultiInput = async ({
   fileLinks,
   requestOrigin,
   maxFiles,
+  customPdfParse,
   inputFiles,
   hasReadFilesTool
 }: {
@@ -303,6 +305,7 @@ const getMultiInput = async ({
   fileLinks?: string[];
   requestOrigin?: string;
   maxFiles: number;
+  customPdfParse?: boolean;
   inputFiles: UserChatItemValueItemType['file'][];
   hasReadFilesTool: boolean;
 }) => {
@@ -330,6 +333,7 @@ const getMultiInput = async ({
     urls,
     requestOrigin,
     maxFiles,
+    customPdfParse,
     teamId: runningUserInfo.teamId,
     tmbId: runningUserInfo.tmbId
   });
