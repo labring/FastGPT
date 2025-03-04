@@ -18,6 +18,9 @@ const AppTemplateSchema = new Schema({
   avatar: {
     type: String
   },
+  author: {
+    type: String
+  },
   tags: {
     type: [String],
     default: undefined
