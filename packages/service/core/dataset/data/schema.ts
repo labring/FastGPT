@@ -45,8 +45,7 @@ const DatasetDataSchema = new Schema({
       {
         // Abandon
         defaultIndex: {
-          type: Boolean,
-          default: false
+          type: Boolean
         },
         type: {
           type: String,
