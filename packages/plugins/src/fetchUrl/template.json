@@ -16,7 +16,7 @@
         "nodeId": "lmpb9v2lo2lk",
         "name": "插件开始",
         "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
-        "avatar": "/imgs/workflow/input.png",
+        "avatar": "core/workflow/template/workflowStart",
         "flowNodeType": "pluginInput",
         "showStatus": false,
         "position": {
@@ -26,14 +26,16 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": ["reference"],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "key": "url",
             "label": "url",
             "description": "需要读取的网页链接",
             "required": true,
-            "toolDescription": "需要读取的网页链接"
+            "toolDescription": "需要读取的网页链接",
+            "list": [],
+            "defaultValue": ""
           }
         ],
         "outputs": [
@@ -50,12 +52,12 @@
         "nodeId": "i7uow4wj2wdp",
         "name": "插件输出",
         "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
-        "avatar": "/imgs/workflow/output.png",
+        "avatar": "core/workflow/template/pluginOutput",
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 1607.7142331269129,
-          "y": -150.8808596935447
+          "x": 1853.935047606551,
+          "y": -154.13661665265613
         },
         "version": "481",
         "inputs": [
@@ -81,12 +83,12 @@
         "nodeId": "ebLCxU43hHuZ",
         "name": "HTTP 请求",
         "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
-        "avatar": "/imgs/workflow/http.png",
+        "avatar": "core/workflow/template/httpRequest",
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1050.9890727421412,
-          "y": -415.2085119990912
+          "x": 1054.2940501177068,
+          "y": -503.13661665265613
         },
         "version": "481",
         "inputs": [
@@ -96,7 +98,7 @@
             "valueType": "dynamic",
             "label": "",
             "required": false,
-            "description": "core.module.input.description.HTTP Dynamic Input",
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
             "customInputConfig": {
               "selectValueTypeList": [
                 "string",
@@ -107,16 +109,19 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
                 "dynamic",
-                "selectApp",
-                "selectDataset"
+                "selectDataset",
+                "selectApp"
               ],
               "showDescription": false,
               "showDefaultValue": true
-            }
+            },
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpMethod",
@@ -124,17 +129,33 @@
             "valueType": "string",
             "label": "",
             "value": "POST",
-            "required": true
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpReqUrl",
             "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
-            "description": "core.module.input.description.Http Request Url",
+            "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "fetchUrl"
+            "value": "fetchUrl",
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
@@ -142,9 +163,11 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "description": "core.module.input.description.Http Request Header",
-            "placeholder": "core.module.input.description.Http Request Header",
-            "required": false
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpParams",
@@ -152,7 +175,9 @@
             "valueType": "any",
             "value": [],
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "key": "system_httpJsonBody",
@@ -160,7 +185,29 @@
             "valueType": "any",
             "value": "{\n  \"url\": \"{{url}}\"\n}",
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           },
           {
             "renderTypeList": ["reference"],
@@ -178,12 +225,13 @@
                 "arrayNumber",
                 "arrayBoolean",
                 "arrayObject",
+                "arrayAny",
                 "any",
                 "chatHistory",
                 "datasetQuote",
                 "dynamic",
-                "selectApp",
-                "selectDataset"
+                "selectDataset",
+                "selectApp"
               ],
               "showDescription": false,
               "showDefaultValue": true
@@ -193,6 +241,23 @@
           }
         ],
         "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
           {
             "id": "system_addOutputParam",
             "key": "system_addOutputParam",
@@ -221,23 +286,6 @@
             }
           },
           {
-            "id": "error",
-            "key": "error",
-            "label": "请求错误",
-            "description": "HTTP请求错误信息，成功时返回空",
-            "valueType": "object",
-            "type": "static"
-          },
-          {
-            "id": "httpRawResponse",
-            "key": "httpRawResponse",
-            "label": "原始响应",
-            "required": true,
-            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
-            "valueType": "any",
-            "type": "static"
-          },
-          {
             "id": "rH4tMV02robs",
             "valueType": "string",
             "type": "dynamic",
@@ -260,6 +308,34 @@
         "sourceHandle": "ebLCxU43hHuZ-source-right",
         "targetHandle": "i7uow4wj2wdp-target-left"
       }
-    ]
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": "You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:\n\n1. Use the same language as the user's last question in the conversation history.\n2. Keep each question under 20 characters in length.\n\nAnalyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.\n\nRemember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics."
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "677b59849d672185a5671b45"
+    }
   }
 }
