@@ -1,18 +1,23 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { loadOpenAPISchemaFromUrl } from '@fastgpt/global/common/string/swagger';
+import { NextAPI } from '@/service/middleware/entry';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { isInternalAddress } from '@fastgpt/service/common/system/utils';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    const apiURL = req.body.url as string;
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  const apiURL = req.body.url as string;
 
-    return jsonRes(res, {
-      data: await loadOpenAPISchemaFromUrl(apiURL)
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+  if (!apiURL) {
+    return Promise.reject(CommonErrEnum.missingParams);
   }
+
+  const isInternal = isInternalAddress(apiURL);
+
+  if (isInternal) {
+    return Promise.reject('Invalid url');
+  }
+
+  return await loadOpenAPISchemaFromUrl(apiURL);
 }
+
+export default NextAPI(handler);
