@@ -5,6 +5,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
+import { PG_ADDRESS } from '@fastgpt/service/common/vectorStore/constants';
 
 // 所有 trainingType=auto 的 collection，都改成 trainingType=chunk
 const updateCollections = async () => {
@@ -48,9 +50,18 @@ const updateData = async () => {
     }
   ]);
 };
+const upgradePgVector = async () => {
+  if (!PG_ADDRESS) return;
+  await PgClient.query(`
+      ALTER EXTENSION vector UPDATE;
+    `);
+};
 
 async function handler(req: NextApiRequest, _res: NextApiResponse) {
   await authCert({ req, authRoot: true });
+
+  console.log('升级 PG vector 插件');
+  await upgradePgVector();
 
   console.log('变更所有 collection 的 trainingType 为 chunk');
   await updateCollections();

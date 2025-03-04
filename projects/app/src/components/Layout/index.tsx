@@ -51,13 +51,13 @@ export const navbarWidth = '64px';
 
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
+  const { toast } = useToast();
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { loading, feConfigs, notSufficientModalType, llmModelList, embeddingModelList } =
     useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo, teamPlanStatus, isUpdateNotification, setIsUpdateNotification } =
-    useUserStore();
+  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const isChatPage = useMemo(
@@ -87,7 +87,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   });
 
   // Check model invalid
-  const { toast } = useToast();
   useDebounceEffect(
     () => {
       if (userInfo?.username === 'root') {
