@@ -164,34 +164,22 @@ export class PgVectorCtrl {
     }
 
     try {
-      // const explan: any = await PgClient.query(
-      //   `BEGIN;
-      //     SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
-      //   EXPLAIN ANALYZE  select id, collection_id, vector <#> '[${vector}]' AS score
-      //       from ${DatasetVectorTableName}
-      //       where team_id='${teamId}'
-      //         AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
-      //         ${forbidCollectionSql}
-      //       order by score limit ${limit};
-      //   COMMIT;`
-      // );
-      // console.log(explan[2].rows);
-
       const results: any = await PgClient.query(
-        `
-        BEGIN;
+        `BEGIN;
           SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
-          select id, collection_id, vector <#> '[${vector}]' AS score 
-            from ${DatasetVectorTableName} 
-            where team_id='${teamId}'
-              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
-              ${filterCollectionIdSql}
-              ${forbidCollectionSql}
-            order by score limit ${limit};
+          SET LOCAL hnsw.iterative_scan = relaxed_order;
+          WITH relaxed_results AS MATERIALIZED (
+            select id, collection_id, vector <#> '[${vector}]' AS score
+              from ${DatasetVectorTableName}
+              where team_id='${teamId}'
+                AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+                ${filterCollectionIdSql}
+                ${forbidCollectionSql}
+              order by score limit ${limit}
+          ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
         COMMIT;`
       );
-
-      const rows = results?.[2]?.rows as PgSearchRawType[];
+      const rows = results?.[3]?.rows as PgSearchRawType[];
 
       return {
         results: rows.map((item) => ({

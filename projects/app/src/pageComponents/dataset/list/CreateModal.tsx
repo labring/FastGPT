@@ -40,7 +40,7 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { feConfigs, defaultModels, embeddingModelList, datasetModelList, getVllmModelList } =
+  const { feConfigs, defaultModels, embeddingModelList, datasetModelList, getVlmModelList } =
     useSystemStore();
   const { isPc } = useSystem();
 
@@ -71,7 +71,7 @@ const CreateModal = ({
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
-  const vllmModelList = useMemo(() => getVllmModelList(), [getVllmModelList]);
+  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 
   const form = useForm<CreateDatasetParams>({
     defaultValues: {

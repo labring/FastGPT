@@ -76,7 +76,7 @@
   "params_setting": "參數設置",
   "pdf_enhance_parse": "PDF增強解析",
   "pdf_enhance_parse_price": "{{price}}積分/頁",
-  "pdf_enhance_parse_tips": "解析 PDF 文件時，調用 PDF 識別模型進行識別，可以將其轉換成 Markdown 並保留文檔中的圖片，同時也可以對掃描件進行識別。",
+  "pdf_enhance_parse_tips": "調用 PDF 識別模型進行解析，可以將其轉換成 Markdown 並保留文檔中的圖片，同時也可以對掃描件進行識別，識別時間較長。",
   "permission.des.manage": "可管理整個資料集的資料和資訊",
   "permission.des.read": "可檢視資料集內容",
   "permission.des.write": "可新增和變更資料集內容",
