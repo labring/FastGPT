@@ -84,7 +84,8 @@ export const readRawContentByFileBuffer = async ({
       success: boolean;
       message: string;
       data: {
-        page: number;
+        page?: number; // abandon
+        pages: number;
         markdown: string;
       };
     }>(url, data, {
@@ -103,7 +104,7 @@ export const readRawContentByFileBuffer = async ({
     createPdfParseUsage({
       teamId,
       tmbId,
-      pages: response.data.page
+      pages: response.data.page || response.data.pages
     });
 
     return {
