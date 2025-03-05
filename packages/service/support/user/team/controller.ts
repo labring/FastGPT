@@ -43,7 +43,6 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     teamDomain: tmb.team?.teamDomain,
     role: tmb.role,
     status: tmb.status,
-    defaultTeam: tmb.defaultTeam,
     permission: new TeamPermission({
       per: Per ?? TeamDefaultPermissionVal,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
@@ -71,8 +70,7 @@ export async function getUserDefaultTeam({ userId }: { userId: string }) {
     return Promise.reject('tmbId or userId is required');
   }
   return getTeamMember({
-    userId: new Types.ObjectId(userId),
-    defaultTeam: true
+    userId: new Types.ObjectId(userId)
   });
 }
 

@@ -39,14 +39,14 @@ const TeamMemberSchema = new Schema({
   updateTime: {
     type: Date
   },
-  defaultTeam: {
-    type: Boolean,
-    default: false
-  },
 
   // Abandoned
   role: {
     type: String
+  },
+  // Abandoned
+  defaultTeam: {
+    type: Boolean
   }
 });
 
