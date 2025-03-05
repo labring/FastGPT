@@ -195,15 +195,7 @@ sleep 10
 docker restart oneapi
 ```
 
-### 4. 打开 OneAPI 添加模型
-
-可以通过`ip:3001`访问OneAPI，默认账号为`root`密码为`123456`。
-
-在OneApi中添加合适的AI模型渠道。[点击查看相关教程](/docs/development/modelconfig/one-api/)
-
-只需要添加模型即可，模板已经配置好了oneapi的连接地址和令牌，无需变更。
-
-### 5. 访问 FastGPT
+### 4. 访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
@@ -211,9 +203,11 @@ docker restart oneapi
 
 首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志里会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
 
-### 6. 配置模型
+### 5. 配置模型
 
-登录FastGPT后，进入模型配置页面，务必先配置至少一个语言模型和一个向量模型，否则系统无法正常使用。
+登录FastGPT后，进入“模型提供商”页面，首先配置模型渠道，[点击查看相关教程](/docs/development/modelconfig/ai-proxy)
+
+然后配置具体模型，务必先配置至少一个语言模型和一个向量模型，否则系统无法正常使用。
 
 [点击查看模型配置教程](/docs/development/modelConfig/intro/)
 
