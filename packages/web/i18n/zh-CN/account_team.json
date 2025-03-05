@@ -72,5 +72,6 @@
   "forbid_hint": "停用后，该邀请链接将失效。 该操作不可撤销，是否确认停用？",
   "confirm_forbidden": "确认停用",
   "invitation_link_auto_clean_hint": "已失效链接将在30天后自动清理",
-  "has_invited": "已邀请"
+  "has_invited": "已邀请",
+  "invitation_link_has_been_invalid": "邀请链接已失效，请联系团队管理员"
 }

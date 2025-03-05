@@ -8,6 +8,8 @@ import { useRouter } from 'next/router';
 import { useCallback } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from './context';
+import { isForbidden } from '@fastgpt/service/support/user/team/invitationLink/controllers';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 function Invite({ invitelinkid }: { invitelinkid: string }) {
   const router = useRouter();
@@ -21,8 +23,19 @@ function Invite({ invitelinkid }: { invitelinkid: string }) {
     router.reload();
   };
 
+  const { toast } = useToast();
+
   const { data: invitationInfo } = useRequest2(() => getInvitationInfo(invitelinkid), {
     manual: false,
+    onSuccess: (data) => {
+      if (isForbidden(data)) {
+        toast({
+          description: t('account_team:invitation_link_has_been_invalid'),
+          status: 'warning'
+        });
+        onClose();
+      }
+    },
     onError: onClose
   });
 
