@@ -23,7 +23,7 @@ const updateCollections = async () => {
   );
 };
 const updateData = async () => {
-  await MongoDatasetData.updateMany({ indexes: { $exists: true } }, [
+  await MongoDatasetData.updateMany({}, [
     {
       $set: {
         indexes: {
