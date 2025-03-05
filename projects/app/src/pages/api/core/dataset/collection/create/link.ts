@@ -29,8 +29,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   });
   const { title = link, content = '' } = result[0];
 
-  if (!content) {
-    return Promise.reject('Can not fetch content from link');
+  if (!content || content === 'Cannot fetch internal url') {
+    return Promise.reject(content || 'Can not fetch content from link');
   }
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
@@ -38,7 +38,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     rawText: content,
     createCollectionParams: {
       ...body,
-      name: title,
+      name: title || link,
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.link,
