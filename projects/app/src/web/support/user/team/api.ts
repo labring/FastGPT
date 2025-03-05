@@ -9,7 +9,6 @@ import {
   InviteMemberProps,
   InviteMemberResponse,
   UpdateInviteProps,
-  UpdateStatusProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
@@ -50,8 +49,8 @@ export const delRemoveMember = (tmbId: string) =>
   DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
-export const updateStatus = (data: UpdateStatusProps) =>
-  PUT('/proApi/support/user/team/member/updateStatus', data);
+export const postRestoreMember = (tmbId: string) =>
+  POST('/proApi/support/user/team/member/restore', { tmbId });
 export const delLeaveTeam = () => DELETE('/proApi/support/user/team/member/leave');
 
 /* -------------- team invitaionlink -------------------- */
