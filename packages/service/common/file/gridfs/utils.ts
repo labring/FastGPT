@@ -3,13 +3,16 @@ import { PassThrough } from 'stream';
 
 export const gridFsStream2Buffer = (stream: NodeJS.ReadableStream) => {
   return new Promise<Buffer>((resolve, reject) => {
-    let tmpBuffer: Buffer = Buffer.from([]);
+    const chunks: Buffer[] = [];
+    let totalLength = 0;
 
     stream.on('data', (chunk) => {
-      tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
+      chunks.push(chunk);
+      totalLength += chunk.length;
     });
     stream.on('end', () => {
-      resolve(tmpBuffer);
+      const resultBuffer = Buffer.concat(chunks, totalLength); // 一次性拼接
+      resolve(resultBuffer);
     });
     stream.on('error', (err) => {
       reject(err);
