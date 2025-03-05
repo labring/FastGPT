@@ -217,12 +217,6 @@ export function useScrollPagination<
       if (init) {
         setData([]);
         setTotal(0);
-
-        if (ScrollContainerRef?.current) {
-          ScrollContainerRef.current.scrollTop = 0;
-        } else if (ScrollRef.current) {
-          ScrollRef.current.scrollTop = 0;
-        }
       }
 
       const offset = init ? 0 : data.length;
