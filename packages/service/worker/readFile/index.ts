@@ -27,7 +27,9 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
       case 'csv':
         return readCsvRawText(params);
       default:
-        return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx');
+        return Promise.reject(
+          `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
+        );
     }
   };
 
