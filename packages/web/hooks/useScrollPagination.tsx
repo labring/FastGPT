@@ -214,6 +214,11 @@ export function useScrollPagination<
     async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && !init) return;
 
+      if (init) {
+        setData([]);
+        setTotal(0);
+      }
+
       const offset = init ? 0 : data.length;
 
       setTrue();
@@ -288,7 +293,7 @@ export function useScrollPagination<
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ref?.current || noMore) return;
+          if (!ref?.current || noMore || isLoading || data.length === 0) return;
           const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
           if (
