@@ -81,13 +81,9 @@ export const readRawContentByFileBuffer = async ({
       filename: `file.${extension}`
     });
     const { data: response } = await axios.post<{
-      success: boolean;
-      message: string;
-      data: {
-        page?: number; // abandon
-        pages: number;
-        markdown: string;
-      };
+      pages: number;
+      markdown: string;
+      error?: Object | string;
     }>(url, data, {
       timeout: 600000,
       headers: {
@@ -96,15 +92,19 @@ export const readRawContentByFileBuffer = async ({
       }
     });
 
+    if (response.error) {
+      return Promise.reject(response.error);
+    }
+
     addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
 
-    const rawText = response.data.markdown;
+    const rawText = response.markdown;
     const { text, imageList } = matchMdImgTextAndUpload(rawText);
 
     createPdfParseUsage({
       teamId,
       tmbId,
-      pages: response.data.page || response.data.pages
+      pages: response.pages
     });
 
     return {
