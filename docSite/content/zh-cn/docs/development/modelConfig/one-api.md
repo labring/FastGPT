@@ -20,10 +20,6 @@ FastGPT 目前采用模型分离的部署方案，FastGPT 中只兼容 OpenAI �
 
 ## 部署
 
-### Docker 版本
-
-`docker-compose.yml` 文件已加入了 OneAPI 配置，可直接使用。默认暴露在 3001 端口。
-
 ### Sealos 版本
 
 * 北京区: [点击部署 OneAPI](https://hzh.sealos.run/?openapp=system-template%3FtemplateName%3Done-api)
