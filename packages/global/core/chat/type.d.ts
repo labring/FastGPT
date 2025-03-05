@@ -77,6 +77,7 @@ export type AIChatItemValueItemType = {
     | ChatItemValueTypeEnum.reasoning
     | ChatItemValueTypeEnum.tool
     | ChatItemValueTypeEnum.interactive;
+
   text?: {
     content: string;
   };

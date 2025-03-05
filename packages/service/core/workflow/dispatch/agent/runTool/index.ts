@@ -55,13 +55,17 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       userChatInput,
       history = 6,
       fileUrlList: fileLinks,
-      aiChatVision
+      aiChatVision,
+      aiChatReasoning
     }
   } = props;
 
   const toolModel = getLLMModel(model);
   const useVision = aiChatVision && toolModel.vision;
   const chatHistories = getHistories(history, histories);
+
+  props.params.aiChatVision = aiChatVision && toolModel.vision;
+  props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
 
