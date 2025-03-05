@@ -93,7 +93,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { runAsync: onLeaveTeam } = useRequest2(
     async () => {
-      const defaultTeam = myTeams.find((item) => item.defaultTeam) || myTeams[0];
+      const defaultTeam = myTeams[0];
       // change to personal team
       onSwitchTeam(defaultTeam.teamId);
       return delLeaveTeam();
