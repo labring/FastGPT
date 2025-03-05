@@ -30,10 +30,10 @@ export const isInternalAddress = (url: string): boolean => {
       return true;
     }
 
-    // For non-metadata URLs, check if it's a domain name
+    // For IP addresses, check if they are internal
     const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipv4Pattern.test(hostname)) {
-      return true;
+      return false; // Not an IP address, so it's a domain name - consider it external by default
     }
 
     // ... existing IP validation code ...
