@@ -33,7 +33,9 @@ export const isInternalAddress = (url: string): boolean => {
     // For non-metadata URLs, check if it's a domain name
     const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipv4Pattern.test(hostname)) {
-      return true;
+      // 域名默认应视为外部地址，除非是明确的内部域名
+      const internalDomains = [''];
+      return internalDomains.includes(hostname);
     }
 
     // ... existing IP validation code ...
