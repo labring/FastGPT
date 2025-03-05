@@ -127,31 +127,33 @@ const PreviewData = () => {
               {t('dataset:preview_chunk_intro')}
             </Box>
           </Flex>
-          <MyBox isLoading={isLoading} flex={'1 0 0'} overflowY={'auto'} px={5} py={3}>
-            {previewFile ? (
-              <>
-                {data.map((item, index) => (
-                  <Box
-                    key={index}
-                    fontSize={'sm'}
-                    color={'myGray.600'}
-                    _notLast={{
-                      mb: 3,
-                      pb: 3,
-                      borderBottom: 'base'
-                    }}
-                    _hover={{
-                      bg: 'myGray.100'
-                    }}
-                  >
-                    <Markdown source={item.q} />
-                    <Markdown source={item.a} />
-                  </Box>
-                ))}
-              </>
-            ) : (
-              <EmptyTip text={t('dataset:preview_chunk_not_selected')} />
-            )}
+          <MyBox isLoading={isLoading} flex={'1 0 0'} h={0}>
+            <Box h={'100%'} overflowY={'auto'} px={5} py={3}>
+              {previewFile ? (
+                <>
+                  {data.map((item, index) => (
+                    <Box
+                      key={index}
+                      fontSize={'sm'}
+                      color={'myGray.600'}
+                      _notLast={{
+                        mb: 3,
+                        pb: 3,
+                        borderBottom: 'base'
+                      }}
+                      _hover={{
+                        bg: 'myGray.100'
+                      }}
+                    >
+                      <Markdown source={item.q} />
+                      <Markdown source={item.a} />
+                    </Box>
+                  ))}
+                </>
+              ) : (
+                <EmptyTip text={t('dataset:preview_chunk_not_selected')} />
+              )}
+            </Box>
           </MyBox>
         </Flex>
       </Flex>
