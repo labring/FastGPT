@@ -59,6 +59,13 @@ export const ToolModule: FlowNodeTemplateType = {
       value: true
     },
     {
+      key: NodeInputKeyEnum.aiChatReasoning,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: true
+    },
+    {
       key: NodeInputKeyEnum.aiChatTopP,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',

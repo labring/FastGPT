@@ -7,7 +7,7 @@ toc: true
 weight: 744
 ---
 
-从 FastGPT 4.8.23 版本开始，引入 AI Proxy 来进一步方便模型的配置。
+从 `FastGPT 4.8.23` 版本开始，引入 AI Proxy 来进一步方便模型的配置。
 
 AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
 
@@ -15,13 +15,29 @@ AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 & 分发系
 
 ### Docker 版本
 
-`docker-compose.yml` 文件已加入了 AI Proxy 配置，可直接使用。
+`docker-compose.yml` 文件已加入了 AI Proxy 配置，可直接使用。[点击查看最新的 yml 配置](https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml)
 
-## 基础使用
+从旧版升级的用户，可以复制 yml 里，ai proxy 的配置，加入到旧的 yml 文件中。
+
+## 运行原理
+
+AI proxy 核心模块: 
+
+1. 渠道管理：管理各家模型提供商的 API Key 和可用模型列表。
+2. 模型调用：根据请求的模型，选中对应的渠道；根据渠道的 API 格式，构造请求体，发送请求；格式化响应体成标准格式返回。
+3. 调用日志：详细记录模型调用的日志，并在错误时候可以记录其入参和报错信息，方便排查。
+
+运行流程：
+
+![aiproxy12](/imgs/aiproxy1.png)
+
+## 在 FastGPT 中使用
+
+AI proxy 相关功能，可以在`账号-模型提供商`页面找到。
 
 ### 1. 创建渠道
 
-如果 FastGPT 的环境变量中，设置了 AIPROXY_API_ENDPOINT 的值，那么在“模型提供商”的配置页面，会多出两个 tab，可以直接在 FastGPT 平台上配置模型渠道，以及查看模型实际调用日志。
+在`模型提供商`的配置页面，点击`模型渠道`，进入渠道配置页面
 
 ![aiproxy1](/imgs/aiproxy-1.png)
 
@@ -36,9 +52,18 @@ AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 & 分发系
 1. 渠道名：展示在外部的渠道名称，仅作标识;
 2. 厂商：模型对应的厂商，不同厂商对应不同的默认地址和 API 密钥格式;
 3. 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，[增加自定义模型](/docs/development/modelconfig/intro/#新增自定义模型);
-4. 模型映射：将 FastGPT 请求的模型，映射到具体提供的模型上；
-5. 代理地址：具体请求的地址，系统给每个主流渠道配置了默认的地址，如果无需改动则不用填
-6. API 密钥：从模型厂商处获取的 API 凭证
+4. 模型映射：将 FastGPT 请求的模型，映射到具体提供的模型上。例如：
+   
+```json
+{
+    "gpt-4o-test": "gpt-4o",
+}
+```
+
+FatGPT 中的模型为 `gpt-4o-test`，向 AI Proxy 发起请求时也是 `gpt-4o-test`。AI proxy 在向上游发送请求时，实际的`model`为 `gpt-4o`。
+
+5. 代理地址：具体请求的地址，系统给每个主流渠道配置了默认的地址，如果无需改动则不用填。
+6. API 密钥：从模型厂商处获取的 API 凭证。注意部分厂商需要提供多个密钥组合，可以根据提示进行输入。
 
 最后点击“新增”，就能在“模型渠道”下看到刚刚配置的渠道
 
@@ -60,16 +85,15 @@ AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 & 分发系
 
 ### 3. 启用模型
 
-最后在“模型配置”中，可以选择启用对应的模型，这样就能在平台中使用了
+最后在`模型配置`中，可以选择启用对应的模型，这样就能在平台中使用了，更多模型配置可以参考[模型配置](/docs/development/modelconfig/intro)
 
 ![aiproxy8](/imgs/aiproxy-8.png)
 
-
-## 渠道设置
+## 其他功能介绍
 
 ### 优先级
 
-在 FastGPT 中，可以给渠道设置优先级，对于同样的模型，优先级越高的渠道会越优先请求
+范围1～100。数值越大，越容易被优先选中。
 
 ![aiproxy9](/imgs/aiproxy-9.png)
 
@@ -81,13 +105,15 @@ AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 & 分发系
 
 ### 调用日志
 
-在 “调用日志” 页面，会展示发送到模型处的请求记录，包括具体的输入输出 tokens、请求时间、请求耗时、请求地址等等
+在 `调用日志` 页面，会展示发送到模型处的请求记录，包括具体的输入输出 tokens、请求时间、请求耗时、请求地址等等。错误的请求，则会详细的入参和错误信息，方便排查，但仅会保留 1 小时(环境变量里可配置)。
 
 ![aiproxy11](/imgs/aiproxy-11.png)
 
-## 如何从 OneAPI 迁移到 AI Proxy
+## 从 OneAPI 迁移到 AI Proxy
 
-可以从任意终端，发起 1 个 HTTP 请求。其中 {{host}} 替换成 AI Proxy 地址，{{admin_key}} 替换成 AI Proxy 中 ADMIN_KEY 的值，参数 dsn 为 OneAPI 的 mysql 连接串
+可以从任意终端，发起 1 个 HTTP 请求。其中 `{{host}}` 替换成 AI Proxy 地址，`{{admin_key}}` 替换成 AI Proxy 中 `ADMIN_KEY` 的值。
+
+Body 参数 `dsn` 为 OneAPI 的 mysql 连接串。
 
 ```bash
 curl --location --request POST '{{host}}/api/channels/import/oneapi' \
@@ -100,4 +126,4 @@ curl --location --request POST '{{host}}/api/channels/import/oneapi' \
 
 执行成功的情况下会返回 "success": true
 
-脚本目前不是完全准，可能会有部分渠道遗漏，还需要手动再检查下
+脚本目前不是完全准，仅是简单的做数据映射，主要是迁移`代理地址`、`模型`和`API 密钥`，建议迁移后再进行手动检查。

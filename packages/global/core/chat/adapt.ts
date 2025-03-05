@@ -1,8 +1,11 @@
 import type {
+  AIChatItemValueItemType,
   ChatItemType,
   ChatItemValueItemType,
   RuntimeUserPromptType,
-  UserChatItemType
+  SystemChatItemValueItemType,
+  UserChatItemType,
+  UserChatItemValueItemType
 } from '../../core/chat/type.d';
 import { ChatFileTypeEnum, ChatItemValueTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import type {
@@ -174,137 +177,24 @@ export const GPTMessages2Chats = (
 ): ChatItemType[] => {
   const chatMessages = messages
     .map((item) => {
-      const value: ChatItemType['value'] = [];
       const obj = GPT2Chat[item.role];
 
-      if (
-        obj === ChatRoleEnum.System &&
-        item.role === ChatCompletionRequestMessageRoleEnum.System
-      ) {
-        if (Array.isArray(item.content)) {
-          item.content.forEach((item) => [
-            value.push({
-              type: ChatItemValueTypeEnum.text,
-              text: {
-                content: item.text
-              }
-            })
-          ]);
-        } else {
-          value.push({
-            type: ChatItemValueTypeEnum.text,
-            text: {
-              content: item.content
-            }
-          });
-        }
-      } else if (
-        obj === ChatRoleEnum.Human &&
-        item.role === ChatCompletionRequestMessageRoleEnum.User
-      ) {
-        if (typeof item.content === 'string') {
-          value.push({
-            type: ChatItemValueTypeEnum.text,
-            text: {
-              content: item.content
-            }
-          });
-        } else if (Array.isArray(item.content)) {
-          item.content.forEach((item) => {
-            if (item.type === 'text') {
+      const value = (() => {
+        if (
+          obj === ChatRoleEnum.System &&
+          item.role === ChatCompletionRequestMessageRoleEnum.System
+        ) {
+          const value: SystemChatItemValueItemType[] = [];
+
+          if (Array.isArray(item.content)) {
+            item.content.forEach((item) => [
               value.push({
                 type: ChatItemValueTypeEnum.text,
                 text: {
                   content: item.text
                 }
-              });
-            } else if (item.type === 'image_url') {
-              value.push({
-                //@ts-ignore
-                type: ChatItemValueTypeEnum.file,
-                file: {
-                  type: ChatFileTypeEnum.image,
-                  name: '',
-                  url: item.image_url.url
-                }
-              });
-            } else if (item.type === 'file_url') {
-              value.push({
-                // @ts-ignore
-                type: ChatItemValueTypeEnum.file,
-                file: {
-                  type: ChatFileTypeEnum.file,
-                  name: item.name,
-                  url: item.url
-                }
-              });
-            }
-          });
-        }
-      } else if (
-        obj === ChatRoleEnum.AI &&
-        item.role === ChatCompletionRequestMessageRoleEnum.Assistant
-      ) {
-        if (item.tool_calls && reserveTool) {
-          // save tool calls
-          const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
-          value.push({
-            //@ts-ignore
-            type: ChatItemValueTypeEnum.tool,
-            tools: toolCalls.map((tool) => {
-              let toolResponse =
-                messages.find(
-                  (msg) =>
-                    msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
-                    msg.tool_call_id === tool.id
-                )?.content || '';
-              toolResponse =
-                typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
-
-              return {
-                id: tool.id,
-                toolName: tool.toolName || '',
-                toolAvatar: tool.toolAvatar || '',
-                functionName: tool.function.name,
-                params: tool.function.arguments,
-                response: toolResponse as string
-              };
-            })
-          });
-        } else if (item.function_call && reserveTool) {
-          const functionCall = item.function_call as ChatCompletionMessageFunctionCall;
-          const functionResponse = messages.find(
-            (msg) =>
-              msg.role === ChatCompletionRequestMessageRoleEnum.Function &&
-              msg.name === item.function_call?.name
-          ) as ChatCompletionFunctionMessageParam;
-
-          if (functionResponse) {
-            value.push({
-              //@ts-ignore
-              type: ChatItemValueTypeEnum.tool,
-              tools: [
-                {
-                  id: functionCall.id || '',
-                  toolName: functionCall.toolName || '',
-                  toolAvatar: functionCall.toolAvatar || '',
-                  functionName: functionCall.name,
-                  params: functionCall.arguments,
-                  response: functionResponse.content || ''
-                }
-              ]
-            });
-          }
-        } else if (item.interactive) {
-          value.push({
-            //@ts-ignore
-            type: ChatItemValueTypeEnum.interactive,
-            interactive: item.interactive
-          });
-        } else if (typeof item.content === 'string') {
-          const lastValue = value[value.length - 1];
-          if (lastValue && lastValue.type === ChatItemValueTypeEnum.text && lastValue.text) {
-            lastValue.text.content += item.content;
+              })
+            ]);
           } else {
             value.push({
               type: ChatItemValueTypeEnum.text,
@@ -313,8 +203,145 @@ export const GPTMessages2Chats = (
               }
             });
           }
+          return value;
+        } else if (
+          obj === ChatRoleEnum.Human &&
+          item.role === ChatCompletionRequestMessageRoleEnum.User
+        ) {
+          const value: UserChatItemValueItemType[] = [];
+
+          if (typeof item.content === 'string') {
+            value.push({
+              type: ChatItemValueTypeEnum.text,
+              text: {
+                content: item.content
+              }
+            });
+          } else if (Array.isArray(item.content)) {
+            item.content.forEach((item) => {
+              if (item.type === 'text') {
+                value.push({
+                  type: ChatItemValueTypeEnum.text,
+                  text: {
+                    content: item.text
+                  }
+                });
+              } else if (item.type === 'image_url') {
+                value.push({
+                  //@ts-ignore
+                  type: ChatItemValueTypeEnum.file,
+                  file: {
+                    type: ChatFileTypeEnum.image,
+                    name: '',
+                    url: item.image_url.url
+                  }
+                });
+              } else if (item.type === 'file_url') {
+                value.push({
+                  // @ts-ignore
+                  type: ChatItemValueTypeEnum.file,
+                  file: {
+                    type: ChatFileTypeEnum.file,
+                    name: item.name,
+                    url: item.url
+                  }
+                });
+              }
+            });
+          }
+          return value;
+        } else if (
+          obj === ChatRoleEnum.AI &&
+          item.role === ChatCompletionRequestMessageRoleEnum.Assistant
+        ) {
+          const value: AIChatItemValueItemType[] = [];
+
+          if (typeof item.reasoning_text === 'string') {
+            value.push({
+              type: ChatItemValueTypeEnum.reasoning,
+              reasoning: {
+                content: item.reasoning_text
+              }
+            });
+          }
+          if (item.tool_calls && reserveTool) {
+            // save tool calls
+            const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
+            value.push({
+              //@ts-ignore
+              type: ChatItemValueTypeEnum.tool,
+              tools: toolCalls.map((tool) => {
+                let toolResponse =
+                  messages.find(
+                    (msg) =>
+                      msg.role === ChatCompletionRequestMessageRoleEnum.Tool &&
+                      msg.tool_call_id === tool.id
+                  )?.content || '';
+                toolResponse =
+                  typeof toolResponse === 'string' ? toolResponse : JSON.stringify(toolResponse);
+
+                return {
+                  id: tool.id,
+                  toolName: tool.toolName || '',
+                  toolAvatar: tool.toolAvatar || '',
+                  functionName: tool.function.name,
+                  params: tool.function.arguments,
+                  response: toolResponse as string
+                };
+              })
+            });
+          }
+          if (item.function_call && reserveTool) {
+            const functionCall = item.function_call as ChatCompletionMessageFunctionCall;
+            const functionResponse = messages.find(
+              (msg) =>
+                msg.role === ChatCompletionRequestMessageRoleEnum.Function &&
+                msg.name === item.function_call?.name
+            ) as ChatCompletionFunctionMessageParam;
+
+            if (functionResponse) {
+              value.push({
+                //@ts-ignore
+                type: ChatItemValueTypeEnum.tool,
+                tools: [
+                  {
+                    id: functionCall.id || '',
+                    toolName: functionCall.toolName || '',
+                    toolAvatar: functionCall.toolAvatar || '',
+                    functionName: functionCall.name,
+                    params: functionCall.arguments,
+                    response: functionResponse.content || ''
+                  }
+                ]
+              });
+            }
+          }
+          if (item.interactive) {
+            value.push({
+              //@ts-ignore
+              type: ChatItemValueTypeEnum.interactive,
+              interactive: item.interactive
+            });
+          }
+          if (typeof item.content === 'string') {
+            const lastValue = value[value.length - 1];
+            if (lastValue && lastValue.type === ChatItemValueTypeEnum.text && lastValue.text) {
+              lastValue.text.content += item.content;
+            } else {
+              value.push({
+                type: ChatItemValueTypeEnum.text,
+                text: {
+                  content: item.content
+                }
+              });
+            }
+          }
+
+          return value;
         }
-      }
+
+        return [];
+      })();
 
       return {
         dataId: item.dataId,

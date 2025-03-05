@@ -245,7 +245,7 @@ export const readRawContentByFileBuffer = async ({
         if (result_data.data.status === 'success') {
           const result = result_data.data.result.pages
             .map((page) => page.md)
-            .join('\n')
+            .join('')
             // Do some post-processing
             .replace(/\\[\(\)]/g, '$')
             .replace(/\\[\[\]]/g, '$$')
