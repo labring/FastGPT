@@ -45,7 +45,7 @@ try {
   console.log(error);
 }
 
-export const MongoInvitaionLink = getMongoModel<InvitationSchemaType>(
+export const MongoInvitationLink = getMongoModel<InvitationSchemaType>(
   InvitationCollectionName,
   InvitationSchema
 );
