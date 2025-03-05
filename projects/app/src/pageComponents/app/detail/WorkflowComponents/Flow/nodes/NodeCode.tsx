@@ -15,6 +15,7 @@ import RenderOutput from './render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Flex } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   JS_TEMPLATE,
   PY_TEMPLATE
@@ -32,8 +33,14 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
 
-  const { ConfirmModal, openConfirm } = useConfirm({
+  // 重置模板确认
+  const { ConfirmModal: ResetTemplateConfirm, openConfirm: openResetTemplateConfirm } = useConfirm({
     content: t('workflow:code.Reset template confirm')
+  });
+
+  // 切换语言确认
+  const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
+    content: t('workflow:code.Switch language confirm')
   });
 
   const CustomComponent = useMemo(() => {
@@ -41,86 +48,60 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       [NodeInputKeyEnum.code]: (item: FlowNodeInputItemType) => {
         return (
           <Box mt={-3}>
-            <Flex mb={2} alignItems={'flex-end'}>
-              <Box flex={'1'}>{'语言'}</Box>
+            <Flex mb={2} alignItems={'center'} className="nodrag">
+              <MySelect
+                h={5}
+                fontSize="xs"
+                list={[
+                  { label: 'JavaScript', value: 'js' },
+                  { label: 'Python 3', value: 'py' }
+                ]}
+                value={codeType?.value}
+                onchange={(newLang) => {
+                  const oldLang = codeType.value;
+                  openSwitchLangConfirm(() => {
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: NodeInputKeyEnum.codeType,
+                      value: { ...codeType, value: newLang }
+                    });
+
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: item.key,
+                      value: {
+                        ...item,
+                        value: oldLang === 'py' ? JS_TEMPLATE : PY_TEMPLATE
+                      }
+                    });
+                  })();
+                }}
+              />
+              {codeType.value === 'py' && (
+                <QuestionTip ml={2} label={t('workflow:support_code_language')} />
+              )}
               <Box
                 cursor={'pointer'}
                 color={'primary.500'}
                 fontSize={'xs'}
-                onClick={openConfirm(() => {
-                  if (codeType.value === 'js') {
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: JS_TEMPLATE
-                      }
-                    });
-                  } else if (codeType.value === 'py') {
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: PY_TEMPLATE
-                      }
-                    });
-                  }
+                ml="auto"
+                mr={2}
+                onClick={openResetTemplateConfirm(() => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: item.key,
+                    value: {
+                      ...item,
+                      value: codeType.value === 'js' ? JS_TEMPLATE : PY_TEMPLATE
+                    }
+                  });
                 })}
               >
                 {t('workflow:code.Reset template')}
               </Box>
-            </Flex>
-            <Flex mb={2} alignItems={'center'} className="nodrag">
-              <MySelect
-                list={[
-                  {
-                    label: 'JavaScript',
-                    value: 'js'
-                  },
-                  {
-                    label: 'Python 3',
-                    value: 'py'
-                  }
-                ]}
-                value={codeType?.value}
-                onchange={(e) => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'updateInput',
-                    key: NodeInputKeyEnum.codeType,
-                    value: {
-                      ...codeType,
-                      value: e
-                    }
-                  });
-                  if (codeType.value === 'py') {
-                    // onChange: the moment before change.
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: JS_TEMPLATE
-                      }
-                    });
-                  } else if (codeType.value === 'js') {
-                    onChangeNode({
-                      nodeId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: PY_TEMPLATE
-                      }
-                    });
-                  }
-                }}
-              />
             </Flex>
             <CodeEditor
               bg={'white'}
@@ -131,10 +112,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   nodeId,
                   type: 'updateInput',
                   key: item.key,
-                  value: {
-                    ...item,
-                    value: e
-                  }
+                  value: { ...item, value: e }
                 });
               }}
               language={codeType.value}
@@ -143,18 +121,16 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [codeType, nodeId, onChangeNode, openConfirm, t]);
+  }, [codeType, nodeId, onChangeNode, openResetTemplateConfirm, openSwitchLangConfirm, t]);
 
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
       {isTool && (
-        <>
-          <Container>
-            <RenderToolInput nodeId={nodeId} inputs={inputs} />
-          </Container>
-        </>
+        <Container>
+          <RenderToolInput nodeId={nodeId} inputs={inputs} />
+        </Container>
       )}
       <Container>
         <IOTitle text={t('common:common.Input')} mb={-1} />
@@ -168,7 +144,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <IOTitle text={t('common:common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
-      <ConfirmModal />
+      <ResetTemplateConfirm />
+      <SwitchLangConfirm />
     </NodeCard>
   );
 };
