@@ -132,7 +132,7 @@ const InviteModal = ({
                       {isForbidden ? (
                         <Tag colorSchema="gray">{t('account_team:has_forbidden')}</Tag>
                       ) : (
-                        format(new Date(item.expires), 'yyyy-MM-dd')
+                        format(new Date(item.expires), 'yyyy-MM-dd HH:mm')
                       )}
                     </Td>
                     <Td>
