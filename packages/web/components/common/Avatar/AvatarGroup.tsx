@@ -10,15 +10,7 @@ import { Box, Flex } from '@chakra-ui/react';
  * @param [groupId] - group id to make the key unique
  * @returns
  */
-function AvatarGroup({
-  avatars,
-  max = 3,
-  groupId
-}: {
-  max?: number;
-  avatars: string[];
-  groupId?: string;
-}) {
+function AvatarGroup({ avatars, max = 3 }: { max?: number; avatars: string[] }) {
   return (
     <Flex position="relative">
       {avatars.slice(0, max).map((avatar, index) => (

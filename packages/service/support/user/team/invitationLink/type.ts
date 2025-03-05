@@ -7,18 +7,31 @@ export type InvitationSchemaType = {
   forbidden?: boolean;
   expires: Date;
   description: string;
+  members: string[];
 };
 
 export type InvitationType = Omit<InvitationSchemaType, 'members'> & {
-  members: TeamMemberSchema[];
+  members: {
+    tmbId: string;
+    avatar: string;
+    name: string;
+  }[];
 };
 
-export type InvitationLinkCreateType = Omit<
-  InvitationSchemaType,
-  'members' | '_id' | 'teamId' | 'forbidden'
->;
+export type InvitationLinkExpiresType = '30m' | '7d' | '1y';
+
+export type InvitationLinkCreateType = {
+  description: string;
+  expires: InvitationLinkExpiresType;
+  usedTimesLimit: number;
+};
 export type InvitationLinkUpdateType = Partial<
   Omit<InvitationSchemaType, 'members' | 'teamId' | '_id'>
 > & {
-  _id: string;
+  linkId: string;
+};
+
+export type InvitationInfoType = InvitationSchemaType & {
+  teamAvatar: string;
+  teamName: string;
 };

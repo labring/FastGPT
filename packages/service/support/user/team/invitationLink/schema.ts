@@ -6,7 +6,7 @@ import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import { InvitationSchemaType } from './type';
 const { Schema } = connectionMongo;
 
-export const InvitationCollectionName = 'TeamInvitation';
+export const InvitationCollectionName = 'team_invitation_links';
 
 const InvitationSchema = new Schema({
   teamId: {
@@ -25,14 +25,18 @@ const InvitationSchema = new Schema({
   },
   description: {
     type: String
+  },
+  members: {
+    type: [String],
+    default: []
   }
 });
 
-InvitationSchema.virtual('members', {
-  ref: TeamMemberCollectionName,
-  localField: '_id',
-  foreignField: 'invitationLinkId',
-  justOne: false
+InvitationSchema.virtual('team', {
+  ref: TeamCollectionName,
+  localField: 'teamId',
+  foreignField: '_id',
+  justOne: true
 });
 
 try {
