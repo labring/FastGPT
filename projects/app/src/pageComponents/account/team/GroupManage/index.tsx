@@ -172,7 +172,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   </Td>
                   <Td>
                     {group.name === DefaultGroupName ? (
-                      <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
+                      <AvatarGroup avatars={members.map((v) => v.avatar)} />
                     ) : hasGroupManagePer(group) ? (
                       <MyTooltip label={t('account_team:manage_member')}>
                         <Box cursor="pointer" onClick={() => onManageMember(group)}>
@@ -180,7 +180,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                             avatars={group.members.map(
                               (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
                             )}
-                            groupId={group._id}
                           />
                         </Box>
                       </MyTooltip>
@@ -189,7 +188,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         avatars={group.members.map(
                           (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
                         )}
-                        groupId={group._id}
                       />
                     )}
                   </Td>
