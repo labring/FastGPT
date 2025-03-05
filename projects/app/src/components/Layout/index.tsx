@@ -33,8 +33,7 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/app/edit': true,
   '/chat': true,
   '/tools/price': true,
-  '/price': true,
-  '/account/invite': true
+  '/price': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,

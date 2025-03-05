@@ -107,7 +107,7 @@ const InviteModal = ({
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <HStack>
             <Icon name="common/list" color="primary.600" w="16px" />
-            <Box ml={1}>{t('account_team:invitaion_link_list')}</Box>
+            <Box ml={1}>{t('account_team:invitation_link_list')}</Box>
           </HStack>
           <Button onClick={onOpenCreate}>{t('account_team:create_invitation_link')}</Button>
         </Flex>
