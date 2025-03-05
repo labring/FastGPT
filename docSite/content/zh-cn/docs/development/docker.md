@@ -30,7 +30,7 @@ weight: 707
 
 ### PgVector版本
 
-非常轻量，适合数据量在 5000 万以下。
+非常轻量，适合知识库索引量在 5000 万以下。
 
 {{< table "table-hover table-striped-columns" >}}
 | 环境 | 最低配置（单节点） | 推荐配置 |
@@ -149,18 +149,14 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 {{< tab tabName="PgVector版本" >}}
 {{< markdownify >}}
 
-```
-FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://cloud.fastgpt.cn
-```
+无需操作
 
 {{< /markdownify >}}
 {{< /tab >}}
 {{< tab tabName="Milvus版本" >}}
 {{< markdownify >}}
 
-```
-FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://cloud.fastgpt.cn
-```
+无需操作
 
 {{< /markdownify >}}
 {{< /tab >}}
@@ -174,7 +170,6 @@ FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://clo
 {{% alert icon="🤖" context="success" %}}
 
 1. 修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
-2. 修改FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://cloud.fastgpt.cn
 
 {{% /alert %}}
 
@@ -189,29 +184,27 @@ FE_DOMAIN=你的前端你访问地址,例如 http://192.168.0.1:3000;https://clo
 ```bash
 # 启动容器
 docker-compose up -d
-# 等待10s，OneAPI第一次总是要重启几次才能连上Mysql
-sleep 10
-# 重启一次oneapi(由于OneAPI的默认Key有点问题，不重启的话会提示找不到渠道，临时手动重启一次解决，等待作者修复)
-docker restart oneapi
 ```
 
 ### 4. 访问 FastGPT
 
-目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
+目前可以通过 `ip:3000` 直接访问(注意开放防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
 如果需要域名访问，请自行安装并配置 Nginx。
 
-首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志里会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
+首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志可能会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
 
 ### 5. 配置模型
 
-登录FastGPT后，进入“模型提供商”页面，首先配置模型渠道，[点击查看相关教程](/docs/development/modelconfig/ai-proxy)
-
-然后配置具体模型，务必先配置至少一个语言模型和一个向量模型，否则系统无法正常使用。
-
-[点击查看模型配置教程](/docs/development/modelConfig/intro/)
+- 首次登录FastGPT后，系统会提示未配置`语言模型`和`索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
+- 如果系统未正常跳转，可以在`账号-模型提供商`页面，进行模型配置。[点击查看相关教程](/docs/development/modelconfig/ai-proxy)
+- 目前已知可能问题：首次进入系统后，整个浏览器 tab 无法响应。此时需要删除该tab，重新打开一次即可。
 
 ## FAQ
+
+### 登录系统后，浏览器无法响应
+
+无法点击任何内容，刷新也无效。此时需要删除该tab，重新打开一次即可。
 
 ### Mongo 副本集自动初始化失败
 

@@ -563,6 +563,15 @@ async function streamResponse({
   // if answer is empty, try to get value from startTagBuffer. (Cause: The response content is too short to exceed the minimum parse length)
   if (answer === '') {
     answer = getStartTagBuffer();
+    if (isResponseAnswerText && answer) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: answer
+        })
+      });
+    }
   }
 
   return { answer, reasoning };
