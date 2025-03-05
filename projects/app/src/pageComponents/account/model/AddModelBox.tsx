@@ -38,6 +38,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { Prompt_CQJson, Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const AddModelButton = ({
   onCreate,
@@ -134,6 +135,14 @@ export const ModelEditModal = ({
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(
     async (data: SystemModelItemType) => {
+      for (const key in data) {
+        // @ts-ignore
+        const val = data[key];
+        if (val === null || val === undefined || Number.isNaN(val)) {
+          // @ts-ignore
+          data[key] = '';
+        }
+      }
       return putSystemModel({
         model: data.model,
         metadata: data
@@ -295,7 +304,16 @@ export const ModelEditModal = ({
                 {isLLMModel && (
                   <>
                     <Tr>
-                      <Td>{t('common:core.ai.Max context')}</Td>
+                      <Td>
+                        <FormLabel
+                          required
+                          color={'myGray.600'}
+                          fontSize={'md'}
+                          fontWeight={'normal'}
+                        >
+                          {t('common:core.ai.Max context')}
+                        </FormLabel>
+                      </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
@@ -308,7 +326,16 @@ export const ModelEditModal = ({
                       </Td>
                     </Tr>
                     <Tr>
-                      <Td>{t('account:model.max_quote')}</Td>
+                      <Td>
+                        <FormLabel
+                          required
+                          color={'myGray.600'}
+                          fontSize={'md'}
+                          fontWeight={'normal'}
+                        >
+                          {t('account:model.max_quote')}
+                        </FormLabel>
+                      </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
@@ -321,7 +348,12 @@ export const ModelEditModal = ({
                       </Td>
                     </Tr>
                     <Tr>
-                      <Td>{t('common:core.chat.response.module maxToken')}</Td>
+                      <Td>
+                        <HStack spacing={1}>
+                          <Box>{t('common:core.chat.response.module maxToken')}</Box>
+                          <QuestionTip label={t('account_model:input maxToken_tip')} />
+                        </HStack>
+                      </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
@@ -329,7 +361,12 @@ export const ModelEditModal = ({
                       </Td>
                     </Tr>
                     <Tr>
-                      <Td>{t('account:model.max_temperature')}</Td>
+                      <Td>
+                        <HStack spacing={1}>
+                          <Box>{t('account:model.max_temperature')}</Box>
+                          <QuestionTip label={t('account_model:max_temperature_tip')} />
+                        </HStack>
+                      </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
                           <MyNumberInput
