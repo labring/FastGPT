@@ -141,10 +141,9 @@ services:
       - AIPROXY_API_ENDPOINT=http://aiproxy:3000
       # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       - AIPROXY_API_TOKEN=aiproxy
-      # AI模型的API地址哦。务必加 /v1。这里默认填写了OneApi的访问地址。
-      - OPENAI_BASE_URL=http://oneapi:3000/v1
-      # AI模型的API Key。（这里默认填写了OneAPI的快速默认key，测试通后，务必及时修改）
-      - CHAT_API_KEY=sk-fastgpt
+      # 模型中转地址（如果用了 AI Proxy，下面 2 个就不需要了，旧版 OneAPI 用户，使用下面的变量）
+      # - OPENAI_BASE_URL=http://oneapi:3000/v1
+      # - CHAT_API_KEY=sk-fastgpt
       # 数据库最大连接数
       - DB_MAX_LINK=30
       # 登录凭证密钥
@@ -180,32 +179,37 @@ services:
     container_name: aiproxy
     restart: unless-stopped
     depends_on:
-      pgsql:
+      aiproxy_pg:
         condition: service_healthy
     ports:
-      - '3002:3000/tcp'
+      - '3002:3000'
     networks:
       - fastgpt
     environment:
-      - ADMIN_KEY=aiproxy # 对应 fastgpt 里的AIPROXY_API_TOKEN
-      - LOG_DETAIL_STORAGE_HOURS=1 # 日志详情保存时间（小时）
-      - TZ=Asia/Shanghai
-      - SQL_DSN=postgres://postgres:aiproxy@pgsql:5432/aiproxy
+      # 对应 fastgpt 里的AIPROXY_API_TOKEN
+      - ADMIN_KEY=aiproxy
+      # 错误日志详情保存时间（小时）
+      - LOG_DETAIL_STORAGE_HOURS=1
+      # 数据库连接地址
+      - SQL_DSN=postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      # 最大重试次数
+      - RetryTimes=3
+      # 不需要计费
+      - BILLING_ENABLED=false
+      # 不需要严格检测模型
       - DISABLE_MODEL_CONFIG=true
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
       interval: 5s
       timeout: 5s
       retries: 10
-
-  # AI Proxy
-  pgsql:
-    # image: "postgres:latest"
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.7.0 # 阿里云
+  aiproxy_pg:
+    # image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
     restart: unless-stopped
-    container_name: pgsql
+    container_name: aiproxy_pg
     volumes:
-      - ./pgsql:/var/lib/postgresql/data
+      - ./aiproxy_pg:/var/lib/postgresql/data
     networks:
       - fastgpt
     environment:
