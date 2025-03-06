@@ -664,6 +664,7 @@
   "core.dataset.website.Selector Course": "使用教程",
   "core.dataset.website.Start Sync": "开始同步",
   "core.dataset.website.UnValid Website Tip": "您的站点可能非静态站点，无法同步",
+  "core.dataset.error.unExistDataset": "数据集不存在",
   "core.module.Add question type": "添加问题类型",
   "core.module.Add_option": "添加选项",
   "core.module.Can not connect self": "不能连接自身",
