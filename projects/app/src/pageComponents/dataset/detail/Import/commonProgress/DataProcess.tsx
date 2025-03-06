@@ -159,34 +159,29 @@ function DataProcess() {
                   gridTemplateColumns={'repeat(2, 1fr)'}
                 />
               </Box>
-              {trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
+              {trainingType === DatasetCollectionDataProcessModeEnum.chunk && feConfigs?.isPlus && (
                 <Box mt={6}>
                   <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
                     {t('dataset:enhanced_indexes')}
                   </Box>
-                  {feConfigs?.isPlus && (
-                    <HStack gap={[3, 7]}>
-                      <HStack flex={'1'} spacing={1}>
-                        <Checkbox {...register('autoIndexes')}>
-                          <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
-                        </Checkbox>
-                        <QuestionTip label={t('dataset:auto_indexes_tips')} />
-                      </HStack>
-                      <HStack flex={'1'} spacing={1}>
-                        <MyTooltip
-                          label={!datasetDetail?.vlmModel ? t('common:error_vlm_not_config') : ''}
-                        >
-                          <Checkbox
-                            isDisabled={!datasetDetail?.vlmModel}
-                            {...register('imageIndex')}
-                          >
-                            <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
-                          </Checkbox>
-                        </MyTooltip>
-                        <QuestionTip label={t('dataset:image_auto_parse_tips')} />
-                      </HStack>
+                  <HStack gap={[3, 7]}>
+                    <HStack flex={'1'} spacing={1}>
+                      <Checkbox {...register('autoIndexes')}>
+                        <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
+                      </Checkbox>
+                      <QuestionTip label={t('dataset:auto_indexes_tips')} />
                     </HStack>
-                  )}
+                    <HStack flex={'1'} spacing={1}>
+                      <MyTooltip
+                        label={!datasetDetail?.vlmModel ? t('common:error_vlm_not_config') : ''}
+                      >
+                        <Checkbox isDisabled={!datasetDetail?.vlmModel} {...register('imageIndex')}>
+                          <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                        </Checkbox>
+                      </MyTooltip>
+                      <QuestionTip label={t('dataset:image_auto_parse_tips')} />
+                    </HStack>
+                  </HStack>
                 </Box>
               )}
               <Box mt={6}>
