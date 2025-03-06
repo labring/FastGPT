@@ -21,7 +21,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
-import { useDatasetStore } from '../dataset/store/dataset';
 import {
   WorkflowStart,
   userFilesInput
@@ -54,12 +53,7 @@ export function form2AppWorkflow(
 } {
   const datasetNodeId = 'iKBoX2vIzETU';
   const aiChatNodeId = '7BdojPlukIQw';
-
-  const allDatasets = useDatasetStore.getState().allDatasets;
-  const selectedDatasets = data.dataset.datasets.filter((item) =>
-    allDatasets.some((ds) => ds._id === item.datasetId)
-  );
-
+  const selectedDatasets = data.dataset.datasets;
   function systemConfigTemplate(): StoreNodeItemType {
     return {
       nodeId: SystemConfigNode.id,

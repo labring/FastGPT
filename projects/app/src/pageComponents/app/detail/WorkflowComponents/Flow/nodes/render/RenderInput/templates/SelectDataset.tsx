@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure, useTheme } from '@chakra-ui/react';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { SelectedDatasetType } from '@fastgpt/global/core/workflow/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-
+import { getDatasetsByAppIdAndDatasetIds } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
@@ -24,6 +24,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
 }: RenderInputProps) {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const appId = useContextSelector(WorkflowContext, (v) => v.appId);
 
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
@@ -32,7 +33,6 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     usingReRank: false
   });
 
-  const { allDatasets, loadAllDatasets } = useDatasetStore();
   const {
     isOpen: isOpenDatasetSelect,
     onOpen: onOpenDatasetSelect,
@@ -44,13 +44,16 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     return [] as SelectedDatasetType;
   }, [item.value]);
 
-  const selectedDatasets = useMemo(() => {
-    return allDatasets.filter((dataset) =>
-      selectedDatasetsValue?.find((item) => item.datasetId === dataset._id)
-    );
-  }, [allDatasets, selectedDatasetsValue]);
+  const [selectedDatasets, setselectedDatasets] = React.useState<DatasetSimpleItemType[]>([]);
 
-  useQuery(['loadAllDatasets'], loadAllDatasets);
+  useEffect(() => {
+    if (appId) {
+      getDatasetsByAppIdAndDatasetIds({
+        appId,
+        datasetIdList: selectedDatasetsValue.map((item) => item.datasetId)
+      }).then(setselectedDatasets);
+    }
+  }, [appId, selectedDatasetsValue]);
 
   useEffect(() => {
     inputs.forEach((input) => {
@@ -108,7 +111,10 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
         {isOpenDatasetSelect && (
           <DatasetSelectModal
             isOpen={isOpenDatasetSelect}
-            defaultSelectedDatasets={selectedDatasetsValue}
+            defaultSelectedDatasets={selectedDatasets.map((dataset) => ({
+              datasetId: dataset._id,
+              ...dataset
+            }))}
             onChange={(e) => {
               onChangeNode({
                 nodeId,

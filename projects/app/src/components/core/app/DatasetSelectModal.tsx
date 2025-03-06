@@ -17,47 +17,52 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
+type ExtendedSelectedDatasetType = {
+  datasetId: string;
+  vectorModel: { model: string };
+  name: string;
+  avatar: string;
+};
+
 export const DatasetSelectModal = ({
   isOpen,
-  defaultSelectedDatasets = [],
+  defaultSelectedDatasets = [], //外面默认选中的id和向量,现在多了头像和名字，就不需要从all拿了
   onChange,
   onClose
 }: {
   isOpen: boolean;
-  defaultSelectedDatasets: SelectedDatasetType;
+  defaultSelectedDatasets: ExtendedSelectedDatasetType[];
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { allDatasets } = useDatasetStore();
-  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType>(
-    defaultSelectedDatasets.filter((dataset) => {
-      return allDatasets.find((item) => item._id === dataset.datasetId);
-    })
-  );
+  console.log('defaultSelectedDatasets:', defaultSelectedDatasets);
+  const [selectedDatasets, setSelectedDatasets] =
+    useState<SelectedDatasetType>(defaultSelectedDatasets);
+  console.log('selectedDatasets:', selectedDatasets);
   const { toast } = useToast();
-  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
+  const { paths, setParentId, datasets, isFetching } = useDatasetSelect(); //模态框里可用的知识库
+  console.log('datasets length:', datasets.length);
   const { Loading } = useLoading();
 
   const filterDatasets = useMemo(() => {
-    return {
-      selected: allDatasets.filter((item) =>
-        selectedDatasets.find((dataset) => dataset.datasetId === item._id)
+    const filtered = {
+      selected: datasets.filter(
+        (item) => selectedDatasets.find((dataset) => dataset.datasetId === item._id) //已选
       ),
       unSelected: datasets.filter(
         (item) => !selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       )
     };
-  }, [datasets, allDatasets, selectedDatasets]);
-  const activeVectorModel = allDatasets.find(
-    (dataset) => dataset._id === selectedDatasets[0]?.datasetId
-  )?.vectorModel?.model;
+    console.log('Filtered datasets:', filtered);
+    return filtered;
+  }, [datasets, selectedDatasets]);
+  const activeVectorModel = defaultSelectedDatasets[0]?.vectorModel?.model;
 
   return (
     <DatasetSelectContainer
@@ -150,6 +155,8 @@ export const DatasetSelectModal = ({
                               title: t('common:dataset.Select Dataset Tips')
                             });
                           }
+                          console.log('you click', item._id);
+                          console.log('Before click, selectedDatasets:', selectedDatasets);
                           setSelectedDatasets((state) => [...state, { datasetId: item._id }]);
                         }
                       }}
@@ -200,10 +207,11 @@ export const DatasetSelectModal = ({
             onClick={() => {
               // filter out the dataset that is not in the kList
               const filterDatasets = selectedDatasets.filter((dataset) => {
-                return allDatasets.find((item) => item._id === dataset.datasetId);
+                return datasets.find((item) => item._id === dataset.datasetId);
               });
 
               onClose();
+              console.log('filterDatasets:', filterDatasets);
               onChange(filterDatasets);
             }}
           >

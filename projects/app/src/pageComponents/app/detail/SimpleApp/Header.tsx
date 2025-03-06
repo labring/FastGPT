@@ -17,7 +17,6 @@ import { publishStatusStyle } from '../constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import SaveButton from '../Workflow/components/SaveButton';
 import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
@@ -61,7 +60,6 @@ const Header = ({
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
   const { lastAppListRouteType } = useSystemStore();
-  const { allDatasets } = useDatasetStore();
 
   const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
     manual: false,
@@ -91,6 +89,7 @@ const Header = ({
       autoSave?: boolean;
     }) => {
       const { nodes, edges } = form2AppWorkflow(appForm, t);
+      console.log('nodes:', appForm, nodes);
       await onSaveApp({
         nodes,
         edges,
@@ -159,7 +158,7 @@ const Header = ({
       const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
       setIsSaved(val);
     },
-    [past, allDatasets],
+    [past],
     { wait: 500 }
   );
 

@@ -10,9 +10,9 @@ import {
   HStack
 } from '@chakra-ui/react';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -32,6 +32,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
+import { getDatasetsByAppIdAndDatasetIds } from '@/web/core/dataset/api';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -67,18 +68,23 @@ const EditForm = ({
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const { appDetail, appId } = useContextSelector(AppContext, (v) => v);
 
-  const { allDatasets } = useDatasetStore();
-  const [, startTst] = useTransition();
+  console.log('appId', appId);
+  console.log('appForm?.dataset?.datasets', appForm?.dataset?.datasets);
 
-  const selectDatasets = useMemo(
-    () =>
-      allDatasets.filter((item) =>
-        appForm.dataset?.datasets.find((dataset) => dataset.datasetId === item._id)
-      ),
-    [allDatasets, appForm?.dataset?.datasets]
+  const datasetIds = useMemo(
+    () => appForm?.dataset?.datasets.map((dataset) => dataset.datasetId) || [],
+    [appForm?.dataset?.datasets]
   );
+  const [selectDatasets, setSelectDatasets] = React.useState<DatasetSimpleItemType[]>([]); //应用已选择的知识库
+  console.log('datasetIds', datasetIds);
+  useEffect(() => {
+    getDatasetsByAppIdAndDatasetIds({ appId, datasetIdList: datasetIds }).then(setSelectDatasets);
+  }, [appId, datasetIds]);
+
+  console.log('selectDatasets after', selectDatasets);
+  const [, startTst] = useTransition();
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -414,7 +420,10 @@ const EditForm = ({
           isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
             datasetId: item._id,
-            vectorModel: item.vectorModel
+            //_id: item._id,
+            vectorModel: item.vectorModel,
+            name: item.name,
+            avatar: item.avatar
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {
