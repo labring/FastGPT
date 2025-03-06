@@ -11,13 +11,15 @@ import {
   Divider
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
+import type {
+  SelectedDatasetType,
+  ExtendedSelectedDatasetType
+} from '@fastgpt/global/core/workflow/api.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -29,35 +31,30 @@ export const DatasetSelectModal = ({
   onClose
 }: {
   isOpen: boolean;
-  defaultSelectedDatasets: SelectedDatasetType;
+  defaultSelectedDatasets: ExtendedSelectedDatasetType[];
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { allDatasets } = useDatasetStore();
-  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType>(
-    defaultSelectedDatasets.filter((dataset) => {
-      return allDatasets.find((item) => item._id === dataset.datasetId);
-    })
-  );
+  const [selectedDatasets, setSelectedDatasets] =
+    useState<SelectedDatasetType>(defaultSelectedDatasets);
   const { toast } = useToast();
   const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
   const { Loading } = useLoading();
 
   const filterDatasets = useMemo(() => {
-    return {
-      selected: allDatasets.filter((item) =>
+    const filtered = {
+      selected: datasets.filter((item) =>
         selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       ),
       unSelected: datasets.filter(
         (item) => !selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       )
     };
-  }, [datasets, allDatasets, selectedDatasets]);
-  const activeVectorModel = allDatasets.find(
-    (dataset) => dataset._id === selectedDatasets[0]?.datasetId
-  )?.vectorModel?.model;
+    return filtered;
+  }, [datasets, selectedDatasets]);
+  const activeVectorModel = defaultSelectedDatasets[0]?.vectorModel?.model;
 
   return (
     <DatasetSelectContainer
@@ -150,7 +147,15 @@ export const DatasetSelectModal = ({
                               title: t('common:dataset.Select Dataset Tips')
                             });
                           }
-                          setSelectedDatasets((state) => [...state, { datasetId: item._id }]);
+                          setSelectedDatasets((state) => [
+                            ...state,
+                            {
+                              datasetId: item._id,
+                              avatar: item.avatar,
+                              name: item.name,
+                              vectorModel: item.vectorModel
+                            }
+                          ]);
                         }
                       }}
                     >
@@ -200,7 +205,7 @@ export const DatasetSelectModal = ({
             onClick={() => {
               // filter out the dataset that is not in the kList
               const filterDatasets = selectedDatasets.filter((dataset) => {
-                return allDatasets.find((item) => item._id === dataset.datasetId);
+                return datasets.find((item) => item._id === dataset.datasetId);
               });
 
               onClose();
