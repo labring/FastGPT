@@ -264,7 +264,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   })();
 
-  if (!answerText) {
+  if (!answerText && !reasoningText) {
     return Promise.reject(getEmptyResponseTip());
   }
 
