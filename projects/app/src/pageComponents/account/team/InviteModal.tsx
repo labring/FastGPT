@@ -91,6 +91,7 @@ const InviteModal = ({
       isOpen
       iconSrc="common/inviteLight"
       iconColor="primary.600"
+      minW={'600px'}
       title={
         <Box>
           <Box>{t('common:user.team.Invite Member')}</Box>
