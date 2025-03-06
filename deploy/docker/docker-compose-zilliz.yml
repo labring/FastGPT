@@ -119,8 +119,6 @@ services:
     depends_on:
       aiproxy_pg:
         condition: service_healthy
-    ports:
-      - '3002:3000'
     networks:
       - fastgpt
     environment:
@@ -142,8 +140,8 @@ services:
       timeout: 5s
       retries: 10
   aiproxy_pg:
-    # image: pgvector/pgvector:0.8.0-pg15 # docker hub
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
+    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
     restart: unless-stopped
     container_name: aiproxy_pg
     volumes:
