@@ -2,6 +2,7 @@ import { postCreateInvitationLink } from '@/web/support/user/team/api';
 import {
   Box,
   Button,
+  Grid,
   HStack,
   Input,
   ModalBody,
@@ -59,39 +60,29 @@ function CreateInvitationModal({ onClose }: { onClose: () => void }) {
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody>
-        <HStack mt="2">
-          <FormLabel required={true} w="80px">
-            {t('account_team:invitation_link_description')}
-          </FormLabel>
+        <Grid gap={4} w="full" templateColumns="max-content 1fr" alignItems="center">
+          <FormLabel required={true}>{t('account_team:invitation_link_description')}</FormLabel>
           <Input
             placeholder={t('account_team:invitation_link_description')}
             {...register('description', { required: true })}
           />
-        </HStack>
 
-        <HStack mt="4">
-          <FormLabel required={true} w="80px">
-            {t('account_team:expires')}
-          </FormLabel>
+          <FormLabel required={true}>{t('account_team:expires')}</FormLabel>
           <MySelect
             list={expiresOptions}
             value={expires}
             onchange={(val) => setValue('expires', val)}
             minW="120px"
           />
-        </HStack>
 
-        <HStack mt="4">
-          <FormLabel required={true} w="80px">
-            {t('account_team:used_times_limit')}
-          </FormLabel>
+          <FormLabel required={true}>{t('account_team:used_times_limit')}</FormLabel>
           <MySelect
             list={usedTimesLimitOptions}
             value={usedTimesLimit}
             onchange={(val) => setValue('usedTimesLimit', val)}
             minW="120px"
           />
-        </HStack>
+        </Grid>
       </ModalBody>
       <ModalFooter>
         <Button isLoading={false} onClick={onClose} variant="outline">
