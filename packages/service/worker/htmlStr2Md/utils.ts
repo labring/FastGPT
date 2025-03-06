@@ -1,6 +1,6 @@
 import TurndownService from 'turndown';
 import { ImageType } from '../readFile/type';
-import { matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
+import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 // @ts-ignore
 const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
@@ -46,7 +46,7 @@ export const html2md = (
     // Base64 img to id, otherwise it will occupy memory when going to md
     const { processedHtml, images } = processBase64Images(html);
     const md = turndownService.turndown(processedHtml);
-    const { text, imageList } = matchMdImgTextAndUpload(md);
+    const { text, imageList } = matchMdImg(md);
 
     return {
       rawText: text,

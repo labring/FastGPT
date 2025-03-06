@@ -13,11 +13,15 @@ import { POST } from '../../common/api/plusRequest';
 
 export const readFileRawTextByUrl = async ({
   teamId,
+  tmbId,
   url,
+  customPdfParse,
   relatedId
 }: {
   teamId: string;
+  tmbId: string;
   url: string;
+  customPdfParse?: boolean;
   relatedId: string; // externalFileId / apiFileId
 }) => {
   const response = await axios({
@@ -30,8 +34,11 @@ export const readFileRawTextByUrl = async ({
   const buffer = Buffer.from(response.data, 'binary');
 
   const { rawText } = await readRawContentByFileBuffer({
+    customPdfParse,
+    isQAImport: false,
     extension,
     teamId,
+    tmbId,
     buffer,
     encoding: 'utf-8',
     metadata: {
@@ -49,6 +56,7 @@ export const readFileRawTextByUrl = async ({
 */
 export const readDatasetSourceRawText = async ({
   teamId,
+  tmbId,
   type,
   sourceId,
   isQAImport,
@@ -56,11 +64,14 @@ export const readDatasetSourceRawText = async ({
   externalFileId,
   apiServer,
   feishuServer,
-  yuqueServer
+  yuqueServer,
+  customPdfParse
 }: {
   teamId: string;
+  tmbId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
+  customPdfParse?: boolean;
 
   isQAImport?: boolean; // csv data
   selector?: string; // link selector
@@ -72,9 +83,11 @@ export const readDatasetSourceRawText = async ({
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
       teamId,
+      tmbId,
       bucketName: BucketNameEnum.dataset,
       fileId: sourceId,
-      isQAImport
+      isQAImport,
+      customPdfParse
     });
     return rawText;
   } else if (type === DatasetSourceReadTypeEnum.link) {
@@ -88,8 +101,10 @@ export const readDatasetSourceRawText = async ({
     if (!externalFileId) return Promise.reject('FileId not found');
     const rawText = await readFileRawTextByUrl({
       teamId,
+      tmbId,
       url: sourceId,
-      relatedId: externalFileId
+      relatedId: externalFileId,
+      customPdfParse
     });
     return rawText;
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
@@ -98,7 +113,8 @@ export const readDatasetSourceRawText = async ({
       feishuServer,
       yuqueServer,
       apiFileId: sourceId,
-      teamId
+      teamId,
+      tmbId
     });
     return rawText;
   }
@@ -110,16 +126,18 @@ export const readApiServerFileContent = async ({
   feishuServer,
   yuqueServer,
   apiFileId,
-  teamId
+  teamId,
+  tmbId
 }: {
   apiServer?: APIFileServer;
   feishuServer?: FeishuServer;
   yuqueServer?: YuqueServer;
   apiFileId: string;
   teamId: string;
+  tmbId: string;
 }) => {
   if (apiServer) {
-    return useApiDatasetRequest({ apiServer }).getFileContent({ teamId, apiFileId });
+    return useApiDatasetRequest({ apiServer }).getFileContent({ teamId, tmbId, apiFileId });
   }
 
   if (feishuServer || yuqueServer) {

@@ -142,7 +142,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
-      trainingMode: TrainingModeEnum.chunk,
+      mode: TrainingModeEnum.chunk,
       data: qaArr.map((item) => ({
         ...item,
         chunkIndex: data.chunkIndex
@@ -179,9 +179,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
   }
 }
 
-/**
- * 检查文本是否按格式返回
- */
+// Format qa answer
 function formatSplitText(text: string, rawText: string) {
   text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q\d|$)/g; // 匹配Q和A的正则表达式
@@ -194,13 +192,7 @@ function formatSplitText(text: string, rawText: string) {
     if (q) {
       result.push({
         q,
-        a,
-        indexes: [
-          {
-            defaultIndex: true,
-            text: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`
-          }
-        ]
+        a
       });
     }
   }
@@ -211,13 +203,7 @@ function formatSplitText(text: string, rawText: string) {
     chunks.forEach((chunk) => {
       result.push({
         q: chunk,
-        a: '',
-        indexes: [
-          {
-            defaultIndex: true,
-            text: chunk
-          }
-        ]
+        a: ''
       });
     });
   }

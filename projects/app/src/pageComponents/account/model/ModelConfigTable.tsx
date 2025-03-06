@@ -563,8 +563,10 @@ const DefaultModelModal = ({
     embeddingModelList,
     ttsModelList,
     sttModelList,
-    reRankModelList
+    reRankModelList,
+    getVlmModelList
   } = useSystemStore();
+  const vlmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
 
   // Create a copy of defaultModels for local state management
   const [defaultData, setDefaultData] = useState(defaultModels);
@@ -698,6 +700,28 @@ const DefaultModelModal = ({
                 setDefaultData((state) => ({
                   ...state,
                   datasetTextLLM: datasetModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
+        <Box>
+          <Flex mt={4} {...labelStyles} alignItems={'center'}>
+            <Box mr={0.5}>{t('account_model:vlm_model')}</Box>
+            <QuestionTip label={t('account_model:vlm_model_tip')} />
+          </Flex>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.datasetImageLLM?.model}
+              list={vlmModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  datasetImageLLM: vlmModelList.find((item) => item.model === e)
                 }));
               }}
             />

@@ -9,10 +9,9 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { getFileContentTypeFromHeader, guessBase64ImageType } from '../../common/file/utils';
-import { serverRequestBaseUrl } from '../../common/api/serverRequest';
 import { i18nT } from '../../../web/i18n/utils';
 import { addLog } from '../../common/system/log';
+import { getImageBase64 } from '../../common/file/image/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -166,25 +165,13 @@ export const loadRequestMessages = async ({
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
               if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
-                addLog.debug('Load image from local server', {
-                  baseUrl: serverRequestBaseUrl,
-                  requestUrl: imgUrl
-                });
-                const response = await axios.get(imgUrl, {
-                  baseURL: serverRequestBaseUrl,
-                  responseType: 'arraybuffer',
-                  proxy: false
-                });
-                const base64 = Buffer.from(response.data, 'binary').toString('base64');
-                const imageType =
-                  getFileContentTypeFromHeader(response.headers['content-type']) ||
-                  guessBase64ImageType(base64);
+                const { completeBase64: base64 } = await getImageBase64(imgUrl);
 
                 return {
                   ...item,
                   image_url: {
                     ...item.image_url,
-                    url: `data:${imageType};base64,${base64}`
+                    url: base64
                   }
                 };
               }
@@ -223,7 +210,8 @@ export const loadRequestMessages = async ({
       await Promise.all(
         content.map(async (item) => {
           if (item.type === 'text') {
-            if (item.text) return parseStringWithImages(item.text);
+            // If it is array, not need to parse image
+            if (item.text) return item;
             return;
           }
           if (item.type === 'file_url') return; // LLM not support file_url

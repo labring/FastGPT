@@ -10,6 +10,11 @@ export const SERVICE_LOCAL_HOST =
 export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   if (!config) return;
 
+  // Special config computed
+  config.feConfigs.showCustomPdfParse =
+    !!config.systemEnv.customPdfParse?.url || !!config.systemEnv.customPdfParse?.doc2xKey;
+  config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
+
   global.feConfigs = config.feConfigs;
   global.systemEnv = config.systemEnv;
   global.subPlans = config.subPlans;

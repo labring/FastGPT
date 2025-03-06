@@ -109,6 +109,26 @@ export const DatasetCollectionSyncResultMap = {
   }
 };
 
+export enum DatasetCollectionDataProcessModeEnum {
+  chunk = 'chunk',
+  qa = 'qa',
+  auto = 'auto' // abandon
+}
+export const DatasetCollectionDataProcessModeMap = {
+  [DatasetCollectionDataProcessModeEnum.chunk]: {
+    label: i18nT('common:core.dataset.training.Chunk mode'),
+    tooltip: i18nT('common:core.dataset.import.Chunk Split Tip')
+  },
+  [DatasetCollectionDataProcessModeEnum.qa]: {
+    label: i18nT('common:core.dataset.training.QA mode'),
+    tooltip: i18nT('common:core.dataset.import.QA Import Tip')
+  },
+  [DatasetCollectionDataProcessModeEnum.auto]: {
+    label: i18nT('common:core.dataset.training.Auto mode'),
+    tooltip: i18nT('common:core.dataset.training.Auto mode Tip')
+  }
+};
+
 /* ------------ data -------------- */
 
 /* ------------ training -------------- */
@@ -124,27 +144,10 @@ export enum ImportDataSourceEnum {
 
 export enum TrainingModeEnum {
   chunk = 'chunk',
+  qa = 'qa',
   auto = 'auto',
-  qa = 'qa'
+  image = 'image'
 }
-
-export const TrainingTypeMap = {
-  [TrainingModeEnum.chunk]: {
-    label: i18nT('common:core.dataset.training.Chunk mode'),
-    tooltip: i18nT('common:core.dataset.import.Chunk Split Tip'),
-    openSource: true
-  },
-  [TrainingModeEnum.auto]: {
-    label: i18nT('common:core.dataset.training.Auto mode'),
-    tooltip: i18nT('common:core.dataset.training.Auto mode Tip'),
-    openSource: false
-  },
-  [TrainingModeEnum.qa]: {
-    label: i18nT('common:core.dataset.training.QA mode'),
-    tooltip: i18nT('common:core.dataset.import.QA Import Tip'),
-    openSource: true
-  }
-};
 
 /* ------------ search -------------- */
 export enum DatasetSearchModeEnum {

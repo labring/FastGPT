@@ -70,7 +70,7 @@ export PROCESSES_PER_GPU="1"
    python api_mp.py
    ```
 
-# 镜像打包和部署
+# 镜像打包和部署(推荐)
 
 ## 本地构建镜像
 
@@ -83,26 +83,39 @@ export PROCESSES_PER_GPU="1"
     ```bash
     sudo docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" model_pdf
     ```
-## 快速构建镜像
+    
+## 快速构建镜像(推荐)
+
 ```dockerfile
-docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
-docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
+docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 ```
-*注意*：参数PROCESSES_PER_GPU设置每张显卡上文件处理的并行数量，24G的显卡可以设置为2。在多显卡的环境中会自动切换显卡来运行多文件的并行处理。 
+
 # 访问示例
 
-用Post方法访问端口为 `7321 ` 的 `v1/parse/file` 服务
+marker v0.1：用Post方法访问端口为 `7321 ` 的 `v1/parse/file` 服务
 
-参数：file-->本地文件的地址
+marker v0.2：用Post方法访问端口为 `7321 ` 的 `v2/parse/file` 服务
+
+
 
 - 访问方法
-
-  ```
-  curl --location --request POST "http://localhost:7231/v1/parse/file" \
-  --header "Authorization: Bearer your_access_token" \
-  --form "file=@./file/chinese_test.pdf"
-  ```
-
+    
+   - v0.2
+      ```
+      curl --location --request POST "http://localhost:7231/v2/parse/file" \
+      --header "Authorization: Bearer your_access_token" \
+      --form "file=@./file/chinese_test.pdf"
+      ```
+  - v0.1
+      ```
+      curl --location --request POST "http://localhost:7231/v1/parse/file" \
+      --header "Authorization: Bearer your_access_token" \
+      --form "file=@./file/chinese_test.pdf"
+      ```
+      
+      参数：file-->本地文件的地址
+  
 - 多文件测试数据
 
   运行 `test` 文件下的 `test.py` 文件，修改里面的 `file_paths` 为自己仓库的 `url` 即可

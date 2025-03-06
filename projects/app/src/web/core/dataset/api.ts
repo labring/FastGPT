@@ -215,7 +215,10 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
   });
 
 export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
-  POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data);
+  POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {
+    maxQuantity: 1,
+    timeout: 600000
+  });
 
 /* ================== read source ======================== */
 export const getCollectionSource = (data: readCollectionSourceBody) =>

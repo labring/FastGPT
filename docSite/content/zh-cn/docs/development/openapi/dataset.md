@@ -297,7 +297,9 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | --- | --- | --- |
 | datasetId | 知识库ID | ✅ |
 | parentId： | 父级ID，不填则默认为根目录 |  |
-| trainingType | 训练模式。chunk: 按文本长度进行分割;qa: QA拆分;auto: 增强训练 | ✅ |
+| trainingType | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取 | ✅ |
+| autoIndexes | 是否自动生成索引(仅商业版支持) |  |
+| imageIndex | 是否自动生成图片索引(仅商业版支持) |  |
 | chunkSize | 预估块大小 |  |
 | chunkSplitter | 自定义最高优先分割符号 |  |
 | qaPrompt | qa拆分提示词 |  |
@@ -1061,9 +1063,11 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
 | 字段 | 类型 | 说明 | 必填 |
 | --- | --- | --- | --- |
-| defaultIndex | Boolean | 是否为默认索引 | ✅ |
-| dataId | String | 关联的向量ID | ✅ |
+| type | String | 可选索引类型：default-默认索引; custom-自定义索引; summary-总结索引; question-问题索引; image-图片索引 | |
+| dataId | String | 关联的向量ID，变更数据时候传入该 ID，会进行差量更新，而不是全量更新 |  |
 | text | String | 文本内容 | ✅ |
+
+`type` 不填则默认为 `custom` 索引，还会基于 q/a 组成一个默认索引。如果传入了默认索引，则不会额外创建。
 
 ### 为集合批量添加添加数据
 
@@ -1079,7 +1083,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 --header 'Content-Type: application/json' \
 --data-raw '{
     "collectionId": "64663f451ba1676dbdef0499",
-    "trainingMode": "chunk",
+    "trainingType": "chunk",
     "prompt": "可选。qa 拆分引导词，chunk 模式下忽略",
     "billId": "可选。如果有这个值，本次的数据会被聚合到一个订单中，这个值可以重复使用。可以参考 [创建训练订单] 获取该值。",
     "data": [
@@ -1296,8 +1300,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/data/detai
         "chunkIndex": 0,
         "indexes": [
             {
-                "defaultIndex": true,
-                "type": "chunk",
+                "type": "default",
                 "dataId": "3720083",
                 "text": "N o . 2 0 2 2 1 2中 国 信 息 通 信 研 究 院京东探索研究院2022年 9月人工智能生成内容（AIGC）白皮书(2022 年)版权声明本白皮书版权属于中国信息通信研究院和京东探索研究院，并受法律保护。转载、摘编或利用其它方式使用本白皮书文字或者观点的，应注明“来源：中国信息通信研究院和京东探索研究院”。违反上述声明者，编者将追究其相关法律责任。前 言习近平总书记曾指出，“数字技术正以新理念、新业态、新模式全面融入人类经济、政治、文化、社会、生态文明建设各领域和全过程”。在当前数字世界和物理世界加速融合的大背景下，人工智能生成内容（Artificial Intelligence Generated Content，简称 AIGC）正在悄然引导着一场深刻的变革，重塑甚至颠覆数字内容的生产方式和消费模式，将极大地丰富人们的数字生活，是未来全面迈向数字文明新时代不可或缺的支撑力量。",
                 "_id": "65abd4b29d1448617cba61dc"
@@ -1333,12 +1336,18 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
     "a":"sss",
     "indexes":[
         {
-            "dataId": "xxx",
-            "defaultIndex":false,
-            "text":"自定义索引1"
+            "dataId": "xxxx",
+            "type": "default",
+            "text": "默认索引"
         },
         {
-            "text":"修改后的自定义索引2。（会删除原来的自定义索引2，并插入新的自定义索引2）"
+            "dataId": "xxx",
+            "type": "custom",
+            "text": "旧的自定义索引1"
+        },
+        {
+            "type":"custom",
+            "text":"新增的自定义索引"
         }
     ]
 }'
