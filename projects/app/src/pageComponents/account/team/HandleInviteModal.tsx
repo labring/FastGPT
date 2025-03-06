@@ -1,5 +1,13 @@
 import { getInvitationInfo, postAcceptInvitationLink } from '@/web/support/user/team/api';
-import { Box, Button, Flex, ModalBody } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  CloseButton,
+  Flex,
+  ModalBody,
+  ModalCloseButton,
+  ModalHeader
+} from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -15,12 +23,10 @@ function Invite({ invitelinkid }: { invitelinkid: string }) {
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { refetchTeams } = useContextSelector(TeamContext, (v) => v);
+  const { onSwitchTeam, refetchMembers } = useContextSelector(TeamContext, (v) => v);
 
   const onClose = () => {
-    refetchTeams();
     router.push('/account/team');
-    router.reload();
   };
 
   const { toast } = useToast();
@@ -42,7 +48,22 @@ function Invite({ invitelinkid }: { invitelinkid: string }) {
   const { runAsync: acceptInvitation } = useRequest2(() => postAcceptInvitationLink(invitelinkid), {
     manual: true,
     successToast: t('common:common.Success'),
-    onFinally: onClose
+    onSuccess: () => {
+      toast({
+        description: t('common:common.Success'),
+        status: 'success'
+      });
+      onSwitchTeam(invitationInfo!.teamId);
+      refetchMembers();
+      onClose();
+    },
+    onError: (e) => {
+      toast({
+        description: t('common:common.Error'),
+        status: 'error'
+      });
+      onClose();
+    }
   });
 
   return (
@@ -54,6 +75,7 @@ function Invite({ invitelinkid }: { invitelinkid: string }) {
           title={t('account_team:handle_invitation')}
           iconColor={'primary.600'}
         >
+          <ModalCloseButton onClick={onClose} />
           <ModalBody>
             <Flex
               key={invitationInfo._id}
