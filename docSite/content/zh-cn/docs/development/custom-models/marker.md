@@ -23,13 +23,9 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 
 这里介绍快速 Docker 安装的方法：
 ```dockerfile
-docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
-docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
-
 docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
 ```
-v0.2在速度和效果上有所提升，建议使用v0.2版本
 ### 2. 添加 FastGPT 文件配置
 
 ```json
@@ -38,8 +34,7 @@ v0.2在速度和效果上有所提升，建议使用v0.2版本
   "systemEnv": {
     xxx
     "customPdfParse": {
-      "url": "http://xxxx.com/v1/parse/file", // 自定义 PDF 解析服务地址 marker v0.1
-      // "url": "http://xxxx.com/v2/parse/file", // marker v0.2
+      "url": "http://xxxx.com/v2/parse/file", // 自定义 PDF 解析服务地址 marker v0.2
       "key": "", // 自定义 PDF 解析服务密钥
       "doc2xKey": "", // doc2x 服务密钥
       "price": 0 // PDF 解析服务价格
@@ -84,3 +79,10 @@ v0.2在速度和效果上有所提升，建议使用v0.2版本
 上图是分块后的结果，下图是 pdf 原文。整体图片、公式、表格都可以提取出来，效果还是杠杠的。
 
 不过要注意的是，[Marker](https://github.com/VikParuchuri/marker) 的协议是`GPL-3.0 license`，请在遵守协议的前提下使用。
+## 旧版 Marker 使用方法
+如需使用旧版Marker可以使用以下命令：
+```dockerfile
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
+```
+并将 FastGPT 文件配置中的url改为 "http://xxxx.com/v1/parse/file"
