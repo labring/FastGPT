@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, Button, Textarea, useTheme } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea } from '@chakra-ui/react';
 import {
   FieldArrayWithId,
   UseFieldArrayRemove,
@@ -19,8 +19,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
@@ -30,10 +29,12 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import styles from './styles.module.scss';
-import { getDatasetIndexMapData } from '@fastgpt/global/core/dataset/data/constants';
+import {
+  DatasetDataIndexTypeEnum,
+  getDatasetIndexMapData
+} from '@fastgpt/global/core/dataset/data/constants';
 
 export type InputDataType = {
   q: string;
@@ -62,11 +63,10 @@ const InputDataModal = ({
   onSuccess: (data: InputDataType & { dataId: string }) => void;
 }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { toast } = useToast();
   const [currentTab, setCurrentTab] = useState(TabEnum.content);
   const { embeddingModelList, defaultModels } = useSystemStore();
-  const { isPc } = useSystem();
+
   const { register, handleSubmit, reset, control } = useForm<InputDataType>();
   const {
     fields: indexes,
@@ -111,11 +111,6 @@ const InputDataModal = ({
       value: TabEnum.index
     }
   ];
-
-  const { ConfirmModal, openConfirm } = useConfirm({
-    content: t('common:dataset.data.Delete Tip'),
-    type: 'delete'
-  });
 
   const { data: collection = defaultCollectionDetail } = useQuery(
     ['loadCollectionId', collectionId],
@@ -163,8 +158,8 @@ const InputDataModal = ({
   }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
 
   // import new data
-  const { mutate: sureImportData, isLoading: isImporting } = useRequest({
-    mutationFn: async (e: InputDataType) => {
+  const { runAsync: sureImportData, loading: isImporting } = useRequest2(
+    async (e: InputDataType) => {
       if (!e.q) {
         setCurrentTab(TabEnum.content);
         return Promise.reject(t('common:dataset.data.input is empty'));
@@ -181,12 +176,8 @@ const InputDataModal = ({
         collectionId: collection._id,
         q: e.q,
         a: e.a,
-        // remove dataId
-        indexes:
-          e.indexes?.map((index) => ({
-            ...index,
-            dataId: undefined
-          })) || []
+        // Contains no default index
+        indexes: e.indexes
       });
 
       return {
@@ -194,18 +185,20 @@ const InputDataModal = ({
         dataId
       };
     },
-    successToast: t('common:dataset.data.Input Success Tip'),
-    onSuccess(e) {
-      reset({
-        ...e,
-        q: '',
-        a: '',
-        indexes: []
-      });
-      onSuccess(e);
-    },
-    errorToast: t('common:common.error.unKnow')
-  });
+    {
+      successToast: t('common:dataset.data.Input Success Tip'),
+      onSuccess(e) {
+        reset({
+          ...e,
+          q: '',
+          a: '',
+          indexes: []
+        });
+        onSuccess(e);
+      },
+      errorToast: t('common:common.error.unKnow')
+    }
+  );
 
   // update
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
@@ -239,6 +232,7 @@ const InputDataModal = ({
     () => getSourceNameIcon({ sourceName: collection.sourceName, sourceId: collection.sourceId }),
     [collection]
   );
+
   return (
     <MyModal
       isOpen={true}
@@ -291,9 +285,8 @@ const InputDataModal = ({
               p={0}
               onClick={() =>
                 appendIndexes({
-                  type: 'custom',
-                  text: '',
-                  dataId: `${Date.now()}`
+                  type: DatasetDataIndexTypeEnum.custom,
+                  text: ''
                 })
               }
             >
@@ -331,7 +324,6 @@ const InputDataModal = ({
           </MyTooltip>
         </Flex>
       </MyBox>
-      <ConfirmModal />
     </MyModal>
   );
 };

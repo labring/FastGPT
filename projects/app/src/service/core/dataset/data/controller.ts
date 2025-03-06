@@ -25,16 +25,35 @@ const formatIndexes = ({
   a?: string;
 }) => {
   indexes = indexes || [];
-  const defaultIndex = getDefaultIndex({ q, a });
+  // If index not type, set it to custom
+  indexes = indexes
+    .map((item) => ({
+      text: typeof item.text === 'string' ? item.text : String(item.text),
+      type: item.type || DatasetDataIndexTypeEnum.custom,
+      dataId: item.dataId
+    }))
+    .filter((item) => !!item.text.trim());
 
-  // 1. Reset default index
+  // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
+  const defaultIndexes = getDefaultIndex({ q, a });
+  const concatDefaultIndexes = defaultIndexes.map((item) => {
+    const oldIndex = indexes!.find((index) => index.text === item.text);
+    if (oldIndex) {
+      return {
+        type: DatasetDataIndexTypeEnum.default,
+        text: item.text,
+        dataId: oldIndex.dataId
+      };
+    } else {
+      return item;
+    }
+  });
   indexes = indexes.filter((item) => item.type !== DatasetDataIndexTypeEnum.default);
-  // 2. Add default index
-  indexes.unshift(...defaultIndex);
-  // 3. Filter same text
+  indexes.push(...concatDefaultIndexes);
+
+  // Filter same text
   indexes = indexes.filter(
-    (item, index, self) =>
-      !!item.text.trim() && index === self.findIndex((t) => t.text === item.text)
+    (item, index, self) => index === self.findIndex((t) => t.text === item.text)
   );
 
   return indexes.map((index) => ({
@@ -229,7 +248,7 @@ export async function updateData2Dataset({
   const newIndexes = patchResult
     .filter((item) => item.type !== 'delete')
     .map((item) => item.index) as DatasetDataIndexItemType[];
-  console.log(newIndexes, '---');
+
   // console.log(clonePatchResult2Insert);
   await mongoSessionRun(async (session) => {
     // Update MongoData
