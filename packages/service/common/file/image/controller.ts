@@ -6,6 +6,7 @@ import { guessBase64ImageType } from '../utils';
 import { readFromSecondary } from '../../mongo/utils';
 import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -40,13 +41,15 @@ export async function uploadMongoImg({
     return Promise.reject(`Invalid image file type: ${mime}`);
   }
 
-  const { _id } = await MongoImage.create({
-    teamId,
-    binary,
-    metadata: Object.assign({ mime }, metadata),
-    shareId,
-    expiredTime: forever ? undefined : addHours(new Date(), 1)
-  });
+  const { _id } = await retryFn(() =>
+    MongoImage.create({
+      teamId,
+      binary,
+      metadata: Object.assign({ mime }, metadata),
+      shareId,
+      expiredTime: forever ? undefined : addHours(new Date(), 1)
+    })
+  );
 
   return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }

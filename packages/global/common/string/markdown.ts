@@ -168,7 +168,7 @@ export const markdownProcess = async ({
   return simpleMarkdownText(imageProcess);
 };
 
-export const matchMdImgTextAndUpload = (text: string) => {
+export const matchMdImg = (text: string) => {
   const base64Regex = /!\[([^\]]*)\]\((data:image\/[^;]+;base64[^)]+)\)/g;
   const imageList: ImageType[] = [];
 

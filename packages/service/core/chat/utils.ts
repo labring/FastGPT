@@ -165,7 +165,7 @@ export const loadRequestMessages = async ({
             try {
               // If imgUrl is a local path, load image from local, and set url to base64
               if (imgUrl.startsWith('/') || process.env.MULTIPLE_DATA_TO_BASE64 === 'true') {
-                const base64 = await getImageBase64(imgUrl);
+                const { completeBase64: base64 } = await getImageBase64(imgUrl);
 
                 return {
                   ...item,
