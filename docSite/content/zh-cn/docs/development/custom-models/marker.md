@@ -22,12 +22,14 @@ PDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器�
 参考文档 [Marker 安装教程](https://github.com/labring/FastGPT/tree/main/plugins/model/pdf-marker)，安装 Marker 模型。封装的 API 已经适配了 FastGPT 自定义解析服务。
 
 这里介绍快速 Docker 安装的方法：
-
 ```dockerfile
-docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
-docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:latest
-```
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
+docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.1
 
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
+docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU="2" crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2
+```
+v0.2在速度和效果上有所提升，建议使用v0.2版本
 ### 2. 添加 FastGPT 文件配置
 
 ```json
@@ -36,7 +38,8 @@ docker run --gpus all -itd -p 7231:7231 --name model_pdf_v1 crpi-h3snc261q1dosro
   "systemEnv": {
     xxx
     "customPdfParse": {
-      "url": "http://xxxx.com/v1/parse/file", // 自定义 PDF 解析服务地址
+      "url": "http://xxxx.com/v1/parse/file", // 自定义 PDF 解析服务地址 marker v0.1
+      // "url": "http://xxxx.com/v2/parse/file", // marker v0.2
       "key": "", // 自定义 PDF 解析服务密钥
       "doc2xKey": "", // doc2x 服务密钥
       "price": 0 // PDF 解析服务价格
