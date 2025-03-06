@@ -19,7 +19,7 @@ export async function connectMongo(): Promise<Mongoose> {
     // Remove existing listeners to prevent duplicates
     connectionMongo.connection.removeAllListeners('error');
     connectionMongo.connection.removeAllListeners('disconnected');
-    connectionMongo.set('strictQuery', false);
+    connectionMongo.set('strictQuery', 'throw');
 
     connectionMongo.connection.on('error', async (error) => {
       console.log('mongo error', error);
