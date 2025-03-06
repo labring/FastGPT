@@ -9,7 +9,8 @@ import {
   HStack,
   Switch,
   ModalFooter,
-  BoxProps
+  BoxProps,
+  Checkbox
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -22,6 +23,8 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useMount } from 'ahooks';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const FileSelect = ({
   forbidVision = false,
@@ -95,6 +98,42 @@ const FileSelect = ({
               }}
             />
           </HStack>
+          {value.canSelectFile && feConfigs.showCustomPdfParse && (
+            <>
+              <HStack justifyContent={'end'} spacing={1} mt={2}>
+                <Checkbox
+                  isChecked={value.customPdfParse}
+                  onChange={(e) => {
+                    onChange({
+                      ...value,
+                      customPdfParse: e.target.checked
+                    });
+                  }}
+                >
+                  <FormLabel>{t('app:pdf_enhance_parse')}</FormLabel>
+                </Checkbox>
+                <QuestionTip label={t('app:pdf_enhance_parse_tips')} />
+                {feConfigs?.show_pay && (
+                  <MyTag
+                    type={'borderSolid'}
+                    borderColor={'myGray.200'}
+                    bg={'myGray.100'}
+                    color={'primary.600'}
+                    py={1.5}
+                    borderRadius={'md'}
+                    px={3}
+                    whiteSpace={'wrap'}
+                    ml={1}
+                  >
+                    {t('app:pdf_enhance_parse_price', {
+                      price: feConfigs.customPdfParsePrice || 0
+                    })}
+                  </MyTag>
+                )}
+              </HStack>
+              <MyDivider my={2} />
+            </>
+          )}
           <HStack mt={6}>
             <FormLabel flex={'1 0 0'}>{t('app:image_upload')}</FormLabel>
             {forbidVision ? (

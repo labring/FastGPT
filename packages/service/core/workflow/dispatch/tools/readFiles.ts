@@ -45,13 +45,14 @@ ${content.slice(0, 100)}${content.length > 100 ? '......' : ''}
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
     requestOrigin,
-    runningAppInfo: { teamId },
+    runningUserInfo: { teamId, tmbId },
     histories,
     chatConfig,
     node: { version },
     params: { fileUrlList = [] }
   } = props;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
+  const customPdfParse = chatConfig?.fileSelectConfig?.customPdfParse || false;
 
   // Get files from histories
   const filesFromHistories = version !== '489' ? [] : getHistoryFileLinks(histories);
@@ -61,7 +62,9 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
     urls: [...fileUrlList, ...filesFromHistories],
     requestOrigin,
     maxFiles,
-    teamId
+    teamId,
+    tmbId,
+    customPdfParse
   });
 
   return {
@@ -105,12 +108,16 @@ export const getFileContentFromLinks = async ({
   urls,
   requestOrigin,
   maxFiles,
-  teamId
+  teamId,
+  tmbId,
+  customPdfParse
 }: {
   urls: string[];
   requestOrigin?: string;
   maxFiles: number;
   teamId: string;
+  tmbId: string;
+  customPdfParse?: boolean;
 }) => {
   const parseUrlList = urls
     // Remove invalid urls
@@ -205,8 +212,10 @@ export const getFileContentFromLinks = async ({
             extension,
             isQAImport: false,
             teamId,
+            tmbId,
             buffer,
-            encoding
+            encoding,
+            customPdfParse
           });
 
           // Add to buffer

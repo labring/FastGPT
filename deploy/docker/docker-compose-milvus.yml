@@ -137,10 +137,13 @@ services:
       - FE_DOMAIN=
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
       - DEFAULT_ROOT_PSW=1234
-      # AI模型的API地址哦。务必加 /v1。这里默认填写了OneApi的访问地址。
-      - OPENAI_BASE_URL=http://oneapi:3000/v1
-      # AI模型的API Key。（这里默认填写了OneAPI的快速默认key，测试通后，务必及时修改）
-      - CHAT_API_KEY=sk-fastgpt
+      # AI Proxy 的地址，如果配了该地址，优先使用
+      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
+      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
+      - AIPROXY_API_TOKEN=aiproxy
+      # 模型中转地址（如果用了 AI Proxy，下面 2 个就不需要了，旧版 OneAPI 用户，使用下面的变量）
+      # - OPENAI_BASE_URL=http://oneapi:3000/v1
+      # - CHAT_API_KEY=sk-fastgpt
       # 数据库最大连接数
       - DB_MAX_LINK=30
       # 登录凭证密钥
@@ -170,48 +173,52 @@ services:
     volumes:
       - ./config.json:/app/data/config.json
 
-  # oneapi
-  mysql:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mysql:8.0.36 # 阿里云
-    # image: mysql:8.0.36
-    container_name: mysql
-    restart: always
-    ports:
-      - 3306:3306
-    networks:
-      - fastgpt
-    command: --default-authentication-plugin=mysql_native_password
-    environment:
-      # 默认root密码，仅首次运行有效
-      MYSQL_ROOT_PASSWORD: oneapimmysql
-      MYSQL_DATABASE: oneapi
-    volumes:
-      - ./mysql:/var/lib/mysql
-  oneapi:
-    container_name: oneapi
-    image: ghcr.io/songquanpeng/one-api:v0.6.7
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/one-api:v0.6.6 # 阿里云
-    ports:
-      - 3001:3000
+  # AI Proxy
+  aiproxy:
+    image: 'ghcr.io/labring/sealos-aiproxy-service:latest'
+    container_name: aiproxy
+    restart: unless-stopped
     depends_on:
-      - mysql
+      aiproxy_pg:
+        condition: service_healthy
     networks:
       - fastgpt
-    restart: always
     environment:
-      # mysql 连接参数
-      - SQL_DSN=root:oneapimmysql@tcp(mysql:3306)/oneapi
-      # 登录凭证加密密钥
-      - SESSION_SECRET=oneapikey
-      # 内存缓存
-      - MEMORY_CACHE_ENABLED=true
-      # 启动聚合更新，减少数据交互频率
-      - BATCH_UPDATE_ENABLED=true
-      # 聚合更新时长
-      - BATCH_UPDATE_INTERVAL=10
-      # 初始化的 root 密钥（建议部署完后更改，否则容易泄露）
-      - INITIAL_ROOT_TOKEN=fastgpt
+      # 对应 fastgpt 里的AIPROXY_API_TOKEN
+      - ADMIN_KEY=aiproxy
+      # 错误日志详情保存时间（小时）
+      - LOG_DETAIL_STORAGE_HOURS=1
+      # 数据库连接地址
+      - SQL_DSN=postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      # 最大重试次数
+      - RetryTimes=3
+      # 不需要计费
+      - BILLING_ENABLED=false
+      # 不需要严格检测模型
+      - DISABLE_MODEL_CONFIG=true
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  aiproxy_pg:
+    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
+    restart: unless-stopped
+    container_name: aiproxy_pg
     volumes:
-      - ./oneapi:/data
+      - ./aiproxy_pg:/var/lib/postgresql/data
+    networks:
+      - fastgpt
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aiproxy
+      POSTGRES_PASSWORD: aiproxy
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 networks:
   fastgpt:

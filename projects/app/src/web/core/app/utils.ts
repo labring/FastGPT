@@ -504,6 +504,13 @@ export function form2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: true
+            },
+            {
+              key: NodeInputKeyEnum.aiChatReasoning,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.boolean,
+              value: formData.aiSettings.aiChatReasoning
             }
           ],
           outputs: ToolModule.outputs

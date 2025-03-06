@@ -23,7 +23,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { batchRun } from '@fastgpt/global/common/fn/utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type ModelTestItem = {

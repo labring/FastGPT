@@ -11,7 +11,10 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  ChatDispatchProps,
+  DispatchNodeResultType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
@@ -69,7 +72,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     histories,
     node: { name },
     query,
-    runningAppInfo: { teamId },
+    runningUserInfo,
     workflowStreamResponse,
     chatConfig,
     params: {
@@ -121,7 +124,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stringQuoteText,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      teamId
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+      runningUserInfo
     })
   ]);
 
@@ -355,7 +359,8 @@ async function getMultiInput({
   stringQuoteText,
   requestOrigin,
   maxFiles,
-  teamId
+  customPdfParse,
+  runningUserInfo
 }: {
   histories: ChatItemType[];
   inputFiles: UserChatItemValueItemType['file'][];
@@ -363,7 +368,8 @@ async function getMultiInput({
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
   maxFiles: number;
-  teamId: string;
+  customPdfParse?: boolean;
+  runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -400,7 +406,9 @@ async function getMultiInput({
     urls,
     requestOrigin,
     maxFiles,
-    teamId
+    customPdfParse,
+    teamId: runningUserInfo.teamId,
+    tmbId: runningUserInfo.tmbId
   });
 
   return {
@@ -555,6 +563,15 @@ async function streamResponse({
   // if answer is empty, try to get value from startTagBuffer. (Cause: The response content is too short to exceed the minimum parse length)
   if (answer === '') {
     answer = getStartTagBuffer();
+    if (isResponseAnswerText && answer) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: answer
+        })
+      });
+    }
   }
 
   return { answer, reasoning };

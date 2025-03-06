@@ -139,14 +139,14 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     </Td>
                     <Td>
                       <MyNumberInput
-                        defaultValue={item.priority || 0}
-                        min={0}
+                        defaultValue={item.priority || 1}
+                        min={1}
                         max={100}
                         h={'32px'}
                         w={'80px'}
                         onBlur={(e) => {
                           const val = (() => {
-                            if (!e) return 0;
+                            if (!e) return 1;
                             return e;
                           })();
                           updateChannel({

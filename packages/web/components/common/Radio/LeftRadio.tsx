@@ -1,26 +1,24 @@
 import React from 'react';
 import { Box, Flex, useTheme, Grid, type GridProps, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '../MyTooltip';
 import QuestionTip from '../MyTooltip/QuestionTip';
 
-// @ts-ignore
-interface Props extends GridProps {
+type Props<T> = Omit<GridProps, 'onChange'> & {
   list: {
     title: string;
     desc?: string;
-    value: any;
+    value: T;
     children?: React.ReactNode;
     tooltip?: string;
   }[];
   align?: 'flex-top' | 'center';
-  value: any;
+  value: T;
   defaultBg?: string;
   activeBg?: string;
-  onChange: (e: any) => void;
-}
+  onChange: (e: T) => void;
+};
 
-const LeftRadio = ({
+const LeftRadio = <T = any,>({
   list,
   value,
   align = 'flex-top',
@@ -30,7 +28,7 @@ const LeftRadio = ({
   activeBg = 'primary.50',
   onChange,
   ...props
-}: Props) => {
+}: Props<T>) => {
   const { t } = useTranslation();
   const theme = useTheme();
 
@@ -39,7 +37,7 @@ const LeftRadio = ({
       {list.map((item) => (
         <Flex
           alignItems={item.desc ? align : 'center'}
-          key={item.value}
+          key={item.value as any}
           cursor={'pointer'}
           userSelect={'none'}
           px={px}
@@ -98,7 +96,7 @@ const LeftRadio = ({
                 fontSize={'sm'}
               >
                 <Box>{typeof item.title === 'string' ? t(item.title as any) : item.title}</Box>
-                {!!item.tooltip && <QuestionTip label={item.tooltip} ml={1} color={'myGray.600'} />}
+                {!!item.tooltip && <QuestionTip label={item.tooltip} color={'myGray.600'} />}
               </HStack>
             </Flex>
             {!!item.desc && (

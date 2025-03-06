@@ -8,12 +8,60 @@ import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/con
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
-import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
+const formatIndexes = ({
+  indexes,
+  q,
+  a = ''
+}: {
+  indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & { dataId?: string })[];
+  q: string;
+  a?: string;
+}) => {
+  indexes = indexes || [];
+  // If index not type, set it to custom
+  indexes = indexes
+    .map((item) => ({
+      text: typeof item.text === 'string' ? item.text : String(item.text),
+      type: item.type || DatasetDataIndexTypeEnum.custom,
+      dataId: item.dataId
+    }))
+    .filter((item) => !!item.text.trim());
+
+  // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
+  const defaultIndexes = getDefaultIndex({ q, a });
+  const concatDefaultIndexes = defaultIndexes.map((item) => {
+    const oldIndex = indexes!.find((index) => index.text === item.text);
+    if (oldIndex) {
+      return {
+        type: DatasetDataIndexTypeEnum.default,
+        text: item.text,
+        dataId: oldIndex.dataId
+      };
+    } else {
+      return item;
+    }
+  });
+  indexes = indexes.filter((item) => item.type !== DatasetDataIndexTypeEnum.default);
+  indexes.push(...concatDefaultIndexes);
+
+  // Filter same text
+  indexes = indexes.filter(
+    (item, index, self) => index === self.findIndex((t) => t.text === item.text)
+  );
+
+  return indexes.map((index) => ({
+    type: index.type,
+    text: index.text,
+    dataId: index.dataId
+  }));
+};
 /* insert data.
  * 1. create data id
  * 2. insert pg
@@ -41,42 +89,28 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  const qaStr = getDefaultIndex({ q, a }).text;
-
   // 1. Get vector indexes and insert
   // Empty indexes check, if empty, create default index
-  indexes =
-    Array.isArray(indexes) && indexes.length > 0
-      ? indexes.map((index) => ({
-          text: index.text,
-          dataId: undefined,
-          defaultIndex: index.text.trim() === qaStr
-        }))
-      : [getDefaultIndex({ q, a })];
-
-  if (!indexes.find((index) => index.defaultIndex)) {
-    indexes.unshift(getDefaultIndex({ q, a }));
-  } else if (q && a && !indexes.find((index) => index.text === q)) {
-    // push a q index
-    indexes.push({
-      defaultIndex: false,
-      text: q
-    });
-  }
-
-  indexes = indexes.slice(0, 6);
+  const newIndexes = formatIndexes({ indexes, q, a });
 
   // insert to vector store
   const result = await Promise.all(
-    indexes.map((item) =>
-      insertDatasetDataVector({
+    newIndexes.map(async (item) => {
+      const result = await insertDatasetDataVector({
         query: item.text,
         model: getEmbeddingModel(model),
         teamId,
         datasetId,
         collectionId
-      })
-    )
+      });
+      return {
+        tokens: result.tokens,
+        index: {
+          ...item,
+          dataId: result.insertId
+        }
+      };
+    })
   );
 
   // 2. Create mongo data
@@ -89,13 +123,8 @@ export async function insertData2Dataset({
         collectionId,
         q,
         a,
-        // FullText tmp
-        // fullTextToken: jiebaSplit({ text: qaStr }),
         chunkIndex,
-        indexes: indexes?.map((item, i) => ({
-          ...item,
-          dataId: result[i].insertId
-        }))
+        indexes: result.map((item) => item.index)
       }
     ],
     { session, ordered: true }
@@ -109,7 +138,7 @@ export async function insertData2Dataset({
         datasetId,
         collectionId,
         dataId: _id,
-        fullTextToken: jiebaSplit({ text: qaStr })
+        fullTextToken: jiebaSplit({ text: `${q}\n${a}`.trim() })
       }
     ],
     { session, ordered: true }
@@ -122,7 +151,7 @@ export async function insertData2Dataset({
 }
 
 /**
- * update data
+ * Update data(indexes overwrite)
  * 1. compare indexes
  * 2. insert new pg data
  * session run:
@@ -139,30 +168,19 @@ export async function updateData2Dataset({
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
   }
-  const qaStr = getDefaultIndex({ q, a }).text;
 
-  // patch index and update pg
+  // 1. Get mongo data
   const mongoData = await MongoDatasetData.findById(dataId);
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
-  // remove defaultIndex
-  let formatIndexes = indexes.map((index) => ({
-    ...index,
-    text: index.text.trim(),
-    defaultIndex: index.text.trim() === qaStr
-  }));
-  if (!formatIndexes.find((index) => index.defaultIndex)) {
-    const defaultIndex = mongoData.indexes.find((index) => index.defaultIndex);
-    formatIndexes.unshift(defaultIndex ? defaultIndex : getDefaultIndex({ q, a }));
-  }
-  formatIndexes = formatIndexes.slice(0, 6);
+  // 2. Compute indexes
+  const formatIndexesResult = formatIndexes({ indexes, q, a });
 
-  // patch indexes, create, update, delete
+  // 3. Patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];
-
   // find database indexes in new Indexes, if have not,  delete it
   for (const item of mongoData.indexes) {
-    const index = formatIndexes.find((index) => index.dataId === item.dataId);
+    const index = formatIndexesResult.find((index) => index.dataId === item.dataId);
     if (!index) {
       patchResult.push({
         type: 'delete',
@@ -170,53 +188,48 @@ export async function updateData2Dataset({
       });
     }
   }
-  for (const item of formatIndexes) {
-    const index = mongoData.indexes.find((index) => index.dataId === item.dataId);
-    // in database, update
-    if (index) {
-      // default index update
-      if (index.defaultIndex && index.text !== qaStr) {
-        patchResult.push({
-          type: 'update',
-          index: {
-            //@ts-ignore
-            ...index.toObject(),
-            text: qaStr
-          }
-        });
-        continue;
-      }
-      // custom index update
-      if (index.text !== item.text) {
-        patchResult.push({
-          type: 'update',
-          index: item
-        });
-        continue;
-      }
-      patchResult.push({
-        type: 'unChange',
-        index: item
-      });
-    } else {
-      // not in database, create
+  for (const item of formatIndexesResult) {
+    if (!item.dataId) {
       patchResult.push({
         type: 'create',
         index: item
       });
+    } else {
+      const index = mongoData.indexes.find((index) => index.dataId === item.dataId);
+      if (!index) continue;
+
+      // Not change
+      if (index.text === item.text) {
+        patchResult.push({
+          type: 'unChange',
+          index: {
+            ...item,
+            dataId: index.dataId
+          }
+        });
+      } else {
+        // index Update
+        patchResult.push({
+          type: 'update',
+          index: {
+            ...item,
+            dataId: index.dataId
+          }
+        });
+      }
     }
   }
 
-  // update mongo updateTime
+  // 4. Update mongo updateTime(便于脏数据检查器识别)
   mongoData.updateTime = new Date();
   await mongoData.save();
 
-  // insert vector
-  const clonePatchResult2Insert: PatchIndexesProps[] = JSON.parse(JSON.stringify(patchResult));
+  // 5. Insert vector
   const insertResult = await Promise.all(
-    clonePatchResult2Insert.map(async (item) => {
-      // insert new vector and update dateId
-      if (item.type === 'create' || item.type === 'update') {
+    patchResult
+      .filter((item) => item.type === 'create' || item.type === 'update')
+      .map(async (item) => {
+        // insert new vector and update dateId
         const result = await insertDatasetDataVector({
           query: item.index.text,
           model: getEmbeddingModel(model),
@@ -225,26 +238,22 @@ export async function updateData2Dataset({
           collectionId: mongoData.collectionId
         });
         item.index.dataId = result.insertId;
-        return result;
-      }
-      return {
-        tokens: 0
-      };
-    })
+        return {
+          tokens: result.tokens
+        };
+      })
   );
   const tokens = insertResult.reduce((acc, cur) => acc + cur.tokens, 0);
+
+  const newIndexes = patchResult
+    .filter((item) => item.type !== 'delete')
+    .map((item) => item.index) as DatasetDataIndexItemType[];
+
   // console.log(clonePatchResult2Insert);
   await mongoSessionRun(async (session) => {
-    // update mongo
-    const newIndexes = clonePatchResult2Insert
-      .filter((item) => item.type !== 'delete')
-      .map((item) => item.index);
-    // update mongo other data
+    // Update MongoData
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
-    // FullText tmp
-    // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
-    // @ts-ignore
     mongoData.indexes = newIndexes;
     await mongoData.save({ session });
 
@@ -255,15 +264,15 @@ export async function updateData2Dataset({
       { session }
     );
 
-    // delete vector
+    // Delete vector
     const deleteIdList = patchResult
       .filter((item) => item.type === 'delete' || item.type === 'update')
       .map((item) => item.index.dataId)
-      .filter(Boolean);
+      .filter(Boolean) as string[];
     if (deleteIdList.length > 0) {
       await deleteDatasetDataVector({
         teamId: mongoData.teamId,
-        idList: deleteIdList as string[]
+        idList: deleteIdList
       });
     }
   });

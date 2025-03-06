@@ -4,9 +4,16 @@
     "lafEnv": "https://laf.dev" // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
   },
   "systemEnv": {
-    "vectorMaxProcess": 15, // 向量处理线程数量
-    "qaMaxProcess": 15, // 问答拆分线程数量
+    "vectorMaxProcess": 10, // 向量处理线程数量
+    "qaMaxProcess": 10, // 问答拆分线程数量
+    "vlmMaxProcess": 10, // 图片理解模型最大处理进程
     "tokenWorkers": 30, // Token 计算线程保持数，会持续占用内存，不能设置太大。
-    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "pgHNSWEfSearch": 100, // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "customPdfParse": {
+      "url": "", // 自定义 PDF 解析服务地址
+      "key": "", // 自定义 PDF 解析服务密钥
+      "doc2xKey": "", // doc2x 服务密钥
+      "price": 0 // PDF 解析服务价格
+    }
   }
 }

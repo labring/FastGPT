@@ -17,7 +17,7 @@ const MyPhotoView = (props: ImageProps) => {
       loadingElement={<Loading fixed={false} />}
     >
       <PhotoView src={props.src}>
-        <MyImage cursor={'pointer'} {...props} />
+        <MyImage cursor={'pointer'} {...props} title={props.title || props.src} />
       </PhotoView>
     </PhotoProvider>
   );
