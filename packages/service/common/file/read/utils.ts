@@ -6,11 +6,12 @@ import type { ImageType, ReadFileResponse } from '../../../worker/readFile/type'
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { htmlTable2Md, matchMdImgTextAndUpload } from '@fastgpt/global/common/string/markdown';
+import { htmlTable2Md, matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getImageBase64 } from '../image/utils';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -99,7 +100,7 @@ export const readRawContentByFileBuffer = async ({
     addLog.info(`Custom file parsing is complete, time: ${Date.now() - start}ms`);
 
     const rawText = response.markdown;
-    const { text, imageList } = matchMdImgTextAndUpload(rawText);
+    const { text, imageList } = matchMdImg(rawText);
 
     createPdfParseUsage({
       teamId,
@@ -120,8 +121,8 @@ export const readRawContentByFileBuffer = async ({
     const parseTextImage = async (text: string) => {
       // Extract image links and convert to base64
       const imageList: { id: string; url: string }[] = [];
-      const processedText = text.replace(/!\[.*?\]\((http[^)]+)\)/g, (match, url) => {
-        const id = getNanoid();
+      let processedText = text.replace(/!\[.*?\]\((http[^)]+)\)/g, (match, url) => {
+        const id = `IMAGE_${getNanoid()}_IMAGE`;
         imageList.push({
           id,
           url
@@ -129,22 +130,24 @@ export const readRawContentByFileBuffer = async ({
         return `![](${id})`;
       });
 
+      // Get base64 from image url
       let resultImageList: ImageType[] = [];
-      await Promise.all(
-        imageList.map(async (item) => {
+      await batchRun(
+        imageList,
+        async (item) => {
           try {
-            const response = await axios.get(item.url, { responseType: 'arraybuffer' });
-            const mime = response.headers['content-type'] || 'image/jpeg';
-            const base64 = response.data.toString('base64');
+            const { base64, mime } = await getImageBase64(item.url);
             resultImageList.push({
               uuid: item.id,
               mime,
               base64
             });
           } catch (error) {
+            processedText = processedText.replace(item.id, item.url);
             addLog.warn(`Failed to get image from ${item.url}: ${getErrText(error)}`);
           }
-        })
+        },
+        5
       );
 
       return {
@@ -312,14 +315,14 @@ export const readRawContentByFileBuffer = async ({
           return await uploadMongoImg({
             base64Img: `data:${item.mime};base64,${item.base64}`,
             teamId,
-            // expiredTime: addHours(new Date(), 1),
             metadata: {
               ...metadata,
               mime: item.mime
             }
           });
         } catch (error) {
-          return '';
+          addLog.warn('Upload file image error', { error });
+          return 'Upload load image error';
         }
       })();
       rawText = rawText.replace(item.uuid, src);
