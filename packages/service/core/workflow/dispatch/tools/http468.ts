@@ -120,27 +120,144 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     2. Replace newline strings
   */
   const replaceJsonBodyString = (text: string) => {
-    const valToStr = (val: any) => {
+    // Check if the variable is in quotes
+    const isVariableInQuotes = (text: string, variable: string) => {
+      const index = text.indexOf(variable);
+      if (index === -1) return false;
+
+      // 计算变量前面的引号数量
+      const textBeforeVar = text.substring(0, index);
+      const matches = textBeforeVar.match(/"/g) || [];
+
+      // 如果引号数量为奇数，则变量在引号内
+      return matches.length % 2 === 1;
+    };
+    const valToStr = (val: any, isQuoted = false) => {
       if (val === undefined) return 'null';
       if (val === null) return 'null';
 
       if (typeof val === 'object') return JSON.stringify(val);
 
       if (typeof val === 'string') {
+        if (isQuoted) {
+          return val.replace(/(?<!\\)"/g, '\\"');
+        }
         try {
-          const parsed = JSON.parse(val);
-          if (typeof parsed === 'object') {
-            return JSON.stringify(parsed);
-          }
+          JSON.parse(val);
           return val;
         } catch (error) {
           const str = JSON.stringify(val);
+
           return str.startsWith('"') && str.endsWith('"') ? str.slice(1, -1) : str;
         }
       }
 
       return String(val);
     };
+    // Test cases for variable replacement in JSON body
+    // const bodyTest = () => {
+    //   const testData = [
+    //     // 基本字符串替换
+    //     {
+    //       body: `{"name":"{{name}}","age":"18"}`,
+    //       variables: [{ key: '{{name}}', value: '测试' }],
+    //       result: `{"name":"测试","age":"18"}`
+    //     },
+    //     // 特殊字符处理
+    //     {
+    //       body: `{"text":"{{text}}"}`,
+    //       variables: [{ key: '{{text}}', value: '包含"引号"和\\反斜杠' }],
+    //       result: `{"text":"包含\\"引号\\"和\\反斜杠"}`
+    //     },
+    //     // 数字类型处理
+    //     {
+    //       body: `{"count":{{count}},"price":{{price}}}`,
+    //       variables: [
+    //         { key: '{{count}}', value: '42' },
+    //         { key: '{{price}}', value: '99.99' }
+    //       ],
+    //       result: `{"count":42,"price":99.99}`
+    //     },
+    //     // 布尔值处理
+    //     {
+    //       body: `{"isActive":{{isActive}},"hasData":{{hasData}}}`,
+    //       variables: [
+    //         { key: '{{isActive}}', value: 'true' },
+    //         { key: '{{hasData}}', value: 'false' }
+    //       ],
+    //       result: `{"isActive":true,"hasData":false}`
+    //     },
+    //     // 对象类型处理
+    //     {
+    //       body: `{"user":{{user}},"user2":"{{user2}}"}`,
+    //       variables: [
+    //         { key: '{{user}}', value: `{"id":1,"name":"张三"}` },
+    //         { key: '{{user2}}', value: `{"id":1,"name":"张三"}` }
+    //       ],
+    //       result: `{"user":{"id":1,"name":"张三"},"user2":"{\\"id\\":1,\\"name\\":\\"张三\\"}"}`
+    //     },
+    //     // 数组类型处理
+    //     {
+    //       body: `{"items":{{items}}}`,
+    //       variables: [{ key: '{{items}}', value: '[1, 2, 3]' }],
+    //       result: `{"items":[1,2,3]}`
+    //     },
+    //     // null 和 undefined 处理
+    //     {
+    //       body: `{"nullValue":{{nullValue}},"undefinedValue":{{undefinedValue}}}`,
+    //       variables: [
+    //         { key: '{{nullValue}}', value: 'null' },
+    //         { key: '{{undefinedValue}}', value: 'undefined' }
+    //       ],
+    //       result: `{"nullValue":null,"undefinedValue":null}`
+    //     },
+    //     // 嵌套JSON结构
+    //     {
+    //       body: `{"data":{"nested":{"value":"{{nestedValue}}"}}}`,
+    //       variables: [{ key: '{{nestedValue}}', value: '嵌套值' }],
+    //       result: `{"data":{"nested":{"value":"嵌套值"}}}`
+    //     },
+    //     // 多变量替换
+    //     {
+    //       body: `{"first":"{{first}}","second":"{{second}}","third":{{third}}}`,
+    //       variables: [
+    //         { key: '{{first}}', value: '第一' },
+    //         { key: '{{second}}', value: '第二' },
+    //         { key: '{{third}}', value: '3' }
+    //       ],
+    //       result: `{"first":"第一","second":"第二","third":3}`
+    //     },
+    //     // JSON字符串作为变量值
+    //     {
+    //       body: `{"config":{{config}}}`,
+    //       variables: [{ key: '{{config}}', value: '{"setting":"enabled","mode":"advanced"}' }],
+    //       result: `{"config":{"setting":"enabled","mode":"advanced"}}`
+    //     }
+    //   ];
+
+    //   for (let i = 0; i < testData.length; i++) {
+    //     const item = testData[i];
+    //     let bodyStr = item.body;
+    //     for (const variable of item.variables) {
+    //       const isQuote = isVariableInQuotes(bodyStr, variable.key);
+    //       bodyStr = bodyStr.replace(variable.key, valToStr(variable.value, isQuote));
+    //     }
+    //     bodyStr = bodyStr.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
+
+    //     console.log(bodyStr === item.result, i);
+    //     if (bodyStr !== item.result) {
+    //       console.log(bodyStr);
+    //       console.log(item.result);
+    //     } else {
+    //       try {
+    //         JSON.parse(item.result);
+    //       } catch (error) {
+    //         console.log('反序列化异常', i, item.result);
+    //       }
+    //     }
+    //   }
+    // };
+    // bodyTest();
 
     // 1. Replace {{key.key}} variables
     const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
@@ -148,6 +265,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     matches1.forEach((match) => {
       const nodeId = match[1];
       const id = match[2];
+      const fullMatch = match[0];
+
+      // 检查变量是否在引号内
+      const isInQuotes = isVariableInQuotes(text, fullMatch);
 
       const variableVal = (() => {
         if (nodeId === VARIABLE_NODE_ID) {
@@ -165,9 +286,9 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
           return getReferenceVariableValue({ value: input.value, nodes: runtimeNodes, variables });
       })();
 
-      const formatVal = valToStr(variableVal);
+      const formatVal = valToStr(variableVal, isInQuotes);
 
-      const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, 'g');
+      const regex = new RegExp(`\\{\\{\\$(${nodeId}\\.${id})\\$\\}\\}`, '');
       text = text.replace(regex, () => formatVal);
     });
 
@@ -176,10 +297,16 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     const matches2 = text.match(regex2) || [];
     const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
     for (const key of uniqueKeys2) {
-      text = text.replace(new RegExp(`{{(${key})}}`, 'g'), () => valToStr(allVariables[key]));
+      const fullMatch = `{{${key}}}`;
+      // 检查变量是否在引号内
+      const isInQuotes = isVariableInQuotes(text, fullMatch);
+
+      text = text.replace(new RegExp(`{{(${key})}}`, ''), () =>
+        valToStr(allVariables[key], isInQuotes)
+      );
     }
 
-    return text.replace(/(".*?")\s*:\s*undefined\b/g, '$1: null');
+    return text.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');
   };
 
   httpReqUrl = replaceStringVariables(httpReqUrl);
