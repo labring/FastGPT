@@ -107,6 +107,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 * [系统配置文件说明](https://doc.tryfastgpt.ai/docs/development/configuration/)
 * [多模型配置方案](https://doc.tryfastgpt.ai/docs/development/modelconfig/one-api/)
 * [版本更新/升级介绍](https://doc.tryfastgpt.ai/docs/development/upgrading/)
+* [AI Proxy API调用地址](https://sealos.run/aiproxy/?k=fastgpt-github/)
 * [OpenAPI API 文档](https://doc.tryfastgpt.ai/docs/development/openapi/)
 * [知识库结构详解](https://doc.tryfastgpt.ai/docs/guide/knowledge_base/rag/)
 
@@ -132,6 +133,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 - [Laf：3 分钟快速接入三方应用](https://github.com/labring/laf)
 - [Sealos：快速部署集群应用](https://github.com/labring/sealos)
+- [AI Proxy API调用地址](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [One API：多模型管理，支持 Azure、文心一言等](https://github.com/songquanpeng/one-api)
 - [TuShan：5 分钟搭建后台管理系统](https://github.com/msgbyte/tushan)
 
