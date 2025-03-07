@@ -32,11 +32,7 @@ export function useLinkedScroll<
   const [hasMoreNext, setHasMoreNext] = useState(true);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  const [loadState, setLoadState] = useState({
-    initial: false,
-    prev: false,
-    next: false
-  });
+  const [isLoading, setIsLoading] = useState(false);
 
   const anchorRef = useRef({
     top: null as string | null,
@@ -46,18 +42,16 @@ export function useLinkedScroll<
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
 
-  const isLoading = loadState.initial || loadState.prev || loadState.next;
-
   const callApi = useCallback(
     async (apiParams: Record<string, any>, loadType: 'initial' | 'prev' | 'next') => {
       try {
-        setLoadState((prev) => ({ ...prev, [loadType]: true }));
+        setIsLoading(true);
         return await api(apiParams as unknown as TParams);
       } catch (error) {
         console.error(`Error fetching ${loadType} data:`, error);
         return null;
       } finally {
-        setLoadState((prev) => ({ ...prev, [loadType]: false }));
+        setIsLoading(false);
       }
     },
     [api]
@@ -222,7 +216,7 @@ export function useLinkedScroll<
     setHasMorePrev(true);
     setHasMoreNext(true);
     setInitialLoadDone(false);
-    setLoadState({ initial: false, prev: false, next: false });
+    setIsLoading(false);
   }, []);
 
   const ScrollData = useMemoizedFn(
@@ -267,13 +261,13 @@ export function useLinkedScroll<
           isLoading={externalLoading || isLoading}
           {...props}
         >
-          {hasMorePrev && loadState.prev && (
+          {hasMorePrev && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}
             </Box>
           )}
           {children}
-          {hasMoreNext && loadState.next && (
+          {hasMoreNext && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}
             </Box>
