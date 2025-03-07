@@ -787,6 +787,7 @@ export const defaultSearchDatasetData = async ({
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
+  const histories = props.histories;
 
   const extensionModel = datasetSearchUsingExtensionQuery
     ? getLLMModel(datasetSearchExtensionModel)
@@ -796,7 +797,8 @@ export const defaultSearchDatasetData = async ({
     await datasetSearchQueryExtension({
       query,
       extensionModel,
-      extensionBg: datasetSearchExtensionBg
+      extensionBg: datasetSearchExtensionBg,
+      histories
     });
 
   const result = await searchDatasetData({
