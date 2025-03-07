@@ -6,25 +6,19 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { Types } from 'mongoose';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
 
-export interface GetLinkedDatasetDataProps {
-  collectionId?: string; // 集合 ID
-  datasetDataIdList?: string[]; // 数据 ID 列表
-  initialId?: string; // 初始中心点 ID (用于首次加载)
-  anchorId?: string; // 锚点 ID (用于分页加载)
-  direction?: 'prev' | 'next';
-  pageSize?: number;
+export type GetLinkedDatasetDataProps = LinkedPaginationProps & {
+  collectionId?: string;
+  datasetDataIdList?: string[];
+  initialId?: string;
   chatTime?: Date;
   chatItemId?: string;
   shareId?: string;
   outLinkUid?: string;
-}
+};
 
-export interface GetLinkedDatasetDataRes<T = any> {
-  list: T[];
-  hasMorePrev: boolean;
-  hasMoreNext: boolean;
-}
+export type GetLinkedDatasetDataRes = LinkedListResponse<DatasetDataSchemaType>;
 
 const dataFieldSelector =
   '_id datasetId collectionId q a chunkIndex history updateTime currentChatItemId prevId nextId';
@@ -33,12 +27,13 @@ async function handler(
   req: ApiRequestProps<GetLinkedDatasetDataProps>
 ): Promise<GetLinkedDatasetDataRes> {
   const {
-    collectionId,
-    datasetDataIdList,
+    pageSize = 15,
     initialId,
     anchorId,
+
+    collectionId,
+    datasetDataIdList,
     direction = 'next',
-    pageSize = 15,
     chatTime,
     chatItemId,
     shareId,
@@ -46,10 +41,9 @@ async function handler(
   } = req.body;
 
   const limitedPageSize = Math.min(pageSize, 30);
-  let teamId, baseQuery;
+  let baseQuery;
 
   if (datasetDataIdList?.length) {
-    // 验证外链权限 - 适用于分享链接和外部访问
     if (shareId || outLinkUid) {
       await authOutLink({ shareId, outLinkUid });
     }
@@ -59,7 +53,6 @@ async function handler(
       .limit(limitedPageSize)
       .lean();
 
-    // 处理历史数据
     const processedList = processChatTimeFilter(list, chatTime, chatItemId);
 
     return {
@@ -69,16 +62,15 @@ async function handler(
     };
   }
 
+  // 验证集合ID
   if (!collectionId) {
     throw new Error('collectionId is required');
   }
 
   if (shareId || outLinkUid) {
     await authOutLink({ shareId, outLinkUid });
-    // 由于外链没有teamId，使用简化查询
     baseQuery = { collectionId };
   } else {
-    // 常规权限验证
     const authResult = await authDatasetCollection({
       req,
       authToken: true,
@@ -87,14 +79,14 @@ async function handler(
       per: ReadPermissionVal
     });
 
-    teamId = authResult.teamId;
     baseQuery = {
-      teamId,
+      teamId: authResult.teamId,
       datasetId: authResult.collection.datasetId,
       collectionId
     };
   }
 
+  // 添加时间过滤条件
   if (chatTime) {
     baseQuery = {
       ...baseQuery,
@@ -105,198 +97,203 @@ async function handler(
     };
   }
 
-  // 初始加载 - 首次进入时需要获取中心点附近的数据
-  if (initialId) {
-    try {
-      // 查找中心点节点
-      const centerNode = await MongoDatasetData.findOne(
-        {
-          _id: new Types.ObjectId(initialId),
-          ...baseQuery
-        },
-        dataFieldSelector
-      ).lean();
-
-      if (!centerNode) {
-        return { list: [], hasMorePrev: false, hasMoreNext: false };
-      }
-
-      // 向前获取一半数据
-      const prevHalfSize = Math.floor(limitedPageSize / 2);
-      const prevNodes = await getNodesInDirection(centerNode, 'prev', prevHalfSize, baseQuery);
-
-      // 向后获取剩余数据 (包括中心点)
-      const nextHalfSize = limitedPageSize - prevNodes.length;
-      const nextNodes = await getNodesInDirection(centerNode, 'next', nextHalfSize - 1, baseQuery);
-
-      // 组合结果，中心点在中间
-      const resultList = [...prevNodes.reverse(), centerNode, ...nextNodes];
-
-      // 确定是否还有更多数据
-      const hasMorePrev = prevNodes.length > 0 && !!prevNodes[0].prevId;
-      const hasMoreNext = nextNodes.length > 0 && !!nextNodes[nextNodes.length - 1].nextId;
-
-      // 处理历史数据
-      const processedList = processChatTimeFilter(resultList, chatTime, chatItemId);
-
-      return {
-        list: processedList,
-        hasMorePrev,
-        hasMoreNext
-      };
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-      return { list: [], hasMorePrev: false, hasMoreNext: false };
+  try {
+    // 初始加载 - 首次进入时需要获取中心点附近的数据
+    if (initialId) {
+      return await handleInitialLoad(initialId, limitedPageSize, baseQuery, chatTime, chatItemId);
     }
-  }
 
-  // 分页加载 - 基于锚点向特定方向加载更多
-  if (anchorId) {
-    try {
-      const anchorNode = await MongoDatasetData.findOne(
-        {
-          _id: new Types.ObjectId(anchorId),
-          ...baseQuery
-        },
-        dataFieldSelector
-      ).lean();
-
-      if (!anchorNode) {
-        return { list: [], hasMorePrev: false, hasMoreNext: false };
-      }
-
-      // 根据方向获取下一批数据
-      const nodes = await getNodesInDirection(anchorNode, direction, limitedPageSize, baseQuery);
-
-      // 确定是否还有更多数据
-      const hasMore =
-        nodes.length > 0 && !!nodes[nodes.length - 1][direction === 'next' ? 'nextId' : 'prevId'];
-
-      // 处理历史数据
-      const processedList = processChatTimeFilter(
-        direction === 'prev' ? nodes.reverse() : nodes,
+    // 分页加载 - 基于锚点向特定方向加载更多
+    if (anchorId) {
+      return await handlePaginatedLoad(
+        anchorId,
+        direction,
+        limitedPageSize,
+        baseQuery,
         chatTime,
         chatItemId
       );
-
-      return {
-        list: processedList,
-        hasMorePrev: direction === 'prev' ? hasMore : true,
-        hasMoreNext: direction === 'next' ? hasMore : true
-      };
-    } catch (error) {
-      console.error('Error loading paginated data:', error);
-      return { list: [], hasMorePrev: false, hasMoreNext: false };
-    }
-  }
-
-  // 没有提供 initialId 或anchorId - 从链表头开始加载
-  try {
-    const headNode = await MongoDatasetData.findOne(
-      {
-        ...baseQuery,
-        prevId: { $exists: false } // 查找链表头部
-      },
-      dataFieldSelector
-    ).lean();
-
-    if (!headNode) {
-      // 如果找不到明确的头节点，尝试获取任意节点作为起点
-      const anyNode = await MongoDatasetData.findOne(baseQuery, dataFieldSelector)
-        .sort({ chunkIndex: 1, createdAt: 1 })
-        .lean();
-
-      if (!anyNode) {
-        return { list: [], hasMorePrev: false, hasMoreNext: false };
-      }
-
-      // 以任意节点为起点向后加载
-      const nodes = await getNodesInDirection(anyNode, 'next', limitedPageSize - 1, baseQuery);
-      const resultList = [anyNode, ...nodes];
-
-      // 处理历史数据
-      const processedList = processChatTimeFilter(resultList, chatTime, chatItemId);
-
-      return {
-        list: processedList,
-        hasMorePrev: !!anyNode.prevId,
-        hasMoreNext: nodes.length > 0 && !!nodes[nodes.length - 1].nextId
-      };
     }
 
-    // 从头节点开始加载
-    const nodes = await getNodesInDirection(headNode, 'next', limitedPageSize - 1, baseQuery);
-    const resultList = [headNode, ...nodes];
-
-    // 处理历史数据
-    const processedList = processChatTimeFilter(resultList, chatTime, chatItemId);
-
-    return {
-      list: processedList,
-      hasMorePrev: false, // 头节点前面没有更多数据
-      hasMoreNext: nodes.length > 0 && !!nodes[nodes.length - 1].nextId
-    };
+    return { list: [], hasMorePrev: false, hasMoreNext: false };
   } catch (error) {
-    console.error('Error loading head data:', error);
+    console.error('Error in linkedList handler:', error);
     return { list: [], hasMorePrev: false, hasMoreNext: false };
   }
 }
 
-// 工具函数：沿指定方向获取节点
-async function getNodesInDirection(
-  startNode: any,
-  direction: 'prev' | 'next',
-  count: number,
-  baseQuery: any
-) {
-  const result: DatasetDataSchemaType[] = [];
-  let currentId = startNode[`${direction}Id`];
+// 处理初始加载
+async function handleInitialLoad(
+  initialId: string,
+  pageSize: number,
+  baseQuery: Record<string, any>,
+  chatTime?: Date,
+  chatItemId?: string
+): Promise<GetLinkedDatasetDataRes> {
+  try {
+    const centerNode = await MongoDatasetData.findOne(
+      {
+        _id: new Types.ObjectId(initialId),
+        ...baseQuery
+      },
+      dataFieldSelector
+    ).lean();
 
-  // 没有更多节点
-  if (!currentId) return result;
+    if (!centerNode) {
+      return { list: [], hasMorePrev: false, hasMoreNext: false };
+    }
+
+    const prevHalfSize = Math.floor(pageSize / 2);
+    const nextHalfSize = pageSize - prevHalfSize;
+
+    const prevNodes = await getPrevNodes(centerNode._id, prevHalfSize, baseQuery);
+    const nextNodes = await getNextNodes(centerNode, nextHalfSize - 1, baseQuery);
+    const resultList = [...prevNodes, centerNode, ...nextNodes];
+
+    const hasMorePrev = prevNodes.length >= prevHalfSize;
+    const hasMoreNext =
+      nextNodes.length >= nextHalfSize - 1 && !!nextNodes[nextNodes.length - 1]?.nextId;
+
+    const processedList = processChatTimeFilter(resultList, chatTime, chatItemId);
+
+    return {
+      list: processedList,
+      hasMorePrev,
+      hasMoreNext
+    };
+  } catch (error) {
+    console.error('Error loading initial data:', error);
+    return { list: [], hasMorePrev: false, hasMoreNext: false };
+  }
+}
+
+// 处理分页加载
+async function handlePaginatedLoad(
+  anchorId: string,
+  direction: 'prev' | 'next',
+  pageSize: number,
+  baseQuery: any,
+  chatTime?: Date,
+  chatItemId?: string
+): Promise<GetLinkedDatasetDataRes> {
+  try {
+    const anchorNode = await MongoDatasetData.findOne(
+      {
+        _id: new Types.ObjectId(anchorId),
+        ...baseQuery
+      },
+      dataFieldSelector
+    ).lean();
+
+    if (!anchorNode) {
+      return { list: [], hasMorePrev: false, hasMoreNext: false };
+    }
+
+    let nodes = [];
+    let hasMore = false;
+
+    if (direction === 'next') {
+      nodes = await getNextNodes(anchorNode, pageSize, baseQuery);
+      hasMore = nodes.length >= pageSize && !!nodes[nodes.length - 1]?.nextId;
+    } else {
+      nodes = await getPrevNodes(anchorNode._id, pageSize, baseQuery);
+      hasMore = nodes.length >= pageSize;
+    }
+
+    const processedList = processChatTimeFilter(nodes, chatTime, chatItemId);
+
+    return {
+      list: processedList,
+      hasMorePrev: direction === 'prev' ? hasMore : true,
+      hasMoreNext: direction === 'next' ? hasMore : true
+    };
+  } catch (error) {
+    console.error('Error loading paginated data:', error);
+    return { list: [], hasMorePrev: false, hasMoreNext: false };
+  }
+}
+
+async function getPrevNodes(targetId: string, limit: number, baseQuery: any) {
+  if (limit <= 0) return [];
 
   try {
-    // 使用批量查询优化性能
-    const idChain = [currentId];
-    for (let i = 1; i < count; i++) {
-      const node = await MongoDatasetData.findOne(
-        { _id: currentId, ...baseQuery },
-        `_id ${direction}Id`
+    const allPrevNodes: DatasetDataSchemaType[] = [];
+    let targetIds = [targetId];
+    let remainingCount = limit;
+
+    while (remainingCount > 0 && targetIds.length > 0) {
+      const prevNodes = await MongoDatasetData.find(
+        {
+          nextId: { $in: targetIds },
+          ...baseQuery
+        },
+        dataFieldSelector
       ).lean();
 
-      if (!node || !node[`${direction}Id`]) break;
-      currentId = node[`${direction}Id`];
+      if (prevNodes.length === 0) break;
+
+      allPrevNodes.push(...prevNodes);
+      remainingCount -= prevNodes.length;
+
+      targetIds = prevNodes.map((node) => node._id);
+
+      if (remainingCount <= 0) break;
+    }
+
+    allPrevNodes.sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
+
+    return allPrevNodes.slice(-limit);
+  } catch (error) {
+    console.error('Error fetching prev nodes:', error);
+    return [];
+  }
+}
+
+async function getNextNodes(startNode: any, limit: number, baseQuery: any) {
+  try {
+    const result: DatasetDataSchemaType[] = [];
+    let currentId = startNode.nextId;
+
+    const idChain = [];
+    let currentNode: { _id: any; nextId: any } | null = null;
+
+    for (let i = 0; i < limit; i++) {
       idChain.push(currentId);
+
+      currentNode = await MongoDatasetData.findOne(
+        { _id: currentId, ...baseQuery },
+        '_id nextId'
+      ).lean();
+
+      if (!currentNode || !currentNode.nextId) break;
+      currentId = currentNode.nextId;
     }
 
     if (idChain.length === 0) return result;
 
-    // 批量查询所有ID
     const nodes = await MongoDatasetData.find(
       { _id: { $in: idChain }, ...baseQuery },
       dataFieldSelector
     ).lean();
 
-    // 按照链表顺序排列结果
     const nodeMap = new Map(nodes.map((node) => [node._id.toString(), node]));
-    currentId = startNode[`${direction}Id`];
 
-    for (let i = 0; i < count && currentId; i++) {
+    currentId = startNode.nextId;
+    for (let i = 0; i < limit && currentId; i++) {
       const node = nodeMap.get(currentId.toString());
       if (!node) break;
 
       result.push(node);
-      currentId = node[`${direction}Id`];
+      currentId = node.nextId;
     }
 
     return result;
   } catch (error) {
-    console.error(`Error fetching nodes in ${direction} direction:`, error);
-    return result;
+    console.error('Error fetching next nodes:', error);
+    return [];
   }
 }
 
-// 工具函数：处理基于聊天时间的历史数据筛选
 function processChatTimeFilter(list: any[], chatTime?: Date, chatItemId?: string) {
   if (!chatTime) return list;
 
