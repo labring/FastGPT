@@ -1,381 +1,296 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import throttle from 'lodash/throttle';
+import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
+import { LinkedListResponse, LinkedPaginationProps } from 'common/fetch/type';
+import { Box, BoxProps } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
+import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
+import MyBox from '../components/common/MyBox';
 
-interface UseLinkedScrollOptions<T, P> {
-  // 容器和项目引用
-  containerRef: React.RefObject<HTMLElement>;
-  itemRefs: React.RefObject<(HTMLElement | null)[]>;
+const threshold = 100;
 
-  // 数据请求函数
-  fetchInitialData: (id: string) => Promise<{
-    list: T[];
-    hasMorePrev: boolean;
-    hasMoreNext: boolean;
-  }>;
-  fetchPrevData?: (anchorId: string) => Promise<{
-    list: T[];
-    hasMorePrev: boolean;
-  }>;
-  fetchNextData?: (anchorId: string) => Promise<{
-    list: T[];
-    hasMoreNext: boolean;
-  }>;
-
-  // 配置参数
-  initialId?: string;
-  threshold?: number;
-
-  // 依赖与状态
-  dependencies?: any[];
-  canLoadData?: boolean;
-  onError?: (error: any) => void;
-}
-
-const stabilizingTime = 1500;
-
-export function useLinkedScroll<T extends Record<string, any>, P>({
-  containerRef,
-  itemRefs,
-  fetchInitialData,
-  fetchPrevData,
-  fetchNextData,
-  initialId,
-  threshold = 100,
-  dependencies = [],
-  canLoadData = false,
-  onError
-}: UseLinkedScrollOptions<T, P>) {
-  // 数据状态
-  const [dataList, setDataList] = useState<T[]>([]);
-  const [topAnchorId, setTopAnchorId] = useState<string | null>(null);
-  const [bottomAnchorId, setBottomAnchorId] = useState<string | null>(null);
+export function useLinkedScroll<
+  TParams extends LinkedPaginationProps,
+  TData extends LinkedListResponse
+>(
+  api: (data: TParams) => Promise<TData>,
+  {
+    refreshDeps = [],
+    pageSize = 10,
+    params = {},
+    initialId,
+    canLoadData = false
+  }: {
+    refreshDeps?: any[];
+    pageSize?: number;
+    params?: Record<string, any>;
+    initialId?: string;
+    canLoadData?: boolean;
+  }
+) {
+  const { t } = useTranslation();
+  const [dataList, setDataList] = useState<TData['list']>([]);
   const [hasMorePrev, setHasMorePrev] = useState(true);
   const [hasMoreNext, setHasMoreNext] = useState(true);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  // 加载状态
-  const [isInitialLoading, setIsInitialLoading] = useState(false);
-  const [isPrevLoading, setIsPrevLoading] = useState(false);
-  const [isNextLoading, setIsNextLoading] = useState(false);
-
-  // 滚动控制
-  const [isInitialStabilizing, setIsInitialStabilizing] = useState(false);
-  const [suppressScroll, setSuppressScroll] = useState(false);
-  const isUserScrollingRef = useRef(false);
-  const scrollPositionRef = useRef({ top: 0, viewItem: '' });
-
-  // 定时器引用
-  const timerRefs = useRef<{
-    stabilizing: NodeJS.Timeout | null;
-    scrollSuppress: NodeJS.Timeout | null;
-  }>({
-    stabilizing: null,
-    scrollSuppress: null
+  const [loadState, setLoadState] = useState({
+    initial: false,
+    prev: false,
+    next: false
   });
 
-  // 计算合并加载状态
-  const isLoading = isInitialLoading || isPrevLoading || isNextLoading;
+  const anchorRef = useRef({
+    top: null as string | null,
+    bottom: null as string | null
+  });
 
-  // 保存当前滚动位置
-  const saveScrollPosition = useCallback(() => {
-    if (!containerRef.current) return;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLElement | null)[]>([]);
 
-    const container = containerRef.current;
-    const { scrollTop, clientHeight } = container;
+  const isLoading = loadState.initial || loadState.prev || loadState.next;
 
-    // 保存滚动位置
-    scrollPositionRef.current.top = scrollTop;
-
-    // 查找视图中心的元素
-    const centerY = scrollTop + clientHeight / 2;
-    let closestItem = null;
-    let closestDistance = Infinity;
-
-    itemRefs.current?.forEach((ref, index) => {
-      if (ref) {
-        const rect = ref.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        const distance = Math.abs(itemCenterY - window.innerHeight / 2);
-
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestItem = index;
-        }
-      }
-    });
-
-    if (closestItem !== null && dataList[closestItem]) {
-      scrollPositionRef.current.viewItem = dataList[closestItem]._id;
-    }
-  }, [containerRef, itemRefs, dataList]);
-
-  // 重置滚动状态
-  const resetScrollState = useCallback(() => {
-    isUserScrollingRef.current = false;
-    setSuppressScroll(false);
-  }, []);
-
-  // 初始加载或刷新数据
-  const loadData = useCallback(
-    async (id: string) => {
-      if (!id) return;
-
+  const callApi = useCallback(
+    async (apiParams: Record<string, any>, loadType: 'initial' | 'prev' | 'next') => {
       try {
-        setIsInitialLoading(true);
-        setSuppressScroll(true);
-
-        const response = await fetchInitialData(id);
-
-        setHasMorePrev(response.hasMorePrev);
-        setHasMoreNext(response.hasMoreNext);
-
-        setDataList(response.list);
-        if (response.list.length > 0) {
-          setTopAnchorId(response.list[0]._id);
-          setBottomAnchorId(response.list[response.list.length - 1]._id);
-        }
-        setInitialLoadDone(true);
-
-        // 设置稳定期
-        setIsInitialStabilizing(true);
-
-        // 清除之前的定时器
-        clearAllTimers();
-
-        // 设置新的稳定期定时器
-        timerRefs.current.stabilizing = setTimeout(() => {
-          setIsInitialStabilizing(false);
-        }, stabilizingTime);
-
-        // 延迟恢复滚动
-        timerRefs.current.scrollSuppress = setTimeout(() => {
-          setSuppressScroll(false);
-        }, 500);
+        setLoadState((prev) => ({ ...prev, [loadType]: true }));
+        return await api(apiParams as unknown as TParams);
       } catch (error) {
-        onError?.(error);
-        console.error('Error fetching initial data:', error);
+        console.error(`Error fetching ${loadType} data:`, error);
+        return null;
       } finally {
-        setIsInitialLoading(false);
+        setLoadState((prev) => ({ ...prev, [loadType]: false }));
       }
     },
-    [fetchInitialData, stabilizingTime, onError]
+    [api]
   );
 
-  // 加载上方数据
-  const loadPrevData = useCallback(async () => {
-    if (!topAnchorId || !hasMorePrev || isLoading || !fetchPrevData) return;
+  const loadData = useCallback(
+    async (id: string) => {
+      if (isLoading) return null;
 
-    try {
-      isUserScrollingRef.current = true;
-      saveScrollPosition();
-      setIsPrevLoading(true);
+      const response = await callApi(
+        {
+          initialId: id,
+          ...params
+        },
+        'initial'
+      );
 
-      const prevHeight = containerRef?.current?.scrollHeight || 0;
-      const prevScrollTop = containerRef?.current?.scrollTop || 0;
+      if (!response) return null;
 
-      const response = await fetchPrevData(topAnchorId);
+      setHasMorePrev(response.hasMorePrev);
+      setHasMoreNext(response.hasMoreNext);
+      setDataList(response.list);
+
+      if (response.list.length > 0) {
+        anchorRef.current.top = response.list[0]._id;
+        anchorRef.current.bottom = response.list[response.list.length - 1]._id;
+      }
+
+      setInitialLoadDone(true);
+
+      return response;
+    },
+    [callApi, params, dataList, hasMorePrev, hasMoreNext, isLoading]
+  );
+
+  const loadPrevData = useCallback(
+    async (scrollRef = containerRef) => {
+      if (!anchorRef.current.top || !hasMorePrev || isLoading) return;
+
+      const prevScrollTop = scrollRef?.current?.scrollTop || 0;
+      const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
+
+      const response = await callApi(
+        {
+          anchorId: anchorRef.current.top,
+          direction: 'prev',
+          pageSize,
+          ...params
+        },
+        'prev'
+      );
+
+      if (!response) return;
 
       setHasMorePrev(response.hasMorePrev);
 
       if (response.list.length > 0) {
         setDataList((prev) => [...response.list, ...prev]);
-        setTopAnchorId(response.list[0]._id);
+        anchorRef.current.top = response.list[0]._id;
 
-        // 调整滚动位置
-        requestAnimationFrame(() => {
-          if (containerRef?.current) {
-            const newHeight = containerRef.current.scrollHeight;
-            const heightDiff = newHeight - prevHeight;
-            containerRef.current.scrollTop = prevScrollTop + heightDiff;
-
-            setTimeout(() => {
-              isUserScrollingRef.current = false;
-            }, 100);
+        setTimeout(() => {
+          if (scrollRef?.current) {
+            const newHeight = scrollRef.current.scrollHeight;
+            const heightDiff = newHeight - prevScrollHeight;
+            scrollRef.current.scrollTop = prevScrollTop + heightDiff;
           }
-        });
-      } else {
-        isUserScrollingRef.current = false;
+        }, 0);
       }
-    } catch (error) {
-      onError?.(error);
-      console.error('Error fetching previous data:', error);
-      isUserScrollingRef.current = false;
-    } finally {
-      setIsPrevLoading(false);
-    }
-  }, [
-    topAnchorId,
-    hasMorePrev,
-    isLoading,
-    saveScrollPosition,
-    fetchPrevData,
-    containerRef,
-    onError
-  ]);
 
-  // 加载下方数据
-  const loadNextData = useCallback(async () => {
-    if (!bottomAnchorId || !hasMoreNext || isLoading || !fetchNextData) return;
+      return response;
+    },
+    [callApi, hasMorePrev, isLoading, params, pageSize]
+  );
 
-    try {
-      isUserScrollingRef.current = true;
-      saveScrollPosition();
-      setIsNextLoading(true);
+  const loadNextData = useCallback(
+    async (scrollRef = containerRef) => {
+      if (!anchorRef.current.bottom || !hasMoreNext || isLoading) return;
 
-      const prevScrollTop = containerRef?.current?.scrollTop || 0;
+      const prevScrollTop = scrollRef?.current?.scrollTop || 0;
 
-      const response = await fetchNextData(bottomAnchorId);
+      const response = await callApi(
+        {
+          anchorId: anchorRef.current.bottom,
+          direction: 'next',
+          pageSize,
+          ...params
+        },
+        'next'
+      );
+
+      if (!response) return;
 
       setHasMoreNext(response.hasMoreNext);
 
       if (response.list.length > 0) {
         setDataList((prev) => [...prev, ...response.list]);
-        setBottomAnchorId(response.list[response.list.length - 1]._id);
+        anchorRef.current.bottom = response.list[response.list.length - 1]._id;
 
-        requestAnimationFrame(() => {
-          if (containerRef?.current) {
-            containerRef.current.scrollTop = prevScrollTop;
-
-            setTimeout(() => {
-              isUserScrollingRef.current = false;
-            }, 100);
+        setTimeout(() => {
+          if (scrollRef?.current) {
+            scrollRef.current.scrollTop = prevScrollTop;
           }
-        });
-      } else {
-        isUserScrollingRef.current = false;
+        }, 0);
       }
-    } catch (error) {
-      onError?.(error);
-      console.error('Error fetching next data:', error);
-      isUserScrollingRef.current = false;
-    } finally {
-      setIsNextLoading(false);
-    }
-  }, [
-    bottomAnchorId,
-    hasMoreNext,
-    isLoading,
-    saveScrollPosition,
-    fetchNextData,
-    containerRef,
-    onError
-  ]);
 
-  // 导航到特定项目
-  const navigateToItem = useCallback(
-    (id: string) => {
-      if (suppressScroll || isUserScrollingRef.current) return;
-
-      const itemIndex = dataList.findIndex((item) => item._id === id);
-
-      if (itemIndex !== -1 && itemRefs.current?.[itemIndex]) {
-        itemRefs.current[itemIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      } else {
-        loadData(id);
-      }
+      return response;
     },
-    [dataList, itemRefs, loadData, suppressScroll]
+    [callApi, hasMoreNext, isLoading, params, pageSize]
+  );
+
+  const scrollToItem = useCallback(
+    (itemIndex: number) => {
+      if (itemIndex >= 0 && itemIndex < dataList.length && itemRefs.current?.[itemIndex]) {
+        try {
+          const element = itemRefs.current[itemIndex];
+          if (!element) {
+            return false;
+          }
+
+          setTimeout(() => {
+            if (element && containerRef.current) {
+              const elementRect = element.getBoundingClientRect();
+              const containerRect = containerRef.current.getBoundingClientRect();
+
+              const relativeTop = elementRect.top - containerRect.top;
+
+              const scrollTop =
+                containerRef.current.scrollTop +
+                relativeTop -
+                containerRect.height / 2 +
+                elementRect.height / 2;
+
+              containerRef.current.scrollTo({
+                top: scrollTop,
+                behavior: 'smooth'
+              });
+            }
+          }, 50);
+
+          return true;
+        } catch (error) {
+          console.error('Error scrolling to item:', error);
+          return false;
+        }
+      }
+      return false;
+    },
+    [dataList.length]
   );
 
   // 初始加载
   useEffect(() => {
-    console.log('初始加载', initialId, !initialLoadDone, canLoadData);
-    if (initialId && !initialLoadDone && canLoadData) {
-      loadData(initialId);
+    if (canLoadData) {
+      loadData(initialId || '');
     }
-  }, [canLoadData, ...dependencies]);
+  }, [canLoadData, ...refreshDeps]);
 
-  // 滚动监听
-  useEffect(() => {
-    if (!containerRef.current || !initialLoadDone) return;
-
-    const handleScroll = throttle(() => {
-      if (!containerRef.current || isLoading || isInitialStabilizing || suppressScroll) return;
-
-      const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-
-      // 记录用户正在滚动
-      isUserScrollingRef.current = true;
-
-      // 滚动到底部附近，加载更多下方数据
-      if (scrollTop + clientHeight >= scrollHeight - threshold && hasMoreNext) {
-        loadNextData();
-      }
-
-      // 滚动到顶部附近，加载更多上方数据
-      if (scrollTop <= threshold && hasMorePrev) {
-        loadPrevData();
-      }
-    }, 200);
-
-    const container = containerRef.current;
-    container.addEventListener('scroll', handleScroll);
-
-    return () => {
-      container.removeEventListener('scroll', handleScroll);
-      handleScroll.cancel && handleScroll.cancel();
-    };
-  }, [
-    containerRef,
-    initialLoadDone,
-    isLoading,
-    isInitialStabilizing,
-    suppressScroll,
-    hasMoreNext,
-    hasMorePrev,
-    loadNextData,
-    loadPrevData,
-    threshold
-  ]);
-
-  // 清理所有定时器
-  const clearAllTimers = useCallback(() => {
-    Object.entries(timerRefs.current).forEach(([_, timer]) => {
-      if (timer) clearTimeout(timer);
-    });
-    timerRefs.current.stabilizing = null;
-    timerRefs.current.scrollSuppress = null;
-  }, []);
-
+  // 重置状态
   const resetLoadState = useCallback(() => {
-    // 重置数据状态
     setDataList([]);
-    setTopAnchorId(null);
-    setBottomAnchorId(null);
+    anchorRef.current = { top: null, bottom: null };
     setHasMorePrev(true);
     setHasMoreNext(true);
     setInitialLoadDone(false);
+    setLoadState({ initial: false, prev: false, next: false });
+  }, []);
 
-    // 重置加载状态
-    setIsInitialLoading(false);
-    setIsPrevLoading(false);
-    setIsNextLoading(false);
+  const ScrollData = useMemoizedFn(
+    ({
+      children,
+      ScrollContainerRef,
+      isLoading: externalLoading,
+      ...props
+    }: {
+      isLoading?: boolean;
+      children: ReactNode;
+      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    } & BoxProps) => {
+      const ref = ScrollContainerRef || containerRef;
+      const scroll = useScroll(ref);
 
-    // 重置滚动控制状态
-    setIsInitialStabilizing(false);
-    setSuppressScroll(false);
-    isUserScrollingRef.current = false;
-    scrollPositionRef.current = { top: 0, viewItem: '' };
-  }, [clearAllTimers]);
+      useDebounceEffect(
+        () => {
+          if (!ref?.current || isLoading || !initialLoadDone) return;
 
-  // 组件卸载时清除所有定时器
-  useEffect(() => {
-    return clearAllTimers;
-  }, [clearAllTimers]);
+          const { scrollTop, scrollHeight, clientHeight } = ref.current;
+
+          // 滚动到底部附近，加载更多下方数据
+          if (scrollTop + clientHeight >= scrollHeight - threshold && hasMoreNext) {
+            loadNextData(ref);
+          }
+
+          // 滚动到顶部附近，加载更多上方数据
+          if (scrollTop <= threshold && hasMorePrev) {
+            loadPrevData(ref);
+          }
+        },
+        [scroll],
+        { wait: 200 }
+      );
+
+      return (
+        <MyBox
+          ref={ref}
+          h={'100%'}
+          overflow={'auto'}
+          isLoading={externalLoading || isLoading}
+          {...props}
+        >
+          {hasMorePrev && loadState.prev && (
+            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+              {t('common:common.is_requesting')}
+            </Box>
+          )}
+          {children}
+          {hasMoreNext && loadState.next && (
+            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+              {t('common:common.is_requesting')}
+            </Box>
+          )}
+        </MyBox>
+      );
+    }
+  );
 
   return {
     dataList,
     isLoading,
-    isInitialLoading,
-    isPrevLoading,
-    isNextLoading,
-    hasMorePrev,
-    hasMoreNext,
-    initialLoadDone,
-    suppressScroll,
     loadData,
-    navigateToItem,
-    resetScrollState,
-    resetLoadState
+    initialLoadDone,
+    resetLoadState,
+    ScrollData,
+    itemRefs,
+    scrollToItem
   };
 }

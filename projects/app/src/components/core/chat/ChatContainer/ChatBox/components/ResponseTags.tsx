@@ -154,7 +154,6 @@ const ResponseTags = ({
                     onClick={(e) => {
                       e.stopPropagation();
 
-                      console.log('quoteList', historyItem);
                       setQuoteData({
                         chatTime: historyItem.time || new Date(),
                         rawSearch: quoteList,

@@ -20,5 +20,6 @@ type LinkedPaginationProps<T = {}> = T & {
 
 type LinkedListResponse<T = {}> = {
   list: Array<T & { _id: string }>;
-  hasMore: boolean;
+  hasMorePrev: boolean;
+  hasMoreNext: boolean;
 };
