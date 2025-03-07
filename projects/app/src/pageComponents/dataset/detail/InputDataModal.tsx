@@ -52,12 +52,14 @@ enum TabEnum {
 const InputDataModal = ({
   collectionId,
   dataId,
+  chatItemId,
   defaultValue,
   onClose,
   onSuccess
 }: {
   collectionId: string;
   dataId?: string;
+  chatItemId?: string;
   defaultValue?: { q: string; a?: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
@@ -205,11 +207,11 @@ const InputDataModal = ({
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:common.error.unKnow'));
 
-      // not exactly same
       await putDatasetDataById({
         dataId,
         ...e,
-        indexes: e.indexes
+        indexes: e.indexes,
+        chatItemId
       });
 
       return {

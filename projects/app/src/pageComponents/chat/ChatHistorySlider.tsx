@@ -46,6 +46,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
   const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
@@ -144,7 +145,10 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
           borderRadius={'xl'}
           leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
           overflow={'hidden'}
-          onClick={() => onChangeChatId()}
+          onClick={() => {
+            onChangeChatId();
+            setQuoteData(undefined);
+          }}
         >
           {t('common:core.chat.New Chat')}
         </Button>
@@ -199,6 +203,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
                 : {
                     onClick: () => {
                       onChangeChatId(item.id);
+                      setQuoteData(undefined);
                     }
                   })}
               {...(i !== concatHistory.length - 1 && {
@@ -270,6 +275,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
                                 onDelHistory(item.id);
                                 if (item.id === activeChatId) {
                                   onChangeChatId();
+                                  setQuoteData(undefined);
                                 }
                               },
                               type: 'danger'

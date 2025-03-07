@@ -14,6 +14,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { Document } from 'mongoose';
 
 const formatIndexes = ({
   indexes,
@@ -81,7 +82,7 @@ export async function insertData2Dataset({
 }: CreateDatasetDataProps & {
   model: string;
   session?: ClientSession;
-}) {
+}): Promise<{ insertId: string; tokens: number }> {
   if (!q || !datasetId || !collectionId || !model) {
     return Promise.reject('q, datasetId, collectionId, model is required');
   }
@@ -113,8 +114,27 @@ export async function insertData2Dataset({
     })
   );
 
-  // 2. Create mongo data
-  const [{ _id }] = await MongoDatasetData.create(
+  // 查找链表头节点
+  const query = MongoDatasetData.distinct('nextId', {
+    collectionId,
+    nextId: { $ne: null }
+  });
+
+  if (session) {
+    query.session(session);
+  }
+
+  const firstNode = await MongoDatasetData.findOne(
+    {
+      collectionId,
+      _id: { $nin: await query }
+    },
+    null,
+    { session }
+  );
+
+  // 2. Create mongo data with linked list pointers
+  const [newNode] = (await MongoDatasetData.create(
     [
       {
         teamId,
@@ -123,12 +143,13 @@ export async function insertData2Dataset({
         collectionId,
         q,
         a,
+        nextId: firstNode ? firstNode._id : null, // link to the previous head node
         chunkIndex,
         indexes: result.map((item) => item.index)
       }
     ],
     { session, ordered: true }
-  );
+  )) as unknown as [Document & { _id: string }];
 
   // 3. Create mongo data text
   await MongoDatasetDataText.create(
@@ -137,7 +158,7 @@ export async function insertData2Dataset({
         teamId,
         datasetId,
         collectionId,
-        dataId: _id,
+        dataId: newNode._id,
         fullTextToken: jiebaSplit({ text: `${q}\n${a}`.trim() })
       }
     ],
@@ -145,7 +166,7 @@ export async function insertData2Dataset({
   );
 
   return {
-    insertId: _id,
+    insertId: newNode._id,
     tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
   };
 }
@@ -163,7 +184,8 @@ export async function updateData2Dataset({
   q = '',
   a,
   indexes,
-  model
+  model,
+  chatItemId
 }: UpdateDatasetDataProps & { model: string }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
@@ -220,11 +242,7 @@ export async function updateData2Dataset({
     }
   }
 
-  // 4. Update mongo updateTime(便于脏数据检查器识别)
-  mongoData.updateTime = new Date();
-  await mongoData.save();
-
-  // 5. Insert vector
+  // insert vector
   const insertResult = await Promise.all(
     patchResult
       .filter((item) => item.type === 'create' || item.type === 'update')
@@ -251,9 +269,25 @@ export async function updateData2Dataset({
 
   // console.log(clonePatchResult2Insert);
   await mongoSessionRun(async (session) => {
-    // Update MongoData
+    // update mongo other data
+    mongoData.history =
+      q !== mongoData.q || a !== mongoData.a
+        ? [
+            {
+              q: mongoData.q,
+              a: mongoData.a,
+              updateTime: mongoData.updateTime,
+              currentChatItemId: mongoData.currentChatItemId
+            },
+            ...(mongoData.history?.slice(0, 9) || [])
+          ]
+        : mongoData.history;
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
+    mongoData.currentChatItemId = chatItemId || '';
+    // FullText tmp
+    // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
+    // @ts-ignore
     mongoData.indexes = newIndexes;
     await mongoData.save({ session });
 
@@ -277,6 +311,10 @@ export async function updateData2Dataset({
     }
   });
 
+  // Update mongo updateTime(便于脏数据检查器识别)
+  mongoData.updateTime = new Date();
+  await mongoData.save();
+
   return {
     tokens
   };
@@ -284,11 +322,30 @@ export async function updateData2Dataset({
 
 export const deleteDatasetData = async (data: DatasetDataItemType) => {
   await mongoSessionRun(async (session) => {
-    await MongoDatasetData.deleteOne({ _id: data.id }, { session });
-    await MongoDatasetDataText.deleteMany({ dataId: data.id }, { session });
+    const nodeToDelete = await MongoDatasetData.findById(data.id).session(session);
+    if (!nodeToDelete) {
+      return;
+    }
+
+    const previousNode = await MongoDatasetData.findOne(
+      { nextId: data.id, collectionId: nodeToDelete.collectionId },
+      null,
+      { session }
+    );
+
+    if (previousNode) {
+      await MongoDatasetData.findByIdAndUpdate(
+        previousNode._id,
+        { nextId: nodeToDelete.nextId },
+        { session }
+      );
+    }
+
+    await MongoDatasetData.findByIdAndDelete(data.id, { session });
+
     await deleteDatasetDataVector({
       teamId: data.teamId,
-      idList: data.indexes.map((item) => item.dataId)
+      idList: nodeToDelete.indexes.map((item) => item.dataId)
     });
   });
 };
