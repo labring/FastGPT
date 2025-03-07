@@ -41,8 +41,6 @@ const ChatQuoteList = ({
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
   const router = useRouter();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const quoteRefs = useRef<(HTMLDivElement | null)[]>([]);
   const [quoteIndex, setQuoteIndex] = useState(0);
   const { collectionId, datasetId, chatItemId, sourceId, sourceName } = metadata || {};
   const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
@@ -88,91 +86,74 @@ const ChatQuoteList = ({
       : rawSearch;
 
     return results.sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
-  }, [metadata, rawSearch]);
+  }, [metadata, rawSearch, canViewCollectionDetail]);
 
   const currentQuoteItem = filterResults[quoteIndex];
 
-  const getApiParams = useCallback(
-    (
-      options: {
-        initialId?: string;
-        anchorId?: string;
-        direction?: 'prev' | 'next';
-      } = {}
-    ) => {
-      const baseParams = {
-        pageSize: 15,
-        ...options
+  const getBaseParams = useCallback(() => {
+    if (isFullTextReader) {
+      return {
+        collectionId,
+        chatTime,
+        chatItemId,
+        shareId,
+        outLinkUid
       };
-
-      if (isFullTextReader) {
-        return {
-          ...baseParams,
-          collectionId,
-          chatTime,
-          chatItemId,
-          shareId,
-          outLinkUid
-        };
-      } else {
-        return {
-          ...baseParams,
-          datasetDataIdList: filterResults.map((item) => item.id),
-          shareId,
-          outLinkUid
-        };
-      }
-    },
-    [isFullTextReader, collectionId, chatTime, chatItemId, shareId, outLinkUid, filterResults]
-  );
-
-  // API 请求处理函数
-  const handleFetchInitial = useCallback(
-    async (initialId: string) => {
-      if (!isFullTextReader && (!filterResults.length || isPermissionLoading)) {
-        return { list: [], hasMorePrev: false, hasMoreNext: false };
-      }
-      const params = getApiParams({ initialId });
-      return await getLinkedDatasetData(params);
-    },
-    [getApiParams, isFullTextReader, filterResults, isPermissionLoading]
-  );
-
-  const handleFetchPrev = useCallback(
-    async (anchorId: string) => {
-      const params = getApiParams({ anchorId, direction: 'prev' });
-      return await getLinkedDatasetData(params);
-    },
-    [getApiParams]
-  );
-
-  const handleFetchNext = useCallback(
-    async (anchorId: string) => {
-      const params = getApiParams({ anchorId, direction: 'next' });
-      return await getLinkedDatasetData(params);
-    },
-    [getApiParams]
-  );
+    } else {
+      return {
+        datasetDataIdList: filterResults.map((item) => item.id),
+        shareId,
+        outLinkUid
+      };
+    }
+  }, [isFullTextReader, collectionId, chatTime, chatItemId, shareId, outLinkUid, filterResults]);
 
   const {
     dataList: datasetDataList,
     isLoading,
     loadData,
     initialLoadDone,
-    suppressScroll,
-    navigateToItem,
-    resetScrollState,
-    resetLoadState
-  } = useLinkedScroll({
-    containerRef,
-    itemRefs: quoteRefs,
-    fetchInitialData: handleFetchInitial,
-    fetchPrevData: isFullTextReader ? handleFetchPrev : undefined,
-    fetchNextData: isFullTextReader ? handleFetchNext : undefined,
+    resetLoadState,
+    ScrollData,
+    itemRefs,
+    scrollToItem
+  } = useLinkedScroll(getLinkedDatasetData, {
+    refreshDeps: [collectionId],
+    pageSize: 15,
+    params: getBaseParams(),
     initialId: currentQuoteItem?.id,
-    canLoadData: !isPermissionLoading,
-    dependencies: [collectionId]
+    canLoadData: !isPermissionLoading && (isFullTextReader || filterResults.length > 0)
   });
+
+  const handleNavigate = useCallback(
+    async (targetIndex: number) => {
+      if (targetIndex < 0 || targetIndex >= filterResults.length) return;
+      const targetItemId = filterResults[targetIndex].id;
+      setQuoteIndex(targetIndex);
+      const dataIndex = datasetDataList.findIndex((item) => item._id === targetItemId);
+
+      if (dataIndex !== -1) {
+        setTimeout(() => {
+          scrollToItem(dataIndex);
+        }, 50);
+      } else {
+        try {
+          const response = await loadData(targetItemId);
+
+          if (response && response.list && response.list.length > 0) {
+            const newIndex = response.list.findIndex((item) => item._id === targetItemId);
+
+            if (newIndex !== -1) {
+              scrollToItem(newIndex);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to navigate:', error);
+        }
+      }
+    },
+    [filterResults, datasetDataList, scrollToItem, loadData]
+  );
 
   useEffect(() => {
     setQuoteIndex(0);
@@ -180,10 +161,20 @@ const ChatQuoteList = ({
   }, [collectionId, resetLoadState]);
 
   useEffect(() => {
-    if (initialLoadDone && currentQuoteItem && !suppressScroll) {
-      navigateToItem(currentQuoteItem.id);
+    if (initialLoadDone && currentQuoteItem && datasetDataList.length > 0 && quoteIndex === 0) {
+      const itemIndex = datasetDataList.findIndex((item) => item._id === currentQuoteItem.id);
+      if (itemIndex !== -1) {
+        scrollToItem(itemIndex);
+      }
     }
-  }, [quoteIndex, initialLoadDone, currentQuoteItem, navigateToItem, suppressScroll]);
+  }, [
+    initialLoadDone,
+    datasetDataList.length,
+    currentQuoteItem,
+    scrollToItem,
+    quoteIndex,
+    datasetDataList
+  ]);
 
   const formatedDataList = useMemo(() => {
     if (isFullTextReader) {
@@ -212,16 +203,18 @@ const ChatQuoteList = ({
           });
           const score = formatScore(currentFilterItem.score);
 
+          const isCurrentSelected = currentQuoteItem?.id === item._id;
+
           return {
             ...item,
             sourceName: currentFilterItem.sourceName,
-            isCurrentSelected: undefined,
+            isCurrentSelected,
             quoteIndex: -1,
             icon,
             score
           };
         })
-        .filter(Boolean)
+        .filter((item) => !!item)
         .sort((a, b) => {
           return (b.score.primaryScore?.value || 0) - (a.score.primaryScore?.value || 0);
         });
@@ -379,33 +372,19 @@ const ChatQuoteList = ({
             <NavButton
               direction="up"
               isDisabled={quoteIndex === 0}
-              onClick={() => {
-                resetScrollState();
-                setQuoteIndex(quoteIndex - 1);
-              }}
+              onClick={() => handleNavigate(quoteIndex - 1)}
             />
             <NavButton
               direction="down"
               isDisabled={quoteIndex === filterResults.length - 1}
-              onClick={() => {
-                resetScrollState();
-                setQuoteIndex(quoteIndex + 1);
-              }}
+              onClick={() => handleNavigate(quoteIndex + 1)}
             />
           </Flex>
         </Flex>
       )}
 
       {/* quote list */}
-      <MyBox
-        ref={containerRef}
-        flex={'1 0 0'}
-        overflowY="auto"
-        mt={2}
-        px={5}
-        py={1}
-        isLoading={isLoading || isPermissionLoading}
-      >
+      <ScrollData flex={'1 0 0'} mt={2} px={5} py={1} isLoading={isLoading || isPermissionLoading}>
         <Flex flexDir={'column'} gap={3}>
           {formatedDataList.map((item, index) => (
             <QuoteItem
@@ -413,10 +392,9 @@ const ChatQuoteList = ({
               index={index}
               item={item}
               setQuoteIndex={(newIndex) => {
-                resetScrollState();
                 setQuoteIndex(newIndex);
               }}
-              quoteRefs={quoteRefs}
+              quoteRefs={itemRefs as React.MutableRefObject<(HTMLDivElement | null)[]>}
               isCurrentSelected={item.isCurrentSelected}
               quoteIndex={item.quoteIndex}
               chatItemId={chatItemId}
@@ -428,7 +406,7 @@ const ChatQuoteList = ({
             />
           ))}
         </Flex>
-      </MyBox>
+      </ScrollData>
     </Flex>
   );
 };

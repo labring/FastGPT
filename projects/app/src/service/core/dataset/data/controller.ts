@@ -14,6 +14,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { Document } from 'mongoose';
 
 const formatIndexes = ({
   indexes,
@@ -81,7 +82,8 @@ export async function insertData2Dataset({
 }: CreateDatasetDataProps & {
   model: string;
   session?: ClientSession;
-}) {
+}): Promise<{ insertId: string; tokens: number }> {
+  console.log('insertData2Dataset');
   if (!q || !datasetId || !collectionId || !model) {
     return Promise.reject('q, datasetId, collectionId, model is required');
   }
@@ -113,18 +115,27 @@ export async function insertData2Dataset({
     })
   );
 
-  // Find the first node in the collection (head of the linked list)
+  // 查找链表头节点
+  const query = MongoDatasetData.distinct('nextId', {
+    collectionId,
+    nextId: { $ne: null }
+  });
+
+  if (session) {
+    query.session(session);
+  }
+
   const firstNode = await MongoDatasetData.findOne(
     {
       collectionId,
-      $or: [{ prevId: null }, { prevId: { $exists: false } }]
+      _id: { $nin: await query }
     },
     null,
     { session }
   );
 
   // 2. Create mongo data with linked list pointers
-  const [newNode] = await MongoDatasetData.create(
+  const [newNode] = (await MongoDatasetData.create(
     [
       {
         teamId,
@@ -139,12 +150,7 @@ export async function insertData2Dataset({
       }
     ],
     { session, ordered: true }
-  );
-
-  // Update the previous head node to point to the new node
-  if (firstNode) {
-    await MongoDatasetData.findByIdAndUpdate(firstNode._id, { prevId: newNode._id }, { session });
-  }
+  )) as unknown as [Document & { _id: string }];
 
   // 3. Create mongo data text
   await MongoDatasetDataText.create(
@@ -321,14 +327,23 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     if (!nodeToDelete) {
       return;
     }
-    const { prevId, nextId } = nodeToDelete;
-    if (prevId) {
-      await MongoDatasetData.findByIdAndUpdate(prevId, { nextId }, { session });
+
+    const previousNode = await MongoDatasetData.findOne(
+      { nextId: data.id, collectionId: nodeToDelete.collectionId },
+      null,
+      { session }
+    );
+
+    if (previousNode) {
+      await MongoDatasetData.findByIdAndUpdate(
+        previousNode._id,
+        { nextId: nodeToDelete.nextId },
+        { session }
+      );
     }
-    if (nextId) {
-      await MongoDatasetData.findByIdAndUpdate(nextId, { prevId }, { session });
-    }
+
     await MongoDatasetData.findByIdAndDelete(data.id, { session });
+
     await deleteDatasetDataVector({
       teamId: data.teamId,
       idList: nodeToDelete.indexes.map((item) => item.dataId)

@@ -58,14 +58,14 @@ const QuoteItem = ({
         p={2}
         py={item.updatedData ? 0 : 2}
         cursor={hasBeenSearched ? 'pointer' : 'default'}
-        bg={isCurrentSelected ? '#FFF9E7' : hasBeenSearched ? '#FFFCF2' : ''}
+        bg={isCurrentSelected && isFullTextReader ? '#FFF9E7' : hasBeenSearched ? '#FFFCF2' : ''}
         position={'relative'}
         overflow={'hidden'}
         border={'1px solid '}
-        borderColor={isCurrentSelected ? 'yellow.200' : 'transparent'}
+        borderColor={isCurrentSelected && isFullTextReader ? 'yellow.200' : 'transparent'}
         borderLeftColor={item.updatedData && !isCurrentSelected ? 'myGray.200' : ''}
         borderBottomColor={
-          isCurrentSelected ? 'yellow.200' : isFullTextReader ? 'transparent' : 'myGray.150'
+          !isFullTextReader ? 'myGray.150' : isCurrentSelected ? 'yellow.200' : 'transparent'
         }
         wordBreak={'break-all'}
         fontSize={'sm'}

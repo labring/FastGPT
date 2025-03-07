@@ -13,18 +13,14 @@ export default NextAPI(handler);
 
 const setupDataset2LinkedList = async () => {
   try {
-    console.log('开始构建数据集双向链表结构...');
-
     // 获取所有集合 ID
     const collections = await MongoDatasetData.distinct('collectionId');
-    console.log(`找到 ${collections.length} 个集合需要处理`);
 
     let processedCollections = 0;
     let totalProcessed = 0;
 
     // 按集合 ID 分批处理
     for (const collectionId of collections) {
-      // 按 chunkIndex 和时间戳排序获取该集合的所有数据项
       const items = await MongoDatasetData.find({ collectionId })
         .sort({ chunkIndex: 1, updateTime: -1 })
         .select('_id')
@@ -39,11 +35,10 @@ const setupDataset2LinkedList = async () => {
       // 使用单个更新操作代替批量更新
       for (let i = 0; i < items.length; i++) {
         const currentId = items[i]._id;
-        const prevId = i > 0 ? items[i - 1]._id : null;
         const nextId = i < items.length - 1 ? items[i + 1]._id : null;
 
-        // 使用单独的更新操作
-        await MongoDatasetData.updateOne({ _id: currentId }, { $set: { prevId, nextId } });
+        // 使用单独的更新操作，只设置nextId
+        await MongoDatasetData.updateOne({ _id: currentId }, { $set: { nextId } });
 
         totalProcessed++;
 
@@ -61,10 +56,10 @@ const setupDataset2LinkedList = async () => {
       );
     }
 
-    console.log('数据集双向链表构建完成');
+    console.log('数据集单向链表构建完成');
     return true;
   } catch (error) {
-    console.error('构建双向链表失败:', error);
+    console.error('构建单向链表失败:', error);
     throw error;
   }
 };
