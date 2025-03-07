@@ -83,7 +83,6 @@ export async function insertData2Dataset({
   model: string;
   session?: ClientSession;
 }): Promise<{ insertId: string; tokens: number }> {
-  console.log('insertData2Dataset');
   if (!q || !datasetId || !collectionId || !model) {
     return Promise.reject('q, datasetId, collectionId, model is required');
   }

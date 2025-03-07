@@ -179,7 +179,6 @@ const InputDataModal = ({
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:common.error.unKnow'));
-      console.log(chatItemId);
 
       await putDatasetDataById({
         dataId,
