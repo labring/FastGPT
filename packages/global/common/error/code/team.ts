@@ -24,7 +24,10 @@ export enum TeamErrEnum {
   cannotModifyRootOrg = 'cannotModifyRootOrg',
   cannotDeleteNonEmptyOrg = 'cannotDeleteNonEmptyOrg',
   cannotDeleteDefaultGroup = 'cannotDeleteDefaultGroup',
-  userNotActive = 'userNotActive'
+  userNotActive = 'userNotActive',
+  invitationLinkInvalid = 'invitationLinkInvalid',
+  youHaveBeenInTheTeam = 'youHaveBeenInTheTeam',
+  tooManyInvitations = 'tooManyInvitations'
 }
 
 const teamErr = [
@@ -112,6 +115,18 @@ const teamErr = [
   {
     statusText: TeamErrEnum.cannotDeleteNonEmptyOrg,
     message: i18nT('common:code_error.team_error.cannot_delete_non_empty_org')
+  },
+  {
+    statusText: TeamErrEnum.invitationLinkInvalid,
+    message: i18nT('common:code_error.team_error.invitation_link_invalid')
+  },
+  {
+    statusText: TeamErrEnum.youHaveBeenInTheTeam,
+    message: i18nT('common:code_error.team_error.you_have_been_in_the_team')
+  },
+  {
+    statusText: TeamErrEnum.tooManyInvitations,
+    message: i18nT('common:code_error.team_error.too_many_invitations')
   }
 ];
 
