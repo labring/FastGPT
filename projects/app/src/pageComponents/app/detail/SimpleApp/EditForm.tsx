@@ -10,9 +10,9 @@ import {
   HStack
 } from '@chakra-ui/react';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
+import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -68,17 +68,8 @@ const EditForm = ({
   const { t } = useTranslation();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-
-  const { allDatasets } = useDatasetStore();
+  const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
-
-  const selectDatasets = useMemo(
-    () =>
-      allDatasets.filter((item) =>
-        appForm.dataset?.datasets.find((dataset) => dataset.datasetId === item._id)
-      ),
-    [allDatasets, appForm?.dataset?.datasets]
-  );
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -252,7 +243,7 @@ const EditForm = ({
           )}
           <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
             {selectDatasets.map((item) => (
-              <MyTooltip key={item._id} label={t('common:core.dataset.Read Dataset')}>
+              <MyTooltip key={item.datasetId} label={t('common:core.dataset.Read Dataset')}>
                 <Flex
                   overflow={'hidden'}
                   alignItems={'center'}
@@ -266,7 +257,7 @@ const EditForm = ({
                     router.push({
                       pathname: '/dataset/detail',
                       query: {
-                        datasetId: item._id
+                        datasetId: item.datasetId
                       }
                     })
                   }
@@ -413,8 +404,10 @@ const EditForm = ({
         <DatasetSelectModal
           isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
-            datasetId: item._id,
-            vectorModel: item.vectorModel
+            datasetId: item.datasetId,
+            vectorModel: item.vectorModel,
+            name: item.name,
+            avatar: item.avatar
           }))}
           onClose={onCloseKbSelect}
           onChange={(e) => {
