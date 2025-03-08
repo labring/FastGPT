@@ -11,7 +11,10 @@ import {
   Divider
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
+import type {
+  SelectedDatasetType,
+  ExtendedSelectedDatasetType
+} from '@fastgpt/global/core/workflow/api.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -21,16 +24,9 @@ import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/data
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
-type ExtendedSelectedDatasetType = {
-  datasetId: string;
-  vectorModel: { model: string };
-  name: string;
-  avatar: string;
-};
-
 export const DatasetSelectModal = ({
   isOpen,
-  defaultSelectedDatasets = [], //外面默认选中的id和向量,现在多了头像和名字，就不需要从all拿了
+  defaultSelectedDatasets = [],
   onChange,
   onClose
 }: {
@@ -41,25 +37,21 @@ export const DatasetSelectModal = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  console.log('defaultSelectedDatasets:', defaultSelectedDatasets);
   const [selectedDatasets, setSelectedDatasets] =
     useState<SelectedDatasetType>(defaultSelectedDatasets);
-  console.log('selectedDatasets:', selectedDatasets);
   const { toast } = useToast();
-  const { paths, setParentId, datasets, isFetching } = useDatasetSelect(); //模态框里可用的知识库
-  console.log('datasets length:', datasets.length);
+  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
   const { Loading } = useLoading();
 
   const filterDatasets = useMemo(() => {
     const filtered = {
-      selected: datasets.filter(
-        (item) => selectedDatasets.find((dataset) => dataset.datasetId === item._id) //已选
+      selected: datasets.filter((item) =>
+        selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       ),
       unSelected: datasets.filter(
         (item) => !selectedDatasets.find((dataset) => dataset.datasetId === item._id)
       )
     };
-    console.log('Filtered datasets:', filtered);
     return filtered;
   }, [datasets, selectedDatasets]);
   const activeVectorModel = defaultSelectedDatasets[0]?.vectorModel?.model;
@@ -155,9 +147,15 @@ export const DatasetSelectModal = ({
                               title: t('common:dataset.Select Dataset Tips')
                             });
                           }
-                          console.log('you click', item._id);
-                          console.log('Before click, selectedDatasets:', selectedDatasets);
-                          setSelectedDatasets((state) => [...state, { datasetId: item._id }]);
+                          setSelectedDatasets((state) => [
+                            ...state,
+                            {
+                              datasetId: item._id,
+                              avatar: item.avatar,
+                              name: item.name,
+                              vectorModel: item.vectorModel
+                            }
+                          ]);
                         }
                       }}
                     >
@@ -211,7 +209,6 @@ export const DatasetSelectModal = ({
               });
 
               onClose();
-              console.log('filterDatasets:', filterDatasets);
               onChange(filterDatasets);
             }}
           >

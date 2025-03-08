@@ -32,7 +32,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import ToolSelect from './components/ToolSelect';
-import { getDatasetsByAppIdAndDatasetIds } from '@/web/core/dataset/api';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -68,22 +67,8 @@ const EditForm = ({
   const router = useRouter();
   const { t } = useTranslation();
 
-  const { appDetail, appId } = useContextSelector(AppContext, (v) => v);
-
-  console.log('appId', appId);
-  console.log('appForm?.dataset?.datasets', appForm?.dataset?.datasets);
-
-  const datasetIds = useMemo(
-    () => appForm?.dataset?.datasets.map((dataset) => dataset.datasetId) || [],
-    [appForm?.dataset?.datasets]
-  );
-  const [selectDatasets, setSelectDatasets] = React.useState<DatasetSimpleItemType[]>([]); //应用已选择的知识库
-  console.log('datasetIds', datasetIds);
-  useEffect(() => {
-    getDatasetsByAppIdAndDatasetIds({ appId, datasetIdList: datasetIds }).then(setSelectDatasets);
-  }, [appId, datasetIds]);
-
-  console.log('selectDatasets after', selectDatasets);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
   const [, startTst] = useTransition();
 
   const {
@@ -258,7 +243,7 @@ const EditForm = ({
           )}
           <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
             {selectDatasets.map((item) => (
-              <MyTooltip key={item._id} label={t('common:core.dataset.Read Dataset')}>
+              <MyTooltip key={item.datasetId} label={t('common:core.dataset.Read Dataset')}>
                 <Flex
                   overflow={'hidden'}
                   alignItems={'center'}
@@ -272,7 +257,7 @@ const EditForm = ({
                     router.push({
                       pathname: '/dataset/detail',
                       query: {
-                        datasetId: item._id
+                        datasetId: item.datasetId
                       }
                     })
                   }
@@ -419,8 +404,7 @@ const EditForm = ({
         <DatasetSelectModal
           isOpen={isOpenDatasetSelect}
           defaultSelectedDatasets={selectDatasets.map((item) => ({
-            datasetId: item._id,
-            //_id: item._id,
+            datasetId: item.datasetId,
             vectorModel: item.vectorModel,
             name: item.name,
             avatar: item.avatar
