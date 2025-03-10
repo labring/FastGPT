@@ -21,7 +21,7 @@
   "edit_channel": "Channel configuration",
   "enable_channel": "Enable",
   "forbid_channel": "Disabled",
-  "input maxToken_tip": "The model max_tokens parameter, if left blank, means that the model does not support it.",
+  "maxToken_tip": "The model max_tokens parameter, if left blank, means that the model does not support it.",
   "key_type": "API key format:",
   "log": "Call log",
   "log_detail": "Log details",
