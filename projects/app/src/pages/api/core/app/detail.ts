@@ -4,7 +4,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { checkNode } from '@/service/core/app/utils';
-
+import { processDatasetNodes } from '@fastgpt/service/core/app/utils';
 /* 获取应用详情 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -14,6 +14,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
   // 凭证校验
   const { app } = await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
+
+  await processDatasetNodes(app.modules, appId);
 
   if (!app.permission.hasWritePer) {
     return {
