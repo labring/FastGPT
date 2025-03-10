@@ -21,7 +21,7 @@
   "edit_channel": "渠道配置",
   "enable_channel": "启用",
   "forbid_channel": "禁用",
-  "input maxToken_tip": "模型 max_tokens 参数，如果留空，则代表模型不支持该参数。",
+  "maxToken_tip": "模型 max_tokens 参数，如果留空，则代表模型不支持该参数。",
   "key_type": "API key 格式: ",
   "log": "调用日志",
   "log_detail": "日志详情",
