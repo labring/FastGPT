@@ -69,6 +69,7 @@
   "import_model_config": "Model selection",
   "import_param_setting": "Parameter settings",
   "import_select_file": "Select a file",
+  "import_select_link": "Enter link",
   "is_open_schedule": "Enable scheduled synchronization",
   "keep_image": "Keep the picture",
   "move.hint": "After moving, the selected knowledge base/folder will inherit the permission settings of the new folder, and the original permission settings will become invalid.",

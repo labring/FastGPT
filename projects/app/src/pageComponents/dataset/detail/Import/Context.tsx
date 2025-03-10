@@ -113,7 +113,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     ],
     [ImportDataSourceEnum.fileLink]: [
       {
-        title: t('dataset:import_select_file')
+        title: t('dataset:import_select_link')
       },
       {
         title: t('dataset:import_param_setting')
