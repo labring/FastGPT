@@ -70,6 +70,26 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.history
       );
+      defaultAppForm.aiSettings.aiChatReasoning = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatReasoning
+      );
+      defaultAppForm.aiSettings.aiChatTopP = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatTopP
+      );
+      defaultAppForm.aiSettings.aiChatStopSign = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatStopSign
+      );
+      defaultAppForm.aiSettings.aiChatResponseFormat = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatResponseFormat
+      );
+      defaultAppForm.aiSettings.aiChatJsonSchema = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatJsonSchema
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
