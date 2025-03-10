@@ -14,7 +14,12 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["projects/app/src/*"],
+      "@fastgpt/*": ["packages/*"],
+      "@test": ["test/*"]
+    }
   },
   "exclude": ["**/node_modules"]
 }
