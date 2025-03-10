@@ -1,7 +1,44 @@
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { MongoDataset } from '../dataset/schema';
+import { MongoApp } from '../app/schema';
+import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { listByAppIdAndDatasetIds } from './listByAppIdAndDatasetIds';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+
+export type ListByAppIdAndDatasetIdsBody = {
+  appId: string;
+  datasetIdList: string[];
+};
+
+interface Dataset {
+  datasetId: string;
+  [key: string]: any;
+}
+
+export async function listByAppIdAndDatasetIds({
+  appId,
+  datasetIdList
+}: ListByAppIdAndDatasetIdsBody) {
+  const app = await MongoApp.findById(appId).lean();
+  if (!app) {
+    throw new Error('App not found');
+  }
+  const { teamId } = app;
+
+  const myDatasets = await MongoDataset.find({
+    teamId,
+    _id: { $in: datasetIdList },
+    type: { $ne: DatasetTypeEnum.folder }
+  }).lean();
+
+  return myDatasets.map((item) => ({
+    datasetId: item._id,
+    avatar: item.avatar,
+    name: item.name,
+    vectorModel: getEmbeddingModel(item.vectorModel)
+  }));
+}
 
 export async function processDatasetNodes(nodes: any[], appId: string) {
   const datasetNodes = nodes
@@ -44,4 +81,20 @@ export async function processDatasetNodes(nodes: any[], appId: string) {
           }
       );
   });
+}
+
+export async function restoreDatasetNode(formatNodes: StoreNodeItemType[]) {
+  const datasetSearchNode = formatNodes.find(
+    (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
+  );
+  if (datasetSearchNode) {
+    const datasetsInput = datasetSearchNode.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.datasetSelectList
+    );
+    if (datasetsInput) {
+      datasetsInput.value = datasetsInput.value.map((dataset: Dataset) => ({
+        datasetId: dataset.datasetId
+      }));
+    }
+  }
 }

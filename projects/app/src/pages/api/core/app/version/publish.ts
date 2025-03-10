@@ -12,10 +12,7 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-interface Dataset {
-  datasetId: string;
-  [key: string]: any;
-}
+import { restoreDatasetNode } from '@fastgpt/service/core/app/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -28,19 +25,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     isPlugin: app.type === AppTypeEnum.plugin
   });
 
-  const datasetSearchNode = formatNodes.find(
-    (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
-  );
-  if (datasetSearchNode) {
-    const datasetsInput = datasetSearchNode.inputs.find(
-      (input) => input.key === NodeInputKeyEnum.datasetSelectList
-    );
-    if (datasetsInput) {
-      datasetsInput.value = datasetsInput.value.map((dataset: Dataset) => ({
-        datasetId: dataset.datasetId
-      }));
-    }
-  }
+  await restoreDatasetNode(formatNodes);
 
   if (autoSave) {
     return MongoApp.findByIdAndUpdate(appId, {

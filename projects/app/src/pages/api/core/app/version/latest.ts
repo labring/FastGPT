@@ -6,7 +6,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { processDatasetNodes } from '../util/processDatasetNodes';
+import { processDatasetNodes } from '@fastgpt/service/core/app/utils';
 
 export type getLatestVersionQuery = {
   appId: string;
