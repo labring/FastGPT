@@ -140,7 +140,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
       if (typeof val === 'string') {
         if (isQuoted) {
-          return val.replace(/(?<!\\)"/g, '\\"');
+          // Replace newlines with escaped newlines
+          return val.replace(/\n/g, '\\n').replace(/(?<!\\)"/g, '\\"');
         }
         try {
           JSON.parse(val);
