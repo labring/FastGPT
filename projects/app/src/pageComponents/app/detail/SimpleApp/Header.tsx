@@ -89,7 +89,6 @@ const Header = ({
       autoSave?: boolean;
     }) => {
       const { nodes, edges } = form2AppWorkflow(appForm, t);
-      console.log('nodes:', appForm, nodes);
       await onSaveApp({
         nodes,
         edges,

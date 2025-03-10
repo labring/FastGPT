@@ -11,10 +11,7 @@ import {
   Divider
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import type {
-  SelectedDatasetType,
-  ExtendedSelectedDatasetType
-} from '@fastgpt/global/core/workflow/api.d';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -31,7 +28,7 @@ export const DatasetSelectModal = ({
   onClose
 }: {
   isOpen: boolean;
-  defaultSelectedDatasets: ExtendedSelectedDatasetType[];
+  defaultSelectedDatasets: SelectedDatasetType;
   onChange: (e: SelectedDatasetType) => void;
   onClose: () => void;
 }) => {

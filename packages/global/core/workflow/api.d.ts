@@ -8,13 +8,6 @@ export type SelectedDatasetType = {
   vectorModel: EmbeddingModelItemType;
 }[];
 
-export type ExtendedSelectedDatasetType = {
-  datasetId: string;
-  vectorModel: EmbeddingModelItemType;
-  name: string;
-  avatar: string;
-};
-
 export type HttpBodyType<T = Record<string, any>> = {
   // [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 } & T;

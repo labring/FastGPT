@@ -6,9 +6,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { listByAppIdAndDatasetIds } from '../util/listByAppIdAndDatasetIds';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { processDatasetNodes } from '../util/processDatasetNodes';
 
 export type getLatestVersionQuery = {
   appId: string;
@@ -33,26 +31,7 @@ async function handler(
     per: WritePermissionVal
   });
 
-  const nodes = app.modules;
-  await Promise.all(
-    nodes.map(async (node) => {
-      if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
-        const datasetIds = node.inputs.find(
-          (item) => item.key === NodeInputKeyEnum.datasetSelectList
-        )?.value?.datasetId;
-        if (datasetIds) {
-          const datasetList = await listByAppIdAndDatasetIds({
-            appId: req.query.appId,
-            datasetIdList: datasetIds
-          });
-          const input = node.inputs.find((item) => item.key === NodeInputKeyEnum.datasetSelectList);
-          if (input) {
-            input.value = datasetList;
-          }
-        }
-      }
-    })
-  );
+  await processDatasetNodes(app.modules, req.query.appId);
 
   return getAppLatestVersion(req.query.appId, app);
 }
