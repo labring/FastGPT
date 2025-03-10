@@ -351,7 +351,7 @@ export const ModelEditModal = ({
                       <Td>
                         <HStack spacing={1}>
                           <Box>{t('common:core.chat.response.module maxToken')}</Box>
-                          <QuestionTip label={t('account_model:input maxToken_tip')} />
+                          <QuestionTip label={t('account_model:maxToken_tip')} />
                         </HStack>
                       </Td>
                       <Td textAlign={'right'}>
