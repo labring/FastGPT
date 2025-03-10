@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box } from '@chakra-ui/react';
 
 import ChatTest from './ChatTest';
@@ -21,6 +21,7 @@ const Edit = ({
   setPast: (value: React.SetStateAction<SimpleAppSnapshotType[]>) => void;
 }) => {
   const { isPc } = useSystem();
+  const [renderEdit, setRenderEdit] = useState(true);
 
   return (
     <Box
@@ -32,24 +33,26 @@ const Edit = ({
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}
     >
-      <Box
-        className={styles.EditAppBox}
-        pr={[0, 1]}
-        overflowY={'auto'}
-        minW={['auto', '580px']}
-        flex={'1'}
-      >
-        <Box {...cardStyles} boxShadow={'2'}>
-          <AppCard appForm={appForm} setPast={setPast} />
-        </Box>
+      {renderEdit && (
+        <Box
+          className={styles.EditAppBox}
+          pr={[0, 1]}
+          overflowY={'auto'}
+          minW={['auto', '580px']}
+          flex={'1'}
+        >
+          <Box {...cardStyles} boxShadow={'2'}>
+            <AppCard appForm={appForm} setPast={setPast} />
+          </Box>
 
-        <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
-          <EditForm appForm={appForm} setAppForm={setAppForm} />
+          <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
+            <EditForm appForm={appForm} setAppForm={setAppForm} />
+          </Box>
         </Box>
-      </Box>
+      )}
       {isPc && (
-        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0} mb={3}>
-          <ChatTest appForm={appForm} />
+        <Box flex={'2 0 0'} w={0} mb={3}>
+          <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
         </Box>
       )}
     </Box>

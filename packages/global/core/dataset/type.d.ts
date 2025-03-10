@@ -107,17 +107,23 @@ export type DatasetDataIndexItemType = {
 };
 export type DatasetDataSchemaType = {
   _id: string;
+  nextId: string;
   userId: string;
   teamId: string;
   tmbId: string;
-  datasetId: string;
-  collectionId: string;
   datasetId: string;
   collectionId: string;
   chunkIndex: number;
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  history?: {
+    q: string;
+    a: string;
+    updateTime: Date;
+    currentChatItemId?: string;
+  }[];
+  currentChatItemId?: string;
   forbid?: boolean;
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];

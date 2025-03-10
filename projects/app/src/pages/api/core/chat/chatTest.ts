@@ -45,6 +45,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { saveChat, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type Props = {
   messages: ChatCompletionMessageParam[];
@@ -215,7 +216,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses.map((item) => {
+        if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
+          // Filter quoteList q & a
+          return {
+            ...item,
+            quoteList: item.quoteList?.map((quote) => ({
+              ...quote,
+              q: '',
+              a: ''
+            }))
+          };
+        }
+
+        return item;
+      })
     };
 
     if (isInteractiveRequest) {

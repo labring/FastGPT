@@ -1,0 +1,290 @@
+import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
+import { LinkedListResponse, LinkedPaginationProps } from '../common/fetch/type';
+import { Box, BoxProps } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
+import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
+import MyBox from '../components/common/MyBox';
+
+const threshold = 100;
+
+export function useLinkedScroll<
+  TParams extends LinkedPaginationProps,
+  TData extends LinkedListResponse
+>(
+  api: (data: TParams) => Promise<TData>,
+  {
+    refreshDeps = [],
+    pageSize = 10,
+    params = {},
+    initialId,
+    canLoadData = false
+  }: {
+    refreshDeps?: any[];
+    pageSize?: number;
+    params?: Record<string, any>;
+    initialId?: string;
+    canLoadData?: boolean;
+  }
+) {
+  const { t } = useTranslation();
+  const [dataList, setDataList] = useState<TData['list']>([]);
+  const [hasMorePrev, setHasMorePrev] = useState(true);
+  const [hasMoreNext, setHasMoreNext] = useState(true);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
+
+  const [isLoading, setIsLoading] = useState(false);
+
+  const anchorRef = useRef({
+    top: null as string | null,
+    bottom: null as string | null
+  });
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const itemRefs = useRef<(HTMLElement | null)[]>([]);
+
+  const callApi = useCallback(
+    async (apiParams: Record<string, any>, loadType: 'initial' | 'prev' | 'next') => {
+      try {
+        setIsLoading(true);
+        return await api(apiParams as unknown as TParams);
+      } catch (error) {
+        console.error(`Error fetching ${loadType} data:`, error);
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [api]
+  );
+
+  const loadData = useCallback(
+    async (id: string) => {
+      if (isLoading) return null;
+
+      const response = await callApi(
+        {
+          initialId: id,
+          ...params
+        },
+        'initial'
+      );
+
+      if (!response) return null;
+
+      setHasMorePrev(response.hasMorePrev);
+      setHasMoreNext(response.hasMoreNext);
+      setDataList(response.list);
+
+      if (response.list.length > 0) {
+        anchorRef.current.top = response.list[0]._id;
+        anchorRef.current.bottom = response.list[response.list.length - 1]._id;
+      }
+
+      setInitialLoadDone(true);
+
+      return response;
+    },
+    [callApi, params, dataList, hasMorePrev, hasMoreNext, isLoading]
+  );
+
+  const loadPrevData = useCallback(
+    async (scrollRef = containerRef) => {
+      if (!anchorRef.current.top || !hasMorePrev || isLoading) return;
+
+      const prevScrollTop = scrollRef?.current?.scrollTop || 0;
+      const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
+
+      const response = await callApi(
+        {
+          anchorId: anchorRef.current.top,
+          direction: 'prev',
+          pageSize,
+          ...params
+        },
+        'prev'
+      );
+
+      if (!response) return;
+
+      setHasMorePrev(response.hasMorePrev);
+
+      if (response.list.length > 0) {
+        setDataList((prev) => [...response.list, ...prev]);
+        anchorRef.current.top = response.list[0]._id;
+
+        setTimeout(() => {
+          if (scrollRef?.current) {
+            const newHeight = scrollRef.current.scrollHeight;
+            const heightDiff = newHeight - prevScrollHeight;
+            scrollRef.current.scrollTop = prevScrollTop + heightDiff;
+          }
+        }, 0);
+      }
+
+      return response;
+    },
+    [callApi, hasMorePrev, isLoading, params, pageSize]
+  );
+
+  const loadNextData = useCallback(
+    async (scrollRef = containerRef) => {
+      if (!anchorRef.current.bottom || !hasMoreNext || isLoading) return;
+
+      const prevScrollTop = scrollRef?.current?.scrollTop || 0;
+
+      const response = await callApi(
+        {
+          anchorId: anchorRef.current.bottom,
+          direction: 'next',
+          pageSize,
+          ...params
+        },
+        'next'
+      );
+
+      if (!response) return;
+
+      setHasMoreNext(response.hasMoreNext);
+
+      if (response.list.length > 0) {
+        setDataList((prev) => [...prev, ...response.list]);
+        anchorRef.current.bottom = response.list[response.list.length - 1]._id;
+
+        setTimeout(() => {
+          if (scrollRef?.current) {
+            scrollRef.current.scrollTop = prevScrollTop;
+          }
+        }, 0);
+      }
+
+      return response;
+    },
+    [callApi, hasMoreNext, isLoading, params, pageSize]
+  );
+
+  const scrollToItem = useCallback(
+    (itemIndex: number) => {
+      if (itemIndex >= 0 && itemIndex < dataList.length && itemRefs.current?.[itemIndex]) {
+        try {
+          const element = itemRefs.current[itemIndex];
+          if (!element) {
+            return false;
+          }
+
+          setTimeout(() => {
+            if (element && containerRef.current) {
+              const elementRect = element.getBoundingClientRect();
+              const containerRect = containerRef.current.getBoundingClientRect();
+
+              const relativeTop = elementRect.top - containerRect.top;
+
+              const scrollTop =
+                containerRef.current.scrollTop +
+                relativeTop -
+                containerRect.height / 2 +
+                elementRect.height / 2;
+
+              containerRef.current.scrollTo({
+                top: scrollTop,
+                behavior: 'smooth'
+              });
+            }
+          }, 50);
+
+          return true;
+        } catch (error) {
+          console.error('Error scrolling to item:', error);
+          return false;
+        }
+      }
+      return false;
+    },
+    [dataList.length]
+  );
+
+  // 初始加载
+  useEffect(() => {
+    if (canLoadData) {
+      loadData(initialId || '');
+    }
+  }, [canLoadData, ...refreshDeps]);
+
+  // 重置状态
+  const resetLoadState = useCallback(() => {
+    setDataList([]);
+    anchorRef.current = { top: null, bottom: null };
+    setHasMorePrev(true);
+    setHasMoreNext(true);
+    setInitialLoadDone(false);
+    setIsLoading(false);
+  }, []);
+
+  const ScrollData = useMemoizedFn(
+    ({
+      children,
+      ScrollContainerRef,
+      isLoading: externalLoading,
+      ...props
+    }: {
+      isLoading?: boolean;
+      children: ReactNode;
+      ScrollContainerRef?: React.RefObject<HTMLDivElement>;
+    } & BoxProps) => {
+      const ref = ScrollContainerRef || containerRef;
+      const scroll = useScroll(ref);
+
+      useDebounceEffect(
+        () => {
+          if (!ref?.current || isLoading || !initialLoadDone) return;
+
+          const { scrollTop, scrollHeight, clientHeight } = ref.current;
+
+          // 滚动到底部附近，加载更多下方数据
+          if (scrollTop + clientHeight >= scrollHeight - threshold && hasMoreNext) {
+            loadNextData(ref);
+          }
+
+          // 滚动到顶部附近，加载更多上方数据
+          if (scrollTop <= threshold && hasMorePrev) {
+            loadPrevData(ref);
+          }
+        },
+        [scroll],
+        { wait: 200 }
+      );
+
+      return (
+        <MyBox
+          ref={ref}
+          h={'100%'}
+          overflow={'auto'}
+          isLoading={externalLoading || isLoading}
+          {...props}
+        >
+          {hasMorePrev && isLoading && (
+            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+              {t('common:common.is_requesting')}
+            </Box>
+          )}
+          {children}
+          {hasMoreNext && isLoading && (
+            <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
+              {t('common:common.is_requesting')}
+            </Box>
+          )}
+        </MyBox>
+      );
+    }
+  );
+
+  return {
+    dataList,
+    isLoading,
+    loadData,
+    initialLoadDone,
+    resetLoadState,
+    ScrollData,
+    itemRefs,
+    scrollToItem
+  };
+}
