@@ -38,7 +38,7 @@ export const WholeResponseContent = ({
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
-  chatTime: Date;
+  chatTime?: Date;
 }) => {
   const { t } = useTranslation();
 
@@ -268,7 +268,7 @@ export const WholeResponseContent = ({
             rawDom={
               <QuoteList
                 chatItemId={dataId}
-                chatTime={chatTime}
+                chatTime={chatTime || new Date()}
                 rawSearch={activeModule.quoteList}
               />
             }
