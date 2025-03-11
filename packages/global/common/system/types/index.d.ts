@@ -79,6 +79,7 @@ export type FastGPTFeConfigsType = {
     title?: string;
     url?: string;
     autoLogin?: boolean;
+    isTransferService?: boolean;
   };
   oauth?: {
     github?: string;
