@@ -1,5 +1,6 @@
 {
   "App": "應用程式",
+  "Download": "下載",
   "Export": "匯出",
   "FAQ.ai_point_a": "每次呼叫 AI 模型時，都會消耗一定數量的 AI 點數。詳細的計算標準請參考上方的「AI 點數計算標準」。\nToken 計算採用與 GPT3.5 相同的公式，1 Token ≈ 0.7 個中文字 ≈ 0.9 個英文單字，連續出現的字元可能會被視為 1 個 Token。",
   "FAQ.ai_point_expire_a": "會過期。目前方案過期後，AI 點數將會清空並更新為新方案的 AI 點數。年度方案的 AI 點數有效期為一年，而不是每個月重置。",
@@ -136,7 +137,6 @@
   "common.Detail": "詳細資料",
   "common.Documents": "文件",
   "common.Done": "完成",
-  "Download": "下載",
   "common.Edit": "編輯",
   "common.Error": "錯誤",
   "common.Exit": "離開",
@@ -544,6 +544,7 @@
   "core.dataset.data.Empty Tip": "此集合還沒有資料",
   "core.dataset.data.Search data placeholder": "搜尋相關資料",
   "core.dataset.data.Too Long": "總長度超出上限",
+  "core.dataset.data.Updated": "已更新",
   "core.dataset.data.group": "組",
   "core.dataset.data.unit": "筆",
   "core.dataset.embedding model tip": "索引模型可以將自然語言轉換成向量，用於進行語意搜尋。\n注意，不同索引模型無法一起使用。選擇索引模型後就無法修改。",

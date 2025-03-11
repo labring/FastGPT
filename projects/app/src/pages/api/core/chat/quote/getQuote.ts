@@ -1,7 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
@@ -54,12 +53,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
   await Promise.all(
     collectionIdList.map(async (collectionId) => {
-      const [collection, authCollection] = await Promise.all([
-        getCollectionWithDataset(collectionId),
-        authCollectionInChat({ appId, chatId, chatItemId, collectionId })
-      ]);
-
-      return { collection, authCollection };
+      await authCollectionInChat({ appId, chatId, chatItemId, collectionId });
     })
   );
 
@@ -68,7 +62,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
     dataFieldSelector
   ).lean();
 
-  const quoteList = processChatTimeFilter(list, chatTime, chatItemId);
+  const quoteList = processChatTimeFilter(list, chatTime);
 
   return {
     quoteList
@@ -77,11 +71,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
 export default NextAPI(handler);
 
-export function processChatTimeFilter(
-  list: DatasetDataSchemaType[],
-  chatTime?: Date,
-  chatItemId?: string
-) {
+export function processChatTimeFilter(list: DatasetDataSchemaType[], chatTime?: Date) {
   if (!chatTime) return list;
 
   return list.map((item) => {
@@ -100,20 +90,13 @@ export function processChatTimeFilter(
 
     if (latestHistoryIndex === -1) return rest;
 
-    const updatedData =
-      item.currentChatItemId === chatItemId
-        ? rest
-        : history
-            .slice(0, latestHistoryIndex + 1)
-            .find((historyItem: any) => historyItem.currentChatItemId === chatItemId);
-
     const latestHistory = history[latestHistoryIndex];
 
     return {
       ...rest,
       q: latestHistory?.q || item.q,
       a: latestHistory?.a || item.a,
-      updatedData
+      updated: true
     };
   });
 }

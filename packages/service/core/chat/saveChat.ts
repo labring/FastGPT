@@ -96,15 +96,32 @@ export async function saveChat({
     await mongoSessionRun(async (session) => {
       const processedContent = content.map((item) => {
         if (item.obj === ChatRoleEnum.AI) {
-          const aiItem = item as AIChatItemType & { dataId?: string };
-          const nodeResponse = aiItem[
-            DispatchNodeResponseKeyEnum.nodeResponse as keyof typeof aiItem
-          ] as any[];
+          const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse];
 
           if (nodeResponse) {
             return {
-              ...aiItem,
-              [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse.map(filterQuoteList)
+              ...item,
+              [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse.map((responseItem) => {
+                if (
+                  responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
+                  responseItem.quoteList
+                ) {
+                  return {
+                    ...item,
+                    quoteList: responseItem.quoteList.map((quote: any) => ({
+                      id: quote.id,
+                      chunkIndex: quote.chunkIndex,
+                      datasetId: quote.datasetId,
+                      collectionId: quote.collectionId,
+                      sourceId: quote.sourceId,
+                      sourceName: quote.sourceName,
+                      score: quote.score,
+                      tokens: quote.tokens
+                    }))
+                  };
+                }
+                return item;
+              })
             };
           }
         }
@@ -112,15 +129,13 @@ export async function saveChat({
       });
 
       const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
-        processedContent.map((item) => {
-          return {
-            chatId,
-            teamId,
-            tmbId,
-            appId,
-            ...item
-          };
-        }),
+        processedContent.map((item) => ({
+          chatId,
+          teamId,
+          tmbId,
+          appId,
+          ...item
+        })),
         { session }
       );
 

@@ -7,23 +7,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import InputDataModal from '@/pageComponents/dataset/detail/InputDataModal';
 
-type TUpdatedData = {
-  q: string;
-  a: string;
-  updateTime: Date;
-  currentChatItemId?: string;
-};
-
 const CollectionQuoteItem = ({
   index,
   quoteRefs,
   quoteIndex,
   setQuoteIndex,
   refreshList,
-  chatItemId,
   canEdit,
 
-  updatedData,
+  updated,
   isCurrentSelected,
   q,
   a,
@@ -35,10 +27,9 @@ const CollectionQuoteItem = ({
   quoteIndex: number;
   setQuoteIndex: Dispatch<SetStateAction<number>>;
   refreshList: () => void;
-  chatItemId: string;
   canEdit: boolean;
 
-  updatedData?: TUpdatedData;
+  updated?: boolean;
   isCurrentSelected: boolean;
   q: string;
   a?: string;
@@ -57,15 +48,13 @@ const CollectionQuoteItem = ({
           quoteRefs.current[index] = el;
         }}
         p={2}
-        py={updatedData ? 0 : 2}
+        py={2}
         cursor={hasBeenSearched ? 'pointer' : 'default'}
         bg={isCurrentSelected ? '#FFF9E7' : hasBeenSearched ? '#FFFCF2' : ''}
         position={'relative'}
         overflow={'hidden'}
         border={'1px solid '}
         borderColor={isCurrentSelected ? 'yellow.200' : 'transparent'}
-        borderLeftColor={updatedData && !isCurrentSelected ? 'myGray.200' : ''}
-        borderBottomColor={isCurrentSelected ? 'yellow.200' : 'transparent'}
         wordBreak={'break-all'}
         fontSize={'sm'}
         _hover={
@@ -87,18 +76,21 @@ const CollectionQuoteItem = ({
           }
         }}
       >
-        {updatedData && (
-          <Flex>
-            <Box
-              bg={'myGray.50'}
-              border={'1px solid'}
-              borderRadius={'xs'}
-              borderColor={'myGray.150'}
-              px={1}
-            >
-              {t('common:core.chat.quote.beforeUpdate')}
-            </Box>
-            <Box flex={1} borderBottom={'1px dashed'} borderColor={'myGray.250'} />
+        {updated && (
+          <Flex
+            position={'absolute'}
+            top={2}
+            right={5}
+            gap={1}
+            bg={'yellow.50'}
+            color={'yellow.500'}
+            px={2}
+            py={1}
+            rounded={'md'}
+            fontSize={'12px'}
+          >
+            <MyIcon name="common/info" w={'14px'} color={'yellow.500'} />
+            {t('common:core.dataset.data.Updated')}
           </Flex>
         )}
         <Markdown source={q} />
@@ -107,23 +99,6 @@ const CollectionQuoteItem = ({
             <Markdown source={a} />
           </Box>
         )}
-        {updatedData && (
-          <Flex mt={2}>
-            <Box
-              bg={'green.50'}
-              border={'1px solid'}
-              borderRadius={'xs'}
-              borderColor={'green.100'}
-              px={1}
-              color={'green.600'}
-            >
-              {t('common:core.chat.quote.afterUpdate')}
-            </Box>
-            <Box flex={1} borderBottom={'1px dashed'} borderColor={'green.200'} />
-          </Flex>
-        )}
-        {!!updatedData?.q && <Markdown source={updatedData?.q} className="updatedQuote" />}
-        {!!updatedData?.a && <Markdown source={updatedData?.a} className="updatedQuote" />}
         <Flex
           className="hover-data"
           position={'absolute'}
@@ -208,7 +183,6 @@ const CollectionQuoteItem = ({
           }}
           dataId={editInputData.dataId}
           collectionId={editInputData.collectionId}
-          chatItemId={chatItemId}
         />
       )}
     </>

@@ -1,5 +1,6 @@
 {
   "App": "应用",
+  "Download": "下载",
   "Export": "导出",
   "FAQ.ai_point_a": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。\nToken计算采用GPT3.5相同公式，1Token≈0.7中文字符≈0.9英文单词，连续出现的字符可能被认为是1个Tokens。",
   "FAQ.ai_point_expire_a": "会过期。当前套餐过期后，AI积分将会清空，并更新为新套餐的AI积分。年度套餐的AI积分时长为1年，而不是每个月。",
@@ -141,7 +142,6 @@
   "common.Detail": "详情",
   "common.Documents": "文档",
   "common.Done": "完成",
-  "Download": "下载",
   "common.Edit": "编辑",
   "common.Error": "错误",
   "common.Exit": "退出",
@@ -548,6 +548,7 @@
   "core.dataset.data.Empty Tip": "这个集合还没有数据~",
   "core.dataset.data.Search data placeholder": "搜索相关数据",
   "core.dataset.data.Too Long": "总长度超长了",
+  "core.dataset.data.Updated": "已更新",
   "core.dataset.data.group": "组",
   "core.dataset.data.unit": "条",
   "core.dataset.embedding model tip": "索引模型可以将自然语言转成向量，用于进行语义检索。\n注意，不同索引模型无法一起使用，选择完索引模型后将无法修改。",

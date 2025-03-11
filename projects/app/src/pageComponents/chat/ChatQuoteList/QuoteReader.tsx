@@ -4,13 +4,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getQuoteDataList } from '@/web/core/dataset/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import QuoteItem from './QuoteItem';
 import { useMemo } from 'react';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import { metadataType } from '@/web/core/chat/context/chatItemContext';
+import { getQuoteDataList } from '@/web/core/chat/api';
 
 const QuoteReader = ({
   rawSearch,

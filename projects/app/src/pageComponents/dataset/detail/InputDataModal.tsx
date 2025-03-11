@@ -47,14 +47,12 @@ enum TabEnum {
 const InputDataModal = ({
   collectionId,
   dataId,
-  chatItemId,
   defaultValue,
   onClose,
   onSuccess
 }: {
   collectionId: string;
   dataId?: string;
-  chatItemId?: string;
   defaultValue?: { q: string; a?: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
@@ -184,8 +182,7 @@ const InputDataModal = ({
         dataId,
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
-        indexes: e.indexes.filter((item) => !!item.text?.trim()),
-        chatItemId
+        indexes: e.indexes.filter((item) => !!item.text?.trim())
       });
 
       return {

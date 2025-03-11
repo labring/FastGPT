@@ -7,8 +7,8 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getQuoteDataList } from '@/web/core/dataset/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { getQuoteDataList } from '@/web/core/chat/api';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemId,

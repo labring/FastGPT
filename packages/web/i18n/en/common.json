@@ -1,5 +1,6 @@
 {
   "App": "Application",
+  "Download": "Download",
   "Export": "Export",
   "FAQ.ai_point_a": "Each time you use the AI model, a certain amount of AI points will be deducted. For detailed calculation standards, please refer to the 'AI Points Calculation Standards' above.\nToken calculation uses the same formula as GPT-3.5, where 1 Token ≈ 0.7 Chinese characters ≈ 0.9 English words. Consecutive characters may be considered as 1 Token.",
   "FAQ.ai_point_expire_a": "Yes, they will expire. After the current package expires, the AI points will be reset to the new package's AI points. Annual package AI points are valid for one year, not monthly.",
@@ -137,7 +138,6 @@
   "common.Detail": "Detail",
   "common.Documents": "Documents",
   "common.Done": "Done",
-  "Download": "Download",
   "common.Edit": "Edit",
   "common.Error": "Error",
   "common.Exit": "Exit",
@@ -545,6 +545,7 @@
   "core.dataset.data.Empty Tip": "This collection has no data yet",
   "core.dataset.data.Search data placeholder": "Search Related Data",
   "core.dataset.data.Too Long": "Total Length Exceeded",
+  "core.dataset.data.Updated": "Updated",
   "core.dataset.data.group": "Group",
   "core.dataset.data.unit": "Items",
   "core.dataset.embedding model tip": "The index model can convert natural language into vectors for semantic search.\nNote that different index models cannot be used together. Once an index model is selected, it cannot be changed.",

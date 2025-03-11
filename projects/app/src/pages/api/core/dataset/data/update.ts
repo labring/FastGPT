@@ -7,7 +7,7 @@ import { authDatasetData } from '@fastgpt/service/support/permission/dataset/aut
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
-  const { dataId, q, a, indexes = [], chatItemId } = req.body;
+  const { dataId, q, a, indexes = [] } = req.body;
 
   // auth data permission
   const {
@@ -30,8 +30,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
       q,
       a,
       indexes,
-      model: vectorModel,
-      chatItemId
+      model: vectorModel
     });
 
     pushGenerateVectorUsage({

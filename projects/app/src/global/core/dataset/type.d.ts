@@ -39,11 +39,6 @@ export type DatasetDataListItemType = {
   q: string; // embedding content
   a: string; // bonus content
   chunkIndex?: number;
-  updatedData?: {
-    q: string;
-    a: string;
-    updateTime: Date;
-    currentChatItemId?: string;
-  };
+  updated?: boolean;
   // indexes: DatasetDataSchemaType['indexes'];
 };

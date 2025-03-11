@@ -1,7 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
@@ -62,7 +61,6 @@ async function handler(
       teamId,
       teamToken
     }),
-    getCollectionWithDataset(collectionId),
     authCollectionInChat({ appId, chatId, chatItemId, collectionId })
   ]);
 
@@ -122,20 +120,17 @@ async function handleInitialLoad(
 
   if (!centerNode) {
     if (isInitialLoad) {
-      const [list, total] = await Promise.all([
-        MongoDatasetData.find(baseMatch, dataFieldSelector)
-          .sort({ chunkIndex: 1, _id: -1 })
-          .limit(pageSize)
-          .lean(),
-        MongoDatasetData.countDocuments(baseMatch)
-      ]);
+      const list = await MongoDatasetData.find(baseMatch, dataFieldSelector)
+        .sort({ chunkIndex: 1, _id: -1 })
+        .limit(pageSize)
+        .lean();
 
       const listRes = list.map((item, index) => ({
         ...item,
         index: item.chunkIndex
       }));
 
-      const hasMoreNext = total > pageSize;
+      const hasMoreNext = list.length === pageSize;
 
       return {
         list: listRes,
@@ -163,10 +158,9 @@ async function handleInitialLoad(
     baseMatch
   );
 
-  console.log(prevList, centerNode, nextList);
   const resultList = [...prevList, centerNode, ...nextList];
 
-  const list = processChatTimeFilter(resultList, chatTime, chatItemId);
+  const list = processChatTimeFilter(resultList, chatTime);
 
   return {
     list: list.map((item) => ({
@@ -193,7 +187,7 @@ async function handlePaginatedLoad(
       ? await getPrevNodes(prevId, prevIndex, pageSize, baseMatch)
       : await getNextNodes(nextId!, nextIndex!, pageSize, baseMatch);
 
-  const processedList = processChatTimeFilter(list, chatTime, chatItemId);
+  const processedList = processChatTimeFilter(list, chatTime);
 
   return {
     list: processedList.map((item) => ({
@@ -219,17 +213,14 @@ async function getPrevNodes(
     ]
   };
 
-  const [list, total] = await Promise.all([
-    MongoDatasetData.find(match, dataFieldSelector)
-      .sort({ chunkIndex: -1, _id: 1 })
-      .limit(limit)
-      .lean(),
-    MongoDatasetData.countDocuments(match)
-  ]);
+  const list = await MongoDatasetData.find(match, dataFieldSelector)
+    .sort({ chunkIndex: -1, _id: 1 })
+    .limit(limit)
+    .lean();
 
   return {
     list: list.filter((item) => String(item._id) !== initialId).reverse(),
-    hasMore: total > limit
+    hasMore: list.length === limit
   };
 }
 
@@ -247,16 +238,13 @@ async function getNextNodes(
     ]
   };
 
-  const [list, total] = await Promise.all([
-    MongoDatasetData.find(match, dataFieldSelector)
-      .sort({ chunkIndex: 1, _id: -1 })
-      .limit(limit)
-      .lean(),
-    MongoDatasetData.countDocuments(match)
-  ]);
+  const list = await MongoDatasetData.find(match, dataFieldSelector)
+    .sort({ chunkIndex: 1, _id: -1 })
+    .limit(limit)
+    .lean();
 
   return {
     list: list.filter((item) => String(item._id) !== initialId),
-    hasMore: total > limit
+    hasMore: list.length === limit
   };
 }

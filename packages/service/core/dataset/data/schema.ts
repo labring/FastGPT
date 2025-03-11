@@ -45,13 +45,9 @@ const DatasetDataSchema = new Schema({
       {
         q: String,
         a: String,
-        updateTime: Date,
-        currentChatItemId: String
+        updateTime: Date
       }
     ]
-  },
-  currentChatItemId: {
-    type: String
   },
   indexes: {
     type: [

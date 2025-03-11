@@ -48,8 +48,7 @@ export function useLinkedScroll<
     async (apiParams: TParams) => await api(apiParams),
     {
       onError: (error) => {
-        console.error(`Error fetching data:`, error);
-        return null;
+        return Promise.reject(error);
       }
     }
   );

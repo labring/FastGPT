@@ -120,9 +120,7 @@ export type DatasetDataSchemaType = {
     q: string;
     a: string;
     updateTime: Date;
-    currentChatItemId?: string;
   }[];
-  currentChatItemId?: string;
   forbid?: boolean;
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];

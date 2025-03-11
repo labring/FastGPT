@@ -8,11 +8,7 @@ import DownloadButton from './DownloadButton';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  getCollectionSource,
-  getCollectionQuote,
-  getDatasetDataPermission
-} from '@/web/core/dataset/api';
+import { getCollectionSource, getDatasetDataPermission } from '@/web/core/dataset/api';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -24,6 +20,7 @@ import CollectionQuoteItem from './CollectionQuoteItem';
 import { DatasetDataListItemType } from '@/global/core/dataset/type';
 import { metadataType } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { getCollectionQuote } from '@/web/core/chat/api';
 
 const CollectionReader = ({
   rawSearch,
@@ -314,8 +311,7 @@ const CollectionReader = ({
                   currentQuoteItem?.id &&
                   loadData({ id: currentQuoteItem.id, index: currentQuoteItem.chunkIndex })
                 }
-                chatItemId={chatItemId}
-                updatedData={item.updatedData}
+                updated={item.updated}
                 isCurrentSelected={item.isCurrentSelected}
                 q={item.q}
                 a={item.a}
