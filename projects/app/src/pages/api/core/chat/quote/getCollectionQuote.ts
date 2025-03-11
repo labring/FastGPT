@@ -6,6 +6,8 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
 import { FilterQuery, Types } from 'mongoose';
 import { dataFieldSelector, processChatTimeFilter } from './getQuote';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatTime: Date;
@@ -36,8 +38,8 @@ async function handler(
     nextId,
     nextIndex,
     chatTime,
-
     isInitialLoad,
+
     collectionId,
     chatItemId,
     appId,
@@ -48,21 +50,32 @@ async function handler(
     teamToken,
     pageSize = 15
   } = req.body;
+
   const limitedPageSize = Math.min(pageSize, 30);
 
-  await Promise.all([
-    authChatCrud({
+  try {
+    await authDatasetCollection({
       req,
       authToken: true,
-      appId,
-      chatId,
-      shareId,
-      outLinkUid,
-      teamId,
-      teamToken
-    }),
-    authCollectionInChat({ appId, chatId, chatItemId, collectionId })
-  ]);
+      authApiKey: true,
+      collectionId: req.body.collectionId,
+      per: ReadPermissionVal
+    });
+  } catch (error) {
+    await Promise.all([
+      authChatCrud({
+        req,
+        authToken: true,
+        appId,
+        chatId,
+        shareId,
+        outLinkUid,
+        teamId,
+        teamToken
+      }),
+      authCollectionInChat({ appId, chatId, chatItemId, collectionId })
+    ]);
+  }
 
   const baseMatch: BaseMatchType = {
     collectionId,
