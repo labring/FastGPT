@@ -14,7 +14,7 @@ weight: 303
 
 这里介绍在 Sealos 中部署 SearXNG 的方法。Docker 部署，可以直接参考 [SearXNG 官方教程](https://github.com/searxng/searxng)。
 
-点击打开 [Sealos 北京区](https://bja.sealos.run/)，点击应用部署，并新建一个应用：
+点击打开 [Sealos 北京区](https://bja.sealos.run?uid=fnWRt09fZP)，点击应用部署，并新建一个应用：
 
 | 打开应用部署 | 点击新建应用 |
 | --- | --- |
@@ -130,7 +130,7 @@ doi_resolvers:
 default_doi_resolver: 'oadoi.org'
 ```
 
-国内目前只有 Bing 引擎可以正常用，所以上面的配置只配置了 bing 引擎。如果在海外部署，可以使用[Sealos 新加坡可用区](https://cloud.sealos.io/)，并配置其他搜索引擎，可以参考[SearXNG 默认配置文件](https://github.com/searxng/searxng/blob/master/searx/settings.yml), 从里面复制一些 engine 配置。例如：
+国内目前只有 Bing 引擎可以正常用，所以上面的配置只配置了 bing 引擎。如果在海外部署，可以使用[Sealos 新加坡可用区](https://cloud.sealos.io?uid=fnWRt09fZP)，并配置其他搜索引擎，可以参考[SearXNG 默认配置文件](https://github.com/searxng/searxng/blob/master/searx/settings.yml), 从里面复制一些 engine 配置。例如：
 
 ```
   - name: duckduckgo

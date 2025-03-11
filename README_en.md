@@ -69,7 +69,7 @@ Project tech stack: NextJs + TS + ChakraUI + MongoDB + PostgreSQL (PG Vector plu
 
   > When using [Sealos](https://sealos.io) services, there is no need to purchase servers or domain names. It supports high concurrency and dynamic scaling, and the database application uses the kubeblocks database, which far exceeds the simple Docker container deployment in terms of IO performance.
   <div align="center">
-  [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+  [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP)
   </div>
 
   Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a too slow since we're using the basic settings.
