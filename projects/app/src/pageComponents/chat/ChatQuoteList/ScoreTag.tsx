@@ -13,9 +13,9 @@ const ScoreTag = (score: { primaryScore?: ScoreItemType; secondaryScore: ScoreIt
         <MyTooltip
           label={
             score.secondaryScore.length ? (
-              <Box>
+              <Flex flexDir={'column'} gap={4}>
                 {score.secondaryScore.map((item, i) => (
-                  <Box fontSize={'xs'} key={i}>
+                  <Box fontSize={'sm'} key={i}>
                     <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
                       <Box
                         px={'5px'}
@@ -47,7 +47,7 @@ const ScoreTag = (score: { primaryScore?: ScoreItemType; secondaryScore: ScoreIt
                     </Box>
                   </Box>
                 ))}
-              </Box>
+              </Flex>
             ) : (
               t(SearchScoreTypeMap[score.primaryScore.type]?.desc as any)
             )

@@ -1,18 +1,15 @@
-import { Button } from '@chakra-ui/react';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useTranslation } from 'react-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const DownloadButton = ({
   canAccessRawData,
   onDownload,
-  onRead,
-  isLoading
+  onRead
 }: {
   canAccessRawData: boolean;
   onDownload: () => void;
   onRead: () => void;
-  isLoading: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -20,27 +17,17 @@ const DownloadButton = ({
     return (
       <MyMenu
         size={'xs'}
-        Button={
-          <Button
-            variant={'whitePrimary'}
-            size={'xs'}
-            fontSize={'mini'}
-            leftIcon={<MyIcon name={'common/download'} w={'4'} />}
-            isLoading={isLoading}
-          >
-            {t('common:Download')}
-          </Button>
-        }
+        Button={<MyIconButton icon="common/download" size={'1rem'} />}
         menuList={[
           {
             children: [
               {
-                label: t('common:core.dataset.Download the parsed content'),
+                label: t('chat:download_chunks'),
                 type: 'grayBg',
                 onClick: onDownload
               },
               {
-                label: t('common:core.dataset.Get the raw data'),
+                label: t('chat:read_raw_source'),
                 type: 'grayBg',
                 onClick: onRead
               }
@@ -51,18 +38,7 @@ const DownloadButton = ({
     );
   }
 
-  return (
-    <Button
-      variant={'whitePrimary'}
-      size={'xs'}
-      fontSize={'mini'}
-      leftIcon={<MyIcon name={'common/download'} w={'4'} />}
-      onClick={onDownload}
-      isLoading={isLoading}
-    >
-      {t('common:Download')}
-    </Button>
-  );
+  return <MyIconButton icon="common/download" size={'1rem'} onClick={onDownload} />;
 };
 
 export default DownloadButton;

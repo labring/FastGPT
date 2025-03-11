@@ -71,9 +71,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
 
 export default NextAPI(handler);
 
-export function processChatTimeFilter(list: DatasetDataSchemaType[], chatTime?: Date) {
-  if (!chatTime) return list;
-
+export function processChatTimeFilter(list: DatasetDataSchemaType[], chatTime: Date) {
   return list.map((item) => {
     if (!item.history) return item;
 
