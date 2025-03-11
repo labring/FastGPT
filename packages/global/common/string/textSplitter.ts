@@ -93,7 +93,7 @@ ${mdSplitString}
 
 /* 
   1. 自定义分隔符：不需要重叠，不需要小块合并
-  2. Markdown 标题：不需要重叠；标题嵌套共享，不需要小块合并
+  2. Markdown 标题：不需要重叠；标题嵌套共享，需要小块合并
   3. 特殊 markdown 语法：不需要重叠，需要小块合并
   4. 段落：尽可能保证它是一个完整的段落。
   5. 标点分割：重叠
@@ -227,7 +227,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   }): string[] => {
     const isMarkdownStep = checkIsMarkdownSplit(step);
     const isCustomStep = checkIsCustomStep(step);
-    const forbidConcat = isMarkdownStep || isCustomStep; // forbid=true时候，lastText肯定为空
+    const forbidConcat = isCustomStep; // forbid=true时候，lastText肯定为空
 
     // oversize
     if (step >= stepReges.length) {

@@ -69,6 +69,7 @@
   "import_model_config": "模型选择",
   "import_param_setting": "参数设置",
   "import_select_file": "选择文件",
+  "import_select_link": "输入链接",
   "is_open_schedule": "启用定时同步",
   "keep_image": "保留图片",
   "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置，原先的权限设置失效。",

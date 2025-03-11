@@ -58,7 +58,7 @@ services:
         exec docker-entrypoint.sh "$$@" &
 
         # 等待MongoDB服务启动
-        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
           echo "Waiting for MongoDB to start..."
           sleep 2
         done

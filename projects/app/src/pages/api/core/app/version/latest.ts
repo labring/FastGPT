@@ -24,16 +24,18 @@ async function handler(
   req: ApiRequestProps<getLatestVersionBody, getLatestVersionQuery>,
   res: ApiResponseType<any>
 ): Promise<getLatestVersionResponse> {
-  const { app } = await authApp({
+  const { app, isRoot, teamId } = await authApp({
     req,
     authToken: true,
     appId: req.query.appId,
     per: WritePermissionVal
   });
 
-  const teamId = app.teamId;
-
-  await rewriteAppWorkflowToDetail(app.modules, teamId);
+  await rewriteAppWorkflowToDetail({
+    nodes: app.modules,
+    teamId,
+    isRoot
+  });
 
   return getAppLatestVersion(req.query.appId, app);
 }
