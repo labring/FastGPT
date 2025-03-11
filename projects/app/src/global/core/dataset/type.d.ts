@@ -39,5 +39,6 @@ export type DatasetDataListItemType = {
   q: string; // embedding content
   a: string; // bonus content
   chunkIndex?: number;
+  updated?: boolean;
   // indexes: DatasetDataSchemaType['indexes'];
 };
