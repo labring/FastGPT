@@ -79,7 +79,7 @@ const EditChannelModal = ({
               order: provider.order,
               defaultBaseUrl: value.defaultBaseUrl,
               keyHelp: value.keyHelp,
-              icon: provider.avatar,
+              icon: mapData?.avatar ?? provider.avatar,
               label: t(mapData.label as any),
               value: Number(key)
             };
@@ -90,6 +90,7 @@ const EditChannelModal = ({
       manual: false
     }
   );
+
   const selectedProvider = useMemo(() => {
     const res = providerList.find((item) => item.value === providerType);
     return res;

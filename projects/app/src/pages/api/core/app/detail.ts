@@ -13,10 +13,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     Promise.reject(CommonErrEnum.missingParams);
   }
   // 凭证校验
-  const { app } = await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
-  const teamId = app.teamId;
+  const { app, teamId, isRoot } = await authApp({
+    req,
+    authToken: true,
+    appId,
+    per: ReadPermissionVal
+  });
 
-  await rewriteAppWorkflowToDetail(app.modules, teamId);
+  await rewriteAppWorkflowToDetail({
+    nodes: app.modules,
+    teamId,
+    isRoot
+  });
 
   if (!app.permission.hasWritePer) {
     return {

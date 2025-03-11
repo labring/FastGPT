@@ -199,8 +199,6 @@ const UsageTable = () => {
     [
       t,
       dateRange,
-      usageTab,
-      unit,
       userInfo?.team?.permission.hasManagePer,
       tmbList,
       selectTmbIds,
