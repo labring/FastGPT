@@ -134,7 +134,7 @@ export async function insertData2Dataset({
   );
 
   // 2. Create mongo data with linked list pointers
-  const [newNode] = (await MongoDatasetData.create(
+  const [{ _id }] = await MongoDatasetData.create(
     [
       {
         teamId,
@@ -143,13 +143,13 @@ export async function insertData2Dataset({
         collectionId,
         q,
         a,
-        nextId: firstNode ? firstNode._id : null, // link to the previous head node
+        nextId: firstNode ? firstNode._id : null,
         chunkIndex,
         indexes: result.map((item) => item.index)
       }
     ],
     { session, ordered: true }
-  )) as unknown as [Document & { _id: string }];
+  );
 
   // 3. Create mongo data text
   await MongoDatasetDataText.create(
@@ -158,7 +158,7 @@ export async function insertData2Dataset({
         teamId,
         datasetId,
         collectionId,
-        dataId: newNode._id,
+        dataId: _id,
         fullTextToken: jiebaSplit({ text: `${q}\n${a}`.trim() })
       }
     ],
@@ -166,7 +166,7 @@ export async function insertData2Dataset({
   );
 
   return {
-    insertId: newNode._id,
+    insertId: _id,
     tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
   };
 }

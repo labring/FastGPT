@@ -30,6 +30,7 @@ const ResponseTags = ({
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
+  const chatTime = historyItem.time || new Date();
 
   const {
     totalQuoteList: quoteList = [],
@@ -155,11 +156,14 @@ const ResponseTags = ({
                       e.stopPropagation();
 
                       setQuoteData({
-                        chatTime: historyItem.time || new Date(),
+                        chatTime,
                         rawSearch: quoteList,
                         metadata: {
                           collectionId: item.collectionId,
-                          sourceId: item.sourceId,
+                          collectionIdList: [
+                            ...new Set(quoteList.map((item) => item.collectionId))
+                          ],
+                          sourceId: item.sourceId || '',
                           sourceName: item.sourceName,
                           datasetId: item.datasetId,
                           chatItemId: historyItem.dataId
@@ -221,8 +225,16 @@ const ResponseTags = ({
                   e.stopPropagation();
 
                   setQuoteData({
-                    chatTime: historyItem.time || new Date(),
-                    rawSearch: quoteList
+                    chatTime,
+                    rawSearch: quoteList,
+                    metadata: {
+                      collectionId: '',
+                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))],
+                      chatItemId: historyItem.dataId,
+                      sourceId: '',
+                      sourceName: '',
+                      datasetId: ''
+                    }
                   });
                 }}
               >
@@ -275,7 +287,9 @@ const ResponseTags = ({
       )}
 
       {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
-      {isOpenWholeModal && <WholeResponseModal dataId={dataId} onClose={onCloseWholeModal} />}
+      {isOpenWholeModal && (
+        <WholeResponseModal dataId={dataId} chatTime={chatTime} onClose={onCloseWholeModal} />
+      )}
     </>
   );
 };

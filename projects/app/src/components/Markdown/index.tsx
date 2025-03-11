@@ -31,7 +31,7 @@ type Props = {
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
-  isUpdatedQuote?: boolean;
+  className?: string;
 };
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -47,7 +47,7 @@ const MarkdownRender = ({
   showAnimation,
   isDisabled,
   forbidZhFormat,
-  isUpdatedQuote
+  className
 }: Props) => {
   const components = useMemo<any>(
     () => ({
@@ -73,7 +73,7 @@ const MarkdownRender = ({
       <ReactMarkdown
         className={`markdown ${styles.markdown}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
-      ${isUpdatedQuote ? `${styles.updatedQuote}` : ''}
+      ${className ? `${styles[className]}` : ''}
     `}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
         rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}

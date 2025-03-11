@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -141,15 +141,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     },
     [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
   );
+
   const RenderHistorySlider = useMemo(() => {
     const Children = (
       <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
     );
 
     return isPc || !appId ? (
-      <SideBar externalFolded={!!quoteData} setExternalFolded={() => setQuoteData(undefined)}>
-        {Children}
-      </SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -162,7 +161,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, quoteData, isOpenSlider, onCloseSlider, setQuoteData]);
+  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
 
   return (
     <Flex h={'100%'}>
@@ -300,7 +299,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showRouteToAppDetail={isStandalone !== '1'}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
-        isShowFullText={true}
+        // isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>

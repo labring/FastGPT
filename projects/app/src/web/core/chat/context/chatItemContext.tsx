@@ -14,7 +14,7 @@ type ContextProps = {
   showRouteToAppDetail: boolean;
   showRouteToDatasetDetail: boolean;
   isShowReadRawSource: boolean;
-  isShowFullText: boolean;
+  // isShowFullText: boolean;
   showNodeStatus: boolean;
 };
 type ChatBoxDataType = {
@@ -34,16 +34,17 @@ type ChatBoxDataType = {
 
 export type metadataType = {
   collectionId: string;
-  sourceId?: string;
-  sourceName: string;
+  collectionIdList: string[];
   chatItemId: string;
+  sourceId: string;
+  sourceName: string;
   datasetId: string;
 };
 
 export type QuoteDataType = {
   rawSearch: SearchDataResponseItemType[];
-  metadata?: metadataType;
-  chatTime?: Date;
+  metadata: metadataType;
+  chatTime: Date;
 };
 
 type ChatItemContextType = {
@@ -96,7 +97,7 @@ const ChatItemContextProvider = ({
   showRouteToAppDetail,
   showRouteToDatasetDetail,
   isShowReadRawSource,
-  isShowFullText,
+  // isShowFullText,
   showNodeStatus
 }: {
   children: ReactNode;
@@ -156,7 +157,7 @@ const ChatItemContextProvider = ({
       showRouteToAppDetail,
       showRouteToDatasetDetail,
       isShowReadRawSource,
-      isShowFullText,
+      // isShowFullText,
       showNodeStatus,
 
       quoteData,
@@ -172,7 +173,7 @@ const ChatItemContextProvider = ({
     showRouteToAppDetail,
     showRouteToDatasetDetail,
     isShowReadRawSource,
-    isShowFullText,
+    // isShowFullText,
     showNodeStatus,
     quoteData,
     setQuoteData

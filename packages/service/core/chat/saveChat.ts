@@ -15,6 +15,26 @@ import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+
+function filterQuoteList(item: any) {
+  if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
+    return {
+      ...item,
+      quoteList: item.quoteList.map((quote: any) => ({
+        id: quote.id,
+        chunkIndex: quote.chunkIndex,
+        datasetId: quote.datasetId,
+        collectionId: quote.collectionId,
+        sourceId: quote.sourceId,
+        sourceName: quote.sourceName,
+        score: quote.score,
+        tokens: quote.tokens
+      }))
+    };
+  }
+  return item;
+}
 
 type Props = {
   chatId: string;
@@ -74,14 +94,33 @@ export async function saveChat({
     )?.inputs;
 
     await mongoSessionRun(async (session) => {
+      const processedContent = content.map((item) => {
+        if (item.obj === ChatRoleEnum.AI) {
+          const aiItem = item as AIChatItemType & { dataId?: string };
+          const nodeResponse = aiItem[
+            DispatchNodeResponseKeyEnum.nodeResponse as keyof typeof aiItem
+          ] as any[];
+
+          if (nodeResponse) {
+            return {
+              ...aiItem,
+              [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse.map(filterQuoteList)
+            };
+          }
+        }
+        return item;
+      });
+
       const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
-        content.map((item) => ({
-          chatId,
-          teamId,
-          tmbId,
-          appId,
-          ...item
-        })),
+        processedContent.map((item) => {
+          return {
+            chatId,
+            teamId,
+            tmbId,
+            appId,
+            ...item
+          };
+        }),
         { session }
       );
 

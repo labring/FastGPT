@@ -1,72 +1,71 @@
-import { ScoreItemType } from '@/components/core/dataset/QuoteItem';
-import { DatasetDataListItemType } from '@/global/core/dataset/type';
-import { Box, Flex } from '@chakra-ui/react';
-import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { useTranslation } from 'next-i18next';
-import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import Markdown from '@/components/Markdown';
+import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import ScoreTag from './ScoreTag';
-import dynamic from 'next/dynamic';
+import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import InputDataModal from '@/pageComponents/dataset/detail/InputDataModal';
 
-const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
+type TUpdatedData = {
+  q: string;
+  a: string;
+  updateTime: Date;
+  currentChatItemId?: string;
+};
 
-const QuoteItem = ({
+const CollectionQuoteItem = ({
   index,
-  item,
-  setQuoteIndex,
   quoteRefs,
-  isCurrentSelected = false,
   quoteIndex,
-  score,
-  icon,
+  setQuoteIndex,
+  refreshList,
   chatItemId,
-  isFullTextReader,
-  canEditData,
-  refreshList
+  canEdit,
+
+  updatedData,
+  isCurrentSelected,
+  q,
+  a,
+  dataId,
+  collectionId
 }: {
   index: number;
-  item: DatasetDataListItemType & { sourceName?: string };
-  quoteIndex?: number;
+  quoteRefs: MutableRefObject<(HTMLDivElement | null)[]>;
+  quoteIndex: number;
   setQuoteIndex: Dispatch<SetStateAction<number>>;
-  quoteRefs?: MutableRefObject<(HTMLDivElement | null)[]>;
-  isCurrentSelected?: boolean;
-  score?: { primaryScore?: ScoreItemType; secondaryScore: ScoreItemType[] };
-  icon?: string;
-  isFullTextReader?: boolean;
-  chatItemId?: string;
-  canEditData?: boolean;
   refreshList: () => void;
-}) => {
-  const { copyData } = useCopyData();
-  const { t } = useTranslation();
+  chatItemId: string;
+  canEdit: boolean;
 
-  const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
+  updatedData?: TUpdatedData;
+  isCurrentSelected: boolean;
+  q: string;
+  a?: string;
+  dataId: string;
+  collectionId: string;
+}) => {
+  const { t } = useTranslation();
+  const { copyData } = useCopyData();
   const hasBeenSearched = quoteIndex !== undefined && quoteIndex > -1;
+  const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 
   return (
     <>
       <Box
-        ref={
-          quoteRefs
-            ? (el: HTMLDivElement | null) => {
-                quoteRefs.current[index] = el;
-              }
-            : undefined
-        }
+        ref={(el: HTMLDivElement | null) => {
+          quoteRefs.current[index] = el;
+        }}
         p={2}
-        py={item.updatedData ? 0 : 2}
+        py={updatedData ? 0 : 2}
         cursor={hasBeenSearched ? 'pointer' : 'default'}
-        bg={isCurrentSelected && isFullTextReader ? '#FFF9E7' : hasBeenSearched ? '#FFFCF2' : ''}
+        bg={isCurrentSelected ? '#FFF9E7' : hasBeenSearched ? '#FFFCF2' : ''}
         position={'relative'}
         overflow={'hidden'}
         border={'1px solid '}
-        borderColor={isCurrentSelected && isFullTextReader ? 'yellow.200' : 'transparent'}
-        borderLeftColor={item.updatedData && !isCurrentSelected ? 'myGray.200' : ''}
-        borderBottomColor={
-          !isFullTextReader ? 'myGray.150' : isCurrentSelected ? 'yellow.200' : 'transparent'
-        }
+        borderColor={isCurrentSelected ? 'yellow.200' : 'transparent'}
+        borderLeftColor={updatedData && !isCurrentSelected ? 'myGray.200' : ''}
+        borderBottomColor={isCurrentSelected ? 'yellow.200' : 'transparent'}
         wordBreak={'break-all'}
         fontSize={'sm'}
         _hover={
@@ -88,54 +87,7 @@ const QuoteItem = ({
           }
         }}
       >
-        {!isFullTextReader && (
-          <Flex gap={2} alignItems={'center'} mb={2}>
-            <Box
-              alignItems={'center'}
-              fontSize={'xs'}
-              border={'sm'}
-              borderRadius={'sm'}
-              _hover={{
-                '.controller': {
-                  display: 'flex'
-                }
-              }}
-              overflow={'hidden'}
-              display={'inline-flex'}
-              height={6}
-            >
-              <Flex
-                color={'myGray.500'}
-                bg={'myGray.150'}
-                w={4}
-                justifyContent={'center'}
-                fontSize={'10px'}
-                h={'full'}
-                alignItems={'center'}
-              >
-                {index + 1}
-              </Flex>
-              <Flex px={1.5}>
-                <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
-                <Box
-                  className="textEllipsis3"
-                  wordBreak={'break-all'}
-                  flex={'1 0 0'}
-                  fontSize={'mini'}
-                  color={'myGray.900'}
-                >
-                  {item.sourceName}
-                </Box>
-              </Flex>
-            </Box>
-            {score && (
-              <Box className="hover-data" visibility={'hidden'}>
-                <ScoreTag {...score} />
-              </Box>
-            )}
-          </Flex>
-        )}
-        {item.updatedData && (
+        {updatedData && (
           <Flex>
             <Box
               bg={'myGray.50'}
@@ -149,13 +101,13 @@ const QuoteItem = ({
             <Box flex={1} borderBottom={'1px dashed'} borderColor={'myGray.250'} />
           </Flex>
         )}
-        <Markdown source={item.q} />
-        {!!item.a && (
+        <Markdown source={q} />
+        {!!a && (
           <Box>
-            <Markdown source={item.a} />
+            <Markdown source={a} />
           </Box>
         )}
-        {item.updatedData && (
+        {updatedData && (
           <Flex mt={2}>
             <Box
               bg={'green.50'}
@@ -170,8 +122,8 @@ const QuoteItem = ({
             <Box flex={1} borderBottom={'1px dashed'} borderColor={'green.200'} />
           </Flex>
         )}
-        {!!item.updatedData?.q && <Markdown source={item.updatedData?.q} isUpdatedQuote />}
-        {!!item.updatedData?.a && <Markdown source={item.updatedData?.a} isUpdatedQuote />}
+        {!!updatedData?.q && <Markdown source={updatedData?.q} className="updatedQuote" />}
+        {!!updatedData?.a && <Markdown source={updatedData?.a} className="updatedQuote" />}
         <Flex
           className="hover-data"
           position={'absolute'}
@@ -195,10 +147,10 @@ const QuoteItem = ({
               }
             >
               <MyIcon name="common/text/t" w={'14px'} mr={1} color={'myGray.500'} />
-              {item.q.length + (item.a?.length || 0)}
+              {q.length + (a?.length || 0)}
             </Flex>
           </MyTooltip>
-          {isFullTextReader && canEditData && (
+          {canEdit && (
             <MyTooltip label={t('common:core.dataset.data.Edit')}>
               <Flex
                 alignItems={'center'}
@@ -215,8 +167,8 @@ const QuoteItem = ({
                 cursor={'pointer'}
                 onClick={() =>
                   setEditInputData({
-                    dataId: item._id,
-                    collectionId: item.collectionId
+                    dataId,
+                    collectionId
                   })
                 }
               >
@@ -239,7 +191,7 @@ const QuoteItem = ({
               }
               cursor={'pointer'}
               onClick={() => {
-                copyData(item.q + '\n' + item.a);
+                copyData(q + '\n' + a);
               }}
             >
               <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
@@ -263,4 +215,4 @@ const QuoteItem = ({
   );
 };
 
-export default QuoteItem;
+export default CollectionQuoteItem;

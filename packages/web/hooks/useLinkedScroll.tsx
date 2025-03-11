@@ -4,17 +4,18 @@ import { Box, BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';
+import { useRequest2 } from './useRequest';
 
 const threshold = 100;
 
 export function useLinkedScroll<
-  TParams extends LinkedPaginationProps,
+  TParams extends LinkedPaginationProps & { isInitialLoad?: boolean },
   TData extends LinkedListResponse
 >(
   api: (data: TParams) => Promise<TData>,
   {
     refreshDeps = [],
-    pageSize = 10,
+    pageSize = 15,
     params = {},
     initialId,
     canLoadData = false
@@ -32,8 +33,6 @@ export function useLinkedScroll<
   const [hasMoreNext, setHasMoreNext] = useState(true);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
-
   const anchorRef = useRef({
     top: null as string | null,
     bottom: null as string | null
@@ -42,32 +41,26 @@ export function useLinkedScroll<
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
 
-  const callApi = useCallback(
-    async (apiParams: Record<string, any>, loadType: 'initial' | 'prev' | 'next') => {
-      try {
-        setIsLoading(true);
-        return await api(apiParams as unknown as TParams);
-      } catch (error) {
-        console.error(`Error fetching ${loadType} data:`, error);
+  const { runAsync: callApi, loading: isLoading } = useRequest2(
+    async (apiParams: TParams) => await api(apiParams),
+    {
+      onError: (error) => {
+        console.error(`Error fetching data:`, error);
         return null;
-      } finally {
-        setIsLoading(false);
       }
-    },
-    [api]
+    }
   );
 
   const loadData = useCallback(
-    async (id: string) => {
+    async ({ id, isInitialLoad = false }: { id: string; isInitialLoad?: boolean }) => {
       if (isLoading) return null;
 
-      const response = await callApi(
-        {
-          initialId: id,
-          ...params
-        },
-        'initial'
-      );
+      const response = await callApi({
+        initialId: id,
+        pageSize,
+        isInitialLoad,
+        ...params
+      } as TParams);
 
       if (!response) return null;
 
@@ -94,15 +87,11 @@ export function useLinkedScroll<
       const prevScrollTop = scrollRef?.current?.scrollTop || 0;
       const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
 
-      const response = await callApi(
-        {
-          anchorId: anchorRef.current.top,
-          direction: 'prev',
-          pageSize,
-          ...params
-        },
-        'prev'
-      );
+      const response = await callApi({
+        prevId: anchorRef.current.top,
+        pageSize,
+        ...params
+      } as TParams);
 
       if (!response) return;
 
@@ -132,15 +121,11 @@ export function useLinkedScroll<
 
       const prevScrollTop = scrollRef?.current?.scrollTop || 0;
 
-      const response = await callApi(
-        {
-          anchorId: anchorRef.current.bottom,
-          direction: 'next',
-          pageSize,
-          ...params
-        },
-        'next'
-      );
+      const response = await callApi({
+        nextId: anchorRef.current.bottom,
+        pageSize,
+        ...params
+      } as TParams);
 
       if (!response) return;
 
@@ -205,19 +190,9 @@ export function useLinkedScroll<
   // 初始加载
   useEffect(() => {
     if (canLoadData) {
-      loadData(initialId || '');
+      loadData({ id: initialId || '', isInitialLoad: true });
     }
   }, [canLoadData, ...refreshDeps]);
-
-  // 重置状态
-  const resetLoadState = useCallback(() => {
-    setDataList([]);
-    anchorRef.current = { top: null, bottom: null };
-    setHasMorePrev(true);
-    setHasMoreNext(true);
-    setInitialLoadDone(false);
-    setIsLoading(false);
-  }, []);
 
   const ScrollData = useMemoizedFn(
     ({
@@ -261,13 +236,13 @@ export function useLinkedScroll<
           isLoading={externalLoading || isLoading}
           {...props}
         >
-          {hasMorePrev && isLoading && (
+          {hasMorePrev && isLoading && initialLoadDone && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}
             </Box>
           )}
           {children}
-          {hasMoreNext && isLoading && (
+          {hasMoreNext && isLoading && initialLoadDone && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
               {t('common:common.is_requesting')}
             </Box>
@@ -279,10 +254,10 @@ export function useLinkedScroll<
 
   return {
     dataList,
+    setDataList,
     isLoading,
     loadData,
     initialLoadDone,
-    resetLoadState,
     ScrollData,
     itemRefs,
     scrollToItem

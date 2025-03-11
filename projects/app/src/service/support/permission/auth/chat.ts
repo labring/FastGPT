@@ -1,4 +1,4 @@
-import { ChatSchema } from '@fastgpt/global/core/chat/type';
+import { AIChatItemType, ChatHistoryItemResType, ChatSchema } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
@@ -6,6 +6,8 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 /* 
   检查chat的权限：
@@ -184,3 +186,54 @@ export async function authChatCrud({
 
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
+
+export const authCollectionInChat = async ({
+  collectionId,
+  appId,
+  chatId,
+  chatItemId
+}: {
+  collectionId: string;
+  appId: string;
+  chatId: string;
+  chatItemId: string;
+}) => {
+  try {
+    const chatItem = (await MongoChatItem.findOne(
+      {
+        appId,
+        chatId,
+        dataId: chatItemId
+      },
+      'responseData'
+    ).lean()) as AIChatItemType;
+
+    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+
+    // 找 responseData 里，是否有该文档 id
+    const responseData = chatItem.responseData || [];
+    const flatResData: ChatHistoryItemResType[] =
+      responseData
+        ?.map((item) => {
+          return [
+            item,
+            ...(item.pluginDetail || []),
+            ...(item.toolDetail || []),
+            ...(item.loopDetail || [])
+          ];
+        })
+        .flat() || [];
+
+    if (
+      flatResData.some((item) => {
+        if (item.quoteList) {
+          return item.quoteList.some((quote) => quote.collectionId === collectionId);
+        }
+        return false;
+      })
+    ) {
+      return true;
+    }
+  } catch (error) {}
+  return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+};

@@ -12,9 +12,8 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/cons
 export const DatasetDataCollectionName = 'dataset_datas';
 
 const DatasetDataSchema = new Schema({
-  nextId: {
-    type: Schema.Types.ObjectId
-  },
+  nextId: Schema.Types.ObjectId,
+  inited: Boolean,
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -116,10 +115,6 @@ try {
   DatasetDataSchema.index({ initFullText: 1 });
 
   DatasetDataSchema.index({ nextId: 1 });
-
-  DatasetDataSchema.index({ collectionId: 1, nextId: 1 });
-
-  DatasetDataSchema.index({ collectionId: 1, _id: 1 });
 } catch (error) {
   console.log(error);
 }

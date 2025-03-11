@@ -1,20 +1,26 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, useTheme } from '@chakra-ui/react';
 
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import QuoteItem from '@/components/core/dataset/QuoteItem';
+import QuoteItem, { formatScore } from '@/components/core/dataset/QuoteItem';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getQuoteDataList } from '@/web/core/dataset/api';
+import { useChatStore } from '@/web/core/chat/context/useChatStore';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemId,
-  rawSearch = []
+  rawSearch = [],
+  chatTime
 }: {
   chatItemId?: string;
   rawSearch: SearchDataResponseItemType[];
+  chatTime: Date;
 }) {
   const theme = useTheme();
+  const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
     chatItemId,
@@ -28,9 +34,43 @@ const QuoteList = React.memo(function QuoteList({
     (v) => v.showRouteToDatasetDetail
   );
 
+  const { data } = useRequest2(
+    async () =>
+      await getQuoteDataList({
+        datasetDataIdList: rawSearch.map((item) => item.id),
+        chatTime,
+        collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
+        chatItemId: chatItemId || '',
+        appId,
+        chatId,
+        ...outLinkAuthData
+      }),
+    {
+      manual: false
+    }
+  );
+
+  const formatedDataList = useMemo(() => {
+    return rawSearch
+      .map((item) => {
+        const currentFilterItem = data?.quoteList.find((res) => res._id === item.id);
+
+        return {
+          ...item,
+          q: currentFilterItem?.q || '',
+          a: currentFilterItem?.a || ''
+        };
+      })
+      .sort((a, b) => {
+        const aScore = formatScore(a.score);
+        const bScore = formatScore(b.score);
+        return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
+      });
+  }, [data?.quoteList, rawSearch]);
+
   return (
     <>
-      {rawSearch.map((item, i) => (
+      {formatedDataList.map((item, i) => (
         <Box
           key={i}
           flex={'1 0 0'}

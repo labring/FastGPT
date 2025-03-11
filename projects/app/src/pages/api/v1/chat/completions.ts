@@ -328,21 +328,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
-      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses.map((item) => {
-        if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode) {
-          // Filter quoteList q & a
-          return {
-            ...item,
-            quoteList: item.quoteList?.map((quote) => ({
-              ...quote,
-              q: '',
-              a: ''
-            }))
-          };
-        }
-
-        return item;
-      })
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
     };
 
     const saveChatId = chatId || getNanoid(24);

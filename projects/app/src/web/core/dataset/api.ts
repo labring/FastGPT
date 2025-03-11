@@ -66,10 +66,11 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
+import { GetQuoteDataProps, GetQuoteDataRes } from '@/pages/api/core/dataset/data/getQuote';
 import {
-  GetLinkedDatasetDataProps,
-  GetLinkedDatasetDataRes
-} from '@/pages/api/core/dataset/data/linkedList';
+  GetCollectionQuoteProps,
+  GetCollectionQuoteRes
+} from '@/pages/api/core/dataset/data/getCollectionQuote';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -184,8 +185,11 @@ export const getAllTags = (datasetId: string) =>
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
   POST<GetDatasetDataListRes>(`/core/dataset/data/v2/list`, data);
 
-export const getLinkedDatasetData = (data: GetLinkedDatasetDataProps) =>
-  POST<GetLinkedDatasetDataRes>(`/core/dataset/data/linkedList`, data);
+export const getQuoteDataList = (data: GetQuoteDataProps) =>
+  POST<GetQuoteDataRes>(`/core/dataset/data/getQuote`, data);
+
+export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
+  POST<GetCollectionQuoteRes>(`/core/dataset/data/getCollectionQuote`, data);
 
 export const getDatasetDataPermission = (id?: string) =>
   GET<GetQuotePermissionResponse>(`/core/dataset/data/getPermission`, { id });

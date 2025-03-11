@@ -1,25 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 interface Props extends BoxProps {
-  externalFolded?: boolean;
-  setExternalFolded?: () => void;
+  externalTrigger?: Boolean;
 }
 
 const SideBar = (e?: Props) => {
   const {
     w = ['100%', '0 0 250px', '0 0 270px', '0 0 290px', '0 0 310px'],
     children,
-    externalFolded,
-    setExternalFolded,
+    externalTrigger,
     ...props
   } = e || {};
 
-  const [foldSideBar, setFoldSideBar] = useState(false);
+  const [isFolded, setIsFolded] = useState(false);
 
-  const isFolded = externalFolded || foldSideBar;
+  const prevExternalTriggerRef = useRef<Boolean | undefined>(undefined);
+
+  useEffect(() => {
+    if (externalTrigger && !prevExternalTriggerRef.current && !isFolded) {
+      setIsFolded(true);
+    }
+
+    prevExternalTriggerRef.current = externalTrigger;
+  }, [externalTrigger, isFolded]);
+
+  const handleToggle = () => {
+    const newFolded = !isFolded;
+    setIsFolded(newFolded);
+  };
 
   return (
     <Box
@@ -56,17 +67,7 @@ const SideBar = (e?: Props) => {
               visibility: 'hidden',
               opacity: 0
             })}
-        onClick={() => {
-          if (externalFolded) {
-            setFoldSideBar(false);
-          } else {
-            setFoldSideBar(!foldSideBar);
-          }
-
-          if (setExternalFolded) {
-            setExternalFolded();
-          }
-        }}
+        onClick={handleToggle}
       >
         <MyIcon
           name={'common/backLight'}

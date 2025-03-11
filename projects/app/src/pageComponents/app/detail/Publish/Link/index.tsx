@@ -184,7 +184,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 name: item.name,
                                 responseDetail: item.responseDetail ?? false,
                                 showRawSource: item.showRawSource ?? false,
-                                showFullText: item.showFullText ?? false,
+                                // showFullText: item.showFullText ?? false,
                                 showNodeStatus: item.showNodeStatus ?? false,
                                 limit: item.limit
                               })
@@ -280,7 +280,7 @@ function EditLinkModal({
   });
 
   const responseDetail = watch('responseDetail');
-  const showFullText = watch('showFullText');
+  // const showFullText = watch('showFullText');
   const showRawSource = watch('showRawSource');
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
@@ -425,7 +425,7 @@ function EditLinkModal({
               {...register('responseDetail', {
                 onChange(e) {
                   if (!e.target.checked) {
-                    setValue('showFullText', false);
+                    // setValue('showFullText', false);
                     setValue('showRawSource', false);
                   }
                 }
@@ -433,7 +433,7 @@ function EditLinkModal({
               isChecked={responseDetail}
             />
           </Flex>
-          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+          {/* <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:support.outlink.share.Chat_quote_reader')}</FormLabel>
               <QuestionTip
@@ -453,7 +453,7 @@ function EditLinkModal({
               })}
               isChecked={showFullText}
             />
-          </Flex>
+          </Flex> */}
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
@@ -467,7 +467,7 @@ function EditLinkModal({
                 onChange(e) {
                   if (e.target.checked) {
                     setValue('responseDetail', true);
-                    setValue('showFullText', true);
+                    // setValue('showFullText', true);
                   }
                 }
               })}

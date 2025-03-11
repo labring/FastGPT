@@ -115,7 +115,7 @@ const Render = ({ appForm, setRenderEdit }: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
-      isShowFullText={true}
+      // isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>

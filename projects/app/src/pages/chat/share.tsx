@@ -221,9 +221,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar externalFolded={!!quoteData} setExternalFolded={() => setQuoteData(undefined)}>
-        {Children}
-      </SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -238,7 +236,7 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, quoteData, setQuoteData, showHistory, t]);
+  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
     <Box h={'full'} display={quoteData ? 'flex' : ''}>
@@ -356,7 +354,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
-        isShowFullText={props.showFullText}
+        // isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -400,7 +398,7 @@ export async function getServerSideProps(context: any) {
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
-      showFullText: app?.showFullText ?? false,
+      // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',
