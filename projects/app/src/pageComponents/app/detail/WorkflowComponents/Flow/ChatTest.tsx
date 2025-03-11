@@ -20,6 +20,7 @@ import ChatRecordContextProvider, {
 } from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 
 type Props = {
   isOpen: boolean;
@@ -41,10 +42,13 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   return (
-    <>
+    <Flex h={'full'}>
       <Box
         zIndex={300}
         display={isOpen ? 'block' : 'none'}
@@ -53,7 +57,10 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         left={0}
         bottom={0}
         right={0}
-        onClick={onClose}
+        onClick={() => {
+          setQuoteData(undefined);
+          onClose();
+        }}
       />
       <MyBox
         isLoading={loading}
@@ -62,7 +69,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         flexDirection={'column'}
         position={'absolute'}
         top={5}
-        right={0}
+        right={quoteData ? 600 : 0}
         h={isOpen ? '95%' : '0'}
         w={isOpen ? ['100%', '460px'] : '0'}
         bg={'white'}
@@ -141,7 +148,27 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           <ChatContainer />
         </Box>
       </MyBox>
-    </>
+      {quoteData && (
+        <Box
+          w={['full', '588px']}
+          zIndex={300}
+          position={'absolute'}
+          top={5}
+          right={0}
+          h={'95%'}
+          bg={'white'}
+          boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
+          borderRadius={'md'}
+        >
+          <ChatQuoteList
+            chatTime={quoteData.chatTime}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
+          />
+        </Box>
+      )}
+    </Flex>
   );
 };
 
@@ -162,6 +189,7 @@ const Render = (Props: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      // isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>

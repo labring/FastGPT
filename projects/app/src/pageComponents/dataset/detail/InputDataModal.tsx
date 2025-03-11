@@ -178,7 +178,6 @@ const InputDataModal = ({
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('common:common.error.unKnow'));
 
-      // not exactly same
       await putDatasetDataById({
         dataId,
         q: e.q,

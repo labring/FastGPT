@@ -33,6 +33,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useMount } from 'ahooks';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -63,6 +64,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -163,7 +166,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -176,7 +179,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [appId, isOpenSlider, isPc, onCloseSlider, t]);
+  }, [appId, isOpenSlider, isPc, onCloseSlider, quoteData, t]);
 
   return (
     <Flex h={'100%'}>
@@ -231,6 +234,17 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           </Flex>
         </Flex>
       </PageContainer>
+
+      {quoteData && (
+        <PageContainer w={['full', '800px']} py={5}>
+          <ChatQuoteList
+            chatTime={quoteData.chatTime}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
+          />
+        </PageContainer>
+      )}
     </Flex>
   );
 };
@@ -300,6 +314,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={true}
+        // isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>

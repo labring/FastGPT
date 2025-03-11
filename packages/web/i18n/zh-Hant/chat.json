@@ -3,6 +3,8 @@
   "Delete_all": "清除所有詞彙",
   "LLM_model_response_empty": "模型流程回應為空，請檢查模型流程輸出是否正常",
   "ai_reasoning": "思考過程",
+  "chat.quote.No Data": "找不到該文件",
+  "chat.quote.deleted": "該數據已被刪除～",
   "chat_history": "對話紀錄",
   "chat_input_guide_lexicon_is_empty": "尚未設定詞彙庫",
   "chat_test_app": "調試-{{name}}",

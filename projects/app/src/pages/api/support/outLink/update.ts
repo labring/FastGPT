@@ -37,6 +37,7 @@ async function handler(
     responseDetail,
     showRawSource,
     showNodeStatus,
+    // showFullText,
     limit,
     app
   });
