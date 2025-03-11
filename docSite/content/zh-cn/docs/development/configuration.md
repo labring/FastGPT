@@ -44,7 +44,7 @@ weight: 707
 
 #### 1. 申请 Sealos AI proxy API Key
 
-[点击打开 Sealos Pdf parser 官网](https://cloud.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
+[点击打开 Sealos Pdf parser 官网](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
 
 #### 2. 修改 FastGPT 配置文件
 

@@ -76,7 +76,7 @@
     {
       "model": "qwen-max",
       "name": "Qwen-max",
-      "maxContext": 8000,
+      "maxContext": 32000,
       "maxResponse": 4000,
       "quoteMaxToken": 6000,
       "maxTemperature": 1,

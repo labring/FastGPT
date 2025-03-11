@@ -202,7 +202,7 @@ ${description ? `- ${description}` : ''}
     properties[item.key] = {
       ...jsonSchema,
       description: item.desc,
-      ...(item.enum ? { enum: item.enum.split('\n') } : {})
+      ...(item.enum ? { enum: item.enum.split('\n').filter(Boolean) } : {})
     };
   });
   // function body
