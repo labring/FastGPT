@@ -8,10 +8,11 @@ type GetVectorProps = {
   model: EmbeddingModelItemType;
   input: string;
   type?: `${EmbeddingTypeEnm}`;
+  headers?: Record<string, string>;
 };
 
 // text to vector
-export async function getVectorsByText({ model, input, type }: GetVectorProps) {
+export async function getVectorsByText({ model, input, type, headers }: GetVectorProps) {
   if (!input) {
     return Promise.reject({
       code: 500,
@@ -37,9 +38,10 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
               path: model.requestUrl,
               headers: model.requestAuth
                 ? {
-                    Authorization: `Bearer ${model.requestAuth}`
+                    Authorization: `Bearer ${model.requestAuth}`,
+                    ...headers
                   }
-                : undefined
+                : headers
             }
           : {}
       )
