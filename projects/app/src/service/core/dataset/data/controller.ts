@@ -246,7 +246,7 @@ export async function updateData2Dataset({
     .map((item) => item.index) as DatasetDataIndexItemType[];
 
   await mongoSessionRun(async (session) => {
-    // update mongo other data
+    // update mongo data
     mongoData.history =
       q !== mongoData.q || a !== mongoData.a
         ? [
@@ -260,9 +260,6 @@ export async function updateData2Dataset({
         : mongoData.history;
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
-    // FullText tmp
-    // mongoData.fullTextToken = jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() });
-    // @ts-ignore
     mongoData.indexes = newIndexes;
     await mongoData.save({ session });
 

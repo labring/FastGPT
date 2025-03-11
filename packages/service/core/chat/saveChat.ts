@@ -17,25 +17,6 @@ import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
-function filterQuoteList(item: any) {
-  if (item.moduleType === FlowNodeTypeEnum.datasetSearchNode && item.quoteList) {
-    return {
-      ...item,
-      quoteList: item.quoteList.map((quote: any) => ({
-        id: quote.id,
-        chunkIndex: quote.chunkIndex,
-        datasetId: quote.datasetId,
-        collectionId: quote.collectionId,
-        sourceId: quote.sourceId,
-        sourceName: quote.sourceName,
-        score: quote.score,
-        tokens: quote.tokens
-      }))
-    };
-  }
-  return item;
-}
-
 type Props = {
   chatId: string;
   appId: string;

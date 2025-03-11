@@ -381,7 +381,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showRawSourc showNodeStatus'
+        'appId showRawSource showNodeStatus'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
