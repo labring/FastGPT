@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import mongoose from '@fastgpt/service/common/mongo';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
@@ -66,19 +66,21 @@ beforeAll(async () => {
   await connectMongo();
 
   // await getInitConfig();
-  const str = readFileSync('projects/app/.env.local', 'utf-8');
-  const lines = str.split('\n');
-  const systemEnv: Record<string, string> = {};
-  for (const line of lines) {
-    const [key, value] = line.split('=');
-    if (key && value && !key.startsWith('#')) {
-      systemEnv[key] = value;
-      vi.stubEnv(key, value);
+  if (existsSync('projects/app/.env.local')) {
+    const str = readFileSync('projects/app/.env.local', 'utf-8');
+    const lines = str.split('\n');
+    const systemEnv: Record<string, string> = {};
+    for (const line of lines) {
+      const [key, value] = line.split('=');
+      if (key && value && !key.startsWith('#')) {
+        systemEnv[key] = value;
+      }
     }
+    global.systemEnv = {} as any;
+    global.systemEnv.oneapiUrl = systemEnv['OPENAI_BASE_URL'];
+    global.systemEnv.chatApiKey = systemEnv['CHAT_API_KEY'];
+    await setupModels();
   }
-  systemEnv.oneapiUrl = systemEnv['ONEAPI_URL'];
-  global.systemEnv = systemEnv as any;
-  await setupModels();
 });
 
 afterAll(async () => {

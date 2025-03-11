@@ -4,8 +4,9 @@ export default defineConfig({
   test: {
     coverage: {
       enabled: true,
-      reporter: ['text', 'json', 'html'],
-      all: false
+      reporter: ['html', 'json-summary', 'json'],
+      all: false,
+      reportOnFailure: true
     },
     outputFile: 'test-results.json',
     setupFiles: ['./test/setup.ts'],

@@ -1,6 +1,7 @@
 name: 'FastGPT-Test'
 on:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
@@ -20,7 +21,7 @@ jobs:
       - name: 'Install Deps'
         run: pnpm install
       - name: 'Test'
-        run: pnpm run test:all
+        run: pnpm run test
       - name: 'Report Coverage'
         # Set if: always() to also generate the report if tests are failing
         # Only works if you set `reportOnFailure: true` in your vite config as specified above
