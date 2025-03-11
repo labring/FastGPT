@@ -16,23 +16,23 @@ export const DatasetDataIndexMap: Record<
   }
 > = {
   [DatasetDataIndexTypeEnum.default]: {
-    label: i18nT('dataset:data_index_default'),
+    label: i18nT('common:data_index_default'),
     color: 'gray'
   },
   [DatasetDataIndexTypeEnum.custom]: {
-    label: i18nT('dataset:data_index_custom'),
+    label: i18nT('common:data_index_custom'),
     color: 'blue'
   },
   [DatasetDataIndexTypeEnum.summary]: {
-    label: i18nT('dataset:data_index_summary'),
+    label: i18nT('common:data_index_summary'),
     color: 'green'
   },
   [DatasetDataIndexTypeEnum.question]: {
-    label: i18nT('dataset:data_index_question'),
+    label: i18nT('common:data_index_question'),
     color: 'red'
   },
   [DatasetDataIndexTypeEnum.image]: {
-    label: i18nT('dataset:data_index_image'),
+    label: i18nT('common:data_index_image'),
     color: 'purple'
   }
 };

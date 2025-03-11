@@ -191,52 +191,59 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
-        <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
-          {RenderHistoryList}
-          {/* chat container */}
-          <Flex
-            position={'relative'}
-            h={[0, '100%']}
-            w={['100%', 0]}
-            flex={'1 0 0'}
-            flexDirection={'column'}
-          >
-            {/* header */}
-            <ChatHeader
-              totalRecordsCount={totalRecordsCount}
-              apps={myApps}
-              history={chatRecords}
-              showHistory
-            />
-            {/* chat box */}
-            <Box flex={1}>
-              {chatBoxData.app.type === AppTypeEnum.plugin ? (
-                <CustomPluginRunBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  onNewChat={() => onChangeChatId(getNanoid())}
-                  onStartChat={startChat}
-                />
-              ) : (
-                <ChatBox
-                  isReady={!loading}
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  feedbackType={'user'}
-                  onStartChat={startChat}
-                  chatType="team"
-                />
-              )}
-            </Box>
+      {(!quoteData || isPc) && (
+        <PageContainer
+          isLoading={loading}
+          flex={'1 0 0'}
+          w={0}
+          p={[0, '16px']}
+          position={'relative'}
+        >
+          <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
+            {RenderHistoryList}
+            {/* chat container */}
+            <Flex
+              position={'relative'}
+              h={[0, '100%']}
+              w={['100%', 0]}
+              flex={'1 0 0'}
+              flexDirection={'column'}
+            >
+              {/* header */}
+              <ChatHeader
+                totalRecordsCount={totalRecordsCount}
+                apps={myApps}
+                history={chatRecords}
+                showHistory
+              />
+              {/* chat box */}
+              <Box flex={1}>
+                {chatBoxData.app.type === AppTypeEnum.plugin ? (
+                  <CustomPluginRunBox
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    onNewChat={() => onChangeChatId(getNanoid())}
+                    onStartChat={startChat}
+                  />
+                ) : (
+                  <ChatBox
+                    isReady={!loading}
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    feedbackType={'user'}
+                    onStartChat={startChat}
+                    chatType="team"
+                  />
+                )}
+              </Box>
+            </Flex>
           </Flex>
-        </Flex>
-      </PageContainer>
-
+        </PageContainer>
+      )}
       {quoteData && (
-        <PageContainer w={['full', '800px']} py={5}>
+        <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
           <ChatQuoteList
             chatTime={quoteData.chatTime}
             rawSearch={quoteData.rawSearch}
