@@ -208,6 +208,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         res,
         stream: response,
         aiChatReasoning,
+        parseThinkTag: modelConstantsData.reasoning,
         isResponseAnswerText,
         workflowStreamResponse
       });
@@ -513,12 +514,14 @@ async function streamResponse({
   stream,
   workflowStreamResponse,
   aiChatReasoning,
+  parseThinkTag,
   isResponseAnswerText
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
   aiChatReasoning?: boolean;
+  parseThinkTag?: boolean;
   isResponseAnswerText?: boolean;
 }) {
   const write = responseWriteController({
@@ -535,7 +538,7 @@ async function streamResponse({
       break;
     }
 
-    const [reasoningContent, content] = parsePart(part, aiChatReasoning);
+    const [reasoningContent, content] = parsePart(part, parseThinkTag);
     answer += content;
     reasoning += reasoningContent;
 
