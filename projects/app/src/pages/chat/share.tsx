@@ -239,73 +239,80 @@ const OutLink = (props: Props) => {
   }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
-    <Box h={'full'} display={quoteData ? 'flex' : ''}>
+    <>
       <NextHead
         title={props.appName || data?.app?.name || 'AI'}
         desc={props.appIntro || data?.app?.intro}
         icon={props.appAvatar || data?.app?.avatar}
       />
-      <PageContainer
-        isLoading={loading}
-        {...(isEmbed
-          ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
-          : { p: [0, 5] })}
-      >
-        <Flex h={'100%'} flexDirection={['column', 'row']}>
-          {RenderHistoryList}
-
-          {/* chat container */}
-          <Flex
-            position={'relative'}
-            h={[0, '100%']}
-            w={['100%', 0]}
+      <Flex h={'full'}>
+        {(!quoteData || isPc) && (
+          <PageContainer
             flex={'1 0 0'}
-            flexDirection={'column'}
+            w={0}
+            isLoading={loading}
+            {...(isEmbed
+              ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
+              : { p: [0, 5] })}
           >
-            {/* header */}
-            {showHead === '1' ? (
-              <ChatHeader
-                history={chatRecords}
-                totalRecordsCount={totalRecordsCount}
-                showHistory={showHistory === '1'}
-              />
-            ) : null}
-            {/* chat box */}
-            <Box flex={1} bg={'white'}>
-              {isPlugin ? (
-                <CustomPluginRunBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  onNewChat={() => onChangeChatId(getNanoid())}
-                  onStartChat={startChat}
-                />
-              ) : (
-                <ChatBox
-                  isReady={!loading}
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  feedbackType={'user'}
-                  onStartChat={startChat}
-                  chatType="share"
-                />
-              )}
-            </Box>
-          </Flex>
-        </Flex>
-      </PageContainer>
-      {quoteData && (
-        <PageContainer w={['full', '800px']} py={5}>
-          <ChatQuoteList
-            chatTime={quoteData.chatTime}
-            rawSearch={quoteData.rawSearch}
-            metadata={quoteData.metadata}
-            onClose={() => setQuoteData(undefined)}
-          />
-        </PageContainer>
-      )}
-    </Box>
+            <Flex h={'100%'} flexDirection={['column', 'row']}>
+              {RenderHistoryList}
+
+              {/* chat container */}
+              <Flex
+                position={'relative'}
+                h={[0, '100%']}
+                w={['100%', 0]}
+                flex={'1 0 0'}
+                flexDirection={'column'}
+              >
+                {/* header */}
+                {showHead === '1' ? (
+                  <ChatHeader
+                    history={chatRecords}
+                    totalRecordsCount={totalRecordsCount}
+                    showHistory={showHistory === '1'}
+                  />
+                ) : null}
+                {/* chat box */}
+                <Box flex={1} bg={'white'}>
+                  {isPlugin ? (
+                    <CustomPluginRunBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      onNewChat={() => onChangeChatId(getNanoid())}
+                      onStartChat={startChat}
+                    />
+                  ) : (
+                    <ChatBox
+                      isReady={!loading}
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      feedbackType={'user'}
+                      onStartChat={startChat}
+                      chatType="share"
+                    />
+                  )}
+                </Box>
+              </Flex>
+            </Flex>
+          </PageContainer>
+        )}
+
+        {quoteData && (
+          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
+            <ChatQuoteList
+              chatTime={quoteData.chatTime}
+              rawSearch={quoteData.rawSearch}
+              metadata={quoteData.metadata}
+              onClose={() => setQuoteData(undefined)}
+            />
+          </PageContainer>
+        )}
+      </Flex>
+    </>
   );
 };
 

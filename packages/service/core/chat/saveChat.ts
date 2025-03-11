@@ -74,41 +74,42 @@ export async function saveChat({
       (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
     )?.inputs;
 
-    await mongoSessionRun(async (session) => {
-      const processedContent = content.map((item) => {
-        if (item.obj === ChatRoleEnum.AI) {
-          const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse];
+    // Format save chat content: Remove quote q/a
+    const processedContent = content.map((item) => {
+      if (item.obj === ChatRoleEnum.AI) {
+        const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse];
 
-          if (nodeResponse) {
-            return {
-              ...item,
-              [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse.map((responseItem) => {
-                if (
-                  responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
-                  responseItem.quoteList
-                ) {
-                  return {
-                    ...item,
-                    quoteList: responseItem.quoteList.map((quote: any) => ({
-                      id: quote.id,
-                      chunkIndex: quote.chunkIndex,
-                      datasetId: quote.datasetId,
-                      collectionId: quote.collectionId,
-                      sourceId: quote.sourceId,
-                      sourceName: quote.sourceName,
-                      score: quote.score,
-                      tokens: quote.tokens
-                    }))
-                  };
-                }
-                return item;
-              })
-            };
-          }
+        if (nodeResponse) {
+          return {
+            ...item,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse.map((responseItem) => {
+              if (
+                responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
+                responseItem.quoteList
+              ) {
+                return {
+                  ...responseItem,
+                  quoteList: responseItem.quoteList.map((quote: any) => ({
+                    id: quote.id,
+                    chunkIndex: quote.chunkIndex,
+                    datasetId: quote.datasetId,
+                    collectionId: quote.collectionId,
+                    sourceId: quote.sourceId,
+                    sourceName: quote.sourceName,
+                    score: quote.score,
+                    tokens: quote.tokens
+                  }))
+                };
+              }
+              return responseItem;
+            })
+          };
         }
-        return item;
-      });
+      }
+      return item;
+    });
 
+    await mongoSessionRun(async (session) => {
       const [{ _id: chatItemIdHuman }, { _id: chatItemIdAi }] = await MongoChatItem.insertMany(
         processedContent.map((item) => ({
           chatId,

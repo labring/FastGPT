@@ -168,66 +168,68 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
       {/* pc show myself apps */}
       {isPc && (
-        <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
+        <Box borderRight={theme.borders.base} flex={'0 0 220px'}>
           <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
-      <PageContainer
-        isLoading={loading}
-        flex={'1 0 0'}
-        w={0}
-        p={[0, '16px']}
-        pr={quoteData ? '8px !important' : '16px'}
-        position={'relative'}
-      >
-        <Flex h={'100%'} flexDirection={['column', 'row']}>
-          {/* pc always show history. */}
-          {RenderHistorySlider}
-          {/* chat container */}
-          <Flex
-            position={'relative'}
-            h={[0, '100%']}
-            w={['100%', 0]}
-            flex={'1 0 0'}
-            flexDirection={'column'}
-          >
-            {/* header */}
-            <ChatHeader
-              totalRecordsCount={totalRecordsCount}
-              apps={myApps}
-              history={chatRecords}
-              showHistory
-            />
+      {(!quoteData || isPc) && (
+        <PageContainer
+          isLoading={loading}
+          flex={'1 0 0'}
+          w={0}
+          p={[0, '16px']}
+          position={'relative'}
+        >
+          <Flex h={'100%'} flexDirection={['column', 'row']}>
+            {/* pc always show history. */}
+            {RenderHistorySlider}
+            {/* chat container */}
+            <Flex
+              position={'relative'}
+              h={[0, '100%']}
+              w={['100%', 0]}
+              flex={'1 0 0'}
+              flexDirection={'column'}
+            >
+              {/* header */}
+              <ChatHeader
+                totalRecordsCount={totalRecordsCount}
+                apps={myApps}
+                history={chatRecords}
+                showHistory
+              />
 
-            {/* chat box */}
-            <Box flex={'1 0 0'} bg={'white'}>
-              {isPlugin ? (
-                <CustomPluginRunBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  onNewChat={() => onChangeChatId(getNanoid())}
-                  onStartChat={onStartChat}
-                />
-              ) : (
-                <ChatBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  showEmptyIntro
-                  feedbackType={'user'}
-                  onStartChat={onStartChat}
-                  chatType={'chat'}
-                  isReady={!loading}
-                />
-              )}
-            </Box>
+              {/* chat box */}
+              <Box flex={'1 0 0'} bg={'white'}>
+                {isPlugin ? (
+                  <CustomPluginRunBox
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    onNewChat={() => onChangeChatId(getNanoid())}
+                    onStartChat={onStartChat}
+                  />
+                ) : (
+                  <ChatBox
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    showEmptyIntro
+                    feedbackType={'user'}
+                    onStartChat={onStartChat}
+                    chatType={'chat'}
+                    isReady={!loading}
+                  />
+                )}
+              </Box>
+            </Flex>
           </Flex>
-        </Flex>
-      </PageContainer>
+        </PageContainer>
+      )}
+
       {quoteData && (
-        <PageContainer w={['full', '588px']} insertProps={{ bg: 'white' }}>
+        <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
           <ChatQuoteList
             chatTime={quoteData.chatTime}
             rawSearch={quoteData.rawSearch}

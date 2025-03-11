@@ -69,9 +69,9 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         flexDirection={'column'}
         position={'absolute'}
         top={5}
-        right={quoteData ? 600 : 0}
+        right={0}
         h={isOpen ? '95%' : '0'}
-        w={isOpen ? ['100%', '460px'] : '0'}
+        w={isOpen ? (quoteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -144,30 +144,34 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           </Flex>
         )}
 
-        <Box flex={'1 0 0'} overflow={'auto'}>
-          <ChatContainer />
-        </Box>
+        <Flex flex={'1 0 0'} alignItems={'end'}>
+          <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
+            <ChatContainer />
+          </Box>
+
+          {quoteData && (
+            <Box
+              flex={'1 0 0'}
+              w={0}
+              mr={4}
+              maxW={'440px'}
+              h={'98%'}
+              bg={'white'}
+              boxShadow={
+                '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+              }
+              borderRadius={'md'}
+            >
+              <ChatQuoteList
+                chatTime={quoteData.chatTime}
+                rawSearch={quoteData.rawSearch}
+                metadata={quoteData.metadata}
+                onClose={() => setQuoteData(undefined)}
+              />
+            </Box>
+          )}
+        </Flex>
       </MyBox>
-      {quoteData && (
-        <Box
-          w={['full', '588px']}
-          zIndex={300}
-          position={'absolute'}
-          top={5}
-          right={0}
-          h={'95%'}
-          bg={'white'}
-          boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-          borderRadius={'md'}
-        >
-          <ChatQuoteList
-            chatTime={quoteData.chatTime}
-            rawSearch={quoteData.rawSearch}
-            metadata={quoteData.metadata}
-            onClose={() => setQuoteData(undefined)}
-          />
-        </Box>
-      )}
     </Flex>
   );
 };

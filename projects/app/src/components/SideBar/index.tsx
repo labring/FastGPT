@@ -9,7 +9,7 @@ interface Props extends BoxProps {
 
 const SideBar = (e?: Props) => {
   const {
-    w = ['100%', '0 0 250px', '0 0 270px', '0 0 290px', '0 0 310px'],
+    w = ['100%', '0 0 250px', '0 0 250px', '0 0 270px', '0 0 290px'],
     children,
     externalTrigger,
     ...props

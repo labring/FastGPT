@@ -39,7 +39,7 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
   };
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-  res.setHeader('Content-Disposition', 'attachment; filename=usage.csv; ');
+  res.setHeader('Content-Disposition', 'attachment; filename=data.csv; ');
 
   const cursor = MongoDatasetData.find(where, 'q a', {
     ...readFromSecondary,
@@ -54,10 +54,13 @@ async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: Next
     readStream: cursor
   });
 
-  cursor.on('data', (doc) => {
-    const res = doc.a ? `\n${doc.q}\n${doc.a}` : `\n${doc.q}`;
+  write(`\uFEFFindex,content`);
 
-    write(res);
+  cursor.on('data', (doc) => {
+    const q = doc.q.replace(/"/g, '""') || '';
+    const a = doc.a.replace(/"/g, '""') || '';
+
+    write(`\n"${q}","${a}"`);
   });
 
   cursor.on('end', () => {

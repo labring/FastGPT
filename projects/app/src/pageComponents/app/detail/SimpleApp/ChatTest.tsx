@@ -51,12 +51,13 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   return (
     <Flex h={'full'} gap={2}>
       <MyBox
+        flex={'1 0 0'}
+        w={0}
         isLoading={loading}
         display={'flex'}
         position={'relative'}
         flexDirection={'column'}
         h={'full'}
-        w={quoteData ? '' : 'full'}
         py={4}
         {...cardStyles}
         boxShadow={'3'}
@@ -85,7 +86,7 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
         </Box>
       </MyBox>
       {quoteData && (
-        <Box w={['full', '588px']} {...cardStyles} boxShadow={'3'}>
+        <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
           <ChatQuoteList
             chatTime={quoteData.chatTime}
             rawSearch={quoteData.rawSearch}

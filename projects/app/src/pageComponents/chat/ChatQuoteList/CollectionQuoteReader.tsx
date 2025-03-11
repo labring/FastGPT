@@ -1,4 +1,4 @@
-import { Box, Button, Flex } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -21,6 +21,10 @@ import { DatasetDataListItemType } from '@/global/core/dataset/type';
 import { metadataType } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getCollectionQuote } from '@/web/core/chat/api';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 
 const CollectionReader = ({
   rawSearch,
@@ -105,10 +109,10 @@ const CollectionReader = ({
     setDatasetDataList([]);
   }, [collectionId, setDatasetDataList]);
 
-  const { runAsync: handleDownload, loading: downloadLoading } = useRequest2(async () => {
+  const { runAsync: handleDownload } = useRequest2(async () => {
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
-      filename: 'parsed_content.md',
+      filename: 'data.csv',
       body: {
         collectionId: collectionId,
         chatTime: chatTime,
@@ -117,27 +121,11 @@ const CollectionReader = ({
     });
   });
 
-  const { runAsync: handleRead, loading: readLoading } = useRequest2(
-    async () => await getCollectionSource({ ...metadata, appId, chatId }),
-    {
-      onSuccess: (res) => {
-        if (!res.value) {
-          throw new Error('No file found');
-        }
-        if (res.value.startsWith('/')) {
-          window.open(`${location.origin}${res.value}`, '_blank');
-        } else {
-          window.open(res.value, '_blank');
-        }
-      },
-      onError: (err) => {
-        toast({
-          title: t(getErrText(err, t('common:error.fileNotFound'))),
-          status: 'error'
-        });
-      }
-    }
-  );
+  const handleRead = getCollectionSourceAndOpen({
+    appId,
+    chatId,
+    ...metadata
+  });
 
   const handleNavigate = useCallback(
     async (targetIndex: number) => {
@@ -164,77 +152,61 @@ const CollectionReader = ({
   );
 
   return (
-    <Flex flexDirection={'column'} h={'full'}>
+    <MyBox display={'flex'} flexDirection={'column'} h={'full'}>
       {/* title */}
-      <Flex
-        w={'full'}
-        alignItems={'center'}
-        px={5}
-        borderBottom={'1px solid'}
-        borderColor={'myGray.150'}
-      >
-        <Box flex={1} py={4}>
-          <Flex mb={1} alignItems={['flex-start', 'center']} flexDirection={['column', 'row']}>
-            <Flex gap={2} mr={2}>
-              <MyIcon
-                name={getSourceNameIcon({ sourceId, sourceName }) as any}
-                w={['1rem', '1.25rem']}
-                color={'primary.600'}
-              />
-              <Box
-                maxW={['200px', '300px']}
-                className={'textEllipsis'}
-                wordBreak={'break-all'}
-                color={'myGray.900'}
-                fontWeight={'medium'}
-              >
-                {sourceName || t('common:common.UnKnow Source')}
-              </Box>
-            </Flex>
-            <Flex gap={3} mt={[2, 0]} alignItems={'center'}>
-              {!!userInfo && permissionData?.permission?.hasReadPer && (
-                <Button
-                  variant={'primaryGhost'}
-                  size={'xs'}
-                  fontSize={'mini'}
-                  border={'none'}
-                  _hover={{
-                    bg: 'primary.100'
-                  }}
+      <Box borderBottom={'1px solid'} borderBottomColor={'myGray.150'} px={3} py={2}>
+        {/* name */}
+        <HStack>
+          <Flex alignItems={'center'} flex={'1 0 0'} w={0}>
+            <MyIcon
+              name={getSourceNameIcon({ sourceId, sourceName }) as any}
+              w={['1rem', '1.25rem']}
+              color={'primary.600'}
+            />
+            <Box
+              ml={1}
+              maxW={['200px', '220px']}
+              className={'textEllipsis'}
+              wordBreak={'break-all'}
+              fontSize={'sm'}
+              color={'myGray.900'}
+              fontWeight={'medium'}
+            >
+              {sourceName || t('common:common.UnKnow Source')}
+            </Box>
+            {!!userInfo && permissionData?.permission?.hasReadPer && (
+              <MyTooltip label={t('chat:to_dataset')}>
+                <MyIconButton
+                  ml={3}
+                  icon="core/dataset/datasetLight"
+                  size="1rem"
                   onClick={() => {
                     router.push(
                       `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
                     );
                   }}
-                >
-                  {t('common:core.dataset.Go Dataset')}
-                  <MyIcon name="common/upperRight" w={4} ml={1} />
-                </Button>
-              )}
+                />
+              </MyTooltip>
+            )}
+            <Box ml={1}>
               <DownloadButton
                 canAccessRawData={true}
                 onDownload={handleDownload}
                 onRead={handleRead}
-                isLoading={downloadLoading || readLoading}
               />
-            </Flex>
+            </Box>
           </Flex>
-          <Box fontSize={'mini'} color={'myGray.500'}>
-            {t('common:core.chat.quote.Quote Tip')}
-          </Box>
+          <MyIconButton
+            icon={'common/closeLight'}
+            size={'1.25rem'}
+            color={'myGray.900'}
+            onClick={onClose}
+          />
+        </HStack>
+        <Box fontSize={'mini'} color={'myGray.500'}>
+          {t('common:core.chat.quote.Quote Tip')}
         </Box>
-        <Box
-          cursor={'pointer'}
-          borderRadius={'sm'}
-          p={1}
-          _hover={{
-            bg: 'myGray.100'
-          }}
-          onClick={onClose}
-        >
-          <MyIcon name="common/closeLight" color={'myGray.900'} w={6} />
-        </Box>
-      </Flex>
+      </Box>
 
       {/* header control */}
       {datasetDataList.length > 0 && (
@@ -299,7 +271,7 @@ const CollectionReader = ({
       {/* quote list */}
       {loading || datasetDataList.length > 0 ? (
         <ScrollData flex={'1 0 0'} mt={2} px={5} py={1} isLoading={loading}>
-          <Flex flexDir={'column'} gap={3}>
+          <Flex flexDir={'column'}>
             {formatedDataList.map((item, index) => (
               <CollectionQuoteItem
                 key={item._id}
@@ -338,7 +310,7 @@ const CollectionReader = ({
           </Box>
         </Flex>
       )}
-    </Flex>
+    </MyBox>
   );
 };
 
