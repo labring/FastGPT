@@ -19,6 +19,7 @@ import ChatRecordContextProvider, {
 } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -37,6 +38,8 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -76,7 +79,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         zIndex={3}
         position={['fixed', 'absolute']}
         top={[0, '2%']}
-        right={0}
+        right={quoteData ? 600 : 0}
         h={['100%', '96%']}
         w={'100%'}
         maxW={['100%', '600px']}
@@ -168,6 +171,26 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
           )}
         </Box>
       </MyBox>
+      {quoteData && (
+        <Box
+          w={['full', '588px']}
+          zIndex={300}
+          position={'absolute'}
+          top={5}
+          right={0}
+          h={'95%'}
+          bg={'white'}
+          boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
+          borderRadius={'md'}
+        >
+          <ChatQuoteList
+            chatTime={quoteData.chatTime}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
+          />
+        </Box>
+      )}
       <Box zIndex={2} position={'fixed'} top={0} left={0} bottom={0} right={0} onClick={onClose} />
     </>
   );
@@ -189,6 +212,7 @@ const Render = (props: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      // isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={params}>
