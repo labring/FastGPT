@@ -16,11 +16,13 @@ type ReRankCallResult = { id: string; score?: number }[];
 export function reRankRecall({
   model = getDefaultRerankModel(),
   query,
-  documents
+  documents,
+  headers
 }: {
   model?: ReRankModelItemType;
   query: string;
   documents: { id: string; text: string }[];
+  headers?: Record<string, string>;
 }): Promise<ReRankCallResult> {
   if (!model) {
     return Promise.reject('no rerank model');
@@ -41,7 +43,8 @@ export function reRankRecall({
     },
     {
       headers: {
-        Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization
+        Authorization: model.requestAuth ? `Bearer ${model.requestAuth}` : authorization,
+        ...headers
       },
       timeout: 30000
     }

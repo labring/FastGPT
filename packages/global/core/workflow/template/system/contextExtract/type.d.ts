@@ -4,7 +4,10 @@ export type ContextExtractAgentItemType = {
   valueType:
     | WorkflowIOValueTypeEnum.string
     | WorkflowIOValueTypeEnum.number
-    | WorkflowIOValueTypeEnum.boolean;
+    | WorkflowIOValueTypeEnum.boolean
+    | WorkflowIOValueTypeEnum.arrayString
+    | WorkflowIOValueTypeEnum.arrayNumber
+    | WorkflowIOValueTypeEnum.arrayBoolean;
   desc: string;
   key: string;
   required: boolean;
