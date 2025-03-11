@@ -82,6 +82,7 @@ const CollectionReader = ({
       ...outLinkAuthData
     },
     initialId: currentQuoteItem?.id,
+    initialIndex: currentQuoteItem?.chunkIndex,
     canLoadData: !!currentQuoteItem?.id && !isPermissionLoading
   });
 
@@ -102,23 +103,6 @@ const CollectionReader = ({
       }),
     [currentQuoteItem?.id, datasetDataList, filterResults]
   );
-
-  // 初始加载的滚动
-  useEffect(() => {
-    if (initialLoadDone && currentQuoteItem && datasetDataList.length > 0 && quoteIndex === 0) {
-      const itemIndex = datasetDataList.findIndex((item) => item._id === currentQuoteItem.id);
-      if (itemIndex !== -1) {
-        scrollToItem(itemIndex);
-      }
-    }
-  }, [
-    initialLoadDone,
-    datasetDataList.length,
-    currentQuoteItem,
-    scrollToItem,
-    quoteIndex,
-    datasetDataList
-  ]);
 
   useEffect(() => {
     setQuoteIndex(0);
@@ -163,6 +147,8 @@ const CollectionReader = ({
     async (targetIndex: number) => {
       if (targetIndex < 0 || targetIndex >= filterResults.length) return;
       const targetItemId = filterResults[targetIndex].id;
+      const targetItemIndex = filterResults[targetIndex].chunkIndex;
+
       setQuoteIndex(targetIndex);
       const dataIndex = datasetDataList.findIndex((item) => item._id === targetItemId);
 
@@ -172,7 +158,7 @@ const CollectionReader = ({
         }, 50);
       } else {
         try {
-          const response = await loadData({ id: targetItemId });
+          const response = await loadData({ id: targetItemId, index: targetItemIndex });
 
           if (response && response.list && response.list.length > 0) {
             const newIndex = response.list.findIndex((item) => item._id === targetItemId);
@@ -334,7 +320,10 @@ const CollectionReader = ({
                 quoteRefs={itemRefs as React.MutableRefObject<(HTMLDivElement | null)[]>}
                 quoteIndex={item.quoteIndex}
                 setQuoteIndex={setQuoteIndex}
-                refreshList={() => currentQuoteItem?.id && loadData({ id: currentQuoteItem.id })}
+                refreshList={() =>
+                  currentQuoteItem?.id &&
+                  loadData({ id: currentQuoteItem.id, index: currentQuoteItem.chunkIndex })
+                }
                 chatItemId={chatItemId}
                 updatedData={item.updatedData}
                 isCurrentSelected={item.isCurrentSelected}

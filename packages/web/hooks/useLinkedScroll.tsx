@@ -18,12 +18,14 @@ export function useLinkedScroll<
     pageSize = 15,
     params = {},
     initialId,
+    initialIndex,
     canLoadData = false
   }: {
     refreshDeps?: any[];
     pageSize?: number;
     params?: Record<string, any>;
     initialId?: string;
+    initialIndex?: number;
     canLoadData?: boolean;
   }
 ) {
@@ -34,8 +36,8 @@ export function useLinkedScroll<
   const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   const anchorRef = useRef({
-    top: null as string | null,
-    bottom: null as string | null
+    top: null as { _id: string; index: number } | null,
+    bottom: null as { _id: string; index: number } | null
   });
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -52,11 +54,20 @@ export function useLinkedScroll<
   );
 
   const loadData = useCallback(
-    async ({ id, isInitialLoad = false }: { id: string; isInitialLoad?: boolean }) => {
+    async ({
+      id,
+      index,
+      isInitialLoad = false
+    }: {
+      id: string;
+      index: number;
+      isInitialLoad?: boolean;
+    }) => {
       if (isLoading) return null;
 
       const response = await callApi({
         initialId: id,
+        initialIndex: index,
         pageSize,
         isInitialLoad,
         ...params
@@ -69,8 +80,8 @@ export function useLinkedScroll<
       setDataList(response.list);
 
       if (response.list.length > 0) {
-        anchorRef.current.top = response.list[0]._id;
-        anchorRef.current.bottom = response.list[response.list.length - 1]._id;
+        anchorRef.current.top = response.list[0];
+        anchorRef.current.bottom = response.list[response.list.length - 1];
       }
 
       setInitialLoadDone(true);
@@ -88,7 +99,8 @@ export function useLinkedScroll<
       const prevScrollHeight = scrollRef?.current?.scrollHeight || 0;
 
       const response = await callApi({
-        prevId: anchorRef.current.top,
+        prevId: anchorRef.current.top._id,
+        prevIndex: anchorRef.current.top.index,
         pageSize,
         ...params
       } as TParams);
@@ -99,7 +111,7 @@ export function useLinkedScroll<
 
       if (response.list.length > 0) {
         setDataList((prev) => [...response.list, ...prev]);
-        anchorRef.current.top = response.list[0]._id;
+        anchorRef.current.top = response.list[0];
 
         setTimeout(() => {
           if (scrollRef?.current) {
@@ -122,7 +134,8 @@ export function useLinkedScroll<
       const prevScrollTop = scrollRef?.current?.scrollTop || 0;
 
       const response = await callApi({
-        nextId: anchorRef.current.bottom,
+        nextId: anchorRef.current.bottom._id,
+        nextIndex: anchorRef.current.bottom.index,
         pageSize,
         ...params
       } as TParams);
@@ -133,7 +146,7 @@ export function useLinkedScroll<
 
       if (response.list.length > 0) {
         setDataList((prev) => [...prev, ...response.list]);
-        anchorRef.current.bottom = response.list[response.list.length - 1]._id;
+        anchorRef.current.bottom = response.list[response.list.length - 1];
 
         setTimeout(() => {
           if (scrollRef?.current) {
@@ -190,7 +203,7 @@ export function useLinkedScroll<
   // 初始加载
   useEffect(() => {
     if (canLoadData) {
-      loadData({ id: initialId || '', isInitialLoad: true });
+      loadData({ id: initialId || '', index: initialIndex || 0, isInitialLoad: true });
     }
   }, [canLoadData, ...refreshDeps]);
 

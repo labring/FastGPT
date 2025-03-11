@@ -107,7 +107,6 @@ export type DatasetDataIndexItemType = {
 };
 export type DatasetDataSchemaType = {
   _id: string;
-  nextId: string;
   userId: string;
   teamId: string;
   tmbId: string;

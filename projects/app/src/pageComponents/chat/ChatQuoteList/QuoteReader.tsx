@@ -129,19 +129,21 @@ const QuoteReader = ({
 
       {/* quote list */}
       <MyBox flex={'1 0 0'} mt={2} px={5} py={1} overflow={'auto'} isLoading={loading}>
-        <Flex flexDir={'column'} gap={3}>
-          {formatedDataList?.map((item, index) => (
-            <QuoteItem
-              key={item.id}
-              index={index}
-              icon={item.icon}
-              sourceName={item.sourceName}
-              score={item.score}
-              q={item.q}
-              a={item.a}
-            />
-          ))}
-        </Flex>
+        {!loading && (
+          <Flex flexDir={'column'} gap={3}>
+            {formatedDataList?.map((item, index) => (
+              <QuoteItem
+                key={item.id}
+                index={index}
+                icon={item.icon}
+                sourceName={item.sourceName}
+                score={item.score}
+                q={item.q}
+                a={item.a}
+              />
+            ))}
+          </Flex>
+        )}
       </MyBox>
     </Flex>
   );

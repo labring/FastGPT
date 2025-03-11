@@ -114,25 +114,6 @@ export async function insertData2Dataset({
     })
   );
 
-  // 查找链表头节点
-  const query = MongoDatasetData.distinct('nextId', {
-    collectionId,
-    nextId: { $ne: null }
-  });
-
-  if (session) {
-    query.session(session);
-  }
-
-  const firstNode = await MongoDatasetData.findOne(
-    {
-      collectionId,
-      _id: { $nin: await query }
-    },
-    null,
-    { session }
-  );
-
   // 2. Create mongo data with linked list pointers
   const [{ _id }] = await MongoDatasetData.create(
     [
@@ -143,7 +124,6 @@ export async function insertData2Dataset({
         collectionId,
         q,
         a,
-        nextId: firstNode ? firstNode._id : null,
         chunkIndex,
         indexes: result.map((item) => item.index)
       }
@@ -325,20 +305,6 @@ export const deleteDatasetData = async (data: DatasetDataItemType) => {
     const nodeToDelete = await MongoDatasetData.findById(data.id).session(session);
     if (!nodeToDelete) {
       return;
-    }
-
-    const previousNode = await MongoDatasetData.findOne(
-      { nextId: data.id, collectionId: nodeToDelete.collectionId },
-      null,
-      { session }
-    );
-
-    if (previousNode) {
-      await MongoDatasetData.findByIdAndUpdate(
-        previousNode._id,
-        { nextId: nodeToDelete.nextId },
-        { session }
-      );
     }
 
     await MongoDatasetData.findByIdAndDelete(data.id, { session });

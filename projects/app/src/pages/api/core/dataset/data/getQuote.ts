@@ -4,7 +4,6 @@ import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { PaginationProps } from '@fastgpt/web/common/fetch/type';
 
 export type GetQuoteDataProps = {
   datasetDataIdList: string[];
@@ -25,7 +24,7 @@ export type GetQuoteDataRes = {
 };
 
 export const dataFieldSelector =
-  '_id datasetId collectionId q a chunkIndex history updateTime currentChatItemId prevId nextId';
+  '_id datasetId collectionId q a chunkIndex history updateTime currentChatItemId prevId';
 
 async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuoteDataRes> {
   const {
@@ -42,7 +41,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
     teamToken
   } = req.body;
 
-  const authRes = await authChatCrud({
+  await authChatCrud({
     req,
     authToken: true,
     appId,
@@ -53,8 +52,7 @@ async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuot
     teamToken
   });
 
-  // TODO: 如果 collection 被删了
-  const res = await Promise.all(
+  await Promise.all(
     collectionIdList.map(async (collectionId) => {
       const [collection, authCollection] = await Promise.all([
         getCollectionWithDataset(collectionId),

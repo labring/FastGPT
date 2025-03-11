@@ -5,11 +5,10 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
-import { Types } from 'mongoose';
+import { FilterQuery, Types } from 'mongoose';
 import { dataFieldSelector, processChatTimeFilter } from './getQuote';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
-  initialId?: string;
   chatTime: Date;
 
   isInitialLoad: boolean;
@@ -25,13 +24,18 @@ export type GetCollectionQuoteProps = LinkedPaginationProps & {
 
 export type GetCollectionQuoteRes = LinkedListResponse<DatasetDataSchemaType>;
 
+type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
+
 async function handler(
   req: ApiRequestProps<GetCollectionQuoteProps>
 ): Promise<GetCollectionQuoteRes> {
   const {
     initialId,
+    initialIndex,
     prevId,
+    prevIndex,
     nextId,
+    nextIndex,
     chatTime,
 
     isInitialLoad,
@@ -62,19 +66,37 @@ async function handler(
     authCollectionInChat({ appId, chatId, chatItemId, collectionId })
   ]);
 
-  if (initialId) {
+  const baseMatch: BaseMatchType = {
+    collectionId,
+    $or: [
+      { updateTime: { $lt: new Date(chatTime) } },
+      { history: { $elemMatch: { updateTime: { $lt: new Date(chatTime) } } } }
+    ]
+  };
+
+  if (initialId && initialIndex !== undefined) {
     return await handleInitialLoad(
       initialId,
+      initialIndex,
       limitedPageSize,
       chatTime,
       chatItemId,
       isInitialLoad,
-      collectionId
+      baseMatch
     );
   }
 
-  if (prevId || nextId) {
-    return await handlePaginatedLoad(prevId, nextId, limitedPageSize, chatTime, chatItemId);
+  if ((prevId && prevIndex !== undefined) || (nextId && nextIndex !== undefined)) {
+    return await handlePaginatedLoad(
+      prevId,
+      prevIndex,
+      nextId,
+      nextIndex,
+      limitedPageSize,
+      chatTime,
+      chatItemId,
+      baseMatch
+    );
   }
 
   return { list: [], hasMorePrev: false, hasMoreNext: false };
@@ -84,11 +106,12 @@ export default NextAPI(handler);
 
 async function handleInitialLoad(
   initialId: string,
+  initialIndex: number,
   pageSize: number,
   chatTime: Date,
   chatItemId: string,
   isInitialLoad: boolean,
-  collectionId: string
+  baseMatch: BaseMatchType
 ): Promise<GetCollectionQuoteRes> {
   const centerNode = await MongoDatasetData.findOne(
     {
@@ -99,26 +122,23 @@ async function handleInitialLoad(
 
   if (!centerNode) {
     if (isInitialLoad) {
-      const match = {
-        collectionId,
-        $or: [
-          { updateTime: { $lt: new Date(chatTime) } },
-          { history: { $elemMatch: { updateTime: { $lt: new Date(chatTime) } } } }
-        ]
-      };
-
       const [list, total] = await Promise.all([
-        MongoDatasetData.find(match, dataFieldSelector)
-          .sort({ chunkIndex: 1, updateTime: -1 })
+        MongoDatasetData.find(baseMatch, dataFieldSelector)
+          .sort({ chunkIndex: 1, _id: -1 })
           .limit(pageSize)
           .lean(),
-        MongoDatasetData.countDocuments(match)
+        MongoDatasetData.countDocuments(baseMatch)
       ]);
+
+      const listRes = list.map((item, index) => ({
+        ...item,
+        index: item.chunkIndex
+      }));
 
       const hasMoreNext = total > pageSize;
 
       return {
-        list,
+        list: listRes,
         hasMorePrev: false,
         hasMoreNext
       };
@@ -130,20 +150,29 @@ async function handleInitialLoad(
   const prevHalfSize = Math.floor(pageSize / 2);
   const nextHalfSize = pageSize - prevHalfSize - 1;
 
-  const { nodes: prevNodes, hasMore: hasMorePrev } = await getPrevNodes(
-    centerNode._id,
-    prevHalfSize
+  const { list: prevList, hasMore: hasMorePrev } = await getPrevNodes(
+    initialId,
+    initialIndex,
+    prevHalfSize,
+    baseMatch
   );
-  const { nodes: nextNodes, hasMore: hasMoreNext } = await getNextNodes(
-    centerNode._id,
-    nextHalfSize
+  const { list: nextList, hasMore: hasMoreNext } = await getNextNodes(
+    initialId,
+    initialIndex,
+    nextHalfSize,
+    baseMatch
   );
-  const resultList = [...prevNodes, centerNode, ...nextNodes];
+
+  console.log(prevList, centerNode, nextList);
+  const resultList = [...prevList, centerNode, ...nextList];
 
   const list = processChatTimeFilter(resultList, chatTime, chatItemId);
 
   return {
-    list,
+    list: list.map((item) => ({
+      ...item,
+      index: item.chunkIndex
+    })),
     hasMorePrev,
     hasMoreNext
   };
@@ -151,90 +180,83 @@ async function handleInitialLoad(
 
 async function handlePaginatedLoad(
   prevId: string | undefined,
+  prevIndex: number | undefined,
   nextId: string | undefined,
+  nextIndex: number | undefined,
   pageSize: number,
   chatTime: Date,
-  chatItemId: string
+  chatItemId: string,
+  baseMatch: BaseMatchType
 ): Promise<GetCollectionQuoteRes> {
-  const { nodes, hasMore } = prevId
-    ? await getPrevNodes(prevId, pageSize)
-    : await getNextNodes(nextId!, pageSize);
+  const { list, hasMore } =
+    prevId && prevIndex !== undefined
+      ? await getPrevNodes(prevId, prevIndex, pageSize, baseMatch)
+      : await getNextNodes(nextId!, nextIndex!, pageSize, baseMatch);
 
-  const processedList = processChatTimeFilter(nodes, chatTime, chatItemId);
+  const processedList = processChatTimeFilter(list, chatTime, chatItemId);
 
   return {
-    list: processedList,
+    list: processedList.map((item) => ({
+      ...item,
+      index: item.chunkIndex
+    })),
     hasMorePrev: !!prevId && hasMore,
     hasMoreNext: !!nextId && hasMore
   };
 }
 
-async function getPrevNodes(targetId: string, limit: number) {
-  const allPrevNodes: DatasetDataSchemaType[] = [];
-  let currentTargetId = targetId;
-  let hasMore = false;
+async function getPrevNodes(
+  initialId: string,
+  initialIndex: number,
+  limit: number,
+  baseMatch: BaseMatchType
+) {
+  const match: BaseMatchType = {
+    ...baseMatch,
+    $or: [
+      { chunkIndex: { $lte: initialIndex } },
+      { chunkIndex: initialIndex, _id: { $lte: new Types.ObjectId(initialId) } }
+    ]
+  };
 
-  for (let i = 0; i < limit; i++) {
-    const prevNode = await MongoDatasetData.findOne(
-      {
-        nextId: new Types.ObjectId(currentTargetId)
-      },
-      dataFieldSelector
-    ).lean();
-
-    if (!prevNode) break;
-
-    allPrevNodes.push(prevNode);
-    currentTargetId = prevNode._id.toString();
-
-    // 检查是否还有更多前置节点
-    if (i === limit - 1) {
-      const morePrevExists = await MongoDatasetData.findOne(
-        { nextId: new Types.ObjectId(currentTargetId) },
-        { _id: 1 }
-      ).lean();
-      hasMore = !!morePrevExists;
-    }
-  }
+  const [list, total] = await Promise.all([
+    MongoDatasetData.find(match, dataFieldSelector)
+      .sort({ chunkIndex: -1, _id: 1 })
+      .limit(limit)
+      .lean(),
+    MongoDatasetData.countDocuments(match)
+  ]);
 
   return {
-    nodes: allPrevNodes.reverse(),
-    hasMore
+    list: list.filter((item) => String(item._id) !== initialId).reverse(),
+    hasMore: total > limit
   };
 }
 
-async function getNextNodes(targetId: string, limit: number) {
-  const allNextNodes: DatasetDataSchemaType[] = [];
-  let hasMore = false;
+async function getNextNodes(
+  initialId: string,
+  initialIndex: number,
+  limit: number,
+  baseMatch: BaseMatchType
+) {
+  const match: BaseMatchType = {
+    ...baseMatch,
+    $or: [
+      { chunkIndex: { $gte: initialIndex } },
+      { chunkIndex: initialIndex, _id: { $gte: new Types.ObjectId(initialId) } }
+    ]
+  };
 
-  const currentNode = await MongoDatasetData.findOne(
-    { _id: new Types.ObjectId(targetId) },
-    dataFieldSelector
-  ).lean();
-  let currentTargetId = currentNode?.nextId;
-
-  for (let i = 0; i < limit; i++) {
-    const nextNode = await MongoDatasetData.findOne(
-      { _id: new Types.ObjectId(currentTargetId) },
-      dataFieldSelector
-    ).lean();
-
-    if (!nextNode) break;
-
-    allNextNodes.push(nextNode);
-
-    if (!nextNode.nextId) break;
-
-    currentTargetId = nextNode.nextId.toString();
-
-    // 检查是否还有更多后续节点
-    if (i === limit - 1) {
-      hasMore = true;
-    }
-  }
+  const [list, total] = await Promise.all([
+    MongoDatasetData.find(match, dataFieldSelector)
+      .sort({ chunkIndex: 1, _id: -1 })
+      .limit(limit)
+      .lean(),
+    MongoDatasetData.countDocuments(match)
+  ]);
 
   return {
-    nodes: allNextNodes,
-    hasMore
+    list: list.filter((item) => String(item._id) !== initialId),
+    hasMore: total > limit
   };
 }

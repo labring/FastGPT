@@ -18,10 +18,15 @@ type LinkedPaginationProps<T = {}> = T & {
     initialId: string;
     nextId: string;
     prevId: string;
+  }> &
+  RequireOnlyOne<{
+    initialIndex: number;
+    nextIndex: number;
+    prevIndex: number;
   }>;
 
 type LinkedListResponse<T = {}> = {
-  list: Array<T & { _id: string }>;
+  list: Array<T & { _id: string; index: number }>;
   hasMorePrev: boolean;
   hasMoreNext: boolean;
 };
