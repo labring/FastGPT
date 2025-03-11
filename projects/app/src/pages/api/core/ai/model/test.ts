@@ -37,7 +37,7 @@ async function handler(
 
   const headers: Record<string, string> = channelId
     ? {
-        'aiprixy-channelid': channelId
+        'Aiproxy-Channel': channelId
       }
     : {};
 
