@@ -20,7 +20,7 @@
     "iconv-lite": "^0.6.3",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "json5": "^2.2.3",
-    "jsonpath-plus": "^10.1.0",
+    "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
