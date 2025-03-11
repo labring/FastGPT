@@ -50,7 +50,7 @@ type Props = {
   authToken: string;
   customUid: string;
   showRawSource: boolean;
-  showFullText: boolean;
+  // showFullText: boolean;
   showNodeStatus: boolean;
 };
 
@@ -381,7 +381,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showRawSource showFullText showNodeStatus'
+        'appId showRawSourc showNodeStatus'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
