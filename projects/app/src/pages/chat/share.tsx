@@ -37,6 +37,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { AppSchema } from '@fastgpt/global/core/app/type';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -49,6 +50,7 @@ type Props = {
   authToken: string;
   customUid: string;
   showRawSource: boolean;
+  // showFullText: boolean;
   showNodeStatus: boolean;
 };
 
@@ -81,6 +83,8 @@ const OutLink = (props: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -217,7 +221,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -232,10 +236,10 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, showHistory, t]);
+  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
-    <>
+    <Box h={'full'} display={quoteData ? 'flex' : ''}>
       <NextHead
         title={props.appName || data?.app?.name || 'AI'}
         desc={props.appIntro || data?.app?.intro}
@@ -291,7 +295,17 @@ const OutLink = (props: Props) => {
           </Flex>
         </Flex>
       </PageContainer>
-    </>
+      {quoteData && (
+        <PageContainer w={['full', '800px']} py={5}>
+          <ChatQuoteList
+            chatTime={quoteData.chatTime}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
+          />
+        </PageContainer>
+      )}
+    </Box>
   );
 };
 
@@ -340,6 +354,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
+        // isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -383,6 +398,7 @@ export async function getServerSideProps(context: any) {
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
+      // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',

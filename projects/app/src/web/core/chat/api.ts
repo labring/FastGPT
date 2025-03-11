@@ -30,6 +30,11 @@ import type {
   getPaginationRecordsBody,
   getPaginationRecordsResponse
 } from '@/pages/api/core/chat/getPaginationRecords';
+import { GetQuoteDataProps, GetQuoteDataRes } from '@/pages/api/core/chat/quote/getQuote';
+import {
+  GetCollectionQuoteProps,
+  GetCollectionQuoteRes
+} from '@/pages/api/core/chat/quote/getCollectionQuote';
 
 /**
  * 获取初始化聊天内容
@@ -100,3 +105,9 @@ export const getMyTokensApps = (data: AuthTeamTagTokenProps) =>
  */
 export const getinitTeamChat = (data: { teamId: string; authToken: string; appId: string }) =>
   GET(`/proApi/core/chat/initTeamChat`, data);
+
+export const getQuoteDataList = (data: GetQuoteDataProps) =>
+  POST<GetQuoteDataRes>(`/core/chat/quote/getQuote`, data);
+
+export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
+  POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);
