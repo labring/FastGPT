@@ -1,13 +1,11 @@
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '../dataset/schema';
-import { MongoApp } from '../app/schema';
 import { getEmbeddingModel } from '../ai/model';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export type ListByAppIdAndDatasetIdsBody = {
-  appId: string;
+  teamId: string;
   datasetIdList: string[];
 };
 
@@ -16,20 +14,13 @@ interface Dataset {
   [key: string]: any;
 }
 
-export async function listByAppIdAndDatasetIds({
-  appId,
+export async function listAppDatasetDataByTeamIdAndDatasetIds({
+  teamId,
   datasetIdList
 }: ListByAppIdAndDatasetIdsBody) {
-  const app = await MongoApp.findById(appId).lean();
-  if (!app) {
-    throw new Error('App not found');
-  }
-  const { teamId } = app;
-
   const myDatasets = await MongoDataset.find({
     teamId,
-    _id: { $in: datasetIdList },
-    type: { $ne: DatasetTypeEnum.folder }
+    _id: { $in: datasetIdList }
   }).lean();
 
   return myDatasets.map((item) => ({
@@ -40,61 +31,93 @@ export async function listByAppIdAndDatasetIds({
   }));
 }
 
-export async function processDatasetNodes(nodes: any[], appId: string) {
-  const datasetNodes = nodes
-    .filter((node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
-    .map((node) => {
-      const input = node.inputs.find(
-        (item: { key: string; value: any }) => item.key === NodeInputKeyEnum.datasetSelectList
-      );
-      const rawIds = input?.value?.map((item: { datasetId: string }) => item.datasetId);
-      const datasetIds = Array.isArray(rawIds) ? rawIds : rawIds ? [rawIds] : [];
+export async function rewriteAppWorkflowToDetail(nodes: StoreNodeItemType[], teamId: string) {
+  const datasetIdSet = new Set<string>();
 
-      return { node, input, datasetIds };
-    })
-    .filter((item) => item.datasetIds.length > 0 && item.input);
+  nodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
 
-  const allDatasetIds = datasetNodes.flatMap((item) => item.datasetIds);
+    const input = node.inputs.find((item) => item.key === NodeInputKeyEnum.datasetSelectList);
+    if (!input) return;
 
-  const uniqueDatasetIds = [...new Set(allDatasetIds)];
+    const rawValue = input.value as undefined | { datasetId: string }[] | { datasetId: string };
 
-  if (uniqueDatasetIds.length === 0) return;
+    const datasetIds = Array.isArray(rawValue)
+      ? rawValue
+          .map((v) => v?.datasetId)
+          .filter((id): id is string => !!id && typeof id === 'string')
+      : rawValue?.datasetId
+        ? [String(rawValue.datasetId)]
+        : [];
 
-  const datasetList = await listByAppIdAndDatasetIds({
-    appId,
+    if (datasetIds.length === 0) return;
+
+    datasetIds.forEach((id) => datasetIdSet.add(id));
+  });
+
+  if (datasetIdSet.size === 0) return;
+
+  const uniqueDatasetIds = Array.from(datasetIdSet);
+  const datasetList = await listAppDatasetDataByTeamIdAndDatasetIds({
+    teamId,
     datasetIdList: uniqueDatasetIds
   });
 
-  const datasetMap = new Map(datasetList.map((ds) => [ds.datasetId.toString(), ds]));
+  const datasetMap = new Map(
+    datasetList.map((ds) => [
+      String(ds.datasetId),
+      {
+        ...ds,
+        vectorModel: getEmbeddingModel(ds.vectorModel.model)
+      }
+    ])
+  );
 
-  datasetNodes.forEach(({ input, datasetIds }) => {
+  nodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
+
+    const input = node.inputs.find((item) => item.key === NodeInputKeyEnum.datasetSelectList);
+    if (!input) return;
+
+    const rawValue = input.value as undefined | { datasetId: string }[] | { datasetId: string };
+
+    const datasetIds = Array.isArray(rawValue)
+      ? rawValue
+          .map((v) => v?.datasetId)
+          .filter((id): id is string => !!id && typeof id === 'string')
+      : rawValue?.datasetId
+        ? [String(rawValue.datasetId)]
+        : [];
+
+    if (datasetIds.length === 0) return;
+
     input.value = datasetIds
-      .map((id) => datasetMap.get(id))
-      .filter(Boolean)
-      .map(
-        (item) =>
-          item && {
-            datasetId: item.datasetId,
-            avatar: item.avatar,
-            name: item.name,
-            vectorModel: getEmbeddingModel(item.vectorModel.model)
-          }
-      );
+      .map((id) => {
+        const data = datasetMap.get(String(id));
+        return data
+          ? {
+              datasetId: data.datasetId,
+              avatar: data.avatar,
+              name: data.name,
+              vectorModel: data.vectorModel
+            }
+          : undefined;
+      })
+      .filter((item): item is NonNullable<typeof item> => !!item);
   });
 }
 
-export async function restoreDatasetNode(formatNodes: StoreNodeItemType[]) {
-  const datasetSearchNode = formatNodes.find(
-    (node) => node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
-  );
-  if (datasetSearchNode) {
-    const datasetsInput = datasetSearchNode.inputs.find(
+export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[]) {
+  formatNodes.forEach((node) => {
+    if (node.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) return;
+
+    const datasetsInput = node.inputs.find(
       (input) => input.key === NodeInputKeyEnum.datasetSelectList
     );
-    if (datasetsInput) {
+    if (datasetsInput?.value) {
       datasetsInput.value = datasetsInput.value.map((dataset: Dataset) => ({
         datasetId: dataset.datasetId
       }));
     }
-  }
+  });
 }
