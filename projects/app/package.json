@@ -47,7 +47,7 @@
     "lodash": "^4.17.21",
     "mermaid": "^10.2.3",
     "nanoid": "^4.0.1",
-    "next": "14.2.5",
+    "next": "14.2.21",
     "next-i18next": "15.3.0",
     "nextjs-node-loader": "^1.1.5",
     "nprogress": "^0.2.0",
