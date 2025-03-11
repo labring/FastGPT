@@ -34,6 +34,7 @@ export function useLinkedScroll<
   const [hasMorePrev, setHasMorePrev] = useState(true);
   const [hasMoreNext, setHasMoreNext] = useState(true);
   const [initialLoadDone, setInitialLoadDone] = useState(false);
+  const hasScrolledToInitial = useRef(false);
 
   const anchorRef = useRef({
     top: null as { _id: string; index: number } | null,
@@ -85,6 +86,14 @@ export function useLinkedScroll<
       }
 
       setInitialLoadDone(true);
+
+      const scrollIndex = response.list.findIndex((item) => item._id === id);
+
+      if (scrollIndex !== -1 && itemRefs.current?.[scrollIndex]) {
+        setTimeout(() => {
+          scrollToItem(scrollIndex);
+        }, 100);
+      }
 
       return response;
     },
@@ -203,9 +212,30 @@ export function useLinkedScroll<
   // 初始加载
   useEffect(() => {
     if (canLoadData) {
-      loadData({ id: initialId || '', index: initialIndex || 0, isInitialLoad: true });
+      // 重置初始滚动状态
+      hasScrolledToInitial.current = false;
+
+      loadData({
+        id: initialId || '',
+        index: initialIndex || 0,
+        isInitialLoad: true
+      });
     }
   }, [canLoadData, ...refreshDeps]);
+
+  // 监听初始加载完成，执行初始滚动
+  useEffect(() => {
+    if (initialLoadDone && dataList.length > 0 && !hasScrolledToInitial.current) {
+      hasScrolledToInitial.current = true;
+      const foundIndex = dataList.findIndex((item) => item._id === initialId);
+
+      if (foundIndex >= 0) {
+        setTimeout(() => {
+          scrollToItem(foundIndex);
+        }, 200);
+      }
+    }
+  }, [initialLoadDone, ...refreshDeps]);
 
   const ScrollData = useMemoizedFn(
     ({

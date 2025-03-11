@@ -69,7 +69,6 @@ const CollectionReader = ({
     loadData,
     ScrollData,
     itemRefs,
-    initialLoadDone,
     scrollToItem
   } = useLinkedScroll(getCollectionQuote, {
     refreshDeps: [collectionId],
@@ -158,16 +157,7 @@ const CollectionReader = ({
         }, 50);
       } else {
         try {
-          const response = await loadData({ id: targetItemId, index: targetItemIndex });
-
-          if (response && response.list && response.list.length > 0) {
-            const newIndex = response.list.findIndex((item) => item._id === targetItemId);
-            if (newIndex !== -1) {
-              setTimeout(() => {
-                scrollToItem(newIndex);
-              }, 100);
-            }
-          }
+          await loadData({ id: targetItemId, index: targetItemIndex });
         } catch (error) {
           console.error('Failed to navigate:', error);
         }
