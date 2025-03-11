@@ -70,10 +70,11 @@ import { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<DatasetListItemType[]>(`/core/dataset/list`, data);
 
+export const getDatasetsByAppIdAndDatasetIds = (data: { appId: string; datasetIdList: string[] }) =>
+  POST<DatasetSimpleItemType[]>(`/core/dataset/listByAppIdAndDatasetIds`, data);
 /**
  * get type=dataset list
  */
-export const getAllDataset = () => GET<DatasetSimpleItemType[]>(`/core/dataset/allDataset`);
 
 export const getDatasetPaths = (parentId: ParentIdType) =>
   GET<ParentTreePathItemType[]>('/core/dataset/paths', { parentId });

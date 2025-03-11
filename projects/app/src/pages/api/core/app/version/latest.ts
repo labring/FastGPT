@@ -6,6 +6,7 @@ import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controlle
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 
 export type getLatestVersionQuery = {
   appId: string;
@@ -29,6 +30,10 @@ async function handler(
     appId: req.query.appId,
     per: WritePermissionVal
   });
+
+  const teamId = app.teamId;
+
+  await rewriteAppWorkflowToDetail(app.modules, teamId);
 
   return getAppLatestVersion(req.query.appId, app);
 }

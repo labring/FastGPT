@@ -11,7 +11,6 @@ import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatTest } from '../useChatTest';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -23,8 +22,6 @@ const ChatTest = ({ appForm }: Props) => {
   const { appT } = useI18n();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  // form2AppWorkflow dependent allDatasets
-  const { allDatasets } = useDatasetStore();
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
@@ -33,10 +30,8 @@ const ChatTest = ({ appForm }: Props) => {
 
   useEffect(() => {
     const { nodes, edges } = form2AppWorkflow(appForm, t);
-    // console.log(form2AppWorkflow(appForm, t));
     setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, allDatasets, t]);
-
+  }, [appForm, setWorkflowData, t]);
   const { ChatContainer, restartChat, loading } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
