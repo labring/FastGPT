@@ -27,7 +27,7 @@ weight: 510
 
 ## sealos部署服务
 
-[访问sealos](https://cloud.sealos.run/) 登录进来之后打开「应用管理」-> 「新建应用」。
+[访问sealos](https://hzh.sealos.run?uid=fnWRt09fZP) 登录进来之后打开「应用管理」-> 「新建应用」。
 - 应用名：称随便填写
 - 镜像名：私人微信填写 aibotk/wechat-assistant 企业微信填写 aibotk/worker-assistant
 - cpu和内存建议 1c1g

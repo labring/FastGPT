@@ -35,20 +35,26 @@ async function handler(
 
   if (!modelData) return Promise.reject('Model not found');
 
+  const headers: Record<string, string> = channelId
+    ? {
+        'Aiproxy-Channel': channelId
+      }
+    : {};
+
   if (modelData.type === 'llm') {
-    return testLLMModel(modelData);
+    return testLLMModel(modelData, headers);
   }
   if (modelData.type === 'embedding') {
-    return testEmbeddingModel(modelData);
+    return testEmbeddingModel(modelData, headers);
   }
   if (modelData.type === 'tts') {
-    return testTTSModel(modelData);
+    return testTTSModel(modelData, headers);
   }
   if (modelData.type === 'stt') {
-    return testSTTModel(modelData);
+    return testSTTModel(modelData, headers);
   }
   if (modelData.type === 'rerank') {
-    return testReRankModel(modelData);
+    return testReRankModel(modelData, headers);
   }
 
   return Promise.reject('Model type not supported');
@@ -56,7 +62,7 @@ async function handler(
 
 export default NextAPI(handler);
 
-const testLLMModel = async (model: LLMModelItemType) => {
+const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const ai = getAIApi({
     timeout: 10000
   });
@@ -65,7 +71,7 @@ const testLLMModel = async (model: LLMModelItemType) => {
     {
       model: model.model,
       messages: [{ role: 'user', content: 'hi' }],
-      stream: false
+      stream: true
     },
     model
   );
@@ -73,30 +79,38 @@ const testLLMModel = async (model: LLMModelItemType) => {
     ...(model.requestUrl ? { path: model.requestUrl } : {}),
     headers: model.requestAuth
       ? {
-          Authorization: `Bearer ${model.requestAuth}`
+          Authorization: `Bearer ${model.requestAuth}`,
+          ...headers
         }
-      : undefined
+      : headers
   });
 
-  const responseText = response.choices?.[0]?.message?.content;
-  // @ts-ignore
-  const reasoning_content = response.choices?.[0]?.message?.reasoning_content;
-
-  if (!responseText && !reasoning_content) {
-    return Promise.reject('Model response empty');
+  for await (const part of response) {
+    const content = part.choices?.[0]?.delta?.content || '';
+    // @ts-ignore
+    const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+    if (content || reasoningContent) {
+      response?.controller?.abort();
+      return;
+    }
   }
+  addLog.info(`Model not stream response`);
 
-  addLog.info(`Model test response: ${responseText}`);
+  return Promise.reject('Model response empty');
 };
 
-const testEmbeddingModel = async (model: EmbeddingModelItemType) => {
+const testEmbeddingModel = async (
+  model: EmbeddingModelItemType,
+  headers: Record<string, string>
+) => {
   return getVectorsByText({
     input: 'Hi',
-    model
+    model,
+    headers
   });
 };
 
-const testTTSModel = async (model: TTSModelType) => {
+const testTTSModel = async (model: TTSModelType, headers: Record<string, string>) => {
   const ai = getAIApi({
     timeout: 10000
   });
@@ -113,27 +127,30 @@ const testTTSModel = async (model: TTSModelType) => {
           path: model.requestUrl,
           headers: model.requestAuth
             ? {
-                Authorization: `Bearer ${model.requestAuth}`
+                Authorization: `Bearer ${model.requestAuth}`,
+                ...headers
               }
-            : undefined
+            : headers
         }
       : {}
   );
 };
 
-const testSTTModel = async (model: STTModelType) => {
+const testSTTModel = async (model: STTModelType, headers: Record<string, string>) => {
   const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
   const { text } = await aiTranscriptions({
     model: model.model,
-    fileStream: fs.createReadStream(path)
+    fileStream: fs.createReadStream(path),
+    headers
   });
   addLog.info(`STT result: ${text}`);
 };
 
-const testReRankModel = async (model: ReRankModelItemType) => {
+const testReRankModel = async (model: ReRankModelItemType, headers: Record<string, string>) => {
   await reRankRecall({
     model,
     query: 'Hi',
-    documents: [{ id: '1', text: 'Hi' }]
+    documents: [{ id: '1', text: 'Hi' }],
+    headers
   });
 };

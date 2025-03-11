@@ -21,7 +21,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 
 import { dispatchWorkflowStart } from './init/workflowStart';
@@ -426,6 +426,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     })();
 
     if (!nodeRunResult) return [];
+    if (res?.closed) {
+      addLog.warn('Request is closed', {
+        appId: props.runningAppInfo.id,
+        nodeId: node.nodeId,
+        nodeName: node.name
+      });
+      return [];
+    }
 
     /* 
       特殊情况：
