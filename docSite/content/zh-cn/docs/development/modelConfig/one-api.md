@@ -23,7 +23,7 @@ FastGPT 目前采用模型分离的部署方案，FastGPT 中只兼容 OpenAI �
 ### Sealos 版本
 
 * 北京区: [点击部署 OneAPI](https://hzh.sealos.run/?openapp=system-template%3FtemplateName%3Done-api)
-* 新加坡区(可用 GPT) [点击部署 OneAPI](https://cloud.sealos.io/?openapp=system-template%3FtemplateName%3Done-api)
+* 新加坡区(可用 GPT) [点击部署 OneAPI](https://cloud.sealos.io/?openapp=system-template%3FtemplateName%3Done-api&uid=fnWRt09fZP)
 
 ![alt text](/imgs/image-59.png)
 

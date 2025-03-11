@@ -26,13 +26,13 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 新加披区的服务器在国外，可以直接访问 OpenAI，但国内用户需要梯子才可以正常访问新加坡区。国际区价格稍贵，点击下面按键即可部署👇
 
-<a href="https://template.cloud.sealos.io/deploy?templateName=fastgpt" rel="external" target="_blank"><img src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+<a href="https://template.cloud.sealos.io/deploy?templateName=fastgpt&uid=fnWRt09fZP" rel="external" target="_blank"><img src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
 ### 北京区
 
 北京区服务提供商为火山云，国内用户可以稳定访问，但无法访问 OpenAI 等境外服务，价格约为新加坡区的 1/4。点击下面按键即可部署👇
 
-<a href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt" rel="external" target="_blank"><img src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+<a href="https://bja.sealos.run/?openapp=system-template%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP" rel="external" target="_blank"><img src="https://raw.githubusercontent.com/labring-actions/templates/main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
 ### 1. 开始部署
 
