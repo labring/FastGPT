@@ -65,8 +65,7 @@ const testLLMModel = async (model: LLMModelItemType) => {
     {
       model: model.model,
       messages: [{ role: 'user', content: 'hi' }],
-      stream: false,
-      max_tokens: 10
+      stream: false
     },
     model
   );

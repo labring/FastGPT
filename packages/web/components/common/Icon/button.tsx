@@ -34,6 +34,7 @@ const MyIconButton = ({
           color: hoverColor
         }}
         onClick={onClick}
+        sx={{ userSelect: 'none' }}
         {...props}
       >
         <MyIcon name={icon as any} w={size} />
