@@ -29,7 +29,7 @@
     "@types/jest": "^29.5.2",
     "@types/nprogress": "^0.2.0",
     "ahooks": "^3.7.11",
-    "axios": "^1.5.1",
+    "axios": "^1.8.2",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "echarts": "5.4.1",
