@@ -57,7 +57,7 @@ const ReTraining = () => {
         qaChunkSize: collection.chunkSize,
         customSplitChar: collection.chunkSplitter,
         qaPrompt: collection.qaPrompt,
-        webSelector: collection.metadata?.webSelector
+        webSelector: collection.metadata?.webPageSelector
       });
     }
   });

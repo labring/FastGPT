@@ -18,7 +18,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
 
-export type testQuery = { model: string };
+export type testQuery = { model: string; channelId?: string };
 
 export type testBody = {};
 
@@ -30,7 +30,7 @@ async function handler(
 ): Promise<testResponse> {
   await authSystemAdmin({ req });
 
-  const { model } = req.query;
+  const { model, channelId } = req.query;
   const modelData = findModelFromAlldata(model);
 
   if (!modelData) return Promise.reject('Model not found');
@@ -65,8 +65,7 @@ const testLLMModel = async (model: LLMModelItemType) => {
     {
       model: model.model,
       messages: [{ role: 'user', content: 'hi' }],
-      stream: false,
-      max_tokens: 10
+      stream: false
     },
     model
   );
