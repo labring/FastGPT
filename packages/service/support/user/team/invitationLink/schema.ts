@@ -16,17 +16,13 @@ const InvitationSchema = new Schema({
     required: true
   },
   usedTimesLimit: {
-    type: Number
+    type: Number,
+    default: 1,
+    enum: [1, -1]
   },
-  forbidden: {
-    type: Boolean
-  },
-  expires: {
-    type: Date
-  },
-  description: {
-    type: String
-  },
+  forbidden: Boolean,
+  expires: Date,
+  description: String,
   members: {
     type: [String],
     default: []
@@ -40,10 +36,9 @@ InvitationSchema.virtual('team', {
   justOne: true
 });
 
-InvitationSchema.index({ expires: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
-
 try {
-  InvitationSchema.index({ teamId: 1 }, { background: true });
+  InvitationSchema.index({ teamId: 1 });
+  InvitationSchema.index({ expires: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);
 }
