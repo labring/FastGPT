@@ -1,35 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 interface Props extends BoxProps {
-  externalTrigger?: Boolean;
+  isFolded?: boolean;
+  onFoldChange?: (isFolded: boolean) => void;
 }
 
 const SideBar = (e?: Props) => {
   const {
     w = ['100%', '0 0 250px', '0 0 250px', '0 0 270px', '0 0 290px'],
     children,
-    externalTrigger,
+    isFolded = false,
+    onFoldChange,
     ...props
   } = e || {};
 
-  const [isFolded, setIsFolded] = useState(false);
-
-  const prevExternalTriggerRef = useRef<Boolean | undefined>(undefined);
-
-  useEffect(() => {
-    if (externalTrigger && !prevExternalTriggerRef.current && !isFolded) {
-      setIsFolded(true);
-    }
-
-    prevExternalTriggerRef.current = externalTrigger;
-  }, [externalTrigger, isFolded]);
-
   const handleToggle = () => {
-    const newFolded = !isFolded;
-    setIsFolded(newFolded);
+    if (onFoldChange) {
+      onFoldChange(!isFolded);
+    }
   };
 
   return (
