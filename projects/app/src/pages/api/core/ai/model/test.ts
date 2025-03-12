@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata, getReRankModel } from '@fastgpt/service/core/ai/model';
+import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import {
   EmbeddingModelItemType,
   LLMModelItemType,
@@ -9,7 +9,7 @@ import {
   STTModelType,
   TTSModelType
 } from '@fastgpt/global/core/ai/model.d';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { createChatCompletion, getAIApi } from '@fastgpt/service/core/ai/config';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
@@ -18,7 +18,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
 
-export type testQuery = { model: string; channelId?: string };
+export type testQuery = { model: string; channelId?: number };
 
 export type testBody = {};
 
@@ -37,7 +37,7 @@ async function handler(
 
   const headers: Record<string, string> = channelId
     ? {
-        'Aiproxy-Channel': channelId
+        'Aiproxy-Channel': String(channelId)
       }
     : {};
 
@@ -75,26 +75,33 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
     },
     model
   );
-  const response = await ai.chat.completions.create(requestBody, {
-    ...(model.requestUrl ? { path: model.requestUrl } : {}),
-    headers: model.requestAuth
-      ? {
-          Authorization: `Bearer ${model.requestAuth}`,
-          ...headers
-        }
-      : headers
+  const { response, isStreamResponse } = await createChatCompletion({
+    body: requestBody,
+    options: {
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        ...headers
+      }
+    }
   });
 
-  for await (const part of response) {
-    const content = part.choices?.[0]?.delta?.content || '';
-    // @ts-ignore
-    const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
-    if (content || reasoningContent) {
-      response?.controller?.abort();
-      return;
+  if (isStreamResponse) {
+    for await (const part of response) {
+      const content = part.choices?.[0]?.delta?.content || '';
+      // @ts-ignore
+      const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+      if (content || reasoningContent) {
+        response?.controller?.abort();
+        return;
+      }
+    }
+  } else {
+    addLog.info(`Model not stream response`);
+    const answer = response.choices?.[0]?.message?.content || '';
+    if (answer) {
+      return answer;
     }
   }
-  addLog.info(`Model not stream response`);
 
   return Promise.reject('Model response empty');
 };
