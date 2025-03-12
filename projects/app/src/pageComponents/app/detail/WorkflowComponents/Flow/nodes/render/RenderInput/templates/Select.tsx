@@ -14,7 +14,7 @@ const SelectRender = ({ item, nodeId }: RenderInputProps) => {
         width={'100%'}
         value={item.value}
         list={item.list || []}
-        onchange={(e) => {
+        onChange={(e) => {
           onChangeNode({
             nodeId,
             type: 'updateInput',

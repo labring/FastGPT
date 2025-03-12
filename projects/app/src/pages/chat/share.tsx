@@ -90,14 +90,6 @@ const OutLink = (props: Props) => {
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
 
-  const [sidebarFolded, setSidebarFolded] = useState(false);
-
-  useEffect(() => {
-    if (quoteData) {
-      setSidebarFolded(true);
-    }
-  }, [quoteData]);
-
   const initSign = useRef(false);
   const { data, loading } = useRequest2(
     async () => {
@@ -229,9 +221,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar isFolded={sidebarFolded} onFoldChange={setSidebarFolded}>
-        {Children}
-      </SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -246,7 +236,7 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, showHistory, t, sidebarFolded]);
+  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
     <>

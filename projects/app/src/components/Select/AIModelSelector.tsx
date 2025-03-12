@@ -20,7 +20,7 @@ type Props = SelectProps & {
   disableTip?: string;
 };
 
-const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
+const OneRowSelector = ({ list, onChange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
@@ -96,12 +96,12 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
               placeholder={t('common:not_model_config')}
               h={'40px'}
               {...props}
-              onchange={(e) => {
+              onChange={(e) => {
                 if (e === 'price') {
                   onOpen();
                   return;
                 }
-                return onchange?.(e);
+                return onChange?.(e);
               }}
             />
           )}
@@ -110,7 +110,7 @@ const OneRowSelector = ({ list, onchange, disableTip, ...props }: Props) => {
     </Box>
   );
 };
-const MultipleRowSelector = ({ list, onchange, disableTip, placeholder, ...props }: Props) => {
+const MultipleRowSelector = ({ list, onChange, disableTip, placeholder, ...props }: Props) => {
   const { t } = useTranslation();
   const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
     useSystemStore();
@@ -178,9 +178,9 @@ const MultipleRowSelector = ({ list, onchange, disableTip, placeholder, ...props
 
   const onSelect = useCallback(
     (e: string[]) => {
-      return onchange?.(e[1]);
+      return onChange?.(e[1]);
     },
-    [onchange]
+    [onChange]
   );
 
   const SelectedModel = useMemo(() => {

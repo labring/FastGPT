@@ -333,7 +333,7 @@ function DataProcess() {
                       label: item.name,
                       value: item.model
                     }))}
-                    onchange={(e) => {
+                    onChange={(e) => {
                       setValue('llmModel', e);
                     }}
                   />
@@ -349,7 +349,7 @@ function DataProcess() {
                       label: item.name,
                       value: item.model
                     }))}
-                    onchange={(e) => {
+                    onChange={(e) => {
                       setValue('vlmModel', e);
                     }}
                   />

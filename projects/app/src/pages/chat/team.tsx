@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
@@ -69,14 +69,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
-
-  const [sidebarFolded, setSidebarFolded] = useState(false);
-
-  useEffect(() => {
-    if (quoteData) {
-      setSidebarFolded(true);
-    }
-  }, [quoteData]);
 
   // get chat app info
   const { loading } = useRequest2(
@@ -174,9 +166,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar isFolded={sidebarFolded} onFoldChange={setSidebarFolded}>
-        {Children}
-      </SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -189,7 +179,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [appId, isOpenSlider, isPc, onCloseSlider, t, sidebarFolded]);
+  }, [appId, isOpenSlider, isPc, onCloseSlider, quoteData, t]);
 
   return (
     <Flex h={'100%'}>
