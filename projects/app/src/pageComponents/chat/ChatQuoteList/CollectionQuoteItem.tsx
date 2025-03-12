@@ -77,20 +77,18 @@ const CollectionQuoteItem = ({
         }}
       >
         {updated && (
-          <Flex
-            position={'absolute'}
-            top={2}
-            right={5}
-            gap={1}
-            bg={'yellow.50'}
-            color={'yellow.500'}
-            px={2}
-            py={1}
-            rounded={'md'}
-            fontSize={'12px'}
-          >
-            <MyIcon name="common/info" w={'14px'} color={'yellow.500'} />
-            {t('common:core.dataset.data.Updated')}
+          <Flex mt={2}>
+            <Box
+              bg={'green.50'}
+              border={'1px solid'}
+              borderRadius={'xs'}
+              borderColor={'green.100'}
+              px={1}
+              color={'green.600'}
+            >
+              {t('common:core.dataset.data.Updated')}
+            </Box>
+            <Box flex={1} borderBottom={'1px dashed'} borderColor={'green.200'} />
           </Flex>
         )}
         <Markdown source={q} />

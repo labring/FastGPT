@@ -460,6 +460,7 @@
   "core.chat.quote.Read Quote": "查看引用",
   "core.chat.quote.afterUpdate": "更新后",
   "core.chat.quote.beforeUpdate": "更新前",
+  "core.chat.quote.source": "来源：{{source}}",
   "core.chat.response.Complete Response": "完整响应",
   "core.chat.response.Extension model": "问题优化模型",
   "core.chat.response.Read complete response": "查看详情",

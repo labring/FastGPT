@@ -6,6 +6,7 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 export type GetQuotePermissionResponse =
   | {
+      datasetName: string;
       permission: {
         hasWritePer: boolean;
         hasReadPer: boolean;
@@ -22,7 +23,7 @@ async function handler(req: NextApiRequest): Promise<GetQuotePermissionResponse>
   }
 
   try {
-    const { permission } = await authDataset({
+    const { permission, dataset } = await authDataset({
       req,
       authToken: true,
       authApiKey: true,
@@ -31,6 +32,7 @@ async function handler(req: NextApiRequest): Promise<GetQuotePermissionResponse>
     });
 
     return {
+      datasetName: dataset.name,
       permission: {
         hasReadPer: permission.hasReadPer,
         hasWritePer: permission.hasWritePer
@@ -39,6 +41,7 @@ async function handler(req: NextApiRequest): Promise<GetQuotePermissionResponse>
   } catch (error) {
     if (error === DatasetErrEnum.unAuthDataset) {
       return {
+        datasetName: '',
         permission: {
           hasWritePer: false,
           hasReadPer: false

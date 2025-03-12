@@ -17,7 +17,17 @@ const DownloadButton = ({
     return (
       <MyMenu
         size={'xs'}
-        Button={<MyIconButton icon="common/download" size={'1rem'} />}
+        Button={
+          <MyIconButton
+            icon="common/download"
+            size={'1rem'}
+            border={'1px solid'}
+            borderColor={'myGray.250'}
+            boxShadow={
+              '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+            }
+          />
+        }
         menuList={[
           {
             children: [
