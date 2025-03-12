@@ -20,7 +20,9 @@ const PermissionManage = dynamic(
 );
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
-const HandleInviteModal = dynamic(() => import('@/pageComponents/account/team/HandleInviteModal'));
+const HandleInviteModal = dynamic(
+  () => import('@/pageComponents/account/team/Invite/HandleInviteModal')
+);
 
 export enum TeamTabEnum {
   member = 'member',
@@ -99,7 +101,7 @@ const Team = () => {
               </Box>
             </Flex>
             <Flex align={'center'} ml={6}>
-              <TeamSelector height={'28px'} onChange={refetchMembers} />
+              <TeamSelector height={'28px'} />
             </Flex>
             {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
               <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>

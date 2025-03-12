@@ -1,5 +1,4 @@
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
-import Empty from '@/pageComponents/chat/Empty';
 import { getInvitationLinkList, putUpdateInvitationInfo } from '@/web/support/user/team/api';
 import {
   Box,
@@ -9,9 +8,7 @@ import {
   Grid,
   HStack,
   ModalBody,
-  ModalCloseButton,
   ModalFooter,
-  ModalHeader,
   Table,
   TableContainer,
   Tbody,
@@ -24,7 +21,6 @@ import {
 import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import Icon from '@fastgpt/web/components/common/Icon';
-import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import Tag from '@fastgpt/web/components/common/Tag';
@@ -68,7 +64,7 @@ const InviteModal = ({
     [copyData]
   );
 
-  const { runAsync: onForbid } = useRequest2(
+  const { runAsync: onForbid, loading: forbiding } = useRequest2(
     (linkId: string) =>
       putUpdateInvitationInfo({
         linkId,
@@ -87,21 +83,14 @@ const InviteModal = ({
       isOpen
       iconSrc="common/inviteLight"
       iconColor="primary.600"
-      minW={'600px'}
-      title={
-        <Box>
-          <Box>{t('common:user.team.Invite Member')}</Box>
-          <Box color={'myGray.500'} fontSize={'xs'} fontWeight={'normal'}>
-            {t('common:user.team.Invite Member Tips')}
-          </Box>
-        </Box>
-      }
-      maxW={['90vw']}
+      title={t('account_team:invite_member')}
       overflow={'unset'}
+      onClose={onClose}
+      w={'100%'}
+      maxW={['90vw', '820px']}
     >
-      <ModalCloseButton onClick={onClose} />
-      <ModalHeader pb="0">
-        <Flex alignItems={'center'} justifyContent={'space-between'} mx="2">
+      <ModalBody maxH="500px">
+        <Flex alignItems={'center'} justifyContent={'space-between'} mb={4}>
           <HStack>
             <Icon name="common/list" w="16px" />
             <Box ml="6px" fontSize="md">
@@ -110,8 +99,6 @@ const InviteModal = ({
           </HStack>
           <Button onClick={onOpenCreate}>{t('account_team:create_invitation_link')}</Button>
         </Flex>
-      </ModalHeader>
-      <ModalBody maxH="500px">
         <TableContainer overflowY={'auto'}>
           <Table fontSize={'sm'} overflow={'unset'}>
             <Thead>
@@ -149,56 +136,57 @@ const InviteModal = ({
                           : item.usedTimesLimit}
                       </Td>
                       <Td>
-                        <MyPopover
-                          w="fit-content"
-                          Trigger={
-                            <Box
-                              minW="100px"
-                              borderRadius="md"
-                              cursor="pointer"
-                              _hover={{ bg: 'myGray.100' }}
-                              p="1.5"
-                              w="fit-content"
-                            >
-                              <AvatarGroup max={3} avatars={item.members.map((i) => i.avatar)} />
-                            </Box>
-                          }
-                          trigger="click"
-                          closeOnBlur={true}
-                        >
-                          {() => (
-                            <Box py="4" maxH="200px" w="fit-content">
-                              <Flex mx="4" justifyContent="center" alignItems={'center'}>
-                                <Box>{t('account_team:has_invited')}</Box>
-                                <Box
-                                  ml="auto"
-                                  bg="myGray.200"
-                                  px="2"
-                                  borderRadius="md"
-                                  fontSize="sm"
-                                >
-                                  {item.members.length}
-                                </Box>
-                              </Flex>
-                              <Divider my="2" mx="4" />
-                              <Grid
+                        {item.members.length > 0 && (
+                          <MyPopover
+                            w="fit-content"
+                            Trigger={
+                              <Box
+                                borderRadius="md"
+                                cursor="pointer"
+                                _hover={{ bg: 'myGray.100' }}
+                                p="1.5"
                                 w="fit-content"
-                                mt="2"
-                                gridRowGap="4"
-                                gridTemplateColumns="1fr 1fr"
-                                overflow="auto"
-                                alignItems="center"
-                                mx="4"
                               >
-                                {item.members.map((member) => (
-                                  <Box key={member.tmbId} justifySelf="start">
-                                    <MemberTag name={member.name} avatar={member.avatar} />
+                                <AvatarGroup max={3} avatars={item.members.map((i) => i.avatar)} />
+                              </Box>
+                            }
+                            trigger="click"
+                            closeOnBlur={true}
+                          >
+                            {() => (
+                              <Box py="4" maxH="200px" w="fit-content">
+                                <Flex mx="4" justifyContent="center" alignItems={'center'}>
+                                  <Box>{t('account_team:has_invited')}</Box>
+                                  <Box
+                                    ml="auto"
+                                    bg="myGray.200"
+                                    px="2"
+                                    borderRadius="md"
+                                    fontSize="sm"
+                                  >
+                                    {item.members.length}
                                   </Box>
-                                ))}
-                              </Grid>
-                            </Box>
-                          )}
-                        </MyPopover>
+                                </Flex>
+                                <Divider my="2" mx="4" />
+                                <Grid
+                                  w="fit-content"
+                                  mt="2"
+                                  gridRowGap="4"
+                                  gridTemplateColumns="1fr 1fr"
+                                  overflow="auto"
+                                  alignItems="center"
+                                  mx="4"
+                                >
+                                  {item.members.map((member) => (
+                                    <Box key={member.tmbId} justifySelf="start">
+                                      <MemberTag name={member.name} avatar={member.avatar} />
+                                    </Box>
+                                  ))}
+                                </Grid>
+                              </Box>
+                            )}
+                          </MyPopover>
+                        )}
                       </Td>
                       <Td>
                         {!isForbidden && (
@@ -232,6 +220,7 @@ const InviteModal = ({
                                       {t('common:common.Cancel')}
                                     </Button>
                                     <Button
+                                      isLoading={forbiding}
                                       variant="outline"
                                       colorScheme="red"
                                       onClick={() => {

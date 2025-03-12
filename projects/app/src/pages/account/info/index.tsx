@@ -260,7 +260,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
         {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:contact')}:&nbsp;</Box>
+            <Box {...labelStyles}>{t('common:contact_way')}:&nbsp;</Box>
             <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
               {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
             </Box>
