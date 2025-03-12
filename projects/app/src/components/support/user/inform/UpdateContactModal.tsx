@@ -79,7 +79,7 @@ const UpdateContactModal = ({
         title={
           mode === 'notification_account'
             ? t('common:support.user.info.notification_receiving_hint')
-            : t('account_info:contact')
+            : t('common:contact_way')
         }
       >
         <ModalBody px={10}>
