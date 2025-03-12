@@ -65,6 +65,14 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
+  const [sidebarFolded, setSidebarFolded] = useState(false);
+
+  useEffect(() => {
+    if (quoteData) {
+      setSidebarFolded(true);
+    }
+  }, [quoteData]);
+
   // Load chat init data
   const { loading } = useRequest2(
     async () => {
@@ -148,7 +156,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
+      <SideBar isFolded={sidebarFolded} onFoldChange={setSidebarFolded}>
+        {Children}
+      </SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -161,7 +171,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
+  }, [t, isPc, appId, isOpenSlider, onCloseSlider, sidebarFolded]);
 
   return (
     <Flex h={'100%'}>

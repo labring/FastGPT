@@ -18,7 +18,6 @@ import { GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemCon
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getCollectionQuote } from '@/web/core/chat/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { QuoteDataItemType } from '@/service/core/chat/constants';
@@ -40,10 +39,10 @@ const CollectionReader = ({
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: permissionData, loading: isPermissionLoading } = useRequest2(
+  const { data: datasetData, loading: isPermissionLoading } = useRequest2(
     async () => await getDatasetDataPermission(datasetId),
     {
-      manual: !userInfo && !datasetId,
+      manual: !userInfo || !datasetId,
       refreshDeps: [datasetId, userInfo]
     }
   );
@@ -167,21 +166,7 @@ const CollectionReader = ({
             >
               {sourceName || t('common:common.UnKnow Source')}
             </Box>
-            {!!userInfo && permissionData?.permission?.hasReadPer && (
-              <MyTooltip label={t('chat:to_dataset')}>
-                <MyIconButton
-                  ml={3}
-                  icon="core/dataset/datasetLight"
-                  size="1rem"
-                  onClick={() => {
-                    router.push(
-                      `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
-                    );
-                  }}
-                />
-              </MyTooltip>
-            )}
-            <Box ml={1}>
+            <Box ml={3}>
               <DownloadButton
                 canAccessRawData={true}
                 onDownload={handleDownload}
@@ -196,69 +181,94 @@ const CollectionReader = ({
             onClick={onClose}
           />
         </HStack>
-        <Box fontSize={'mini'} color={'myGray.500'}>
-          {t('common:core.chat.quote.Quote Tip')}
-        </Box>
+        {!isPermissionLoading && (
+          <Box
+            fontSize={'mini'}
+            color={'myGray.500'}
+            onClick={() => {
+              if (!!userInfo && datasetData?.permission?.hasReadPer) {
+                router.push(
+                  `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
+                );
+              }
+            }}
+            {...(!!userInfo && datasetData?.permission?.hasReadPer
+              ? {
+                  cursor: 'pointer',
+                  _hover: { color: 'primary.600', textDecoration: 'underline' }
+                }
+              : {})}
+          >
+            {t('common:core.chat.quote.source', {
+              source: datasetData?.datasetName
+            })}
+          </Box>
+        )}
       </Box>
 
       {/* header control */}
       {datasetDataList.length > 0 && (
-        <Flex
-          w={'full'}
-          px={4}
-          py={2}
-          alignItems={'center'}
-          borderBottom={'1px solid'}
-          borderColor={'myGray.150'}
-        >
-          {/* 引用序号 */}
-          <Flex fontSize={'mini'} mr={3} alignItems={'center'} gap={1}>
-            <Box as={'span'} color={'myGray.900'}>
-              {t('common:core.chat.Quote')} {quoteIndex + 1}
-            </Box>
-            <Box as={'span'} color={'myGray.500'}>
-              /
-            </Box>
-            <Box as={'span'} color={'myGray.500'}>
-              {filterResults.length}
-            </Box>
+        <Box>
+          <Flex
+            w={'full'}
+            px={4}
+            py={2}
+            alignItems={'center'}
+            borderBottom={'1px solid'}
+            borderColor={'myGray.150'}
+          >
+            {/* 引用序号 */}
+            <Flex fontSize={'mini'} mr={3} alignItems={'center'} gap={1}>
+              <Box as={'span'} color={'myGray.900'}>
+                {t('common:core.chat.Quote')} {quoteIndex + 1}
+              </Box>
+              <Box as={'span'} color={'myGray.500'}>
+                /
+              </Box>
+              <Box as={'span'} color={'myGray.500'}>
+                {filterResults.length}
+              </Box>
+            </Flex>
+
+            {/* 检索分数 */}
+            {!loading &&
+              (!isDeleted ? (
+                <ScoreTag {...formatScore(currentQuoteItem?.score)} />
+              ) : (
+                <Flex
+                  borderRadius={'sm'}
+                  py={1}
+                  px={2}
+                  color={'red.600'}
+                  bg={'red.50'}
+                  alignItems={'center'}
+                  fontSize={'11px'}
+                >
+                  <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
+                  {t('chat:chat.quote.deleted')}
+                </Flex>
+              ))}
+
+            <Box flex={1} />
+
+            {/* 检索按钮 */}
+            <Flex gap={1}>
+              <NavButton
+                direction="up"
+                isDisabled={quoteIndex === 0}
+                onClick={() => handleNavigate(quoteIndex - 1)}
+              />
+              <NavButton
+                direction="down"
+                isDisabled={quoteIndex === filterResults.length - 1}
+                onClick={() => handleNavigate(quoteIndex + 1)}
+              />
+            </Flex>
           </Flex>
-
-          {/* 检索分数 */}
-          {!loading &&
-            (!isDeleted ? (
-              <ScoreTag {...formatScore(currentQuoteItem?.score)} />
-            ) : (
-              <Flex
-                borderRadius={'sm'}
-                py={1}
-                px={2}
-                color={'red.600'}
-                bg={'red.50'}
-                alignItems={'center'}
-                fontSize={'11px'}
-              >
-                <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
-                {t('chat:chat.quote.deleted')}
-              </Flex>
-            ))}
-
-          <Box flex={1} />
-
-          {/* 检索按钮 */}
-          <Flex gap={1}>
-            <NavButton
-              direction="up"
-              isDisabled={quoteIndex === 0}
-              onClick={() => handleNavigate(quoteIndex - 1)}
-            />
-            <NavButton
-              direction="down"
-              isDisabled={quoteIndex === filterResults.length - 1}
-              onClick={() => handleNavigate(quoteIndex + 1)}
-            />
-          </Flex>
-        </Flex>
+          <Box fontSize={'mini'} color={'myGray.500'} bg={'myGray.25'} px={4} py={1}>
+            {t('common:core.chat.quote.Quote Tip')}
+          </Box>
+        </Box>
       )}
 
       {/* quote list */}
@@ -282,7 +292,7 @@ const CollectionReader = ({
                 a={item.a}
                 dataId={item._id}
                 collectionId={collectionId}
-                canEdit={!!userInfo && !!permissionData?.permission?.hasWritePer}
+                canEdit={!!userInfo && !!datasetData?.permission?.hasWritePer}
               />
             ))}
           </Flex>
