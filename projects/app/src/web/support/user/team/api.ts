@@ -9,7 +9,6 @@ import {
   InviteMemberProps,
   InviteMemberResponse,
   UpdateInviteProps,
-  UpdateStatusProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
@@ -21,6 +20,12 @@ import {
 import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import {
+  InvitationInfoType,
+  InvitationLinkCreateType,
+  InvitationLinkUpdateType,
+  InvitationType
+} from '@fastgpt/service/support/user/team/invitationLink/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -34,17 +39,36 @@ export const putSwitchTeam = (teamId: string) =>
 /* --------------- team member ---------------- */
 export const getTeamMembers = (props: PaginationProps<{ withLeaved?: boolean }>) =>
   GET<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props);
-export const postInviteTeamMember = (data: InviteMemberProps) =>
-  POST<InviteMemberResponse>(`/proApi/support/user/team/member/invite`, data);
+
+// export const postInviteTeamMember = (data: InviteMemberProps) =>
+//   POST<InviteMemberResponse>(`/proApi/support/user/team/member/invite`, data);
+
 export const putUpdateMemberName = (name: string) =>
   PUT(`/proApi/support/user/team/member/updateName`, { name });
 export const delRemoveMember = (tmbId: string) =>
   DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
-export const updateStatus = (data: UpdateStatusProps) =>
-  PUT('/proApi/support/user/team/member/updateStatus', data);
+export const postRestoreMember = (tmbId: string) =>
+  POST('/proApi/support/user/team/member/restore', { tmbId });
 export const delLeaveTeam = () => DELETE('/proApi/support/user/team/member/leave');
+
+/* -------------- team invitaionlink -------------------- */
+
+export const postCreateInvitationLink = (data: InvitationLinkCreateType) =>
+  POST<string>(`/proApi/support/user/team/invitationLink/create`, data);
+
+export const getInvitationLinkList = () =>
+  GET<InvitationType[]>(`/proApi/support/user/team/invitationLink/list`);
+
+export const postAcceptInvitationLink = (linkId: string) =>
+  POST<string>(`/proApi/support/user/team/invitationLink/accept`, { linkId });
+
+export const getInvitationInfo = (linkId: string) =>
+  GET<InvitationInfoType>(`/proApi/support/user/team/invitationLink/info`, { linkId });
+
+export const putUpdateInvitationInfo = (data: InvitationLinkUpdateType) =>
+  PUT('/proApi/support/user/team/invitationLink/update', data);
 
 /* -------------- team collaborator -------------------- */
 export const getTeamClbs = () =>
