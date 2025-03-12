@@ -39,6 +39,7 @@ const TeamMemberSchema = new Schema({
   updateTime: {
     type: Date
   },
+
   // Abandoned
   role: {
     type: String

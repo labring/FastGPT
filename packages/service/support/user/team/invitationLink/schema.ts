@@ -4,6 +4,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import { InvitationSchemaType } from './type';
+import addDays from 'date-fns/esm/fp/addDays/index.js';
 const { Schema } = connectionMongo;
 
 export const InvitationCollectionName = 'team_invitation_links';
@@ -38,6 +39,8 @@ InvitationSchema.virtual('team', {
   foreignField: '_id',
   justOne: true
 });
+
+InvitationSchema.index({ expires: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 
 try {
   InvitationSchema.index({ teamId: 1 }, { background: true });
