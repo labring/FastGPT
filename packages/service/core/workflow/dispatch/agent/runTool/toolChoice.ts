@@ -276,7 +276,7 @@ export const runToolWithToolChoice = async (
       tools,
       tool_choice: 'auto',
       temperature,
-      max_tokens,
+      //max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
       response_format: aiChatResponseFormat,

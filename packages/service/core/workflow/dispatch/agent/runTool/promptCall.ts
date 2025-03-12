@@ -232,7 +232,7 @@ export const runToolWithPromptCall = async (
       stream,
       messages: requestMessages,
       temperature,
-      max_tokens,
+      //max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
       response_format: aiChatResponseFormat,

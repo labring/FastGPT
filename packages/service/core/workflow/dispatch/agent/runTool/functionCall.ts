@@ -219,7 +219,7 @@ export const runToolWithFunctionCall = async (
       function_call: 'auto',
 
       temperature,
-      max_tokens,
+      //max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
       response_format: aiChatResponseFormat,

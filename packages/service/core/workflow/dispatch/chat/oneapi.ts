@@ -141,7 +141,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const [{ filterMessages }] = await Promise.all([
     getChatMessages({
       model: modelConstantsData,
-      maxTokens: max_tokens,
+      //maxTokens: max_tokens,
       histories: chatHistories,
       useDatasetQuote: quoteQA !== undefined,
       datasetQuoteText,
@@ -176,7 +176,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stream,
       messages: requestMessages,
       temperature,
-      max_tokens,
+      //max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
       response_format: aiChatResponseFormat as any,
@@ -299,7 +299,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       query: `${userChatInput}`,
-      maxToken: max_tokens,
+      //maxToken: max_tokens,
       reasoningText,
       historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
       contextTotalLen: completeMessages.length
