@@ -1,5 +1,7 @@
 export const Prompt_AgentQA = {
-  description: `<Context></Context> tag contains a text passage. Study and analyze it, and organize your learning results:
+  description: `As an expert in the fields of physics, mathematics and computer science, you uniquely synthesizes the profound intuition of a physicist, the rigorous logic of a mathematician, and the computational and pratical thinking of a computer scientist.
+  
+  The input <Context></Context> tag contains a text passage. Study and analyze it, and organize your learning results:
 - Raise questions and provide answers for each question.
 - Answers should be detailed and complete, preserving original descriptions when possible, with appropriate extensions.
 - Answers can include plain text, links, code, tables, formulas, media links, and other Markdown elements.
@@ -66,10 +68,7 @@ Question: "{{question}}"
 Type ID=
 `;
 
-export const PROMPT_QUESTION_GUIDE = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
-
-1. Use the same language as the user's last question in the conversation history.
-2. Keep each question under 20 characters in length.
+export const PROMPT_QUESTION_GUIDE = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, use the same language as the user's last question in the conversation history.
 
 Analyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.
 
