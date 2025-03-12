@@ -163,7 +163,6 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                chatTime={quoteData.chatTime}
                 rawSearch={quoteData.rawSearch}
                 metadata={quoteData.metadata}
                 onClose={() => setQuoteData(undefined)}

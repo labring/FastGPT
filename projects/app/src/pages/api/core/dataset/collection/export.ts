@@ -1,9 +1,13 @@
 import { NextAPI } from '@/service/middleware/entry';
+import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -11,21 +15,69 @@ import { NextApiResponse } from 'next';
 
 export type ExportCollectionBody = {
   collectionId: string;
+
+  appId?: string;
+  chatId?: string;
+  chatItemDataId?: string;
   chatTime: Date;
-};
+} & OutLinkChatAuthProps;
 
 async function handler(req: ApiRequestProps<ExportCollectionBody, {}>, res: NextApiResponse) {
-  let { collectionId, chatTime } = req.body;
-
-  const { teamId, collection } = await authDatasetCollection({
-    req,
-    authToken: true,
+  const {
     collectionId,
-    per: ReadPermissionVal
-  });
+    appId,
+    chatId,
+    chatItemDataId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    chatTime
+  } = req.body;
+
+  const { collection, teamId: userTeamId } = await (async () => {
+    if (!appId || !chatId || !chatItemDataId) {
+      return authDatasetCollection({
+        req,
+        authToken: true,
+        authApiKey: true,
+        collectionId: req.body.collectionId,
+        per: ReadPermissionVal
+      });
+    }
+
+    /* 
+      1. auth chat read permission
+      2. auth collection quote in chat
+      3. auth outlink open show quote
+    */
+    const [authRes, collection] = await Promise.all([
+      authChatCrud({
+        req,
+        authToken: true,
+        appId,
+        chatId,
+        shareId,
+        outLinkUid,
+        teamId,
+        teamToken
+      }),
+      getCollectionWithDataset(collectionId),
+      authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
+    ]);
+
+    if (!authRes.showRawSource) {
+      return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+    }
+
+    return {
+      ...authRes,
+      collection
+    };
+  })();
 
   const where = {
-    teamId,
+    teamId: userTeamId,
     datasetId: collection.datasetId,
     collectionId,
     ...(chatTime

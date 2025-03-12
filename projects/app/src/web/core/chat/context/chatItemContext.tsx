@@ -9,6 +9,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppChatConfigType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type ContextProps = {
   showRouteToAppDetail: boolean;
@@ -32,19 +33,27 @@ type ChatBoxDataType = {
   };
 };
 
-export type metadataType = {
+export type GetQuoteDataBasicProps = {
+  appId: string;
+  chatId: string;
+  chatItemDataId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+};
+// 获取单个集合引用
+export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
   collectionId: string;
-  collectionIdList: string[];
-  chatItemId: string;
   sourceId: string;
   sourceName: string;
   datasetId: string;
 };
+export type GetAllQuoteDataProps = GetQuoteDataBasicProps & {
+  collectionIdList: string[];
+};
+export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
 
 export type QuoteDataType = {
   rawSearch: SearchDataResponseItemType[];
-  metadata: metadataType;
-  chatTime: Date;
+  metadata: GetQuoteProps;
 };
 
 type ChatItemContextType = {
