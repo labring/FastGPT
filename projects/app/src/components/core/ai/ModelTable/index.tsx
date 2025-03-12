@@ -212,7 +212,7 @@ const ModelTable = () => {
             w={'200px'}
             bg={'myGray.50'}
             value={provider}
-            onchange={setProvider}
+            onChange={setProvider}
             list={filterProviderList}
           />
         </HStack>
@@ -224,7 +224,7 @@ const ModelTable = () => {
             w={'150px'}
             bg={'myGray.50'}
             value={modelType}
-            onchange={setModelType}
+            onChange={setModelType}
             list={selectModelTypeList.current}
           />
         </HStack>

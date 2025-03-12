@@ -209,7 +209,7 @@ const InputTypeConfig = ({
                     (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
                   )}
                   value={valueType}
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setValue('valueType', e);
                   }}
                 />
@@ -346,7 +346,7 @@ const InputTypeConfig = ({
                       ? defaultValue
                       : ''
                   }
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setValue('defaultValue', e);
                   }}
                   w={'200px'}

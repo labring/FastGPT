@@ -186,7 +186,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 // }
               ]}
               value={inputType}
-              onchange={(e) => setInputType(e)}
+              onChange={(e) => setInputType(e)}
             />
 
             <Button

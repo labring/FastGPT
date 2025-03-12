@@ -213,7 +213,7 @@ export const ModelEditModal = ({
                   <Td textAlign={'right'}>
                     <MySelect
                       value={provider}
-                      onchange={(value) => setValue('provider', value)}
+                      onChange={(value) => setValue('provider', value)}
                       list={providerList.current}
                       {...InputStyles}
                     />

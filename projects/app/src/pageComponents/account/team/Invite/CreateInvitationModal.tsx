@@ -71,7 +71,7 @@ function CreateInvitationModal({ onClose }: { onClose: () => void }) {
             <MySelect
               list={expiresOptions}
               value={expires}
-              onchange={(val) => setValue('expires', val)}
+              onChange={(val) => setValue('expires', val)}
               minW="120px"
             />
           </>

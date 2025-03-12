@@ -289,7 +289,7 @@ const TemplateMarketModal = ({
           <MySelect<TemplateAppType>
             h={'8'}
             value={currentAppType}
-            onchange={(value) => {
+            onChange={(value) => {
               setCurrentAppType(value);
             }}
             bg={'myGray.100'}

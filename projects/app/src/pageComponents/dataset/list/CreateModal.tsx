@@ -205,7 +205,7 @@ const CreateModal = ({
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('vectorModel' as const, e);
               }}
             />
@@ -237,7 +237,7 @@ const CreateModal = ({
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('agentModel', e);
               }}
             />
@@ -269,7 +269,7 @@ const CreateModal = ({
                   label: item.name,
                   value: item.model
                 }))}
-                onchange={(e) => {
+                onChange={(e) => {
                   setValue('vlmModel', e);
                 }}
               />

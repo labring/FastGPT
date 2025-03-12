@@ -36,14 +36,12 @@ export async function getVectorsByText({ model, input, type, headers }: GetVecto
         model.requestUrl
           ? {
               path: model.requestUrl,
-              headers: model.requestAuth
-                ? {
-                    Authorization: `Bearer ${model.requestAuth}`,
-                    ...headers
-                  }
-                : headers
+              headers: {
+                ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
+                ...headers
+              }
             }
-          : {}
+          : { headers }
       )
       .then(async (res) => {
         if (!res.data) {

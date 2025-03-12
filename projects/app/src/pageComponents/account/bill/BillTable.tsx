@@ -111,7 +111,7 @@ const BillTable = () => {
                   list={billTypeList}
                   value={billType}
                   size={'sm'}
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setBillType(e);
                   }}
                   w={'130px'}

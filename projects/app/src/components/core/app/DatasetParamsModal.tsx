@@ -290,7 +290,7 @@ const DatasetParamsModal = ({
                       width={'100%'}
                       value={queryExtensionModel}
                       list={chatModelSelectList}
-                      onchange={(val: any) => {
+                      onChange={(val: any) => {
                         setValue('datasetSearchExtensionModel', val);
                       }}
                     />

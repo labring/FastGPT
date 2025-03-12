@@ -125,7 +125,7 @@ const QGConfigModal = ({
                       value: item.model,
                       label: item.name
                     }))}
-                    onchange={(e) => {
+                    onChange={(e) => {
                       onChange({
                         ...value,
                         model: e

@@ -61,7 +61,6 @@ export async function rewriteAppWorkflowToDetail({
     teamId: isRoot ? undefined : teamId,
     datasetIdList: Array.from(datasetIdSet)
   });
-
   const datasetMap = new Map(datasetList.map((ds) => [String(ds.datasetId), ds]));
 
   // Rewrite dataset ids, add dataset info to nodes
