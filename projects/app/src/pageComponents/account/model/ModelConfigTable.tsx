@@ -436,7 +436,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <MyIconButton
                           icon={'core/chat/sendLight'}
                           tip={t('account:model.test_model')}
-                          onClick={() => onTestModel(item.model)}
+                          onClick={() => onTestModel({ model: item.model })}
                         />
                         <MyIconButton
                           icon={'common/settingLight'}

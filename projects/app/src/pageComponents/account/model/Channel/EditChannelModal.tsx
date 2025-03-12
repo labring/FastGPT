@@ -333,6 +333,8 @@ const MultipleSelect = ({ value = [], list = [], onSelect }: SelectProps) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { copyData } = useCopyData();
 
+  const [search, setSearch] = useState('');
+
   const onclickItem = useCallback(
     (val: string) => {
       if (value.includes(val)) {
@@ -343,11 +345,10 @@ const MultipleSelect = ({ value = [], list = [], onSelect }: SelectProps) => {
           top: BoxRef.current.scrollHeight
         });
       }
+      setSearch('');
     },
     [value, onSelect]
   );
-
-  const [search, setSearch] = useState('');
 
   const filterUnSelected = useMemo(() => {
     return list
