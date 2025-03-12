@@ -113,7 +113,7 @@ services:
 
   # AI Proxy
   aiproxy:
-    image: 'ghcr.io/labring/sealos-aiproxy-service:latest'
+    image: 'ghcr.io/labring/aiproxy:latest'
     container_name: aiproxy
     restart: unless-stopped
     depends_on:
@@ -129,7 +129,7 @@ services:
       # 数据库连接地址
       - SQL_DSN=postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
       # 最大重试次数
-      - RetryTimes=3
+      - RETRY_TIMES=3
       # 不需要计费
       - BILLING_ENABLED=false
       # 不需要严格检测模型
