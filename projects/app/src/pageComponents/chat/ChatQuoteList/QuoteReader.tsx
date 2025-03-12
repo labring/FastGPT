@@ -22,10 +22,14 @@ const QuoteReader = ({
 }) => {
   const { t } = useTranslation();
 
+  const filterRawSearch = useMemo(() => {
+    return rawSearch.filter((item) => metadata.collectionIdList.includes(item.collectionId));
+  }, [rawSearch, metadata.collectionIdList]);
+
   const { data: quoteList, loading } = useRequest2(
     async () =>
       await getQuoteDataList({
-        datasetDataIdList: rawSearch.map((item) => item.id),
+        datasetDataIdList: filterRawSearch.map((item) => item.id),
         collectionIdList: metadata.collectionIdList,
         chatItemDataId: metadata.chatItemDataId,
         appId: metadata.appId,
@@ -33,12 +37,13 @@ const QuoteReader = ({
         ...metadata.outLinkAuthData
       }),
     {
+      refreshDeps: [metadata, filterRawSearch],
       manual: false
     }
   );
 
   const formatedDataList = useMemo(() => {
-    return rawSearch
+    return filterRawSearch
       .map((searchItem) => {
         const dataItem = quoteList?.find((item) => item._id === searchItem.id);
 
@@ -57,7 +62,7 @@ const QuoteReader = ({
       .sort((a, b) => {
         return (b.score.primaryScore?.value || 0) - (a.score.primaryScore?.value || 0);
       });
-  }, [quoteList, rawSearch]);
+  }, [quoteList, filterRawSearch]);
 
   return (
     <Flex flexDirection={'column'} h={'full'}>
@@ -71,16 +76,48 @@ const QuoteReader = ({
       >
         <Box flex={1} py={4}>
           <Flex gap={2} mr={2} mb={1}>
-            <MyIcon name={'core/chat/quoteFill'} w={['1rem', '1.25rem']} color={'primary.600'} />
-            <Box
-              maxW={['200px', '300px']}
-              className={'textEllipsis'}
-              wordBreak={'break-all'}
-              color={'myGray.900'}
-              fontWeight={'medium'}
-            >
-              {t('common:core.chat.Quote Amount', { amount: rawSearch.length })}
-            </Box>
+            {metadata.sourceId ? (
+              <>
+                <MyIcon
+                  name={
+                    getSourceNameIcon({
+                      sourceId: metadata.sourceId,
+                      sourceName: metadata.sourceName || ''
+                    }) as any
+                  }
+                  w={['1rem', '1.25rem']}
+                  color={'primary.600'}
+                />
+                <Box
+                  ml={1}
+                  maxW={['200px', '220px']}
+                  className={'textEllipsis'}
+                  wordBreak={'break-all'}
+                  fontSize={'sm'}
+                  color={'myGray.900'}
+                  fontWeight={'medium'}
+                >
+                  {metadata.sourceName || t('common:common.UnKnow Source')}
+                </Box>
+              </>
+            ) : (
+              <>
+                <MyIcon
+                  name={'core/chat/quoteFill'}
+                  w={['1rem', '1.25rem']}
+                  color={'primary.600'}
+                />
+                <Box
+                  maxW={['200px', '300px']}
+                  className={'textEllipsis'}
+                  wordBreak={'break-all'}
+                  color={'myGray.900'}
+                  fontWeight={'medium'}
+                >
+                  {t('common:core.chat.Quote Amount', { amount: filterRawSearch.length })}
+                </Box>
+              </>
+            )}
           </Flex>
           <Box fontSize={'mini'} color={'myGray.500'}>
             {t('common:core.chat.quote.Quote Tip')}
