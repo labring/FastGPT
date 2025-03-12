@@ -23,7 +23,7 @@ export type InvitationLinkExpiresType = '30m' | '7d' | '1y';
 export type InvitationLinkCreateType = {
   description: string;
   expires: InvitationLinkExpiresType;
-  usedTimesLimit: number;
+  usedTimesLimit: 1 | -1;
 };
 export type InvitationLinkUpdateType = Partial<
   Omit<InvitationSchemaType, 'members' | 'teamId' | '_id'>
