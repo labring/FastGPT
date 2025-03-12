@@ -1,7 +1,7 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { getRootUser } from '@test/datas/users';
-import { Call } from '@test/utils/request';
+import { getRootUser } from '../../../../../../../../test/datas/users';
+import { Call } from '../../../../../../../../test/utils/request';
 import { describe, expect, it } from 'vitest';
 import handler, { type versionListBody, type versionListResponse } from './list';
 
