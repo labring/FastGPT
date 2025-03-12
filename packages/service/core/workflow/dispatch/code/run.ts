@@ -6,7 +6,7 @@ import { formatHttpError } from '../utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 type RunCodeType = ModuleDispatchProps<{
-  [NodeInputKeyEnum.codeType]: 'js';
+  [NodeInputKeyEnum.codeType]: string;
   [NodeInputKeyEnum.code]: string;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 }>;
@@ -16,18 +16,34 @@ type RunCodeResponse = DispatchNodeResultType<{
   [key: string]: any;
 }>;
 
+function getURL(codeType: string): string {
+  let url: string;
+  switch (codeType) {
+    case 'py':
+      url = 'http://127.0.0.1:9985/python_code';
+      break;
+    case 'js':
+      url = `${process.env.SANDBOX_URL}/sandbox/js`;
+      break;
+    default:
+      url = `${process.env.SANDBOX_URL}/sandbox/js`;
+      break;
+  }
+  return url;
+}
+
 export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
-  if (!process.env.SANDBOX_URL) {
+  if (codeType != 'js' && !process.env.SANDBOX_URL) {
     return {
       [NodeOutputKeyEnum.error]: 'Can not find SANDBOX_URL in env'
     };
   }
 
-  const sandBoxRequestUrl = `${process.env.SANDBOX_URL}/sandbox/js`;
+  const sandBoxRequestUrl = getURL(codeType);
   try {
     const { data: runResult } = await axios.post<{
       success: boolean;
@@ -41,6 +57,9 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
     });
 
     if (runResult.success) {
+      if (codeType == 'py') {
+        runResult.data.codeReturn = JSON.parse(runResult.data.codeReturn.toLocaleString());
+      }
       return {
         [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
