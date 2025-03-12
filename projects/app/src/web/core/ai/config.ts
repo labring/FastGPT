@@ -5,6 +5,7 @@ import type { deleteQuery } from '@/pages/api/core/ai/model/delete';
 import type { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import type { updateWithJsonBody } from '@/pages/api/core/ai/model/updateWithJson';
 import type { updateDefaultBody } from '@/pages/api/core/ai/model/updateDefault';
+import type { testQuery } from '@/pages/api/core/ai/model/test';
 
 export const getSystemModelList = () => GET<listResponse>('/core/ai/model/list');
 export const getSystemModelDetail = (model: string) =>
@@ -21,7 +22,7 @@ export const getModelConfigJson = () => GET<string>('/core/ai/model/getConfigJso
 export const putUpdateWithJson = (data: updateWithJsonBody) =>
   PUT('/core/ai/model/updateWithJson', data);
 
-export const getTestModel = (model: String) => GET('/core/ai/model/test', { model });
+export const getTestModel = (data: testQuery) => GET('/core/ai/model/test', data);
 
 export const putUpdateDefaultModels = (data: updateDefaultBody) =>
   PUT('/core/ai/model/updateDefault', data);

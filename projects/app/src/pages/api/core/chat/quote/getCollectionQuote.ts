@@ -52,7 +52,7 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  const [{ chat }, { chatItem }] = await Promise.all([
+  const [{ chat, showRawSource }, { chatItem }] = await Promise.all([
     authChatCrud({
       req,
       authToken: true,
@@ -65,6 +65,9 @@ async function handler(
     }),
     authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
   ]);
+  if (!showRawSource) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
   if (!chat) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const baseMatch: BaseMatchType = {

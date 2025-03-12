@@ -48,6 +48,8 @@ export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
 };
 export type GetAllQuoteDataProps = GetQuoteDataBasicProps & {
   collectionIdList: string[];
+  sourceId?: string;
+  sourceName?: string;
 };
 export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
 

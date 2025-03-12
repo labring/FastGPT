@@ -35,9 +35,11 @@ const CollectionReader = ({
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
+
   const { collectionId, datasetId, chatItemDataId, sourceId, sourceName } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
 
+  // Get dataset permission
   const { data: permissionData, loading: isPermissionLoading } = useRequest2(
     async () => await getDatasetDataPermission(datasetId),
     {
@@ -56,6 +58,7 @@ const CollectionReader = ({
 
   const currentQuoteItem = filterResults[quoteIndex];
 
+  // Get quote list
   const {
     dataList: datasetDataList,
     setDataList: setDatasetDataList,
