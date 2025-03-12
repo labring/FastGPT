@@ -188,7 +188,7 @@ export const useAudioPlay = (
       };
 
       return new Promise<{ buffer?: Uint8Array }>(async (resolve, reject) => {
-        text = text.replace(/\\n/g, '\n');
+        text = text.replace(/\\n\W/g, '\n');
         try {
           // stop last audio
           cancelAudio();
