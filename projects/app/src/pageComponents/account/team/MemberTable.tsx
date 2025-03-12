@@ -41,7 +41,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useState } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 
-const InviteModal = dynamic(() => import('./InviteModal'));
+const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
@@ -236,7 +236,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <Th borderLeftRadius="6px" bgColor="myGray.100">
                     {t('account_team:user_name')}
                   </Th>
-                  <Th bgColor="myGray.100">{t('account_team:contact')}</Th>
+                  <Th bgColor="myGray.100">{t('common:contact_way')}</Th>
                   <Th bgColor="myGray.100">{t('account_team:org')}</Th>
                   <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
                   <Th borderRightRadius="6px" bgColor="myGray.100">
