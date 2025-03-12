@@ -40,7 +40,7 @@ export async function createQuestionGuide({
       {
         model,
         temperature: 0.1,
-        max_tokens: 200,
+        //max_tokens: 200,
         messages: requestMessages,
         stream: false
       },
