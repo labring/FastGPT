@@ -1,9 +1,9 @@
 import React from 'react';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext, GetQuoteProps } from '@/web/core/chat/context/chatItemContext';
 import CollectionQuoteReader from './CollectionQuoteReader';
 import QuoteReader from './QuoteReader';
+import { useContextSelector } from 'use-context-selector';
 
 const ChatQuoteList = ({
   rawSearch = [],
@@ -18,7 +18,7 @@ const ChatQuoteList = ({
 
   return (
     <>
-      {'collectionId' in metadata && isShowReadRawSource && (
+      {'collectionId' in metadata && (
         <CollectionQuoteReader rawSearch={rawSearch} metadata={metadata} onClose={onClose} />
       )}
       {'collectionIdList' in metadata && (

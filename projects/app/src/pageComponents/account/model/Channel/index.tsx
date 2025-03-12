@@ -74,7 +74,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   });
 
-  const [testModels, setTestModels] = useState<string[]>();
+  const [modelTestData, setTestModelData] = useState<{ channelId: number; models: string[] }>();
 
   const isLoading =
     loadingChannelList ||
@@ -165,7 +165,11 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               {
                                 icon: 'core/chat/sendLight',
                                 label: t('account_model:model_test'),
-                                onClick: () => setTestModels(item.models)
+                                onClick: () =>
+                                  setTestModelData({
+                                    channelId: item.id,
+                                    models: item.models
+                                  })
                               },
                               ...(item.status === ChannelStatusEnum.ChannelStatusEnabled
                                 ? [
@@ -222,7 +226,9 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           onSuccess={refreshChannelList}
         />
       )}
-      {!!testModels && <ModelTest models={testModels} onClose={() => setTestModels(undefined)} />}
+      {!!modelTestData && (
+        <ModelTest {...modelTestData} onClose={() => setTestModelData(undefined)} />
+      )}
     </>
   );
 };
