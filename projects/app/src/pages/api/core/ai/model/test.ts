@@ -132,14 +132,12 @@ const testTTSModel = async (model: TTSModelType, headers: Record<string, string>
     model.requestUrl
       ? {
           path: model.requestUrl,
-          headers: model.requestAuth
-            ? {
-                Authorization: `Bearer ${model.requestAuth}`,
-                ...headers
-              }
-            : headers
+          headers: {
+            ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
+            ...headers
+          }
         }
-      : {}
+      : { headers }
   );
 };
 

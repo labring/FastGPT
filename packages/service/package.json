@@ -9,7 +9,7 @@
     "axios": "^1.8.2",
     "chalk": "^5.3.0",
     "cheerio": "1.0.0-rc.12",
-    "cookie": "^0.5.0",
+    "cookie": "^0.7.1",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "decompress": "^4.2.1",

@@ -130,7 +130,7 @@ const UsageTable = () => {
                 { label: t('account_usage:every_month'), value: 'month' }
               ]}
               value={unit}
-              onchange={setUnit}
+              onChange={setUnit}
             />
           )} */}
         </Flex>

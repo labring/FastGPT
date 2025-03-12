@@ -1,27 +1,35 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 interface Props extends BoxProps {
-  isFolded?: boolean;
-  onFoldChange?: (isFolded: boolean) => void;
+  externalTrigger?: Boolean;
 }
 
 const SideBar = (e?: Props) => {
   const {
     w = ['100%', '0 0 250px', '0 0 250px', '0 0 270px', '0 0 290px'],
     children,
-    isFolded = false,
-    onFoldChange,
+    externalTrigger,
     ...props
   } = e || {};
 
-  const handleToggle = () => {
-    if (onFoldChange) {
-      onFoldChange(!isFolded);
+  const [isFolded, setIsFolded] = useState(false);
+
+  // 保存上一次折叠状态
+  const preFoledStatus = useRef<Boolean>(false);
+
+  useEffect(() => {
+    if (externalTrigger) {
+      setIsFolded(true);
+      preFoledStatus.current = isFolded;
+    } else {
+      // @ts-ignore
+      setIsFolded(preFoledStatus.current);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalTrigger]);
 
   return (
     <Box
@@ -58,7 +66,7 @@ const SideBar = (e?: Props) => {
               visibility: 'hidden',
               opacity: 0
             })}
-        onClick={handleToggle}
+        onClick={() => setIsFolded(!isFolded)}
       >
         <MyIcon
           name={'common/backLight'}

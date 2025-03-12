@@ -162,7 +162,7 @@ const RenderPluginInput = ({
     }
     if (inputType === FlowNodeInputTypeEnum.select && input.list) {
       return (
-        <MySelect list={input.list} value={value} onchange={onChange} isDisabled={isDisabled} />
+        <MySelect list={input.list} value={value} onChange={onChange} isDisabled={isDisabled} />
       );
     }
     if (inputType === FlowNodeInputTypeEnum.fileSelect) {
@@ -179,7 +179,7 @@ const RenderPluginInput = ({
             value: item.model,
             label: item.name
           }))}
-          onchange={onChange}
+          onChange={onChange}
         />
       );
     }
