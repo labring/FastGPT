@@ -221,6 +221,7 @@ export async function updateData2Dataset({
   }
 
   // 4. Update mongo updateTime(便于脏数据检查器识别)
+  const updateTime = mongoData.updateTime;
   mongoData.updateTime = new Date();
   await mongoData.save();
 
@@ -258,7 +259,7 @@ export async function updateData2Dataset({
             {
               q: mongoData.q,
               a: mongoData.a,
-              updateTime: new Date()
+              updateTime: updateTime
             },
             ...(mongoData.history?.slice(0, 9) || [])
           ]

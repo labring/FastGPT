@@ -211,7 +211,7 @@ export function useLinkedScroll<
   // 初始加载
   useEffect(() => {
     if (canLoadData) {
-      // 重置初始滚动状态
+      setInitialLoadDone(false);
       hasScrolledToInitial.current = false;
 
       loadData({
@@ -225,10 +225,10 @@ export function useLinkedScroll<
   // 监听初始加载完成，执行初始滚动
   useEffect(() => {
     if (initialLoadDone && dataList.length > 0 && !hasScrolledToInitial.current) {
-      hasScrolledToInitial.current = true;
       const foundIndex = dataList.findIndex((item) => item._id === initialId);
 
       if (foundIndex >= 0) {
+        hasScrolledToInitial.current = true;
         setTimeout(() => {
           scrollToItem(foundIndex);
         }, 200);
@@ -299,7 +299,6 @@ export function useLinkedScroll<
     setDataList,
     isLoading,
     loadData,
-    initialLoadDone,
     ScrollData,
     itemRefs,
     scrollToItem
