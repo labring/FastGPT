@@ -48,84 +48,81 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
     desc: '',
-    value: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+    value: `Use the contents of the <Reference></Reference> tag as the reference for this conversation:
 
 <Reference>
 {{quote}}
 </Reference>
 
-回答要求：
-- 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 <Reference></Reference> 获取的知识。
-- 保持答案与 <Reference></Reference> 中描述的一致。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。
+Answer requirements:
+- If you are not clear about the answer, you need to clarify.
+- Avoid mentioning knowledge that you obtained from <Reference></Reference>.
+- Keep your answer as described in <Reference></Reference>.
+- Answer in the same language as the question.
 
-问题:"""{{question}}"""`
+Question:"""{{question}}"""`
   },
   {
     title: i18nT('app:template.qa_template'),
     desc: '',
-    value: `使用 <QA></QA> 标记中的问答对进行回答。
+    value: `Answer using the question and answer pairs in the <QA></QA> tag.
 
 <QA>
 {{quote}}
 </QA>
 
-回答要求：
-- 选择其中一个或多个问答对进行回答。
-- 回答的内容应尽可能与 <答案></答案> 中的内容一致。
-- 如果没有相关的问答对，你需要澄清。
-- 避免提及你是从 QA 获取的知识，只需要回复答案。
+Answer requirements:
+- Select one or more of the Q&A pairs to answer.
+- The answer should be as close as possible to what is in <Answer></Answer>.
+- If there are no relevant Q&A pairs, you need to clarify.
+- Avoid mentioning the knowledge you gained from QA, just reply to the answer.
 
-问题:"""{{question}}"""`
+Question:"""{{question}}"""`
   },
   {
     title: i18nT('app:template.standard_strict'),
     desc: '',
-    value: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+    value: `Forget what you already know and use only what's in the <Reference></Reference> tag as a reference for this conversation:
 
 <Reference>
 {{quote}}
 </Reference>
 
-思考流程：
-1. 判断问题是否与 <Reference></Reference> 标记中的内容有关。
-2. 如果有关，你按下面的要求回答。
-3. 如果无关，你直接拒绝回答本次问题。
+Thought Flow:
+1. Determine if the question is related to the content in the <Reference></Reference> tag.
+2. If it is relevant, you answer as follows.
+3. If it is not relevant, you simply refuse to answer the question.
 
-回答要求：
-- 避免提及你是从 <Reference></Reference> 获取的知识。
-- 保持答案与 <Reference></Reference> 中描述的一致。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。
+Answer requirements:
+- Avoid mentioning knowledge that you obtained from <Reference></Reference>.
+- Keep your answer as described in <Reference></Reference>.
+- Answer in the same language as the question.
 
-问题:"""{{question}}"""`
+Question:"""{{question}}"""`
   },
   {
     title: i18nT('app:template.hard_strict'),
     desc: '',
-    value: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+    value: `Forget what you already know and answer using only the Q&A pairs in the <QA></QA> tags.
 
 <QA>
 {{quote}}
 </QA>
 
-思考流程：
-1. 判断问题是否与 <QA></QA> 标记中的内容有关。
-2. 如果无关，你直接拒绝回答本次问题。
-3. 判断是否有相近或相同的问题。
-4. 如果有相同的问题，直接输出对应答案。
-5. 如果只有相近的问题，请把相近的问题和答案一起输出。
+Thought Flow:
+1. Determine if the problem is related to the contents of the <QA></QA> tag.
+2. If it is not relevant, you directly refuse to answer this question.
+3. Determine whether there are similar or identical issues.
+4. If there is an identical question, directly output the corresponding answer.
+5. If there are only similar questions, output the similar questions and answers together.
 
-回答要求：
-- 如果没有相关的问答对，你需要澄清。
-- 回答的内容应尽可能与 <QA></QA> 标记中的内容一致。
-- 避免提及你是从 QA 获取的知识，只需要回复答案。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。
+Answer requirements:
+- If there is no relevant Q&A pair, you need to clarify.
+- The content of the response should be as consistent as possible with the content in the <QA></QA> tag.
+- Avoid mentioning the knowledge you obtained from QA and just reply with the answer.
+- Answer in the same language as the question.
 
-问题:"""{{question}}"""`
+Question:"""{{question}}"""`
   }
 ];
 
@@ -133,81 +130,78 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
     desc: '',
-    value: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+    value: `Use the contents of the <Reference></Reference> tag as a reference for this conversation:
 
 <Reference>
 {{quote}}
 </Reference>
 
-回答要求：
-- 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 <Reference></Reference> 获取的知识。
-- 保持答案与 <Reference></Reference> 中描述的一致。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。`
+Answer requirements:
+- If you're not sure of the answer, you need to clarify.
+- Avoid mentioning knowledge that you obtained from <Reference></Reference>.
+- Keep your answer as described in <Reference></Reference>.
+- Answer in the same language as the question.`
   },
   {
     title: i18nT('app:template.qa_template'),
     desc: '',
-    value: `使用 <QA></QA> 标记中的问答对进行回答。
+    value: `Use the Q&A pairs in the <QA></QA> tags to answer.
 
 <QA>
 {{quote}}
 </QA>
 
-回答要求：
-- 选择其中一个或多个问答对进行回答。
-- 回答的内容应尽可能与 <答案></答案> 中的内容一致。
-- 如果没有相关的问答对，你需要澄清。
-- 避免提及你是从 QA 获取的知识，只需要回复答案。`
+Answer requirements:
+- Choose one or more of the Q&A pairs to answer.
+- Answers should be as consistent as possible with those in <answer></answer>.
+- If there is no relevant Q&A pair, you need to clarify.
+- Avoid mentioning the knowledge you obtained from QA and just reply with the answer.`
   },
   {
     title: i18nT('app:template.standard_strict'),
     desc: '',
-    value: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+    value: `Forget what you already know and use only what is in the <Reference></Reference> tags as a reference for this conversation:
 
 <Reference>
 {{quote}}
 </Reference>
 
-思考流程：
-1. 判断问题是否与 <Reference></Reference> 标记中的内容有关。
-2. 如果有关，你按下面的要求回答。
-3. 如果无关，你直接拒绝回答本次问题。
+Thought Flow:
+1. Determine whether the problem is related to the contents of the <Reference></Reference> tag.
+2. If relevant, you answer as requested below.
+3. If not relevant, you simply decline to answer this question.
 
-回答要求：
-- 避免提及你是从 <Reference></Reference> 获取的知识。
-- 保持答案与 <Reference></Reference> 中描述的一致。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。`
+Answer requirements:
+- Avoid mentioning knowledge that you obtained from <Reference></Reference>.
+- Keep your answer as described in <Reference></Reference>.
+- Answer in the same language as the question.`
   },
   {
     title: i18nT('app:template.hard_strict'),
     desc: '',
-    value: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+    value: `Forget what you already know and answer using only the Q&A pairs in the <QA></QA> tags.
 
 <QA>
 {{quote}}
 </QA>
 
-思考流程：
-1. 判断问题是否与 <QA></QA> 标记中的内容有关。
-2. 如果无关，你直接拒绝回答本次问题。
-3. 判断是否有相近或相同的问题。
-4. 如果有相同的问题，直接输出对应答案。
-5. 如果只有相近的问题，请把相近的问题和答案一起输出。
+Thought Flow:
+1. Determine if the problem is related to the contents of the <QA></QA> tag.
+2. If it is not relevant, you directly refuse to answer this question.
+3. Determine whether there are similar or identical issues.
+4. If there is an identical question, directly output the corresponding answer.
+5. If there are only similar questions, output the similar questions and answers together.
 
-回答要求：
-- 如果没有相关的问答对，你需要澄清。
-- 回答的内容应尽可能与 <QA></QA> 标记中的内容一致。
-- 避免提及你是从 QA 获取的知识，只需要回复答案。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。`
+Answer requirements:
+- If there is no relevant Q&A pair, you need to clarify.
+- The content of the response should be as consistent as possible with the content in the <QA></QA> tag.
+- Avoid mentioning the knowledge you obtained from QA and just reply with the answer.
+- Answer in the same language as the question.`
   }
 ];
 
 // Document quote prompt
-export const Prompt_DocumentQuote = `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
+export const Prompt_DocumentQuote = `Use the contents of <FilesContent></FilesContent> as a reference for this conversation:
 <FilesContent>
 {{quote}}
 </FilesContent>
