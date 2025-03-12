@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack } from '@chakra-ui/react';
+import { Box, Flex, HStack } from '@chakra-ui/react';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -8,41 +8,34 @@ import DownloadButton from './DownloadButton';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getCollectionSource, getDatasetDataPermission } from '@/web/core/dataset/api';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getDatasetDataPermission } from '@/web/core/dataset/api';
 import ScoreTag from './ScoreTag';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import CollectionQuoteItem from './CollectionQuoteItem';
-import { DatasetDataListItemType } from '@/global/core/dataset/type';
-import { metadataType } from '@/web/core/chat/context/chatItemContext';
+import { GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getCollectionQuote } from '@/web/core/chat/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
+import { QuoteDataItemType } from '@/service/core/chat/constants';
 
 const CollectionReader = ({
   rawSearch,
   metadata,
-  chatTime,
   onClose
 }: {
   rawSearch: SearchDataResponseItemType[];
-  metadata: metadataType;
-  chatTime: Date;
+  metadata: GetCollectionQuoteDataProps;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { toast } = useToast();
-  const { chatId, appId, outLinkAuthData } = useChatStore();
   const { userInfo } = useUserStore();
-  const { collectionId, datasetId, chatItemId, sourceId, sourceName } = metadata;
+  const { collectionId, datasetId, chatItemDataId, sourceId, sourceName } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   const { data: permissionData, loading: isPermissionLoading } = useRequest2(
@@ -75,11 +68,10 @@ const CollectionReader = ({
     refreshDeps: [collectionId],
     params: {
       collectionId,
-      chatTime,
-      chatItemId,
-      chatId,
-      appId,
-      ...outLinkAuthData
+      chatItemDataId,
+      chatId: metadata.chatId,
+      appId: metadata.appId,
+      ...metadata.outLinkAuthData
     },
     initialId: currentQuoteItem?.id,
     initialIndex: currentQuoteItem?.chunkIndex,
@@ -87,11 +79,14 @@ const CollectionReader = ({
   });
 
   const loading = isLoading || isPermissionLoading;
-  const isDeleted = !datasetDataList.find((item) => item._id === currentQuoteItem?.id);
+  const isDeleted = useMemo(
+    () => !datasetDataList.find((item) => item._id === currentQuoteItem?.id),
+    [datasetDataList, currentQuoteItem?.id]
+  );
 
   const formatedDataList = useMemo(
     () =>
-      datasetDataList.map((item: DatasetDataListItemType) => {
+      datasetDataList.map((item: QuoteDataItemType) => {
         const isCurrentSelected = currentQuoteItem?.id === item._id;
         const quoteIndex = filterResults.findIndex((res) => res.id === item._id);
 
@@ -115,17 +110,12 @@ const CollectionReader = ({
       filename: 'data.csv',
       body: {
         collectionId: collectionId,
-        chatTime: chatTime,
-        chatItemId: chatItemId
+        chatItemDataId
       }
     });
   });
 
-  const handleRead = getCollectionSourceAndOpen({
-    appId,
-    chatId,
-    ...metadata
-  });
+  const handleRead = getCollectionSourceAndOpen(metadata);
 
   const handleNavigate = useCallback(
     async (targetIndex: number) => {
