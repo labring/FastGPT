@@ -243,7 +243,7 @@ const QuoteItem = ({
               color={'primary.500'}
               href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}
             >
-              {t('common:core.dataset.Go Dataset')}
+              {t('chat:to_dataset')}
               <MyIcon name={'common/rightArrowLight'} w={'10px'} />
             </Link>
           )}

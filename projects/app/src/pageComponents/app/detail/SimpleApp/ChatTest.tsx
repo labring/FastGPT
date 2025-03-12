@@ -88,7 +88,6 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
       {quoteData && (
         <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
           <ChatQuoteList
-            chatTime={quoteData.chatTime}
             rawSearch={quoteData.rawSearch}
             metadata={quoteData.metadata}
             onClose={() => setQuoteData(undefined)}

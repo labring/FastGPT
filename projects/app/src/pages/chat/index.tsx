@@ -231,7 +231,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {quoteData && (
         <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
           <ChatQuoteList
-            chatTime={quoteData.chatTime}
             rawSearch={quoteData.rawSearch}
             metadata={quoteData.metadata}
             onClose={() => setQuoteData(undefined)}

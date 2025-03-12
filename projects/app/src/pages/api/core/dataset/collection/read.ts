@@ -19,7 +19,7 @@ export type readCollectionSourceBody = {
 
   appId?: string;
   chatId?: string;
-  chatItemId?: string;
+  chatItemDataId?: string;
 } & OutLinkChatAuthProps;
 
 export type readCollectionSourceResponse = {
@@ -30,7 +30,7 @@ export type readCollectionSourceResponse = {
 async function handler(
   req: ApiRequestProps<readCollectionSourceBody, readCollectionSourceQuery>
 ): Promise<readCollectionSourceResponse> {
-  const { collectionId, appId, chatId, chatItemId, shareId, outLinkUid, teamId, teamToken } =
+  const { collectionId, appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken } =
     req.body;
 
   const {
@@ -39,7 +39,7 @@ async function handler(
     tmbId: uid,
     authType
   } = await (async () => {
-    if (!appId || !chatId || !chatItemId) {
+    if (!appId || !chatId || !chatItemDataId) {
       return authDatasetCollection({
         req,
         authToken: true,
@@ -66,7 +66,7 @@ async function handler(
         teamToken
       }),
       getCollectionWithDataset(collectionId),
-      authCollectionInChat({ appId, chatId, chatItemId, collectionId })
+      authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
     ]);
 
     if (!authRes.showRawSource) {

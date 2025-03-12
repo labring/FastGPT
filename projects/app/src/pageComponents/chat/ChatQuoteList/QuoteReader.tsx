@@ -4,75 +4,60 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import QuoteItem from './QuoteItem';
 import { useMemo } from 'react';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
-import { metadataType } from '@/web/core/chat/context/chatItemContext';
+import { GetAllQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { getQuoteDataList } from '@/web/core/chat/api';
 
 const QuoteReader = ({
   rawSearch,
   metadata,
-  chatTime,
   onClose
 }: {
   rawSearch: SearchDataResponseItemType[];
-  metadata: metadataType;
-  chatTime: Date;
+  metadata: GetAllQuoteDataProps;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
 
-  const { chatId, appId, outLinkAuthData } = useChatStore();
-
-  const { data, loading } = useRequest2(
+  const { data: quoteList, loading } = useRequest2(
     async () =>
       await getQuoteDataList({
         datasetDataIdList: rawSearch.map((item) => item.id),
-        chatTime,
         collectionIdList: metadata.collectionIdList,
-        chatItemId: metadata.chatItemId,
-        appId,
-        chatId,
-        ...outLinkAuthData
+        chatItemDataId: metadata.chatItemDataId,
+        appId: metadata.appId,
+        chatId: metadata.chatId,
+        ...metadata.outLinkAuthData
       }),
     {
       manual: false
     }
   );
 
-  const filterResults = useMemo(() => {
-    if (!metadata.collectionId) {
-      return rawSearch;
-    }
-
-    return rawSearch.filter(
-      (item) => item.collectionId === metadata.collectionId && item.sourceId === metadata.sourceId
-    );
-  }, [metadata, rawSearch]);
-
   const formatedDataList = useMemo(() => {
-    return filterResults
-      .map((item) => {
-        const currentFilterItem = data?.quoteList.find((res) => res._id === item.id);
+    return rawSearch
+      .map((searchItem) => {
+        const dataItem = quoteList?.find((item) => item._id === searchItem.id);
 
         return {
-          ...item,
-          q: currentFilterItem?.q || '',
-          a: currentFilterItem?.a || '',
-          score: formatScore(item.score),
+          id: searchItem.id,
+          q: dataItem?.q || 'Can not find Data',
+          a: dataItem?.a || '',
+          score: formatScore(searchItem.score),
+          sourceName: searchItem?.sourceName || '',
           icon: getSourceNameIcon({
-            sourceId: item.sourceId,
-            sourceName: item.sourceName
+            sourceId: searchItem.sourceId,
+            sourceName: searchItem.sourceName
           })
         };
       })
       .sort((a, b) => {
         return (b.score.primaryScore?.value || 0) - (a.score.primaryScore?.value || 0);
       });
-  }, [data?.quoteList, filterResults]);
+  }, [quoteList, rawSearch]);
 
   return (
     <Flex flexDirection={'column'} h={'full'}>
@@ -86,18 +71,7 @@ const QuoteReader = ({
       >
         <Box flex={1} py={4}>
           <Flex gap={2} mr={2} mb={1}>
-            <MyIcon
-              name={
-                metadata.sourceId && metadata.sourceName
-                  ? (getSourceNameIcon({
-                      sourceId: metadata.sourceId,
-                      sourceName: metadata.sourceName
-                    }) as any)
-                  : 'core/chat/quoteFill'
-              }
-              w={['1rem', '1.25rem']}
-              color={'primary.600'}
-            />
+            <MyIcon name={'core/chat/quoteFill'} w={['1rem', '1.25rem']} color={'primary.600'} />
             <Box
               maxW={['200px', '300px']}
               className={'textEllipsis'}
@@ -105,9 +79,7 @@ const QuoteReader = ({
               color={'myGray.900'}
               fontWeight={'medium'}
             >
-              {metadata.sourceName
-                ? metadata.sourceName
-                : t('common:core.chat.Quote Amount', { amount: rawSearch.length })}
+              {t('common:core.chat.Quote Amount', { amount: rawSearch.length })}
             </Box>
           </Flex>
           <Box fontSize={'mini'} color={'myGray.500'}>

@@ -5,25 +5,25 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
 import { FilterQuery, Types } from 'mongoose';
-import { dataFieldSelector, processChatTimeFilter } from './getQuote';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { quoteDataFieldSelector, QuoteDataItemType } from '@/service/core/chat/constants';
+import { processChatTimeFilter } from '@/service/core/chat/utils';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
-  chatTime: Date;
+  chatId: string;
+  chatItemDataId: string;
 
   isInitialLoad: boolean;
   collectionId: string;
-  chatItemId: string;
+
   appId: string;
-  chatId: string;
   shareId?: string;
   outLinkUid?: string;
   teamId?: string;
   teamToken?: string;
 };
 
-export type GetCollectionQuoteRes = LinkedListResponse<DatasetDataSchemaType>;
+export type GetCollectionQuoteRes = LinkedListResponse<QuoteDataItemType>;
 
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
@@ -37,11 +37,10 @@ async function handler(
     prevIndex,
     nextId,
     nextIndex,
-    chatTime,
     isInitialLoad,
 
     collectionId,
-    chatItemId,
+    chatItemDataId,
     appId,
     chatId,
     shareId,
@@ -53,61 +52,50 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  try {
-    await authDatasetCollection({
+  const [{ chat }, { chatItem }] = await Promise.all([
+    authChatCrud({
       req,
       authToken: true,
-      authApiKey: true,
-      collectionId: req.body.collectionId,
-      per: ReadPermissionVal
-    });
-  } catch (error) {
-    await Promise.all([
-      authChatCrud({
-        req,
-        authToken: true,
-        appId,
-        chatId,
-        shareId,
-        outLinkUid,
-        teamId,
-        teamToken
-      }),
-      authCollectionInChat({ appId, chatId, chatItemId, collectionId })
-    ]);
-  }
+      appId,
+      chatId,
+      shareId,
+      outLinkUid,
+      teamId,
+      teamToken
+    }),
+    authCollectionInChat({ appId, chatId, chatItemDataId, collectionIds: [collectionId] })
+  ]);
+  if (!chat) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const baseMatch: BaseMatchType = {
     collectionId,
     $or: [
-      { updateTime: { $lt: new Date(chatTime) } },
-      { history: { $elemMatch: { updateTime: { $lt: new Date(chatTime) } } } }
+      { updateTime: { $lt: new Date(chatItem.time) } },
+      { history: { $elemMatch: { updateTime: { $lt: new Date(chatItem.time) } } } }
     ]
   };
 
   if (initialId && initialIndex !== undefined) {
-    return await handleInitialLoad(
+    return await handleInitialLoad({
       initialId,
       initialIndex,
-      limitedPageSize,
-      chatTime,
-      chatItemId,
+      pageSize: limitedPageSize,
+      chatTime: chatItem.time,
       isInitialLoad,
       baseMatch
-    );
+    });
   }
 
   if ((prevId && prevIndex !== undefined) || (nextId && nextIndex !== undefined)) {
-    return await handlePaginatedLoad(
+    return await handlePaginatedLoad({
       prevId,
       prevIndex,
       nextId,
       nextIndex,
-      limitedPageSize,
-      chatTime,
-      chatItemId,
+      pageSize: limitedPageSize,
+      chatTime: chatItem.time,
       baseMatch
-    );
+    });
   }
 
   return { list: [], hasMorePrev: false, hasMoreNext: false };
@@ -115,38 +103,39 @@ async function handler(
 
 export default NextAPI(handler);
 
-async function handleInitialLoad(
-  initialId: string,
-  initialIndex: number,
-  pageSize: number,
-  chatTime: Date,
-  chatItemId: string,
-  isInitialLoad: boolean,
-  baseMatch: BaseMatchType
-): Promise<GetCollectionQuoteRes> {
+async function handleInitialLoad({
+  initialId,
+  initialIndex,
+  pageSize,
+  chatTime,
+  isInitialLoad,
+  baseMatch
+}: {
+  initialId: string;
+  initialIndex: number;
+  pageSize: number;
+  chatTime: Date;
+  isInitialLoad: boolean;
+  baseMatch: BaseMatchType;
+}): Promise<GetCollectionQuoteRes> {
   const centerNode = await MongoDatasetData.findOne(
     {
       _id: new Types.ObjectId(initialId)
     },
-    dataFieldSelector
+    quoteDataFieldSelector
   ).lean();
 
   if (!centerNode) {
     if (isInitialLoad) {
-      const list = await MongoDatasetData.find(baseMatch, dataFieldSelector)
+      const list = await MongoDatasetData.find(baseMatch, quoteDataFieldSelector)
         .sort({ chunkIndex: 1, _id: -1 })
         .limit(pageSize)
         .lean();
 
-      const listRes = list.map((item, index) => ({
-        ...item,
-        index: item.chunkIndex
-      }));
-
       const hasMoreNext = list.length === pageSize;
 
       return {
-        list: listRes,
+        list: processChatTimeFilter(list, chatTime),
         hasMorePrev: false,
         hasMoreNext
       };
@@ -173,28 +162,30 @@ async function handleInitialLoad(
 
   const resultList = [...prevList, centerNode, ...nextList];
 
-  const list = processChatTimeFilter(resultList, chatTime);
-
   return {
-    list: list.map((item) => ({
-      ...item,
-      index: item.chunkIndex
-    })),
+    list: processChatTimeFilter(resultList, chatTime),
     hasMorePrev,
     hasMoreNext
   };
 }
 
-async function handlePaginatedLoad(
-  prevId: string | undefined,
-  prevIndex: number | undefined,
-  nextId: string | undefined,
-  nextIndex: number | undefined,
-  pageSize: number,
-  chatTime: Date,
-  chatItemId: string,
-  baseMatch: BaseMatchType
-): Promise<GetCollectionQuoteRes> {
+async function handlePaginatedLoad({
+  prevId,
+  prevIndex,
+  nextId,
+  nextIndex,
+  pageSize,
+  chatTime,
+  baseMatch
+}: {
+  prevId: string | undefined;
+  prevIndex: number | undefined;
+  nextId: string | undefined;
+  nextIndex: number | undefined;
+  pageSize: number;
+  chatTime: Date;
+  baseMatch: BaseMatchType;
+}): Promise<GetCollectionQuoteRes> {
   const { list, hasMore } =
     prevId && prevIndex !== undefined
       ? await getPrevNodes(prevId, prevIndex, pageSize, baseMatch)
@@ -203,10 +194,7 @@ async function handlePaginatedLoad(
   const processedList = processChatTimeFilter(list, chatTime);
 
   return {
-    list: processedList.map((item) => ({
-      ...item,
-      index: item.chunkIndex
-    })),
+    list: processedList,
     hasMorePrev: !!prevId && hasMore,
     hasMoreNext: !!nextId && hasMore
   };
@@ -217,7 +205,10 @@ async function getPrevNodes(
   initialIndex: number,
   limit: number,
   baseMatch: BaseMatchType
-) {
+): Promise<{
+  list: DatasetDataSchemaType[];
+  hasMore: boolean;
+}> {
   const match: BaseMatchType = {
     ...baseMatch,
     $or: [
@@ -226,7 +217,7 @@ async function getPrevNodes(
     ]
   };
 
-  const list = await MongoDatasetData.find(match, dataFieldSelector)
+  const list = await MongoDatasetData.find(match, quoteDataFieldSelector)
     .sort({ chunkIndex: -1, _id: 1 })
     .limit(limit)
     .lean();
@@ -242,7 +233,10 @@ async function getNextNodes(
   initialIndex: number,
   limit: number,
   baseMatch: BaseMatchType
-) {
+): Promise<{
+  list: DatasetDataSchemaType[];
+  hasMore: boolean;
+}> {
   const match: BaseMatchType = {
     ...baseMatch,
     $or: [
@@ -251,7 +245,7 @@ async function getNextNodes(
     ]
   };
 
-  const list = await MongoDatasetData.find(match, dataFieldSelector)
+  const list = await MongoDatasetData.find(match, quoteDataFieldSelector)
     .sort({ chunkIndex: 1, _id: -1 })
     .limit(limit)
     .lean();
