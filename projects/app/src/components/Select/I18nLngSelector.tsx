@@ -26,7 +26,7 @@ const I18nLngSelector = () => {
     <MySelect
       value={i18n.language}
       list={list}
-      onchange={(val: any) => {
+      onChange={(val: any) => {
         const lang = val;
         onChangeLng(lang);
       }}

@@ -195,7 +195,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 const vectorModel = embeddingModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(async () => {
@@ -220,7 +220,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 value: item.model
               }))}
               fontSize={'mini'}
-              onchange={(e) => {
+              onChange={(e) => {
                 const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
@@ -244,7 +244,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   value: item.model
                 }))}
                 fontSize={'mini'}
-                onchange={(e) => {
+                onChange={(e) => {
                   const vlmModel = vllmModelList.find((item) => item.model === e);
                   if (!vlmModel) return;
                   setValue('vlmModel', vlmModel);

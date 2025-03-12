@@ -84,7 +84,7 @@ const ExtractFieldModal = ({
             <MySelect<string>
               list={toolValueTypeList}
               value={valueType}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('valueType', e as any);
               }}
             />

@@ -321,7 +321,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
                     list={input.list}
                     value={value}
                     isDisabled={interactive.params.submitted}
-                    onchange={(e) => setValue(input.label, e)}
+                    onChange={(e) => setValue(input.label, e)}
                   />
                 );
               }}

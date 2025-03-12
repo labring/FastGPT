@@ -217,7 +217,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
               value: 'PATCH'
             }
           ]}
-          onchange={(e) => {
+          onChange={(e) => {
             onChangeNode({
               nodeId,
               type: 'updateInput',

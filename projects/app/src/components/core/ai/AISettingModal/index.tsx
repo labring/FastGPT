@@ -154,7 +154,7 @@ const AIChatSettingsModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={onChangeModel}
+              onChange={onChangeModel}
             />
           </Box>
         </Flex>
@@ -385,7 +385,7 @@ const AIChatSettingsModal = ({
                   label: item
                 }))}
                 value={responseFormat}
-                onchange={(e) => {
+                onChange={(e) => {
                   setValue(NodeInputKeyEnum.aiChatResponseFormat, e);
                 }}
               />

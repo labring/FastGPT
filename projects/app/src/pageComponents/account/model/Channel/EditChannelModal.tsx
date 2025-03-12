@@ -194,7 +194,7 @@ const EditChannelModal = ({
                 placeholder={t('account_model:select_provider_placeholder')}
                 value={providerType}
                 isSearch
-                onchange={(val) => {
+                onChange={(val) => {
                   setValue('type', val);
                 }}
               />

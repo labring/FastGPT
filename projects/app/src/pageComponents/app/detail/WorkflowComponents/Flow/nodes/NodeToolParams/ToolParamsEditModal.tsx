@@ -123,7 +123,7 @@ const ToolParamsEditModal = ({
             <MySelect
               list={toolValueTypeList}
               value={valueType}
-              onchange={(e: any) => {
+              onChange={(e: any) => {
                 setValue('valueType', e);
               }}
             />

@@ -46,48 +46,21 @@ const TeamSelector = ({
 
   const teamList = useMemo(() => {
     return myTeams.map((team) => ({
-      label: (
-        <Flex
-          key={team.teamId}
-          alignItems={'center'}
-          borderRadius={'md'}
-          cursor={'default'}
-          gap={3}
-          onClick={() => onSwitchTeam(team.teamId)}
-          _hover={{
-            cursor: 'pointer'
-          }}
-        >
-          <Avatar src={team.avatar} w={['1.25rem', '1.375rem']} />
-          <Box flex={'1 0 0'} w={0} className="textEllipsis" fontSize={'sm'}>
-            {team.teamName}
-          </Box>
-        </Flex>
-      ),
+      icon: team.avatar,
+      iconSize: '1.25rem',
+      label: team.teamName,
       value: team.teamId
     }));
-  }, [myTeams, onSwitchTeam]);
+  }, [myTeams]);
 
   const formatTeamList = useMemo(() => {
     return [
       ...(showManage
         ? [
             {
-              label: (
-                <Flex
-                  key={'manage'}
-                  alignItems={'center'}
-                  borderRadius={'md'}
-                  cursor={'pointer'}
-                  gap={3}
-                  onClick={() => router.push('/account/team')}
-                >
-                  <MyIcon name="common/setting" w={['1.25rem', '1.375rem']} />
-                  <Box flex={'1 0 0'} w={0} className="textEllipsis" fontSize={'sm'}>
-                    {t('user:manage_team')}
-                  </Box>
-                </Flex>
-              ),
+              icon: 'common/setting',
+              iconSize: '1.25rem',
+              label: t('user:manage_team'),
               value: 'manage',
               showBorder: true
             }
@@ -95,11 +68,24 @@ const TeamSelector = ({
         : []),
       ...teamList
     ];
-  }, [showManage, t, teamList, router]);
+  }, [showManage, t, teamList]);
+
+  const handleChange = (value: string) => {
+    if (value === 'manage') {
+      router.push('/account/team');
+    } else {
+      onSwitchTeam(value);
+    }
+  };
 
   return (
     <Box w={'100%'}>
-      <MySelect {...props} value={userInfo?.team?.teamId} list={formatTeamList} />
+      <MySelect
+        {...props}
+        value={userInfo?.team?.teamId}
+        list={formatTeamList}
+        onChange={handleChange}
+      />
     </Box>
   );
 };

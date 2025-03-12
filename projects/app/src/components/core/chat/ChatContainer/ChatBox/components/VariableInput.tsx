@@ -80,7 +80,7 @@ export const VariableInputItem = ({
                   value: item.value
                 }))}
                 value={value}
-                onchange={(e) => setValue(`variables.${item.key}`, e)}
+                onChange={(e) => setValue(`variables.${item.key}`, e)}
               />
             );
           }}
