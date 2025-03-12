@@ -15,11 +15,19 @@ import RenderOutput from './render/RenderOutput';
 import CodeEditor from '@fastgpt/web/components/common/Textarea/CodeEditor';
 import { Box, Flex } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { JS_TEMPLATE } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import {
+  JS_TEMPLATE,
+  PY_TEMPLATE
+} from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
+
+  const codeType = inputs.find(
+    (item) => item.key === NodeInputKeyEnum.codeType
+  ) as FlowNodeInputItemType;
 
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
@@ -34,25 +42,85 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         return (
           <Box mt={-3}>
             <Flex mb={2} alignItems={'flex-end'}>
-              <Box flex={'1'}>{'Javascript ' + t('workflow:Code')}</Box>
+              <Box flex={'1'}>{'语言'}</Box>
               <Box
                 cursor={'pointer'}
                 color={'primary.500'}
                 fontSize={'xs'}
                 onClick={openConfirm(() => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'updateInput',
-                    key: item.key,
-                    value: {
-                      ...item,
-                      value: JS_TEMPLATE
-                    }
-                  });
+                  if (codeType.value === 'js') {
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: item.key,
+                      value: {
+                        ...item,
+                        value: JS_TEMPLATE
+                      }
+                    });
+                  } else if (codeType.value === 'py') {
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: item.key,
+                      value: {
+                        ...item,
+                        value: PY_TEMPLATE
+                      }
+                    });
+                  }
                 })}
               >
                 {t('workflow:code.Reset template')}
               </Box>
+            </Flex>
+            <Flex mb={2} alignItems={'center'} className="nodrag">
+              <MySelect
+                list={[
+                  {
+                    label: 'JavaScript',
+                    value: 'js'
+                  },
+                  {
+                    label: 'Python 3',
+                    value: 'py'
+                  }
+                ]}
+                value={codeType?.value}
+                onchange={(e) => {
+                  onChangeNode({
+                    nodeId,
+                    type: 'updateInput',
+                    key: NodeInputKeyEnum.codeType,
+                    value: {
+                      ...codeType,
+                      value: e
+                    }
+                  });
+                  if (codeType.value === 'py') {
+                    // onChange: the moment before change.
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: item.key,
+                      value: {
+                        ...item,
+                        value: JS_TEMPLATE
+                      }
+                    });
+                  } else if (codeType.value === 'js') {
+                    onChangeNode({
+                      nodeId,
+                      type: 'updateInput',
+                      key: item.key,
+                      value: {
+                        ...item,
+                        value: PY_TEMPLATE
+                      }
+                    });
+                  }
+                }}
+              />
             </Flex>
             <CodeEditor
               bg={'white'}
@@ -69,12 +137,13 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   }
                 });
               }}
+              language={codeType.value}
             />
           </Box>
         );
       }
     };
-  }, [nodeId, onChangeNode, openConfirm, t]);
+  }, [codeType, nodeId, onChangeNode, openConfirm, t]);
 
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
