@@ -245,16 +245,15 @@ const OutLink = (props: Props) => {
         desc={props.appIntro || data?.app?.intro}
         icon={props.appAvatar || data?.app?.avatar}
       />
-      <Flex h={'full'}>
+      <Flex
+        h={'full'}
+        gap={4}
+        {...(isEmbed
+          ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
+          : { p: [0, 5] })}
+      >
         {(!quoteData || isPc) && (
-          <PageContainer
-            flex={'1 0 0'}
-            w={0}
-            isLoading={loading}
-            {...(isEmbed
-              ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
-              : { p: [0, 5] })}
-          >
+          <PageContainer flex={'1 0 0'} w={0} isLoading={loading} p={'0 !important'}>
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
 
@@ -302,7 +301,7 @@ const OutLink = (props: Props) => {
         )}
 
         {quoteData && (
-          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
+          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
             <ChatQuoteList
               rawSearch={quoteData.rawSearch}
               metadata={quoteData.metadata}

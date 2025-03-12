@@ -34,7 +34,15 @@ type ModelTestItem = {
   duration?: number;
 };
 
-const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void }) => {
+const ModelTest = ({
+  channelId,
+  models,
+  onClose
+}: {
+  channelId: number;
+  models: string[];
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
@@ -57,6 +65,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
       colorSchema: 'red'
     }
   });
+
   const { loading: loadingModels } = useRequest2(getSystemModelList, {
     manual: false,
     refreshDeps: [models],
@@ -95,7 +104,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
           );
           const start = Date.now();
           try {
-            await getTestModel(model);
+            await getTestModel({ model, channelId });
             const duration = Date.now() - start;
             setTestModelList((prev) =>
               prev.map((item) =>

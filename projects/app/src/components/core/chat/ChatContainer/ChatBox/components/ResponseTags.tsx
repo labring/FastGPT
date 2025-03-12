@@ -44,6 +44,7 @@ const ResponseTags = ({
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
 
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
@@ -65,6 +66,7 @@ const ResponseTags = ({
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
+  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
   const sourceList = useMemo(() => {
     return Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -157,18 +159,34 @@ const ResponseTags = ({
                     onClick={(e) => {
                       e.stopPropagation();
 
-                      setQuoteData({
-                        rawSearch: quoteList,
-                        metadata: {
-                          appId,
-                          chatId,
-                          chatItemDataId: dataId,
-                          collectionId: item.collectionId,
-                          sourceId: item.sourceId || '',
-                          sourceName: item.sourceName,
-                          datasetId: item.datasetId
-                        }
-                      });
+                      if (isShowReadRawSource) {
+                        setQuoteData({
+                          rawSearch: quoteList,
+                          metadata: {
+                            appId,
+                            chatId,
+                            chatItemDataId: dataId,
+                            collectionId: item.collectionId,
+                            sourceId: item.sourceId || '',
+                            sourceName: item.sourceName,
+                            datasetId: item.datasetId,
+                            outLinkAuthData
+                          }
+                        });
+                      } else {
+                        setQuoteData({
+                          rawSearch: quoteList,
+                          metadata: {
+                            appId,
+                            chatId,
+                            chatItemDataId: dataId,
+                            collectionIdList: [item.collectionId],
+                            sourceId: item.sourceId || '',
+                            sourceName: item.sourceName,
+                            outLinkAuthData
+                          }
+                        });
+                      }
                     }}
                     height={6}
                   >
@@ -230,7 +248,8 @@ const ResponseTags = ({
                       appId,
                       chatId,
                       chatItemDataId: dataId,
-                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))]
+                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))],
+                      outLinkAuthData
                     }
                   });
                 }}
