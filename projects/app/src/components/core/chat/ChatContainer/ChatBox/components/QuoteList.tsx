@@ -11,19 +11,17 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getQuoteDataList } from '@/web/core/chat/api';
 
 const QuoteList = React.memo(function QuoteList({
-  chatItemId,
-  rawSearch = [],
-  chatTime
+  chatItemDataId = '',
+  rawSearch = []
 }: {
-  chatItemId?: string;
+  chatItemDataId?: string;
   rawSearch: SearchDataResponseItemType[];
-  chatTime: Date;
 }) {
   const theme = useTheme();
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
-    chatItemId,
+    chatItemDataId,
     appId: v.appId,
     chatId: v.chatId,
     ...(v.outLinkAuthData || {})
@@ -34,13 +32,12 @@ const QuoteList = React.memo(function QuoteList({
     (v) => v.showRouteToDatasetDetail
   );
 
-  const { data } = useRequest2(
+  const { data: quoteList } = useRequest2(
     async () =>
       await getQuoteDataList({
         datasetDataIdList: rawSearch.map((item) => item.id),
-        chatTime,
         collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
-        chatItemId: chatItemId || '',
+        chatItemDataId,
         appId,
         chatId,
         ...outLinkAuthData
@@ -53,7 +50,7 @@ const QuoteList = React.memo(function QuoteList({
   const formatedDataList = useMemo(() => {
     return rawSearch
       .map((item) => {
-        const currentFilterItem = data?.quoteList.find((res) => res._id === item.id);
+        const currentFilterItem = quoteList?.find((res) => res._id === item.id);
 
         return {
           ...item,
@@ -66,7 +63,7 @@ const QuoteList = React.memo(function QuoteList({
         const bScore = formatScore(b.score);
         return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
       });
-  }, [data?.quoteList, rawSearch]);
+  }, [quoteList, rawSearch]);
 
   return (
     <>
