@@ -111,11 +111,13 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   const getFileContent = async ({
     teamId,
     tmbId,
-    apiFileId
+    apiFileId,
+    customPdfParse
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
+    customPdfParse?: boolean;
   }) => {
     const data = await request<APIFileContentResponse>(
       `/v1/file/content`,
@@ -133,7 +135,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         teamId,
         tmbId,
         url: previewUrl,
-        relatedId: apiFileId
+        relatedId: apiFileId,
+        customPdfParse
       });
       return rawText;
     }
