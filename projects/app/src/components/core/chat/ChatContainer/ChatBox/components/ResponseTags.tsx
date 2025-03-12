@@ -42,6 +42,8 @@ const ResponseTags = ({
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
 
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
@@ -156,17 +158,15 @@ const ResponseTags = ({
                       e.stopPropagation();
 
                       setQuoteData({
-                        chatTime,
                         rawSearch: quoteList,
                         metadata: {
+                          appId,
+                          chatId,
+                          chatItemDataId: dataId,
                           collectionId: item.collectionId,
-                          collectionIdList: [
-                            ...new Set(quoteList.map((item) => item.collectionId))
-                          ],
                           sourceId: item.sourceId || '',
                           sourceName: item.sourceName,
-                          datasetId: item.datasetId,
-                          chatItemId: historyItem.dataId
+                          datasetId: item.datasetId
                         }
                       });
                     }}
@@ -225,15 +225,12 @@ const ResponseTags = ({
                   e.stopPropagation();
 
                   setQuoteData({
-                    chatTime,
                     rawSearch: quoteList,
                     metadata: {
-                      collectionId: '',
-                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))],
-                      chatItemId: historyItem.dataId,
-                      sourceId: '',
-                      sourceName: '',
-                      datasetId: ''
+                      appId,
+                      chatId,
+                      chatItemDataId: dataId,
+                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))]
                     }
                   });
                 }}

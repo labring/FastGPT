@@ -25,6 +25,14 @@ const defaultResponseShow = {
   showNodeStatus: true,
   showRawSource: true
 };
+type AuthChatCommonProps = {
+  appId: string;
+  shareId?: string;
+  outLinkUid?: string;
+  teamId?: string;
+  teamToken?: string;
+};
+
 export async function authChatCrud({
   appId,
   chatId,
@@ -35,14 +43,10 @@ export async function authChatCrud({
   teamId: spaceTeamId,
   teamToken,
   ...props
-}: AuthModeType & {
-  appId: string;
-  chatId?: string;
-  shareId?: string;
-  outLinkUid?: string;
-  teamId?: string;
-  teamToken?: string;
-}): Promise<{
+}: AuthModeType &
+  AuthChatCommonProps & {
+    chatId?: string;
+  }): Promise<{
   teamId: string;
   tmbId: string;
   uid: string;
@@ -188,27 +192,29 @@ export async function authChatCrud({
 }
 
 export const authCollectionInChat = async ({
-  collectionId,
+  collectionIds,
   appId,
   chatId,
-  chatItemId
+  chatItemDataId
 }: {
-  collectionId: string;
+  collectionIds: string[];
   appId: string;
   chatId: string;
-  chatItemId: string;
-}) => {
+  chatItemDataId: string;
+}): Promise<{
+  chatItem: { time: Date; responseData?: ChatHistoryItemResType[] };
+}> => {
   try {
     const chatItem = (await MongoChatItem.findOne(
       {
         appId,
         chatId,
-        dataId: chatItemId
+        dataId: chatItemDataId
       },
-      'responseData'
-    ).lean()) as AIChatItemType;
+      'responseData time'
+    ).lean()) as { time: Date; responseData?: ChatHistoryItemResType[] };
 
-    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
+    if (!chatItem) return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
 
     // 找 responseData 里，是否有该文档 id
     const responseData = chatItem.responseData || [];
@@ -224,15 +230,16 @@ export const authCollectionInChat = async ({
         })
         .flat() || [];
 
-    if (
-      flatResData.some((item) => {
-        if (item.quoteList) {
-          return item.quoteList.some((quote) => quote.collectionId === collectionId);
-        }
-        return false;
-      })
-    ) {
-      return true;
+    const quoteListSet = new Set(
+      flatResData
+        .map((item) => item.quoteList?.map((quote) => String(quote.collectionId)) || [])
+        .flat()
+    );
+
+    if (collectionIds.every((id) => quoteListSet.has(id))) {
+      return {
+        chatItem
+      };
     }
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
