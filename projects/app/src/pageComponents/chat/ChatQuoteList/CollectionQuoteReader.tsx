@@ -39,13 +39,10 @@ const CollectionReader = ({
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: datasetData, loading: isPermissionLoading } = useRequest2(
-    async () => await getDatasetDataPermission(datasetId),
-    {
-      manual: !userInfo || !datasetId,
-      refreshDeps: [datasetId, userInfo]
-    }
-  );
+  const { data: datasetData } = useRequest2(async () => await getDatasetDataPermission(datasetId), {
+    manual: !userInfo || !datasetId,
+    refreshDeps: [datasetId, userInfo]
+  });
 
   const filterResults = useMemo(() => {
     const results = rawSearch.filter(
@@ -77,10 +74,10 @@ const CollectionReader = ({
     },
     initialId: currentQuoteItem?.id,
     initialIndex: currentQuoteItem?.chunkIndex,
-    canLoadData: !!currentQuoteItem?.id && !isPermissionLoading
+    canLoadData: !!currentQuoteItem?.id
   });
 
-  const loading = isLoading || isPermissionLoading;
+  const loading = isLoading;
   const isDeleted = useMemo(
     () => !datasetDataList.find((item) => item._id === currentQuoteItem?.id),
     [datasetDataList, currentQuoteItem?.id]
@@ -163,6 +160,16 @@ const CollectionReader = ({
               fontSize={'sm'}
               color={'myGray.900'}
               fontWeight={'medium'}
+              {...(!!userInfo &&
+                datasetData?.permission?.hasReadPer && {
+                  cursor: 'pointer',
+                  _hover: { color: 'primary.600', textDecoration: 'underline' },
+                  onClick: () => {
+                    router.push(
+                      `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
+                    );
+                  }
+                })}
             >
               {sourceName || t('common:common.UnKnow Source')}
             </Box>
@@ -181,26 +188,22 @@ const CollectionReader = ({
             onClick={onClose}
           />
         </HStack>
-        {!isPermissionLoading && (
+        {datasetData?.permission?.hasReadPer && (
           <Box
             fontSize={'mini'}
             color={'myGray.500'}
-            onClick={() => {
-              if (!!userInfo && datasetData?.permission?.hasReadPer) {
-                router.push(
-                  `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
-                );
-              }
-            }}
-            {...(!!userInfo && datasetData?.permission?.hasReadPer
+            {...(!!userInfo
               ? {
                   cursor: 'pointer',
-                  _hover: { color: 'primary.600', textDecoration: 'underline' }
+                  _hover: { color: 'primary.600', textDecoration: 'underline' },
+                  onClick: () => {
+                    router.push(`/dataset/detail?datasetId=${datasetId}`);
+                  }
                 }
               : {})}
           >
-            {t('common:core.chat.quote.source', {
-              source: datasetData?.datasetName
+            {t('chat:data_source', {
+              name: datasetData.datasetName
             })}
           </Box>
         )}

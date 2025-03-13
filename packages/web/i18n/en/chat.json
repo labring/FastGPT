@@ -18,6 +18,7 @@
   "contextual_preview": "Contextual Preview {{num}} Items",
   "csv_input_lexicon_tip": "Only CSV batch import is supported, click to download the template",
   "custom_input_guide_url": "Custom Lexicon URL",
+  "data_source": "Source Dataset: {{name}}",
   "dataset_quote_type error": "Knowledge base reference type is wrong, correct type: { datasetId: string }[]",
   "delete_all_input_guide_confirm": "Are you sure you want to clear the input guide lexicon?",
   "download_chunks": "Download data",
