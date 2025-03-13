@@ -128,6 +128,7 @@ export enum NodeInputKeyEnum {
   textareaInput = 'system_textareaInput',
   addInputParam = 'system_addInputParam',
   forbidStream = 'system_forbid_stream',
+  nodePrompt = 'nodePrompt',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -140,6 +141,7 @@ export enum NodeInputKeyEnum {
   aiChatQuoteRole = 'aiChatQuoteRole',
   aiChatQuoteTemplate = 'quoteTemplate',
   aiChatQuotePrompt = 'quotePrompt',
+  aiChatFilePrompt = 'filePrompt',
   aiChatDatasetQuote = 'quoteQA',
   aiChatVision = 'aiChatVision',
   stringQuoteText = 'stringQuoteText',

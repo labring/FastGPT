@@ -91,6 +91,13 @@ export const Input_Template_File_Link: FlowNodeInputItemType = {
   description: i18nT('app:workflow.user_file_input_desc'),
   valueType: WorkflowIOValueTypeEnum.arrayString
 };
+export const Input_Template_File_Prompt: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.aiChatFilePrompt,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  label: '',
+  value: '',
+  valueType: WorkflowIOValueTypeEnum.string
+};
 
 export const Input_Template_Children_Node_List: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.childrenNodeIdList,
@@ -128,4 +135,12 @@ export const Input_Template_Stream_MODE: FlowNodeInputItemType = {
   label: i18nT('workflow:template.forbid_stream'),
   description: i18nT('workflow:template.forbid_stream_desc'),
   value: false
+};
+
+export const Input_Template_Node_Prompt: FlowNodeInputItemType = {
+  key: NodeInputKeyEnum.nodePrompt,
+  renderTypeList: [FlowNodeInputTypeEnum.hidden],
+  valueType: WorkflowIOValueTypeEnum.string,
+  label: '',
+  value: ''
 };

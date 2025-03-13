@@ -16,7 +16,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
+import { Prompt_ExtractJson, Prompt_ExtractJson_Tool } from '@fastgpt/global/core/ai/prompt/agent';
+import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 import { replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
@@ -40,6 +41,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [NodeInputKeyEnum.description]: string;
   [NodeInputKeyEnum.aiModel]: string;
+  [NodeInputKeyEnum.nodePrompt]: string;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.success]: boolean;
@@ -154,7 +156,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 const getFunctionCallSchema = async ({
   extractModel,
   histories,
-  params: { content, extractKeys, description }
+  params: { content, extractKeys, description, nodePrompt }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     ...histories,
@@ -164,15 +166,13 @@ const getFunctionCallSchema = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
-"""
-${description ? `- ${description}` : ''}
-- 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
-- 需要结合前面的对话内容，一起生成合适的参数。
-"""
-
-本次输入内容: """${content}"""
-            `
+            content: replaceVariable(
+              getPrompt({ promptMap: Prompt_ExtractJson_Tool, customPrompt: nodePrompt }),
+              {
+                description,
+                content
+              }
+            )
           }
         }
       ]
@@ -334,7 +334,7 @@ const completions = async ({
   extractModel,
   externalProvider,
   histories,
-  params: { content, extractKeys, description = 'No special requirements' }
+  params: { content, extractKeys, description = 'No special requirements', nodePrompt }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     {
@@ -343,23 +343,27 @@ const completions = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
-              description,
-              json: extractKeys
-                .map((item) => {
-                  const valueType = item.valueType || 'string';
-                  if (valueType !== 'string' && valueType !== 'number') {
-                    item.enum = undefined;
-                  }
+            content: replaceVariable(
+              extractModel.customExtractPrompt ||
+                getPrompt({ promptMap: Prompt_ExtractJson, customPrompt: nodePrompt }),
+              {
+                description,
+                json: extractKeys
+                  .map((item) => {
+                    const valueType = item.valueType || 'string';
+                    if (valueType !== 'string' && valueType !== 'number') {
+                      item.enum = undefined;
+                    }
 
-                  return `{"type":${item.valueType || 'string'}, "key":"${item.key}", "description":"${item.desc}" ${
-                    item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
-                  }}`;
-                })
-                .join('\n'),
-              text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
+                    return `{"type":${item.valueType || 'string'}, "key":"${item.key}", "description":"${item.desc}" ${
+                      item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+                    }}`;
+                  })
+                  .join('\n'),
+                text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
 Human: ${content}`
-            })
+              }
+            )
           }
         }
       ]

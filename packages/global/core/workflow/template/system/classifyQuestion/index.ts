@@ -13,7 +13,8 @@ import {
 import {
   Input_Template_SelectAIModel,
   Input_Template_History,
-  Input_Template_UserChatInput
+  Input_Template_UserChatInput,
+  Input_Template_Node_Prompt
 } from '../../input';
 import { Input_Template_System_Prompt } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
@@ -42,6 +43,10 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
       label: 'core.module.input.label.Background',
       description: 'core.module.input.description.Background',
       placeholder: 'core.module.input.placeholder.Classify background'
+    },
+    {
+      ...Input_Template_Node_Prompt,
+      value: 'v491'
     },
     Input_Template_History,
     Input_Template_UserChatInput,
