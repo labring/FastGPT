@@ -13,7 +13,6 @@ export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatId: string;
   chatItemDataId: string;
 
-  isInitialLoad: boolean;
   collectionId: string;
 
   appId: string;
@@ -37,7 +36,6 @@ async function handler(
     prevIndex,
     nextId,
     nextIndex,
-    isInitialLoad,
 
     collectionId,
     chatItemDataId,
@@ -84,7 +82,6 @@ async function handler(
       initialIndex,
       pageSize: limitedPageSize,
       chatTime: chatItem.time,
-      isInitialLoad,
       baseMatch
     });
   }
@@ -111,14 +108,12 @@ async function handleInitialLoad({
   initialIndex,
   pageSize,
   chatTime,
-  isInitialLoad,
   baseMatch
 }: {
   initialId: string;
   initialIndex: number;
   pageSize: number;
   chatTime: Date;
-  isInitialLoad: boolean;
   baseMatch: BaseMatchType;
 }): Promise<GetCollectionQuoteRes> {
   const centerNode = await MongoDatasetData.findOne(
@@ -129,22 +124,18 @@ async function handleInitialLoad({
   ).lean();
 
   if (!centerNode) {
-    if (isInitialLoad) {
-      const list = await MongoDatasetData.find(baseMatch, quoteDataFieldSelector)
-        .sort({ chunkIndex: 1, _id: -1 })
-        .limit(pageSize)
-        .lean();
+    const list = await MongoDatasetData.find(baseMatch, quoteDataFieldSelector)
+      .sort({ chunkIndex: 1, _id: -1 })
+      .limit(pageSize)
+      .lean();
 
-      const hasMoreNext = list.length === pageSize;
+    const hasMoreNext = list.length === pageSize;
 
-      return {
-        list: processChatTimeFilter(list, chatTime),
-        hasMorePrev: false,
-        hasMoreNext
-      };
-    }
-
-    return Promise.reject('centerNode not found');
+    return {
+      list: processChatTimeFilter(list, chatTime),
+      hasMorePrev: false,
+      hasMoreNext
+    };
   }
 
   const prevHalfSize = Math.floor(pageSize / 2);
