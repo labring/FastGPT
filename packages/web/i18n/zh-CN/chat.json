@@ -18,6 +18,7 @@
   "contextual_preview": "上下文预览 {{num}} 条",
   "csv_input_lexicon_tip": "仅支持 CSV 批量导入，点击下载模板",
   "custom_input_guide_url": "自定义词库地址",
+  "data_source": "来源知识库: {{name}}",
   "dataset_quote_type error": "知识库引用类型错误，正确类型：{ datasetId: string }[]",
   "delete_all_input_guide_confirm": "确定要清空输入引导词库吗？",
   "download_chunks": "下载数据",

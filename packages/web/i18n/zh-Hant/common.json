@@ -456,7 +456,6 @@
   "core.chat.quote.Read Quote": "檢視引用",
   "core.chat.quote.afterUpdate": "更新後",
   "core.chat.quote.beforeUpdate": "更新前",
-  "core.chat.quote.source": "來源：{{source}}",
   "core.chat.response.Complete Response": "完整回應",
   "core.chat.response.Extension model": "問題最佳化模型",
   "core.chat.response.Read complete response": "檢視詳細資料",

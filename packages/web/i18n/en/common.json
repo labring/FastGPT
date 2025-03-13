@@ -457,7 +457,6 @@
   "core.chat.quote.Read Quote": "View Quote",
   "core.chat.quote.afterUpdate": "After update",
   "core.chat.quote.beforeUpdate": "Before update",
-  "core.chat.quote.source": "From: {{source}}",
   "core.chat.response.Complete Response": "Complete Response",
   "core.chat.response.Extension model": "Question Optimization Model",
   "core.chat.response.Read complete response": "View Details",
