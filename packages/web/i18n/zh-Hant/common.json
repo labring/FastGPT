@@ -255,7 +255,7 @@
   "common.submit_success": "送出成功",
   "common.submitted": "已送出",
   "common.support": "支援",
-  "common.system.Commercial version function": "請升級為商業版後使用此功能：https://doc.fastgpt.cn/docs/commercial/intro/",
+  "commercial_function_tip": "請升級為商業版後使用此功能：https://doc.fastgpt.cn/docs/commercial/intro/",
   "common.system.Help Chatbot": "機器人助手",
   "common.system.Use Helper": "使用說明",
   "common.ui.textarea.Magnifying": "放大",
