@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import DownloadButton from './DownloadButton';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { getDatasetDataPermission } from '@/web/core/dataset/api';
 import ScoreTag from './ScoreTag';
 import { formatScore } from '@/components/core/dataset/QuoteItem';
@@ -39,51 +39,53 @@ const CollectionReader = ({
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
-  const { data: datasetData, loading: isPermissionLoading } = useRequest2(
-    async () => await getDatasetDataPermission(datasetId),
-    {
-      manual: !userInfo || !datasetId,
-      refreshDeps: [datasetId, userInfo]
-    }
-  );
+  const { data: datasetData } = useRequest2(async () => await getDatasetDataPermission(datasetId), {
+    manual: !userInfo || !datasetId,
+    refreshDeps: [datasetId, userInfo]
+  });
 
   const filterResults = useMemo(() => {
-    const results = rawSearch.filter(
-      (item) => item.collectionId === metadata.collectionId && item.sourceId === metadata.sourceId
-    );
-
-    return results.sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
-  }, [metadata, rawSearch]);
-
-  const currentQuoteItem = filterResults[quoteIndex];
+    setQuoteIndex(0);
+    return rawSearch
+      .filter((item) => item.collectionId === collectionId)
+      .sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
+  }, [collectionId, rawSearch]);
+  const currentQuoteItem = useMemo(() => {
+    const item = filterResults[quoteIndex];
+    if (item) {
+      return {
+        id: item.id,
+        index: item.chunkIndex,
+        score: item.score
+      };
+    }
+  }, [filterResults, quoteIndex]);
 
   // Get quote list
-  const {
-    dataList: datasetDataList,
-    setDataList: setDatasetDataList,
-    isLoading,
-    loadData,
-    ScrollData,
-    itemRefs,
-    scrollToItem
-  } = useLinkedScroll(getCollectionQuote, {
-    refreshDeps: [collectionId],
-    params: {
+  const params = useMemo(
+    () => ({
       collectionId,
       chatItemDataId,
       chatId: metadata.chatId,
       appId: metadata.appId,
       ...metadata.outLinkAuthData
-    },
-    initialId: currentQuoteItem?.id,
-    initialIndex: currentQuoteItem?.chunkIndex,
-    canLoadData: !!currentQuoteItem?.id && !isPermissionLoading
+    }),
+    [metadata]
+  );
+  const {
+    dataList: datasetDataList,
+    isLoading,
+    ScrollData,
+    itemRefs,
+    loadInitData
+  } = useLinkedScroll(getCollectionQuote, {
+    params,
+    currentData: currentQuoteItem
   });
 
-  const loading = isLoading || isPermissionLoading;
   const isDeleted = useMemo(
-    () => !datasetDataList.find((item) => item._id === currentQuoteItem?.id),
-    [datasetDataList, currentQuoteItem?.id]
+    () => !isLoading && !datasetDataList.find((item) => item._id === currentQuoteItem?.id),
+    [datasetDataList, currentQuoteItem?.id, isLoading]
   );
 
   const formatedDataList = useMemo(
@@ -101,11 +103,6 @@ const CollectionReader = ({
     [currentQuoteItem?.id, datasetDataList, filterResults]
   );
 
-  useEffect(() => {
-    setQuoteIndex(0);
-    setDatasetDataList([]);
-  }, [collectionId, setDatasetDataList]);
-
   const { runAsync: handleDownload } = useRequest2(async () => {
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
@@ -118,30 +115,6 @@ const CollectionReader = ({
   });
 
   const handleRead = getCollectionSourceAndOpen(metadata);
-
-  const handleNavigate = useCallback(
-    async (targetIndex: number) => {
-      if (targetIndex < 0 || targetIndex >= filterResults.length) return;
-      const targetItemId = filterResults[targetIndex].id;
-      const targetItemIndex = filterResults[targetIndex].chunkIndex;
-
-      setQuoteIndex(targetIndex);
-      const dataIndex = datasetDataList.findIndex((item) => item._id === targetItemId);
-
-      if (dataIndex !== -1) {
-        setTimeout(() => {
-          scrollToItem(dataIndex);
-        }, 50);
-      } else {
-        try {
-          await loadData({ id: targetItemId, index: targetItemIndex });
-        } catch (error) {
-          console.error('Failed to navigate:', error);
-        }
-      }
-    },
-    [filterResults, datasetDataList, scrollToItem, loadData]
-  );
 
   return (
     <MyBox display={'flex'} flexDirection={'column'} h={'full'}>
@@ -163,6 +136,16 @@ const CollectionReader = ({
               fontSize={'sm'}
               color={'myGray.900'}
               fontWeight={'medium'}
+              {...(!!userInfo &&
+                datasetData?.permission?.hasReadPer && {
+                  cursor: 'pointer',
+                  _hover: { color: 'primary.600', textDecoration: 'underline' },
+                  onClick: () => {
+                    router.push(
+                      `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
+                    );
+                  }
+                })}
             >
               {sourceName || t('common:common.UnKnow Source')}
             </Box>
@@ -181,26 +164,22 @@ const CollectionReader = ({
             onClick={onClose}
           />
         </HStack>
-        {!isPermissionLoading && (
+        {datasetData?.permission?.hasReadPer && (
           <Box
             fontSize={'mini'}
             color={'myGray.500'}
-            onClick={() => {
-              if (!!userInfo && datasetData?.permission?.hasReadPer) {
-                router.push(
-                  `/dataset/detail?datasetId=${datasetId}&currentTab=dataCard&collectionId=${collectionId}`
-                );
-              }
-            }}
-            {...(!!userInfo && datasetData?.permission?.hasReadPer
+            {...(!!userInfo
               ? {
                   cursor: 'pointer',
-                  _hover: { color: 'primary.600', textDecoration: 'underline' }
+                  _hover: { color: 'primary.600', textDecoration: 'underline' },
+                  onClick: () => {
+                    router.push(`/dataset/detail?datasetId=${datasetId}`);
+                  }
                 }
               : {})}
           >
-            {t('common:core.chat.quote.source', {
-              source: datasetData?.datasetName
+            {t('chat:data_source', {
+              name: datasetData.datasetName
             })}
           </Box>
         )}
@@ -231,23 +210,22 @@ const CollectionReader = ({
             </Flex>
 
             {/* 检索分数 */}
-            {!loading &&
-              (!isDeleted ? (
-                <ScoreTag {...formatScore(currentQuoteItem?.score)} />
-              ) : (
-                <Flex
-                  borderRadius={'sm'}
-                  py={1}
-                  px={2}
-                  color={'red.600'}
-                  bg={'red.50'}
-                  alignItems={'center'}
-                  fontSize={'11px'}
-                >
-                  <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
-                  {t('chat:chat.quote.deleted')}
-                </Flex>
-              ))}
+            {currentQuoteItem?.score ? (
+              <ScoreTag {...formatScore(currentQuoteItem?.score)} />
+            ) : isDeleted ? (
+              <Flex
+                borderRadius={'sm'}
+                py={1}
+                px={2}
+                color={'red.600'}
+                bg={'red.50'}
+                alignItems={'center'}
+                fontSize={'11px'}
+              >
+                <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
+                {t('chat:chat.quote.deleted')}
+              </Flex>
+            ) : null}
 
             <Box flex={1} />
 
@@ -256,12 +234,12 @@ const CollectionReader = ({
               <NavButton
                 direction="up"
                 isDisabled={quoteIndex === 0}
-                onClick={() => handleNavigate(quoteIndex - 1)}
+                onClick={() => setQuoteIndex(quoteIndex - 1)}
               />
               <NavButton
                 direction="down"
                 isDisabled={quoteIndex === filterResults.length - 1}
-                onClick={() => handleNavigate(quoteIndex + 1)}
+                onClick={() => setQuoteIndex(quoteIndex + 1)}
               />
             </Flex>
           </Flex>
@@ -272,8 +250,8 @@ const CollectionReader = ({
       )}
 
       {/* quote list */}
-      {loading || datasetDataList.length > 0 ? (
-        <ScrollData flex={'1 0 0'} mt={2} px={5} py={1} isLoading={loading}>
+      {isLoading || datasetDataList.length > 0 ? (
+        <ScrollData flex={'1 0 0'} mt={2} px={5} py={1}>
           <Flex flexDir={'column'}>
             {formatedDataList.map((item, index) => (
               <CollectionQuoteItem
@@ -282,10 +260,7 @@ const CollectionReader = ({
                 quoteRefs={itemRefs as React.MutableRefObject<(HTMLDivElement | null)[]>}
                 quoteIndex={item.quoteIndex}
                 setQuoteIndex={setQuoteIndex}
-                refreshList={() =>
-                  currentQuoteItem?.id &&
-                  loadData({ id: currentQuoteItem.id, index: currentQuoteItem.chunkIndex })
-                }
+                refreshList={() => loadInitData(false)}
                 updated={item.updated}
                 isCurrentSelected={item.isCurrentSelected}
                 q={item.q}

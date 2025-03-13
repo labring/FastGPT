@@ -175,10 +175,7 @@ const CollectionQuoteItem = ({
       {editInputData && (
         <InputDataModal
           onClose={() => setEditInputData(undefined)}
-          onSuccess={() => {
-            console.log('onSuccess');
-            refreshList();
-          }}
+          onSuccess={refreshList}
           dataId={editInputData.dataId}
           collectionId={editInputData.collectionId}
         />
