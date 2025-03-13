@@ -58,5 +58,6 @@
   "user_team_invite_member": "邀請成員",
   "user_team_leave_team": "離開團隊",
   "user_team_leave_team_failed": "離開團隊失敗",
-  "waiting": "待接受"
+  "waiting": "待接受",
+  "invitation_copy_link": "【{{systemName}}】 {{userName}} 邀請您加入{{teamName}}團隊，連結：{{url}}"
 }

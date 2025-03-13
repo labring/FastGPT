@@ -58,5 +58,6 @@
   "user_team_invite_member": "Invite members",
   "user_team_leave_team": "Leave the team",
   "user_team_leave_team_failed": "Failure to leave the team",
-  "waiting": "To be accepted"
+  "waiting": "To be accepted",
+  "invitation_copy_link": "[{{systemName}}] {{userName}} invites you to join the {{teamName}} team, link: {{url}}"
 }
