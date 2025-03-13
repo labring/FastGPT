@@ -159,23 +159,36 @@ function DataProcess() {
                   gridTemplateColumns={'repeat(2, 1fr)'}
                 />
               </Box>
-              {trainingType === DatasetCollectionDataProcessModeEnum.chunk && feConfigs?.isPlus && (
+              {trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
                 <Box mt={6}>
                   <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
                     {t('dataset:enhanced_indexes')}
                   </Box>
                   <HStack gap={[3, 7]}>
                     <HStack flex={'1'} spacing={1}>
-                      <Checkbox {...register('autoIndexes')}>
-                        <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
-                      </Checkbox>
+                      <MyTooltip
+                        label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}
+                      >
+                        <Checkbox isDisabled={!feConfigs?.isPlus} {...register('autoIndexes')}>
+                          <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
+                        </Checkbox>
+                      </MyTooltip>
                       <QuestionTip label={t('dataset:auto_indexes_tips')} />
                     </HStack>
                     <HStack flex={'1'} spacing={1}>
                       <MyTooltip
-                        label={!datasetDetail?.vlmModel ? t('common:error_vlm_not_config') : ''}
+                        label={
+                          !feConfigs?.isPlus
+                            ? t('common:commercial_function_tip')
+                            : !datasetDetail?.vlmModel
+                              ? t('common:error_vlm_not_config')
+                              : ''
+                        }
                       >
-                        <Checkbox isDisabled={!datasetDetail?.vlmModel} {...register('imageIndex')}>
+                        <Checkbox
+                          isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
+                          {...register('imageIndex')}
+                        >
                           <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
                         </Checkbox>
                       </MyTooltip>

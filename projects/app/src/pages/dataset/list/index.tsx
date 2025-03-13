@@ -70,7 +70,7 @@ const Dataset = () => {
       ) {
         return toast({
           status: 'warning',
-          title: t('common:common.system.Commercial version function')
+          title: t('common:commercial_function_tip')
         });
       }
       setCreateDatasetType(e);

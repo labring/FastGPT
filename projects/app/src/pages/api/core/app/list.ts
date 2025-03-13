@@ -19,7 +19,6 @@ import { concatPer } from '@fastgpt/service/support/permission/controller';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
-import { getNanoid } from '../../../../../../../packages/global/common/string/tools';
 
 export type ListAppBody = {
   parentId?: ParentIdType;
