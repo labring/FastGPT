@@ -1,5 +1,7 @@
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getInvitationLinkList, putUpdateInvitationInfo } from '@/web/support/user/team/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
   Button,
@@ -56,10 +58,23 @@ const InviteModal = ({
 
   const isLoading = isLoadingLink;
   const { copyData } = useCopyData();
+  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
 
   const onCopy = useCallback(
     (linkId: string) => {
-      copyData(location.origin + `/account/team?invitelinkid=${linkId}`);
+      const url = location.origin + `/account/team?invitelinkid=${linkId}`;
+      const teamName = userInfo?.team.teamName;
+      const systemName = feConfigs.systemTitle;
+      const userName = userInfo?.team.memberName;
+      copyData(
+        t('account_team:invitation_copy_link', {
+          teamName,
+          systemName,
+          userName,
+          url
+        })
+      );
     },
     [copyData]
   );
