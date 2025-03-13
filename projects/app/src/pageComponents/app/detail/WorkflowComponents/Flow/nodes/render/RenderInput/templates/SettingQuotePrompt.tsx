@@ -34,7 +34,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
+import { getPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -177,8 +177,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
     () =>
       getPrompt({
         promptMap: Prompt_QuoteTemplateList[0].value,
-        customPrompt: aiChatQuoteTemplate,
-        promptAsVersion: true
+        customPrompt: aiChatQuoteTemplate
       }),
     [aiChatQuoteTemplate]
   );
@@ -187,8 +186,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
     () =>
       getPrompt({
         promptMap: quotePromptTemplates[0].value,
-        customPrompt: aiChatQuotePrompt,
-        promptAsVersion: true
+        customPrompt: aiChatQuotePrompt
       }),
     [quotePromptTemplates, aiChatQuotePrompt]
   );
@@ -309,10 +307,10 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
           onSuccess={(e) => {
             const quoteVal = e.value;
 
-            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value;
+            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value!;
 
-            setValue('quoteTemplate', quoteVal);
-            setValue('quotePrompt', promptVal);
+            setValue('quoteTemplate', Object.values(quoteVal)[0]);
+            setValue('quotePrompt', Object.values(promptVal)[0]);
           }}
         />
       )}

@@ -48,7 +48,7 @@ import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
+import { getPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -114,13 +114,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
   const formatedQuoteTemplate = getPrompt({
     promptMap: Prompt_QuoteTemplateList[0].value,
-    customPrompt: quoteTemplate,
-    promptAsVersion: true
+    customPrompt: quoteTemplate
   });
   const formatedQuotePrompt = getPrompt({
     promptMap: quotePromptTemplates[0].value,
-    customPrompt: quotePrompt,
-    promptAsVersion: true
+    customPrompt: quotePrompt
   });
 
   const chatHistories = getHistories(history, histories);
@@ -342,10 +340,10 @@ async function filterDatasetQuote({
 }: {
   quoteQA: ChatProps['params']['quoteQA'];
   model: LLMModelItemType;
-  quoteTemplate?: string;
+  quoteTemplate: string;
 }) {
   function getValue(item: SearchDataResponseItemType, index: number) {
-    return replaceVariable(quoteTemplate || Prompt_QuoteTemplateList[0].value, {
+    return replaceVariable(quoteTemplate, {
       id: item.id,
       q: item.q,
       a: item.a,
@@ -498,8 +496,7 @@ async function getChatMessages({
       ? replaceVariable(
           getPrompt({
             promptMap: Prompt_DocumentQuote,
-            customPrompt: filePrompt,
-            promptAsVersion: true
+            customPrompt: filePrompt
           }),
           {
             quote: documentQuoteText

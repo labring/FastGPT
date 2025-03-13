@@ -10,8 +10,7 @@ import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflo
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { Prompt_CQJson } from '@fastgpt/global/core/ai/prompt/agent';
+import { getCQPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
@@ -23,7 +22,6 @@ import { loadRequestMessages } from '../../../chat/utils';
 import { llmCompletionsBodyFormat } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -110,10 +108,9 @@ const completions = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(
-              cqModel.customCQPrompt ||
-                getPrompt({ promptMap: Prompt_CQJson, customPrompt: nodePrompt }),
-              {
+            content: getCQPrompt({
+              customPrompt: cqModel.customCQPrompt || nodePrompt,
+              params: {
                 systemPrompt: systemPrompt || 'null',
                 typeList: agents
                   .map((item) => `{"类型ID":"${item.key}", "问题类型":"${item.value}"}`)
@@ -123,7 +120,7 @@ const completions = async ({
                   .join('\n------\n'),
                 question: userChatInput
               }
-            )
+            })
           }
         }
       ]

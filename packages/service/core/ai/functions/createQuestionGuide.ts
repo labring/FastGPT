@@ -4,12 +4,11 @@ import { countGptMessagesTokens, countPromptTokens } from '../../../common/strin
 import { loadRequestMessages } from '../../chat/utils';
 import { llmCompletionsBodyFormat } from '../utils';
 import {
-  PROMPT_QUESTION_GUIDE,
-  PROMPT_QUESTION_GUIDE_FOOTER
+  getQuestionGuideFooterPrompt,
+  getQuestionGuidePrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { addLog } from '../../../common/system/log';
 import json5 from 'json5';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 
 export async function createQuestionGuide({
   messages,
@@ -28,10 +27,8 @@ export async function createQuestionGuide({
     ...messages,
     {
       role: 'user',
-      content: `${getPrompt({ promptMap: PROMPT_QUESTION_GUIDE, customPrompt })}\n${getPrompt({
-        promptMap: PROMPT_QUESTION_GUIDE_FOOTER,
-        customPrompt,
-        promptAsVersion: true
+      content: `${getQuestionGuidePrompt({ customPrompt })}\n${getQuestionGuideFooterPrompt({
+        customPrompt
       })}`
     }
   ];

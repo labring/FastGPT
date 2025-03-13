@@ -16,9 +16,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { Prompt_ExtractJson, Prompt_ExtractJson_Tool } from '@fastgpt/global/core/ai/prompt/agent';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
-import { replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
+import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
@@ -34,6 +32,10 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { llmCompletionsBodyFormat } from '../../../ai/utils';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
+import {
+  getExtractJsonPrompt,
+  getExtractJsonToolPrompt
+} from '@fastgpt/global/core/ai/prompt/agent';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -166,13 +168,13 @@ const getFunctionCallSchema = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(
-              getPrompt({ promptMap: Prompt_ExtractJson_Tool, customPrompt: nodePrompt }),
-              {
+            content: getExtractJsonToolPrompt({
+              customPrompt: nodePrompt,
+              params: {
                 description,
                 content
               }
-            )
+            })
           }
         }
       ]
@@ -343,10 +345,9 @@ const completions = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(
-              extractModel.customExtractPrompt ||
-                getPrompt({ promptMap: Prompt_ExtractJson, customPrompt: nodePrompt }),
-              {
+            content: getExtractJsonPrompt({
+              customPrompt: extractModel.customExtractPrompt || nodePrompt,
+              params: {
                 description,
                 json: extractKeys
                   .map((item) => {
@@ -363,7 +364,7 @@ const completions = async ({
                 text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
 Human: ${content}`
               }
-            )
+            })
           }
         }
       ]
