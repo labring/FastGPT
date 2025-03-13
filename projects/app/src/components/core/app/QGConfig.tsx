@@ -14,10 +14,9 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
 import {
-  PROMPT_QUESTION_GUIDE,
-  PROMPT_QUESTION_GUIDE_FOOTER
+  getQuestionGuideFooterPrompt,
+  getQuestionGuidePrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 
 // question generator config
 const QGConfig = ({
@@ -169,7 +168,7 @@ const QGConfigModal = ({
                     }
                   }}
                 >
-                  {getPrompt({ promptMap: PROMPT_QUESTION_GUIDE, customPrompt })}
+                  {getQuestionGuidePrompt({ customPrompt })}
                 </Box>
               </Box>
             </>
@@ -178,9 +177,9 @@ const QGConfigModal = ({
       </MyModal>
       {isOpenCustomPrompt && (
         <CustomPromptEditor
-          defaultValue={getPrompt({ promptMap: PROMPT_QUESTION_GUIDE, customPrompt })}
-          defaultPrompt={Object.values(PROMPT_QUESTION_GUIDE)[0]}
-          footerPrompt={Object.values(PROMPT_QUESTION_GUIDE_FOOTER)[0]}
+          defaultValue={getQuestionGuidePrompt({ customPrompt })}
+          defaultPrompt={getQuestionGuidePrompt({ getLatest: true })}
+          footerPrompt={getQuestionGuideFooterPrompt({ customPrompt })}
           onChange={(e) => {
             onChange({
               ...value,
