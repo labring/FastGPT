@@ -298,11 +298,15 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   const { data: detailData } = useRequest2(
     async () => {
       if (data.code === 200) return data;
-      const res = await getLogDetail(data.id);
-      return {
-        ...res,
-        ...data
-      };
+      try {
+        const res = await getLogDetail(data.id);
+        return {
+          ...res,
+          ...data
+        };
+      } catch (error) {
+        return data;
+      }
     },
     {
       manual: false

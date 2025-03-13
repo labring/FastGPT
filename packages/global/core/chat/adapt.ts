@@ -256,7 +256,7 @@ export const GPTMessages2Chats = (
         ) {
           const value: AIChatItemValueItemType[] = [];
 
-          if (typeof item.reasoning_text === 'string') {
+          if (typeof item.reasoning_text === 'string' && item.reasoning_text) {
             value.push({
               type: ChatItemValueTypeEnum.reasoning,
               reasoning: {
@@ -323,7 +323,7 @@ export const GPTMessages2Chats = (
               interactive: item.interactive
             });
           }
-          if (typeof item.content === 'string') {
+          if (typeof item.content === 'string' && item.content) {
             const lastValue = value[value.length - 1];
             if (lastValue && lastValue.type === ChatItemValueTypeEnum.text && lastValue.text) {
               lastValue.text.content += item.content;
