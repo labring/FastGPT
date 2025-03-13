@@ -25,7 +25,8 @@ A2:
 `
 };
 
-export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
+export const Prompt_ExtractJson = {
+  v491: `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
 <提取要求>
 {{description}}
 </提取要求>
@@ -44,9 +45,23 @@ export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> �
 {{text}}
 </对话记录>
 
-提取的 json 字符串:`;
+提取的 json 字符串:`
+};
 
-export const Prompt_CQJson = `请帮我执行一个“问题分类”任务，将问题分类为以下几种类型之一：
+export const Prompt_ExtractJson_Tool = {
+  v491: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
+"""
+- {{description}}
+- 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
+- 需要结合前面的对话内容，一起生成合适的参数。
+"""
+
+本次输入内容: """{{content}}"""
+`
+};
+
+export const Prompt_CQJson = {
+  v491: `请帮我执行一个“问题分类”任务，将问题分类为以下几种类型之一：
 
 """
 {{typeList}}
@@ -64,14 +79,19 @@ export const Prompt_CQJson = `请帮我执行一个“问题分类”任务，�
 
 问题："{{question}}"
 类型ID=
-`;
+`
+};
 
-export const PROMPT_QUESTION_GUIDE = `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
+export const PROMPT_QUESTION_GUIDE = {
+  v491: `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
 
 1. Use the same language as the user's last question in the conversation history.
 2. Keep each question under 20 characters in length.
 
 Analyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.
 
-Remember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics.`;
-export const PROMPT_QUESTION_GUIDE_FOOTER = `Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3']. Your output: `;
+Remember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics.`
+};
+export const PROMPT_QUESTION_GUIDE_FOOTER = {
+  v491: `Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3']. Your output: `
+};

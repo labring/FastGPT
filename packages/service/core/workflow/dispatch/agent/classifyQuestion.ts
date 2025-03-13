@@ -23,6 +23,7 @@ import { loadRequestMessages } from '../../../chat/utils';
 import { llmCompletionsBodyFormat } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
+import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -30,6 +31,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[] | number;
   [NodeInputKeyEnum.userChatInput]: string;
   [NodeInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
+  [NodeInputKeyEnum.nodePrompt]?: string;
 }>;
 type CQResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.cqResult]: string;
@@ -99,7 +101,7 @@ const completions = async ({
   cqModel,
   externalProvider,
   histories,
-  params: { agents, systemPrompt = '', userChatInput }
+  params: { agents, systemPrompt = '', userChatInput, nodePrompt }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     {
@@ -108,16 +110,20 @@ const completions = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(cqModel.customCQPrompt || Prompt_CQJson, {
-              systemPrompt: systemPrompt || 'null',
-              typeList: agents
-                .map((item) => `{"类型ID":"${item.key}", "问题类型":"${item.value}"}`)
-                .join('\n------\n'),
-              history: histories
-                .map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`)
-                .join('\n------\n'),
-              question: userChatInput
-            })
+            content: replaceVariable(
+              cqModel.customCQPrompt ||
+                getPrompt({ promptMap: Prompt_CQJson, customPrompt: nodePrompt }),
+              {
+                systemPrompt: systemPrompt || 'null',
+                typeList: agents
+                  .map((item) => `{"类型ID":"${item.key}", "问题类型":"${item.value}"}`)
+                  .join('\n------\n'),
+                history: histories
+                  .map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`)
+                  .join('\n------\n'),
+                question: userChatInput
+              }
+            )
           }
         }
       ]
@@ -127,6 +133,7 @@ const completions = async ({
     messages: chats2GPTMessages({ messages, reserveId: false }),
     useVision: false
   });
+  console.log('requestMessages', requestMessages);
 
   const { response: data } = await createChatCompletion({
     body: llmCompletionsBodyFormat(

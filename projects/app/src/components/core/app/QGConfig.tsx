@@ -17,6 +17,7 @@ import {
   PROMPT_QUESTION_GUIDE,
   PROMPT_QUESTION_GUIDE_FOOTER
 } from '@fastgpt/global/core/ai/prompt/agent';
+import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 
 // question generator config
 const QGConfig = ({
@@ -38,7 +39,7 @@ const QGConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
+      <FormLabel color={'myGray.600'}>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_question_guide')}>
@@ -168,7 +169,7 @@ const QGConfigModal = ({
                     }
                   }}
                 >
-                  {customPrompt || PROMPT_QUESTION_GUIDE}
+                  {getPrompt({ promptMap: PROMPT_QUESTION_GUIDE, customPrompt })}
                 </Box>
               </Box>
             </>
@@ -177,9 +178,9 @@ const QGConfigModal = ({
       </MyModal>
       {isOpenCustomPrompt && (
         <CustomPromptEditor
-          defaultValue={customPrompt}
-          defaultPrompt={PROMPT_QUESTION_GUIDE}
-          footerPrompt={PROMPT_QUESTION_GUIDE_FOOTER}
+          defaultValue={getPrompt({ promptMap: PROMPT_QUESTION_GUIDE, customPrompt })}
+          defaultPrompt={Object.values(PROMPT_QUESTION_GUIDE)[0]}
+          footerPrompt={Object.values(PROMPT_QUESTION_GUIDE_FOOTER)[0]}
           onChange={(e) => {
             onChange({
               ...value,

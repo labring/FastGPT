@@ -691,7 +691,7 @@ export const ModelEditModal = ({
                         <Box>{t('account:model.custom_extract_prompt')}</Box>
                         <QuestionTip
                           label={t('account:model.custom_extract_prompt_tip', {
-                            prompt: Prompt_ExtractJson
+                            prompt: Object.values(Prompt_ExtractJson)[0]
                           })}
                         />
                       </HStack>

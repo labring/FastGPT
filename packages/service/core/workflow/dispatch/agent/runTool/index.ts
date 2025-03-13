@@ -32,6 +32,7 @@ import { Prompt_DocumentQuote } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { postTextCensor } from '../../../../../common/api/requestPlusApi';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { getPrompt } from '@fastgpt/global/core/ai/prompt/getPrompt';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -118,9 +119,16 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     toolModel.defaultSystemChatPrompt,
     systemPrompt,
     documentQuoteText
-      ? replaceVariable(Prompt_DocumentQuote, {
-          quote: documentQuoteText
-        })
+      ? replaceVariable(
+          getPrompt({
+            promptMap: Prompt_DocumentQuote,
+            customPrompt: '',
+            promptAsVersion: true
+          }),
+          {
+            quote: documentQuoteText
+          }
+        )
       : ''
   ]
     .filter(Boolean)
