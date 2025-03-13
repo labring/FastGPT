@@ -13,6 +13,7 @@ import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constan
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
+import { GET, POST } from '@/web/common/api/request';
 
 interface Props {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ type OAuthItem = {
   icon: any;
   pageType?: LoginPageTypeEnum;
   redirectUrl?: string;
+  isTransferService?: boolean;
 };
 
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
@@ -49,7 +51,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             label: feConfigs.sso.title || 'Unknown',
             provider: OAuthEnum.sso,
             icon: feConfigs.sso.icon,
-            redirectUrl: `${feConfigs.sso.url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`
+            redirectUrl: `${feConfigs.sso.url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`,
+            isTransferService: feConfigs.sso.isTransferService
           }
         ]
       : []),
@@ -136,12 +139,27 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
       if (item.redirectUrl) {
-        setLoginStore({
-          provider: item.provider as OAuthEnum,
-          lastRoute,
-          state: state.current
-        });
-        router.replace(item.redirectUrl, '_self');
+        if (item.isTransferService) {
+          const redirectUrl = await POST<string>(
+            '/proApi/support/user/account/login/getRedirectUrl',
+            {
+              redirectUrl: item.redirectUrl
+            }
+          );
+          setLoginStore({
+            provider: item.provider as OAuthEnum,
+            lastRoute,
+            state: state.current
+          });
+          router.replace(redirectUrl, '_self');
+        } else {
+          setLoginStore({
+            provider: item.provider as OAuthEnum,
+            lastRoute,
+            state: state.current
+          });
+          router.replace(item.redirectUrl, '_self');
+        }
       }
       item.pageType && setPageType(item.pageType);
     },
