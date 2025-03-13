@@ -130,7 +130,6 @@ const completions = async ({
     messages: chats2GPTMessages({ messages, reserveId: false }),
     useVision: false
   });
-  console.log('requestMessages', requestMessages);
 
   const { response: data } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
