@@ -34,13 +34,13 @@ export function useLinkedScroll<
     bottom: null as { _id: string; index: number } | null
   });
   const containerRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLElement | null)[]>([]);
+  const itemRefs = useRef<Map<string, HTMLElement | null>>(new Map());
 
   const scrollToItem = async (id: string, retry = 3) => {
     const itemIndex = dataList.findIndex((item) => item._id === id);
     if (itemIndex === -1) return;
 
-    const element = itemRefs.current[itemIndex];
+    const element = itemRefs.current.get(id);
 
     if (!element || !containerRef.current) {
       if (retry > 0) {
@@ -63,12 +63,17 @@ export function useLinkedScroll<
   const { runAsync: callApi, loading: isLoading } = useRequest2(api);
 
   let scroolSign = useRef(false);
+  const isRefreshDepsTriggered = useRef(false);
+
   const { runAsync: loadInitData } = useRequest2(
     async (scrollWhenFinish = true, refresh = false) => {
       if (!currentData || isLoading) return;
 
+      const effectiveRefresh = isRefreshDepsTriggered.current ? false : refresh;
+      isRefreshDepsTriggered.current = false;
+
       const item = dataList.find((item) => item._id === currentData.id);
-      if (item && !refresh) {
+      if (item && !effectiveRefresh) {
         scrollToItem(item._id);
         return;
       }
@@ -93,7 +98,10 @@ export function useLinkedScroll<
     },
     {
       refreshDeps: [currentData],
-      manual: false
+      manual: false,
+      onBefore: () => {
+        isRefreshDepsTriggered.current = true;
+      }
     }
   );
   useEffect(() => {

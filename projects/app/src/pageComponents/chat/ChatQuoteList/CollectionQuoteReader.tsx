@@ -256,8 +256,7 @@ const CollectionReader = ({
             {formatedDataList.map((item, index) => (
               <CollectionQuoteItem
                 key={item._id}
-                index={index}
-                quoteRefs={itemRefs as React.MutableRefObject<(HTMLDivElement | null)[]>}
+                quoteRefs={itemRefs as React.MutableRefObject<Map<string, HTMLDivElement | null>>}
                 quoteIndex={item.quoteIndex}
                 setQuoteIndex={setQuoteIndex}
                 refreshList={() => loadInitData(false, true)}
