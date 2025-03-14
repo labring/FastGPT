@@ -1,4 +1,3 @@
-import { replaceVariable } from '../../../common/string/tools';
 export const Prompt_AgentQA = {
   description: `<Context></Context> 标记中是一段文本，学习和分析它，并整理学习成果：
 - 提出问题并给出每个问题的答案。
@@ -26,37 +25,21 @@ A2:
 `
 };
 
-const defaultVersion = 'v491';
-
-export const getPrompt = ({
-  promptMap,
-  customPrompt
-}: {
-  promptMap: Record<string, string>;
-  customPrompt?: string;
-}) => {
-  if (!customPrompt) {
-    return promptMap[defaultVersion];
+export const getPromptByVersion = (version?: string, promptMap: Record<string, string> = {}) => {
+  if (!version) {
+    return Object.values(promptMap)[0];
   }
 
-  if (customPrompt in promptMap) {
-    return promptMap[customPrompt];
-  } else {
-    return customPrompt;
+  if (version in promptMap) {
+    return promptMap[version];
   }
+
+  return Object.values(promptMap)[Object.values(promptMap).length - 1];
 };
 
-export const getExtractJsonPrompt = ({
-  customPrompt,
-  params,
-  getLatest = false
-}: {
-  customPrompt?: string;
-  params?: Record<string, string>;
-  getLatest?: boolean;
-}): string => {
+export const getExtractJsonPrompt = (version?: string) => {
   const promptMap: Record<string, string> = {
-    v491: `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
+    ['481']: `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
 <提取要求>
 {{description}}
 </提取要求>
@@ -78,27 +61,12 @@ export const getExtractJsonPrompt = ({
 提取的 json 字符串:`
   };
 
-  if (getLatest) {
-    return Object.values(promptMap)[0];
-  }
-
-  const prompt = getPrompt({
-    promptMap,
-    customPrompt
-  });
-
-  return replaceVariable(prompt, params || {});
+  return getPromptByVersion(version, promptMap);
 };
 
-export const getExtractJsonToolPrompt = ({
-  customPrompt,
-  params
-}: {
-  customPrompt?: string;
-  params?: Record<string, string>;
-}) => {
+export const getExtractJsonToolPrompt = (version?: string) => {
   const promptMap: Record<string, string> = {
-    v491: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
+    ['481']: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
 """
 - {{description}}
 - 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
@@ -109,25 +77,12 @@ export const getExtractJsonToolPrompt = ({
   `
   };
 
-  const prompt = getPrompt({
-    promptMap,
-    customPrompt
-  });
-
-  return replaceVariable(prompt, params || {});
+  return getPromptByVersion(version, promptMap);
 };
 
-export const getCQPrompt = ({
-  customPrompt,
-  params,
-  getLatest = false
-}: {
-  customPrompt?: string;
-  params?: Record<string, string>;
-  getLatest?: boolean;
-}): string => {
+export const getCQPrompt = (version?: string) => {
   const promptMap: Record<string, string> = {
-    v491: `请帮我执行一个"问题分类"任务，将问题分类为以下几种类型之一：
+    ['481']: `请帮我执行一个"问题分类"任务，将问题分类为以下几种类型之一：
 
 """
 {{typeList}}
@@ -148,62 +103,20 @@ export const getCQPrompt = ({
 `
   };
 
-  if (getLatest) {
-    return Object.values(promptMap)[0];
-  }
-
-  const prompt = getPrompt({
-    promptMap,
-    customPrompt
-  });
-
-  return replaceVariable(prompt, params || {});
+  return getPromptByVersion(version, promptMap);
 };
 
-export const getQuestionGuidePrompt = ({
-  customPrompt,
-  getLatest = false
-}: {
-  customPrompt?: string;
-  getLatest?: boolean;
-}): string => {
-  const promptMap: Record<string, string> = {
-    v491: `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
+export const getQuestionGuidePrompt = () => {
+  return `You are an AI assistant tasked with predicting the user's next question based on the conversation history. Your goal is to generate 3 potential questions that will guide the user to continue the conversation. When generating these questions, adhere to the following rules:
 
 1. Use the same language as the user's last question in the conversation history.
 2. Keep each question under 20 characters in length.
 
 Analyze the conversation history provided to you and use it as context to generate relevant and engaging follow-up questions. Your predictions should be logical extensions of the current topic or related areas that the user might be interested in exploring further.
 
-Remember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics.`
-  };
-
-  if (getLatest) {
-    return Object.values(promptMap)[0];
-  }
-
-  return getPrompt({
-    promptMap,
-    customPrompt
-  });
+Remember to maintain consistency in tone and style with the existing conversation while providing diverse options for the user to choose from. Your goal is to keep the conversation flowing naturally and help the user delve deeper into the subject matter or explore related topics.`;
 };
 
-export const getQuestionGuideFooterPrompt = ({
-  customPrompt
-}: {
-  customPrompt?: string;
-}): string => {
-  const promptMap: Record<string, string> = {
-    v491: `Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3']. Your output: `
-  };
-
-  if (!customPrompt) {
-    return promptMap[defaultVersion];
-  }
-
-  if (customPrompt in promptMap) {
-    return promptMap[customPrompt];
-  } else {
-    return Object.values(promptMap)[0];
-  }
+export const getQuestionGuideFooterPrompt = () => {
+  return `Please strictly follow the format rules: \nReturn questions in JSON format: ['Question 1', 'Question 2', 'Question 3']. Your output: `;
 };

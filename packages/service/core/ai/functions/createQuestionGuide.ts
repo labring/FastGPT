@@ -27,9 +27,7 @@ export async function createQuestionGuide({
     ...messages,
     {
       role: 'user',
-      content: `${getQuestionGuidePrompt({ customPrompt })}\n${getQuestionGuideFooterPrompt({
-        customPrompt
-      })}`
+      content: `${getQuestionGuidePrompt()}\n${getQuestionGuideFooterPrompt()}`
     }
   ];
   const requestMessages = await loadRequestMessages({

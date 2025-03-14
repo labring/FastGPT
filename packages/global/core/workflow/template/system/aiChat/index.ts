@@ -17,8 +17,7 @@ import {
   Input_Template_History,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput,
-  Input_Template_File_Link,
-  Input_Template_File_Prompt
+  Input_Template_File_Link
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
 import { getHandleConfig } from '../../utils';
@@ -36,14 +35,14 @@ export const AiChatQuoteTemplate = {
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
   valueType: WorkflowIOValueTypeEnum.string,
-  value: 'v491'
+  value: ''
 };
 export const AiChatQuotePrompt = {
   key: NodeInputKeyEnum.aiChatQuotePrompt,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
   valueType: WorkflowIOValueTypeEnum.string,
-  value: 'v491'
+  value: ''
 };
 
 export const AiChatModule: FlowNodeTemplateType = {
@@ -133,7 +132,6 @@ export const AiChatModule: FlowNodeTemplateType = {
     Input_Template_History,
     Input_Template_Dataset_Quote,
     Input_Template_File_Link,
-    { ...Input_Template_File_Prompt, value: 'v491' },
     { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
   ],
   outputs: [

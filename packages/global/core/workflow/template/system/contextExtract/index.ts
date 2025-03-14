@@ -10,11 +10,7 @@ import {
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../../constants';
-import {
-  Input_Template_SelectAIModel,
-  Input_Template_History,
-  Input_Template_Node_Prompt
-} from '../../input';
+import { Input_Template_SelectAIModel, Input_Template_History } from '../../input';
 import { LLMModelTypeEnum } from '../../../../ai/constants';
 import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
@@ -36,10 +32,6 @@ export const ContextExtractModule: FlowNodeTemplateType = {
     {
       ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.extractFields
-    },
-    {
-      ...Input_Template_Node_Prompt,
-      value: 'v491'
     },
     {
       key: NodeInputKeyEnum.description,
