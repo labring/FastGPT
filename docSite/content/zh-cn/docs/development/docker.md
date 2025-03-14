@@ -56,7 +56,7 @@ weight: 707
 
 ### zilliz cloud版本
 
-Milvus 的全托管服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
+zilliz 的全托管服务，性能优于 Milvus 并提供 SLA，点击使用 [Zilliz Cloud](https://zilliz.com.cn/)。
 
 由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
 
