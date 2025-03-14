@@ -70,8 +70,9 @@ const CollectionReader = ({
       appId: metadata.appId,
       ...metadata.outLinkAuthData
     }),
-    [metadata]
+    [chatItemDataId, collectionId, metadata.appId, metadata.chatId, metadata.outLinkAuthData]
   );
+
   const {
     dataList: datasetDataList,
     isLoading,
@@ -108,13 +109,22 @@ const CollectionReader = ({
       url: '/api/core/dataset/collection/export',
       filename: 'data.csv',
       body: {
-        collectionId: collectionId,
-        chatItemDataId
+        appId: metadata.appId,
+        chatId: metadata.chatId,
+        chatItemDataId,
+        collectionId,
+        ...metadata.outLinkAuthData
       }
     });
   });
 
-  const handleRead = getCollectionSourceAndOpen(metadata);
+  const handleRead = getCollectionSourceAndOpen({
+    appId: metadata.appId,
+    chatId: metadata.chatId,
+    chatItemDataId,
+    collectionId,
+    ...metadata.outLinkAuthData
+  });
 
   return (
     <MyBox display={'flex'} flexDirection={'column'} h={'full'}>
