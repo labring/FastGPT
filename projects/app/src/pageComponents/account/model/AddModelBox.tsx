@@ -678,7 +678,7 @@ export const ModelEditModal = ({
                         <Box>{t('account:model.custom_cq_prompt')}</Box>
                         <QuestionTip
                           label={t('account:model.custom_cq_prompt_tip', {
-                            prompt: getCQPrompt({ getLatest: true })
+                            prompt: getCQPrompt()
                           })}
                         />
                       </HStack>
@@ -693,7 +693,7 @@ export const ModelEditModal = ({
                         <Box>{t('account:model.custom_extract_prompt')}</Box>
                         <QuestionTip
                           label={t('account:model.custom_extract_prompt_tip', {
-                            prompt: getExtractJsonPrompt({ getLatest: true })
+                            prompt: getExtractJsonPrompt()
                           })}
                         />
                       </HStack>

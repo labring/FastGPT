@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
+import { replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
@@ -43,7 +43,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [NodeInputKeyEnum.description]: string;
   [NodeInputKeyEnum.aiModel]: string;
-  [NodeInputKeyEnum.nodePrompt]: string;
 }>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.success]: boolean;
@@ -158,7 +157,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 const getFunctionCallSchema = async ({
   extractModel,
   histories,
-  params: { content, extractKeys, description, nodePrompt }
+  params: { content, extractKeys, description },
+  node: { version }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     ...histories,
@@ -168,12 +168,9 @@ const getFunctionCallSchema = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: getExtractJsonToolPrompt({
-              customPrompt: nodePrompt,
-              params: {
-                description,
-                content
-              }
+            content: replaceVariable(getExtractJsonToolPrompt(version), {
+              description,
+              content
             })
           }
         }
@@ -336,7 +333,8 @@ const completions = async ({
   extractModel,
   externalProvider,
   histories,
-  params: { content, extractKeys, description = 'No special requirements', nodePrompt }
+  params: { content, extractKeys, description = 'No special requirements' },
+  node: { version }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     {
@@ -345,9 +343,9 @@ const completions = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: getExtractJsonPrompt({
-              customPrompt: extractModel.customExtractPrompt || nodePrompt,
-              params: {
+            content: replaceVariable(
+              extractModel.customExtractPrompt || getExtractJsonPrompt(version),
+              {
                 description,
                 json: extractKeys
                   .map((item) => {
@@ -364,7 +362,7 @@ const completions = async ({
                 text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
 Human: ${content}`
               }
-            })
+            )
           }
         }
       ]

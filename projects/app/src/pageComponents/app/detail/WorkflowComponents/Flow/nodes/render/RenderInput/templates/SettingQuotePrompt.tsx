@@ -10,7 +10,9 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Prompt_userQuotePromptList,
   Prompt_QuoteTemplateList,
-  Prompt_systemQuotePromptList
+  Prompt_systemQuotePromptList,
+  getQuoteTemplate,
+  getQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
@@ -34,7 +36,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/aiChat';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import LightTip from '@fastgpt/web/components/common/LightTip';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -49,6 +50,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const node = nodeList.find((item) => item.id === nodeId);
+  const nodeVersion = node?.version;
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
@@ -173,24 +176,6 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const quotePromptTemplates =
     aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
 
-  const defaultQuoteTemplate = useMemo(
-    () =>
-      getPrompt({
-        promptMap: Prompt_QuoteTemplateList[0].value,
-        customPrompt: aiChatQuoteTemplate
-      }),
-    [aiChatQuoteTemplate]
-  );
-
-  const defaultQuotePrompt = useMemo(
-    () =>
-      getPrompt({
-        promptMap: quotePromptTemplates[0].value,
-        customPrompt: aiChatQuotePrompt
-      }),
-    [quotePromptTemplates, aiChatQuotePrompt]
-  );
-
   return (
     <>
       <MyModal
@@ -238,7 +223,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
-                  default: defaultQuoteTemplate
+                  default: getQuoteTemplate(nodeVersion || '')
                 })}
               ></QuestionTip>
               <Box flex={1} />
@@ -261,7 +246,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               minH={160}
               title={t('common:core.app.Quote templates')}
               placeholder={t('workflow:quote_content_placeholder')}
-              value={defaultQuoteTemplate}
+              value={aiChatQuoteTemplate}
               onChange={(e) => {
                 setValue('quoteTemplate', e);
               }}
@@ -273,7 +258,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_prompt_tip', {
-                  default: defaultQuotePrompt
+                  default: getQuotePrompt(nodeVersion || '', aiChatQuoteRole)
                 })}
               ></QuestionTip>
             </Flex>
@@ -282,9 +267,9 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               title={t('common:core.app.Quote prompt')}
               minH={300}
               placeholder={t('workflow:quote_prompt_tip', {
-                default: defaultQuotePrompt
+                default: getQuotePrompt(nodeVersion || '', aiChatQuoteRole)
               })}
-              value={defaultQuotePrompt}
+              value={aiChatQuotePrompt}
               onChange={(e) => {
                 setValue('quotePrompt', e);
               }}

@@ -24,10 +24,9 @@ import {
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
 import {
-  Prompt_DocumentQuote,
-  Prompt_userQuotePromptList,
-  Prompt_QuoteTemplateList,
-  Prompt_systemQuotePromptList
+  getQuoteTemplate,
+  getQuotePrompt,
+  getDocumentQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -48,7 +47,6 @@ import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import { getPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -71,7 +69,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     stream = false,
     externalProvider,
     histories,
-    node: { name },
+    node: { name, version },
     query,
     runningUserInfo,
     workflowStreamResponse,
@@ -96,7 +94,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       aiChatJsonSchema,
 
       fileUrlList: fileLinks, // node quote file links
-      filePrompt,
       stringQuoteText //abandon
     }
   } = props;
@@ -110,17 +107,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   aiChatVision = modelConstantsData.vision && aiChatVision;
   aiChatReasoning = !!aiChatReasoning && !!modelConstantsData.reasoning;
 
-  const quotePromptTemplates =
-    aiChatQuoteRole === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
-  const formatedQuoteTemplate = getPrompt({
-    promptMap: Prompt_QuoteTemplateList[0].value,
-    customPrompt: quoteTemplate
-  });
-  const formatedQuotePrompt = getPrompt({
-    promptMap: quotePromptTemplates[0].value,
-    customPrompt: quotePrompt
-  });
-
   const chatHistories = getHistories(history, histories);
   quoteQA = checkQuoteQAValue(quoteQA);
 
@@ -128,7 +114,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     filterDatasetQuote({
       quoteQA,
       model: modelConstantsData,
-      quoteTemplate: formatedQuoteTemplate
+      quoteTemplate: quoteTemplate || getQuoteTemplate(version)
     }),
     getMultiInput({
       histories: chatHistories,
@@ -159,12 +145,12 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       useDatasetQuote: quoteQA !== undefined,
       datasetQuoteText,
       aiChatQuoteRole,
-      datasetQuotePrompt: formatedQuotePrompt,
+      datasetQuotePrompt: quotePrompt,
+      version,
       userChatInput,
       systemPrompt,
       userFiles,
-      documentQuoteText,
-      filePrompt
+      documentQuoteText
     }),
     // Censor = true and system key, will check content
     (() => {
@@ -439,12 +425,12 @@ async function getChatMessages({
   datasetQuotePrompt = '',
   datasetQuoteText,
   useDatasetQuote,
+  version,
   histories = [],
   systemPrompt,
   userChatInput,
   userFiles,
-  documentQuoteText,
-  filePrompt
+  documentQuoteText
 }: {
   model: LLMModelItemType;
   maxTokens?: number;
@@ -452,6 +438,7 @@ async function getChatMessages({
   aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
   datasetQuoteText: string;
+  version: string;
 
   useDatasetQuote: boolean;
   histories: ChatItemType[];
@@ -460,18 +447,13 @@ async function getChatMessages({
 
   userFiles: UserChatItemValueItemType['file'][];
   documentQuoteText?: string; // document quote
-  filePrompt?: string;
 }) {
   // Dataset prompt ====>
   // User role or prompt include question
   const quoteRole =
     aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
 
-  const datasetQuotePromptTemplate = datasetQuotePrompt
-    ? datasetQuotePrompt
-    : quoteRole === 'user'
-      ? Prompt_userQuotePromptList[0].value
-      : Prompt_systemQuotePromptList[0].value;
+  const datasetQuotePromptTemplate = datasetQuotePrompt || getQuotePrompt(version, quoteRole);
 
   // Reset user input, add dataset quote to user input
   const replaceInputValue =
@@ -493,15 +475,9 @@ async function getChatMessages({
         })
       : '',
     documentQuoteText
-      ? replaceVariable(
-          getPrompt({
-            promptMap: Prompt_DocumentQuote,
-            customPrompt: filePrompt
-          }),
-          {
-            quote: documentQuoteText
-          }
-        )
+      ? replaceVariable(getDocumentQuotePrompt(version), {
+          quote: documentQuoteText
+        })
       : ''
   ]
     .filter(Boolean)
