@@ -120,6 +120,7 @@
   "publish_success": "Publish Successful",
   "question_guide_tip": "After the conversation, 3 guiding questions will be generated for you.",
   "reasoning_response": "Output thinking",
+  "rerank_weight": "Rearrange weights",
   "response_format": "Response format",
   "saved_success": "Saved successfully! \nTo use this version externally, click Save and Publish",
   "search_app": "Search apps",

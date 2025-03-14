@@ -239,58 +239,72 @@ export function form2AppWorkflow(
       version: DatasetSearchModule.version,
       inputs: [
         {
-          key: 'datasets',
+          key: NodeInputKeyEnum.datasetSelectList,
           renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
-          label: 'core.module.input.label.Select dataset',
+          label: i18nT('common:core.module.input.label.Select dataset'),
           value: selectedDatasets,
           valueType: WorkflowIOValueTypeEnum.selectDataset,
           list: [],
           required: true
         },
         {
-          key: 'similarity',
+          key: NodeInputKeyEnum.datasetSimilarity,
           renderTypeList: [FlowNodeInputTypeEnum.selectDatasetParamsModal],
           label: '',
           value: formData.dataset.similarity,
           valueType: WorkflowIOValueTypeEnum.number
         },
         {
-          key: 'limit',
+          key: NodeInputKeyEnum.datasetMaxTokens,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           value: formData.dataset.limit,
           valueType: WorkflowIOValueTypeEnum.number
         },
         {
-          key: 'searchMode',
+          key: NodeInputKeyEnum.datasetSearchMode,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
           value: formData.dataset.searchMode
         },
         {
-          key: 'usingReRank',
+          key: NodeInputKeyEnum.datasetSearchUsingReRank,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.usingReRank
         },
         {
-          key: 'datasetSearchUsingExtensionQuery',
+          key: NodeInputKeyEnum.datasetSearchRerankModel,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: formData.dataset.rerankModel
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchRerankWeight,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.number,
+          value: formData.dataset.rerankWeight
+        },
+        {
+          key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.boolean,
           value: formData.dataset.datasetSearchUsingExtensionQuery
         },
         {
-          key: 'datasetSearchExtensionModel',
+          key: NodeInputKeyEnum.datasetSearchExtensionModel,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,
           value: formData.dataset.datasetSearchExtensionModel
         },
         {
-          key: 'datasetSearchExtensionBg',
+          key: NodeInputKeyEnum.datasetSearchExtensionBg,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           valueType: WorkflowIOValueTypeEnum.string,

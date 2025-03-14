@@ -27,13 +27,6 @@ async function handler(
   const dbModel = await MongoSystemModel.findOne({ model }).lean();
   const modelData = findModelFromAlldata(model);
 
-  if (metadata) {
-    delete metadata.isActive;
-    delete metadata.isDefault;
-    delete metadata.isDefaultDatasetTextModel;
-    delete metadata.isDefaultDatasetImageModel;
-  }
-
   const metadataConcat: Record<string, any> = {
     ...modelData, // system config
     ...dbModel?.metadata, // db config

@@ -73,6 +73,11 @@ const LightRowTabs = <ValueType = string,>({
               color: activeColor
             }}
             fontWeight={'medium'}
+            onClick={() => {
+              if (value === item.value) return;
+              onChange(item.value);
+            }}
+            {...inlineStyles}
             {...(value === item.value
               ? {
                   color: activeColor,
@@ -82,11 +87,6 @@ const LightRowTabs = <ValueType = string,>({
               : {
                   cursor: 'pointer'
                 })}
-            onClick={() => {
-              if (value === item.value) return;
-              onChange(item.value);
-            }}
-            {...inlineStyles}
           >
             {item.icon && (
               <>

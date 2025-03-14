@@ -10,7 +10,6 @@ import {
   HStack
 } from '@chakra-ui/react';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 
@@ -106,6 +105,7 @@ const EditForm = ({
   const tokenLimit = useMemo(() => {
     return selectedModel?.quoteMaxToken || 3000;
   }, [selectedModel?.quoteMaxToken]);
+
   // Force close image select when model not support vision
   useEffect(() => {
     if (!selectedModel.vision) {
@@ -434,8 +434,6 @@ const EditForm = ({
                 ...e
               }
             }));
-
-            console.dir(e);
           }}
         />
       )}

@@ -1,7 +1,7 @@
 import { FastGPTFeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types';
 import {
   TTSModelType,
-  ReRankModelItemType,
+  RerankModelItemType,
   STTModelType,
   EmbeddingModelItemType,
   LLMModelItemType
