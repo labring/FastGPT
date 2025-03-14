@@ -120,7 +120,6 @@
   "publish_success": "發布成功",
   "question_guide_tip": "對話結束後，會為你產生 3 個引導性問題。",
   "reasoning_response": "輸出思考",
-  "rerank_weight": "重排權重",
   "response_format": "回复格式",
   "saved_success": "保存成功！\n如需在外部使用該版本，請點擊“儲存並發布”",
   "search_app": "搜尋應用程式",

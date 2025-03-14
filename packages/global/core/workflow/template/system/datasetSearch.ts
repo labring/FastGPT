@@ -64,6 +64,13 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       value: DatasetSearchModeEnum.embedding
     },
+    {
+      key: NodeInputKeyEnum.datasetSearchEmbeddingWeight,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: 0.5
+    },
     // Rerank
     {
       key: NodeInputKeyEnum.datasetSearchUsingReRank,

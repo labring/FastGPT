@@ -8,6 +8,7 @@ export enum CodeClassNameEnum {
   latex = 'latex',
   iframe = 'iframe',
   html = 'html',
+  svg = 'svg',
   video = 'video',
   audio = 'audio'
 }

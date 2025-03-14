@@ -108,6 +108,10 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.searchMode =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchMode) ||
         DatasetSearchModeEnum.embedding;
+      defaultAppForm.dataset.embeddingWeight = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchEmbeddingWeight
+      );
       // Rerank
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         node.inputs,

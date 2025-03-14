@@ -228,10 +228,23 @@ export const WholeResponseContent = ({
         {activeModule?.searchMode && (
           <Row
             label={t('common:core.dataset.search.search mode')}
-            // @ts-ignore
-            value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+            rawDom={
+              <Flex border={'base'} borderRadius={'md'} p={2}>
+                <Box>
+                  {/* @ts-ignore */}
+                  {t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+                </Box>
+                {activeModule.embeddingWeight && (
+                  <>{`(${t('chat:response_hybrid_weight', {
+                    emb: activeModule.embeddingWeight,
+                    text: 1 - activeModule.embeddingWeight
+                  })})`}</>
+                )}
+              </Flex>
+            }
           />
         )}
+
         <Row
           label={t('common:core.chat.response.module similarity')}
           value={activeModule?.similarity}
@@ -239,7 +252,19 @@ export const WholeResponseContent = ({
         <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
         <Row
           label={t('common:core.chat.response.search using reRank')}
-          value={`${activeModule?.searchUsingReRank}`}
+          rawDom={
+            <Box border={'base'} borderRadius={'md'} p={2}>
+              {activeModule?.searchUsingReRank ? (
+                activeModule?.rerankModel ? (
+                  <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                ) : (
+                  'True'
+                )
+              ) : (
+                `False`
+              )}
+            </Box>
+          }
         />
         {activeModule.queryExtensionResult && (
           <>

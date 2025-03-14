@@ -75,6 +75,7 @@ export type AppDatasetSearchParamsType = {
   searchMode: `${DatasetSearchModeEnum}`;
   limit?: number; // limit max tokens
   similarity?: number;
+  embeddingWeight?: number; // embedding weight, fullText weight = 1 - embeddingWeight
 
   usingReRank?: boolean;
   rerankModel?: string;
