@@ -1,12 +1,12 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { getRootUser } from './datas/users';
-import { Call } from './utils/request';
+import { getRootUser } from '@test/datas/users';
+import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 import handler, {
   type versionListBody,
   type versionListResponse
-} from '../projects/app/src/pages/api/core/app/version/list';
+} from '@/pages/api/core/app/version/list';
 
 describe('app version list test', () => {
   it('should return app version list', async () => {
