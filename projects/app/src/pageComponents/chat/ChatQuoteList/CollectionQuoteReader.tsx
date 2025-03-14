@@ -260,7 +260,7 @@ const CollectionReader = ({
                 quoteRefs={itemRefs as React.MutableRefObject<(HTMLDivElement | null)[]>}
                 quoteIndex={item.quoteIndex}
                 setQuoteIndex={setQuoteIndex}
-                refreshList={() => loadInitData(false)}
+                refreshList={() => loadInitData(false, true)}
                 updated={item.updated}
                 isCurrentSelected={item.isCurrentSelected}
                 q={item.q}
