@@ -429,6 +429,7 @@ export const iconPaths = {
   'price/bg': () => import('./icons/price/bg.svg'),
   'price/right': () => import('./icons/price/right.svg'),
   save: () => import('./icons/save.svg'),
+  sliderTag: () => import('./icons/sliderTag.svg'),
   stop: () => import('./icons/stop.svg'),
   'support/account/laf': () => import('./icons/support/account/laf.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),

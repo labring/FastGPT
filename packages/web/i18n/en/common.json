@@ -1025,6 +1025,7 @@
   "question_feedback": "Work order",
   "read_quote": "View citations",
   "required": "Required",
+  "rerank_weight": "Rearrange weights",
   "resume_failed": "Resume Failed",
   "select_reference_variable": "Select Reference Variable",
   "share_link": "Share Link",

@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Box, Button, Flex, HStack, ModalBody, ModalFooter, Switch } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  HStack,
+  ModalBody,
+  ModalFooter,
+  Switch,
+  Slider,
+  SliderTrack,
+  SliderFilledTrack,
+  SliderThumb
+} from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -17,6 +29,7 @@ import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
 import InputSlider from '@fastgpt/web/components/common/MySlider/InputSlider';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -28,6 +41,7 @@ const DatasetParamsModal = ({
   searchMode = DatasetSearchModeEnum.embedding,
   limit,
   similarity,
+  embeddingWeight,
   usingReRank,
   rerankModel,
   rerankWeight,
@@ -62,12 +76,13 @@ const DatasetParamsModal = ({
   const { register, setValue, getValues, handleSubmit, watch } =
     useForm<AppDatasetSearchParamsType>({
       defaultValues: {
-        limit,
-        similarity,
         searchMode,
+        embeddingWeight: embeddingWeight || 0.5,
         usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
         rerankModel: rerankModel || defaultModels?.rerank?.model,
         rerankWeight: rerankWeight || 0.5,
+        limit,
+        similarity,
         datasetSearchUsingExtensionQuery,
         datasetSearchExtensionModel: datasetSearchExtensionModel || defaultModels.llm?.model,
         datasetSearchExtensionBg
@@ -75,6 +90,12 @@ const DatasetParamsModal = ({
     });
 
   const searchModeWatch = watch('searchMode');
+  const embeddingWeightWatch = watch('embeddingWeight');
+  const fullTextWeightWatch = useMemo(() => {
+    const val = 1 - (embeddingWeightWatch || 0.5);
+    return Number(val.toFixed(2));
+  }, [embeddingWeightWatch]);
+
   const datasetSearchUsingCfrForm = watch('datasetSearchUsingExtensionQuery');
   const queryExtensionModel = watch('datasetSearchExtensionModel');
 
@@ -168,8 +189,45 @@ const DatasetParamsModal = ({
                 {
                   title: t('common:core.dataset.search.mode.mixedRecall'),
                   desc: t('common:core.dataset.search.mode.mixedRecall desc'),
-                  value: DatasetSearchModeEnum.mixedRecall
-                  // children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && <Box>111</Box>
+                  value: DatasetSearchModeEnum.mixedRecall,
+                  children: searchModeWatch === DatasetSearchModeEnum.mixedRecall && (
+                    <Box mt={3}>
+                      <HStack justifyContent={'space-between'}>
+                        <Flex alignItems={'center'}>
+                          <Box fontSize={'sm'} color={'myGray.900'}>
+                            {t('common:core.dataset.search.mode.embedding')}
+                          </Box>
+                          <Box fontSize={'xs'} color={'myGray.500'}>
+                            {embeddingWeightWatch}
+                          </Box>
+                        </Flex>
+                        <Flex alignItems={'center'}>
+                          <Box fontSize={'sm'} color={'myGray.900'}>
+                            {t('common:core.dataset.search.score.fullText')}
+                          </Box>
+                          <Box fontSize={'xs'} color={'myGray.500'}>
+                            {fullTextWeightWatch}
+                          </Box>
+                        </Flex>
+                      </HStack>
+                      <Slider
+                        defaultValue={embeddingWeightWatch}
+                        min={0.1}
+                        max={0.9}
+                        step={0.01}
+                        onChange={(e) => {
+                          setValue('embeddingWeight', Number(e.toFixed(2)));
+                        }}
+                      >
+                        <SliderTrack bg={'#F9518E'}>
+                          <SliderFilledTrack bg={'#3370FF'} />
+                        </SliderTrack>
+                        <SliderThumb boxShadow={'none'} bg={'none'}>
+                          <MyIcon transform={'translateY(10px)'} name={'sliderTag'} w={'1rem'} />
+                        </SliderThumb>
+                      </Slider>
+                    </Box>
+                  )
                 }
               ]}
               value={searchModeWatch}
@@ -201,7 +259,7 @@ const DatasetParamsModal = ({
                 <>
                   <HStack mt={3} justifyContent={'space-between'}>
                     <Box fontSize={'sm'} flex={'0 0 100px'} color={'myGray.700'}>
-                      {t('app:rerank_weight')}
+                      {t('common:rerank_weight')}
                     </Box>
                     <Box flex={'1 0 0'}>
                       <InputSlider

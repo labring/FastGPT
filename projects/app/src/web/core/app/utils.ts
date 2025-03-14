@@ -269,6 +269,13 @@ export function form2AppWorkflow(
           value: formData.dataset.searchMode
         },
         {
+          key: NodeInputKeyEnum.datasetSearchEmbeddingWeight,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          valueType: WorkflowIOValueTypeEnum.number,
+          value: formData.dataset.embeddingWeight
+        },
+        {
           key: NodeInputKeyEnum.datasetSearchUsingReRank,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
