@@ -12,7 +12,7 @@
     "previewIcon": "node ./scripts/icon/index.js",
     "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
     "create:i18n": "node ./scripts/i18n/index.js",
-    "test": "vitest run --exclude './projects/app/src/test/**'",
+    "test": "vitest run --exclude 'test/cases/spec'",
     "test:all": "vitest run",
     "test:workflow": "vitest run workflow"
   },

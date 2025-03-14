@@ -57,7 +57,7 @@ beforeAll(async () => {
     type: 'replSet',
     serverOptions: {
       replSet: {
-        count: 4
+        count: 1
       }
     }
   });
