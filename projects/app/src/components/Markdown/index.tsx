@@ -96,7 +96,7 @@ function Code(e: any) {
     if (codeType === CodeClassNameEnum.guide) {
       return <ChatGuide text={strChildren} />;
     }
-    if (codeType === CodeClassNameEnum.questionGuide) {
+    if (codeType === CodeClassNameEnum.questionguide) {
       return <QuestionGuide text={strChildren} />;
     }
     if (codeType === CodeClassNameEnum.echarts) {

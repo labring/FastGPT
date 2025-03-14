@@ -59,7 +59,7 @@ type Props = BasicProps & {
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
   return (
     <Markdown
-      source={`\`\`\`${CodeClassNameEnum.questionGuide}
+      source={`\`\`\`${CodeClassNameEnum.questionguide}
 ${JSON.stringify(questionGuides)}`}
     />
   );
