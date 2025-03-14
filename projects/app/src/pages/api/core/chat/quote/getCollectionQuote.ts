@@ -8,6 +8,7 @@ import { FilterQuery, Types } from 'mongoose';
 import { quoteDataFieldSelector, QuoteDataItemType } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
 export type GetCollectionQuoteProps = LinkedPaginationProps & {
   chatId: string;
@@ -50,7 +51,8 @@ async function handler(
 
   const limitedPageSize = Math.min(pageSize, 30);
 
-  const [{ chat, showRawSource }, { chatItem }] = await Promise.all([
+  const [collection, { chat, showRawSource }, { chatItem }] = await Promise.all([
+    getCollectionWithDataset(collectionId),
     authChatCrud({
       req,
       authToken: true,
@@ -69,6 +71,8 @@ async function handler(
   if (!chat) return Promise.reject(ChatErrEnum.unAuthChat);
 
   const baseMatch: BaseMatchType = {
+    teamId: collection.teamId,
+    datasetId: collection.datasetId,
     collectionId,
     $or: [
       { updateTime: { $lt: new Date(chatItem.time) } },
