@@ -49,6 +49,7 @@
   "response.child total points": "Sub-workflow point consumption",
   "response.dataset_concat_length": "Combined total",
   "response.node_inputs": "Node Inputs",
+  "response_hybrid_weight": "Embedding : Full text = {{emb}} : {{text}}",
   "select": "Select",
   "select_file": "Upload File",
   "select_file_img": "Upload file / image",

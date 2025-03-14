@@ -24,6 +24,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
 
   const [data, setData] = useState<AppDatasetSearchParamsType>({
     searchMode: DatasetSearchModeEnum.embedding,
+    embeddingWeight: 0.5,
     limit: 3000,
     similarity: 0.5,
     usingReRank: false,

@@ -133,6 +133,9 @@ export type DispatchNodeResponseType = {
   similarity?: number;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
+  embeddingWeight?: number;
+  rerankModel?: string;
+  rerankWeight?: number;
   searchUsingReRank?: boolean;
   queryExtensionResult?: {
     model: string;

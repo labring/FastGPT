@@ -63,8 +63,13 @@ export type SearchTestProps = {
   text: string;
   [NodeInputKeyEnum.datasetSimilarity]?: number;
   [NodeInputKeyEnum.datasetMaxTokens]?: number;
+
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
   [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;

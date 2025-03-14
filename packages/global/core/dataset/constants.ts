@@ -185,7 +185,7 @@ export enum SearchScoreTypeEnum {
 }
 export const SearchScoreTypeMap = {
   [SearchScoreTypeEnum.embedding]: {
-    label: i18nT('common:core.dataset.search.score.embedding'),
+    label: i18nT('common:core.dataset.search.mode.embedding'),
     desc: i18nT('common:core.dataset.search.score.embedding desc'),
     showScore: true
   },

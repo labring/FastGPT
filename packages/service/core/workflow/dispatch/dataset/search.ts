@@ -22,8 +22,9 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
   [NodeInputKeyEnum.datasetSimilarity]: number;
   [NodeInputKeyEnum.datasetMaxTokens]: number;
-  [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [NodeInputKeyEnum.userChatInput]?: string;
+  [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
@@ -57,11 +58,11 @@ export async function dispatchDatasetSearch(
       datasets = [],
       similarity,
       limit = 1500,
-      searchMode,
       userChatInput = '',
       authTmbId = false,
       collectionFilterMatch,
-
+      searchMode,
+      embeddingWeight,
       usingReRank,
       rerankModel,
       rerankWeight,
@@ -129,6 +130,7 @@ export async function dispatchDatasetSearch(
     limit,
     datasetIds,
     searchMode,
+    embeddingWeight,
     usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
     rerankModel: getRerankModel(rerankModel),
     rerankWeight,
@@ -228,6 +230,9 @@ export async function dispatchDatasetSearch(
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
+    embeddingWeight: searchMode === DatasetSearchModeEnum.mixedRecall ? embeddingWeight : undefined,
+    rerankModel: usingReRank ? getRerankModel(rerankModel)?.name : undefined,
+    rerankWeight: usingReRank ? rerankWeight : undefined,
     searchUsingReRank: searchUsingReRank,
     quoteList: searchRes,
     queryExtensionResult,

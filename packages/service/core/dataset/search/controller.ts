@@ -40,6 +40,7 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
@@ -161,6 +162,7 @@ export async function searchDatasetData(
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
+    embeddingWeight = 0.5,
     usingReRank = false,
     rerankModel,
     rerankWeight = 0.5,
@@ -731,16 +733,20 @@ export async function searchDatasetData(
   })();
 
   // embedding recall and fullText recall rrf concat
+  const baseK = 120;
+  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
+  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
+
   const rrfSearchResult = datasetSearchResultConcat([
-    { k: 60, list: embeddingRecallResults },
-    { k: 60, list: fullTextRecallResults }
+    { k: embK, list: embeddingRecallResults },
+    { k: fullTextK, list: fullTextRecallResults }
   ]);
   const rrfConcatResults = (() => {
+    if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
 
-    const baseK = 30;
-    const searchK = Math.round(baseK / (1 - rerankWeight)); // 搜索结果的 k 值
-    const rerankK = Math.round(baseK / rerankWeight); // rerank 结果的 k 值
+    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
+    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
 
     return datasetSearchResultConcat([
       { k: searchK, list: rrfSearchResult },

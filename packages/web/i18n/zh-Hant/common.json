@@ -1024,6 +1024,7 @@
   "question_feedback": "工單諮詢",
   "read_quote": "查看引用",
   "required": "必填",
+  "rerank_weight": "重排權重",
   "resume_failed": "恢復失敗",
   "select_reference_variable": "選擇引用變數",
   "share_link": "分享連結",
