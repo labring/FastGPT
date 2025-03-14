@@ -8,7 +8,6 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import InputDataModal from '@/pageComponents/dataset/detail/InputDataModal';
 
 const CollectionQuoteItem = ({
-  index,
   quoteRefs,
   quoteIndex,
   setQuoteIndex,
@@ -22,8 +21,7 @@ const CollectionQuoteItem = ({
   dataId,
   collectionId
 }: {
-  index: number;
-  quoteRefs: MutableRefObject<(HTMLDivElement | null)[]>;
+  quoteRefs: MutableRefObject<Map<string, HTMLDivElement | null>>;
   quoteIndex: number;
   setQuoteIndex: Dispatch<SetStateAction<number>>;
   refreshList: () => void;
@@ -45,7 +43,7 @@ const CollectionQuoteItem = ({
     <>
       <Box
         ref={(el: HTMLDivElement | null) => {
-          quoteRefs.current[index] = el;
+          quoteRefs.current.set(dataId, el);
         }}
         p={2}
         py={2}
@@ -163,9 +161,7 @@ const CollectionQuoteItem = ({
                 '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
               }
               cursor={'pointer'}
-              onClick={() => {
-                copyData(q + '\n' + a);
-              }}
+              onClick={() => copyData(`${q}${a ? '\n' + a : ''}`)}
             >
               <MyIcon name="copy" w={'14px'} color={'myGray.500'} />
             </Flex>

@@ -60,7 +60,7 @@ const ApiDatasetForm = ({
             <Input
               bg={'myWhite.600'}
               placeholder={t('dataset:request_headers')}
-              maxLength={200}
+              maxLength={2000}
               {...register('apiServer.authorization')}
             />
           </Flex>

@@ -299,6 +299,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
             <MyNumberInput
               min={input.min}
               max={input.max}
+              defaultValue={input.defaultValue}
               isDisabled={interactive.params.submitted}
               bg={'white'}
               register={register}
