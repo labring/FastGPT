@@ -12,8 +12,8 @@ export type PostLoginProps = {
 
 export type OauthLoginProps = {
   type: `${OAuthEnum}`;
-  code: string;
   callbackUrl: string;
+  props: Record<string, string>;
 } & TrackRegisterParams;
 
 export type WxLoginProps = {
