@@ -113,17 +113,20 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
+      if (item.provider === OAuthEnum.sso) {
+        const redirectUrl = await POST<string>('/proApi/support/user/account/login/getAuthURL', {
+          redirectUri,
+          isWecomWorkTerminal
+        });
+        setLoginStore({
+          provider: item.provider as OAuthEnum,
+          lastRoute,
+          state: state.current
+        });
+        router.replace(redirectUrl, '_self');
+        return;
+      }
       if (item.redirectUrl) {
-        if (item.provider === OAuthEnum.sso) {
-          const redirectUrl = await POST<string>('/proApi/support/user/account/login/getAuthURL');
-          setLoginStore({
-            provider: item.provider as OAuthEnum,
-            lastRoute,
-            state: state.current
-          });
-          router.replace(redirectUrl, '_self');
-          return;
-        }
         setLoginStore({
           provider: item.provider as OAuthEnum,
           lastRoute,
