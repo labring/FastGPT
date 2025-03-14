@@ -72,7 +72,7 @@ export type EmbeddingModelItemType = PriceType &
     queryConfig?: Record<string, any>; // Custom parameters for query
   };
 
-export type ReRankModelItemType = PriceType &
+export type RerankModelItemType = PriceType &
   BaseModelItemType & {
     type: ModelTypeEnum.rerank;
   };

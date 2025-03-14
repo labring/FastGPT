@@ -3,7 +3,7 @@ import type {
   EmbeddingModelItemType,
   AudioSpeechModels,
   STTModelType,
-  ReRankModelItemType
+  RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';

@@ -6,7 +6,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { getEmbeddingModel } from '../../../ai/model';
+import { getEmbeddingModel, getRerankModel } from '../../../ai/model';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search/controller';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -24,7 +24,11 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetMaxTokens]: number;
   [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [NodeInputKeyEnum.userChatInput]?: string;
+
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+
   [NodeInputKeyEnum.collectionFilterMatch]: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
 
@@ -53,11 +57,14 @@ export async function dispatchDatasetSearch(
       datasets = [],
       similarity,
       limit = 1500,
-      usingReRank,
       searchMode,
       userChatInput = '',
       authTmbId = false,
       collectionFilterMatch,
+
+      usingReRank,
+      rerankModel,
+      rerankWeight,
 
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel,
@@ -123,6 +130,8 @@ export async function dispatchDatasetSearch(
     datasetIds,
     searchMode,
     usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
+    rerankModel: getRerankModel(rerankModel),
+    rerankWeight,
     collectionFilterMatch
   };
   const {

@@ -27,6 +27,7 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { POST } from '../../../common/api/plusRequest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -39,7 +40,10 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   /* 
     {
@@ -75,13 +79,16 @@ export type SearchDatasetDataResponse = {
 };
 
 export const datasetDataReRank = async ({
+  rerankModel,
   data,
   query
 }: {
+  rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
 }): Promise<SearchDataResponseItemType[]> => {
   const results = await reRankRecall({
+    model: rerankModel,
     query,
     documents: data.map((item) => ({
       id: item.id,
@@ -155,6 +162,8 @@ export async function searchDatasetData(
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
     usingReRank = false,
+    rerankModel,
+    rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
   } = props;
@@ -711,6 +720,7 @@ export async function searchDatasetData(
     });
     try {
       return await datasetDataReRank({
+        rerankModel,
         query: reRankQuery,
         data: filterSameDataResults
       });
@@ -721,11 +731,22 @@ export async function searchDatasetData(
   })();
 
   // embedding recall and fullText recall rrf concat
-  const rrfConcatResults = datasetSearchResultConcat([
+  const rrfSearchResult = datasetSearchResultConcat([
     { k: 60, list: embeddingRecallResults },
-    { k: 60, list: fullTextRecallResults },
-    { k: 58, list: reRankResults }
+    { k: 60, list: fullTextRecallResults }
   ]);
+  const rrfConcatResults = (() => {
+    if (rerankWeight === 1) return reRankResults;
+
+    const baseK = 30;
+    const searchK = Math.round(baseK / (1 - rerankWeight)); // 搜索结果的 k 值
+    const rerankK = Math.round(baseK / rerankWeight); // rerank 结果的 k 值
+
+    return datasetSearchResultConcat([
+      { k: searchK, list: rrfSearchResult },
+      { k: rerankK, list: reRankResults }
+    ]);
+  })();
 
   // remove same q and a data
   set = new Set<string>();

@@ -6,7 +6,7 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type {
   TTSModelType,
   LLMModelItemType,
-  ReRankModelItemType,
+  RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
@@ -56,7 +56,7 @@ type State = {
   getVlmModelList: () => LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
-  reRankModelList: ReRankModelItemType[];
+  reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
