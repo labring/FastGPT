@@ -3,7 +3,7 @@ import {
   ChatModelItemType,
   FunctionModelItemType,
   LLMModelItemType,
-  ReRankModelItemType,
+  RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';

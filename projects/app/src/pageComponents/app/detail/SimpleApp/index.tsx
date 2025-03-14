@@ -28,8 +28,6 @@ const SimpleEdit = () => {
 
   // Init app form
   useMount(() => {
-    // show selected dataset
-
     if (appDetail.version !== 'v2') {
       return setAppForm(
         appWorkflow2Form({

@@ -280,6 +280,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
       isCustom: true,
       isActive: true,
+
+      isDefault: false,
+      isDefaultDatasetTextModel: false,
+      isDefaultDatasetImageModel: false,
       // @ts-ignore
       type
     });

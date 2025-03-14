@@ -2,7 +2,7 @@ import { addLog } from '../../../common/system/log';
 import { POST } from '../../../common/api/serverRequest';
 import { getDefaultRerankModel } from '../model';
 import { getAxiosConfig } from '../config';
-import { ReRankModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 type PostReRankResponse = {
   id: string;
@@ -19,7 +19,7 @@ export function reRankRecall({
   documents,
   headers
 }: {
-  model?: ReRankModelItemType;
+  model?: RerankModelItemType;
   query: string;
   documents: { id: string; text: string }[];
   headers?: Record<string, string>;

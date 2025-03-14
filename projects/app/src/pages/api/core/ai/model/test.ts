@@ -5,7 +5,7 @@ import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import {
   EmbeddingModelItemType,
   LLMModelItemType,
-  ReRankModelItemType,
+  RerankModelItemType,
   STTModelType,
   TTSModelType
 } from '@fastgpt/global/core/ai/model.d';
@@ -151,7 +151,7 @@ const testSTTModel = async (model: STTModelType, headers: Record<string, string>
   addLog.info(`STT result: ${text}`);
 };
 
-const testReRankModel = async (model: ReRankModelItemType, headers: Record<string, string>) => {
+const testReRankModel = async (model: RerankModelItemType, headers: Record<string, string>) => {
   await reRankRecall({
     model,
     query: 'Hi',
