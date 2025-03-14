@@ -34,15 +34,13 @@ export const AiChatQuoteTemplate = {
   key: NodeInputKeyEnum.aiChatQuoteTemplate,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
-  valueType: WorkflowIOValueTypeEnum.string,
-  value: ''
+  valueType: WorkflowIOValueTypeEnum.string
 };
 export const AiChatQuotePrompt = {
   key: NodeInputKeyEnum.aiChatQuotePrompt,
   renderTypeList: [FlowNodeInputTypeEnum.hidden],
   label: '',
-  valueType: WorkflowIOValueTypeEnum.string,
-  value: ''
+  valueType: WorkflowIOValueTypeEnum.string
 };
 
 export const AiChatModule: FlowNodeTemplateType = {

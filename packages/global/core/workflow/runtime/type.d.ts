@@ -246,5 +246,4 @@ export type AIChatNodeProps = {
 
   [NodeInputKeyEnum.stringQuoteText]?: string;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-  [NodeInputKeyEnum.aiChatFilePrompt]?: string;
 };
