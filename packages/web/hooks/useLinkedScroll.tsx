@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, ReactNode, useCallback } from 'react';
+import { useEffect, useRef, useState, ReactNode } from 'react';
 import { LinkedListResponse, LinkedPaginationProps } from '../common/fetch/type';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -64,11 +64,11 @@ export function useLinkedScroll<
 
   let scroolSign = useRef(false);
   const { runAsync: loadInitData } = useRequest2(
-    async (scrollWhenFinish = true) => {
+    async (scrollWhenFinish = true, refresh = false) => {
       if (!currentData || isLoading) return;
 
       const item = dataList.find((item) => item._id === currentData.id);
-      if (item) {
+      if (item && !refresh) {
         scrollToItem(item._id);
         return;
       }
