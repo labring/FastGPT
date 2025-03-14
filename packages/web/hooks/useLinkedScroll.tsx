@@ -63,17 +63,13 @@ export function useLinkedScroll<
   const { runAsync: callApi, loading: isLoading } = useRequest2(api);
 
   let scroolSign = useRef(false);
-  const isRefreshDepsTriggered = useRef(false);
-
   const { runAsync: loadInitData } = useRequest2(
-    async (scrollWhenFinish = true, refresh = false) => {
+    async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
+      console.log('loadInitData', params);
       if (!currentData || isLoading) return;
 
-      const effectiveRefresh = isRefreshDepsTriggered.current ? false : refresh;
-      isRefreshDepsTriggered.current = false;
-
       const item = dataList.find((item) => item._id === currentData.id);
-      if (item && !effectiveRefresh) {
+      if (item && !refresh) {
         scrollToItem(item._id);
         return;
       }
@@ -98,10 +94,7 @@ export function useLinkedScroll<
     },
     {
       refreshDeps: [currentData],
-      manual: false,
-      onBefore: () => {
-        isRefreshDepsTriggered.current = true;
-      }
+      manual: false
     }
   );
   useEffect(() => {
