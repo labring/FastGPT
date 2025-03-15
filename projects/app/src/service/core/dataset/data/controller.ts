@@ -138,7 +138,7 @@ export async function insertData2Dataset({
         datasetId,
         collectionId,
         dataId: _id,
-        fullTextToken: jiebaSplit({ text: `${q}\n${a}`.trim() })
+        fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
       }
     ],
     { session, ordered: true }
@@ -272,7 +272,7 @@ export async function updateData2Dataset({
     // update mongo data text
     await MongoDatasetDataText.updateOne(
       { dataId: mongoData._id },
-      { fullTextToken: jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
+      { fullTextToken: await jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
       { session }
     );
 

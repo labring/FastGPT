@@ -17,7 +17,7 @@ import type {
   QueryChatInputGuideBody,
   QueryChatInputGuideResponse
 } from '@/pages/api/core/chat/inputGuide/query';
-import { deleteAllInputGuideBody } from '@/pages/api/core/chat/inputGuide/deleteAll';
+import type { deleteAllInputGuideBody } from '@/pages/api/core/chat/inputGuide/deleteAll';
 
 export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery) =>
   GET<countChatInputGuideTotalResponse>(`/core/chat/inputGuide/countTotal`, data);
