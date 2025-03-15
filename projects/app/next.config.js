@@ -75,14 +75,15 @@ const nextConfig = {
 
     return config;
   },
-  transpilePackages: ['@fastgpt/*', 'ahooks'],
+  // 需要转译的包
+  transpilePackages: ['@fastgpt/global', '@fastgpt/web', 'ahooks'],
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
     serverComponentsExternalPackages: [
       'mongoose',
       'pg',
-      '@node-rs/jieba',
-      '@zilliz/milvus2-sdk-node'
+      '@zilliz/milvus2-sdk-node',
+      '@node-rs/jieba'
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
