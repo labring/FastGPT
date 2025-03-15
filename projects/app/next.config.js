@@ -39,6 +39,7 @@ const nextConfig = {
     if (!config.externals) {
       config.externals = [];
     }
+    config.externals.push('@node-rs/jieba');
 
     if (isServer) {
       if (nextRuntime === 'nodejs') {
@@ -83,7 +84,7 @@ const nextConfig = {
       'mongoose',
       'pg',
       '@zilliz/milvus2-sdk-node',
-      '@node-rs/jieba'
+      "tiktoken"
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true

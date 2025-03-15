@@ -537,7 +537,7 @@ export async function searchDatasetData(
                 $match: {
                   teamId: new Types.ObjectId(teamId),
                   datasetId: new Types.ObjectId(id),
-                  $text: { $search: jiebaSplit({ text: query }) },
+                  $text: { $search: await jiebaSplit({ text: query }) },
                   ...(filterCollectionIdList
                     ? {
                         collectionId: {
