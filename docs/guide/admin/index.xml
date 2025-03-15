@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>商业版后台 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/guide/admin/</link><description>Recent content in 商业版后台 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/guide/admin/index.xml" rel="self" type="application/rss+xml"/><item><title>钉钉 SSO 配置</title><link>https://doc.tryfastgpt.ai/docs/guide/admin/sso_dingtalk/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/admin/sso_dingtalk/</guid><description>1. 注册钉钉应用 link登录 钉钉开放平台，创建一个应用。
+2. 配置钉钉应用安全设置 link点击进入创建好的应用后，点开安全设置，配置出口 IP（服务器 IP），和重定向 URL。重定向 URL 填写逻辑：
+{{fastgpt 域名}}/login/provider
+3. 设置钉钉应用权限 link点击进入创建好的应用后，点开权限设置，开放两个权限： 个人手机号信息和通讯录个人信息读权限
+4. 发布应用 link点击进入创建好的应用后，点开版本管理与发布，随便创建一个新版本即可。
+5. 在 FastGPT Admin 配置钉钉应用 id link名字都是对应上，直接填写即可。
+6. 测试 link</description></item></channel></rss>

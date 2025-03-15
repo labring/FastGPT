@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>外部调用 FastGPT on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/</link><description>Recent content in 外部调用 FastGPT on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/use-cases/external-integration/index.xml" rel="self" type="application/rss+xml"/><item><title>通过 API 访问应用</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/openapi/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/openapi/</guid><description>在 FastGPT 中，你可以为每一个应用创建多个 API 密钥，用于访问应用的 API 接口。每个密钥仅能访问一个应用。完整的接口可以查看应用对话接口。
+获取 API 密钥 link依次选择应用 -&amp;gt; 「API访问」，然后点击「API 密钥」来创建密钥。
+warning 密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
+🍅
+Tips: 安全起见，你可以设置一个额度或者过期时间，防止 key 被滥用。
+替换三方应用的变量 link OPENAI_API_BASE_URL: https://api.fastgpt.in/api (改成自己部署的域名) OPENAI_API_KEY = 上一步获取到的密钥 ChatGPT Next Web 示例：
+ChatGPT Web 示例：</description></item><item><title>接入飞书机器人教程</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/feishu/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/feishu/</guid><description>从 4.8.10 版本起，FastGPT 商业版支持直接接入飞书机器人，无需额外的 API。
+1. 申请飞书应用 link开一个免费的测试企业更方便进行调试。
+在飞书开放平台的开发者后台申请企业自建应用。 添加一个机器人应用。
+2. 在 FastGPT 新建发布渠道 link在fastgpt中选择想要接入的应用，在 发布渠道 页面，新建一个接入飞书机器人的发布渠道，填写好基础信息。
+3. 获取应用的 App ID, App Secret 两个凭证 link在飞书开放平台开发者后台，刚刚创建的企业自建应用中，找到 App ID 和 App Secret，填入 FastGPT 新建发布渠道的对话框里面。
+填入两个参数到 FastGPT 配置弹窗中。
+（可选）在飞书开放平台开发者后台，点击事件与回调 -&amp;gt; 加密策略 获取 Encrypt Key，并填入飞书机器人接入的对话框里面
+Encrypt Key 用于加密飞书服务器与 FastGPT 之间通信。 建议如果使用 Https 协议，则不需要 Encrypt Key。如果使用 Http 协议通信，则建议使用 Encrypt Key Verification Token 默认生成的这个 Token 用于校验来源。但我们使用飞书官方推荐的另一种更为安全的校验方式，因此可以忽略这个配置项。
+4. 配置回调地址 link新建好发布渠道后，点击请求地址，复制对应的请求地址。
+在飞书控制台，点击左侧的 事件与回调 ，点击配置订阅方式旁边的编辑 icon，粘贴刚刚复制的请求地址到输入框中。
+5. 配置机器人回调事件和权限 link 添加 接收消息 事件 在事件与回调页面，点击添加事件。</description></item><item><title>接入钉钉机器人教程</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/dingtalk/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/dingtalk/</guid><description>从 4.8.16 版本起，FastGPT 商业版支持直接接入钉钉机器人，无需额外的 API。
+1. 创建钉钉企业内部应用 link 在钉钉开发者后台创建企业内部应用。 获取Client ID和Client Secret。 2. 为 FastGPT 添加发布渠道 link在 FastGPT 中选择要接入的应用，在发布渠道页面，新建一个接入钉钉机器人的发布渠道。
+将前面拿到的 Client ID 和 Client Secret 填入配置弹窗中。
+创建完成后，点击请求地址按钮，然后复制回调地址。
+3. 为应用添加机器人应用能力。 link在钉钉开发者后台，点击左侧添加应用能力，为刚刚创建的企业内部应用添加 机器人 应用能力。
+4. 配置机器人回调地址 link点击左侧机器人 应用能力，然后将底部消息接受模式设置为HTTP模式，消息接收地址填入前面复制的 FastGPT 的回调地址。
+调试完成后，点击发布。
+5. 发布应用 link机器人发布后，还需要在版本管理与发布页面发布应用版本。
+点击创建新版本后，设置版本号和版本描述后点击保存发布即可。
+应用发布后，即可在钉钉企业中使用机器人功能，可对机器人私聊。或者在群组添加机器人后@机器人，触发对话。</description></item><item><title>接入微信公众号教程</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/official_account/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/official_account/</guid><description>从 4.8.10 版本起，FastGPT 商业版支持直接接入微信公众号，无需额外的 API。
+注意⚠️: 目前只支持通过验证的公众号（服务号和订阅号都可以）
+1. 在 FastGPT 新建发布渠道 link在 FastGPT 中选择想要接入的应用，在 发布渠道 页面，新建一个接入微信公众号的发布渠道，填写好基础信息。
+2. 获取 AppID 、 Secret和Token link1. 登录微信公众平台，选择您的公众号。 link打开微信公众号官网：https://mp.weixin.qq.com
+只支持通过验证的公众号，未通过验证的公众号暂不支持。
+开发者可以从这个链接申请微信公众号的测试号进行测试，测试号可以正常使用，但不能配置 AES Key
+2. 把3个参数填入 FastGPT 配置弹窗中。 link 3. 在 IP 白名单中加入 FastGPT 的 IP link 私有部署的用户可自行查阅自己的 IP 地址。
+海外版用户（cloud.tryfastgpt.ai）可以填写下面的 IP 白名单：
+35.240.227.100 34.124.237.188 34.143.240.160 34.87.51.146 34.87.79.202 35.247.163.68 34.87.102.86 35.198.192.104 34.126.163.205 34.124.189.116 34.143.149.171 34.87.173.252 34.142.157.52 34.87.180.104 34.87.20.189 34.87.110.152 34.87.44.74 34.87.152.33 35.197.149.75 35.247.161.35 国内版用户（fastgpt.cn)可以填写下面的 IP 白名单：</description></item><item><title>对接 chatgpt-on-wechat</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/onwechat/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/onwechat/</guid><description>1 分钟对接 chatgpt-on-wechat linkchatgpt-on-wechat GitHub 地址
+由于 FastGPT 的 API 接口和 OpenAI 的规范一致，可以无需变更原来的应用即可使用 FastGPT 上编排好的应用。API 使用可参考 这篇文章。编排示例，可参考 高级编排介绍
+1. 获取 OpenAPI 密钥 link依次选择应用 -&amp;gt; 「API访问」，然后点击「API 密钥」来创建密钥。
+warning 密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
+3. 创建 docker-compose.yml 文件 link只需要修改 OPEN_AI_API_KEY 和 OPEN_AI_API_BASE 两个环境变量即可。其中 OPEN_AI_API_KEY 为第一步获取的密钥，OPEN_AI_API_BASE 为 FastGPT 的 OpenAPI 地址，例如：https://api.fastgpt.in/api/v1。
+随便找一个目录，创建一个 docker-compose.yml 文件，将下面的代码复制进去。
+version: &amp;#39;2.0&amp;#39; services: chatgpt-on-wechat: image: zhayujie/chatgpt-on-wechat container_name: chatgpt-on-wechat security_opt: - seccomp:unconfined environment: OPEN_AI_API_KEY: &amp;#39;fastgpt-z51pkjqm9nrk03a1rx2funoy&amp;#39; OPEN_AI_API_BASE: &amp;#39;https://api.fastgpt.in/api/v1&amp;#39; MODEL: &amp;#39;gpt-3.5-turbo&amp;#39; CHANNEL_TYPE: &amp;#39;wx&amp;#39; PROXY: &amp;#39;&amp;#39; HOT_RELOAD: &amp;#39;False&amp;#39; SINGLE_CHAT_PREFIX: &amp;#39;[&amp;#34;bot&amp;#34;, &amp;#34;@bot&amp;#34;]&amp;#39; SINGLE_CHAT_REPLY_PREFIX: &amp;#39;&amp;#34;[bot] &amp;#34;&amp;#39; GROUP_CHAT_PREFIX: &amp;#39;[&amp;#34;@bot&amp;#34;]&amp;#39; GROUP_NAME_WHITE_LIST: &amp;#39;[&amp;#34;ChatGPT测试群&amp;#34;, &amp;#34;ChatGPT测试群2&amp;#34;]&amp;#39; IMAGE_CREATE_PREFIX: &amp;#39;[&amp;#34;画&amp;#34;, &amp;#34;看&amp;#34;, &amp;#34;找&amp;#34;]&amp;#39; CONVERSATION_MAX_TOKENS: 1000 SPEECH_RECOGNITION: &amp;#39;False&amp;#39; CHARACTER_DESC: &amp;#39;你是ChatGPT, 一个由OpenAI训练的大型语言模型, 你旨在回答并解决人们的任何问题，并且可以使用多种语言与人交流。&amp;#39; SUBSCRIBE_MSG: &amp;#39;感谢您的关注！\n这里是ChatGPT，可以自由对话。\n支持语音对话。\n支持图片输入。\n支持图片输出，画字开头的消息将按要求创作图片。\n支持tool、角色扮演和文字冒险等丰富的插件。\n输入{trigger_prefix}#help 查看详细指令。&amp;#39; EXPIRES_IN_SECONDS: 3600 USE_GLOBAL_PLUGIN_CONFIG: &amp;#39;True&amp;#39; USE_LINKAI: &amp;#39;False&amp;#39; LINKAI_API_KEY: &amp;#39;&amp;#39; LINKAI_APP_CODE: &amp;#39;&amp;#39; 4.</description></item><item><title>接入微信和企业微信</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/wechat/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/wechat/</guid><description>FastGPT 三分钟接入微信/企业微信 link私人微信和企业微信接入的方式基本一样，不同的地方会刻意指出。
+查看视频教程
+创建APIKey link首先找到我们需要接入的应用，然后点击「外部使用」-&amp;gt;「API访问」创建一个APIKey并保存。
+配置微秘书 link打开微秘书 注册登录后找到菜单栏「基础配置」-&amp;gt;「智能配置」，按照下图配置。
+继续往下看到 apikey 和服务器根地址，这里apikey填写我们在 FastGPT 应用外部访问中创建的 APIkey，服务器根地址填写官方地址或者私有化部署的地址，这里用官方地址示例，注意要添加/v1后缀,填写完毕后保存。
+sealos部署服务 link访问sealos 登录进来之后打开「应用管理」-&amp;gt; 「新建应用」。
+应用名：称随便填写 镜像名：私人微信填写 aibotk/wechat-assistant 企业微信填写 aibotk/worker-assistant cpu和内存建议 1c1g 往下翻页找到「高级配置」-&amp;gt; 「编辑环境变量」
+这里需要填写三个环境变量：
+AIBOTK_KEY=微秘书 APIKEY AIBOTK_SECRET=微秘书 APISECRET WORK_PRO_TOKEN=你申请的企微 token （企业微信需要填写，私人微信不需要） 这里最后的企业微信 Token 在微秘书的-&amp;gt;会员开通栏目中自行购买。
+这里环境变量我们介绍下如何填写：
+AIBOTK_KEY 和 AIBOTK_SECRET 我们需要回到微秘书找到「个人中心」,这里的 APIKEY 对应 AIBOTK_KEY ，APISECRET 对应 AIBOTK_SECRET。
+WORK_PRO_TOKEN 微秘书的会员中心中自行购买即可。
+填写完毕后点右上角「部署」，等待应用状态变为运行中。
+返回微秘书 找到「首页」，扫码登录需要接入的微信号。
+测试 link只需要发送信息，或者拉入群聊@登录的微信就会回复信息啦。</description></item><item><title>iframe 接入</title><link>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/iframe_integration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/use-cases/external-integration/iframe_integration/</guid><description/></item></channel></rss>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>文档 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/</link><description>Recent content in 文档 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/index.xml" rel="self" type="application/rss+xml"/><item><title>快速了解 FastGPT</title><link>https://doc.tryfastgpt.ai/docs/intro/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/intro/</guid><description>FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！
+🤖
+FastGPT 在线使用：https://tryfastgpt.ai
+FastGPT 能力 link1. 专属 AI 客服 link通过导入文档或已有问答对进行训练，让 AI 模型能根据你的文档以交互式对话方式回答问题。
+2. 简单易用的可视化界面 linkFastGPT 采用直观的可视化界面设计，为各种应用场景提供了丰富实用的功能。通过简洁易懂的操作步骤，可以轻松完成 AI 客服的创建和训练流程。
+3. 自动数据预处理 link提供手动输入、直接分段、LLM 自动处理和 CSV 等多种数据导入途径，其中“直接分段”支持通过 PDF、WORD、Markdown 和 CSV 文档内容作为上下文。FastGPT 会自动对文本数据进行预处理、向量化和 QA 分割，节省手动训练时间，提升效能。
+4. 工作流编排 link基于 Flow 模块的工作流编排，可以帮助你设计更加复杂的问答流程。例如查询数据库、查询库存、预约实验室等。
+5. 强大的 API 集成 linkFastGPT 对外的 API 接口对齐了 OpenAI 官方接口，可以直接接入现有的 GPT 应用，也可以轻松集成到企业微信、公众号、飞书等平台。
+FastGPT 特点 link 项目开源
+FastGPT 遵循附加条件 Apache License 2.0 开源协议，你可以 Fork 之后进行二次开发和发布。FastGPT 社区版将保留核心功能，商业版仅在社区版基础上使用 API 的形式进行扩展，不影响学习使用。
+独特的 QA 结构</description></item><item><title>加入社区</title><link>https://doc.tryfastgpt.ai/docs/community/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/community/</guid><description>FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试以下方式寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
+📱 扫码加入社区微信交流群👇
+🐞 请将任何 FastGPT 的 Bug、问题和需求提交到 GitHub Issue。</description></item></channel></rss>
