@@ -199,14 +199,14 @@ assistant: ${chatBg}
   });
 
   const historyFewShot = filterHistories
-    .map((item) => {
+    .map((item: any) => {
       const role = item.role;
       const content = item.content;
       if ((role === 'user' || role === 'assistant') && content) {
         if (typeof content === 'string') {
           return `${role}: ${content}`;
         } else {
-          return `${role}: ${content.map((item) => (item.type === 'text' ? item.text : '')).join('\n')}`;
+          return `${role}: ${content.map((item: any) => (item.type === 'text' ? item.text : '')).join('\n')}`;
         }
       }
     })
@@ -273,8 +273,8 @@ assistant: ${chatBg}
   // Get the text after the marker and split by lines
   const itemsText = answer.substring(markerIndex + marker.length).trim();
   const items = itemsText.split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
+    .map((line: string) => line.trim())
+    .filter((line: string) => line.length > 0)
     .slice(0, 5); // Limit to 5 items
   
   return {
