@@ -80,5 +80,5 @@ export * from 'openai';
 export type PromptTemplateItem = {
   title: string;
   desc: string;
-  value: string;
+  value: Record<string, string>;
 };

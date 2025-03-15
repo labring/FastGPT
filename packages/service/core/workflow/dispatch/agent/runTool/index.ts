@@ -28,10 +28,10 @@ import { filterToolResponseToPreview } from './utils';
 import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { Prompt_DocumentQuote } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { postTextCensor } from '../../../../../common/api/requestPlusApi';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -40,7 +40,7 @@ type Response = DispatchNodeResultType<{
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    node: { nodeId, name, isEntry },
+    node: { nodeId, name, isEntry, version },
     runtimeNodes,
     runtimeEdges,
     histories,
@@ -118,7 +118,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     toolModel.defaultSystemChatPrompt,
     systemPrompt,
     documentQuoteText
-      ? replaceVariable(Prompt_DocumentQuote, {
+      ? replaceVariable(getDocumentQuotePrompt(version), {
           quote: documentQuoteText
         })
       : ''
