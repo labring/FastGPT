@@ -64,8 +64,8 @@ import type {
   listExistIdQuery,
   listExistIdResponse
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
-import { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
-import { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
+import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
+import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>

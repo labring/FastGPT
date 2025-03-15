@@ -2,15 +2,15 @@ import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { UserUpdateParams } from '@/types/user';
-import { UserType } from '@fastgpt/global/support/user/type.d';
+import type { UserUpdateParams } from '@/types/user';
+import type { UserType } from '@fastgpt/global/support/user/type.d';
 import type {
   FastLoginProps,
   OauthLoginProps,
   PostLoginProps,
   SearchResult
 } from '@fastgpt/global/support/user/api.d';
-import {
+import type {
   AccountRegisterBody,
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';

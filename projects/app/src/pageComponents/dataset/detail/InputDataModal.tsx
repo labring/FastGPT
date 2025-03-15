@@ -17,7 +17,6 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
-import { getDocPath } from '@/web/common/system/doc';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -257,16 +256,18 @@ const InputDataModal = ({
           />
         </Box>
 
-        <Flex
-          pt={4}
-          flex={'1 0 0'}
-          gap={6}
-          flexDir={['column', 'row']}
-          overflow={'auto'}
-          px={[5, '3.25rem']}
-        >
+        <Flex flex={'1 0 0'} h={['auto', '0']} gap={6} flexDir={['column', 'row']} px={[5, '0']}>
           {/* Data */}
-          <Flex flexDir={'column'} h={'100%'} gap={3} flex={'1 0 0'}>
+          <Flex
+            pt={4}
+            pl={[0, '3.25rem']}
+            flexDir={'column'}
+            h={'100%'}
+            gap={3}
+            flex={'1 0 0'}
+            w={['100%', 0]}
+            overflow={['unset', 'auto']}
+          >
             <Flex flexDir={'column'} h={'100%'}>
               <FormLabel required mb={1} h={'30px'}>
                 {currentTab === TabEnum.chunk
@@ -315,7 +316,13 @@ const InputDataModal = ({
             )}
           </Flex>
           {/* Index */}
-          <Box flex={'1 0 0'}>
+          <Box
+            pt={4}
+            pr={[0, '3.25rem']}
+            flex={'1 0 0'}
+            w={['100%', 0]}
+            overflow={['unset', 'auto']}
+          >
             <Flex alignItems={'flex-start'} justifyContent={'space-between'} h={'30px'}>
               <FormLabel>
                 {t('common:dataset.data.edit.Index', {
