@@ -1,26 +1,24 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import {
+import type {
   CollaboratorItemType,
   DeletePermissionQuery,
   UpdateClbPermissionProps
 } from '@fastgpt/global/support/permission/collaborator';
-import {
+import type {
   CreateTeamProps,
-  InviteMemberProps,
-  InviteMemberResponse,
   UpdateInviteProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
-import {
+import type {
   TeamTmbItemType,
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
-import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
-import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import {
+import type { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type {
   InvitationInfoType,
   InvitationLinkCreateType,
   InvitationLinkUpdateType,

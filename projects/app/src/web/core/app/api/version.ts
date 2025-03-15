@@ -1,7 +1,7 @@
-import { PostPublishAppProps } from '@/global/core/app/api';
+import type { PostPublishAppProps } from '@/global/core/app/api';
 import { GET, POST } from '@/web/common/api/request';
 import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
-import { PaginationProps } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps } from '@fastgpt/web/common/fetch/type';
 import type {
   getLatestVersionQuery,
   getLatestVersionResponse
