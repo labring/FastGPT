@@ -22,7 +22,6 @@ export default function InputGuideBox({
   onSend: (text: string) => void;
 }) {
   const { t } = useTranslation();
-  const { chatT } = useI18n();
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
 
@@ -65,9 +64,9 @@ export default function InputGuideBox({
     >
       <Flex alignItems={'center'} fontSize={'sm'} color={'myGray.600'} gap={2} mb={2} px={2}>
         <MyIcon name={'union'} />
-        <Box>{chatT('input_guide')}</Box>
+        <Box>{t('chat:input_guide')}</Box>
       </Flex>
-      {data.map((item, index) => (
+      {data.map((item) => (
         <Flex
           alignItems={'center'}
           as={'li'}
