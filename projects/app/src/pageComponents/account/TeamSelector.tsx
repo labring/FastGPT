@@ -1,14 +1,12 @@
 import React, { useMemo } from 'react';
-import { Box, ButtonProps, Flex } from '@chakra-ui/react';
+import { Box, ButtonProps } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 
 const TeamSelector = ({

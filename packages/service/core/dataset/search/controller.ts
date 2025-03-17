@@ -16,7 +16,7 @@ import { reRankRecall } from '../../../core/ai/rerank';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { jiebaSplit } from '../../../common/string/jieba';
+import { jiebaSplit } from '../../../common/string/jieba/index';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
