@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';

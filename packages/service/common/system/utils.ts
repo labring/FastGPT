@@ -30,6 +30,8 @@ export const isInternalAddress = (url: string): boolean => {
       return true;
     }
 
+    if (process.env.CHECK_INTERNAL_IP !== 'true') return false;
+
     // For IP addresses, check if they are internal
     const ipv4Pattern = /^(\d{1,3}\.){3}\d{1,3}$/;
     if (!ipv4Pattern.test(hostname)) {
