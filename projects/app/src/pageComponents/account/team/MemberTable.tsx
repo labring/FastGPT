@@ -175,22 +175,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
-              onClick={() => {
-                if (
-                  teamPlanStatus?.standardConstants?.maxTeamMember &&
-                  teamPlanStatus.standardConstants.maxTeamMember <= members.length
-                ) {
-                  toast({
-                    status: 'warning',
-                    title: t('common:user.team.Over Max Member Tip', {
-                      max: teamPlanStatus.standardConstants.maxTeamMember
-                    })
-                  });
-                  setNotSufficientModalType(TeamErrEnum.teamMemberOverSize);
-                } else {
-                  onOpenInvite();
-                }
-              }}
+              onClick={onOpenInvite}
             >
               {t('account_team:user_team_invite_member')}
             </Button>
