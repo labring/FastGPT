@@ -1,13 +1,8 @@
 import { Jieba } from '@node-rs/jieba';
-import fs from 'fs';
-import path from 'path';
-
-// 使用 require.resolve 获取包的路径，然后拼接字典文件路径
-const jiebaPath = path.dirname(require.resolve('@node-rs/jieba/package.json'));
-const dictPath = path.join(jiebaPath, 'dict.txt');
+import { dict } from '@node-rs/jieba/dict';
 
 // 使用正确的文件路径加载字典
-const jieba = Jieba.withDict(fs.readFileSync(dictPath));
+const jieba = Jieba.withDict(dict);
 
 const stopWords = new Set([
   '--',
