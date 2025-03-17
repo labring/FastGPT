@@ -19,7 +19,7 @@ const TeamSelector = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { userInfo, initUserInfo } = useUserStore();
+  const { userInfo } = useUserStore();
   const { setLoading } = useSystemStore();
 
   const { data: myTeams = [] } = useRequest2(() => getTeamList(TeamMemberStatusEnum.active), {
@@ -31,12 +31,11 @@ const TeamSelector = ({
     async (teamId: string) => {
       setLoading(true);
       await putSwitchTeam(teamId);
-      return initUserInfo();
     },
     {
       onFinally: () => {
+        router.reload();
         setLoading(false);
-        onChange?.();
       },
       errorToast: t('common:user.team.Switch Team Failed')
     }
