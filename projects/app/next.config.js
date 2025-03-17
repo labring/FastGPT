@@ -84,7 +84,8 @@ const nextConfig = {
       'mongoose',
       'pg',
       '@zilliz/milvus2-sdk-node',
-      "tiktoken"
+      "tiktoken",
+      "@node-rs/jieba"
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
