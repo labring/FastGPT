@@ -1,54 +1,9 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
-import { createUsage, concatUsage } from './controller';
+import { createUsage, concatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
-import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDefaultTTSModel } from '@fastgpt/service/core/ai/model';
-
-export const pushChatUsage = ({
-  appName,
-  appId,
-  pluginId,
-  teamId,
-  tmbId,
-  source,
-  flowUsages
-}: {
-  appName: string;
-  appId?: string;
-  pluginId?: string;
-  teamId: string;
-  tmbId: string;
-  source: UsageSourceEnum;
-  flowUsages: ChatNodeUsageType[];
-}) => {
-  const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
-  createUsage({
-    teamId,
-    tmbId,
-    appName,
-    appId,
-    pluginId,
-    totalPoints,
-    source,
-    list: flowUsages.map((item) => ({
-      moduleName: item.moduleName,
-      amount: item.totalPoints || 0,
-      model: item.model,
-      inputTokens: item.inputTokens,
-      outputTokens: item.outputTokens
-    }))
-  });
-  addLog.info(`finish completions`, {
-    source,
-    teamId,
-    totalPoints
-  });
-  return { totalPoints };
-};
 
 export const pushQAUsage = async ({
   teamId,
@@ -172,12 +127,12 @@ export const pushGenerateVectorUsage = ({
     createUsage({
       teamId,
       tmbId,
-      appName: i18nT('common:support.wallet.moduleName.index'),
+      appName: i18nT('account_usage:embedding_index'),
       totalPoints,
       source,
       list: [
         {
-          moduleName: i18nT('common:support.wallet.moduleName.index'),
+          moduleName: i18nT('account_usage:embedding_index'),
           amount: totalVector,
           model: vectorModelName,
           inputTokens
@@ -248,7 +203,7 @@ export const pushQuestionGuideUsage = ({
   });
 };
 
-export function pushAudioSpeechUsage({
+export const pushAudioSpeechUsage = ({
   appName = i18nT('common:support.wallet.usage.Audio Speech'),
   model,
   charsLength,
@@ -262,7 +217,7 @@ export function pushAudioSpeechUsage({
   teamId: string;
   tmbId: string;
   source: UsageSourceEnum;
-}) {
+}) => {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
     inputTokens: charsLength,
@@ -284,9 +239,9 @@ export function pushAudioSpeechUsage({
       }
     ]
   });
-}
+};
 
-export function pushWhisperUsage({
+export const pushWhisperUsage = ({
   teamId,
   tmbId,
   duration
@@ -294,7 +249,7 @@ export function pushWhisperUsage({
   teamId: string;
   tmbId: string;
   duration: number;
-}) {
+}) => {
   const whisperModel = getDefaultTTSModel();
 
   if (!whisperModel) return;
@@ -323,4 +278,4 @@ export function pushWhisperUsage({
       }
     ]
   });
-}
+};

@@ -1,6 +1,6 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
-import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
-import {
+import type { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import type {
   postCreateGroupData,
   putUpdateGroupData
 } from '@fastgpt/global/support/user/team/group/api';

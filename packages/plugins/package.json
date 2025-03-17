@@ -5,9 +5,9 @@
   "dependencies": {
     "@types/crypto-js": "^4.2.2",
     "@types/pg": "^8.6.6",
-    "axios": "^1.5.1",
     "cheerio": "1.0.0-rc.12",
     "crypto-js": "^4.2.0",
+    "axios": "^1.8.2",
     "duck-duck-scrape": "^2.2.5",
     "echarts": "5.4.1",
     "expr-eval": "^2.0.2",

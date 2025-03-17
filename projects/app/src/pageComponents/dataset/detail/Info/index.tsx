@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Flex, Switch, Input } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -37,6 +37,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
+  const { feConfigs, datasetModelList, embeddingModelList, getVlmModelList } = useSystemStore();
+
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
   const [editedAPIDataset, setEditedAPIDataset] = useState<EditAPIDatasetInfoFormType>();
   const refetchDatasetTraining = useContextSelector(
@@ -50,7 +52,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
 
-  const { feConfigs, datasetModelList, embeddingModelList } = useSystemStore();
+  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
+  const vlmModel = watch('vlmModel');
+
   const { ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('common:core.dataset.Delete Confirm'),
     type: 'delete'
@@ -69,7 +73,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     (data: DatasetItemType) => {
       return updateDataset({
         id: datasetId,
-        agentModel: data.agentModel,
+        agentModel: data.agentModel?.model,
+        vlmModel: data.vlmModel?.model,
         externalReadUrl: data.externalReadUrl
       });
     },
@@ -164,12 +169,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Flex>
 
         <Box mt={5} w={'100%'}>
-          <Flex alignItems={'center'} fontSize={'mini'}>
-            <FormLabel fontWeight={'500'} flex={'1 0 0'}>
+          <Flex alignItems={'center'}>
+            <FormLabel fontWeight={'500'} flex={'1 0 0'} fontSize={'mini'}>
               {t('common:core.ai.model.Vector Model')}
             </FormLabel>
             <MyTooltip label={t('dataset:vector_model_max_tokens_tip')}>
-              <Box>
+              <Box fontSize={'mini'}>
                 {t('dataset:chunk_max_tokens')}: {vectorModel.maxToken}
               </Box>
             </MyTooltip>
@@ -190,7 +195,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 const vectorModel = embeddingModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(async () => {
@@ -215,11 +220,34 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 value: item.model
               }))}
               fontSize={'mini'}
-              onchange={(e) => {
+              onChange={(e) => {
                 const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
                 return handleSubmit((data) => onSave({ ...data, agentModel: agentModel }))();
+              }}
+            />
+          </Box>
+        </Box>
+
+        <Box pt={5}>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            {t('dataset:vllm_model')}
+          </FormLabel>
+          <Box pt={2}>
+            <AIModelSelector
+              w={'100%'}
+              value={vlmModel?.model}
+              list={vllmModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              fontSize={'mini'}
+              onChange={(e) => {
+                const vlmModel = vllmModelList.find((item) => item.model === e);
+                if (!vlmModel) return;
+                setValue('vlmModel', vlmModel);
+                return handleSubmit((data) => onSave({ ...data, vlmModel }))();
               }}
             />
           </Box>

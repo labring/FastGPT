@@ -34,16 +34,16 @@ async function handler(req: NextApiRequest) {
   });
   const datasetIds = datasets.map((d) => d._id);
 
+  // delete collection.tags
+  await MongoDatasetCollectionTags.deleteMany({
+    teamId,
+    datasetId: { $in: datasetIds }
+  });
+
   // delete all dataset.data and pg data
   await mongoSessionRun(async (session) => {
     // delete dataset data
     await delDatasetRelevantData({ datasets, session });
-
-    // delete collection.tags
-    await MongoDatasetCollectionTags.deleteMany({
-      teamId,
-      datasetId: { $in: datasetIds }
-    }).session(session);
 
     // delete dataset
     await MongoDataset.deleteMany(

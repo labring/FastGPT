@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -42,6 +42,9 @@ import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
+import { getWorkorderURL } from '@/web/common/workorder/api';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useMount } from 'ahooks';
 
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
@@ -49,9 +52,7 @@ const StandDetailModal = dynamic(
 );
 const ConversionModal = dynamic(() => import('@/pageComponents/account/info/ConversionModal'));
 const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
-const UpdateNotification = dynamic(
-  () => import('@/components/support/user/inform/UpdateNotificationModal')
-);
+const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const ModelPriceModal = dynamic(() =>
@@ -64,7 +65,9 @@ const Info = () => {
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
-  useQuery(['init'], initUserInfo);
+  useMount(() => {
+    initUserInfo();
+  });
 
   return (
     <AccountContainer>
@@ -110,7 +113,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
-  const { userInfo, updateUserInfo, teamPlanStatus } = useUserStore();
+  const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -129,9 +132,9 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
   const {
-    isOpen: isOpenUpdateNotification,
-    onClose: onCloseUpdateNotification,
-    onOpen: onOpenUpdateNotification
+    isOpen: isOpenUpdateContact,
+    onClose: onCloseUpdateContact,
+    onOpen: onOpenUpdateContact
   } = useDisclosure();
   const {
     File,
@@ -234,11 +237,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               borderColor={'transparent'}
               transform={'translateX(-11px)'}
               maxLength={20}
-              onBlur={(e) => {
+              onBlur={async (e) => {
                 const val = e.target.value;
                 if (val === userInfo?.team?.memberName) return;
                 try {
-                  putUpdateMemberName(val);
+                  await putUpdateMemberName(val);
+                  initUserInfo();
                 } catch (error) {}
               }}
             />
@@ -259,32 +263,21 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
         {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:notification_receiving')}:&nbsp;</Box>
-            <Box
-              flex={1}
-              {...(!userInfo?.team.notificationAccount && userInfo?.permission.isOwner
-                ? { color: 'red.600' }
-                : {})}
-            >
-              {userInfo?.team.notificationAccount
-                ? userInfo?.team.notificationAccount
-                : userInfo?.permission.isOwner
-                  ? t('account_info:please_bind_notification_receiving_path')
-                  : t('account_info:reminder_create_bound_notification_account')}
+            <Box {...labelStyles}>{t('common:contact_way')}:&nbsp;</Box>
+            <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
+              {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
             </Box>
 
-            {userInfo?.permission.isOwner && (
-              <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateNotification}>
-                {t('account_info:change')}
-              </Button>
-            )}
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
+              {t('account_info:change')}
+            </Button>
           </Flex>
         )}
         {feConfigs.isPlus && (
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
+              <TeamSelector height={'28px'} w={'100%'} showManage onChange={initUserInfo} />
             </Flex>
           </Flex>
         )}
@@ -310,7 +303,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
       )}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
-      {isOpenUpdateNotification && <UpdateNotification onClose={onCloseUpdateNotification} />}
+      {isOpenUpdateContact && <UpdateContact onClose={onCloseUpdateContact} mode="contact" />}
       <File
         onSelect={(e) =>
           onSelectImage(e, {
@@ -593,8 +586,18 @@ const ButtonStyles = {
 };
 const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const { feConfigs } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
   const { t } = useTranslation();
   const { isPc } = useSystem();
+
+  const { runAsync: onFeedback } = useRequest2(getWorkorderURL, {
+    manual: true,
+    onSuccess(data) {
+      if (data) {
+        window.open(data.redirectUrl);
+      }
+    }
+  });
 
   return (
     <Box>
@@ -632,6 +635,16 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Box>
           </Flex>
         )}
+        {feConfigs?.show_workorder &&
+          teamPlanStatus &&
+          teamPlanStatus.standard?.currentSubLevel !== StandardSubLevelEnum.free && (
+            <Flex onClick={onFeedback} {...ButtonStyles}>
+              <MyIcon name={'feedback'} w={'18px'} color={'myGray.600'} />
+              <Box ml={2} flex={1}>
+                {t('common:question_feedback')}
+              </Box>
+            </Flex>
+          )}
       </Grid>
     </Box>
   );

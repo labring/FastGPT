@@ -42,7 +42,7 @@ const TTSSelect = ({
           label: (
             <HStack>
               <Avatar borderRadius={'0'} w={'1.25rem'} src={providerData.avatar} />
-              <Box>{t(providerData.name)}</Box>
+              <Box>{t(model.name as any)}</Box>
             </HStack>
           ),
           value: model.model,
@@ -75,7 +75,7 @@ const TTSSelect = ({
         {voice ? (
           <Flex alignItems={'center'}>
             <Box>{provider.label}</Box>
-            <Box>-</Box>
+            <Box>/</Box>
             <Box>{voice.label}</Box>
           </Flex>
         ) : (
@@ -83,7 +83,7 @@ const TTSSelect = ({
         )}
       </Box>
     );
-  }, [formatValue, selectorList, t]);
+  }, [formatValue, selectorList]);
 
   const { playAudioByText, cancelAudio, audioLoading, audioPlaying } = useAudioPlay({
     appId,

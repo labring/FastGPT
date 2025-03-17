@@ -18,10 +18,10 @@ export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoDatasetFileSchema;
   MongoChatFileSchema;
 
-  return connectionMongo.connection.db.collection(`${bucket}.files`);
+  return connectionMongo.connection.db!.collection(`${bucket}.files`);
 }
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
-  return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db, {
+  return new connectionMongo.mongo.GridFSBucket(connectionMongo.connection.db!, {
     bucketName: bucket,
     // @ts-ignore
     readPreference: ReadPreference.SECONDARY_PREFERRED // Read from secondary node
@@ -52,7 +52,9 @@ export async function uploadFile({
   const stats = await fsp.stat(path);
   if (!stats.isFile()) return Promise.reject(`${path} is not a file`);
 
-  const readStream = fs.createReadStream(path);
+  const readStream = fs.createReadStream(path, {
+    highWaterMark: 256 * 1024
+  });
 
   // Add default metadata
   metadata.teamId = teamId;
@@ -62,9 +64,27 @@ export async function uploadFile({
   // create a gridfs bucket
   const bucket = getGridBucket(bucketName);
 
+  const fileSize = stats.size;
+  const chunkSizeBytes = (() => {
+    // 计算理想块大小：文件大小 ÷ 目标块数(10)
+    const idealChunkSize = Math.ceil(fileSize / 10);
+
+    // 确保块大小至少为512KB
+    const minChunkSize = 512 * 1024; // 512KB
+
+    // 取理想块大小和最小块大小中的较大值
+    let chunkSize = Math.max(idealChunkSize, minChunkSize);
+
+    // 将块大小向上取整到最接近的64KB的倍数，使其更整齐
+    chunkSize = Math.ceil(chunkSize / (64 * 1024)) * (64 * 1024);
+
+    return chunkSize;
+  })();
+
   const stream = bucket.openUploadStream(filename, {
     metadata,
-    contentType
+    contentType,
+    chunkSizeBytes
   });
 
   // save to gridfs
@@ -186,20 +206,25 @@ export async function getDownloadStream({
 
 export const readFileContentFromMongo = async ({
   teamId,
+  tmbId,
   bucketName,
   fileId,
-  isQAImport = false
+  isQAImport = false,
+  customPdfParse = false
 }: {
   teamId: string;
+  tmbId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
   isQAImport?: boolean;
+  customPdfParse?: boolean;
 }): Promise<{
   rawText: string;
   filename: string;
 }> => {
+  const bufferId = `${fileId}-${customPdfParse}`;
   // read buffer
-  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: fileId }, undefined, {
+  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: bufferId }, undefined, {
     ...readFromSecondary
   }).lean();
   if (fileBuffer) {
@@ -227,9 +252,11 @@ export const readFileContentFromMongo = async ({
 
   // Get raw text
   const { rawText } = await readRawContentByFileBuffer({
+    customPdfParse,
     extension,
     isQAImport,
     teamId,
+    tmbId,
     buffer: fileBuffers,
     encoding,
     metadata: {
@@ -240,7 +267,7 @@ export const readFileContentFromMongo = async ({
   // < 14M
   if (fileBuffers.length < 14 * 1024 * 1024 && rawText.trim()) {
     MongoRawTextBuffer.create({
-      sourceId: fileId,
+      sourceId: bufferId,
       rawText,
       metadata: {
         filename: file.filename

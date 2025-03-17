@@ -72,12 +72,15 @@ Human: ${query}
     if (result.extensionQueries?.length === 0) return;
     return result;
   })();
+
+  const extensionQueries = filterSamQuery(aiExtensionResult?.extensionQueries || []);
   if (aiExtensionResult) {
-    queries = filterSamQuery(queries.concat(aiExtensionResult.extensionQueries));
+    queries = filterSamQuery(queries.concat(extensionQueries));
     rewriteQuery = queries.join('\n');
   }
 
   return {
+    extensionQueries,
     concatQueries: queries,
     rewriteQuery,
     aiExtensionResult

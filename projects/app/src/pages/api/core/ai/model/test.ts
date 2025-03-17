@@ -1,15 +1,15 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
-import { findModelFromAlldata, getReRankModel } from '@fastgpt/service/core/ai/model';
+import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import {
   EmbeddingModelItemType,
   LLMModelItemType,
-  ReRankModelItemType,
+  RerankModelItemType,
   STTModelType,
   TTSModelType
 } from '@fastgpt/global/core/ai/model.d';
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { createChatCompletion, getAIApi } from '@fastgpt/service/core/ai/config';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
@@ -18,7 +18,7 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
 import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
 
-export type testQuery = { model: string };
+export type testQuery = { model: string; channelId?: number };
 
 export type testBody = {};
 
@@ -30,25 +30,31 @@ async function handler(
 ): Promise<testResponse> {
   await authSystemAdmin({ req });
 
-  const { model } = req.query;
+  const { model, channelId } = req.query;
   const modelData = findModelFromAlldata(model);
 
   if (!modelData) return Promise.reject('Model not found');
 
+  const headers: Record<string, string> = channelId
+    ? {
+        'Aiproxy-Channel': String(channelId)
+      }
+    : {};
+
   if (modelData.type === 'llm') {
-    return testLLMModel(modelData);
+    return testLLMModel(modelData, headers);
   }
   if (modelData.type === 'embedding') {
-    return testEmbeddingModel(modelData);
+    return testEmbeddingModel(modelData, headers);
   }
   if (modelData.type === 'tts') {
-    return testTTSModel(modelData);
+    return testTTSModel(modelData, headers);
   }
   if (modelData.type === 'stt') {
-    return testSTTModel(modelData);
+    return testSTTModel(modelData, headers);
   }
   if (modelData.type === 'rerank') {
-    return testReRankModel(modelData);
+    return testReRankModel(modelData, headers);
   }
 
   return Promise.reject('Model type not supported');
@@ -56,45 +62,62 @@ async function handler(
 
 export default NextAPI(handler);
 
-const testLLMModel = async (model: LLMModelItemType) => {
+const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
   const ai = getAIApi({
     timeout: 10000
   });
+
   const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
       messages: [{ role: 'user', content: 'hi' }],
-      stream: false,
-      max_tokens: 10
+      stream: true
     },
     model
   );
-  const response = await ai.chat.completions.create(requestBody, {
-    ...(model.requestUrl ? { path: model.requestUrl } : {}),
-    headers: model.requestAuth
-      ? {
-          Authorization: `Bearer ${model.requestAuth}`
-        }
-      : undefined
+  const { response, isStreamResponse } = await createChatCompletion({
+    body: requestBody,
+    options: {
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        ...headers
+      }
+    }
   });
 
-  const responseText = response.choices?.[0]?.message?.content;
-
-  if (!responseText) {
-    return Promise.reject('Model response empty');
+  if (isStreamResponse) {
+    for await (const part of response) {
+      const content = part.choices?.[0]?.delta?.content || '';
+      // @ts-ignore
+      const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+      if (content || reasoningContent) {
+        response?.controller?.abort();
+        return;
+      }
+    }
+  } else {
+    addLog.info(`Model not stream response`);
+    const answer = response.choices?.[0]?.message?.content || '';
+    if (answer) {
+      return answer;
+    }
   }
 
-  addLog.info(`Model test response: ${responseText}`);
+  return Promise.reject('Model response empty');
 };
 
-const testEmbeddingModel = async (model: EmbeddingModelItemType) => {
+const testEmbeddingModel = async (
+  model: EmbeddingModelItemType,
+  headers: Record<string, string>
+) => {
   return getVectorsByText({
     input: 'Hi',
-    model
+    model,
+    headers
   });
 };
 
-const testTTSModel = async (model: TTSModelType) => {
+const testTTSModel = async (model: TTSModelType, headers: Record<string, string>) => {
   const ai = getAIApi({
     timeout: 10000
   });
@@ -109,29 +132,30 @@ const testTTSModel = async (model: TTSModelType) => {
     model.requestUrl
       ? {
           path: model.requestUrl,
-          headers: model.requestAuth
-            ? {
-                Authorization: `Bearer ${model.requestAuth}`
-              }
-            : undefined
+          headers: {
+            ...(model.requestAuth ? { Authorization: `Bearer ${model.requestAuth}` } : {}),
+            ...headers
+          }
         }
-      : {}
+      : { headers }
   );
 };
 
-const testSTTModel = async (model: STTModelType) => {
+const testSTTModel = async (model: STTModelType, headers: Record<string, string>) => {
   const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
   const { text } = await aiTranscriptions({
     model: model.model,
-    fileStream: fs.createReadStream(path)
+    fileStream: fs.createReadStream(path),
+    headers
   });
   addLog.info(`STT result: ${text}`);
 };
 
-const testReRankModel = async (model: ReRankModelItemType) => {
+const testReRankModel = async (model: RerankModelItemType, headers: Record<string, string>) => {
   await reRankRecall({
     model,
     query: 'Hi',
-    documents: [{ id: '1', text: 'Hi' }]
+    documents: [{ id: '1', text: 'Hi' }],
+    headers
   });
 };

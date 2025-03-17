@@ -11,7 +11,7 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum } from './utils';
+import { CodeClassNameEnum, mdTextFormat } from './utils';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -54,36 +54,7 @@ const MarkdownRender = ({ source = '', showAnimation, isDisabled, forbidZhFormat
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;
-
-    // 保护 URL 格式：https://, http://, /api/xxx
-    const urlPlaceholders: string[] = [];
-    const textWithProtectedUrls = source.replace(
-      /https?:\/\/(?:(?:[\w-]+\.)+[a-zA-Z]{2,6}|localhost)(?::\d{2,5})?(?:\/[\w\-./?%&=@]*)?/g,
-      (match) => {
-        urlPlaceholders.push(match);
-        return `__URL_${urlPlaceholders.length - 1}__ `;
-      }
-    );
-
-    // 处理中文与英文数字之间的分词
-    const textWithSpaces = textWithProtectedUrls
-      .replace(
-        /([\u4e00-\u9fa5\u3000-\u303f])([a-zA-Z0-9])|([a-zA-Z0-9])([\u4e00-\u9fa5\u3000-\u303f])/g,
-        '$1$3 $2$4'
-      )
-      // 处理引用标记
-      .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1')
-      // 处理 [quote:id] 格式引用，将 [quote:675934a198f46329dfc6d05a] 转换为 [675934a198f46329dfc6d05a](QUOTE)
-      .replace(/\[quote:?\s*([a-f0-9]{24})\](?!\()/gi, '[$1](QUOTE)')
-      .replace(/\[([a-f0-9]{24})\](?!\()/g, '[$1](QUOTE)');
-
-    // 还原 URL
-    const finalText = textWithSpaces.replace(
-      /__URL_(\d+)__/g,
-      (_, index) => `${urlPlaceholders[parseInt(index)]}`
-    );
-
-    return finalText;
+    return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
 
   const urlTransform = useCallback((val: string) => {
@@ -114,7 +85,7 @@ export default React.memo(Markdown);
 function Code(e: any) {
   const { className, codeBlock, children } = e;
   const match = /language-(\w+)/.exec(className || '');
-  const codeType = match?.[1];
+  const codeType = match?.[1]?.toLowerCase();
 
   const strChildren = String(children);
 
@@ -125,7 +96,7 @@ function Code(e: any) {
     if (codeType === CodeClassNameEnum.guide) {
       return <ChatGuide text={strChildren} />;
     }
-    if (codeType === CodeClassNameEnum.questionGuide) {
+    if (codeType === CodeClassNameEnum.questionguide) {
       return <QuestionGuide text={strChildren} />;
     }
     if (codeType === CodeClassNameEnum.echarts) {
@@ -134,7 +105,7 @@ function Code(e: any) {
     if (codeType === CodeClassNameEnum.iframe) {
       return <IframeCodeBlock code={strChildren} />;
     }
-    if (codeType && codeType.toLowerCase() === CodeClassNameEnum.html) {
+    if (codeType === CodeClassNameEnum.html || codeType === CodeClassNameEnum.svg) {
       return (
         <IframeHtmlCodeBlock className={className} codeBlock={codeBlock} match={match}>
           {children}

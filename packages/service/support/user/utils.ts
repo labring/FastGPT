@@ -86,9 +86,12 @@ export async function addSourceMember<T extends { tmbId: string }>({
 }): Promise<Array<T & { sourceMember: SourceMemberType }>> {
   if (!Array.isArray(list)) return [];
 
+  const tmbIdList = list
+    .map((item) => (item.tmbId ? String(item.tmbId) : undefined))
+    .filter(Boolean);
   const tmbList = await MongoTeamMember.find(
     {
-      _id: { $in: list.map((item) => String(item.tmbId)) }
+      _id: { $in: tmbIdList }
     },
     'tmbId name avatar status',
     {

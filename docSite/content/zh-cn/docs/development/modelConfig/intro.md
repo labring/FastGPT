@@ -13,9 +13,15 @@ weight: 744
 
 ## 配置模型
 
-### 1. 使用 OneAPI 对接模型提供商
+### 1. 对接模型提供商
 
-可以使用 [OneAPI 接入教程](/docs/development/modelconfig/one-api) 来进行模型聚合，从而可以对接更多模型提供商。你需要先在各服务商申请好 API 接入 OneAPI 后，才能在 FastGPT 中使用这些模型。示例流程如下：
+#### AI Proxy
+
+从 4.8.23 版本开始， FastGPT 支持在页面上配置模型提供商，即使用 [AI Proxy 接入教程](/docs/development/modelconfig/ai-proxy) 来进行模型聚合，从而可以对接更多模型提供商。
+
+#### One API
+
+也可以使用 [OneAPI 接入教程](/docs/development/modelconfig/one-api)。你需要先在各服务商申请好 API 接入 OneAPI 后，才能在 FastGPT 中使用这些模型。示例流程如下：
 
 ![alt text](/imgs/image-95.png)
 
@@ -23,22 +29,12 @@ weight: 744
 
 {{% alert icon=" " context="info" %}}
 - [SiliconCloud(硅基流动)](https://cloud.siliconflow.cn/i/TR9Ym0c4): 提供开源模型调用的平台。
-- [Sealos AIProxy](https://hzh.sealos.run/?openapp=system-aiproxy): 提供国内各家模型代理，无需逐一申请 api。
+- [Sealos AIProxy](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy): 提供国内各家模型代理，无需逐一申请 api。
 {{% /alert %}}
 
 在 OneAPI 配置好模型后，你就可以打开 FastGPT 页面，启用对应模型了。
 
-### 2. 登录 root 用户
-
-仅 root 用户可以进行模型配置。
-
-### 3. 进入模型配置页面
-
-登录 root 用户后，在`账号-模型提供商-模型配置`中，你可以看到所有内置的模型和自定义模型，以及哪些模型启用了。
-
-![alt text](/image-90.png)
-
-### 4. 配置介绍
+### 2. 配置介绍
 
 {{% alert icon="🤖 " context="success" %}}
 注意：

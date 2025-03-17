@@ -1,4 +1,10 @@
 {
   "provider": "AliCloud",
-  "list": []
+  "list": [
+    {
+      "model": "SenseVoiceSmall",
+      "name": "SenseVoiceSmall",
+      "type": "stt"
+    }
+  ]
 }

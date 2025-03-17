@@ -46,8 +46,8 @@
       "defaultConfig": {},
       "fieldMap": {},
       "type": "llm",
-      "showTopP": true,
-      "showStopSign": true
+      "showTopP": false,
+      "showStopSign": false
     }
   ]
 }

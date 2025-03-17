@@ -7,11 +7,11 @@ toc: true
 weight: 102
 ---
 
-更多使用技巧，[查看视屏教程](https://www.bilibili.com/video/BV1sH4y1T7s9)
+更多使用技巧，[查看视频教程](https://www.bilibili.com/video/BV1sH4y1T7s9)
 
 ## 知识库
 
-开始前，请准备一份测试电子文档，WORD，PDF，TXT，excel，markdown 都可以，比如公司休假制度，不涉密的销售说辞，产品知识等等。
+开始前，请准备一份测试电子文档，WORD、PDF、TXT、excel、markdown 都可以，比如公司休假制度、不涉密的销售说辞、产品知识等等。
 
 这里使用 FastGPT 中文 README 文件为例。
 
@@ -31,7 +31,7 @@ weight: 102
 
 ![](/imgs/upload-data.png)
 
-点击上传后我们需要等待数据处理完成，等到我们上传的文件状态为可用。
+点击上传后我们需要等待数据处理完成，直到我们上传的文件状态为可用。
 
 ![](/imgs/upload-data2.png)
 

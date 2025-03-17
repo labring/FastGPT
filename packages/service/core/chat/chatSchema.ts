@@ -1,7 +1,7 @@
 import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import { ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
-import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -52,8 +52,10 @@ const ChatSchema = new Schema({
   },
   source: {
     type: String,
-    required: true
+    required: true,
+    enum: Object.values(ChatSourceEnum)
   },
+  sourceName: String,
   shareId: {
     type: String
   },

@@ -2,6 +2,7 @@ import { UrlFetchParams, UrlFetchResponse } from '@fastgpt/global/common/file/ap
 import * as cheerio from 'cheerio';
 import axios from 'axios';
 import { htmlToMarkdown } from './utils';
+import { isInternalAddress } from '../system/utils';
 
 export const cheerioToHtml = ({
   fetchUrl,
@@ -75,6 +76,16 @@ export const urlsFetch = async ({
 
   const response = await Promise.all(
     urlList.map(async (url) => {
+      const isInternal = isInternalAddress(url);
+      if (isInternal) {
+        return {
+          url,
+          title: '',
+          content: 'Cannot fetch internal url',
+          selector: ''
+        };
+      }
+
       try {
         const fetchRes = await axios.get(url, {
           timeout: 30000

@@ -1,13 +1,16 @@
 import { useRouter } from 'next/router';
-import { SetStateAction, useState } from 'react';
+import { SetStateAction, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { ImportDataSourceEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TabEnum } from '../NavBar';
-import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
+import { ChunkSettingModeEnum } from '@/web/core/dataset/constants';
 import { UseFormReturn, useForm } from 'react-hook-form';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
@@ -19,12 +22,10 @@ type TrainingFiledType = {
   minChunkSize: number;
   autoChunkSize: number;
   chunkSize: number;
-  showChunkInput: boolean;
-  showPromptInput: boolean;
   charsPointsPrice: number;
   priceTip: string;
   uploadRate: number;
-  chunkSizeField?: ChunkSizeFieldType;
+  chunkSizeField: ChunkSizeFieldType;
 };
 type DatasetImportContextType = {
   importSource: ImportDataSourceEnum;
@@ -39,8 +40,13 @@ type DatasetImportContextType = {
 
 type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
 export type ImportFormType = {
-  mode: TrainingModeEnum;
-  way: ImportProcessWayEnum;
+  customPdfParse: boolean;
+
+  trainingType: DatasetCollectionDataProcessModeEnum;
+  imageIndex: boolean;
+  autoIndexes: boolean;
+
+  chunkSettingMode: ChunkSettingModeEnum;
   embeddingChunkSize: number;
   qaChunkSize: number;
   customSplitChar: string;
@@ -58,8 +64,6 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
 
   maxChunkSize: 0,
   minChunkSize: 0,
-  showChunkInput: false,
-  showPromptInput: false,
   sources: [],
   setSources: function (value: SetStateAction<ImportSourceItemType[]>): void {
     throw new Error('Function not implemented.');
@@ -88,72 +92,93 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const modeSteps: Record<ImportDataSourceEnum, { title: string }[]> = {
     [ImportDataSourceEnum.reTraining]: [
       { title: t('dataset:core.dataset.import.Adjust parameters') },
-      { title: t('common:core.dataset.import.Upload data') }
+      {
+        title: t('dataset:import_data_preview')
+      },
+      { title: t('dataset:import_confirm') }
     ],
     [ImportDataSourceEnum.fileLocal]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.fileLink]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_link')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.fileCustom]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.csvTable]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.externalFile]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ],
     [ImportDataSourceEnum.apiDataset]: [
       {
-        title: t('common:core.dataset.import.Select file')
+        title: t('dataset:import_select_file')
       },
       {
-        title: t('common:core.dataset.import.Data Preprocessing')
+        title: t('dataset:import_param_setting')
       },
       {
-        title: t('common:core.dataset.import.Upload data')
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
       }
     ]
   };
@@ -168,96 +193,114 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 
   const processParamsForm = useForm<ImportFormType>({
     defaultValues: {
-      mode: TrainingModeEnum.chunk,
-      way: ImportProcessWayEnum.auto,
+      imageIndex: false,
+      autoIndexes: false,
+
+      trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+
+      chunkSettingMode: ChunkSettingModeEnum.auto,
       embeddingChunkSize: vectorModel?.defaultToken || 512,
       qaChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
       customSplitChar: '',
       qaPrompt: Prompt_AgentQA.description,
-      webSelector: ''
+      webSelector: '',
+      customPdfParse: false
     }
   });
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
 
   // watch form
-  const mode = processParamsForm.watch('mode');
-  const way = processParamsForm.watch('way');
+  const trainingType = processParamsForm.watch('trainingType');
+  const chunkSettingMode = processParamsForm.watch('chunkSettingMode');
   const embeddingChunkSize = processParamsForm.watch('embeddingChunkSize');
   const qaChunkSize = processParamsForm.watch('qaChunkSize');
   const customSplitChar = processParamsForm.watch('customSplitChar');
+  const autoIndexes = processParamsForm.watch('autoIndexes');
 
-  const modeStaticParams: Record<TrainingModeEnum, TrainingFiledType> = {
-    [TrainingModeEnum.auto]: {
-      chunkOverlapRatio: 0.2,
-      maxChunkSize: 2048,
-      minChunkSize: 100,
-      autoChunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
-      chunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
-      showChunkInput: false,
-      showPromptInput: false,
-      charsPointsPrice: agentModel.charsPointsPrice || 0,
-      priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
-        price: agentModel.charsPointsPrice
-      }),
-      uploadRate: 100
-    },
-    [TrainingModeEnum.chunk]: {
-      chunkSizeField: 'embeddingChunkSize' as ChunkSizeFieldType,
-      chunkOverlapRatio: 0.2,
-      maxChunkSize: vectorModel?.maxToken || 512,
-      minChunkSize: 100,
-      autoChunkSize: vectorModel?.defaultToken || 512,
-      chunkSize: embeddingChunkSize,
-      showChunkInput: true,
-      showPromptInput: false,
-      charsPointsPrice: vectorModel.charsPointsPrice || 0,
-      priceTip: t('dataset:import.Embedding Estimated Price Tips', {
-        price: vectorModel.charsPointsPrice
-      }),
-      uploadRate: 150
-    },
-    [TrainingModeEnum.qa]: {
-      chunkSizeField: 'qaChunkSize' as ChunkSizeFieldType,
-      chunkOverlapRatio: 0,
-      maxChunkSize: Math.min(agentModel.maxResponse * 4, agentModel.maxContext * 0.7),
-      minChunkSize: 4000,
-      autoChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
-      chunkSize: qaChunkSize,
-      showChunkInput: true,
-      showPromptInput: true,
-      charsPointsPrice: agentModel.charsPointsPrice || 0,
-      priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
-        price: agentModel.charsPointsPrice
-      }),
-      uploadRate: 30
+  const TrainingModeMap = useMemo<TrainingFiledType>(() => {
+    if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+      return {
+        chunkSizeField: 'qaChunkSize',
+        chunkOverlapRatio: 0,
+        maxChunkSize: Math.min(agentModel.maxResponse * 4, agentModel.maxContext * 0.7),
+        minChunkSize: 4000,
+        autoChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
+        chunkSize: qaChunkSize,
+        charsPointsPrice: agentModel.charsPointsPrice || 0,
+        priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
+          price: agentModel.charsPointsPrice
+        }),
+        uploadRate: 30
+      };
+    } else if (autoIndexes) {
+      return {
+        chunkSizeField: 'embeddingChunkSize',
+        chunkOverlapRatio: 0.2,
+        maxChunkSize: 2048,
+        minChunkSize: 100,
+        autoChunkSize: vectorModel?.defaultToken ? vectorModel.defaultToken * 2 : 1024,
+        chunkSize: embeddingChunkSize,
+        charsPointsPrice: agentModel.charsPointsPrice || 0,
+        priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
+          price: agentModel.charsPointsPrice
+        }),
+        uploadRate: 100
+      };
+    } else {
+      return {
+        chunkSizeField: 'embeddingChunkSize',
+        chunkOverlapRatio: 0.2,
+        maxChunkSize: vectorModel?.maxToken || 512,
+        minChunkSize: 100,
+        autoChunkSize: vectorModel?.defaultToken || 512,
+        chunkSize: embeddingChunkSize,
+        charsPointsPrice: vectorModel.charsPointsPrice || 0,
+        priceTip: t('dataset:import.Embedding Estimated Price Tips', {
+          price: vectorModel.charsPointsPrice
+        }),
+        uploadRate: 150
+      };
     }
-  };
-  const selectModelStaticParam = modeStaticParams[mode];
+  }, [
+    trainingType,
+    autoIndexes,
+    agentModel.maxResponse,
+    agentModel.maxContext,
+    agentModel.charsPointsPrice,
+    qaChunkSize,
+    t,
+    vectorModel.defaultToken,
+    vectorModel?.maxToken,
+    vectorModel.charsPointsPrice,
+    embeddingChunkSize
+  ]);
 
-  const wayStaticPrams = {
-    [ImportProcessWayEnum.auto]: {
-      chunkSize: selectModelStaticParam.autoChunkSize,
-      customSplitChar: ''
-    },
-    [ImportProcessWayEnum.custom]: {
-      chunkSize: modeStaticParams[mode].chunkSize,
-      customSplitChar
+  const chunkSettingModeMap = useMemo(() => {
+    if (chunkSettingMode === ChunkSettingModeEnum.auto) {
+      return {
+        chunkSize: TrainingModeMap.autoChunkSize,
+        customSplitChar: ''
+      };
+    } else {
+      return {
+        chunkSize: TrainingModeMap.chunkSize,
+        customSplitChar
+      };
     }
-  };
-  const chunkSize = wayStaticPrams[way].chunkSize;
+  }, [chunkSettingMode, TrainingModeMap.autoChunkSize, TrainingModeMap.chunkSize, customSplitChar]);
 
   const contextValue = {
+    ...TrainingModeMap,
+    ...chunkSettingModeMap,
     importSource: source,
     parentId,
     activeStep,
     goToNext,
 
     processParamsForm,
-    ...selectModelStaticParam,
     sources,
-    setSources,
-    chunkSize
+    setSources
   };
 
   return (

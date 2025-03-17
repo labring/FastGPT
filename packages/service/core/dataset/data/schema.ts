@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 export const DatasetDataCollectionName = 'dataset_datas';
 
@@ -39,12 +40,26 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
+  history: {
+    type: [
+      {
+        q: String,
+        a: String,
+        updateTime: Date
+      }
+    ]
+  },
   indexes: {
     type: [
       {
+        // Abandon
         defaultIndex: {
-          type: Boolean,
-          default: false
+          type: Boolean
+        },
+        type: {
+          type: String,
+          enum: Object.values(DatasetDataIndexTypeEnum),
+          default: DatasetDataIndexTypeEnum.custom
         },
         dataId: {
           type: String,
@@ -83,15 +98,11 @@ try {
     chunkIndex: 1,
     updateTime: -1
   });
-  // FullText tmp full text index
-  // DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
   // Recall vectors after data matching
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
   DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
-
-  DatasetDataSchema.index({ initFullText: 1 });
 } catch (error) {
   console.log(error);
 }

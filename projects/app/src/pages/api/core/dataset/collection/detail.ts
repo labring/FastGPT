@@ -11,6 +11,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
+import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorStore/controller';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -29,12 +30,16 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   });
 
   // get file
-  const file = collection?.fileId
-    ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
-    : undefined;
+  const [file, indexAmount] = await Promise.all([
+    collection?.fileId
+      ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
+      : undefined,
+    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id)
+  ]);
 
   return {
     ...collection,
+    indexAmount: indexAmount ?? 0,
     ...getCollectionSourceData(collection),
     tags: await collectionTagsToTagLabel({
       datasetId: collection.datasetId,

@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -28,7 +28,8 @@ import {
   TrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum
+  DatasetStatusEnum,
+  DatasetCollectionDataProcessModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -41,6 +42,7 @@ import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HeaderTagPopOver from './HeaderTagPopOver';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
@@ -48,7 +50,7 @@ const Header = ({}: {}) => {
   const { t } = useTranslation();
   const theme = useTheme();
 
-  const { setLoading, feConfigs } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
@@ -69,50 +71,36 @@ const Header = ({}: {}) => {
       tip: t('common:dataset.Manual collection Tip'),
       canEmpty: false
     });
+
   const {
     isOpen: isOpenFileSourceSelector,
     onOpen: onOpenFileSourceSelector,
     onClose: onCloseFileSourceSelector
   } = useDisclosure();
-  const { mutate: onCreateCollection } = useRequest({
-    mutationFn: async ({
-      name,
-      type,
-      callback,
-      ...props
-    }: {
-      name: string;
-      type: DatasetCollectionTypeEnum;
-      callback?: (id: string) => void;
-      trainingType?: TrainingModeEnum;
-      rawLink?: string;
-      chunkSize?: number;
-    }) => {
-      setLoading(true);
+
+  const { runAsync: onCreateCollection, loading: onCreating } = useRequest2(
+    async ({ name, type }: { name: string; type: DatasetCollectionTypeEnum }) => {
       const id = await postDatasetCollection({
         parentId,
         datasetId: datasetDetail._id,
         name,
-        type,
-        ...props
+        type
       });
-      callback?.(id);
       return id;
     },
-    onSuccess() {
-      getData(pageNum);
-    },
-    onSettled() {
-      setLoading(false);
-    },
+    {
+      onSuccess() {
+        getData(pageNum);
+      },
+      successToast: t('common:common.Create Success'),
+      errorToast: t('common:common.Create Failed')
+    }
+  );
 
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
-  });
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
 
   return (
-    <Box display={['block', 'flex']} alignItems={'center'} gap={2}>
+    <MyBox isLoading={onCreating} display={['block', 'flex']} alignItems={'center'} gap={2}>
       <HStack flex={1}>
         <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
           <ParentPath
@@ -446,7 +434,7 @@ const Header = ({}: {}) => {
       )}
       <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
-    </Box>
+    </MyBox>
   );
 };
 

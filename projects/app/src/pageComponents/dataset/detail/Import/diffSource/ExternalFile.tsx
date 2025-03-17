@@ -27,6 +27,7 @@ const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
+const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 
 const ExternalFileCollection = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
@@ -34,8 +35,9 @@ const ExternalFileCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomLinkInput />}
-      {activeStep === 1 && <DataProcess showPreviewChunks={true} />}
-      {activeStep === 2 && <Upload />}
+      {activeStep === 1 && <DataProcess />}
+      {activeStep === 2 && <PreviewData />}
+      {activeStep === 3 && <Upload />}
     </>
   );
 };

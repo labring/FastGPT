@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { pushChatUsage } from '@/service/support/wallet/usage/push';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
@@ -66,8 +66,8 @@ async function handler(
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
 
-  pushChatUsage({
-    appName: '工作流Debug',
+  createChatUsage({
+    appName: `${app.name}-Debug`,
     appId,
     teamId,
     tmbId,

@@ -35,7 +35,7 @@ CHAT_API_KEY=sk-xxxxxx
 
 ![alt text](/imgs/image-104.png)
 
-## 5. 体验测试
+## 4. 体验测试
 
 ### 测试对话和图片识别
 

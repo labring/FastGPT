@@ -2,10 +2,7 @@ import type { NextApiRequest } from 'next';
 import type { ApiDatasetCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
-import {
-  TrainingModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -15,15 +12,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
-  const {
-    name,
-    apiFileId,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt,
-    ...body
-  } = req.body as ApiDatasetCreateDatasetCollectionParams;
+  const { name, apiFileId, customPdfParse, ...body } =
+    req.body as ApiDatasetCreateDatasetCollectionParams;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -56,7 +46,9 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     feishuServer,
     yuqueServer,
     apiFileId,
-    teamId
+    teamId,
+    tmbId,
+    customPdfParse
   });
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
@@ -68,15 +60,12 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.apiFile,
-      name: name,
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt,
+      name,
       apiFileId,
       metadata: {
         relatedImgId: apiFileId
-      }
+      },
+      customPdfParse
     }
   });
 

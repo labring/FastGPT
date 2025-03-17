@@ -1,6 +1,6 @@
 import { ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
-import React, { ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { ComponentRef as ChatComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { useForm, UseFormReturn } from 'react-hook-form';
@@ -8,11 +8,14 @@ import { defaultChatData } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppChatConfigType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type ContextProps = {
   showRouteToAppDetail: boolean;
   showRouteToDatasetDetail: boolean;
   isShowReadRawSource: boolean;
+  // isShowFullText: boolean;
   showNodeStatus: boolean;
 };
 type ChatBoxDataType = {
@@ -30,6 +33,31 @@ type ChatBoxDataType = {
   };
 };
 
+export type GetQuoteDataBasicProps = {
+  appId: string;
+  chatId: string;
+  chatItemDataId: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+};
+// 获取单个集合引用
+export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
+  collectionId: string;
+  sourceId: string;
+  sourceName: string;
+  datasetId: string;
+};
+export type GetAllQuoteDataProps = GetQuoteDataBasicProps & {
+  collectionIdList: string[];
+  sourceId?: string;
+  sourceName?: string;
+};
+export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
+
+export type QuoteDataType = {
+  rawSearch: SearchDataResponseItemType[];
+  metadata: GetQuoteProps;
+};
+
 type ChatItemContextType = {
   ChatBoxRef: React.RefObject<ChatComponentRef> | null;
   variablesForm: UseFormReturn<ChatBoxInputFormType, any>;
@@ -43,6 +71,9 @@ type ChatItemContextType = {
   chatBoxData: ChatBoxDataType;
   setChatBoxData: React.Dispatch<React.SetStateAction<ChatBoxDataType>>;
   isPlugin: boolean;
+
+  quoteData?: QuoteDataType;
+  setQuoteData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -61,6 +92,11 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   },
   clearChatRecords: function (): void {
     throw new Error('Function not implemented.');
+  },
+
+  quoteData: undefined,
+  setQuoteData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -72,13 +108,14 @@ const ChatItemContextProvider = ({
   showRouteToAppDetail,
   showRouteToDatasetDetail,
   isShowReadRawSource,
+  // isShowFullText,
   showNodeStatus
 }: {
   children: ReactNode;
 } & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
-
+  const [quoteData, setQuoteData] = useState<QuoteDataType>();
   const [chatBoxData, setChatBoxData] = useState<ChatBoxDataType>({
     ...defaultChatData
   });
@@ -131,7 +168,11 @@ const ChatItemContextProvider = ({
       showRouteToAppDetail,
       showRouteToDatasetDetail,
       isShowReadRawSource,
-      showNodeStatus
+      // isShowFullText,
+      showNodeStatus,
+
+      quoteData,
+      setQuoteData
     };
   }, [
     chatBoxData,
@@ -143,7 +184,10 @@ const ChatItemContextProvider = ({
     showRouteToAppDetail,
     showRouteToDatasetDetail,
     isShowReadRawSource,
-    showNodeStatus
+    // isShowFullText,
+    showNodeStatus,
+    quoteData,
+    setQuoteData
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;

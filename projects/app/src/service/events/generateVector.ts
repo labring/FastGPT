@@ -20,6 +20,16 @@ const reduceQueue = () => {
 
   return global.vectorQueueLen === 0;
 };
+const reduceQueueAndReturn = (delay = 0) => {
+  reduceQueue();
+  if (delay) {
+    setTimeout(() => {
+      generateVector();
+    }, delay);
+  } else {
+    generateVector();
+  }
+};
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
@@ -45,20 +55,7 @@ export async function generateVector(): Promise<any> {
           lockTime: new Date(),
           $inc: { retryCount: -1 }
         }
-      ).select({
-        _id: 1,
-        teamId: 1,
-        tmbId: 1,
-        datasetId: 1,
-        collectionId: 1,
-        q: 1,
-        a: 1,
-        chunkIndex: 1,
-        dataId: 1,
-        indexes: 1,
-        model: 1,
-        billId: 1
-      });
+      );
 
       // task preemption
       if (!data) {
@@ -85,14 +82,12 @@ export async function generateVector(): Promise<any> {
   }
   if (error) {
     addLog.error(`[Vector Queue] Error`, { error });
-    reduceQueue();
-    return generateVector();
+    return reduceQueueAndReturn();
   }
 
   // auth balance
   if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-    reduceQueue();
-    return generateVector();
+    return reduceQueueAndReturn();
   }
 
   addLog.info(`[Vector Queue] Start`);
@@ -119,15 +114,10 @@ export async function generateVector(): Promise<any> {
       time: Date.now() - start
     });
 
-    reduceQueue();
-    generateVector();
+    return reduceQueueAndReturn();
   } catch (err: any) {
     addLog.error(`[Vector Queue] Error`, err);
-    reduceQueue();
-
-    setTimeout(() => {
-      generateVector();
-    }, 1000);
+    return reduceQueueAndReturn(1000);
   }
 }
 
@@ -192,7 +182,7 @@ const rebuildData = async ({
             retryCount: 50
           }
         ],
-        { session }
+        { session, ordered: true }
       );
     }
   });

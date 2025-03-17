@@ -4,17 +4,17 @@ import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/co
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { parseReasoningContent, parseReasoningStreamContent } from '../../../ai/utils';
 import { createChatCompletion } from '../../../ai/config';
-import type {
-  ChatCompletion,
-  ChatCompletionMessageParam,
-  StreamChatType
-} from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  ChatDispatchProps,
+  DispatchNodeResultType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
@@ -72,7 +72,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     histories,
     node: { name },
     query,
-    runningAppInfo: { teamId },
+    runningUserInfo,
     workflowStreamResponse,
     chatConfig,
     params: {
@@ -124,7 +124,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       stringQuoteText,
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20,
-      teamId
+      customPdfParse: chatConfig?.fileSelectConfig?.customPdfParse,
+      runningUserInfo
     })
   ]);
 
@@ -195,12 +196,19 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   });
 
   const { answerText, reasoningText } = await (async () => {
-    if (res && isStreamResponse) {
+    if (isStreamResponse) {
+      if (!res) {
+        return {
+          answerText: '',
+          reasoningText: ''
+        };
+      }
       // sse response
       const { answer, reasoning } = await streamResponse({
         res,
         stream: response,
         aiChatReasoning,
+        parseThinkTag: modelConstantsData.reasoning,
         isResponseAnswerText,
         workflowStreamResponse
       });
@@ -210,46 +218,62 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         reasoningText: reasoning
       };
     } else {
-      const unStreamResponse = response as ChatCompletion;
-      const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-      // @ts-ignore
-      const reasoning = unStreamResponse.choices?.[0]?.message?.reasoning_content || '';
+      const { content, reasoningContent } = (() => {
+        const content = response.choices?.[0]?.message?.content || '';
+        // @ts-ignore
+        const reasoningContent: string = response.choices?.[0]?.message?.reasoning_content || '';
+
+        // API already parse reasoning content
+        if (reasoningContent || !aiChatReasoning) {
+          return {
+            content,
+            reasoningContent
+          };
+        }
+
+        const [think, answer] = parseReasoningContent(content);
+        return {
+          content: answer,
+          reasoningContent: think
+        };
+      })();
 
       // Some models do not support streaming
       if (stream) {
-        if (isResponseAnswerText && answer) {
+        if (aiChatReasoning && reasoningContent) {
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              text: answer
+              reasoning_content: reasoningContent
             })
           });
         }
-        if (aiChatReasoning && reasoning) {
+        if (isResponseAnswerText && content) {
           workflowStreamResponse?.({
             event: SseResponseEventEnum.fastAnswer,
             data: textAdaptGptResponse({
-              reasoning_content: reasoning
+              text: content
             })
           });
         }
       }
 
       return {
-        answerText: answer,
-        reasoningText: reasoning
+        answerText: content,
+        reasoningText: reasoningContent
       };
     }
   })();
 
-  if (!answerText) {
+  if (!answerText && !reasoningText) {
     return Promise.reject(getEmptyResponseTip());
   }
 
   const AIMessages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content: answerText
+      content: answerText,
+      reasoning_text: reasoningText // reasoning_text is only recorded for response, but not for request
     }
   ];
 
@@ -267,7 +291,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   });
 
   return {
-    answerText,
+    answerText: answerText.trim(),
     reasoningText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
@@ -336,7 +360,8 @@ async function getMultiInput({
   stringQuoteText,
   requestOrigin,
   maxFiles,
-  teamId
+  customPdfParse,
+  runningUserInfo
 }: {
   histories: ChatItemType[];
   inputFiles: UserChatItemValueItemType['file'][];
@@ -344,7 +369,8 @@ async function getMultiInput({
   stringQuoteText?: string; // file quote
   requestOrigin?: string;
   maxFiles: number;
-  teamId: string;
+  customPdfParse?: boolean;
+  runningUserInfo: ChatDispatchProps['runningUserInfo'];
 }) {
   // 旧版本适配====>
   if (stringQuoteText) {
@@ -381,12 +407,14 @@ async function getMultiInput({
     urls,
     requestOrigin,
     maxFiles,
-    teamId
+    customPdfParse,
+    teamId: runningUserInfo.teamId,
+    tmbId: runningUserInfo.tmbId
   });
 
   return {
     documentQuoteText: text,
-    userFiles: fileLinks.map((url) => parseUrlToFileType(url))
+    userFiles: fileLinks.map((url) => parseUrlToFileType(url)).filter(Boolean)
   };
 }
 
@@ -486,12 +514,14 @@ async function streamResponse({
   stream,
   workflowStreamResponse,
   aiChatReasoning,
+  parseThinkTag,
   isResponseAnswerText
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
   aiChatReasoning?: boolean;
+  parseThinkTag?: boolean;
   isResponseAnswerText?: boolean;
 }) {
   const write = responseWriteController({
@@ -500,14 +530,28 @@ async function streamResponse({
   });
   let answer = '';
   let reasoning = '';
+  const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
+
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();
       break;
     }
 
-    const content = part.choices?.[0]?.delta?.content || '';
+    const [reasoningContent, content] = parsePart(part, parseThinkTag);
     answer += content;
+    reasoning += reasoningContent;
+
+    if (aiChatReasoning && reasoningContent) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          reasoning_content: reasoningContent
+        })
+      });
+    }
+
     if (isResponseAnswerText && content) {
       workflowStreamResponse?.({
         write,
@@ -517,15 +561,17 @@ async function streamResponse({
         })
       });
     }
+  }
 
-    const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
-    reasoning += reasoningContent;
-    if (aiChatReasoning && reasoningContent) {
+  // if answer is empty, try to get value from startTagBuffer. (Cause: The response content is too short to exceed the minimum parse length)
+  if (answer === '') {
+    answer = getStartTagBuffer();
+    if (isResponseAnswerText && answer) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          reasoning_content: reasoningContent
+          text: answer
         })
       });
     }

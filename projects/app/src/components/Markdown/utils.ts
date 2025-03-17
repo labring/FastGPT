@@ -1,6 +1,6 @@
 export enum CodeClassNameEnum {
   guide = 'guide',
-  questionGuide = 'questionGuide',
+  questionguide = 'questionguide',
   mermaid = 'mermaid',
   echarts = 'echarts',
   quote = 'quote',
@@ -8,74 +8,37 @@ export enum CodeClassNameEnum {
   latex = 'latex',
   iframe = 'iframe',
   html = 'html',
+  svg = 'svg',
   video = 'video',
   audio = 'audio'
 }
 
-function htmlTableToLatex(html: string) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const table = doc.querySelector('table');
-
-  if (!table) return '';
-
-  let latex = '\\begin{tabular}{';
-
-  // 获取列数
-  const columns = table.querySelectorAll('tr:first-child th, tr:first-child td').length;
-  latex += '|' + 'c|'.repeat(columns) + '}\n\\hline\n';
-
-  // 创建一个二维数组来跟踪单元格合并情况
-  const cellTracker = Array.from({ length: table.rows.length }, () => Array(columns).fill(false));
-
-  // 遍历行
-  table.querySelectorAll('tr').forEach((row, rowIndex) => {
-    const cells = row.querySelectorAll('th, td');
-    let cellTexts: string[] = [];
-    let colIndex = 0;
-
-    cells.forEach((cell) => {
-      // 跳过已经被合并的单元格
-      while (cellTracker[rowIndex][colIndex]) {
-        colIndex++;
-      }
-
-      // @ts-ignore
-      const rowspan = parseInt(cell.getAttribute('rowspan') || 1, 10);
-      // @ts-ignore
-      const colspan = parseInt(cell.getAttribute('colspan') || 1, 10);
-
-      // 添加单元格内容
-      let cellText = cell.textContent?.trim() || '';
-      if (colspan > 1) {
-        cellText = `\\multicolumn{${colspan}}{|c|}{${cellText}}`;
-      }
-      if (rowspan > 1) {
-        cellText = `\\multirow{${rowspan}}{*}{${cellText}}`;
-      }
-      cellTexts.push(cellText);
-
-      // 标记合并的单元格
-      for (let i = 0; i < rowspan; i++) {
-        for (let j = 0; j < colspan; j++) {
-          cellTracker[rowIndex + i][colIndex + j] = true;
-        }
-      }
-
-      colIndex += colspan;
-    });
-
-    latex += cellTexts.join(' & ') + ' \\\\\n\\hline\n';
+export const mdTextFormat = (text: string) => {
+  // NextChat function - Format latex to $$
+  const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g;
+  text = text.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {
+    if (codeBlock) {
+      return codeBlock;
+    } else if (squareBracket) {
+      return `$$${squareBracket}$$`;
+    } else if (roundBracket) {
+      return `$${roundBracket}$`;
+    }
+    return match;
   });
 
-  latex += '\\end{tabular}';
+  // 处理 [quote:id] 格式引用，将 [quote:675934a198f46329dfc6d05a] 转换为 [675934a198f46329dfc6d05a](QUOTE)
+  text = text
+    // .replace(
+    //   /([\u4e00-\u9fa5\u3000-\u303f])([a-zA-Z0-9])|([a-zA-Z0-9])([\u4e00-\u9fa5\u3000-\u303f])/g,
+    //   '$1$3 $2$4'
+    // )
+    // 处理 [quote:id] 格式引用，将 [quote:675934a198f46329dfc6d05a] 转换为 [675934a198f46329dfc6d05a](QUOTE)
+    .replace(/\[quote:?\s*([a-f0-9]{24})\](?!\()/gi, '[$1](QUOTE)')
+    .replace(/\[([a-f0-9]{24})\](?!\()/g, '[$1](QUOTE)');
 
-  return `\`\`\`${CodeClassNameEnum.latex}
-    ${latex}
-    \`\`\``;
-}
+  // 处理链接后的中文标点符号，增加空格
+  text = text.replace(/(https?:\/\/[^\s，。！？；：、]+)([，。！？；：、])/g, '$1 $2');
 
-export function convertHtmlTablesToLatex(input: string) {
-  const tableRegex = /<table[\s\S]*?<\/table>/gi;
-  return input.replace(tableRegex, (match) => htmlTableToLatex(match));
-}
+  return text;
+};

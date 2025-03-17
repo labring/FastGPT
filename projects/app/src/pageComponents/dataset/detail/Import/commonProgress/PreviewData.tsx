@@ -1,19 +1,162 @@
-import React from 'react';
-import Preview from '../components/Preview';
-import { Box, Button, Flex } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { getPreviewChunks } from '@/web/core/dataset/api';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { getPreviewSourceReadType } from '../utils';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import Markdown from '@/components/Markdown';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
-const PreviewData = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
+const PreviewData = () => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
+
+  const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+
+  const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
+  const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
+  const chunkSize = useContextSelector(DatasetImportContext, (v) => v.chunkSize);
+  const chunkOverlapRatio = useContextSelector(DatasetImportContext, (v) => v.chunkOverlapRatio);
+  const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
+
+  const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
+
+  const { data = [], loading: isLoading } = useRequest2(
+    async () => {
+      if (!previewFile) return;
+      if (importSource === ImportDataSourceEnum.fileCustom) {
+        const customSplitChar = processParamsForm.getValues('customSplitChar');
+        const { chunks } = splitText2Chunks({
+          text: previewFile.rawText || '',
+          chunkLen: chunkSize,
+          overlapRatio: chunkOverlapRatio,
+          customReg: customSplitChar ? [customSplitChar] : []
+        });
+        return chunks.map((chunk) => ({
+          q: chunk,
+          a: ''
+        }));
+      }
+
+      return getPreviewChunks({
+        datasetId,
+        type: getPreviewSourceReadType(previewFile),
+        sourceId:
+          previewFile.dbFileId ||
+          previewFile.link ||
+          previewFile.externalFileUrl ||
+          previewFile.apiFileId ||
+          '',
+
+        customPdfParse: processParamsForm.getValues('customPdfParse'),
+
+        chunkSize,
+        overlapRatio: chunkOverlapRatio,
+        customSplitChar: processParamsForm.getValues('customSplitChar'),
+
+        selector: processParamsForm.getValues('webSelector'),
+        isQAImport: importSource === ImportDataSourceEnum.csvTable,
+        externalFileId: previewFile.externalFileId
+      });
+    },
+    {
+      refreshDeps: [previewFile],
+      manual: false,
+      onSuccess(result) {
+        if (!previewFile) return;
+        if (!result || result.length === 0) {
+          toast({
+            title: t('dataset:preview_chunk_empty'),
+            status: 'error'
+          });
+        }
+      }
+    }
+  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Box flex={'1 0 0 '}>
-        <Preview showPreviewChunks={showPreviewChunks} />
-      </Box>
+      <Flex flex={'1 0 0'} border={'base'} borderRadius={'md'}>
+        <Flex flexDirection={'column'} flex={'1 0 0'} borderRight={'base'}>
+          <FormLabel fontSize={'md'} py={4} px={5} borderBottom={'base'}>
+            {t('dataset:file_list')}
+          </FormLabel>
+          <Box flex={'1 0 0'} overflowY={'auto'} px={5} py={3}>
+            {sources.map((source) => (
+              <HStack
+                key={source.id}
+                bg={'myGray.50'}
+                p={4}
+                borderRadius={'md'}
+                borderWidth={'1px'}
+                borderColor={'transparent'}
+                cursor={'pointer'}
+                _hover={{
+                  borderColor: 'primary.300'
+                }}
+                {...(previewFile?.id === source.id && {
+                  borderColor: 'primary.500 !important',
+                  bg: 'primary.50 !important'
+                })}
+                _notLast={{ mb: 3 }}
+                onClick={() => setPreviewFile(source)}
+              >
+                <MyIcon name={source.icon as any} w={'1.25rem'} />
+                <Box ml={1} flex={'1 0 0'} wordBreak={'break-all'} fontSize={'sm'}>
+                  {source.sourceName}
+                </Box>
+              </HStack>
+            ))}
+          </Box>
+        </Flex>
+        <Flex flexDirection={'column'} flex={'1 0 0'}>
+          <Flex py={4} px={5} borderBottom={'base'} justifyContent={'space-between'}>
+            <FormLabel fontSize={'md'}>{t('dataset:preview_chunk')}</FormLabel>
+            <Box fontSize={'xs'} color={'myGray.500'}>
+              {t('dataset:preview_chunk_intro')}
+            </Box>
+          </Flex>
+          <MyBox isLoading={isLoading} flex={'1 0 0'} h={0}>
+            <Box h={'100%'} overflowY={'auto'} px={5} py={3}>
+              {previewFile ? (
+                <>
+                  {data.map((item, index) => (
+                    <Box
+                      key={index}
+                      fontSize={'sm'}
+                      color={'myGray.600'}
+                      _notLast={{
+                        mb: 3,
+                        pb: 3,
+                        borderBottom: 'base'
+                      }}
+                      _hover={{
+                        bg: 'myGray.100'
+                      }}
+                    >
+                      <Markdown source={item.q} />
+                      <Markdown source={item.a} />
+                    </Box>
+                  ))}
+                </>
+              ) : (
+                <EmptyTip text={t('dataset:preview_chunk_not_selected')} />
+              )}
+            </Box>
+          </MyBox>
+        </Flex>
+      </Flex>
       <Flex mt={2} justifyContent={'flex-end'}>
         <Button onClick={goToNext}>{t('common:common.Next Step')}</Button>
       </Flex>

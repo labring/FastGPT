@@ -73,11 +73,6 @@ export const ModelProviderList: ModelProviderType[] = [
     avatar: 'model/groq'
   },
   {
-    id: 'AliCloud',
-    name: i18nT('common:model_alicloud'),
-    avatar: 'model/alicloud'
-  },
-  {
     id: 'Qwen',
     name: i18nT('common:model_qwen'),
     avatar: 'model/qwen'
@@ -88,6 +83,11 @@ export const ModelProviderList: ModelProviderType[] = [
     avatar: 'model/doubao'
   },
   {
+    id: 'DeepSeek',
+    name: 'DeepSeek',
+    avatar: 'model/deepseek'
+  },
+  {
     id: 'ChatGLM',
     name: i18nT('common:model_chatglm'),
     avatar: 'model/chatglm'
@@ -96,11 +96,6 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'Ernie',
     name: i18nT('common:model_ernie'),
     avatar: 'model/ernie'
-  },
-  {
-    id: 'DeepSeek',
-    name: 'DeepSeek',
-    avatar: 'model/deepseek'
   },
   {
     id: 'Moonshot',
@@ -162,6 +157,11 @@ export const ModelProviderList: ModelProviderType[] = [
     id: 'Moka',
     name: i18nT('common:model_moka'),
     avatar: 'model/moka'
+  },
+  {
+    id: 'AliCloud',
+    name: i18nT('common:model_alicloud'),
+    avatar: 'model/alicloud'
   },
   {
     id: 'Siliconflow',

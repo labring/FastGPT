@@ -1,4 +1,4 @@
-const { i18n } = require('./next-i18next.config');
+const { i18n } = require('./next-i18next.config.js');
 const path = require('path');
 const fs = require('fs');
 
@@ -30,10 +30,6 @@ const nextConfig = {
           test: /\.svg$/i,
           issuer: /\.[jt]sx?$/,
           use: ['@svgr/webpack']
-        },
-        {
-          test: /\.node$/,
-          use: [{ loader: 'nextjs-node-loader' }]
         }
       ]),
       exprContextCritical: false,
@@ -43,6 +39,7 @@ const nextConfig = {
     if (!config.externals) {
       config.externals = [];
     }
+    config.externals.push('@node-rs/jieba');
 
     if (isServer) {
       if (nextRuntime === 'nodejs') {
@@ -79,14 +76,15 @@ const nextConfig = {
 
     return config;
   },
-  transpilePackages: ['@fastgpt/*', 'ahooks'],
+  // 需要转译的包
+  transpilePackages: ['@fastgpt/global', '@fastgpt/web', 'ahooks'],
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
     serverComponentsExternalPackages: [
       'mongoose',
       'pg',
-      '@node-rs/jieba',
-      '@zilliz/milvus2-sdk-node'
+      '@zilliz/milvus2-sdk-node',
+      "tiktoken"
     ],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
@@ -105,22 +103,6 @@ function getWorkerConfig() {
       .isDirectory();
   });
 
-  /* 
-    {
-      'worker/htmlStr2Md': path.resolve(
-                process.cwd(),
-                '../../packages/service/worker/htmlStr2Md/index.ts'
-              ),
-              'worker/countGptMessagesTokens': path.resolve(
-                process.cwd(),
-                '../../packages/service/worker/countGptMessagesTokens/index.ts'
-              ),
-              'worker/readFile': path.resolve(
-                process.cwd(),
-                '../../packages/service/worker/readFile/index.ts'
-              )
-    }
-  */
   const workerConfig = folderList.reduce((acc, item) => {
     acc[`worker/${item}`] = path.resolve(
       process.cwd(),

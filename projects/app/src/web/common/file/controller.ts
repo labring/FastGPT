@@ -31,7 +31,7 @@ export const uploadFile2DB = ({
     if (!e.total) return;
 
     const percent = Math.round((e.loaded / e.total) * 100);
-    percentListen && percentListen(percent);
+    percentListen?.(percent);
   });
 };
 

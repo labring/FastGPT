@@ -6,6 +6,7 @@ import { guessBase64ImageType } from '../utils';
 import { readFromSecondary } from '../../mongo/utils';
 import { addHours } from 'date-fns';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export const maxImgSize = 1024 * 1024 * 12;
 const base64MimeRegex = /data:image\/([^\)]+);base64/;
@@ -26,24 +27,29 @@ export async function uploadMongoImg({
   const [base64Mime, base64Data] = base64Img.split(',');
   // Check if mime type is valid
   if (!base64MimeRegex.test(base64Mime)) {
-    return Promise.reject('Invalid image mime type');
+    return Promise.reject('Invalid image base64');
   }
 
   const mime = `image/${base64Mime.match(base64MimeRegex)?.[1] ?? 'image/jpeg'}`;
   const binary = Buffer.from(base64Data, 'base64');
-  const extension = mime.split('/')[1];
-
-  if (!imageFileType.includes(`.${extension}`)) {
-    return Promise.reject('Invalid image file type');
+  let extension = mime.split('/')[1];
+  if (extension.startsWith('x-')) {
+    extension = extension.substring(2); // Remove 'x-' prefix
   }
 
-  const { _id } = await MongoImage.create({
-    teamId,
-    binary,
-    metadata: Object.assign({ mime }, metadata),
-    shareId,
-    expiredTime: forever ? undefined : addHours(new Date(), 1)
-  });
+  if (!extension || !imageFileType.includes(`.${extension}`)) {
+    return Promise.reject(`Invalid image file type: ${mime}`);
+  }
+
+  const { _id } = await retryFn(() =>
+    MongoImage.create({
+      teamId,
+      binary,
+      metadata: Object.assign({ mime }, metadata),
+      shareId,
+      expiredTime: forever ? undefined : addHours(new Date(), 1)
+    })
+  );
 
   return `${process.env.NEXT_PUBLIC_BASE_URL || ''}${imageBaseUrl}${String(_id)}.${extension}`;
 }
@@ -70,7 +76,7 @@ export const refreshSourceAvatar = async (
   const newId = getIdFromPath(path);
   const oldId = getIdFromPath(oldPath);
 
-  if (!newId) return;
+  if (!newId || newId === oldId) return;
 
   await MongoImage.updateOne({ _id: newId }, { $unset: { expiredTime: 1 } }, { session });
 
@@ -115,7 +121,7 @@ export async function delImgByRelatedId({
 }: {
   teamId: string;
   relateIds: string[];
-  session: ClientSession;
+  session?: ClientSession;
 }) {
   if (relateIds.length === 0) return;
 

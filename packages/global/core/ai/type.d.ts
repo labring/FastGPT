@@ -1,14 +1,12 @@
 import openai from 'openai';
 import type {
   ChatCompletionMessageToolCall,
-  ChatCompletionChunk,
   ChatCompletionMessageParam as SdkChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
   ChatCompletionContentPart as SdkChatCompletionContentPart,
   ChatCompletionUserMessageParam as SdkChatCompletionUserMessageParam,
   ChatCompletionToolMessageParam as SdkChatCompletionToolMessageParam,
-  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam,
-  ChatCompletionContentPartText
+  ChatCompletionAssistantMessageParam as SdkChatCompletionAssistantMessageParam
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 import { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
@@ -48,6 +46,7 @@ export type ChatCompletionMessageParam = (
   | CustomChatCompletionToolMessageParam
   | CustomChatCompletionAssistantMessageParam
 ) & {
+  reasoning_text?: string;
   dataId?: string;
   hideInUI?: boolean;
 };
@@ -71,7 +70,8 @@ export type ChatCompletionMessageFunctionCall =
   };
 
 // Stream response
-export type StreamChatType = Stream<ChatCompletionChunk>;
+export type StreamChatType = Stream<openai.Chat.Completions.ChatCompletionChunk>;
+export type UnStreamChatType = openai.Chat.Completions.ChatCompletion;
 
 export default openai;
 export * from 'openai';

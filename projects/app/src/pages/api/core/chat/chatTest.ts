@@ -5,7 +5,7 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { pushChatUsage } from '@/service/support/wallet/usage/push';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -204,47 +204,45 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     // save chat
-    if (!res.closed) {
-      const isInteractiveRequest = !!getLastInteractiveValue(histories);
-      const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
+    const isInteractiveRequest = !!getLastInteractiveValue(histories);
+    const { text: userInteractiveVal } = chatValue2RuntimePrompt(userQuestion.value);
 
-      const newTitle = isPlugin
-        ? variables.cTime ?? getSystemTime(timezone)
-        : getChatTitleFromChatMessage(userQuestion);
+    const newTitle = isPlugin
+      ? variables.cTime ?? getSystemTime(timezone)
+      : getChatTitleFromChatMessage(userQuestion);
 
-      const aiResponse: AIChatItemType & { dataId?: string } = {
-        dataId: responseChatItemId,
-        obj: ChatRoleEnum.AI,
-        value: assistantResponses,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
-      };
+    const aiResponse: AIChatItemType & { dataId?: string } = {
+      dataId: responseChatItemId,
+      obj: ChatRoleEnum.AI,
+      value: assistantResponses,
+      [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+    };
 
-      if (isInteractiveRequest) {
-        await updateInteractiveChat({
-          chatId,
-          appId: app._id,
-          userInteractiveVal,
-          aiResponse,
-          newVariables
-        });
-      } else {
-        await saveChat({
-          chatId,
-          appId: app._id,
-          teamId,
-          tmbId: tmbId,
-          nodes,
-          appChatConfig: chatConfig,
-          variables: newVariables,
-          isUpdateUseTime: false, // owner update use time
-          newTitle,
-          source: ChatSourceEnum.test,
-          content: [userQuestion, aiResponse]
-        });
-      }
+    if (isInteractiveRequest) {
+      await updateInteractiveChat({
+        chatId,
+        appId: app._id,
+        userInteractiveVal,
+        aiResponse,
+        newVariables
+      });
+    } else {
+      await saveChat({
+        chatId,
+        appId: app._id,
+        teamId,
+        tmbId: tmbId,
+        nodes,
+        appChatConfig: chatConfig,
+        variables: newVariables,
+        isUpdateUseTime: false, // owner update use time
+        newTitle,
+        source: ChatSourceEnum.test,
+        content: [userQuestion, aiResponse]
+      });
     }
 
-    pushChatUsage({
+    createChatUsage({
       appName,
       appId,
       teamId,

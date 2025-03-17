@@ -142,6 +142,10 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 3. ....
 
 
+### Tiktoken 下载失败
+
+由于 OneAPI 会在启动时从网络下载一个 tiktoken 的依赖，如果网络异常，就会导致启动失败。可以参考[OneAPI 离线部署](https://blog.csdn.net/wanh/article/details/139039216)解决。
+
 ## 四、常见模型问题
 
 ### 如何检查模型可用性问题

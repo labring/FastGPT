@@ -23,8 +23,54 @@ weight: 707
   "systemEnv": {
     "vectorMaxProcess": 15, // 向量处理线程数量
     "qaMaxProcess": 15, // 问答拆分线程数量
+    "vlmMaxProcess": 15, // 图片理解模型最大处理进程
     "tokenWorkers": 50, // Token 计算线程保持数，会持续占用内存，不能设置太大。
-    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "pgHNSWEfSearch": 100, // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "customPdfParse": { // 4.9.0 新增配置
+      "url": "", // 自定义 PDF 解析服务地址
+      "key": "", // 自定义 PDF 解析服务密钥
+      "doc2xKey": "", // doc2x 服务密钥
+      "price": 0 // PDF 解析服务价格
+    }
   }
 }
 ```
+
+## 自定义 PDF 解析配置
+
+自定义 PDF 服务解析的优先级高于 Doc2x 服务，所以如果使用 Doc2x 服务，请勿配置自定义 PDF 服务。
+
+### 使用 Sealos PDF 解析服务
+
+#### 1. 申请 Sealos AI proxy API Key
+
+[点击打开 Sealos Pdf parser 官网](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
+
+#### 2. 修改 FastGPT 配置文件
+
+`systemEnv.customPdfParse.url`填写成`https://aiproxy.hzh.sealos.run/v1/parse/pdf?model=parse-pdf`  
+`systemEnv.customPdfParse.key`填写成在 Sealos AI proxy 中申请的 API Key。
+
+![](/imgs/deployconfig-aiproxy.png)
+
+### 使用 Doc2x 解析 PDF 文件
+
+`Doc2x`是一个国内提供专业 PDF 解析。
+
+#### 1. 申请 Doc2x 服务
+
+[点击打开 Doc2x 官网](https://doc2x.noedgeai.com?inviteCode=9EACN2)，并进行对应 API Key 的申请。
+
+#### 2. 修改 FastGPT 配置文件
+
+开源版用户在 `config.json` 文件中添加 `systemEnv.customPdfParse.doc2xKey` 配置，并填写上申请到的 API Key。并重启服务。
+
+商业版用户在 Admin 后台根据表单指引填写 Doc2x 服务密钥。
+
+#### 3. 开始使用
+
+在知识库导入数据或应用文件上传配置中，可以勾选`PDF 增强解析`，则在对 PDF 解析时候，会使用 Doc2x 服务进行解析。
+
+### 使用 Marker 解析 PDF 文件
+
+[点击查看 Marker 接入教程](/docs/development/custom-models/marker)

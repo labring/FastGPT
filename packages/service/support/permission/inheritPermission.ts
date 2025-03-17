@@ -196,7 +196,8 @@ export async function syncCollaborators({
       permission: item.permission
     })),
     {
-      session
+      session,
+      ordered: true
     }
   );
 }

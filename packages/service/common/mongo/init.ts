@@ -16,16 +16,30 @@ export async function connectMongo(): Promise<Mongoose> {
 
   console.log('mongo start connect');
   try {
-    connectionMongo.set('strictQuery', true);
+    // Remove existing listeners to prevent duplicates
+    connectionMongo.connection.removeAllListeners('error');
+    connectionMongo.connection.removeAllListeners('disconnected');
+    connectionMongo.set('strictQuery', 'throw');
 
     connectionMongo.connection.on('error', async (error) => {
       console.log('mongo error', error);
-      await connectionMongo.disconnect();
-      await delay(1000);
-      connectMongo();
+      try {
+        if (connectionMongo.connection.readyState !== 0) {
+          await connectionMongo.disconnect();
+          await delay(1000);
+          await connectMongo();
+        }
+      } catch (error) {}
     });
-    connectionMongo.connection.on('disconnected', () => {
+    connectionMongo.connection.on('disconnected', async () => {
       console.log('mongo disconnected');
+      try {
+        if (connectionMongo.connection.readyState !== 0) {
+          await connectionMongo.disconnect();
+          await delay(1000);
+          await connectMongo();
+        }
+      } catch (error) {}
     });
 
     await connectionMongo.connect(process.env.MONGODB_URI as string, {

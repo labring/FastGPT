@@ -17,6 +17,8 @@ type BaseModelItemType = {
   isActive?: boolean;
   isCustom?: boolean;
   isDefault?: boolean;
+  isDefaultDatasetTextModel?: boolean;
+  isDefaultDatasetImageModel?: boolean;
 
   // If has requestUrl, it will request the model directly
   requestUrl?: string;
@@ -70,7 +72,7 @@ export type EmbeddingModelItemType = PriceType &
     queryConfig?: Record<string, any>; // Custom parameters for query
   };
 
-export type ReRankModelItemType = PriceType &
+export type RerankModelItemType = PriceType &
   BaseModelItemType & {
     type: ModelTypeEnum.rerank;
   };

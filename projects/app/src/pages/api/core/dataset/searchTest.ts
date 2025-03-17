@@ -16,6 +16,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getRerankModel } from '@fastgpt/service/core/ai/model';
 
 async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
   const {
@@ -24,7 +25,11 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     limit = 1500,
     similarity,
     searchMode,
+    embeddingWeight,
+
     usingReRank,
+    rerankModel,
+    rerankWeight,
 
     datasetSearchUsingExtensionQuery = false,
     datasetSearchExtensionModel,
@@ -63,7 +68,10 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     similarity,
     datasetIds: [datasetId],
     searchMode,
-    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId))
+    embeddingWeight,
+    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
+    rerankModel: getRerankModel(rerankModel),
+    rerankWeight
   };
   const { searchRes, tokens, queryExtensionResult, deepSearchResult, ...result } = datasetDeepSearch
     ? await deepRagSearch({

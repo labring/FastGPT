@@ -126,7 +126,7 @@ export const onCreateApp = async ({
           'pluginData.nodeVersion': defaultNodeVersion
         }
       ],
-      { session }
+      { session, ordered: true }
     );
 
     if (!AppFolderTypeList.includes(type!)) {
@@ -144,7 +144,7 @@ export const onCreateApp = async ({
             isPublish: true
           }
         ],
-        { session }
+        { session, ordered: true }
       );
     }
 

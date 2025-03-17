@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input, HStack } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -21,7 +20,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import { datasetTypeCourseMap } from '@/web/core/dataset/constants';
 import ApiDatasetForm from '../ApiDatasetForm';
-import { getWebDefaultModel } from '@/web/common/system/utils';
+import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 
 export type CreateDatasetType =
   | DatasetTypeEnum.dataset
@@ -40,9 +39,9 @@ const CreateModal = ({
   type: CreateDatasetType;
 }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, datasetModelList } = useSystemStore();
+  const { feConfigs, defaultModels, embeddingModelList, datasetModelList, getVlmModelList } =
+    useSystemStore();
   const { isPc } = useSystem();
 
   const datasetTypeMap = useMemo(() => {
@@ -72,6 +71,8 @@ const CreateModal = ({
 
   const filterNotHiddenVectorModelList = embeddingModelList.filter((item) => !item.hidden);
 
+  const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
+
   const form = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
@@ -79,14 +80,18 @@ const CreateModal = ({
       avatar: datasetTypeMap[type].icon,
       name: '',
       intro: '',
-      vectorModel: defaultModels.embedding?.model,
-      agentModel: getWebDefaultModel(datasetModelList)?.model
+      vectorModel:
+        defaultModels.embedding?.model || getWebDefaultEmbeddingModel(embeddingModelList)?.model,
+      agentModel:
+        defaultModels.datasetTextLLM?.model || getWebDefaultLLMModel(datasetModelList)?.model,
+      vlmModel: defaultModels.datasetImageLLM?.model
     }
   });
   const { register, setValue, handleSubmit, watch } = form;
   const avatar = watch('avatar');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
+  const vlmModel = watch('vlmModel');
 
   const {
     File,
@@ -173,6 +178,7 @@ const CreateModal = ({
             />
           </Flex>
         </Box>
+
         <Flex
           mt={6}
           alignItems={['flex-start', 'center']}
@@ -199,12 +205,13 @@ const CreateModal = ({
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('vectorModel' as const, e);
               }}
             />
           </Box>
         </Flex>
+
         <Flex
           mt={6}
           alignItems={['flex-start', 'center']}
@@ -230,12 +237,44 @@ const CreateModal = ({
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
-                setValue('agentModel' as const, e);
+              onChange={(e) => {
+                setValue('agentModel', e);
               }}
             />
           </Box>
         </Flex>
+
+        <Flex
+          mt={6}
+          alignItems={['flex-start', 'center']}
+          justify={'space-between'}
+          flexDir={['column', 'row']}
+        >
+          <HStack
+            spacing={1}
+            flex={['', '0 0 110px']}
+            fontSize={'sm'}
+            color={'myGray.900'}
+            fontWeight={500}
+            pb={['12px', '0']}
+          >
+            <Box>{t('dataset:vllm_model')}</Box>
+          </HStack>
+          <Box w={['100%', '300px']}>
+            <AIModelSelector
+              w={['100%', '300px']}
+              value={vlmModel}
+              list={vllmModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              onChange={(e) => {
+                setValue('vlmModel', e);
+              }}
+            />
+          </Box>
+        </Flex>
+
         {/* @ts-ignore */}
         <ApiDatasetForm type={type} form={form} />
       </ModalBody>

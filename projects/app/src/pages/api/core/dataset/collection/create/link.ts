@@ -13,14 +13,7 @@ import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
-  const {
-    link,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt,
-    ...body
-  } = req.body as LinkCreateDatasetCollectionParams;
+  const { link, ...body } = req.body as LinkCreateDatasetCollectionParams;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
@@ -36,8 +29,8 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   });
   const { title = link, content = '' } = result[0];
 
-  if (!content) {
-    return Promise.reject('Can not fetch content from link');
+  if (!content || content === 'Cannot fetch internal url') {
+    return Promise.reject(content || 'Can not fetch content from link');
   }
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
@@ -45,7 +38,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     rawText: content,
     createCollectionParams: {
       ...body,
-      name: title,
+      name: title || link,
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.link,
@@ -53,12 +46,6 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
         relatedImgId: link,
         webPageSelector: body?.metadata?.webPageSelector
       },
-
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt,
-
       rawLink: link
     },
 

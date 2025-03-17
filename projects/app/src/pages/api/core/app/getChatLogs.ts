@@ -139,6 +139,7 @@ async function handler(
             title: 1,
             customTitle: 1,
             source: 1,
+            sourceName: 1,
             time: '$updateTime',
             messageCount: { $size: '$chatitems' },
             userGoodFeedbackCount: 1,

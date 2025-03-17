@@ -3,13 +3,14 @@ import { PassThrough } from 'stream';
 
 export const gridFsStream2Buffer = (stream: NodeJS.ReadableStream) => {
   return new Promise<Buffer>((resolve, reject) => {
-    let tmpBuffer: Buffer = Buffer.from([]);
+    const chunks: Uint8Array[] = [];
 
     stream.on('data', (chunk) => {
-      tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
+      chunks.push(chunk);
     });
     stream.on('end', () => {
-      resolve(tmpBuffer);
+      const resultBuffer = Buffer.concat(chunks); // 一次性拼接
+      resolve(resultBuffer);
     });
     stream.on('error', (err) => {
       reject(err);
@@ -18,25 +19,26 @@ export const gridFsStream2Buffer = (stream: NodeJS.ReadableStream) => {
 };
 
 export const stream2Encoding = async (stream: NodeJS.ReadableStream) => {
-  const start = Date.now();
   const copyStream = stream.pipe(new PassThrough());
 
   /* get encoding */
   const buffer = await (() => {
     return new Promise<Buffer>((resolve, reject) => {
-      let tmpBuffer: Buffer = Buffer.from([]);
+      const chunks: Uint8Array[] = [];
+      let totalLength = 0;
 
       stream.on('data', (chunk) => {
-        if (tmpBuffer.length < 200) {
-          tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
+        if (totalLength < 200) {
+          chunks.push(chunk);
+          totalLength += chunk.length;
 
-          if (tmpBuffer.length >= 200) {
-            resolve(tmpBuffer);
+          if (totalLength >= 200) {
+            resolve(Buffer.concat(chunks));
           }
         }
       });
       stream.on('end', () => {
-        resolve(tmpBuffer);
+        resolve(Buffer.concat(chunks));
       });
       stream.on('error', (err) => {
         reject(err);

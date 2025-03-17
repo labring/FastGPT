@@ -100,7 +100,7 @@ export const initTeamFreePlan = async ({
         surplusPoints: freePoints
       }
     ],
-    { session }
+    { session, ordered: true }
   );
 };
 

@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
-import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import { DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
@@ -40,12 +40,13 @@ try {
       default_language: 'none'
     }
   );
+  DatasetDataTextSchema.index({ teamId: 1, datasetId: 1, collectionId: 1 });
   DatasetDataTextSchema.index({ dataId: 1 }, { unique: true });
 } catch (error) {
   console.log(error);
 }
 
-export const MongoDatasetDataText = getMongoModel<DatasetDataSchemaType>(
+export const MongoDatasetDataText = getMongoModel<DatasetDataTextSchemaType>(
   DatasetDataTextCollectionName,
   DatasetDataTextSchema
 );

@@ -24,9 +24,11 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
     dataset: {
       datasets: [],
       similarity: 0.4,
-      limit: 1500,
+      limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: false,
+      rerankModel: '',
+      rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: ''
     },
@@ -70,6 +72,26 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.history
       );
+      defaultAppForm.aiSettings.aiChatReasoning = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatReasoning
+      );
+      defaultAppForm.aiSettings.aiChatTopP = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatTopP
+      );
+      defaultAppForm.aiSettings.aiChatStopSign = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatStopSign
+      );
+      defaultAppForm.aiSettings.aiChatResponseFormat = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatResponseFormat
+      );
+      defaultAppForm.aiSettings.aiChatJsonSchema = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.aiChatJsonSchema
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -86,10 +108,24 @@ export const appWorkflow2Form = ({
       defaultAppForm.dataset.searchMode =
         findInputValueByKey(node.inputs, NodeInputKeyEnum.datasetSearchMode) ||
         DatasetSearchModeEnum.embedding;
+      defaultAppForm.dataset.embeddingWeight = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchEmbeddingWeight
+      );
+      // Rerank
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingReRank
       );
+      defaultAppForm.dataset.rerankModel = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankModel
+      );
+      defaultAppForm.dataset.rerankWeight = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.datasetSearchRerankWeight
+      );
+      // Query extension
       defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
         node.inputs,
         NodeInputKeyEnum.datasetSearchUsingExtensionQuery

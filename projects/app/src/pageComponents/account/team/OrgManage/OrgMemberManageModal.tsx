@@ -112,7 +112,7 @@ function OrgMemberManageModal({
           gridTemplateColumns="1fr 1fr"
           h={'100%'}
         >
-          <Flex flexDirection="column" p="4">
+          <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
             <SearchInput
               placeholder={t('user:search_user')}
               fontSize="sm"
@@ -121,7 +121,7 @@ function OrgMemberManageModal({
                 setSearchKey(e.target.value);
               }}
             />
-            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'} maxH={'400px'}>
+            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
               {filterMembers.map((member) => {
                 return (
                   <HStack

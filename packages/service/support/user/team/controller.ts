@@ -15,7 +15,7 @@ import { TeamDefaultPermissionVal } from '@fastgpt/global/support/permission/use
 import { MongoMemberGroupModel } from '../../permission/memberGroup/memberGroupSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { getAIApi, openaiBaseUrl } from '../../../core/ai/config';
+import { getAIApi } from '../../../core/ai/config';
 import { createRootOrg } from '../../permission/org/controllers';
 import { refreshSourceAvatar } from '../../../common/file/image/controller';
 
@@ -43,7 +43,6 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     teamDomain: tmb.team?.teamDomain,
     role: tmb.role,
     status: tmb.status,
-    defaultTeam: tmb.defaultTeam,
     permission: new TeamPermission({
       per: Per ?? TeamDefaultPermissionVal,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
@@ -71,8 +70,7 @@ export async function getUserDefaultTeam({ userId }: { userId: string }) {
     return Promise.reject('tmbId or userId is required');
   }
   return getTeamMember({
-    userId: new Types.ObjectId(userId),
-    defaultTeam: true
+    userId: new Types.ObjectId(userId)
   });
 }
 
@@ -89,8 +87,7 @@ export async function createDefaultTeam({
 }) {
   // auth default team
   const tmb = await MongoTeamMember.findOne({
-    userId: new Types.ObjectId(userId),
-    defaultTeam: true
+    userId: new Types.ObjectId(userId)
   });
 
   if (!tmb) {
@@ -115,8 +112,7 @@ export async function createDefaultTeam({
           name: 'Owner',
           role: TeamMemberRoleEnum.owner,
           status: TeamMemberStatusEnum.active,
-          createTime: new Date(),
-          defaultTeam: true
+          createTime: new Date()
         }
       ],
       { session }
@@ -152,7 +148,7 @@ export async function updateTeam({
   // auth openai key
   if (openaiAccount?.key) {
     console.log('auth user openai key', openaiAccount?.key);
-    const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
+    const baseUrl = openaiAccount?.baseUrl || 'https://api.openai.com/v1';
     openaiAccount.baseUrl = baseUrl;
 
     const ai = getAIApi({

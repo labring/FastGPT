@@ -20,9 +20,22 @@ export type UpdateDatasetDataProps = {
   })[];
 };
 
-export type PatchIndexesProps = {
-  type: 'create' | 'update' | 'delete' | 'unChange';
-  index: Omit<DatasetDataIndexItemType, 'dataId'> & {
-    dataId?: string;
-  };
-};
+export type PatchIndexesProps =
+  | {
+      type: 'create';
+      index: Omit<DatasetDataIndexItemType, 'dataId'> & {
+        dataId?: string;
+      };
+    }
+  | {
+      type: 'update';
+      index: DatasetDataIndexItemType;
+    }
+  | {
+      type: 'delete';
+      index: DatasetDataIndexItemType;
+    }
+  | {
+      type: 'unChange';
+      index: DatasetDataIndexItemType;
+    };

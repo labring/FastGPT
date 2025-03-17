@@ -7,7 +7,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { DragEvent, useCallback, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { uploadFile2DB } from '@/web/common/file/controller';
@@ -66,9 +66,50 @@ const FileSelector = ({
     'i'
   );
 
-  const { mutate: onSelectFile, isLoading } = useRequest({
-    mutationFn: async (files: SelectFileItemType[]) => {
+  const { runAsync: onSelectFile, loading: isLoading } = useRequest2(
+    async (files: SelectFileItemType[]) => {
       {
+        await Promise.all(
+          files.map(async ({ fileId, file }) => {
+            const { fileId: uploadFileId } = await uploadFile2DB({
+              file,
+              bucketName: BucketNameEnum.dataset,
+              data: {
+                datasetId
+              },
+              percentListen: (e) => {
+                setSelectFiles((state) =>
+                  state.map((item) =>
+                    item.id === fileId
+                      ? {
+                          ...item,
+                          uploadedFileRate: item.uploadedFileRate
+                            ? Math.max(e, item.uploadedFileRate)
+                            : e
+                        }
+                      : item
+                  )
+                );
+              }
+            });
+            setSelectFiles((state) =>
+              state.map((item) =>
+                item.id === fileId
+                  ? {
+                      ...item,
+                      dbFileId: uploadFileId,
+                      isUploading: false,
+                      uploadedFileRate: 100
+                    }
+                  : item
+              )
+            );
+          })
+        );
+      }
+    },
+    {
+      onBefore([files]) {
         onStartSelect();
         setSelectFiles((state) => {
           const formatFiles = files.map<ImportSourceItemType>((selectFile) => {
@@ -88,52 +129,12 @@ const FileSelector = ({
           const results = formatFiles.concat(state).slice(0, maxCount);
           return results;
         });
-        try {
-          // upload file
-          await Promise.all(
-            files.map(async ({ fileId, file }) => {
-              const { fileId: uploadFileId } = await uploadFile2DB({
-                file,
-                bucketName: BucketNameEnum.dataset,
-                data: {
-                  datasetId
-                },
-                percentListen: (e) => {
-                  setSelectFiles((state) =>
-                    state.map((item) =>
-                      item.id === fileId
-                        ? {
-                            ...item,
-                            uploadedFileRate: item.uploadedFileRate
-                              ? Math.max(e, item.uploadedFileRate)
-                              : e
-                          }
-                        : item
-                    )
-                  );
-                }
-              });
-              setSelectFiles((state) =>
-                state.map((item) =>
-                  item.id === fileId
-                    ? {
-                        ...item,
-                        dbFileId: uploadFileId,
-                        isUploading: false,
-                        uploadedFileRate: 100
-                      }
-                    : item
-                )
-              );
-            })
-          );
-        } catch (error) {
-          console.log(error);
-        }
+      },
+      onFinally() {
         onFinishSelect();
       }
     }
-  });
+  );
 
   const selectFileCallback = useCallback(
     (files: SelectFileItemType[]) => {

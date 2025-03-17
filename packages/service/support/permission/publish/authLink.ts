@@ -54,7 +54,7 @@ export async function authOutLinkCrud({
 }
 
 /* outLink exist and it app exist */
-export async function authOutLinkValid<T extends OutlinkAppType = undefined>({
+export async function authOutLinkValid<T extends OutlinkAppType = any>({
   shareId
 }: {
   shareId?: string;
@@ -62,7 +62,7 @@ export async function authOutLinkValid<T extends OutlinkAppType = undefined>({
   if (!shareId) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
-  const outLinkConfig = (await MongoOutLink.findOne({ shareId }).lean()) as OutLinkSchema<T>;
+  const outLinkConfig = await MongoOutLink.findOne({ shareId }).lean<OutLinkSchema<T>>();
 
   if (!outLinkConfig) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
@@ -70,6 +70,6 @@ export async function authOutLinkValid<T extends OutlinkAppType = undefined>({
 
   return {
     appId: outLinkConfig.appId,
-    outLinkConfig
+    outLinkConfig: outLinkConfig
   };
 }

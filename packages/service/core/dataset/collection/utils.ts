@@ -2,12 +2,17 @@ import { MongoDatasetCollection } from './schema';
 import { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
-import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import {
+  CollectionWithDatasetType,
+  DatasetCollectionSchemaType
+} from '@fastgpt/global/core/dataset/type';
+import {
+  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum,
   DatasetSourceReadTypeEnum,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { readDatasetSourceRawText } from '../read';
@@ -97,7 +102,7 @@ export const createOrGetCollectionTags = async ({
       datasetId,
       tag: tagContent
     })),
-    { session }
+    { session, ordered: true }
   );
 
   return [...existingTags.map((tag) => tag._id), ...newTags.map((tag) => tag._id)];
@@ -160,6 +165,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   })();
   const rawText = await readDatasetSourceRawText({
     teamId: collection.teamId,
+    tmbId: collection.tmbId,
     ...sourceReadType
   });
 
@@ -174,6 +180,14 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   }
 
   await mongoSessionRun(async (session) => {
+    // Delete old collection
+    await delCollection({
+      collections: [collection],
+      delImg: false,
+      delFile: false,
+      session
+    });
+
     // Create new collection
     await createCollectionAndInsertData({
       session,
@@ -208,14 +222,28 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
         updateTime: new Date()
       }
     });
-
-    // Delete old collection
-    await delCollection({
-      collections: [collection],
-      delRelatedSource: false,
-      session
-    });
   });
 
   return DatasetCollectionSyncResultEnum.success;
+};
+
+/* 
+  QA: 独立进程
+  Chunk: Image Index -> Auto index -> chunk index
+*/
+export const getTrainingModeByCollection = (collection: {
+  trainingType: DatasetCollectionSchemaType['trainingType'];
+  autoIndexes?: DatasetCollectionSchemaType['autoIndexes'];
+  imageIndex?: DatasetCollectionSchemaType['imageIndex'];
+}) => {
+  if (collection.trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+    return TrainingModeEnum.qa;
+  }
+  if (collection.imageIndex && global.feConfigs?.isPlus) {
+    return TrainingModeEnum.image;
+  }
+  if (collection.autoIndexes && global.feConfigs?.isPlus) {
+    return TrainingModeEnum.auto;
+  }
+  return TrainingModeEnum.chunk;
 };

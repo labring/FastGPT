@@ -84,7 +84,7 @@ const ExtractFieldModal = ({
             <MySelect<string>
               list={toolValueTypeList}
               value={valueType}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('valueType', e as any);
               }}
             />
@@ -96,6 +96,7 @@ const ExtractFieldModal = ({
           <Input
             bg={'myGray.50'}
             placeholder="name/age/sql"
+            maxLength={20}
             {...register('key', { required: true })}
           />
         </Flex>

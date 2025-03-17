@@ -1,5 +1,5 @@
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
-import { pushChatUsage } from '@/service/support/wallet/usage/push';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { delay, retryFn } from '@fastgpt/global/common/system/utils';
@@ -113,7 +113,7 @@ export const getScheduleTriggerApp = async () => {
             }
           ]
         });
-        pushChatUsage({
+        createChatUsage({
           appName: app.name,
           appId: app._id,
           teamId: String(app.teamId),

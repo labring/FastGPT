@@ -3,7 +3,7 @@
   "add_default_model": "添加预设模型",
   "api_key": "API 密钥",
   "bills_and_invoices": "账单与发票",
-  "channel": "渠道",
+  "channel": "模型渠道",
   "config_model": "模型配置",
   "confirm_logout": "确认退出登录?",
   "create_channel": "新增渠道",

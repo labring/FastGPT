@@ -1,0 +1,25 @@
+*~
+
+searxng-docker.service
+caddy
+srv
+searxng/uwsgi.ini
+.env
+SPIDER/.env
+
+# 忽略 node_modules 文件夹
+SPIDER/node_modules/
+
+# 忽略构建输出文件夹
+SPIDER/dist/
+
+# 忽略日志文件
+*.log
+
+# 忽略操作系统生成的文件
+.DS_Store
+Thumbs.db
+
+# 忽略 IDE/编辑器生成的文件
+.vscode/
+.idea/

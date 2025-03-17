@@ -36,9 +36,14 @@ type FormType = {
   inputText: string;
   searchParams: {
     searchMode: `${DatasetSearchModeEnum}`;
+    embeddingWeight?: number;
+
+    usingReRank?: boolean;
+    rerankModel?: string;
+    rerankWeight?: number;
+
     similarity?: number;
     limit?: number;
-    usingReRank?: boolean;
     datasetSearchUsingExtensionQuery?: boolean;
     datasetSearchExtensionModel?: string;
     datasetSearchExtensionBg?: string;
@@ -53,7 +58,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const { pushDatasetTestItem } = useSearchTestStore();
   const [inputType, setInputType] = useState<'text' | 'file'>('text');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
-  const [refresh, setRefresh] = useState(false);
   const [isFocus, setIsFocus] = useState(false);
   const { File, onOpen } = useSelectFile({
     fileType: '.csv',
@@ -66,7 +70,10 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       inputText: '',
       searchParams: {
         searchMode: DatasetSearchModeEnum.embedding,
+        embeddingWeight: 0.5,
         usingReRank: false,
+        rerankModel: defaultModels?.rerank?.model,
+        rerankWeight: 0.5,
         limit: 5000,
         similarity: 0,
         datasetSearchUsingExtensionQuery: false,
@@ -77,6 +84,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   });
 
   const searchModeData = DatasetSearchModeMap[getValues(`searchParams.searchMode`)];
+  const searchParams = getValues('searchParams');
 
   const {
     isOpen: isOpenSelectMode,
@@ -186,7 +194,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 // }
               ]}
               value={inputType}
-              onchange={(e) => setInputType(e)}
+              onChange={(e) => setInputType(e)}
             />
 
             <Button
@@ -294,15 +302,14 @@ const Test = ({ datasetId }: { datasetId: string }) => {
 
       {isOpenSelectMode && (
         <DatasetParamsModal
-          {...getValues('searchParams')}
+          {...searchParams}
           maxTokens={20000}
           onClose={onCloseSelectMode}
           onSuccess={(e) => {
             setValue('searchParams', {
-              ...getValues('searchParams'),
+              ...searchParams,
               ...e
             });
-            setRefresh((state) => !state);
           }}
         />
       )}

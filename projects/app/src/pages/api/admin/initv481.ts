@@ -10,6 +10,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // 重命名 dataset.trainigns -> dataset_trainings
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'dataset.trainings' })
       .toArray();
@@ -31,6 +36,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'dataset.collections' })
       .toArray();
@@ -52,6 +62,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'dataset.datas' })
       .toArray();
@@ -73,6 +88,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'app.versions' })
       .toArray();
@@ -94,6 +114,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'buffer.rawtexts' })
       .toArray();
@@ -115,6 +140,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'buffer.tts' })
       .toArray();
@@ -134,6 +164,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'team.members' })
       .toArray();
@@ -155,6 +190,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'team.tags' })
       .toArray();
@@ -174,6 +214,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   try {
+    if (!connectionMongo.connection.db) {
+      return jsonRes(res, {
+        message: '数据库连接失败'
+      });
+    }
     const collections = await connectionMongo.connection.db
       .listCollections({ name: 'team.subscriptions' })
       .toArray();

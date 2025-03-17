@@ -6,12 +6,12 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
 
 /* 
-    Collection sync
-    1. Check collection type: link, api dataset collection
-    2. Get collection and raw text
-    3. Check whether the original text is the same: skip if same
-    4. Create new collection
-    5. Delete old collection
+  Collection sync
+  1. Check collection type: link, api dataset collection
+  2. Get collection and raw text
+  3. Check whether the original text is the same: skip if same
+  4. Create new collection
+  5. Delete old collection
 */
 export type CollectionSyncBody = {
   collectionId: string;
@@ -27,6 +27,7 @@ async function handler(req: ApiRequestProps<CollectionSyncBody>) {
   const { collection } = await authDatasetCollection({
     req,
     authToken: true,
+    authApiKey: true,
     collectionId,
     per: WritePermissionVal
   });

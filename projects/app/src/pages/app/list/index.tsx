@@ -218,7 +218,7 @@ const MyApps = () => {
                 size="md"
                 Button={
                   <Button variant={'primary'} leftIcon={<AddIcon />}>
-                    <Box>{t('common:common.Create New')}</Box>
+                    <Box>{t('common:new_create')}</Box>
                   </Button>
                 }
                 menuList={[

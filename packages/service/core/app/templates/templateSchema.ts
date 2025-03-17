@@ -9,38 +9,23 @@ const AppTemplateSchema = new Schema({
     type: String,
     required: true
   },
-  name: {
-    type: String
-  },
-  intro: {
-    type: String
-  },
-  avatar: {
-    type: String
-  },
+  name: String,
+  intro: String,
+  avatar: String,
+  author: String,
   tags: {
     type: [String],
     default: undefined
   },
-  type: {
-    type: String
-  },
-  isActive: {
-    type: Boolean
-  },
-  userGuide: {
-    type: Object
-  },
-  isQuickTemplate: {
-    type: Boolean
-  },
+  type: String,
+  isActive: Boolean,
+  userGuide: Object,
+  isQuickTemplate: Boolean,
   order: {
     type: Number,
     default: -1
   },
-  workflow: {
-    type: Object
-  }
+  workflow: Object
 });
 
 AppTemplateSchema.index({ templateId: 1 });

@@ -137,7 +137,7 @@ const FieldModal = ({
                     (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
                   )}
                   value={valueType}
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setValue('valueType', e);
                   }}
                 />

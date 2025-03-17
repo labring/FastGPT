@@ -4,7 +4,8 @@ import React, {
   useMemo,
   useEffect,
   useImperativeHandle,
-  ForwardedRef
+  ForwardedRef,
+  useState
 } from 'react';
 import {
   Menu,
@@ -15,13 +16,15 @@ import {
   MenuButton,
   Box,
   css,
-  Flex
+  Flex,
+  Input
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
 import { useScrollPagination } from '../../../hooks/useScrollPagination';
+import Avatar from '../Avatar';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -30,18 +33,21 @@ import { useScrollPagination } from '../../../hooks/useScrollPagination';
  * isLoading: 是否加载中
  * ScrollData: 分页滚动数据控制器 [useScrollPagination] 的返回值
  * */
-export type SelectProps<T = any> = ButtonProps & {
+export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   value?: T;
   placeholder?: string;
+  isSearch?: boolean;
   list: {
     alias?: string;
+    icon?: string;
+    iconSize?: string;
     label: string | React.ReactNode;
     description?: string;
     value: T;
     showBorder?: boolean;
   }[];
   isLoading?: boolean;
-  onchange?: (val: T) => any | Promise<any>;
+  onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
@@ -49,9 +55,10 @@ const MySelect = <T = any,>(
   {
     placeholder,
     value,
+    isSearch = false,
     width = '100%',
     list = [],
-    onchange,
+    onChange,
     isLoading = false,
     ScrollData,
     ...props
@@ -63,6 +70,7 @@ const MySelect = <T = any,>(
   const ButtonRef = useRef<HTMLButtonElement>(null);
   const MenuListRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
+  const SearchInputRef = useRef<HTMLInputElement>(null);
 
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
@@ -79,6 +87,18 @@ const MySelect = <T = any,>(
   const { isOpen, onOpen, onClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
+  const [search, setSearch] = useState('');
+  const filterList = useMemo(() => {
+    if (!isSearch || !search) {
+      return list;
+    }
+    return list.filter((item) => {
+      const text = `${item.label?.toString()}${item.alias}${item.value}`;
+      const regx = new RegExp(search, 'gi');
+      return regx.test(text);
+    });
+  }, [list, search, isSearch]);
+
   useImperativeHandle(ref, () => ({
     focus() {
       onOpen();
@@ -90,17 +110,19 @@ const MySelect = <T = any,>(
       const menu = MenuListRef.current;
       const selectedItem = SelectedItemRef.current;
       menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+
+      if (isSearch) {
+        setSearch('');
+      }
     }
-  }, [isOpen]);
+  }, [isSearch, isOpen]);
 
-  const { runAsync: onChange, loading } = useRequest2((val: T) => onchange?.(val));
-
-  const isSelecting = loading || isLoading;
+  const { runAsync: onclickChange, loading } = useRequest2((val: T) => onChange?.(val));
 
   const ListRender = useMemo(() => {
     return (
       <>
-        {list.map((item, i) => (
+        {filterList.map((item, i) => (
           <Box key={i}>
             <MenuItem
               {...menuItemStyles}
@@ -115,15 +137,19 @@ const MySelect = <T = any,>(
                     color: 'myGray.900'
                   })}
               onClick={() => {
-                if (onChange && value !== item.value) {
-                  onChange(item.value);
+                if (value !== item.value) {
+                  onclickChange(item.value);
                 }
               }}
               whiteSpace={'pre-wrap'}
               fontSize={'sm'}
               display={'block'}
+              mb={0.5}
             >
-              <Box>{item.label}</Box>
+              <Flex alignItems={'center'}>
+                {item.icon && <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />}
+                {item.label}
+              </Flex>
               {item.description && (
                 <Box color={'myGray.500'} fontSize={'xs'}>
                   {item.description}
@@ -135,7 +161,9 @@ const MySelect = <T = any,>(
         ))}
       </>
     );
-  }, [list, value]);
+  }, [filterList, value]);
+
+  const isSelecting = loading || isLoading;
 
   return (
     <Box
@@ -176,8 +204,35 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'}>
-            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
-            {selectItem?.alias || selectItem?.label || placeholder}
+            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
+            {isSearch && isOpen ? (
+              <Input
+                ref={SearchInputRef}
+                autoFocus
+                variant={'unstyled'}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={
+                  selectItem?.alias ||
+                  (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                }
+                size={'sm'}
+                w={'100%'}
+                color={'myGray.700'}
+                onBlur={() => {
+                  setTimeout(() => {
+                    SearchInputRef?.current?.focus();
+                  }, 0);
+                }}
+              />
+            ) : (
+              <>
+                {selectItem?.icon && (
+                  <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
+                )}
+                {selectItem?.alias || selectItem?.label || placeholder}
+              </>
+            )}
           </Flex>
         </MenuButton>
 

@@ -34,7 +34,8 @@ async function handler(req: NextApiRequest) {
   await mongoSessionRun((session) =>
     delCollection({
       collections,
-      delRelatedSource: true,
+      delImg: true,
+      delFile: true,
       session
     })
   );

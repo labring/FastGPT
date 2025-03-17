@@ -4,6 +4,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
+  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -15,7 +16,6 @@ import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schem
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { datasetId, parentId, fileId, ...body } = req.body as FileIdCreateDatasetCollectionParams;
-  const trainingType = TrainingModeEnum.chunk;
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
   // 1. read file
   const { rawText, filename } = await readFileContentFromMongo({
     teamId,
+    tmbId,
     bucketName: BucketNameEnum.dataset,
     fileId,
     isQAImport: true
@@ -47,7 +48,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
       fileId,
 
       // special metadata
-      trainingType,
+      trainingType: DatasetCollectionDataProcessModeEnum.chunk,
       chunkSize: 0
     }
   });

@@ -16,7 +16,7 @@ async function handler(
 ): Promise<OutLinkDeleteResponse> {
   const { id } = req.query;
   await authOutLinkCrud({ req, outLinkId: id, authToken: true, per: OwnerPermissionVal });
-  await MongoOutLink.findByIdAndRemove(id);
+  await MongoOutLink.findByIdAndDelete(id);
   return {};
 }
 

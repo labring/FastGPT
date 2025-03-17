@@ -321,6 +321,23 @@ export class MilvusCtrl {
 
     return total;
   };
+  getVectorCountByCollectionId = async (
+    teamId: string,
+    datasetId: string,
+    collectionId: string
+  ) => {
+    const client = await this.getClient();
+
+    const result = await client.query({
+      collection_name: DatasetVectorTableName,
+      output_fields: ['count(*)'],
+      filter: `(teamId == "${String(teamId)}") and (datasetId == "${String(datasetId)}") and (collectionId == "${String(collectionId)}")`
+    });
+
+    const total = result.data?.[0]?.['count(*)'] as number;
+
+    return total;
+  };
 
   getVectorDataByTime = async (start: Date, end: Date) => {
     const client = await this.getClient();

@@ -235,7 +235,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
               isLoading={isLoadingFunctions}
               list={lafFunctionSelectList}
               placeholder={t('common:core.module.laf.Select laf function')}
-              onchange={(e) => {
+              onChange={(e) => {
                 onChangeNode({
                   nodeId,
                   type: 'updateInput',

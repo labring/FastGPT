@@ -71,6 +71,20 @@ export type AppDetailType = AppSchema & {
   permission: AppPermission;
 };
 
+export type AppDatasetSearchParamsType = {
+  searchMode: `${DatasetSearchModeEnum}`;
+  limit?: number; // limit max tokens
+  similarity?: number;
+  embeddingWeight?: number; // embedding weight, fullText weight = 1 - embeddingWeight
+
+  usingReRank?: boolean;
+  rerankModel?: string;
+  rerankWeight?: number;
+
+  datasetSearchUsingExtensionQuery?: boolean;
+  datasetSearchExtensionModel?: string;
+  datasetSearchExtensionBg?: string;
+};
 export type AppSimpleEditFormType = {
   // templateId: string;
   aiSettings: {
@@ -88,14 +102,7 @@ export type AppSimpleEditFormType = {
   };
   dataset: {
     datasets: SelectedDatasetType;
-    searchMode: `${DatasetSearchModeEnum}`;
-    similarity?: number;
-    limit?: number;
-    usingReRank?: boolean;
-    datasetSearchUsingExtensionQuery?: boolean;
-    datasetSearchExtensionModel?: string;
-    datasetSearchExtensionBg?: string;
-  };
+  } & AppDatasetSearchParamsType;
   selectedTools: FlowNodeTemplateType[];
   chatConfig: AppChatConfigType;
 };
@@ -188,6 +195,7 @@ export type AppAutoExecuteConfigType = {
 // File
 export type AppFileSelectConfigType = {
   canSelectFile: boolean;
+  customPdfParse?: boolean;
   canSelectImg: boolean;
   maxFiles: number;
 };

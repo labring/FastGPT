@@ -111,7 +111,7 @@ const BillTable = () => {
                   list={billTypeList}
                   value={billType}
                   size={'sm'}
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setBillType(e);
                   }}
                   w={'130px'}
@@ -220,13 +220,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
             {bill.metadata.payWay === 'balance' ? (
               t('user:bill.not_need_invoice')
             ) : (
-              <Box>
-                {
-                  (bill.metadata.payWay = bill.hasInvoice
-                    ? t('account_bill:yes')
-                    : t('account_bill:no'))
-                }
-              </Box>
+              <Box>{bill.hasInvoice ? t('account_bill:yes') : t('account_bill:no')}</Box>
             )}
           </Flex>
         )}

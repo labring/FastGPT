@@ -77,6 +77,7 @@ export type AIChatItemValueItemType = {
     | ChatItemValueTypeEnum.reasoning
     | ChatItemValueTypeEnum.tool
     | ChatItemValueTypeEnum.interactive;
+
   text?: {
     content: string;
   };
@@ -133,6 +134,7 @@ export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemTy
 
 // Frontend type
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+  _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;

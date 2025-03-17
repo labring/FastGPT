@@ -10,20 +10,20 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
-import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
-import {
+import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { getWorkflowGlobalVariables } from './utils';
-import { TFunction } from 'next-i18next';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { TFunction } from 'next-i18next';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 export const getGlobalVariableNode = ({
   nodes,

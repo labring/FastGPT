@@ -8,10 +8,13 @@ import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
+import { ChunkSettingModeEnum } from '@/web/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { Box } from '@chakra-ui/react';
 
 const Upload = dynamic(() => import('../commonProgress/Upload'));
+const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 
 const ReTraining = () => {
   const router = useRouter();
@@ -20,6 +23,7 @@ const ReTraining = () => {
     collectionId: string;
   };
 
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
@@ -43,21 +47,28 @@ const ReTraining = () => {
         }
       ]);
       processParamsForm.reset({
-        mode: collection.trainingType,
-        way: ImportProcessWayEnum.auto,
+        customPdfParse: collection.customPdfParse,
+        trainingType: collection.trainingType,
+        imageIndex: collection.imageIndex,
+        autoIndexes: collection.autoIndexes,
+
+        chunkSettingMode: ChunkSettingModeEnum.auto,
         embeddingChunkSize: collection.chunkSize,
         qaChunkSize: collection.chunkSize,
         customSplitChar: collection.chunkSplitter,
         qaPrompt: collection.qaPrompt,
-        webSelector: collection.metadata?.webSelector
+        webSelector: collection.metadata?.webPageSelector
       });
     }
   });
 
   return (
-    <MyBox isLoading={loading} h={'100%'} overflow={'auto'}>
-      {activeStep === 0 && <DataProcess showPreviewChunks={true} />}
-      {activeStep === 1 && <Upload />}
+    <MyBox isLoading={loading} h={'100%'}>
+      <Box h={'100%'} overflow={'auto'}>
+        {activeStep === 0 && <DataProcess />}
+        {activeStep === 1 && <PreviewData />}
+        {activeStep === 2 && <Upload />}
+      </Box>
     </MyBox>
   );
 };

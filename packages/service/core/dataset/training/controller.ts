@@ -1,16 +1,17 @@
 import { MongoDatasetTraining } from './schema';
 import type {
   PushDatasetDataChunkProps,
-  PushDatasetDataProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
-import { getLLMModel, getEmbeddingModel } from '../../ai/model';
+import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
 import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
+import { PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
+import { i18nT } from '../../../../web/i18n/utils';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -28,20 +29,17 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
 export const pushDataListToTrainingQueueByCollectionId = async ({
   collectionId,
   ...props
-}: {
-  teamId: string;
-  tmbId: string;
-  session?: ClientSession;
-} & PushDatasetDataProps) => {
+}: Omit<PushDataToTrainingQueueProps, 'datasetId' | 'agentModel' | 'vectorModel' | 'vlmModel'>) => {
   const {
-    dataset: { _id: datasetId, agentModel, vectorModel }
+    dataset: { _id: datasetId, agentModel, vectorModel, vlmModel }
   } = await getCollectionWithDataset(collectionId);
   return pushDataListToTrainingQueue({
     ...props,
     datasetId,
     collectionId,
+    vectorModel,
     agentModel,
-    vectorModel
+    vlmModel
   });
 };
 
@@ -52,30 +50,30 @@ export async function pushDataListToTrainingQueue({
   collectionId,
   agentModel,
   vectorModel,
+  vlmModel,
   data,
   prompt,
   billId,
-  trainingMode = TrainingModeEnum.chunk,
+  mode = TrainingModeEnum.chunk,
   session
-}: {
-  teamId: string;
-  tmbId: string;
-  datasetId: string;
-  agentModel: string;
-  vectorModel: string;
-  session?: ClientSession;
-} & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
+}: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+  const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
+    if (mode !== TrainingModeEnum.image) return mode;
+    // 检查内容中，是否包含 ![](xxx) 的图片格式
+    const text = data.q + data.a || '';
+    const regex = /!\[\]\((.*?)\)/g;
+    const match = text.match(regex);
+    if (match) {
+      return TrainingModeEnum.image;
+    }
+    return mode;
+  };
   const { model, maxToken, weight } = await (async () => {
-    const agentModelData = getLLMModel(agentModel);
-    if (!agentModelData) {
-      return Promise.reject(`File model ${agentModel} is inValid`);
-    }
-    const vectorModelData = getEmbeddingModel(vectorModel);
-    if (!vectorModelData) {
-      return Promise.reject(`Vector model ${vectorModel} is inValid`);
-    }
-
-    if (trainingMode === TrainingModeEnum.chunk) {
+    if (mode === TrainingModeEnum.chunk) {
+      const vectorModelData = getEmbeddingModel(vectorModel);
+      if (!vectorModelData) {
+        return Promise.reject(i18nT('common:error_embedding_not_config'));
+      }
       return {
         maxToken: vectorModelData.maxToken * 1.5,
         model: vectorModelData.model,
@@ -83,7 +81,11 @@ export async function pushDataListToTrainingQueue({
       };
     }
 
-    if (trainingMode === TrainingModeEnum.qa || trainingMode === TrainingModeEnum.auto) {
+    if (mode === TrainingModeEnum.qa || mode === TrainingModeEnum.auto) {
+      const agentModelData = getLLMModel(agentModel);
+      if (!agentModelData) {
+        return Promise.reject(i18nT('common:error_llm_not_config'));
+      }
       return {
         maxToken: agentModelData.maxContext * 0.8,
         model: agentModelData.model,
@@ -91,8 +93,24 @@ export async function pushDataListToTrainingQueue({
       };
     }
 
-    return Promise.reject(`Training mode "${trainingMode}" is inValid`);
+    if (mode === TrainingModeEnum.image) {
+      const vllmModelData = getVlmModel(vlmModel);
+      if (!vllmModelData) {
+        return Promise.reject(i18nT('common:error_vlm_not_config'));
+      }
+      return {
+        maxToken: vllmModelData.maxContext * 0.8,
+        model: vllmModelData.model,
+        weight: 0
+      };
+    }
+
+    return Promise.reject(`Training mode "${mode}" is inValid`);
   })();
+  // Filter redundant params
+  if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.auto) {
+    prompt = undefined;
+  }
 
   // filter repeat or equal content
   const set = new Set();
@@ -158,7 +176,7 @@ export async function pushDataListToTrainingQueue({
           datasetId,
           collectionId,
           billId,
-          mode: trainingMode,
+          mode: getImageChunkMode(item, mode),
           prompt,
           model,
           q: item.q,

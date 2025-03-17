@@ -130,7 +130,7 @@ const UsageTable = () => {
                 { label: t('account_usage:every_month'), value: 'month' }
               ]}
               value={unit}
-              onchange={setUnit}
+              onChange={setUnit}
             />
           )} */}
         </Flex>
@@ -199,8 +199,6 @@ const UsageTable = () => {
     [
       t,
       dateRange,
-      usageTab,
-      unit,
       userInfo?.team?.permission.hasManagePer,
       tmbList,
       selectTmbIds,

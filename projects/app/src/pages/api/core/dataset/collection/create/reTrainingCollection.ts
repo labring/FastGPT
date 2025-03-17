@@ -10,7 +10,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { delOnlyCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -24,20 +24,14 @@ type RetrainingCollectionResponse = {
 async function handler(
   req: ApiRequestProps<reTrainingDatasetFileCollectionParams>
 ): Promise<RetrainingCollectionResponse> {
-  const {
-    collectionId,
-    trainingType = TrainingModeEnum.chunk,
-    chunkSize = 512,
-    chunkSplitter,
-    qaPrompt
-  } = req.body;
+  const { collectionId, customPdfParse, ...data } = req.body;
 
   if (!collectionId) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -84,20 +78,32 @@ async function handler(
   })();
 
   const rawText = await readDatasetSourceRawText({
-    teamId: collection.teamId,
+    teamId,
+    tmbId,
+    customPdfParse,
     ...sourceReadType
   });
 
   return mongoSessionRun(async (session) => {
+    await delCollection({
+      collections: [collection],
+      session,
+      delImg: false,
+      delFile: false
+    });
+
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
       rawText,
       createCollectionParams: {
+        ...data,
         teamId: collection.teamId,
         tmbId: collection.tmbId,
         datasetId: collection.dataset._id,
         name: collection.name,
         type: collection.type,
+
+        customPdfParse,
 
         fileId: collection.fileId,
         rawLink: collection.rawLink,
@@ -114,16 +120,8 @@ async function handler(
         parentId: collection.parentId,
 
         // special metadata
-        trainingType,
-        chunkSize,
-        chunkSplitter,
-        qaPrompt,
         metadata: collection.metadata
       }
-    });
-    await delOnlyCollection({
-      collections: [collection],
-      session
     });
 
     return { collectionId };

@@ -26,7 +26,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
     [usage.list]
   );
 
-  const { hasModel, hasToken, hasInputToken, hasOutputToken, hasCharsLen, hasDuration } =
+  const { hasModel, hasToken, hasInputToken, hasOutputToken, hasCharsLen, hasDuration, hasPages } =
     useMemo(() => {
       let hasModel = false;
       let hasToken = false;
@@ -34,7 +34,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
       let hasOutputToken = false;
       let hasCharsLen = false;
       let hasDuration = false;
-      let hasDataLen = false;
+      let hasPages = false;
 
       usage.list.forEach((item) => {
         if (item.model !== undefined) {
@@ -56,6 +56,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
         if (typeof item.duration === 'number') {
           hasDuration = true;
         }
+        if (typeof item.pages === 'number') {
+          hasPages = true;
+        }
       });
 
       return {
@@ -65,7 +68,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
         hasOutputToken,
         hasCharsLen,
         hasDuration,
-        hasDataLen
+        hasPages
       };
     }, [usage.list]);
 
@@ -113,6 +116,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                   {hasOutputToken && <Th>{t('account_usage:output_token_length')}</Th>}
                   {hasCharsLen && <Th>{t('account_usage:text_length')}</Th>}
                   {hasDuration && <Th>{t('account_usage:duration_seconds')}</Th>}
+                  {hasPages && <Th>{t('account_usage:pages')}</Th>}
                   <Th>{t('account_usage:total_points_consumed')}</Th>
                 </Tr>
               </Thead>
@@ -126,6 +130,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                     {hasOutputToken && <Td>{item.outputTokens ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
+                    {hasPages && <Td>{item.pages ?? '-'}</Td>}
                     <Td>{formatNumber(item.amount)}</Td>
                   </Tr>
                 ))}

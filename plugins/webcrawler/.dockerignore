@@ -1,0 +1,3 @@
+# 忽略 .git 目录及其内容
+.git
+.gitignore

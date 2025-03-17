@@ -1,8 +1,8 @@
 import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/model';
 import {
+  DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
-  DatasetTypeEnum,
-  TrainingModeEnum
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetCollectionItemType,
@@ -25,6 +25,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   permission: new DatasetPermission(),
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],
+  vlmModel: defaultQAModels[0],
   inheritPermission: true
 };
 
@@ -57,12 +58,13 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   sourceName: '',
   sourceId: '',
   createTime: new Date(),
-  trainingType: TrainingModeEnum.chunk,
+  trainingType: DatasetCollectionDataProcessModeEnum.chunk,
   chunkSize: 0,
-  permission: new DatasetPermission()
+  permission: new DatasetPermission(),
+  indexAmount: 0
 };
 
-export enum ImportProcessWayEnum {
+export enum ChunkSettingModeEnum {
   auto = 'auto',
   custom = 'custom'
 }

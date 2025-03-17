@@ -1,7 +1,12 @@
 import { EmbeddingModelItemType } from '../ai/model.d';
 import { NodeInputKeyEnum } from './constants';
 
-export type SelectedDatasetType = { datasetId: string }[];
+export type SelectedDatasetType = {
+  datasetId: string;
+  avatar: string;
+  name: string;
+  vectorModel: EmbeddingModelItemType;
+}[];
 
 export type HttpBodyType<T = Record<string, any>> = {
   // [NodeInputKeyEnum.addInputParam]: Record<string, any>;

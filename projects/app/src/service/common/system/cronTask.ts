@@ -1,15 +1,16 @@
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 import {
   delFileByFileIdList,
   getGFSCollection
 } from '@fastgpt/service/common/file/gridfs/controller';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addLog } from '@fastgpt/service/common/system/log';
 import {
   deleteDatasetDataVector,
   getVectorDataByTime
 } from '@fastgpt/service/common/vectorStore/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { addDays } from 'date-fns';
@@ -129,32 +130,35 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
   for await (const item of list) {
     try {
       // 3. 查看该collection是否存在，不存在，则删除对应的数据
-      const collection = await MongoDatasetCollection.findOne({ _id: item.collectionId });
+      const collection = await MongoDatasetCollection.findOne(
+        { _id: item.collectionId },
+        '_id'
+      ).lean();
       if (!collection) {
-        await mongoSessionRun(async (session) => {
-          await MongoDatasetTraining.deleteMany(
-            {
-              teamId: item.teamId,
-              collectionId: item.collectionId
-            },
-            { session }
-          );
-          await MongoDatasetData.deleteMany(
-            {
-              teamId: item.teamId,
-              collectionId: item.collectionId
-            },
-            { session }
-          );
+        console.log('collection is not found', item);
+
+        await retryFn(async () => {
+          await MongoDatasetTraining.deleteMany({
+            teamId: item.teamId,
+            datasetId: item.datasetId,
+            collectionId: item.collectionId
+          });
+          await MongoDatasetDataText.deleteMany({
+            teamId: item.teamId,
+            datasetId: item.datasetId,
+            collectionId: item.collectionId
+          });
           await deleteDatasetDataVector({
             teamId: item.teamId,
             datasetIds: [item.datasetId],
             collectionIds: [item.collectionId]
           });
+          await MongoDatasetData.deleteMany({
+            teamId: item.teamId,
+            datasetId: item.datasetId,
+            collectionId: item.collectionId
+          });
         });
-
-        console.log('collection is not found', item);
-        continue;
       }
     } catch (error) {}
     if (++index % 100 === 0) {

@@ -83,7 +83,8 @@ export async function initSystemConfig() {
       ...fileRes?.feConfigs,
       ...defaultFeConfigs,
       ...(dbConfig.feConfigs || {}),
-      isPlus: !!FastGPTProUrl
+      isPlus: !!FastGPTProUrl,
+      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT
     },
     systemEnv: {
       ...fileRes.systemEnv,

@@ -27,6 +27,7 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { POST } from '../../../common/api/plusRequest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -39,7 +40,11 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   /* 
     {
@@ -75,13 +80,16 @@ export type SearchDatasetDataResponse = {
 };
 
 export const datasetDataReRank = async ({
+  rerankModel,
   data,
   query
 }: {
+  rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
 }): Promise<SearchDataResponseItemType[]> => {
   const results = await reRankRecall({
+    model: rerankModel,
     query,
     documents: data.map((item) => ({
       id: item.id,
@@ -154,7 +162,10 @@ export async function searchDatasetData(
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
+    embeddingWeight = 0.5,
     usingReRank = false,
+    rerankModel,
+    rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
   } = props;
@@ -200,6 +211,7 @@ export async function searchDatasetData(
       forbidCollectionIdList: collections.map((item) => String(item._id))
     };
   };
+
   /* 
     Collection metadata filter
     标签过滤：
@@ -207,6 +219,63 @@ export async function searchDatasetData(
     2. and 标签和 null 不能共存，否则返回空数组
   */
   const filterCollectionByMetadata = async (): Promise<string[] | undefined> => {
+    const getAllCollectionIds = async ({
+      parentCollectionIds
+    }: {
+      parentCollectionIds?: string[];
+    }): Promise<string[] | undefined> => {
+      if (!parentCollectionIds) return;
+      if (parentCollectionIds.length === 0) {
+        return [];
+      }
+
+      const collections = await MongoDatasetCollection.find(
+        {
+          teamId,
+          datasetId: { $in: datasetIds },
+          _id: { $in: parentCollectionIds }
+        },
+        '_id type',
+        {
+          ...readFromSecondary
+        }
+      ).lean();
+
+      const resultIds = new Set<string>();
+      collections.forEach((item) => {
+        if (item.type !== 'folder') {
+          resultIds.add(String(item._id));
+        }
+      });
+
+      const folderIds = collections
+        .filter((item) => item.type === 'folder')
+        .map((item) => String(item._id));
+
+      // Get all child collection ids
+      if (folderIds.length) {
+        const childCollections = await MongoDatasetCollection.find(
+          {
+            teamId,
+            datasetId: { $in: datasetIds },
+            parentId: { $in: folderIds }
+          },
+          '_id type',
+          {
+            ...readFromSecondary
+          }
+        ).lean();
+
+        const childIds = await getAllCollectionIds({
+          parentCollectionIds: childCollections.map((item) => String(item._id))
+        });
+
+        childIds?.forEach((id) => resultIds.add(id));
+      }
+
+      return Array.from(resultIds);
+    };
+
     if (!collectionFilterMatch || !global.feConfigs.isPlus) return;
 
     let tagCollectionIdList: string[] | undefined = undefined;
@@ -326,13 +395,19 @@ export async function searchDatasetData(
       }
 
       // Concat tag and time
-      if (tagCollectionIdList && createTimeCollectionIdList) {
-        return tagCollectionIdList.filter((id) => createTimeCollectionIdList!.includes(id));
-      } else if (tagCollectionIdList) {
-        return tagCollectionIdList;
-      } else if (createTimeCollectionIdList) {
-        return createTimeCollectionIdList;
-      }
+      const collectionIds = (() => {
+        if (tagCollectionIdList && createTimeCollectionIdList) {
+          return tagCollectionIdList.filter((id) =>
+            (createTimeCollectionIdList as string[]).includes(id)
+          );
+        }
+
+        return tagCollectionIdList || createTimeCollectionIdList;
+      })();
+
+      return await getAllCollectionIds({
+        parentCollectionIds: collectionIds
+      });
     } catch (error) {}
   };
   const embeddingRecall = async ({
@@ -383,6 +458,7 @@ export async function searchDatasetData(
       ).lean()
     ]);
 
+    const set = new Map<string, number>();
     const formatResult = results
       .map((item, index) => {
         const collection = collections.find((col) => String(col._id) === String(item.collectionId));
@@ -398,8 +474,6 @@ export async function searchDatasetData(
           return;
         }
 
-        const score = item?.score || 0;
-
         const result: SearchDataResponseItemType = {
           id: String(data._id),
           updateTime: data.updateTime,
@@ -409,12 +483,24 @@ export async function searchDatasetData(
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
           ...getCollectionSourceData(collection),
-          score: [{ type: SearchScoreTypeEnum.embedding, value: score, index }]
+          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
         };
 
         return result;
       })
-      .filter(Boolean) as SearchDataResponseItemType[];
+      .filter((item) => {
+        if (!item) return false;
+        if (set.has(item.id)) return false;
+        set.set(item.id, 1);
+        return true;
+      })
+      .map((item, index) => {
+        if (!item) return;
+        return {
+          ...item,
+          score: item.score.map((item) => ({ ...item, index }))
+        };
+      }) as SearchDataResponseItemType[];
 
     return {
       embeddingRecallResults: formatResult,
@@ -451,7 +537,7 @@ export async function searchDatasetData(
                 $match: {
                   teamId: new Types.ObjectId(teamId),
                   datasetId: new Types.ObjectId(id),
-                  $text: { $search: jiebaSplit({ text: query }) },
+                  $text: { $search: await jiebaSplit({ text: query }) },
                   ...(filterCollectionIdList
                     ? {
                         collectionId: {
@@ -636,6 +722,7 @@ export async function searchDatasetData(
     });
     try {
       return await datasetDataReRank({
+        rerankModel,
         query: reRankQuery,
         data: filterSameDataResults
       });
@@ -646,11 +733,26 @@ export async function searchDatasetData(
   })();
 
   // embedding recall and fullText recall rrf concat
-  const rrfConcatResults = datasetSearchResultConcat([
-    { k: 60, list: embeddingRecallResults },
-    { k: 60, list: fullTextRecallResults },
-    { k: 58, list: reRankResults }
+  const baseK = 120;
+  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
+  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
+
+  const rrfSearchResult = datasetSearchResultConcat([
+    { k: embK, list: embeddingRecallResults },
+    { k: fullTextK, list: fullTextRecallResults }
   ]);
+  const rrfConcatResults = (() => {
+    if (reRankResults.length === 0) return rrfSearchResult;
+    if (rerankWeight === 1) return reRankResults;
+
+    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
+    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
+
+    return datasetSearchResultConcat([
+      { k: searchK, list: rrfSearchResult },
+      { k: rerankK, list: reRankResults }
+    ]);
+  })();
 
   // remove same q and a data
   set = new Set<string>();
@@ -712,16 +814,19 @@ export const defaultSearchDatasetData = async ({
   ...props
 }: DefaultSearchDatasetDataProps): Promise<SearchDatasetDataResponse> => {
   const query = props.queries[0];
+  const histories = props.histories;
 
   const extensionModel = datasetSearchUsingExtensionQuery
     ? getLLMModel(datasetSearchExtensionModel)
     : undefined;
 
-  const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
-    query,
-    extensionModel,
-    extensionBg: datasetSearchExtensionBg
-  });
+  const { concatQueries, extensionQueries, rewriteQuery, aiExtensionResult } =
+    await datasetSearchQueryExtension({
+      query,
+      extensionModel,
+      extensionBg: datasetSearchExtensionBg,
+      histories
+    });
 
   const result = await searchDatasetData({
     ...props,
@@ -736,7 +841,7 @@ export const defaultSearchDatasetData = async ({
           model: aiExtensionResult.model,
           inputTokens: aiExtensionResult.inputTokens,
           outputTokens: aiExtensionResult.outputTokens,
-          query: concatQueries.join('\n')
+          query: extensionQueries.join('\n')
         }
       : undefined
   };

@@ -142,19 +142,36 @@ const NodeCard = (props: Props) => {
 
   const { runAsync: onClickSyncVersion } = useRequest2(
     async () => {
-      if (!node?.pluginId) return;
-      const template = await getPreviewPluginNode({ appId: node.pluginId });
+      if (!node) return;
 
-      if (!!template) {
+      if (node.pluginId) {
+        const template = await getPreviewPluginNode({ appId: node.pluginId });
+
+        if (!!template) {
+          onResetNode({
+            id: nodeId,
+            node: template
+          });
+        }
+      } else {
+        const template = moduleTemplatesFlat.find(
+          (item) => item.flowNodeType === node.flowNodeType
+        );
+        if (!template) {
+          return toast({
+            title: t('app:app.modules.not_found_tips'),
+            status: 'warning'
+          });
+        }
         onResetNode({
           id: nodeId,
           node: template
         });
       }
-      onCloseConfirmSync();
     },
     {
-      refreshDeps: [node, nodeId, onResetNode]
+      refreshDeps: [node, nodeId, onResetNode],
+      onFinally() {}
     }
   );
 
@@ -311,7 +328,6 @@ const NodeCard = (props: Props) => {
           </Box>
         )}
         <MenuRender nodeId={nodeId} menuForbid={menuForbid} nodeList={nodeList} />
-        <ConfirmSyncModal />
       </Box>
     );
   }, [
@@ -335,7 +351,6 @@ const NodeCard = (props: Props) => {
     intro,
     menuForbid,
     nodeList,
-    ConfirmSyncModal,
     onChangeNode,
     onOpenCustomTitleModal,
     toast

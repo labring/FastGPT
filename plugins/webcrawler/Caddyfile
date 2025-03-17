@@ -1,0 +1,91 @@
+{
+	admin off
+
+	log {
+		output stderr
+		format filter {
+			# Preserves first 8 bits from IPv4 and 32 bits from IPv6
+			request>remote_ip ip_mask 8 32
+			request>client_ip ip_mask 8 32
+
+			# Remove identificable information
+			request>remote_port delete
+			request>headers delete
+			request>uri query {
+				delete url
+				delete h
+				delete q
+			}
+		}
+	}
+}
+
+{$SEARXNG_HOSTNAME}
+
+tls {$SEARXNG_TLS}
+
+encode zstd gzip
+
+@api {
+	path /config
+	path /healthz
+	path /stats/errors
+	path /stats/checker
+}
+
+@search {
+	path /search
+}
+
+@imageproxy {
+	path /image_proxy
+}
+
+@static {
+	path /static/*
+}
+
+header {
+	# CSP (https://content-security-policy.com)
+	Content-Security-Policy "upgrade-insecure-requests; default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; form-action 'self' https://github.com/searxng/searxng/issues/new; font-src 'self'; frame-ancestors 'self'; base-uri 'self'; connect-src 'self' https://overpass-api.de; img-src * data:; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://www.dailymotion.com https://www.deezer.com https://www.mixcloud.com https://w.soundcloud.com https://embed.spotify.com;"
+
+	# Disable some browser features
+	Permissions-Policy "accelerometer=(),camera=(),geolocation=(),gyroscope=(),magnetometer=(),microphone=(),payment=(),usb=()"
+
+	# Set referrer policy
+	Referrer-Policy "no-referrer"
+
+	# Force clients to use HTTPS
+	Strict-Transport-Security "max-age=31536000"
+
+	# Prevent MIME type sniffing from the declared Content-Type
+	X-Content-Type-Options "nosniff"
+
+	# X-Robots-Tag (comment to allow site indexing)
+	X-Robots-Tag "noindex, noarchive, nofollow"
+
+	# Remove "Server" header
+	-Server
+}
+
+header @api {
+	Access-Control-Allow-Methods "GET, OPTIONS"
+	Access-Control-Allow-Origin "*"
+}
+
+route {
+	# Cache policy
+	header Cache-Control "max-age=0, no-store"
+	header @search Cache-Control "max-age=5, private"
+	header @imageproxy Cache-Control "max-age=604800, public"
+	header @static Cache-Control "max-age=31536000, public, immutable"
+}
+
+# SearXNG (uWSGI)
+reverse_proxy localhost:8080 {
+	header_up X-Forwarded-Port ""
+	header_up X-Real-IP  ""
+
+	# https://github.com/searx/searx-docker/issues/24
+	header_up Connection "close"
+}

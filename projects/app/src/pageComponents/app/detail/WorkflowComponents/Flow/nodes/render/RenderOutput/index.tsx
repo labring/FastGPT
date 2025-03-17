@@ -58,6 +58,7 @@ const RenderOutput = ({
         }
       });
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [copyOutputs, nodeId, inputs, llmModelList]);
 
   const [editField, setEditField] = useState<FlowNodeOutputItemType>();
@@ -154,6 +155,7 @@ const RenderOutput = ({
       (item) =>
         item.type !== FlowNodeOutputTypeEnum.dynamic && item.type !== FlowNodeOutputTypeEnum.hidden
     );
+
     return (
       <>
         {renderOutputs.map((output, i) => {
@@ -163,7 +165,7 @@ const RenderOutput = ({
               required={output.required}
               position={'relative'}
               _notLast={{
-                mb: 4
+                mb: i !== renderOutputs.length - 1 ? 4 : 0
               }}
             >
               <OutputLabel nodeId={nodeId} output={output} />

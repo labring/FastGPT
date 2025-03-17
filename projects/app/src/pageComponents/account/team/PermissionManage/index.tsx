@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Checkbox,
@@ -40,7 +40,8 @@ import CollaboratorContextProvider, {
 } from '@/components/support/permission/MemberManager/context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 
 function PermissionManage({
   Tabs,
@@ -69,27 +70,37 @@ function PermissionManage({
   const [isExpandGroup, setExpandGroup] = useToggle(true);
   const [isExpandOrg, setExpandOrg] = useToggle(true);
 
-  const { tmbList, groupList, orgList } = useMemo(() => {
-    const tmbList: CollaboratorItemType[] = [];
-    const groupList: CollaboratorItemType[] = [];
-    const orgList: CollaboratorItemType[] = [];
+  const [searchKey, setSearchKey] = useState('');
 
-    collaboratorList.forEach((item) => {
-      if (item.tmbId) {
-        tmbList.push(item);
-      } else if (item.groupId) {
-        groupList.push(item);
-      } else if (item.orgId) {
-        orgList.push(item);
-      }
-    });
+  const { data: searchResult } = useRequest2(() => GetSearchUserGroupOrg(searchKey), {
+    manual: false,
+    throttleWait: 500,
+    refreshDeps: [searchKey]
+  });
+
+  const { tmbList, groupList, orgList } = useMemo(() => {
+    const tmbList = collaboratorList.filter(
+      (item) =>
+        Object.keys(item).includes('tmbId') &&
+        (!searchKey || searchResult?.members.find((member) => member.tmbId === item.tmbId))
+    );
+    const groupList = collaboratorList.filter(
+      (item) =>
+        Object.keys(item).includes('groupId') &&
+        (!searchKey || searchResult?.groups.find((group) => group._id === item.groupId))
+    );
+    const orgList = collaboratorList.filter(
+      (item) =>
+        Object.keys(item).includes('orgId') &&
+        (!searchKey || searchResult?.orgs.find((org) => org._id === item.orgId))
+    );
 
     return {
       tmbList,
       groupList,
       orgList
     };
-  }, [collaboratorList]);
+  }, [collaboratorList, searchResult, searchKey]);
 
   const { runAsync: onUpdatePermission, loading: addLoading } = useRequest2(
     async ({ id, type, per }: { id: string; type: 'add' | 'remove'; per: 'write' | 'manage' }) => {
@@ -131,12 +142,12 @@ function PermissionManage({
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
         <Box ml="auto">
-          {/* <SearchInput
+          <SearchInput
             placeholder={t('user:search_group_org_user')}
             w="200px"
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
-          /> */}
+          />
         </Box>
         {userInfo?.team.permission.hasManagePer && (
           <Button

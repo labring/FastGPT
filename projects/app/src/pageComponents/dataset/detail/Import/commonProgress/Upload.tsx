@@ -14,7 +14,10 @@ import {
   IconButton,
   Tooltip
 } from '@chakra-ui/react';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -34,6 +37,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
+import { ApiCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 
 const Upload = () => {
   const { t } = useTranslation();
@@ -77,7 +81,7 @@ const Upload = () => {
   }, [waitingFilesCount, totalFilesCount, allFinished, t]);
 
   const { runAsync: startUpload, loading: isLoading } = useRequest2(
-    async ({ mode, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
+    async ({ trainingType, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
@@ -95,15 +99,21 @@ const Upload = () => {
         );
 
         // create collection
-        const commonParams = {
+        const commonParams: ApiCreateDatasetCollectionParams & {
+          name: string;
+        } = {
           parentId,
-          trainingType: mode,
           datasetId: datasetDetail._id,
+          name: item.sourceName,
+
+          customPdfParse: processParamsForm.getValues('customPdfParse'),
+
+          trainingType,
+          imageIndex: processParamsForm.getValues('imageIndex'),
+          autoIndexes: processParamsForm.getValues('autoIndexes'),
           chunkSize,
           chunkSplitter: customSplitChar,
-          qaPrompt,
-
-          name: item.sourceName
+          qaPrompt: trainingType === DatasetCollectionDataProcessModeEnum.qa ? qaPrompt : undefined
         };
         if (importSource === ImportDataSourceEnum.reTraining) {
           const res = await postReTrainingDatasetFileCollection({
@@ -272,7 +282,7 @@ const Upload = () => {
       <Flex justifyContent={'flex-end'} mt={4}>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
           {totalFilesCount > 0 &&
-            `${t('common:core.dataset.import.Total files', {
+            `${t('dataset:total_num_files', {
               total: totalFilesCount
             })} | `}
           {buttonText}

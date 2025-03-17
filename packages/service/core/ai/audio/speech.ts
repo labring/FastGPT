@@ -43,13 +43,13 @@ export async function text2Speech({
   const readableStream = response.body as unknown as NodeJS.ReadableStream;
   readableStream.pipe(res);
 
-  let bufferStore = Buffer.from([]);
+  const chunks: Uint8Array[] = [];
 
   readableStream.on('data', (chunk) => {
-    bufferStore = Buffer.concat([bufferStore, chunk]);
+    chunks.push(chunk);
   });
   readableStream.on('end', () => {
-    onSuccess({ model, buffer: bufferStore });
+    onSuccess({ model, buffer: Buffer.concat(chunks) });
   });
   readableStream.on('error', (e) => {
     onError(e);

@@ -88,6 +88,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
                 }
               }
             },
+            { $sort: { _id: 1 } },
             {
               $project: {
                 value: 1,

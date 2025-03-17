@@ -17,6 +17,7 @@ export type PostPreviewFilesChunksProps = {
   chunkSize: number;
   overlapRatio: number;
   customSplitChar?: string;
+  customPdfParse?: boolean;
 
   // Read params
   selector?: string;
@@ -40,7 +41,8 @@ async function handler(
     selector,
     isQAImport,
     datasetId,
-    externalFileId
+    externalFileId,
+    customPdfParse = false
   } = req.body;
 
   if (!sourceId) {
@@ -50,7 +52,7 @@ async function handler(
     throw new Error('chunkSize is too large, should be less than 30000');
   }
 
-  const { teamId, apiServer, feishuServer, yuqueServer } = await (async () => {
+  const { teamId, tmbId, apiServer, feishuServer, yuqueServer } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
       const res = await authCollectionFile({
         req,
@@ -60,10 +62,11 @@ async function handler(
         per: OwnerPermissionVal
       });
       return {
-        teamId: res.teamId
+        teamId: res.teamId,
+        tmbId: res.tmbId
       };
     }
-    const { dataset } = await authDataset({
+    const { dataset, teamId, tmbId } = await authDataset({
       req,
       authApiKey: true,
       authToken: true,
@@ -71,7 +74,8 @@ async function handler(
       per: WritePermissionVal
     });
     return {
-      teamId: dataset.teamId,
+      teamId,
+      tmbId,
       apiServer: dataset.apiServer,
       feishuServer: dataset.feishuServer,
       yuqueServer: dataset.yuqueServer
@@ -80,6 +84,7 @@ async function handler(
 
   const rawText = await readDatasetSourceRawText({
     teamId,
+    tmbId,
     type,
     sourceId,
     selector,
@@ -87,7 +92,8 @@ async function handler(
     apiServer,
     feishuServer,
     yuqueServer,
-    externalFileId
+    externalFileId,
+    customPdfParse
   });
 
   return rawText2Chunks({
@@ -96,6 +102,6 @@ async function handler(
     overlapRatio,
     customReg: customSplitChar ? [customSplitChar] : [],
     isQAImport: isQAImport
-  }).slice(0, 15);
+  }).slice(0, 10);
 }
 export default NextAPI(handler);

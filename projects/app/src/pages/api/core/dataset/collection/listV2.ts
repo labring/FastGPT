@@ -1,12 +1,10 @@
 import type { NextApiRequest } from 'next';
-import { DatasetTrainingCollectionName } from '@fastgpt/service/core/dataset/training/schema';
 import { Types } from '@fastgpt/service/common/mongo';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -14,6 +12,9 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 
 async function handler(
   req: NextApiRequest
@@ -77,6 +78,8 @@ async function handler(
       .sort({
         updateTime: -1
       })
+      .skip(offset)
+      .limit(pageSize)
       .lean();
 
     return {
@@ -88,6 +91,7 @@ async function handler(
             tags: item.tags
           }),
           dataAmount: 0,
+          indexAmount: 0,
           trainingAmount: 0,
           permission
         }))
@@ -96,75 +100,62 @@ async function handler(
     };
   }
 
-  const [collections, total]: [DatasetCollectionsListItemType[], number] = await Promise.all([
-    MongoDatasetCollection.aggregate([
-      {
-        $match: match
-      },
-      {
-        $sort: { updateTime: -1 }
-      },
-      {
-        $skip: offset
-      },
-      {
-        $limit: pageSize
-      },
-      // count training data
-      {
-        $lookup: {
-          from: DatasetTrainingCollectionName,
-          let: { id: '$_id', team_id: match.teamId, dataset_id: match.datasetId },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [{ $eq: ['$teamId', '$$team_id'] }, { $eq: ['$collectionId', '$$id'] }]
-                }
-              }
-            },
-            { $count: 'count' }
-          ],
-          as: 'trainingCount'
-        }
-      },
-      // count collection total data
-      {
-        $lookup: {
-          from: DatasetDataCollectionName,
-          let: { id: '$_id', team_id: match.teamId, dataset_id: match.datasetId },
-          pipeline: [
-            {
-              $match: {
-                $expr: {
-                  $and: [
-                    { $eq: ['$teamId', '$$team_id'] },
-                    { $eq: ['$datasetId', '$$dataset_id'] },
-                    { $eq: ['$collectionId', '$$id'] }
-                  ]
-                }
-              }
-            },
-            { $count: 'count' }
-          ],
-          as: 'dataCount'
-        }
-      },
-      {
-        $project: {
-          ...selectField,
-          dataAmount: {
-            $ifNull: [{ $arrayElemAt: ['$dataCount.count', 0] }, 0]
-          },
-          trainingAmount: {
-            $ifNull: [{ $arrayElemAt: ['$trainingCount.count', 0] }, 0]
+  const [collections, total]: [DatasetCollectionSchemaType[], number] = await Promise.all([
+    MongoDatasetCollection.find(match, undefined, { ...readFromSecondary })
+      .select(selectField)
+      .sort({ updateTime: -1 })
+      .skip(offset)
+      .limit(pageSize)
+      .lean(),
+    MongoDatasetCollection.countDocuments(match, { ...readFromSecondary })
+  ]);
+  const collectionIds = collections.map((item) => item._id);
+
+  // Compute data amount
+  const [trainingAmount, dataAmount]: [
+    { _id: string; count: number }[],
+    { _id: string; count: number }[]
+  ] = await Promise.all([
+    MongoDatasetTraining.aggregate(
+      [
+        {
+          $match: {
+            teamId: match.teamId,
+            datasetId: match.datasetId,
+            collectionId: { $in: collectionIds }
+          }
+        },
+        {
+          $group: {
+            _id: '$collectionId',
+            count: { $sum: 1 }
           }
         }
+      ],
+      {
+        ...readFromSecondary
       }
-    ]),
-    MongoDatasetCollection.countDocuments(match, {
-      ...readFromSecondary
-    })
+    ),
+    MongoDatasetData.aggregate(
+      [
+        {
+          $match: {
+            teamId: match.teamId,
+            datasetId: match.datasetId,
+            collectionId: { $in: collectionIds }
+          }
+        },
+        {
+          $group: {
+            _id: '$collectionId',
+            count: { $sum: 1 }
+          }
+        }
+      ],
+      {
+        ...readFromSecondary
+      }
+    )
   ]);
 
   const list = await Promise.all(
@@ -174,11 +165,14 @@ async function handler(
         datasetId,
         tags: item.tags
       }),
+      trainingAmount:
+        trainingAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
+      dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       permission
     }))
   );
 
-  if (list.find((item) => item.trainingAmount > 0)) {
+  if (list.some((item) => item.trainingAmount > 0)) {
     startTrainingQueue();
   }
 
