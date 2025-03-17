@@ -65,7 +65,7 @@
     "sass": "^1.58.3",
     "use-context-selector": "^1.4.4",
     "zustand": "^4.3.5",
-    "@node-rs/jieba": "2.0.1"
+    "@node-rs/jieba": "1.10.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",

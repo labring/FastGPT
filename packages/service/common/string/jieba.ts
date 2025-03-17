@@ -1,8 +1,4 @@
-import { Jieba } from '@node-rs/jieba';
-import { dict } from '@node-rs/jieba/dict';
-
-// 使用正确的文件路径加载字典
-const jieba = Jieba.withDict(dict);
+import { cut } from '@node-rs/jieba';
 
 const stopWords = new Set([
   '--',
@@ -1513,8 +1509,8 @@ const stopWords = new Set([
   ]
 ]);
 
-export async function jiebaSplit({ text }: { text: string }) {
-  const tokens = (await jieba.cutAsync(text, true)) as string[];
+export function jiebaSplit({ text }: { text: string }) {
+  const tokens = cut(text, true);
 
   return (
     tokens

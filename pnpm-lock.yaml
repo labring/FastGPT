@@ -25,7 +25,7 @@ importers:
         version: 13.3.0
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: 3.2.4
         version: 3.2.4
@@ -152,8 +152,8 @@ importers:
         specifier: workspace:*
         version: link:../global
       '@node-rs/jieba':
-        specifier: 2.0.1
-        version: 2.0.1
+        specifier: 1.10.0
+        version: 1.10.0
       '@xmldom/xmldom':
         specifier: ^0.8.10
         version: 0.8.10
@@ -307,7 +307,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 2.4.2
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 2.10.7
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -370,7 +370,7 @@ importers:
         version: 4.17.21
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -428,7 +428,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 2.4.2
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 2.10.7
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -463,8 +463,8 @@ importers:
         specifier: ^3.0.6
         version: 3.0.6
       '@node-rs/jieba':
-        specifier: 2.0.1
-        version: 2.0.1
+        specifier: 1.10.0
+        version: 1.10.0
       '@tanstack/react-query':
         specifier: ^4.24.10
         version: 4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -527,7 +527,7 @@ importers:
         version: 14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -2305,6 +2305,9 @@ packages:
   '@mongodb-js/saslprep@1.2.0':
     resolution: {integrity: sha512-+ywrb0AqkfaYuhHs6LxKWgqbh3I72EpEgESCw37o+9qPx9WTCkgDm2B+eMrwehGtHBWHFU4GXvnSCNiFhhausg==}
 
+  '@napi-rs/wasm-runtime@0.1.2':
+    resolution: {integrity: sha512-8JuczewTFIZ/XIjHQ+YlQUydHvlKx2hkcxtuGwh+t/t5zWyZct6YG4+xjHcq8xyc/e7FmFwf42Zj2YgICwmlvA==}
+
   '@napi-rs/wasm-runtime@0.2.7':
     resolution: {integrity: sha512-5yximcFK5FNompXfJFoWanu5l8v1hNGqNHh9du1xETp9HWk/B/PzvchX55WYOPaIeNglG8++68AAiauBAtbnzw==}
 
@@ -2472,91 +2475,91 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@node-rs/jieba-android-arm-eabi@2.0.1':
-    resolution: {integrity: sha512-tavsIaxybnlA9tRbJ+oc3NW3zhx0d5rNiCGdpIdGWjflwS7HyeUTVAZmAFDlg58Mc6EjTdVKZH+RolBbAJtgcQ==}
+  '@node-rs/jieba-android-arm-eabi@1.10.0':
+    resolution: {integrity: sha512-bzusJSLHm7I0qL8aQXGLt7IQ51Px35yGGEcQ/Ps4SEt0AxRSJ2/rxNET/8mlwBpOCZ5xiKE3BOBRfQajiPiI3g==}
     engines: {node: '>= 10'}
     cpu: [arm]
     os: [android]
 
-  '@node-rs/jieba-android-arm64@2.0.1':
-    resolution: {integrity: sha512-AwdyqKvVNuSDnDq3anUfq+nJ5J/kzXjkfbr/1WY6TfaAlTNuuGVskuQv72/wIx/jn7NoXfm/UPuJrWYG16NC6w==}
+  '@node-rs/jieba-android-arm64@1.10.0':
+    resolution: {integrity: sha512-g89Oq5U2RPmtlvuQhjNj8YZc5Gq033ODb7Ot4Z/OdIHvg2WMxi2M1GQhcdKu60dO79/tazc53W6I8/y691DUfQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [android]
 
-  '@node-rs/jieba-darwin-arm64@2.0.1':
-    resolution: {integrity: sha512-10+nwGQ6KzXXJlIL/sELA6Fi6m7eJ7xJksBiKuw1kxKUgaJwtVfAG0iqRF+NRQv0Sdq7r3k5ew9K9y0+IYaEcA==}
+  '@node-rs/jieba-darwin-arm64@1.10.0':
+    resolution: {integrity: sha512-IhR5r+XxFcfhVsF93zQ3uCJy8ndotRntXzoW/JCyKqOahUo/ITQRT6vTKHKMyD9xNmjl222OZonBSo2+mlI2fQ==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@node-rs/jieba-darwin-x64@2.0.1':
-    resolution: {integrity: sha512-IJ5RK0X/uPQa1XRmTvwKSieya+w1IJeiKLw0EekoBFJKybXQdvo8/uqM/8z2eVJ8vQxW9X6K2vkVGFvYQa9dYA==}
+  '@node-rs/jieba-darwin-x64@1.10.0':
+    resolution: {integrity: sha512-MBIs8ixKY4FPnifdZ7eTx6ht85TXE4kFBK4c8A/VDAbnmzBzpEyuV7tHUA2wAdfR0muC9j7/5FB4kQGZgYfc8g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@node-rs/jieba-freebsd-x64@2.0.1':
-    resolution: {integrity: sha512-yg7vyhqzP2weJu5DJ3q9q4pb0b4GWWRwcv54zK7MSSA6KNJ/uQv2a4R9/qmptLU/fZv14gWuJBEMFdL7y1Dv2w==}
+  '@node-rs/jieba-freebsd-x64@1.10.0':
+    resolution: {integrity: sha512-MuY+1QEXONxo3I/uFLFju0/pSN5bzQORhJkIdP8CYv+jZaVB4Uz6rC7A5HrgjiAXOna6QsKlRgx2bYyHfaBUrA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [freebsd]
 
-  '@node-rs/jieba-linux-arm-gnueabihf@2.0.1':
-    resolution: {integrity: sha512-fxQYunS7w2tv8XV9GigkWJPzHnbcw6tjrUdDu5/qU0FdQVEzGuEYG85DjlNf8lZTDGSUKHBVyAQs7bBIvq8yqg==}
+  '@node-rs/jieba-linux-arm-gnueabihf@1.10.0':
+    resolution: {integrity: sha512-QfSBnwISdVuTqsi4iThAO1LSbKRSqSsIWiIJgCduhYsTDDiG9+pHyfiZtcTwSf73SDXHZ400QuBNONWLQ/dSag==}
     engines: {node: '>= 10'}
     cpu: [arm]
     os: [linux]
 
-  '@node-rs/jieba-linux-arm64-gnu@2.0.1':
-    resolution: {integrity: sha512-VnLU630hQIyO/fwyxh2vqZi72mO+hXkVUC3jVLPfOAlppinmsGX9N81tpTPUK3840hbV8WLtbYTWN1XodI38eg==}
+  '@node-rs/jieba-linux-arm64-gnu@1.10.0':
+    resolution: {integrity: sha512-vzA2tX/6dReEd/7tZ9927glWQmKDausM6R9S5CqZx4BA4NSaWAK0xFdWsz0K7np459FXqNavLdNB5FVFJb4zzA==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@node-rs/jieba-linux-arm64-musl@2.0.1':
-    resolution: {integrity: sha512-K4EDyNixSLVdTNYnHwD+7I/ytvzpo7tt+vdCLqwQViiek2PMpL/FFRvA39uU2tk99jXIxvkczdxARG20BRZppg==}
+  '@node-rs/jieba-linux-arm64-musl@1.10.0':
+    resolution: {integrity: sha512-gxqoAVOQsn9sgYK6mFO9dsMZ/yOMvVecLZW5rGvLErjiugVvYUlESXIvCqxp2GSws8RtTqJj6p9u/lBmCCuvaw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@node-rs/jieba-linux-x64-gnu@2.0.1':
-    resolution: {integrity: sha512-sq3J6L2ANTE25I9eVFq/nb57OtXcvUIeUD1CTKJxwgTKIVmcB2LyOZpWf20AjHRUfbMER9Klqg5dgyyO+Six+w==}
+  '@node-rs/jieba-linux-x64-gnu@1.10.0':
+    resolution: {integrity: sha512-rS5Shs8JITxJjFIjoIZ5a9O+GO21TJgKu03g2qwFE3QaN5ZOvXtz+/AqqyfT4GmmMhCujD83AGqfOGXDmItF9w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@node-rs/jieba-linux-x64-musl@2.0.1':
-    resolution: {integrity: sha512-0zfP9Qy68yEXrhBFknfhF6WUJDPU/8eRuyIrkMGdMjfRpxhpSbr2fMfnsqhOQLvhuK4w3iDFvTy4t5d0s6JKMA==}
+  '@node-rs/jieba-linux-x64-musl@1.10.0':
+    resolution: {integrity: sha512-BvSiF2rR8Birh2oEVHcYwq0WGC1cegkEdddWsPrrSmpKmukJE2zyjcxaOOggq2apb8fIRsjyeeUh6X3R5AgjvA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@node-rs/jieba-wasm32-wasi@2.0.1':
-    resolution: {integrity: sha512-7I5rJya5rlQNJIhv8PvPzIVT1/gVc0vFzHmlfRGwCPGDJ3tHVxkSPW34dDx3OgDmbIeadNpmgIyC1RaS9djPJg==}
+  '@node-rs/jieba-wasm32-wasi@1.10.0':
+    resolution: {integrity: sha512-EzeAAbRrFTdYw61rd8Mfwdp/fA21d58z9vLY06CDbI+dqANfMFn1IUdwzKWi8S5J/MRhvbzonbbh3yHlz6F43Q==}
     engines: {node: '>=14.0.0'}
     cpu: [wasm32]
 
-  '@node-rs/jieba-win32-arm64-msvc@2.0.1':
-    resolution: {integrity: sha512-Aj/2EwYSaPgAbKnSl+vKM/2kOaZNMZWnShiZzbSNyzlLy3eIOyOYVLbYRDno4547KngRxer8uzROhIQIwXwkvw==}
+  '@node-rs/jieba-win32-arm64-msvc@1.10.0':
+    resolution: {integrity: sha512-eZjRLFUAvq1/E5+xXfJRqIB99Gu6BA+6+EXf/rCLuvEjXrDQuUunhmrSoOL5MjmUXTtazS+bXq9PXV5EFYyOPw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@node-rs/jieba-win32-ia32-msvc@2.0.1':
-    resolution: {integrity: sha512-tpJt3uuBlGrcOInQLTYvcgamQgfadl5cwExLYU+CX9rXKpXLDO31dIujUDBgNWoiQq3tOiU1/AKbT7ZdNd4lBQ==}
+  '@node-rs/jieba-win32-ia32-msvc@1.10.0':
+    resolution: {integrity: sha512-DrfbeCN7UcLN+MiocZabWo74XZIjfpQsJ/WMOItZzVbU2gDcJSkSyAhML9+OqId66DhGCMFFlGinocElM8iIAw==}
     engines: {node: '>= 10'}
     cpu: [ia32]
     os: [win32]
 
-  '@node-rs/jieba-win32-x64-msvc@2.0.1':
-    resolution: {integrity: sha512-LDOyo2/2CO8UnpSGLJdgqtH8mOnsABPhNxkfIky7UT9cyLEzOaU44nbA5YzPGpBI3qzMbWcwJYQsjBcgK2VqAg==}
+  '@node-rs/jieba-win32-x64-msvc@1.10.0':
+    resolution: {integrity: sha512-RjBkBmjjHmj+bofiq5/han8wzbCkDk24OAPJ+YX8PX20GFSHmdjCiWapv3AooN8/RiKqlBfgodjS1JUngNWo5g==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
 
-  '@node-rs/jieba@2.0.1':
-    resolution: {integrity: sha512-tnfzXOMqzVQF2dSKMhPC9HrHzzWmN6KheL/zYtGenhOpq/bCKHJWVASSggEnHlkmHgXGeIJHR2N/IuPzewz1BQ==}
+  '@node-rs/jieba@1.10.0':
+    resolution: {integrity: sha512-9oZMCvZVnrAMeWTSnEjJ0OSw7YcV4dJJKSioqq80oUNf3eYLGdEXsgYwCe1AYEMcfUfNVgvjznItJKrsoud0IA==}
     engines: {node: '>= 10'}
 
   '@nodelib/fs.scandir@2.1.5':
@@ -3054,6 +3057,9 @@ packages:
 
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
+
+  '@tybys/wasm-util@0.8.3':
+    resolution: {integrity: sha512-Z96T/L6dUFFxgFJ+pQtkPpne9q7i6kIPYCFnQBHSgSPV9idTsKfIhCss0h5iM9irweZCatkrdeP8yi5uM1eX6Q==}
 
   '@tybys/wasm-util@0.9.0':
     resolution: {integrity: sha512-6+7nlbMVX/PVDCwaIQ8nTOPveOcFLSt8GcXdx8hD0bt39uWxYT88uXzqTd4fTvqta7oeUJqudepapKNt2DYJFw==}
@@ -10652,7 +10658,7 @@ snapshots:
       '@chakra-ui/system': 2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1)
       react: 18.3.1
 
-  '@chakra-ui/next-js@2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)':
+  '@chakra-ui/next-js@2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)':
     dependencies:
       '@chakra-ui/react': 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@emotion/cache': 11.14.0
@@ -11549,6 +11555,13 @@ snapshots:
     dependencies:
       sparse-bitfield: 3.0.3
 
+  '@napi-rs/wasm-runtime@0.1.2':
+    dependencies:
+      '@emnapi/core': 1.3.1
+      '@emnapi/runtime': 1.3.1
+      '@tybys/wasm-util': 0.8.3
+    optional: true
+
   '@napi-rs/wasm-runtime@0.2.7':
     dependencies:
       '@emnapi/core': 1.3.1
@@ -11698,66 +11711,66 @@ snapshots:
   '@next/swc-win32-x64-msvc@14.2.24':
     optional: true
 
-  '@node-rs/jieba-android-arm-eabi@2.0.1':
+  '@node-rs/jieba-android-arm-eabi@1.10.0':
     optional: true
 
-  '@node-rs/jieba-android-arm64@2.0.1':
+  '@node-rs/jieba-android-arm64@1.10.0':
     optional: true
 
-  '@node-rs/jieba-darwin-arm64@2.0.1':
+  '@node-rs/jieba-darwin-arm64@1.10.0':
     optional: true
 
-  '@node-rs/jieba-darwin-x64@2.0.1':
+  '@node-rs/jieba-darwin-x64@1.10.0':
     optional: true
 
-  '@node-rs/jieba-freebsd-x64@2.0.1':
+  '@node-rs/jieba-freebsd-x64@1.10.0':
     optional: true
 
-  '@node-rs/jieba-linux-arm-gnueabihf@2.0.1':
+  '@node-rs/jieba-linux-arm-gnueabihf@1.10.0':
     optional: true
 
-  '@node-rs/jieba-linux-arm64-gnu@2.0.1':
+  '@node-rs/jieba-linux-arm64-gnu@1.10.0':
     optional: true
 
-  '@node-rs/jieba-linux-arm64-musl@2.0.1':
+  '@node-rs/jieba-linux-arm64-musl@1.10.0':
     optional: true
 
-  '@node-rs/jieba-linux-x64-gnu@2.0.1':
+  '@node-rs/jieba-linux-x64-gnu@1.10.0':
     optional: true
 
-  '@node-rs/jieba-linux-x64-musl@2.0.1':
+  '@node-rs/jieba-linux-x64-musl@1.10.0':
     optional: true
 
-  '@node-rs/jieba-wasm32-wasi@2.0.1':
+  '@node-rs/jieba-wasm32-wasi@1.10.0':
     dependencies:
-      '@napi-rs/wasm-runtime': 0.2.7
+      '@napi-rs/wasm-runtime': 0.1.2
     optional: true
 
-  '@node-rs/jieba-win32-arm64-msvc@2.0.1':
+  '@node-rs/jieba-win32-arm64-msvc@1.10.0':
     optional: true
 
-  '@node-rs/jieba-win32-ia32-msvc@2.0.1':
+  '@node-rs/jieba-win32-ia32-msvc@1.10.0':
     optional: true
 
-  '@node-rs/jieba-win32-x64-msvc@2.0.1':
+  '@node-rs/jieba-win32-x64-msvc@1.10.0':
     optional: true
 
-  '@node-rs/jieba@2.0.1':
+  '@node-rs/jieba@1.10.0':
     optionalDependencies:
-      '@node-rs/jieba-android-arm-eabi': 2.0.1
-      '@node-rs/jieba-android-arm64': 2.0.1
-      '@node-rs/jieba-darwin-arm64': 2.0.1
-      '@node-rs/jieba-darwin-x64': 2.0.1
-      '@node-rs/jieba-freebsd-x64': 2.0.1
-      '@node-rs/jieba-linux-arm-gnueabihf': 2.0.1
-      '@node-rs/jieba-linux-arm64-gnu': 2.0.1
-      '@node-rs/jieba-linux-arm64-musl': 2.0.1
-      '@node-rs/jieba-linux-x64-gnu': 2.0.1
-      '@node-rs/jieba-linux-x64-musl': 2.0.1
-      '@node-rs/jieba-wasm32-wasi': 2.0.1
-      '@node-rs/jieba-win32-arm64-msvc': 2.0.1
-      '@node-rs/jieba-win32-ia32-msvc': 2.0.1
-      '@node-rs/jieba-win32-x64-msvc': 2.0.1
+      '@node-rs/jieba-android-arm-eabi': 1.10.0
+      '@node-rs/jieba-android-arm64': 1.10.0
+      '@node-rs/jieba-darwin-arm64': 1.10.0
+      '@node-rs/jieba-darwin-x64': 1.10.0
+      '@node-rs/jieba-freebsd-x64': 1.10.0
+      '@node-rs/jieba-linux-arm-gnueabihf': 1.10.0
+      '@node-rs/jieba-linux-arm64-gnu': 1.10.0
+      '@node-rs/jieba-linux-arm64-musl': 1.10.0
+      '@node-rs/jieba-linux-x64-gnu': 1.10.0
+      '@node-rs/jieba-linux-x64-musl': 1.10.0
+      '@node-rs/jieba-wasm32-wasi': 1.10.0
+      '@node-rs/jieba-win32-arm64-msvc': 1.10.0
+      '@node-rs/jieba-win32-ia32-msvc': 1.10.0
+      '@node-rs/jieba-win32-x64-msvc': 1.10.0
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -12209,6 +12222,11 @@ snapshots:
   '@tsconfig/node14@1.0.3': {}
 
   '@tsconfig/node16@1.0.4': {}
+
+  '@tybys/wasm-util@0.8.3':
+    dependencies:
+      tslib: 2.8.1
+    optional: true
 
   '@tybys/wasm-util@0.9.0':
     dependencies:
@@ -14607,7 +14625,7 @@ snapshots:
       eslint: 8.56.0
       eslint-import-resolver-node: 0.3.9
       eslint-import-resolver-typescript: 3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint@8.56.0))(eslint@8.56.0)
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.56.0)
       eslint-plugin-react: 7.37.4(eslint@8.56.0)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.56.0)
@@ -14637,7 +14655,7 @@ snapshots:
       stable-hash: 0.0.5
       tinyglobby: 0.2.12
     optionalDependencies:
-      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0)
+      eslint-plugin-import: 2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -14652,7 +14670,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0(eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint@8.56.0))(eslint@8.56.0))(eslint@8.56.0):
+  eslint-plugin-import@2.31.0(@typescript-eslint/parser@6.21.0(eslint@8.56.0)(typescript@5.8.2))(eslint-import-resolver-typescript@3.9.0)(eslint@8.56.0):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.8
@@ -17532,7 +17550,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next-i18next@15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-i18next@15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6
