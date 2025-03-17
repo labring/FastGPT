@@ -86,7 +86,8 @@ const DatasetDataSchema = new Schema({
 
   // Abandon
   fullTextToken: String,
-  initFullText: Boolean
+  initFullText: Boolean,
+  initJieba: Boolean
 });
 
 try {
@@ -103,6 +104,9 @@ try {
   DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
+
+  // 为查询 initJieba 字段不存在的数据添加索引
+  DatasetDataSchema.index({ initJieba: 1 }, { sparse: true });
 } catch (error) {
   console.log(error);
 }
