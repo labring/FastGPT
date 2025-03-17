@@ -1521,13 +1521,6 @@ const stopWords = new Set([
 export async function jiebaSplit({ text }: { text: string }) {
   text = text.replace(/[#*`_~>[\](){}|]/g, '').replace(/\S*https?\S*/gi, '');
 
-  await (async () => {
-    console.log(Jieba, '111');
-    const dictData = await import('./dict.json');
-    // @ts-ignore
-    const dictBuffer = Buffer.from(dictData.dict?.replace(/\\n/g, '\n'), 'utf-8');
-    jieba = Jieba.withDict(dictBuffer);
-  })();
   const tokens = (await jieba!.cutAsync(text, true)) as string[];
 
   return (
