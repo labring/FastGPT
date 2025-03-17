@@ -1,9 +1,6 @@
 name: Preview FastGPT images
 on:
   pull_request_target:
-    paths:
-      - 'projects/app/**'
-      - 'packages/**'
   workflow_dispatch:
 
 jobs:
