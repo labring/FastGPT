@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/dataset/controller';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
