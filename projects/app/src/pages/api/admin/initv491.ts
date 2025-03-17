@@ -5,6 +5,8 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 const updateData = async () => {
   let success = 0;
@@ -19,10 +21,27 @@ const updateData = async () => {
       await Promise.allSettled(
         data.map(async (item) => {
           const text = `${item.q} ${item.a}`.trim();
-          item.fullTextToken = await jiebaSplit({ text });
-          // @ts-ignore
-          item.initJieba = true;
-          await item.save();
+
+          try {
+            await mongoSessionRun(async (session) => {
+              await MongoDatasetDataText.updateOne(
+                {
+                  dataId: item._id
+                },
+                {
+                  fullTextToken: await jiebaSplit({ text })
+                },
+                {
+                  session
+                }
+              );
+              // @ts-ignore
+              item.initJieba = true;
+              await item.save({ session });
+            });
+          } catch (error) {
+            console.log(error);
+          }
         })
       );
       success += data.length;

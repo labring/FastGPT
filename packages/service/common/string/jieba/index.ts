@@ -1519,7 +1519,7 @@ const stopWords = new Set([
 ]);
 
 export async function jiebaSplit({ text }: { text: string }) {
-  text = text.replace(/[#*`_~>[\](){}|]/g, '');
+  text = text.replace(/[#*`_~>[\](){}|]/g, '').replace(/\S*https?\S*/gi, '');
 
   const tokens = (await jieba!.cutAsync(text, true)) as string[];
 
