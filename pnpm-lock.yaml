@@ -25,7 +25,7 @@ importers:
         version: 13.3.0
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       prettier:
         specifier: 3.2.4
         version: 3.2.4
@@ -307,7 +307,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 2.4.2
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 2.10.7
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -370,7 +370,7 @@ importers:
         version: 4.17.21
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       papaparse:
         specifier: ^5.4.1
         version: 5.4.1
@@ -428,7 +428,7 @@ importers:
         version: 2.1.1(@chakra-ui/system@2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1))(react@18.3.1)
       '@chakra-ui/next-js':
         specifier: 2.4.2
-        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
+        version: 2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)
       '@chakra-ui/react':
         specifier: 2.10.7
         version: 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -462,6 +462,9 @@ importers:
       '@fortaine/fetch-event-source':
         specifier: ^3.0.6
         version: 3.0.6
+      '@node-rs/jieba':
+        specifier: 2.0.1
+        version: 2.0.1
       '@tanstack/react-query':
         specifier: ^4.24.10
         version: 4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -524,7 +527,7 @@ importers:
         version: 14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
       next-i18next:
         specifier: 15.4.2
-        version: 15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+        version: 15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
@@ -10649,7 +10652,7 @@ snapshots:
       '@chakra-ui/system': 2.6.1(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(react@18.3.1)
       react: 18.3.1
 
-  '@chakra-ui/next-js@2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)':
+  '@chakra-ui/next-js@2.4.2(@chakra-ui/react@2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react@18.3.1)':
     dependencies:
       '@chakra-ui/react': 2.10.7(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@emotion/styled@11.11.0(@emotion/react@11.11.1(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(react@18.3.1))(@types/react@18.3.1)(framer-motion@9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@emotion/cache': 11.14.0
@@ -17529,7 +17532,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  next-i18next@15.4.2(i18next@23.16.8)(next@14.2.24(@babel/core@7.26.10)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
+  next-i18next@15.4.2(i18next@23.16.8)(next@14.2.24(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1))(react-i18next@14.1.2(i18next@23.16.8)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1):
     dependencies:
       '@babel/runtime': 7.26.10
       '@types/hoist-non-react-statics': 3.3.6
