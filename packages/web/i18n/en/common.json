@@ -430,6 +430,7 @@
   "core.chat.Start Chat": "Start Chat",
   "core.chat.Type a message": "Enter a Question, Press [Enter] to Send / Press [Ctrl(Alt/Shift) + Enter] for New Line",
   "core.chat.Unpin": "Unpin",
+  "core.chat.Visiable_in_test": "Only run preview visible",
   "core.chat.You need to a chat app": "You Do Not Have an Available App",
   "core.chat.error.Chat error": "Chat Error",
   "core.chat.error.Messages empty": "API Content is Empty, Possibly Due to Text Being Too Long",

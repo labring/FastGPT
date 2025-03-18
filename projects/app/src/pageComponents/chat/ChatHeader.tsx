@@ -22,6 +22,7 @@ import {
 import { getMyApps } from '@/web/core/app/api';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 
 const ChatHeader = ({
   history,
@@ -38,6 +39,7 @@ const ChatHeader = ({
   const { isPc } = useSystem();
 
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
 
   return isPc && isPlugin ? null : (
@@ -68,8 +70,12 @@ const ChatHeader = ({
         />
       )}
 
-      {/* control */}
-      {!isPlugin && <ToolMenu history={history} />}
+      <Flex gap={2} alignItems={'center'}>
+        {!isVariableVisible && <VariablePopover />}
+
+        {/* control */}
+        {!isPlugin && <ToolMenu history={history} />}
+      </Flex>
     </Flex>
   );
 };

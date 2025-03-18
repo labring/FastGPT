@@ -28,7 +28,7 @@ export type ChatProviderProps = {
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
-  chatType: 'log' | 'chat' | 'share' | 'team';
+  chatType: 'log' | 'test' | 'chat' | 'share' | 'team';
 };
 
 type useChatStoreType = ChatProviderProps & {
