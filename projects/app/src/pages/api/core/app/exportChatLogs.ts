@@ -17,7 +17,10 @@ import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchem
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { ChatItemValueTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
+
+const formatJsonString = (data: any) => {
+  return JSON.stringify(data).replace(/"/g, '""').replace(/\n/g, '\\n');
+};
 
 export type ExportChatLogsBody = GetAppChatLogsProps & {
   title: string;
@@ -41,20 +44,30 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
   }
 
   const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
-  const teamMemberWithContact = await Promise.all(
-    (await MongoTeamMember.find({ teamId })).map(async (member) => {
-      const user = await MongoUser.findById(member.userId);
-      return {
-        memberId: member._id,
-        teamId: member.teamId,
-        userId: member.userId,
-        name: member.name,
-        role: member.role,
-        status: member.status,
-        contact: user?.contact || '-'
-      };
-    })
-  );
+
+  const teamMemberWithContact = await MongoTeamMember.aggregate([
+    { $match: { teamId: new Types.ObjectId(teamId) } },
+    {
+      $lookup: {
+        from: 'users',
+        localField: 'userId',
+        foreignField: '_id',
+        as: 'user'
+      }
+    },
+    {
+      $project: {
+        memberId: '$_id',
+        teamId: 1,
+        userId: 1,
+        name: 1,
+        role: 1,
+        status: 1,
+        contact: { $ifNull: [{ $arrayElemAt: ['$user.contact', 0] }, '-'] }
+      }
+    }
+  ]);
+  console.log(teamMemberWithContact);
 
   const where = {
     teamId: new Types.ObjectId(teamId),
@@ -239,17 +252,11 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       }
     );
 
-    const userGoodFeedbackItemsStr = JSON.stringify(userGoodFeedbackItems)
-      .replace(/"/g, '""')
-      .replace(/\n/g, '\\n');
-    const userBadFeedbackItemsStr = JSON.stringify(userBadFeedbackItems)
-      .replace(/"/g, '""')
-      .replace(/\n/g, '\\n');
-    const customFeedbackItemsStr = JSON.stringify(customFeedbackItems)
-      .replace(/"/g, '""')
-      .replace(/\n/g, '\\n');
-    const markItemsStr = JSON.stringify(markItems).replace(/"/g, '""').replace(/\n/g, '\\n');
-    const chatDetailsStr = JSON.stringify(chatDetails).replace(/"/g, '""').replace(/\n/g, '\\n');
+    const userGoodFeedbackItemsStr = formatJsonString(userGoodFeedbackItems);
+    const userBadFeedbackItemsStr = formatJsonString(userBadFeedbackItems);
+    const customFeedbackItemsStr = formatJsonString(customFeedbackItems);
+    const markItemsStr = formatJsonString(markItems);
+    const chatDetailsStr = formatJsonString(chatDetails);
 
     const res = `\n"${time}","${source}","${tmbName}","${tmbContact}","${title}","${messageCount}","${userGoodFeedbackItemsStr}","${userBadFeedbackItemsStr}","${customFeedbackItemsStr}","${markItemsStr}","${chatDetailsStr}"`;
 
