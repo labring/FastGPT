@@ -66,11 +66,12 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
         {...cardStyles}
         boxShadow={'3'}
       >
-        <Flex px={[2, 5]}>
-          <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1} color={'myGray.900'}>
+        <Flex px={[2, 5]} pb={2}>
+          <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
             {t('app:chat_debug')}
           </Box>
           {!isVariableVisible && <VariablePopover showExternalVariables={true} />}
+          <Box flex={1} />
           <MyTooltip label={t('common:core.chat.Restart')}>
             <IconButton
               className="chat"
