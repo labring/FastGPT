@@ -11,7 +11,7 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
-import { serviceSideProps } from '@/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
