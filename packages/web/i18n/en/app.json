@@ -82,7 +82,7 @@
   "logs_chat_user": "user",
   "logs_empty": "No logs yet~",
   "logs_export_confirm_tip": "There are a total of {{total}} dialogue records, confirm the export?",
-  "logs_export_title": "Time, source, user, title, total number of messages, user feedback, custom feedback, number of labeled answers, conversation details",
+  "logs_export_title": "Time, source, user, contact, title, total number of messages, user good feedback, user bad feedback, custom feedback, labeled answers, conversation details",
   "logs_message_total": "Total Messages",
   "logs_source": "source",
   "logs_title": "Title",
