@@ -8,7 +8,7 @@ import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/system/nextjs';
 import { useTranslation } from 'next-i18next';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';

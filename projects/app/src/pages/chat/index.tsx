@@ -15,7 +15,7 @@ import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import SliderApps from '@/pageComponents/chat/SliderApps';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/system/nextjs';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getMyApps } from '@/web/core/app/api';
