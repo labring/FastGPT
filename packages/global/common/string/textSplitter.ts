@@ -1,5 +1,4 @@
 import { getErrText } from '../error/utils';
-import { replaceRegChars } from './tools';
 
 export const CUSTOM_SPLIT_SIGN = '-----CUSTOM_SPLIT_SIGN-----';
 
@@ -115,9 +114,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const markdownIndex = 4;
   const forbidOverlapIndex = 8;
-  const stepReges: { reg: RegExp; maxLen: number }[] = [
+
+  const stepReges: { reg: RegExp | string; maxLen: number }[] = [
     ...customReg.map((text) => ({
-      reg: new RegExp(`(${replaceRegChars(text)})`, 'g'),
+      reg: text.replaceAll('\\n', '\n'),
       maxLen: chunkLen * 1.4
     })),
     { reg: /^(#\s[^\n]+\n)/gm, maxLen: chunkLen * 1.2 },
@@ -161,17 +161,32 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     const { reg } = stepReges[step];
 
-    const splitTexts = text
-      .replace(
+    const replaceText = (() => {
+      if (typeof reg === 'string') {
+        let tmpText = text;
+        reg.split('|').forEach((itemReg) => {
+          tmpText = tmpText.replaceAll(
+            itemReg,
+            (() => {
+              if (isCustomStep) return splitMarker;
+              if (isMarkdownSplit) return `${splitMarker}$1`;
+              return `$1${splitMarker}`;
+            })()
+          );
+        });
+        return tmpText;
+      }
+
+      return text.replace(
         reg,
         (() => {
           if (isCustomStep) return splitMarker;
           if (isMarkdownSplit) return `${splitMarker}$1`;
           return `$1${splitMarker}`;
         })()
-      )
-      .split(`${splitMarker}`)
-      .filter((part) => part.trim());
+      );
+    })();
+    const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
     return splitTexts
       .map((text) => {
