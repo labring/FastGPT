@@ -201,7 +201,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
                   description: t('workflow:dataset_quote_role_user_option_desc')
                 }
               ]}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('quoteRole', e);
               }}
             />

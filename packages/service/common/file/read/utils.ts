@@ -300,12 +300,17 @@ export const readRawContentByFileBuffer = async ({
     return systemParse();
   };
 
+  const start = Date.now();
+  addLog.debug(`Start parse file`, { extension });
+
   let { rawText, formatText, imageList } = await (async () => {
     if (extension === 'pdf') {
       return await pdfParseFn();
     }
     return await systemParse();
   })();
+
+  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. Uploading file image.`);
 
   // markdown data format
   if (imageList) {
@@ -340,6 +345,8 @@ export const readRawContentByFileBuffer = async ({
       rawText = formatText || rawText;
     }
   }
+
+  addLog.debug(`Upload file image success, time: ${Date.now() - start}ms`);
 
   return { rawText, formatText, imageList };
 };

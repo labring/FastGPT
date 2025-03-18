@@ -85,7 +85,7 @@ export default React.memo(Markdown);
 function Code(e: any) {
   const { className, codeBlock, children } = e;
   const match = /language-(\w+)/.exec(className || '');
-  const codeType = match?.[1];
+  const codeType = match?.[1]?.toLowerCase();
 
   const strChildren = String(children);
 
@@ -96,7 +96,7 @@ function Code(e: any) {
     if (codeType === CodeClassNameEnum.guide) {
       return <ChatGuide text={strChildren} />;
     }
-    if (codeType === CodeClassNameEnum.questionGuide) {
+    if (codeType === CodeClassNameEnum.questionguide) {
       return <QuestionGuide text={strChildren} />;
     }
     if (codeType === CodeClassNameEnum.echarts) {
@@ -105,7 +105,7 @@ function Code(e: any) {
     if (codeType === CodeClassNameEnum.iframe) {
       return <IframeCodeBlock code={strChildren} />;
     }
-    if (codeType && codeType.toLowerCase() === CodeClassNameEnum.html) {
+    if (codeType === CodeClassNameEnum.html || codeType === CodeClassNameEnum.svg) {
       return (
         <IframeHtmlCodeBlock className={className} codeBlock={codeBlock} match={match}>
           {children}

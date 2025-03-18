@@ -206,7 +206,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
               list={channelList}
               placeholder={t('account_model:select_channel')}
               value={filterProps.channelId}
-              onchange={(val) => setFilterProps({ ...filterProps, channelId: val })}
+              onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
             />
           </Box>
         </HStack>
@@ -219,7 +219,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
               list={modelList}
               placeholder={t('account_model:select_model')}
               value={filterProps.model}
-              onchange={(val) => setFilterProps({ ...filterProps, model: val })}
+              onChange={(val) => setFilterProps({ ...filterProps, model: val })}
             />
           </Box>
         </HStack>
@@ -234,7 +234,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                 { label: t('common:common.failed'), value: 'error' }
               ]}
               value={filterProps.code_type}
-              onchange={(val) => setFilterProps({ ...filterProps, code_type: val })}
+              onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
             />
           </Box>
         </HStack>
@@ -298,11 +298,15 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   const { data: detailData } = useRequest2(
     async () => {
       if (data.code === 200) return data;
-      const res = await getLogDetail(data.id);
-      return {
-        ...res,
-        ...data
-      };
+      try {
+        const res = await getLogDetail(data.id);
+        return {
+          ...res,
+          ...data
+        };
+      } catch (error) {
+        return data;
+      }
     },
     {
       manual: false

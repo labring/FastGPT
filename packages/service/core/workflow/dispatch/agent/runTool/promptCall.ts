@@ -1,11 +1,6 @@
 import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
-import {
-  ChatCompletion,
-  StreamChatType,
-  ChatCompletionMessageParam,
-  ChatCompletionAssistantMessageParam
-} from '@fastgpt/global/core/ai/type';
+import { StreamChatType, ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';

@@ -6,10 +6,12 @@ import { getSTTModel } from '../model';
 
 export const aiTranscriptions = async ({
   model,
-  fileStream
+  fileStream,
+  headers
 }: {
   model: string;
   fileStream: fs.ReadStream;
+  headers?: Record<string, string>;
 }) => {
   const data = new FormData();
   data.append('model', model);
@@ -30,7 +32,8 @@ export const aiTranscriptions = async ({
       Authorization: modelData.requestAuth
         ? `Bearer ${modelData.requestAuth}`
         : aiAxiosConfig.authorization,
-      ...data.getHeaders()
+      ...data.getHeaders(),
+      ...headers
     },
     data: data
   });

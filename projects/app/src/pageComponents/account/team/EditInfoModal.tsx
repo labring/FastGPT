@@ -142,7 +142,7 @@ function EditModal({
                 width={'fit-content'}
               >
                 <Icon name="common/info" w="1rem" />
-                <Box width="fit-content">{t('account_info:please_bind_contact')}</Box>
+                <Box width="fit-content">{t('account_team:please_bind_contact')}</Box>
               </HStack>
             );
           })()}

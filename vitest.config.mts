@@ -10,7 +10,7 @@ export default defineConfig({
     },
     outputFile: 'test-results.json',
     setupFiles: ['./test/setup.ts'],
-    include: ['./test/test.ts', './projects/app/**/*.test.ts'],
+    include: ['./test/test.ts', './test/cases/**/*.test.ts'],
     testTimeout: 5000
   },
   resolve: {

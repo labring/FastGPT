@@ -10,7 +10,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SimpleAppSnapshotType, useSimpleAppSnapshots } from './useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
 
@@ -19,7 +18,6 @@ const PublishChannel = dynamic(() => import('../Publish'));
 
 const SimpleEdit = () => {
   const { t } = useTranslation();
-  const { loadAllDatasets } = useDatasetStore();
 
   const { currentTab, appDetail } = useContextSelector(AppContext, (v) => v);
   const { forbiddenSaveSnapshot, past, setPast, saveSnapshot } = useSimpleAppSnapshots(
@@ -30,9 +28,6 @@ const SimpleEdit = () => {
 
   // Init app form
   useMount(() => {
-    // show selected dataset
-    loadAllDatasets();
-
     if (appDetail.version !== 'v2') {
       return setAppForm(
         appWorkflow2Form({

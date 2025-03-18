@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -130,7 +130,7 @@ const UsageTable = () => {
                 { label: t('account_usage:every_month'), value: 'month' }
               ]}
               value={unit}
-              onchange={setUnit}
+              onChange={setUnit}
             />
           )} */}
         </Flex>
@@ -199,8 +199,6 @@ const UsageTable = () => {
     [
       t,
       dateRange,
-      usageTab,
-      unit,
       userInfo?.team?.permission.hasManagePer,
       tmbList,
       selectTmbIds,

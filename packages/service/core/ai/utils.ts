@@ -132,7 +132,7 @@ export const parseReasoningStreamContent = () => {
   let endTagBuffer = '';
 
   /* 
-    parseReasoning - 只控制是否主动解析 <think></think>，如果接口已经解析了，仍然会返回 think 内容。
+    parseThinkTag - 只控制是否主动解析 <think></think>，如果接口已经解析了，则不再解析。
   */
   const parsePart = (
     part: {
@@ -143,13 +143,13 @@ export const parseReasoningStreamContent = () => {
         };
       }[];
     },
-    parseReasoning = false
+    parseThinkTag = false
   ): [string, string] => {
     const content = part.choices?.[0]?.delta?.content || '';
 
     // @ts-ignore
     const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
-    if (reasoningContent || !parseReasoning) {
+    if (reasoningContent || !parseThinkTag) {
       isInThinkTag = false;
       return [reasoningContent, content];
     }

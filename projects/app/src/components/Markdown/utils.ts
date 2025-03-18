@@ -1,6 +1,6 @@
 export enum CodeClassNameEnum {
   guide = 'guide',
-  questionGuide = 'questionGuide',
+  questionguide = 'questionguide',
   mermaid = 'mermaid',
   echarts = 'echarts',
   quote = 'quote',
@@ -8,6 +8,7 @@ export enum CodeClassNameEnum {
   latex = 'latex',
   iframe = 'iframe',
   html = 'html',
+  svg = 'svg',
   video = 'video',
   audio = 'audio'
 }

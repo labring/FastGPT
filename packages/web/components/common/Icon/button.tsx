@@ -9,6 +9,7 @@ type Props = FlexProps & {
   onClick?: () => void;
   hoverColor?: string;
   tip?: string;
+  isLoading?: boolean;
 };
 
 const MyIconButton = ({
@@ -17,11 +18,13 @@ const MyIconButton = ({
   hoverColor = 'primary.600',
   size = '1rem',
   tip,
+  isLoading = false,
   ...props
 }: Props) => {
   return (
     <MyTooltip label={tip}>
       <Flex
+        position={'relative'}
         p={1}
         color={'myGray.500'}
         rounded={'sm'}
@@ -33,10 +36,14 @@ const MyIconButton = ({
           bg: 'myGray.05',
           color: hoverColor
         }}
-        onClick={onClick}
+        onClick={() => {
+          if (isLoading) return;
+          onClick?.();
+        }}
+        sx={{ userSelect: 'none' }}
         {...props}
       >
-        <MyIcon name={icon as any} w={size} />
+        <MyIcon name={isLoading ? 'common/loading' : (icon as any)} w={size} />
       </Flex>
     </MyTooltip>
   );

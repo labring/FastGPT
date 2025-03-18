@@ -12,12 +12,18 @@ const RenderResponseDetail = () => {
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
 
   const responseData = chatRecords?.[1]?.responseData || [];
+  const chatTime = new Date();
 
   return isChatting ? (
     <>{t('chat:in_progress')}</>
   ) : (
     <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
-      <ResponseBox useMobile={true} response={responseData} dataId={chatRecords?.[1]?.dataId} />
+      <ResponseBox
+        useMobile={true}
+        response={responseData}
+        dataId={chatRecords?.[1]?.dataId}
+        chatTime={chatTime}
+      />
     </Box>
   );
 };

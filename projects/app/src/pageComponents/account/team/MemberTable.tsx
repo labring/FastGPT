@@ -17,7 +17,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { delRemoveMember, updateStatus } from '@/web/support/user/team/api';
+import { delRemoveMember, postRestoreMember } from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
@@ -41,7 +41,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useState } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 
-const InviteModal = dynamic(() => import('./InviteModal'));
+const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
@@ -118,7 +118,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     errorToast: t('account_team:sync_member_failed')
   });
 
-  const { runAsync: onRestore, loading: isUpdateInvite } = useRequest2(updateStatus, {
+  const { runAsync: onRestore, loading: isUpdateInvite } = useRequest2(postRestoreMember, {
     onSuccess() {
       refetchMembers();
     },
@@ -175,22 +175,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               borderRadius={'md'}
               ml={3}
               leftIcon={<MyIcon name="common/inviteLight" w={'16px'} color={'white'} />}
-              onClick={() => {
-                if (
-                  teamPlanStatus?.standardConstants?.maxTeamMember &&
-                  teamPlanStatus.standardConstants.maxTeamMember <= members.length
-                ) {
-                  toast({
-                    status: 'warning',
-                    title: t('common:user.team.Over Max Member Tip', {
-                      max: teamPlanStatus.standardConstants.maxTeamMember
-                    })
-                  });
-                  setNotSufficientModalType(TeamErrEnum.teamMemberOverSize);
-                } else {
-                  onOpenInvite();
-                }
-              }}
+              onClick={onOpenInvite}
             >
               {t('account_team:user_team_invite_member')}
             </Button>
@@ -236,7 +221,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <Th borderLeftRadius="6px" bgColor="myGray.100">
                     {t('account_team:user_name')}
                   </Th>
-                  <Th bgColor="myGray.100">{t('account_team:contact')}</Th>
+                  <Th bgColor="myGray.100">{t('common:contact_way')}</Th>
                   <Th bgColor="myGray.100">{t('account_team:org')}</Th>
                   <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
                   <Th borderRightRadius="6px" bgColor="myGray.100">
@@ -253,12 +238,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
                           <Box className={'textEllipsis'}>
                             {member.memberName}
-                            {member.status === 'waiting' && (
-                              <Tag ml="2" colorSchema="yellow">
-                                {t('account_team:waiting')}
-                              </Tag>
-                            )}
-                            {member.status === 'leave' && (
+                            {member.status !== 'active' && (
                               <Tag ml="2" colorSchema="gray">
                                 {t('account_team:leave')}
                               </Tag>
@@ -295,7 +275,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         {userInfo?.team.permission.hasManagePer &&
                           member.role !== TeamMemberRoleEnum.owner &&
                           member.tmbId !== userInfo?.team.tmbId &&
-                          (member.status !== TeamMemberStatusEnum.leave ? (
+                          (member.status === TeamMemberStatusEnum.active ? (
                             <Icon
                               name={'common/trash'}
                               cursor={'pointer'}
@@ -320,30 +300,28 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                               }}
                             />
                           ) : (
-                            <Icon
-                              name={'common/confirm/restoreTip'}
-                              cursor={'pointer'}
-                              w="1rem"
-                              p="1"
-                              borderRadius="sm"
-                              _hover={{
-                                color: 'primary.500',
-                                bgColor: 'myGray.100'
-                              }}
-                              onClick={() => {
-                                openRestoreMember(
-                                  () =>
-                                    onRestore({
-                                      tmbId: member.tmbId,
-                                      status: TeamMemberStatusEnum.active
-                                    }),
-                                  undefined,
-                                  t('account_team:restore_tip', {
-                                    username: member.memberName
-                                  })
-                                )();
-                              }}
-                            />
+                            member.status === TeamMemberStatusEnum.forbidden && (
+                              <Icon
+                                name={'common/confirm/restoreTip'}
+                                cursor={'pointer'}
+                                w="1rem"
+                                p="1"
+                                borderRadius="sm"
+                                _hover={{
+                                  color: 'primary.500',
+                                  bgColor: 'myGray.100'
+                                }}
+                                onClick={() => {
+                                  openRestoreMember(
+                                    () => onRestore(member.tmbId),
+                                    undefined,
+                                    t('account_team:restore_tip', {
+                                      username: member.memberName
+                                    })
+                                  )();
+                                }}
+                              />
+                            )
                           ))}
                       </Td>
                     </Tr>

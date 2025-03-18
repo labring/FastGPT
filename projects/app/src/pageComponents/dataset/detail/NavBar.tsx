@@ -6,7 +6,6 @@ import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { useI18n } from '@/web/context/I18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import ParentPaths from '@/components/common/ParentPaths';
@@ -22,7 +21,6 @@ export enum TabEnum {
 const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
@@ -168,7 +166,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 {rebuildingCount > 0 && (
                   <Box mb={3}>
                     <Box fontSize={'sm'}>
-                      {datasetT('rebuilding_index_count', { count: rebuildingCount })}
+                      {t('dataset:rebuilding_index_count', { count: rebuildingCount })}
                     </Box>
                   </Box>
                 )}
