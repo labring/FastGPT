@@ -101,6 +101,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
       await putSwitchTeam(teamId);
+      refetchMembers();
       return initUserInfo();
     },
     {

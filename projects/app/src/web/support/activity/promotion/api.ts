@@ -1,6 +1,6 @@
 import { GET, POST } from '@/web/common/api/request';
 import type { PromotionRecordType } from '@/global/support/api/userRes.d';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 /* get promotion init data */
 export const getPromotionInitData = () =>

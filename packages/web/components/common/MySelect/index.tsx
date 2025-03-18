@@ -24,6 +24,7 @@ import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
 import { useScrollPagination } from '../../../hooks/useScrollPagination';
+import Avatar from '../Avatar';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -32,20 +33,21 @@ import { useScrollPagination } from '../../../hooks/useScrollPagination';
  * isLoading: 是否加载中
  * ScrollData: 分页滚动数据控制器 [useScrollPagination] 的返回值
  * */
-export type SelectProps<T = any> = ButtonProps & {
+export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   value?: T;
   placeholder?: string;
   isSearch?: boolean;
   list: {
     alias?: string;
     icon?: string;
+    iconSize?: string;
     label: string | React.ReactNode;
     description?: string;
     value: T;
     showBorder?: boolean;
   }[];
   isLoading?: boolean;
-  onchange?: (val: T) => any | Promise<any>;
+  onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
@@ -56,7 +58,7 @@ const MySelect = <T = any,>(
     isSearch = false,
     width = '100%',
     list = [],
-    onchange,
+    onChange,
     isLoading = false,
     ScrollData,
     ...props
@@ -115,7 +117,7 @@ const MySelect = <T = any,>(
     }
   }, [isSearch, isOpen]);
 
-  const { runAsync: onChange, loading } = useRequest2((val: T) => onchange?.(val));
+  const { runAsync: onclickChange, loading } = useRequest2((val: T) => onChange?.(val));
 
   const ListRender = useMemo(() => {
     return (
@@ -135,16 +137,17 @@ const MySelect = <T = any,>(
                     color: 'myGray.900'
                   })}
               onClick={() => {
-                if (onChange && value !== item.value) {
-                  onChange(item.value);
+                if (value !== item.value) {
+                  onclickChange(item.value);
                 }
               }}
               whiteSpace={'pre-wrap'}
               fontSize={'sm'}
               display={'block'}
+              mb={0.5}
             >
               <Flex alignItems={'center'}>
-                {item.icon && <MyIcon mr={2} name={item.icon as any} w={'1rem'} />}
+                {item.icon && <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />}
                 {item.label}
               </Flex>
               {item.description && (
@@ -224,7 +227,9 @@ const MySelect = <T = any,>(
               />
             ) : (
               <>
-                {selectItem?.icon && <MyIcon mr={2} name={selectItem.icon as any} w={'1rem'} />}
+                {selectItem?.icon && (
+                  <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
+                )}
                 {selectItem?.alias || selectItem?.label || placeholder}
               </>
             )}

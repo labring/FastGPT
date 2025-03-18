@@ -38,6 +38,27 @@ export class PgVectorCtrl {
       await PgClient.query(
         `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
       );
+      // 10w rows
+      // await PgClient.query(`
+      //   ALTER TABLE modeldata SET (
+      //     autovacuum_vacuum_scale_factor = 0.1,
+      //     autovacuum_analyze_scale_factor = 0.05,
+      //     autovacuum_vacuum_threshold = 50,
+      //     autovacuum_analyze_threshold = 50,
+      //     autovacuum_vacuum_cost_delay = 20,
+      //     autovacuum_vacuum_cost_limit = 200
+      //   );`);
+
+      // 100w rows
+      // await PgClient.query(`
+      //   ALTER TABLE modeldata SET (
+      //   autovacuum_vacuum_scale_factor = 0.01,
+      //   autovacuum_analyze_scale_factor = 0.02,
+      //   autovacuum_vacuum_threshold = 1000,
+      //   autovacuum_analyze_threshold = 1000,
+      //   autovacuum_vacuum_cost_delay = 10,
+      //   autovacuum_vacuum_cost_limit = 2000
+      // );`)
 
       addLog.info('init pg successful');
     } catch (error) {

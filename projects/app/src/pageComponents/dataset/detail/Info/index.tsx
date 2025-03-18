@@ -195,7 +195,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 const vectorModel = embeddingModelList.find((item) => item.model === e);
                 if (!vectorModel) return;
                 return onOpenConfirmRebuild(async () => {
@@ -220,7 +220,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                 value: item.model
               }))}
               fontSize={'mini'}
-              onchange={(e) => {
+              onChange={(e) => {
                 const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
@@ -230,30 +230,28 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Box>
         </Box>
 
-        {feConfigs?.isPlus && (
-          <Box pt={5}>
-            <FormLabel fontSize={'mini'} fontWeight={'500'}>
-              {t('dataset:vllm_model')}
-            </FormLabel>
-            <Box pt={2}>
-              <AIModelSelector
-                w={'100%'}
-                value={vlmModel?.model}
-                list={vllmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
-                fontSize={'mini'}
-                onchange={(e) => {
-                  const vlmModel = vllmModelList.find((item) => item.model === e);
-                  if (!vlmModel) return;
-                  setValue('vlmModel', vlmModel);
-                  return handleSubmit((data) => onSave({ ...data, vlmModel }))();
-                }}
-              />
-            </Box>
+        <Box pt={5}>
+          <FormLabel fontSize={'mini'} fontWeight={'500'}>
+            {t('dataset:vllm_model')}
+          </FormLabel>
+          <Box pt={2}>
+            <AIModelSelector
+              w={'100%'}
+              value={vlmModel?.model}
+              list={vllmModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              fontSize={'mini'}
+              onChange={(e) => {
+                const vlmModel = vllmModelList.find((item) => item.model === e);
+                if (!vlmModel) return;
+                setValue('vlmModel', vlmModel);
+                return handleSubmit((data) => onSave({ ...data, vlmModel }))();
+              }}
+            />
           </Box>
-        )}
+        </Box>
 
         {feConfigs?.isPlus && (
           <Flex alignItems={'center'} pt={5}>

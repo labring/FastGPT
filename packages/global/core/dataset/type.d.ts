@@ -112,12 +112,15 @@ export type DatasetDataSchemaType = {
   tmbId: string;
   datasetId: string;
   collectionId: string;
-  datasetId: string;
-  collectionId: string;
   chunkIndex: number;
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  history?: {
+    q: string;
+    a: string;
+    updateTime: Date;
+  }[];
   forbid?: boolean;
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];

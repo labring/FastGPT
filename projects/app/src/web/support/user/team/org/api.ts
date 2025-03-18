@@ -5,7 +5,7 @@ import type {
   putUpdateOrgMembersData
 } from '@fastgpt/global/support/user/team/org/api';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
-import { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
+import type { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
 
 export const getOrgList = () => GET<OrgType[]>('/proApi/support/user/team/org/list');
 

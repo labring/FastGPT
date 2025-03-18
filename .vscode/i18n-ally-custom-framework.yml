@@ -17,15 +17,8 @@ usageMatchRegex:
   # you can ignore it and use your own matching rules as well
   - "[^\\w\\d]t\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]commonT\\(['\"`]({key})['\"`]"
-  # 支持 appT("your.i18n.keys")
-  - "[^\\w\\d]appT\\(['\"`]({key})['\"`]"
-  # 支持 datasetT("your.i18n.keys")
-  - "[^\\w\\d]datasetT\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]fileT\\(['\"`]({key})['\"`]"
-  - "[^\\w\\d]publishT\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]workflowT\\(['\"`]({key})['\"`]"
-  - "[^\\w\\d]userT\\(['\"`]({key})['\"`]"
-  - "[^\\w\\d]chatT\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]i18nT\\(['\"`]({key})['\"`]"
 
 # A RegEx to set a custom scope range. This scope will be used as a prefix when detecting keys

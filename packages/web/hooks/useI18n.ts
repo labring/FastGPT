@@ -44,7 +44,7 @@ export const useI18nLng = () => {
 
     await i18n?.changeLanguage?.(lang);
 
-    if (!i18n.hasResourceBundle(lang, 'common') && prevLang !== lang) {
+    if (!i18n?.hasResourceBundle?.(lang, 'common') && prevLang !== lang) {
       window?.location?.reload?.();
     }
   };

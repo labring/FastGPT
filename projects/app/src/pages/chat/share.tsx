@@ -11,7 +11,7 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -37,6 +37,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { AppSchema } from '@fastgpt/global/core/app/type';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -49,6 +50,7 @@ type Props = {
   authToken: string;
   customUid: string;
   showRawSource: boolean;
+  // showFullText: boolean;
   showNodeStatus: boolean;
 };
 
@@ -81,6 +83,8 @@ const OutLink = (props: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -217,7 +221,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -232,7 +236,7 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, showHistory, t]);
+  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
     <>
@@ -241,56 +245,71 @@ const OutLink = (props: Props) => {
         desc={props.appIntro || data?.app?.intro}
         icon={props.appAvatar || data?.app?.avatar}
       />
-      <PageContainer
-        isLoading={loading}
+      <Flex
+        h={'full'}
+        gap={4}
         {...(isEmbed
           ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
           : { p: [0, 5] })}
       >
-        <Flex h={'100%'} flexDirection={['column', 'row']}>
-          {RenderHistoryList}
+        {(!quoteData || isPc) && (
+          <PageContainer flex={'1 0 0'} w={0} isLoading={loading} p={'0 !important'}>
+            <Flex h={'100%'} flexDirection={['column', 'row']}>
+              {RenderHistoryList}
 
-          {/* chat container */}
-          <Flex
-            position={'relative'}
-            h={[0, '100%']}
-            w={['100%', 0]}
-            flex={'1 0 0'}
-            flexDirection={'column'}
-          >
-            {/* header */}
-            {showHead === '1' ? (
-              <ChatHeader
-                history={chatRecords}
-                totalRecordsCount={totalRecordsCount}
-                showHistory={showHistory === '1'}
-              />
-            ) : null}
-            {/* chat box */}
-            <Box flex={1} bg={'white'}>
-              {isPlugin ? (
-                <CustomPluginRunBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  onNewChat={() => onChangeChatId(getNanoid())}
-                  onStartChat={startChat}
-                />
-              ) : (
-                <ChatBox
-                  isReady={!loading}
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  feedbackType={'user'}
-                  onStartChat={startChat}
-                  chatType="share"
-                />
-              )}
-            </Box>
-          </Flex>
-        </Flex>
-      </PageContainer>
+              {/* chat container */}
+              <Flex
+                position={'relative'}
+                h={[0, '100%']}
+                w={['100%', 0]}
+                flex={'1 0 0'}
+                flexDirection={'column'}
+              >
+                {/* header */}
+                {showHead === '1' ? (
+                  <ChatHeader
+                    history={chatRecords}
+                    totalRecordsCount={totalRecordsCount}
+                    showHistory={showHistory === '1'}
+                  />
+                ) : null}
+                {/* chat box */}
+                <Box flex={1} bg={'white'}>
+                  {isPlugin ? (
+                    <CustomPluginRunBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      onNewChat={() => onChangeChatId(getNanoid())}
+                      onStartChat={startChat}
+                    />
+                  ) : (
+                    <ChatBox
+                      isReady={!loading}
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      feedbackType={'user'}
+                      onStartChat={startChat}
+                      chatType="share"
+                    />
+                  )}
+                </Box>
+              </Flex>
+            </Flex>
+          </PageContainer>
+        )}
+
+        {quoteData && (
+          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
+            <ChatQuoteList
+              rawSearch={quoteData.rawSearch}
+              metadata={quoteData.metadata}
+              onClose={() => setQuoteData(undefined)}
+            />
+          </PageContainer>
+        )}
+      </Flex>
     </>
   );
 };
@@ -340,6 +359,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
+        // isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -383,6 +403,7 @@ export async function getServerSideProps(context: any) {
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
+      // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',

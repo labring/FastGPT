@@ -5,7 +5,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import dynamic from 'next/dynamic';
 import PageContainer from '@/components/PageContainer';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import MetaDataCard from '@/pageComponents/dataset/detail/MetaDataCard';
 import NavBar from '@/pageComponents/dataset/detail/NavBar';

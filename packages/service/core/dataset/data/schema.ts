@@ -40,6 +40,15 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
+  history: {
+    type: [
+      {
+        q: String,
+        a: String,
+        updateTime: Date
+      }
+    ]
+  },
   indexes: {
     type: [
       {
@@ -77,7 +86,8 @@ const DatasetDataSchema = new Schema({
 
   // Abandon
   fullTextToken: String,
-  initFullText: Boolean
+  initFullText: Boolean,
+  initJieba: Boolean
 });
 
 try {
@@ -89,15 +99,14 @@ try {
     chunkIndex: 1,
     updateTime: -1
   });
-  // FullText tmp full text index
-  // DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
   // Recall vectors after data matching
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, collectionId: 1, 'indexes.dataId': 1 });
   DatasetDataSchema.index({ updateTime: 1 });
   // rebuild data
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
 
-  DatasetDataSchema.index({ initFullText: 1 });
+  // 为查询 initJieba 字段不存在的数据添加索引
+  DatasetDataSchema.index({ initJieba: 1, updateTime: 1 });
 } catch (error) {
   console.log(error);
 }

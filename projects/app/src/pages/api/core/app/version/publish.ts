@@ -10,6 +10,7 @@ import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { rewriteAppWorkflowToSimple } from '@fastgpt/service/core/app/utils';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -21,6 +22,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     nodes,
     isPlugin: app.type === AppTypeEnum.plugin
   });
+
+  await rewriteAppWorkflowToSimple(formatNodes);
 
   if (autoSave) {
     return MongoApp.findByIdAndUpdate(appId, {

@@ -1,22 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { BoxProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-interface Props extends BoxProps {}
+interface Props extends BoxProps {
+  externalTrigger?: Boolean;
+}
 
 const SideBar = (e?: Props) => {
   const {
-    w = ['100%', '0 0 250px', '0 0 270px', '0 0 290px', '0 0 310px'],
+    w = ['100%', '0 0 250px', '0 0 250px', '0 0 270px', '0 0 290px'],
     children,
+    externalTrigger,
     ...props
   } = e || {};
 
-  const [foldSideBar, setFoldSideBar] = useState(false);
+  const [isFolded, setIsFolded] = useState(false);
+
+  // 保存上一次折叠状态
+  const preFoledStatus = useRef<Boolean>(false);
+
+  useEffect(() => {
+    if (externalTrigger) {
+      setIsFolded(true);
+      preFoledStatus.current = isFolded;
+    } else {
+      // @ts-ignore
+      setIsFolded(preFoledStatus.current);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalTrigger]);
+
   return (
     <Box
       position={'relative'}
-      flex={foldSideBar ? '0 0 0' : w}
+      flex={isFolded ? '0 0 0' : w}
       w={['100%', 0]}
       h={'100%'}
       zIndex={1}
@@ -40,7 +58,7 @@ const SideBar = (e?: Props) => {
         bg={'rgba(0,0,0,0.5)'}
         cursor={'pointer'}
         transition={'0.2s'}
-        {...(foldSideBar
+        {...(isFolded
           ? {
               opacity: 0.6
             }
@@ -48,16 +66,16 @@ const SideBar = (e?: Props) => {
               visibility: 'hidden',
               opacity: 0
             })}
-        onClick={() => setFoldSideBar(!foldSideBar)}
+        onClick={() => setIsFolded(!isFolded)}
       >
         <MyIcon
           name={'common/backLight'}
-          transform={foldSideBar ? 'rotate(180deg)' : ''}
+          transform={isFolded ? 'rotate(180deg)' : ''}
           w={'14px'}
           color={'white'}
         />
       </Flex>
-      <Box position={'relative'} h={'100%'} overflow={foldSideBar ? 'hidden' : 'visible'}>
+      <Box position={'relative'} h={'100%'} overflow={isFolded ? 'hidden' : 'visible'}>
         {children}
       </Box>
     </Box>

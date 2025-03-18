@@ -205,7 +205,7 @@ const CreateModal = ({
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('vectorModel' as const, e);
               }}
             />
@@ -237,45 +237,43 @@ const CreateModal = ({
                 label: item.name,
                 value: item.model
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('agentModel', e);
               }}
             />
           </Box>
         </Flex>
 
-        {feConfigs?.isPlus && (
-          <Flex
-            mt={6}
-            alignItems={['flex-start', 'center']}
-            justify={'space-between'}
-            flexDir={['column', 'row']}
+        <Flex
+          mt={6}
+          alignItems={['flex-start', 'center']}
+          justify={'space-between'}
+          flexDir={['column', 'row']}
+        >
+          <HStack
+            spacing={1}
+            flex={['', '0 0 110px']}
+            fontSize={'sm'}
+            color={'myGray.900'}
+            fontWeight={500}
+            pb={['12px', '0']}
           >
-            <HStack
-              spacing={1}
-              flex={['', '0 0 110px']}
-              fontSize={'sm'}
-              color={'myGray.900'}
-              fontWeight={500}
-              pb={['12px', '0']}
-            >
-              <Box>{t('dataset:vllm_model')}</Box>
-            </HStack>
-            <Box w={['100%', '300px']}>
-              <AIModelSelector
-                w={['100%', '300px']}
-                value={vlmModel}
-                list={vllmModelList.map((item) => ({
-                  label: item.name,
-                  value: item.model
-                }))}
-                onchange={(e) => {
-                  setValue('vlmModel', e);
-                }}
-              />
-            </Box>
-          </Flex>
-        )}
+            <Box>{t('dataset:vllm_model')}</Box>
+          </HStack>
+          <Box w={['100%', '300px']}>
+            <AIModelSelector
+              w={['100%', '300px']}
+              value={vlmModel}
+              list={vllmModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              onChange={(e) => {
+                setValue('vlmModel', e);
+              }}
+            />
+          </Box>
+        </Flex>
 
         {/* @ts-ignore */}
         <ApiDatasetForm type={type} form={form} />

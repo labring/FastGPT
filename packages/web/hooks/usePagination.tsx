@@ -200,7 +200,7 @@ export function usePagination<DataT, ResT = {}>(
       // Watch scroll position
       useThrottleEffect(
         () => {
-          if (!ref?.current || type !== 'scroll' || noMore) return;
+          if (!ref?.current || type !== 'scroll' || noMore || isLoading) return;
           const { scrollTop, scrollHeight, clientHeight } = ref.current;
 
           if (
@@ -211,7 +211,7 @@ export function usePagination<DataT, ResT = {}>(
             fetchData(pageNum + 1, ref);
           }
         },
-        [scroll],
+        [scroll, isLoading],
         { wait: 50 }
       );
 

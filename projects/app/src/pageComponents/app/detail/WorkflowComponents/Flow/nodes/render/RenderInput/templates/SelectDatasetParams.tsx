@@ -6,13 +6,14 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import DatasetParamsModal, { DatasetParamsProps } from '@/components/core/app/DatasetParamsModal';
+import DatasetParamsModal from '@/components/core/app/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
+import { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
@@ -21,11 +22,14 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const { defaultModels } = useSystemStore();
 
-  const [data, setData] = useState<DatasetParamsProps>({
+  const [data, setData] = useState<AppDatasetSearchParamsType>({
     searchMode: DatasetSearchModeEnum.embedding,
-    limit: 5,
+    embeddingWeight: 0.5,
+    limit: 3000,
     similarity: 0.5,
     usingReRank: false,
+    rerankModel: defaultModels.llm?.model,
+    rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,
     datasetSearchExtensionModel: defaultModels.llm?.model,
     datasetSearchExtensionBg: ''

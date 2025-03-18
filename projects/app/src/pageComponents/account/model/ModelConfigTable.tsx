@@ -280,6 +280,10 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
       isCustom: true,
       isActive: true,
+
+      isDefault: false,
+      isDefaultDatasetTextModel: false,
+      isDefaultDatasetImageModel: false,
       // @ts-ignore
       type
     });
@@ -326,7 +330,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 w={'200px'}
                 bg={'myGray.50'}
                 value={provider}
-                onchange={setProvider}
+                onChange={setProvider}
                 list={filterProviderList}
               />
             </HStack>
@@ -338,7 +342,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                 w={'150px'}
                 bg={'myGray.50'}
                 value={modelType}
-                onchange={setModelType}
+                onChange={setModelType}
                 list={selectModelTypeList.current}
               />
             </HStack>
@@ -436,7 +440,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                         <MyIconButton
                           icon={'core/chat/sendLight'}
                           tip={t('account:model.test_model')}
-                          onClick={() => onTestModel(item.model)}
+                          onClick={() => onTestModel({ model: item.model })}
                         />
                         <MyIconButton
                           icon={'common/settingLight'}
@@ -597,7 +601,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   llm: llmModelList.find((item) => item.model === e)
@@ -616,7 +620,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   embedding: embeddingModelList.find((item) => item.model === e)
@@ -635,7 +639,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   tts: ttsModelList.find((item) => item.model === e)
@@ -654,7 +658,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   stt: sttModelList.find((item) => item.model === e)
@@ -673,7 +677,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   rerank: reRankModelList.find((item) => item.model === e)
@@ -696,7 +700,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   datasetTextLLM: datasetModelList.find((item) => item.model === e)
@@ -718,7 +722,7 @@ const DefaultModelModal = ({
                 value: item.model,
                 label: item.name
               }))}
-              onchange={(e) => {
+              onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
                   datasetImageLLM: vlmModelList.find((item) => item.model === e)

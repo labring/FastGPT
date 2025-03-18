@@ -1,4 +1,4 @@
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useEffect } from 'react';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useRouter } from 'next/router';

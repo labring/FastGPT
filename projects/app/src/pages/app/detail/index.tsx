@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';

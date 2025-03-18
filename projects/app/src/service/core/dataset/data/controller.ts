@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/core/dataset/controller';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
@@ -138,7 +138,7 @@ export async function insertData2Dataset({
         datasetId,
         collectionId,
         dataId: _id,
-        fullTextToken: jiebaSplit({ text: `${q}\n${a}`.trim() })
+        fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
       }
     ],
     { session, ordered: true }
@@ -221,10 +221,11 @@ export async function updateData2Dataset({
   }
 
   // 4. Update mongo updateTime(便于脏数据检查器识别)
+  const updateTime = mongoData.updateTime;
   mongoData.updateTime = new Date();
   await mongoData.save();
 
-  // 5. Insert vector
+  // 5. insert vector
   const insertResult = await Promise.all(
     patchResult
       .filter((item) => item.type === 'create' || item.type === 'update')
@@ -249,9 +250,20 @@ export async function updateData2Dataset({
     .filter((item) => item.type !== 'delete')
     .map((item) => item.index) as DatasetDataIndexItemType[];
 
-  // console.log(clonePatchResult2Insert);
+  // 6. update mongo data
   await mongoSessionRun(async (session) => {
-    // Update MongoData
+    // Update history
+    mongoData.history =
+      q !== mongoData.q || a !== mongoData.a
+        ? [
+            {
+              q: mongoData.q,
+              a: mongoData.a,
+              updateTime: updateTime
+            },
+            ...(mongoData.history?.slice(0, 9) || [])
+          ]
+        : mongoData.history;
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
     mongoData.indexes = newIndexes;
@@ -260,7 +272,7 @@ export async function updateData2Dataset({
     // update mongo data text
     await MongoDatasetDataText.updateOne(
       { dataId: mongoData._id },
-      { fullTextToken: jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
+      { fullTextToken: await jiebaSplit({ text: `${mongoData.q}\n${mongoData.a}`.trim() }) },
       { session }
     );
 

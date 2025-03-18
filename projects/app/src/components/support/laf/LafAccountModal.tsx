@@ -164,7 +164,7 @@ const LafAccountModal = ({
               }
               placeholder={t('common:plugin.App')}
               value={watch('appid')}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('appid', e);
               }}
               {...(register('appid'), { required: true })}

@@ -7,7 +7,7 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 
 const InformTable = () => {
   const { t } = useTranslation();

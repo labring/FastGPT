@@ -17,7 +17,7 @@ import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import dynamic from 'next/dynamic';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { clearToken } from '@/web/support/user/auth';
 import Script from 'next/script';
 import Loading from '@fastgpt/web/components/common/MyLoading';

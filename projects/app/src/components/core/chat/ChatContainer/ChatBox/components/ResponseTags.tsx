@@ -14,8 +14,8 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
-const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
@@ -30,6 +30,7 @@ const ResponseTags = ({
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
+  const chatTime = historyItem.time || new Date();
 
   const {
     totalQuoteList: quoteList = [],
@@ -38,17 +39,15 @@ const ResponseTags = ({
     historyPreviewLength = 0
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
 
-  const [quoteModalData, setQuoteModalData] = useState<{
-    rawSearch: SearchDataResponseItemType[];
-    metadata?: {
-      collectionId: string;
-      sourceId?: string;
-      sourceName: string;
-    };
-  }>();
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
   const {
@@ -67,6 +66,7 @@ const ResponseTags = ({
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
+  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
   const sourceList = useMemo(() => {
     return Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -81,7 +81,8 @@ const ResponseTags = ({
         sourceName: item.sourceName,
         sourceId: item.sourceId,
         icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-        collectionId: item.collectionId
+        collectionId: item.collectionId,
+        datasetId: item.datasetId
       }));
   }, [quoteList]);
 
@@ -99,7 +100,11 @@ const ResponseTags = ({
         <>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             <Box width={'100%'}>
-              <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />
+              <ChatBoxDivider
+                icon="core/chat/quoteFill"
+                text={t('common:core.chat.Quote')}
+                iconColor="#E82F72"
+              />
             </Box>
             {quoteFolded && quoteIsOverflow && (
               <MyIcon
@@ -135,15 +140,13 @@ const ResponseTags = ({
                 : {}
             }
           >
-            {sourceList.map((item) => {
+            {sourceList.map((item, index) => {
               return (
                 <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
                   <Flex
                     alignItems={'center'}
                     fontSize={'xs'}
                     border={'sm'}
-                    py={1.5}
-                    px={2}
                     borderRadius={'sm'}
                     _hover={{
                       '.controller': {
@@ -155,20 +158,60 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setQuoteModalData({
-                        rawSearch: quoteList,
-                        metadata: {
-                          collectionId: item.collectionId,
-                          sourceId: item.sourceId,
-                          sourceName: item.sourceName
-                        }
-                      });
+
+                      if (isShowReadRawSource) {
+                        setQuoteData({
+                          rawSearch: quoteList,
+                          metadata: {
+                            appId,
+                            chatId,
+                            chatItemDataId: dataId,
+                            collectionId: item.collectionId,
+                            sourceId: item.sourceId || '',
+                            sourceName: item.sourceName,
+                            datasetId: item.datasetId,
+                            outLinkAuthData
+                          }
+                        });
+                      } else {
+                        setQuoteData({
+                          rawSearch: quoteList,
+                          metadata: {
+                            appId,
+                            chatId,
+                            chatItemDataId: dataId,
+                            collectionIdList: [item.collectionId],
+                            sourceId: item.sourceId || '',
+                            sourceName: item.sourceName,
+                            outLinkAuthData
+                          }
+                        });
+                      }
                     }}
+                    height={6}
                   >
-                    <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
-                    <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
-                      {item.sourceName}
-                    </Box>
+                    <Flex
+                      color={'myGray.500'}
+                      bg={'myGray.150'}
+                      w={4}
+                      justifyContent={'center'}
+                      fontSize={'10px'}
+                      h={'full'}
+                      alignItems={'center'}
+                    >
+                      {index + 1}
+                    </Flex>
+                    <Flex px={1.5}>
+                      <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                      <Box
+                        className="textEllipsis3"
+                        wordBreak={'break-all'}
+                        flex={'1 0 0'}
+                        fontSize={'mini'}
+                      >
+                        {item.sourceName}
+                      </Box>
+                    </Flex>
                   </Flex>
                 </MyTooltip>
               );
@@ -196,7 +239,20 @@ const ResponseTags = ({
                 colorSchema="blue"
                 type="borderSolid"
                 cursor={'pointer'}
-                onClick={() => setQuoteModalData({ rawSearch: quoteList })}
+                onClick={(e) => {
+                  e.stopPropagation();
+
+                  setQuoteData({
+                    rawSearch: quoteList,
+                    metadata: {
+                      appId,
+                      chatId,
+                      chatItemDataId: dataId,
+                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))],
+                      outLinkAuthData
+                    }
+                  });
+                }}
               >
                 {t('chat:citations', { num: quoteList.length })}
               </MyTag>
@@ -246,15 +302,10 @@ const ResponseTags = ({
         </Flex>
       )}
 
-      {!!quoteModalData && (
-        <QuoteModal
-          {...quoteModalData}
-          chatItemId={historyItem.dataId}
-          onClose={() => setQuoteModalData(undefined)}
-        />
-      )}
       {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
-      {isOpenWholeModal && <WholeResponseModal dataId={dataId} onClose={onCloseWholeModal} />}
+      {isOpenWholeModal && (
+        <WholeResponseModal dataId={dataId} chatTime={chatTime} onClose={onCloseWholeModal} />
+      )}
     </>
   );
 };

@@ -9,7 +9,11 @@ import {
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatCompletion } from '../../../ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  toolValueTypeList
+} from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
@@ -192,10 +196,13 @@ ${description ? `- ${description}` : ''}
     }
   > = {};
   extractKeys.forEach((item) => {
+    const jsonSchema = (
+      toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
+    )?.jsonSchema;
     properties[item.key] = {
-      type: item.valueType || 'string',
+      ...jsonSchema,
       description: item.desc,
-      ...(item.enum ? { enum: item.enum.split('\n') } : {})
+      ...(item.enum ? { enum: item.enum.split('\n').filter(Boolean) } : {})
     };
   });
   // function body
