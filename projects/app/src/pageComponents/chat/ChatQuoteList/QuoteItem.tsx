@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ScoreTag from './ScoreTag';
 import Markdown from '@/components/Markdown';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 
 const QuoteItem = ({
