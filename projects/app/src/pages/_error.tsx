@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { serviceSideProps } from '@/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box } from '@chakra-ui/react';
 import { TrackEventName } from '@/web/common/system/constants';

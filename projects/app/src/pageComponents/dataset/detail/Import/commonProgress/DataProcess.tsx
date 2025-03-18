@@ -36,19 +36,19 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { shadowLight } from '@fastgpt/web/styles/theme';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 function DataProcess() {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { toast } = useToast();
 
   const { goToNext, processParamsForm, chunkSizeField, minChunkSize, maxChunkSize } =
     useContextSelector(DatasetImportContext, (v) => v);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const { getValues, setValue, register, watch } = processParamsForm;
+  const { setValue, register, watch } = processParamsForm;
+
   const trainingType = watch('trainingType');
   const chunkSettingMode = watch('chunkSettingMode');
+  const qaPrompt = watch('qaPrompt');
 
   const {
     isOpen: isOpenCustomPrompt,
@@ -65,7 +65,7 @@ function DataProcess() {
         value: key as DatasetCollectionDataProcessModeEnum,
         tooltip: t(value.tooltip as any)
       }));
-  }, []);
+  }, [t]);
 
   const Title = useCallback(({ title }: { title: string }) => {
     return (
@@ -284,7 +284,7 @@ function DataProcess() {
                                   }
                                 }}
                               >
-                                {getValues('qaPrompt')}
+                                {qaPrompt}
 
                                 <Box
                                   display={'none'}
@@ -333,44 +333,6 @@ function DataProcess() {
             </AccordionPanel>
           </AccordionItem>
 
-          {/* <AccordionItem mt={4} border={'none'}>
-            <Title title={t('dataset:import_model_config')} />
-            <AccordionPanel p={2} fontSize={'sm'}>
-              <Box>
-                <Box>{t('common:core.ai.model.Dataset Agent Model')}</Box>
-                <Box mt={1}>
-                  <AIModelSelector
-                    w={'100%'}
-                    value={llmModel}
-                    list={datasetModelList.map((item) => ({
-                      label: item.name,
-                      value: item.model
-                    }))}
-                    onChange={(e) => {
-                      setValue('llmModel', e);
-                    }}
-                  />
-                </Box>
-              </Box>
-              <Box pt={5}>
-                <Box>{t('dataset:vllm_model')}</Box>
-                <Box mt={1}>
-                  <AIModelSelector
-                    w={'100%'}
-                    value={vlmModel}
-                    list={vllmModelList.map((item) => ({
-                      label: item.name,
-                      value: item.model
-                    }))}
-                    onChange={(e) => {
-                      setValue('vlmModel', e);
-                    }}
-                  />
-                </Box>
-              </Box>
-            </AccordionPanel>
-          </AccordionItem> */}
-
           <Flex mt={5} gap={3} justifyContent={'flex-end'}>
             <Button
               onClick={() => {
@@ -385,7 +347,7 @@ function DataProcess() {
 
       {isOpenCustomPrompt && (
         <PromptTextarea
-          defaultValue={getValues('qaPrompt')}
+          defaultValue={qaPrompt}
           onChange={(e) => {
             setValue('qaPrompt', e);
           }}

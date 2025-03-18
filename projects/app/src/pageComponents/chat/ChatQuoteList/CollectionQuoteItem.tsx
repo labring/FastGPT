@@ -2,7 +2,7 @@ import Markdown from '@/components/Markdown';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import InputDataModal from '@/pageComponents/dataset/detail/InputDataModal';

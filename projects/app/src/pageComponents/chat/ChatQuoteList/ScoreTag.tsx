@@ -2,7 +2,7 @@ import { ScoreItemType, scoreTheme } from '@/components/core/dataset/QuoteItem';
 import { Box, Flex, Progress } from '@chakra-ui/react';
 import { SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const ScoreTag = (score: { primaryScore?: ScoreItemType; secondaryScore: ScoreItemType[] }) => {
   const { t } = useTranslation();

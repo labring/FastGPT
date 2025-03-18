@@ -2,7 +2,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import QuoteItem from './QuoteItem';
 import { useMemo } from 'react';

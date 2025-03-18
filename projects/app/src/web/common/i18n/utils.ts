@@ -9,7 +9,7 @@ export const serviceSideProps = async (content: any, ns: I18nNsType = []) => {
   const deviceSize = content.req?.cookies?.NEXT_DEVICE_SIZE || null;
 
   return {
-    ...(await serverSideTranslations(lang, ['common', ...ns], null, extraLng)),
+    ...(await serverSideTranslations(lang, ['common', ...ns], undefined, extraLng)),
     deviceSize
   };
 };
