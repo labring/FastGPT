@@ -41,6 +41,7 @@ const nextConfig = {
     }
 
     if (isServer) {
+      config.externals.push('@node-rs/jieba');
       if (nextRuntime === 'nodejs') {
         const oldEntry = config.entry;
         config = {
