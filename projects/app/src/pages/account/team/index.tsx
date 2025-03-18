@@ -1,4 +1,4 @@
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/system/nextjs';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';

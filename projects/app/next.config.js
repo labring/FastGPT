@@ -80,12 +80,7 @@ const nextConfig = {
   transpilePackages: ['@fastgpt/global', '@fastgpt/web', 'ahooks'],
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
-    serverComponentsExternalPackages: [
-      'mongoose',
-      'pg',
-      '@zilliz/milvus2-sdk-node',
-      "tiktoken",
-    ],
+    serverComponentsExternalPackages: ['mongoose', 'pg', '@zilliz/milvus2-sdk-node', 'tiktoken'],
     outputFileTracingRoot: path.join(__dirname, '../../'),
     instrumentationHook: true
   }
