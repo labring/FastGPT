@@ -106,7 +106,7 @@ try {
   DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 });
 
   // 为查询 initJieba 字段不存在的数据添加索引
-  DatasetDataSchema.index({ initJieba: 1 }, { sparse: true });
+  DatasetDataSchema.index({ initJieba: 1, updateTime: 1 });
 } catch (error) {
   console.log(error);
 }
