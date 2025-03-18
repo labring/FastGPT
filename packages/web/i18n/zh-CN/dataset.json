@@ -25,7 +25,7 @@
   "core.dataset.import.Adjust parameters": "调整参数",
   "custom_data_process_params": "自定义",
   "custom_data_process_params_desc": "自定义设置数据处理规则",
-  "custom_split_sign_tip": "允许你根据自定义的分隔符进行分块。通常用于已处理好的数据，使用特定的分隔符来精确分块。\n尽量避免使用正则相关特殊符号，例如: * () [] {} 等。",
+  "custom_split_sign_tip": "允许你根据自定义的分隔符进行分块。通常用于已处理好的数据，使用特定的分隔符来精确分块。可以使用 | 符号表示多个分割符，例如：“。|.” 表示中英文句号。\n尽量避免使用正则相关特殊符号，例如: * () [] {} 等。",
   "data.ideal_chunk_length": "理想分块长度",
   "data_amount": "{{dataAmount}} 组数据, {{indexAmount}} 组索引",
   "data_index_num": "索引 {{index}}",
