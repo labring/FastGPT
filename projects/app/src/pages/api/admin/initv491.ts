@@ -26,7 +26,7 @@ const updateData = async () => {
         console.log('更新分词完成');
         break;
       }
-      console.log('读取数据完成', Date.now() - time);
+
       const dataTextOps: AnyBulkWriteOperation<DatasetDataTextSchemaType>[] = [];
       const datasetDataIds: string[] = [];
 
@@ -46,7 +46,6 @@ const updateData = async () => {
           console.log(`分词处理错误: ${item._id}`, error);
         }
       }
-      console.log('分词处理完成', Date.now() - time);
 
       await mongoSessionRun(async (session) => {
         if (dataTextOps.length > 0) {
@@ -62,7 +61,6 @@ const updateData = async () => {
           );
         }
       });
-      console.log('保存完成', Date.now() - time);
 
       success += dataTextOps.length;
       console.log(`成功 ${success}`);
