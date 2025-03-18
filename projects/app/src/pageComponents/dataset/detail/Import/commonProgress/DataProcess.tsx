@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -36,6 +36,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { shadowLight } from '@fastgpt/web/styles/theme';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 function DataProcess() {
   const { t } = useTranslation();
@@ -44,17 +45,38 @@ function DataProcess() {
   const { goToNext, processParamsForm, chunkSizeField, minChunkSize, maxChunkSize } =
     useContextSelector(DatasetImportContext, (v) => v);
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
-  const { setValue, register, watch } = processParamsForm;
+  const { setValue, register, watch, getValues } = processParamsForm;
 
   const trainingType = watch('trainingType');
   const chunkSettingMode = watch('chunkSettingMode');
-  const qaPrompt = watch('qaPrompt');
 
+  const qaPrompt = watch('qaPrompt');
   const {
     isOpen: isOpenCustomPrompt,
     onOpen: onOpenCustomPrompt,
     onClose: onCloseCustomPrompt
   } = useDisclosure();
+
+  const customSplitList = [
+    { label: t('dataset:split_sign_null'), value: '' },
+    { label: t('dataset:split_sign_break'), value: '\\n' },
+    { label: t('dataset:split_sign_break2'), value: '\\n\\n' },
+    { label: t('dataset:split_sign_period'), value: '.|。' },
+    { label: t('dataset:split_sign_exclamatiob'), value: '!|！' },
+    { label: t('dataset:split_sign_question'), value: '?|？' },
+    { label: t('dataset:split_sign_semicolon'), value: ';|；' },
+    { label: '=====', value: '=====' },
+    { label: t('dataset:split_sign_custom'), value: 'Other' }
+  ];
+
+  const [customListSelectValue, setCustomListSelectValue] = useState(getValues('customSplitChar'));
+  useEffect(() => {
+    if (customListSelectValue === 'Other') {
+      setValue('customSplitChar', '');
+    } else {
+      setValue('customSplitChar', customListSelectValue);
+    }
+  }, [customListSelectValue, setValue]);
 
   const trainingModeList = useMemo(() => {
     const list = Object.entries(DatasetCollectionDataProcessModeMap);
@@ -248,19 +270,33 @@ function DataProcess() {
                           <Box mt={3}>
                             <Box>
                               {t('common:core.dataset.import.Custom split char')}
-                              <QuestionTip
-                                label={t('common:core.dataset.import.Custom split char Tips')}
-                              />
+                              <QuestionTip label={t('dataset:custom_split_sign_tip')} />
                             </Box>
-                            <Box mt={1}>
-                              <Input
-                                size={'sm'}
-                                bg={'myGray.50'}
-                                defaultValue={''}
-                                placeholder="\n;======;==SPLIT=="
-                                {...register('customSplitChar')}
-                              />
-                            </Box>
+
+                            <HStack mt={1}>
+                              <Box flex={'1 0 0'}>
+                                <MySelect<string>
+                                  list={customSplitList}
+                                  size={'sm'}
+                                  bg={'myGray.50'}
+                                  value={customListSelectValue}
+                                  h={'32px'}
+                                  onChange={(val) => {
+                                    setCustomListSelectValue(val);
+                                  }}
+                                />
+                              </Box>
+                              {customListSelectValue === 'Other' && (
+                                <Input
+                                  flex={'1 0 0'}
+                                  h={'32px'}
+                                  size={'sm'}
+                                  bg={'myGray.50'}
+                                  placeholder="\n;======;==SPLIT=="
+                                  {...register('customSplitChar')}
+                                />
+                              )}
+                            </HStack>
                           </Box>
 
                           {showQAPromptInput && (
