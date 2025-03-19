@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type {
+  GetPathProps,
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type.d';
@@ -12,15 +13,15 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<any>
 ): Promise<ParentTreePathItemType[]> {
-  const { parentId } = req.query as { parentId: string };
+  const { sourceId: appId, type } = req.query as GetPathProps;
 
-  if (!parentId) {
+  if (!appId) {
     return [];
   }
 
-  await authApp({ req, authToken: true, appId: parentId, per: ReadPermissionVal });
+  const { app } = await authApp({ req, authToken: true, appId, per: ReadPermissionVal });
 
-  return await getParents(parentId);
+  return await getParents(type === 'current' ? appId : app.parentId);
 }
 
 export default NextAPI(handler);

@@ -61,10 +61,13 @@ const Header = ({
 
   const { lastAppListRouteType } = useSystemStore();
 
-  const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
-    manual: false,
-    refreshDeps: [appId]
-  });
+  const { data: paths = [] } = useRequest2(
+    () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
+    {
+      manual: false,
+      refreshDeps: [appId]
+    }
+  );
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({

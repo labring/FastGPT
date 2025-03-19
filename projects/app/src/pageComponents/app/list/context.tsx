@@ -90,7 +90,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
-    () => getAppFolderPath(parentId),
+    () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
       refreshDeps: [parentId]

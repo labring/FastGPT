@@ -276,8 +276,9 @@ const RenderHeader = React.memo(function RenderHeader({
   // Get paths
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
-      return getSystemPluginPaths(parentId);
+      if (templateType === TemplateTypeEnum.teamPlugin)
+        return getAppFolderPath({ sourceId: parentId, type: 'current' });
+      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,

@@ -250,7 +250,10 @@ export const DatasetPageContextProvider = ({
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
     () =>
-      getDatasetPaths(datasetDetail.parentId).then((res) => {
+      getDatasetPaths({
+        sourceId: datasetDetail?._id,
+        type: 'parent'
+      }).then((res) => {
         res.push({
           parentId: '',
           parentName: datasetDetail.name
