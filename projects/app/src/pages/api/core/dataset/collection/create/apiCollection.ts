@@ -41,7 +41,7 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
     return Promise.reject(DatasetErrEnum.sameApiCollection);
   }
 
-  const content = await readApiServerFileContent({
+  const { title, rawText } = await readApiServerFileContent({
     apiServer,
     feishuServer,
     yuqueServer,
@@ -53,14 +53,14 @@ async function handler(req: NextApiRequest): CreateCollectionResponse {
 
   const { collectionId, insertResults } = await createCollectionAndInsertData({
     dataset,
-    rawText: content,
+    rawText,
     relatedId: apiFileId,
     createCollectionParams: {
       ...body,
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.apiFile,
-      name,
+      name: title || name,
       apiFileId,
       metadata: {
         relatedImgId: apiFileId
