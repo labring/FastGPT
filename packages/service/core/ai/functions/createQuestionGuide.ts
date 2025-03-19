@@ -4,8 +4,8 @@ import { countGptMessagesTokens, countPromptTokens } from '../../../common/strin
 import { loadRequestMessages } from '../../chat/utils';
 import { llmCompletionsBodyFormat } from '../utils';
 import {
-  getQuestionGuideFooterPrompt,
-  getQuestionGuidePrompt
+  QuestionGuidePrompt,
+  QuestionGuideFooterPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { addLog } from '../../../common/system/log';
 import json5 from 'json5';
@@ -27,7 +27,7 @@ export async function createQuestionGuide({
     ...messages,
     {
       role: 'user',
-      content: `${customPrompt || getQuestionGuidePrompt()}\n${getQuestionGuideFooterPrompt()}`
+      content: `${customPrompt || QuestionGuidePrompt}\n${QuestionGuideFooterPrompt}`
     }
   ];
   const requestMessages = await loadRequestMessages({
