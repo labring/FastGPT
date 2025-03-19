@@ -1,13 +1,13 @@
 import { PromptTemplateItem } from '../type.d';
 import { i18nT } from '../../../../web/i18n/utils';
-import { getPromptByVersion } from './agent';
+import { getPromptByVersion } from './utils';
 
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
     desc: i18nT('app:template.standard_template_des'),
     value: {
-      ['4.9.0']: `{
+      ['4.9.2']: `{
   "sourceName": "{{source}}",
   "updateTime": "{{updateTime}}",
   "content": "{{q}}\n{{a}}"
@@ -19,7 +19,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.qa_template'),
     desc: i18nT('app:template.qa_template_des'),
     value: {
-      ['4.9.0']: `<Question>
+      ['4.9.2']: `<Question>
 {{q}}
 </Question>
 <Answer>
@@ -31,7 +31,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: i18nT('app:template.standard_strict_des'),
     value: {
-      ['4.9.0']: `{
+      ['4.9.2']: `{
   "sourceName": "{{source}}",
   "updateTime": "{{updateTime}}",
   "content": "{{q}}\n{{a}}"
@@ -43,7 +43,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.hard_strict'),
     desc: i18nT('app:template.hard_strict_des'),
     value: {
-      ['4.9.0']: `<Question>
+      ['4.9.2']: `<Question>
 {{q}}
 </Question>
 <Answer>
@@ -64,7 +64,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
-      ['4.9.0']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -84,7 +84,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.qa_template'),
     desc: '',
     value: {
-      ['4.9.0']: `使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.2']: `使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -103,7 +103,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
-      ['4.9.0']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.2']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -127,7 +127,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.hard_strict'),
     desc: '',
     value: {
-      ['4.9.0']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.2']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -157,7 +157,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
-      ['4.9.0']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -175,7 +175,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.qa_template'),
     desc: '',
     value: {
-      ['4.9.0']: `使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.2']: `使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -192,7 +192,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
-      ['4.9.0']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.2']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -214,7 +214,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.hard_strict'),
     desc: '',
     value: {
-      ['4.9.0']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.2']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -249,7 +249,7 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 // Document quote prompt
 export const getDocumentQuotePrompt = (version: string) => {
   const promptMap = {
-    ['4.9.0']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
+    ['4.9.2']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
   <FilesContent>
   {{quote}}
   </FilesContent>
