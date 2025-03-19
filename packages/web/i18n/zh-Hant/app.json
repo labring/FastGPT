@@ -82,7 +82,7 @@
   "logs_chat_user": "使用者",
   "logs_empty": "還沒有紀錄喔～",
   "logs_export_confirm_tip": "當前共 {{total}} 條對話記錄，確認導出？",
-  "logs_export_title": "時間,來源,使用者,標題,消息總數,用戶反饋,自定義反饋,標註答案數量,對話詳情",
+  "logs_export_title": "時間,來源,使用者,聯繫方式,標題,消息總數,用戶贊同反饋,用戶反對反饋,自定義反饋,標註答案,對話詳情",
   "logs_message_total": "訊息總數",
   "logs_source": "来源",
   "logs_title": "標題",

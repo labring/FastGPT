@@ -82,7 +82,7 @@
   "logs_chat_user": "使用者",
   "logs_empty": "还没有日志噢~",
   "logs_export_confirm_tip": "当前共 {{total}} 条对话记录，确认导出？",
-  "logs_export_title": "时间,来源,使用者,标题,消息总数,用户反馈,自定义反馈,标注答案数量,对话详情",
+  "logs_export_title": "时间,来源,使用者,联系方式,标题,消息总数,用户赞同反馈,用户反对反馈,自定义反馈,标注答案,对话详情",
   "logs_message_total": "消息总数",
   "logs_source": "来源",
   "logs_title": "标题",

@@ -1,11 +1,9 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { GetPathProps, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { getSystemPlugins } from '@/service/core/app/plugin';
 
-export type pathQuery = {
-  parentId: ParentIdType;
-};
+export type pathQuery = GetPathProps;
 
 export type pathBody = {};
 
@@ -15,18 +13,18 @@ async function handler(
   req: ApiRequestProps<pathBody, pathQuery>,
   res: ApiResponseType<any>
 ): Promise<pathResponse> {
-  const { parentId } = req.query;
+  const { sourceId: pluginId, type } = req.query;
 
-  if (!parentId) return [];
+  if (!pluginId) return [];
 
   const plugins = await getSystemPlugins();
-  const plugin = plugins.find((item) => item.id === parentId);
+  const plugin = plugins.find((item) => item.id === pluginId);
 
   if (!plugin) return [];
 
   return [
     {
-      parentId: plugin.id,
+      parentId: type === 'current' ? plugin.id : plugin.parentId,
       parentName: plugin.name
     }
   ];
