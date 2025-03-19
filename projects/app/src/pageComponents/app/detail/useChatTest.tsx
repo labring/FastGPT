@@ -140,7 +140,7 @@ export const useChatTest = ({
         appId={appId}
         chatId={chatId}
         showMarkIcon
-        chatType="chat"
+        chatType={'chat'}
         onStartChat={startChat}
       />
     )
