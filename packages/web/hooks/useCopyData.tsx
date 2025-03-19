@@ -18,7 +18,11 @@ export const useCopyData = () => {
   const { setCopyContent } = useCommonStore();
 
   const copyData = useCallback(
-    async (data: string, title = t('common:common.Copy Successful'), duration = 1000) => {
+    async (
+      data: string,
+      title: string | null | undefined = t('common:common.Copy Successful'),
+      duration = 1000
+    ) => {
       data = data.trim();
 
       try {
