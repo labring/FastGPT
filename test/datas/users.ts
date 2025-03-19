@@ -32,3 +32,32 @@ export async function getRootUser(): Promise<parseHeaderCertRet> {
     tmbId: tmb?._id
   };
 }
+
+export async function getUser(username: string): Promise<parseHeaderCertRet> {
+  const user = await MongoUser.create({
+    username,
+    password: '123456'
+  });
+
+  const team = await MongoTeam.create({
+    name: 'test team',
+    ownerId: user._id
+  });
+
+  const tmb = await MongoTeamMember.create({
+    teamId: team._id,
+    userId: user._id,
+    status: 'active'
+  });
+
+  return {
+    userId: user._id,
+    apikey: '',
+    appId: '',
+    authType: AuthUserTypeEnum.token,
+    isRoot: false,
+    sourceName: undefined,
+    teamId: tmb?.teamId,
+    tmbId: tmb?._id
+  };
+}
