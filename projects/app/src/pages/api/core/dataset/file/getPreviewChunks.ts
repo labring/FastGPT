@@ -82,7 +82,7 @@ async function handler(
     };
   })();
 
-  const rawText = await readDatasetSourceRawText({
+  const { rawText } = await readDatasetSourceRawText({
     teamId,
     tmbId,
     type,
