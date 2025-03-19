@@ -11,7 +11,6 @@ import {
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum,
   DatasetSourceReadTypeEnum,
-  DatasetTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
@@ -19,6 +18,7 @@ import { readDatasetSourceRawText } from '../read';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { createCollectionAndInsertData, delCollection } from './controller';
+import { collectionCanSync } from '@fastgpt/global/core/dataset/collection/utils';
 
 /**
  * get all collection by top collectionId
@@ -137,10 +137,7 @@ export const collectionTagsToTagLabel = async ({
 export const syncCollection = async (collection: CollectionWithDatasetType) => {
   const dataset = collection.dataset;
 
-  if (
-    collection.type !== DatasetCollectionTypeEnum.link &&
-    dataset.type !== DatasetTypeEnum.apiDataset
-  ) {
+  if (!collectionCanSync(collection.type)) {
     return Promise.reject(DatasetErrEnum.notSupportSync);
   }
 
@@ -155,15 +152,20 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       };
     }
 
-    if (!collection.apiFileId) return Promise.reject('apiFileId is missing');
-    if (!dataset.apiServer) return Promise.reject('apiServer not found');
+    const sourceId = collection.apiFileId;
+
+    if (!sourceId) return Promise.reject('apiFileId is missing');
+
     return {
       type: DatasetSourceReadTypeEnum.apiFile,
-      sourceId: collection.apiFileId,
-      apiServer: dataset.apiServer
+      sourceId,
+      apiServer: dataset.apiServer,
+      feishuServer: dataset.feishuServer,
+      yuqueServer: dataset.yuqueServer
     };
   })();
-  const rawText = await readDatasetSourceRawText({
+
+  const { title, rawText } = await readDatasetSourceRawText({
     teamId: collection.teamId,
     tmbId: collection.tmbId,
     ...sourceReadType
@@ -196,7 +198,7 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
       createCollectionParams: {
         teamId: collection.teamId,
         tmbId: collection.tmbId,
-        name: collection.name,
+        name: title || collection.name,
         datasetId: collection.datasetId,
         parentId: collection.parentId,
         type: collection.type,

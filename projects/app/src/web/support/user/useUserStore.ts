@@ -1,3 +1,5 @@
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
+
 import type { UserUpdateParams } from '@/types/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
@@ -5,9 +7,6 @@ import type { MemberGroupListType } from '@fastgpt/global/support/permission/mem
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import type { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
 import { getTeamPlanStatus } from './team/api';
 import { getGroupList } from './team/group/api';
 import { getOrgList } from './team/org/api';
