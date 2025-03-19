@@ -2,6 +2,7 @@ import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 
 export type InvitationSchemaType = {
   _id: string;
+  linkId: string;
   teamId: string;
   usedTimesLimit?: number;
   forbidden?: boolean;
@@ -25,11 +26,10 @@ export type InvitationLinkCreateType = {
   expires: InvitationLinkExpiresType;
   usedTimesLimit: 1 | -1;
 };
-export type InvitationLinkUpdateType = Partial<
-  Omit<InvitationSchemaType, 'members' | 'teamId' | '_id'>
-> & {
-  linkId: string;
-};
+
+// export type InvitationLinkUpdateType = Partial<
+//   Omit<InvitationSchemaType, 'members' | 'teamId' | '_id'>
+// >;
 
 export type InvitationInfoType = InvitationSchemaType & {
   teamAvatar: string;
