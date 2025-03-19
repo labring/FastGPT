@@ -97,10 +97,10 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
-    () => getDatasetPaths(parentId),
+    async () => getDatasetPaths({ sourceId: parentId, type: 'current' }),
     {
       manual: false,
-      refreshDeps: [parentId]
+      refreshDeps: [folderDetail]
     }
   );
 

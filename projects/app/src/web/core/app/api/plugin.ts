@@ -12,6 +12,7 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
+  GetPathProps,
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
@@ -53,9 +54,9 @@ export const getPluginGroups = () => {
     : Promise.resolve([defaultGroup]);
 };
 
-export const getSystemPluginPaths = (parentId: ParentIdType) => {
-  if (!parentId) return Promise.resolve<ParentTreePathItemType[]>([]);
-  return GET<ParentTreePathItemType[]>('/core/app/plugin/path', { parentId });
+export const getSystemPluginPaths = (data: GetPathProps) => {
+  if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
+  return GET<ParentTreePathItemType[]>('/core/app/plugin/path', data);
 };
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
