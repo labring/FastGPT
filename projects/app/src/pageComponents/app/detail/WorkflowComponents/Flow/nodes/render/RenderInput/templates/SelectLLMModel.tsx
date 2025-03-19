@@ -57,7 +57,7 @@ const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
           value: item.model,
           label: item.name
         }))}
-        onchange={onChangeModel}
+        onChange={onChangeModel}
       />
     );
   }, [item.value, modelList, onChangeModel]);

@@ -127,7 +127,8 @@ export const readApiServerFileContent = async ({
   yuqueServer,
   apiFileId,
   teamId,
-  tmbId
+  tmbId,
+  customPdfParse
 }: {
   apiServer?: APIFileServer;
   feishuServer?: FeishuServer;
@@ -135,9 +136,15 @@ export const readApiServerFileContent = async ({
   apiFileId: string;
   teamId: string;
   tmbId: string;
+  customPdfParse?: boolean;
 }) => {
   if (apiServer) {
-    return useApiDatasetRequest({ apiServer }).getFileContent({ teamId, tmbId, apiFileId });
+    return useApiDatasetRequest({ apiServer }).getFileContent({
+      teamId,
+      tmbId,
+      apiFileId,
+      customPdfParse
+    });
   }
 
   if (feishuServer || yuqueServer) {

@@ -76,6 +76,10 @@ export const createChatCompletion = async ({
       timeout: formatTimeout
     });
 
+    addLog.debug(`Start create chat completion`, {
+      model: body.model
+    });
+
     const response = await ai.chat.completions.create(body, {
       ...options,
       ...(modelConstantsData.requestUrl ? { path: modelConstantsData.requestUrl } : {}),

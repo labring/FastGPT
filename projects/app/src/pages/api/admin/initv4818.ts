@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
+import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -44,7 +44,7 @@ const restore = async () => {
     const data = await MongoDatasetData.findOne({ fullTextToken: { $exists: false } });
     if (!data) return;
 
-    data.fullTextToken = jiebaSplit({ text: `${data.q}\n${data.a}`.trim() });
+    data.fullTextToken = await jiebaSplit({ text: `${data.q}\n${data.a}`.trim() });
     await data.save();
 
     success++;

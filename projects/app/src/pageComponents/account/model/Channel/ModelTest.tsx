@@ -25,6 +25,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -34,7 +35,15 @@ type ModelTestItem = {
   duration?: number;
 };
 
-const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void }) => {
+const ModelTest = ({
+  channelId,
+  models,
+  onClose
+}: {
+  channelId: number;
+  models: string[];
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
@@ -57,6 +66,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
       colorSchema: 'red'
     }
   });
+
   const { loading: loadingModels } = useRequest2(getSystemModelList, {
     manual: false,
     refreshDeps: [models],
@@ -95,7 +105,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
           );
           const start = Date.now();
           try {
-            await getTestModel(model);
+            await getTestModel({ model, channelId });
             const duration = Date.now() - start;
             setTestModelList((prev) =>
               prev.map((item) =>
@@ -134,13 +144,47 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
       refreshDeps: [testModelList]
     }
   );
+  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest2(
+    async (model: string) => {
+      const start = Date.now();
+
+      setTestModelList((prev) =>
+        prev.map((item) =>
+          item.model === model ? { ...item, status: 'running', message: '' } : item
+        )
+      );
+
+      try {
+        await getTestModel({ model, channelId });
+        const duration = Date.now() - start;
+
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model ? { ...item, status: 'success', duration: duration / 1000 } : item
+          )
+        );
+      } catch (error) {
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model ? { ...item, status: 'error', message: getErrText(error) } : item
+          )
+        );
+      }
+    },
+    {
+      manual: true
+    }
+  );
+
+  const isTestLoading = testingOneModel || isTesting;
 
   return (
     <MyModal
       iconSrc={'core/chat/sendLight'}
       isLoading={loadingModels}
       title={t('account_model:model_test')}
-      w={'600px'}
+      w={'100%'}
+      maxW={['90vw', '1090px']}
       isOpen
     >
       <ModalBody>
@@ -148,8 +192,10 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
           <Table>
             <Thead>
               <Tr>
-                <Th>{t('account_model:model')}</Th>
+                <Th>{t('account_model:model_name')}</Th>
+                <Th>{t('account:model.model_id')}</Th>
                 <Th>{t('account_model:channel_status')}</Th>
+                <Th></Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -158,6 +204,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
                 return (
                   <Tr key={item.model}>
                     <Td>{item.label}</Td>
+                    <Td>{item.model}</Td>
                     <Td>
                       <Flex alignItems={'center'}>
                         <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>
@@ -173,6 +220,16 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
                         )}
                       </Flex>
                     </Td>
+                    <Td>
+                      <MyIconButton
+                        isLoading={isTestLoading}
+                        icon={'core/chat/sendLight'}
+                        tip={t('account:model.test_model')}
+                        onClick={() => {
+                          onTestOneModel(item.model);
+                        }}
+                      />
+                    </Td>
                   </Tr>
                 );
               })}
@@ -184,7 +241,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>
-        <Button isLoading={isTesting} variant={'primary'} onClick={onStartTest}>
+        <Button isLoading={isTestLoading} variant={'primary'} onClick={onStartTest}>
           {t('account_model:start_test', { num: testModelList.length })}
         </Button>
       </ModalFooter>

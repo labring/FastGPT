@@ -53,6 +53,7 @@ const MyModal = ({
       allowPinchZoom
       scrollBehavior={'inside'}
       closeOnOverlayClick={closeOnOverlayClick}
+      returnFocusOnClose={false}
     >
       <ModalOverlay />
       <ModalContent

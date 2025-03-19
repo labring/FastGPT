@@ -8,7 +8,7 @@ import {
   EmbeddingModelItemType,
   TTSModelType,
   STTModelType,
-  ReRankModelItemType
+  RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
 import {
@@ -94,7 +94,7 @@ export const loadSystemModels = async (init = false) => {
   global.embeddingModelMap = new Map<string, EmbeddingModelItemType>();
   global.ttsModelMap = new Map<string, TTSModelType>();
   global.sttModelMap = new Map<string, STTModelType>();
-  global.reRankModelMap = new Map<string, ReRankModelItemType>();
+  global.reRankModelMap = new Map<string, RerankModelItemType>();
   // @ts-ignore
   global.systemDefaultModel = {};
 

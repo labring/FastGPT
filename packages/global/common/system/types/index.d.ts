@@ -6,7 +6,7 @@ import type {
   EmbeddingModelItemType,
   AudioSpeechModels,
   STTModelType,
-  ReRankModelItemType
+  RerankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
 
@@ -35,7 +35,7 @@ export type FastGPTConfigFileType = {
   // Abandon
   llmModels?: ChatModelItemType[];
   vectorModels?: EmbeddingModelItemType[];
-  reRankModels?: ReRankModelItemType[];
+  reRankModels?: RerankModelItemType[];
   audioSpeechModels?: TTSModelType[];
   whisperModel?: STTModelType;
 };

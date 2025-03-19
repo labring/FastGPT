@@ -8,7 +8,7 @@ import PageContainer from '@/components/PageContainer';
 import { getMyTokensApps } from '@/web/core/chat/api';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -33,6 +33,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useMount } from 'ahooks';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
 type Props = { appId: string; chatId: string; teamId: string; teamToken: string };
@@ -63,6 +64,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -163,7 +166,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -176,7 +179,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [appId, isOpenSlider, isPc, onCloseSlider, t]);
+  }, [appId, isOpenSlider, isPc, onCloseSlider, quoteData, t]);
 
   return (
     <Flex h={'100%'}>
@@ -188,49 +191,66 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      <PageContainer isLoading={loading} flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
-        <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
-          {RenderHistoryList}
-          {/* chat container */}
-          <Flex
-            position={'relative'}
-            h={[0, '100%']}
-            w={['100%', 0]}
-            flex={'1 0 0'}
-            flexDirection={'column'}
-          >
-            {/* header */}
-            <ChatHeader
-              totalRecordsCount={totalRecordsCount}
-              apps={myApps}
-              history={chatRecords}
-              showHistory
-            />
-            {/* chat box */}
-            <Box flex={1}>
-              {chatBoxData.app.type === AppTypeEnum.plugin ? (
-                <CustomPluginRunBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  onNewChat={() => onChangeChatId(getNanoid())}
-                  onStartChat={startChat}
-                />
-              ) : (
-                <ChatBox
-                  isReady={!loading}
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  feedbackType={'user'}
-                  onStartChat={startChat}
-                  chatType="team"
-                />
-              )}
-            </Box>
+      {(!quoteData || isPc) && (
+        <PageContainer
+          isLoading={loading}
+          flex={'1 0 0'}
+          w={0}
+          p={[0, '16px']}
+          position={'relative'}
+        >
+          <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
+            {RenderHistoryList}
+            {/* chat container */}
+            <Flex
+              position={'relative'}
+              h={[0, '100%']}
+              w={['100%', 0]}
+              flex={'1 0 0'}
+              flexDirection={'column'}
+            >
+              {/* header */}
+              <ChatHeader
+                totalRecordsCount={totalRecordsCount}
+                apps={myApps}
+                history={chatRecords}
+                showHistory
+              />
+              {/* chat box */}
+              <Box flex={1}>
+                {chatBoxData.app.type === AppTypeEnum.plugin ? (
+                  <CustomPluginRunBox
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    onNewChat={() => onChangeChatId(getNanoid())}
+                    onStartChat={startChat}
+                  />
+                ) : (
+                  <ChatBox
+                    isReady={!loading}
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    feedbackType={'user'}
+                    onStartChat={startChat}
+                    chatType="team"
+                  />
+                )}
+              </Box>
+            </Flex>
           </Flex>
-        </Flex>
-      </PageContainer>
+        </PageContainer>
+      )}
+      {quoteData && (
+        <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
+          <ChatQuoteList
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
+          />
+        </PageContainer>
+      )}
     </Flex>
   );
 };
@@ -300,6 +320,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={true}
+        // isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>

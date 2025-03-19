@@ -154,7 +154,12 @@ export enum NodeInputKeyEnum {
   datasetSimilarity = 'similarity',
   datasetMaxTokens = 'limit',
   datasetSearchMode = 'searchMode',
+  datasetSearchEmbeddingWeight = 'embeddingWeight',
+
   datasetSearchUsingReRank = 'usingReRank',
+  datasetSearchRerankWeight = 'rerankWeight',
+  datasetSearchRerankModel = 'rerankModel',
+
   datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
   datasetSearchExtensionModel = 'datasetSearchExtensionModel',
   datasetSearchExtensionBg = 'datasetSearchExtensionBg',

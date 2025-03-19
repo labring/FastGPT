@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -39,11 +39,12 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRouter } from 'next/router';
 import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useMount } from 'ahooks';
 
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
@@ -64,7 +65,9 @@ const Info = () => {
   const standardPlan = teamPlanStatus?.standardConstants;
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
 
-  useQuery(['init'], initUserInfo);
+  useMount(() => {
+    initUserInfo();
+  });
 
   return (
     <AccountContainer>
@@ -260,7 +263,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
         {feConfigs?.isPlus && (
           <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:contact')}:&nbsp;</Box>
+            <Box {...labelStyles}>{t('common:contact_way')}:&nbsp;</Box>
             <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
               {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
             </Box>
@@ -274,7 +277,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={6} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
             <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage onChange={initUserInfo} />
+              <TeamSelector height={'28px'} w={'100%'} showManage />
             </Flex>
           </Flex>
         )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { Box, Flex, HStack, VStack } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';

@@ -1,9 +1,9 @@
-import {
+import type {
   UpdateDatasetCollaboratorBody,
   DatasetCollaboratorDeleteParams
 } from '@fastgpt/global/core/dataset/collaborator';
 import { DELETE, GET, POST } from '@/web/common/api/request';
-import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import type { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 
 export const getCollaboratorList = (datasetId: string) =>
   GET<CollaboratorItemType[]>('/proApi/core/dataset/collaborator/list', { datasetId });

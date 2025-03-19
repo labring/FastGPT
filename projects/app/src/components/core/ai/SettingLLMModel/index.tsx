@@ -77,7 +77,7 @@ const SettingLLMModel = ({
               value: item.model,
               label: item.name
             }))}
-            onchange={(e) => {
+            onChange={(e) => {
               onChange({
                 ...defaultData,
                 model: e

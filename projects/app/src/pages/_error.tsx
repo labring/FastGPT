@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box } from '@chakra-ui/react';
 import { TrackEventName } from '@/web/common/system/constants';
@@ -57,7 +57,7 @@ function Error() {
     <Box whiteSpace={'pre-wrap'}>
       {`出现未捕获的异常。
 1. 私有部署用户，90%是由于模型配置不正确/模型未启用导致。。
-2. 部分系统不兼容相关API。大部分是苹果的safari 浏览器导致，可以尝试更换 chrome。 
+2. 部分系统不兼容相关API。大部分是苹果的safari 浏览器导致，可以尝试更换 chrome。
 3. 请关闭浏览器翻译功能，部分翻译导致页面崩溃。
 
 排除3后，打开控制台的 console 查看具体报错信息。
