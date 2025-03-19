@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Controller, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex, Switch, Textarea } from '@chakra-ui/react';
@@ -124,7 +124,7 @@ export const ExternalVariableInputItem = ({
   showTag?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { register, control, setValue } = variablesForm;
+  const { register, control } = variablesForm;
 
   return (
     <Box key={item.id} mb={4} pl={1}>
@@ -137,6 +137,12 @@ export const ExternalVariableInputItem = ({
         w={'full'}
       >
         {item.label}
+        {item.required && (
+          <Box position={'absolute'} top={'-2px'} left={'-8px'} color={'red.500'}>
+            *
+          </Box>
+        )}
+        {item.description && <QuestionTip ml={1} label={item.description} />}
         {showTag && (
           <Flex
             color={'primary.600'}
@@ -149,15 +155,9 @@ export const ExternalVariableInputItem = ({
             rounded={'sm'}
           >
             <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-            {t('common:core.chat.Visiable_in_test')}
+            {t('common:core.chat.Variable_Visiable_in_test')}
           </Flex>
         )}
-        {item.required && (
-          <Box position={'absolute'} top={'-2px'} left={'-8px'} color={'red.500'}>
-            *
-          </Box>
-        )}
-        {item.description && <QuestionTip ml={1} label={item.description} />}
       </Box>
       <Controller
         control={control}
@@ -214,8 +214,12 @@ const VariableInput = ({
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const allVariableList = useContextSelector(ChatBoxContext, (v) => v.allVariableList);
 
-  const externalVariableList = allVariableList.filter((item) =>
-    showExternalVariables ? item.type === VariableInputEnum.custom : false
+  const externalVariableList = useMemo(
+    () =>
+      allVariableList.filter((item) =>
+        showExternalVariables ? item.type === VariableInputEnum.custom : false
+      ),
+    [allVariableList, showExternalVariables]
   );
 
   const { getValues, setValue, handleSubmit: handleSubmitChat } = variablesForm;

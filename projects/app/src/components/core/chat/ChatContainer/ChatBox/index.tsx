@@ -155,7 +155,7 @@ const ChatBox = ({
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
   const externalVariableList = useMemo(() => {
-    if (chatType === 'test') {
+    if (chatType === 'chat') {
       return allVariableList.filter((item) => item.type === VariableInputEnum.custom);
     }
     return [];
@@ -950,7 +950,7 @@ const ChatBox = ({
               <VariableInput
                 chatStarted={chatStarted}
                 chatForm={chatForm}
-                showExternalVariables={chatType === 'test'}
+                showExternalVariables={chatType === 'chat'}
               />
             </Box>
           )}

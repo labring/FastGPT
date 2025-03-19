@@ -41,6 +41,8 @@ const ChatHeader = ({
   const chatData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const isPlugin = chatData.app.type === AppTypeEnum.plugin;
+  const router = useRouter();
+  const isChat = router.pathname === '/chat';
 
   return isPc && isPlugin ? null : (
     <Flex
@@ -71,7 +73,7 @@ const ChatHeader = ({
       )}
 
       <Flex gap={2} alignItems={'center'}>
-        {!isVariableVisible && <VariablePopover />}
+        {!isVariableVisible && <VariablePopover showExternalVariables={isChat} />}
 
         {/* control */}
         {!isPlugin && <ToolMenu history={history} />}
