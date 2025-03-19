@@ -385,13 +385,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       </Box>
 
       <ConfirmLeaveTeamModal />
-      {isOpenInvite && userInfo?.team?.teamId && (
-        <InviteModal
-          teamId={userInfo.team.teamId}
-          onClose={onCloseInvite}
-          onSuccess={refetchMembers}
-        />
-      )}
+      {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
     </>
   );
