@@ -127,7 +127,7 @@ const InviteModal = ({
                 {invitationLinkList?.map((item) => {
                   const isForbidden = item.forbidden || new Date(item.expires) < new Date();
                   return (
-                    <Tr key={item._id} overflow={'unset'}>
+                    <Tr key={item.linkId} overflow={'unset'}>
                       <Td maxW="200px" minW="100px">
                         {item.description}
                       </Td>
@@ -202,7 +202,7 @@ const InviteModal = ({
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => onCopy(item._id)}
+                              onClick={() => onCopy(item.linkId)}
                               color="myGray.900"
                             >
                               <Icon name="common/link" w="16px" mr="1" />
@@ -232,7 +232,7 @@ const InviteModal = ({
                                       variant="outline"
                                       colorScheme="red"
                                       onClick={() => {
-                                        onForbid(item._id);
+                                        onForbid(item.linkId);
                                         onClosePopover();
                                       }}
                                     >
@@ -261,7 +261,17 @@ const InviteModal = ({
       </ModalFooter>
       {isOpenCreate && (
         <CreateInvitationModal
-          onClose={() => Promise.all([onCloseCreate(), refetchInvitationLinkList()])}
+          onClose={(linkId?: string) =>
+            Promise.all([
+              onCloseCreate(),
+              refetchInvitationLinkList(),
+              (() => {
+                if (linkId) {
+                  onCopy(linkId);
+                }
+              })()
+            ])
+          }
         />
       )}
     </MyModal>
