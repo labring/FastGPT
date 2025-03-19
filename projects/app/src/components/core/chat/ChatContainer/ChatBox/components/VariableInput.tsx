@@ -29,7 +29,11 @@ export const VariableInputItem = ({
   item: VariableItemType;
   variablesForm: UseFormReturn<any>;
 }) => {
-  const { register, control, setValue } = variablesForm;
+  const {
+    control,
+    setValue,
+    formState: { errors }
+  } = variablesForm;
 
   return (
     <Box key={item.id} mb={4} pl={1}>
@@ -49,37 +53,31 @@ export const VariableInputItem = ({
         )}
         {item.description && <QuestionTip ml={1} label={item.description} />}
       </Box>
-      {item.type === VariableInputEnum.input && (
-        <MyTextarea
-          autoHeight
-          minH={40}
-          maxH={160}
-          bg={'myGray.50'}
-          {...register(`variables.${item.key}`, {
-            required: item.required
-          })}
-        />
-      )}
-      {item.type === VariableInputEnum.textarea && (
-        <Textarea
-          {...register(`variables.${item.key}`, {
-            required: item.required
-          })}
-          rows={5}
-          bg={'myGray.50'}
-          maxLength={item.maxLength || 4000}
-        />
-      )}
-      {item.type === VariableInputEnum.select && (
-        <Controller
-          key={`variables.${item.key}`}
-          control={control}
-          name={`variables.${item.key}`}
-          rules={{ required: item.required }}
-          render={({ field: { ref, value } }) => {
+
+      <Controller
+        key={`variables.${item.key}`}
+        control={control}
+        name={`variables.${item.key}`}
+        rules={{
+          required: item.required
+        }}
+        render={({ field: { onChange, value } }) => {
+          if (item.type === VariableInputEnum.input) {
+            return (
+              <MyTextarea
+                autoHeight
+                minH={40}
+                maxH={160}
+                bg={'myGray.50'}
+                value={value}
+                isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
+                onChange={onChange}
+              />
+            );
+          }
+          if (item.type === VariableInputEnum.select) {
             return (
               <MySelect
-                ref={ref}
                 width={'100%'}
                 list={(item.enums || []).map((item: { value: any }) => ({
                   label: item.value,
@@ -89,27 +87,31 @@ export const VariableInputItem = ({
                 onChange={(e) => setValue(`variables.${item.key}`, e)}
               />
             );
-          }}
-        />
-      )}
-      {item.type === VariableInputEnum.numberInput && (
-        <Controller
-          key={`variables.${item.key}`}
-          control={control}
-          name={`variables.${item.key}`}
-          rules={{ required: item.required, min: item.min, max: item.max }}
-          render={({ field: { value, onChange } }) => (
-            <MyNumberInput
-              step={1}
-              min={item.min}
-              max={item.max}
-              bg={'white'}
+          }
+          if (item.type === VariableInputEnum.numberInput) {
+            return (
+              <MyNumberInput
+                step={1}
+                min={item.min}
+                max={item.max}
+                bg={'white'}
+                value={value}
+                onChange={onChange}
+                isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
+              />
+            );
+          }
+          return (
+            <Textarea
               value={value}
               onChange={onChange}
+              rows={5}
+              bg={'myGray.50'}
+              maxLength={item.maxLength || 4000}
             />
-          )}
-        />
-      )}
+          );
+        }}
+      />
     </Box>
   );
 };
@@ -124,7 +126,7 @@ export const ExternalVariableInputItem = ({
   showTag?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { register, control } = variablesForm;
+  const { control } = variablesForm;
 
   const Label = useMemo(() => {
     return (
@@ -154,6 +156,7 @@ export const ExternalVariableInputItem = ({
     <Box key={item.id} mb={4} pl={1}>
       {Label}
       <Controller
+        key={`variables.${item.key}`}
         control={control}
         name={`variables.${item.key}`}
         render={({ field: { onChange, value } }) => {
@@ -164,7 +167,8 @@ export const ExternalVariableInputItem = ({
                 minH={40}
                 maxH={160}
                 bg={'myGray.50'}
-                {...register(`variables.${item.key}`)}
+                value={value}
+                onChange={onChange}
               />
             );
           }
@@ -283,6 +287,7 @@ const VariableInput = ({
                   size={'sm'}
                   maxW={'100px'}
                   onClick={handleSubmitChat(() => {
+                    console.log('start chat');
                     chatForm.setValue('chatStarted', true);
                   })}
                 >

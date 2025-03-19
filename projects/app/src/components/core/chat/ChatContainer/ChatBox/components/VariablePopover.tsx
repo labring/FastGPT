@@ -45,7 +45,7 @@ const VariablePopover = ({
       trigger={'click'}
       closeOnBlur={true}
       Trigger={
-        <Button variant={'whiteBase'} leftIcon={<MyIcon name={'edit'} w={4} />}>
+        <Button variant={'whiteBase'} size={'sm'} leftIcon={<MyIcon name={'edit'} w={4} />}>
           {t('common:core.module.Variable')}
         </Button>
       }
