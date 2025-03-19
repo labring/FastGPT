@@ -35,15 +35,7 @@ import { useCallback } from 'react';
 
 const CreateInvitationModal = dynamic(() => import('./CreateInvitationModal'));
 
-const InviteModal = ({
-  teamId,
-  onClose,
-  onSuccess
-}: {
-  teamId: string;
-  onClose: () => void;
-  onSuccess: () => void;
-}) => {
+const InviteModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
 
   const {
@@ -57,10 +49,10 @@ const InviteModal = ({
   const { isOpen: isOpenCreate, onOpen: onOpenCreate, onClose: onCloseCreate } = useDisclosure();
 
   const isLoading = isLoadingLink;
+
   const { copyData } = useCopyData();
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-
   const onCopy = useCallback(
     (linkId: string) => {
       const url = location.origin + `/account/team?invitelinkid=${linkId}`;
@@ -76,7 +68,7 @@ const InviteModal = ({
         })
       );
     },
-    [copyData]
+    [copyData, feConfigs?.systemTitle, t, userInfo?.team.memberName, userInfo?.team.teamName]
   );
 
   const { runAsync: onForbid, loading: forbiding } = useRequest2(putForbidInvitationLink, {
@@ -131,13 +123,7 @@ const InviteModal = ({
                       <Td maxW="200px" minW="100px">
                         {item.description}
                       </Td>
-                      <Td>
-                        {isForbidden ? (
-                          <Tag colorSchema="gray">{t('account_team:has_forbidden')}</Tag>
-                        ) : (
-                          format(new Date(item.expires), 'yyyy-MM-dd HH:mm')
-                        )}
-                      </Td>
+                      <Td>{format(new Date(item.expires), 'yyyy-MM-dd HH:mm')}</Td>
                       <Td>
                         {item.usedTimesLimit === -1
                           ? t('account_team:unlimited')
@@ -153,7 +139,6 @@ const InviteModal = ({
                                 cursor="pointer"
                                 _hover={{ bg: 'myGray.100' }}
                                 p="1.5"
-                                w="fit-content"
                               >
                                 <AvatarGroup max={3} avatars={item.members.map((i) => i.avatar)} />
                               </Box>
@@ -162,7 +147,7 @@ const InviteModal = ({
                             closeOnBlur={true}
                           >
                             {() => (
-                              <Box py="4" maxH="200px" w="fit-content">
+                              <Box py="4" maxH="200px">
                                 <Flex mx="4" justifyContent="center" alignItems={'center'}>
                                   <Box>{t('account_team:has_invited')}</Box>
                                   <Box
@@ -175,15 +160,16 @@ const InviteModal = ({
                                     {item.members.length}
                                   </Box>
                                 </Flex>
-                                <Divider my="2" mx="4" />
+                                <Divider my="2" />
                                 <Grid
                                   w="fit-content"
-                                  mt="2"
-                                  gridRowGap="4"
+                                  mt="4"
+                                  gap={4}
                                   gridTemplateColumns="1fr 1fr"
                                   overflow="auto"
                                   alignItems="center"
                                   mx="4"
+                                  maxH={'250px'}
                                 >
                                   {item.members.map((member) => (
                                     <Box key={member.tmbId} justifySelf="start">
@@ -197,7 +183,9 @@ const InviteModal = ({
                         )}
                       </Td>
                       <Td>
-                        {!isForbidden && (
+                        {isForbidden ? (
+                          <Tag colorSchema="red">{t('account_team:has_forbidden')}</Tag>
+                        ) : (
                           <>
                             <Button
                               size="sm"
@@ -261,17 +249,11 @@ const InviteModal = ({
       </ModalFooter>
       {isOpenCreate && (
         <CreateInvitationModal
-          onClose={(linkId?: string) =>
-            Promise.all([
-              onCloseCreate(),
-              refetchInvitationLinkList(),
-              (() => {
-                if (linkId) {
-                  onCopy(linkId);
-                }
-              })()
-            ])
-          }
+          onSuccess={(linkId) => {
+            refetchInvitationLinkList();
+            onCopy(linkId);
+          }}
+          onClose={onCloseCreate}
         />
       )}
     </MyModal>

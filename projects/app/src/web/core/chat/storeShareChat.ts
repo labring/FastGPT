@@ -1,6 +1,4 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet(
   'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWSYZ1234567890_',

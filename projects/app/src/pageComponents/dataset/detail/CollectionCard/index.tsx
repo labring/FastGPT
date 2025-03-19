@@ -29,7 +29,6 @@ import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
-  DatasetTypeEnum,
   DatasetCollectionDataProcessModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
@@ -45,7 +44,10 @@ import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { checkCollectionIsFolder } from '@fastgpt/global/core/dataset/collection/utils';
+import {
+  checkCollectionIsFolder,
+  collectionCanSync
+} from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -315,8 +317,7 @@ const CollectionCard = () => {
                         menuList={[
                           {
                             children: [
-                              ...(collection.type === DatasetCollectionTypeEnum.link ||
-                              datasetDetail.type === DatasetTypeEnum.apiDataset
+                              ...(collectionCanSync(collection.type)
                                 ? [
                                     {
                                       label: (

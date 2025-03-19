@@ -398,6 +398,9 @@ importers:
       use-context-selector:
         specifier: ^1.4.4
         version: 1.4.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(scheduler@0.23.2)
+      zustand:
+        specifier: ^4.3.5
+        version: 4.5.6(@types/react@18.3.1)(immer@9.0.21)(react@18.3.1)
     devDependencies:
       '@types/js-cookie':
         specifier: ^3.0.5
@@ -588,9 +591,6 @@ importers:
       use-context-selector:
         specifier: ^1.4.4
         version: 1.4.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(scheduler@0.23.2)
-      zustand:
-        specifier: ^4.3.5
-        version: 4.5.6(@types/react@18.3.1)(immer@9.0.21)(react@18.3.1)
     devDependencies:
       '@svgr/webpack':
         specifier: ^6.5.1
