@@ -77,7 +77,7 @@ async function handler(
     return Promise.reject(i18nT('dataset:collection_not_support_retraining'));
   })();
 
-  const rawText = await readDatasetSourceRawText({
+  const { title, rawText } = await readDatasetSourceRawText({
     teamId,
     tmbId,
     customPdfParse,
@@ -100,7 +100,7 @@ async function handler(
         teamId: collection.teamId,
         tmbId: collection.tmbId,
         datasetId: collection.dataset._id,
-        name: collection.name,
+        name: title || collection.name,
         type: collection.type,
 
         customPdfParse,

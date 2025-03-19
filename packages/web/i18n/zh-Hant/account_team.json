@@ -21,7 +21,7 @@
   "edit_member_tip": "使用者名稱",
   "edit_info": "編輯訊息",
   "edit_org_info": "編輯部門資訊",
-  "expires": "有效期",
+  "expires": "過期時間",
   "forbid_hint": "停用後，該邀請連結將失效。 該操作不可撤銷，是否確認停用？",
   "forbid_success": "停用成功",
   "forbidden": "停用",
