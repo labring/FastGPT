@@ -21,7 +21,7 @@
   "edit_member_tip": "username",
   "edit_info": "Edit information",
   "edit_org_info": "Edit organization information",
-  "expires": "Expiration",
+  "expires": "Expiration time",
   "forbid_hint": "After forbidden, this invitation link will become invalid. This action is irreversible. Are you sure you want to deactivate?",
   "forbid_success": "Forbid success",
   "forbidden": "Forbidden",

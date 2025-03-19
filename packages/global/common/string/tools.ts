@@ -56,7 +56,7 @@ export const replaceSensitiveText = (text: string) => {
 };
 
 /* Make sure the first letter is definitely lowercase */
-export const getNanoid = (size = 12) => {
+export const getNanoid = (size = 16) => {
   const firstChar = customAlphabet('abcdefghijklmnopqrstuvwxyz', 1)();
 
   if (size === 1) return firstChar;
