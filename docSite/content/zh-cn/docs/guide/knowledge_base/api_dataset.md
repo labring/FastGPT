@@ -124,6 +124,7 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
     "success": true,
     "message": "",
     "data": {
+        "title": "文档标题",
         "content": "FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开箱即用的数据处理、模型调用等能力。同时可以通过 Flow 可视化进行工作流编排，从而实现复杂的问答场景！\n",
         "previewUrl": "xxxx"
     }
@@ -131,10 +132,13 @@ curl --location --request GET '{{baseURL}}/v1/file/content?id=xx' \
 ```
 
 {{% alert icon=" " context="success" %}}
-二选一返回，如果同时返回则 content 优先级更高。
 
+- title - 文件标题。
 - content - 文件内容，直接拿来用。
 - previewUrl - 文件链接，系统会请求该地址获取文件内容。
+
+`content`和`previewUrl`二选一返回，如果同时返回则 `content` 优先级更高，返回 `previewUrl`时，则会访问该链接进行文档内容读取。
+
 {{% /alert %}}
 
 {{< /markdownify >}}

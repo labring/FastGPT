@@ -1,3 +1,5 @@
+import { RequireOnlyOne } from '../../common/type/utils';
+
 export type APIFileItem = {
   id: string;
   parentId: string | null;
@@ -15,9 +17,9 @@ export type APIFileServer = {
 
 export type APIFileListResponse = APIFileItem[];
 
-export type APIFileContentResponse = {
-  content?: string;
-  previewUrl?: string;
+export type ApiFileReadContentResponse = {
+  title?: string;
+  rawText: string;
 };
 
 export type APIFileReadResponse = {
