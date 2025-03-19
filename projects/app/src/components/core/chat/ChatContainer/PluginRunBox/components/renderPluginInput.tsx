@@ -255,7 +255,7 @@ const RenderPluginInput = ({
               rounded={'sm'}
             >
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-              {t('common:core.chat.Variable_Visiable_in_test')}
+              {t('chat:variable_invisable_in_share')}
             </Flex>
           )}
         </Flex>
