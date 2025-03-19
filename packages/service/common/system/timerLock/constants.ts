@@ -5,9 +5,7 @@ export enum TimerIdEnum {
   clearExpiredSubPlan = 'clearExpiredSubPlan',
   updateStandardPlan = 'updateStandardPlan',
   scheduleTriggerApp = 'scheduleTriggerApp',
-  notification = 'notification',
-
-  syncDataset = 'syncDataset'
+  notification = 'notification'
 }
 
 export enum LockNotificationEnum {
