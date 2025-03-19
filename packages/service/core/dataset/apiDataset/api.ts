@@ -1,6 +1,6 @@
 import type {
-  APIFileContentResponse,
   APIFileListResponse,
+  ApiFileReadContentResponse,
   APIFileReadResponse,
   APIFileServer
 } from '@fastgpt/global/core/dataset/apiDataset';
@@ -8,6 +8,7 @@ import axios, { Method } from 'axios';
 import { addLog } from '../../../common/system/log';
 import { readFileRawTextByUrl } from '../read';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 type ResponseDataType = {
   success: boolean;
@@ -118,17 +119,24 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
-  }) => {
-    const data = await request<APIFileContentResponse>(
-      `/v1/file/content`,
-      { id: apiFileId },
-      'GET'
-    );
+  }): Promise<ApiFileReadContentResponse> => {
+    const data = await request<
+      {
+        title?: string;
+      } & RequireOnlyOne<{
+        content: string;
+        previewUrl: string;
+      }>
+    >(`/v1/file/content`, { id: apiFileId }, 'GET');
+    const title = data.title;
     const content = data.content;
     const previewUrl = data.previewUrl;
 
     if (content) {
-      return content;
+      return {
+        title,
+        rawText: content
+      };
     }
     if (previewUrl) {
       const rawText = await readFileRawTextByUrl({
@@ -138,7 +146,10 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         relatedId: apiFileId,
         customPdfParse
       });
-      return rawText;
+      return {
+        title,
+        rawText
+      };
     }
     return Promise.reject('Invalid content type: content or previewUrl is required');
   };

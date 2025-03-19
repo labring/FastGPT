@@ -22,7 +22,13 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 
-function CreateInvitationModal({ onClose }: { onClose: (linkId?: string) => void }) {
+function CreateInvitationModal({
+  onSuccess,
+  onClose
+}: {
+  onSuccess: (linkId: string) => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const expiresOptions: Array<{ label: string; value: InvitationLinkExpiresType }> = [
     { label: t('account_team:30mins'), value: '30m' }, // 30 mins
@@ -43,12 +49,11 @@ function CreateInvitationModal({ onClose }: { onClose: (linkId?: string) => void
 
   const { runAsync: createInvitationLink, loading } = useRequest2(postCreateInvitationLink, {
     manual: true,
-    successToast: t('common:common.Create Success'),
     errorToast: t('common:common.Create Failed'),
     onSuccess: (data) => {
-      onClose(data);
-    },
-    onFinally: () => onClose()
+      onSuccess(data);
+      onClose();
+    }
   });
 
   return (

@@ -1,6 +1,4 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import axios from 'axios';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type {
