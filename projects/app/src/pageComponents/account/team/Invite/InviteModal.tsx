@@ -1,6 +1,6 @@
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getInvitationLinkList, putUpdateInvitationInfo } from '@/web/support/user/team/api';
+import { getInvitationLinkList, putForbidInvitationLink } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
@@ -79,18 +79,11 @@ const InviteModal = ({
     [copyData]
   );
 
-  const { runAsync: onForbid, loading: forbiding } = useRequest2(
-    (linkId: string) =>
-      putUpdateInvitationInfo({
-        linkId,
-        forbidden: true
-      }),
-    {
-      manual: true,
-      onSuccess: refetchInvitationLinkList,
-      successToast: t('account_team:forbid_success')
-    }
-  );
+  const { runAsync: onForbid, loading: forbiding } = useRequest2(putForbidInvitationLink, {
+    manual: true,
+    onSuccess: refetchInvitationLinkList,
+    successToast: t('account_team:forbid_success')
+  });
 
   return (
     <MyModal
@@ -134,7 +127,7 @@ const InviteModal = ({
                 {invitationLinkList?.map((item) => {
                   const isForbidden = item.forbidden || new Date(item.expires) < new Date();
                   return (
-                    <Tr key={item._id} overflow={'unset'}>
+                    <Tr key={item.linkId} overflow={'unset'}>
                       <Td maxW="200px" minW="100px">
                         {item.description}
                       </Td>
@@ -209,7 +202,7 @@ const InviteModal = ({
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => onCopy(item._id)}
+                              onClick={() => onCopy(item.linkId)}
                               color="myGray.900"
                             >
                               <Icon name="common/link" w="16px" mr="1" />
@@ -239,7 +232,7 @@ const InviteModal = ({
                                       variant="outline"
                                       colorScheme="red"
                                       onClick={() => {
-                                        onForbid(item._id);
+                                        onForbid(item.linkId);
                                         onClosePopover();
                                       }}
                                     >
@@ -268,7 +261,17 @@ const InviteModal = ({
       </ModalFooter>
       {isOpenCreate && (
         <CreateInvitationModal
-          onClose={() => Promise.all([onCloseCreate(), refetchInvitationLinkList()])}
+          onClose={(linkId?: string) =>
+            Promise.all([
+              onCloseCreate(),
+              refetchInvitationLinkList(),
+              (() => {
+                if (linkId) {
+                  onCopy(linkId);
+                }
+              })()
+            ])
+          }
         />
       )}
     </MyModal>
