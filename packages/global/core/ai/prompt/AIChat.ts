@@ -7,7 +7,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: i18nT('app:template.standard_template_des'),
     value: {
-      ['490']: `{
+      ['4.9.0']: `{
   "sourceName": "{{source}}",
   "updateTime": "{{updateTime}}",
   "content": "{{q}}\n{{a}}"
@@ -19,7 +19,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.qa_template'),
     desc: i18nT('app:template.qa_template_des'),
     value: {
-      ['490']: `<Question>
+      ['4.9.0']: `<Question>
 {{q}}
 </Question>
 <Answer>
@@ -31,7 +31,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: i18nT('app:template.standard_strict_des'),
     value: {
-      ['490']: `{
+      ['4.9.0']: `{
   "sourceName": "{{source}}",
   "updateTime": "{{updateTime}}",
   "content": "{{q}}\n{{a}}"
@@ -43,7 +43,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.hard_strict'),
     desc: i18nT('app:template.hard_strict_des'),
     value: {
-      ['490']: `<Question>
+      ['4.9.0']: `<Question>
 {{q}}
 </Question>
 <Answer>
@@ -53,7 +53,7 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   }
 ];
 
-export const getQuoteTemplate = (version: string) => {
+export const getQuoteTemplate = (version?: string) => {
   const defaultTemplate = Prompt_QuoteTemplateList[0].value;
 
   return getPromptByVersion(version, defaultTemplate);
@@ -64,7 +64,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
-      ['490']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.0']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -84,7 +84,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.qa_template'),
     desc: '',
     value: {
-      ['490']: `使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.0']: `使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -103,7 +103,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
-      ['490']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.0']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -127,7 +127,7 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.hard_strict'),
     desc: '',
     value: {
-      ['490']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.0']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -157,7 +157,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
-      ['490']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.0']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -175,7 +175,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.qa_template'),
     desc: '',
     value: {
-      ['490']: `使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.0']: `使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -192,7 +192,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
-      ['490']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+      ['4.9.0']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
 {{quote}}
@@ -214,7 +214,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.hard_strict'),
     desc: '',
     value: {
-      ['490']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+      ['4.9.0']: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
 
 <QA>
 {{quote}}
@@ -237,7 +237,7 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   }
 ];
 
-export const getQuotePrompt = (version: string, role: 'user' | 'system') => {
+export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user') => {
   const quotePromptTemplates =
     role === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
 
@@ -249,7 +249,7 @@ export const getQuotePrompt = (version: string, role: 'user' | 'system') => {
 // Document quote prompt
 export const getDocumentQuotePrompt = (version: string) => {
   const promptMap = {
-    ['490']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
+    ['4.9.0']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
   <FilesContent>
   {{quote}}
   </FilesContent>

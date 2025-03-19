@@ -59,8 +59,7 @@ export const emptyTemplates: Record<
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: 'core.app.Question Guide',
             value: {
-              open: false,
-              customPrompt: 'v491'
+              open: false
             }
           },
           {
@@ -297,8 +296,7 @@ export const emptyTemplates: Record<
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
             label: 'core.app.Question Guide',
             value: {
-              open: false,
-              customPrompt: 'v491'
+              open: false
             }
           },
           {

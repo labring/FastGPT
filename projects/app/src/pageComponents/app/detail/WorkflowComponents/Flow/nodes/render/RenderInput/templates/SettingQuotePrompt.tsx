@@ -223,7 +223,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
-                  default: getQuoteTemplate(nodeVersion || '')
+                  default: getQuoteTemplate(nodeVersion)
                 })}
               ></QuestionTip>
               <Box flex={1} />
@@ -258,7 +258,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_prompt_tip', {
-                  default: getQuotePrompt(nodeVersion || '', aiChatQuoteRole)
+                  default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
                 })}
               ></QuestionTip>
             </Flex>
@@ -267,7 +267,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
               title={t('common:core.app.Quote prompt')}
               minH={300}
               placeholder={t('workflow:quote_prompt_tip', {
-                default: getQuotePrompt(nodeVersion || '', aiChatQuoteRole)
+                default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
               })}
               value={aiChatQuotePrompt}
               onChange={(e) => {

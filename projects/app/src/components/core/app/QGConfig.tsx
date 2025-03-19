@@ -168,7 +168,7 @@ const QGConfigModal = ({
                     }
                   }}
                 >
-                  {getQuestionGuidePrompt()}
+                  {customPrompt || getQuestionGuidePrompt()}
                 </Box>
               </Box>
             </>
@@ -177,7 +177,7 @@ const QGConfigModal = ({
       </MyModal>
       {isOpenCustomPrompt && (
         <CustomPromptEditor
-          defaultValue={getQuestionGuidePrompt()}
+          defaultValue={customPrompt}
           defaultPrompt={getQuestionGuidePrompt()}
           footerPrompt={getQuestionGuideFooterPrompt()}
           onChange={(e) => {

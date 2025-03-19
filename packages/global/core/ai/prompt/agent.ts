@@ -26,20 +26,28 @@ A2:
 };
 
 export const getPromptByVersion = (version?: string, promptMap: Record<string, string> = {}) => {
+  const versions = Object.keys(promptMap).sort((a, b) => {
+    const [majorA, minorA, patchA] = a.split('.').map(Number);
+    const [majorB, minorB, patchB] = b.split('.').map(Number);
+
+    if (majorA !== majorB) return majorB - majorA;
+    if (minorA !== minorB) return minorB - minorA;
+    return patchB - patchA;
+  });
+
   if (!version) {
-    return Object.values(promptMap)[0];
+    return promptMap[versions[0]];
   }
 
   if (version in promptMap) {
     return promptMap[version];
   }
-
-  return Object.values(promptMap)[Object.values(promptMap).length - 1];
+  return promptMap[versions[versions.length - 1]];
 };
 
 export const getExtractJsonPrompt = (version?: string) => {
   const promptMap: Record<string, string> = {
-    ['481']: `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
+    ['4.8.1']: `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
 <提取要求>
 {{description}}
 </提取要求>
@@ -66,7 +74,7 @@ export const getExtractJsonPrompt = (version?: string) => {
 
 export const getExtractJsonToolPrompt = (version?: string) => {
   const promptMap: Record<string, string> = {
-    ['481']: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
+    ['4.8.1']: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
 """
 - {{description}}
 - 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
@@ -82,7 +90,7 @@ export const getExtractJsonToolPrompt = (version?: string) => {
 
 export const getCQPrompt = (version?: string) => {
   const promptMap: Record<string, string> = {
-    ['481']: `请帮我执行一个"问题分类"任务，将问题分类为以下几种类型之一：
+    ['4.8.1']: `请帮我执行一个"问题分类"任务，将问题分类为以下几种类型之一：
 
 """
 {{typeList}}
