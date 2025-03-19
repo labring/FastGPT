@@ -21,7 +21,6 @@ import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fe
 import type {
   InvitationInfoType,
   InvitationLinkCreateType,
-  InvitationLinkUpdateType,
   InvitationType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
 
@@ -66,9 +65,8 @@ export const postAcceptInvitationLink = (linkId: string) =>
 
 export const getInvitationInfo = (linkId: string) =>
   GET<InvitationInfoType>(`/proApi/support/user/team/invitationLink/info`, { linkId });
-
-export const putUpdateInvitationInfo = (data: InvitationLinkUpdateType) =>
-  PUT('/proApi/support/user/team/invitationLink/update', data);
+export const putForbidInvitationLink = (linkId: string) =>
+  PUT<string>(`/proApi/support/user/team/invitationLink/forbid`, { linkId });
 
 /* -------------- team collaborator -------------------- */
 export const getTeamClbs = () =>

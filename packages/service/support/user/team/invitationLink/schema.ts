@@ -1,15 +1,18 @@
-import {
-  TeamCollectionName,
-  TeamMemberCollectionName
-} from '@fastgpt/global/support/user/team/constant';
+import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 import { InvitationSchemaType } from './type';
-import addDays from 'date-fns/esm/fp/addDays/index.js';
+import { randomUUID } from 'crypto';
 const { Schema } = connectionMongo;
 
 export const InvitationCollectionName = 'team_invitation_links';
 
 const InvitationSchema = new Schema({
+  linkId: {
+    type: String,
+    required: true,
+    unique: true,
+    default: () => randomUUID()
+  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
