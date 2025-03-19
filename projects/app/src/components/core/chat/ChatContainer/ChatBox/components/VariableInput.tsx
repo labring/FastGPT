@@ -126,22 +126,10 @@ export const ExternalVariableInputItem = ({
   const { t } = useTranslation();
   const { register, control } = variablesForm;
 
-  return (
-    <Box key={item.id} mb={4} pl={1}>
-      <Box
-        as={'label'}
-        display={'flex'}
-        position={'relative'}
-        mb={1}
-        alignItems={'center'}
-        w={'full'}
-      >
+  const Label = useMemo(() => {
+    return (
+      <Box display={'flex'} position={'relative'} mb={1} alignItems={'center'} w={'full'}>
         {item.label}
-        {item.required && (
-          <Box position={'absolute'} top={'-2px'} left={'-8px'} color={'red.500'}>
-            *
-          </Box>
-        )}
         {item.description && <QuestionTip ml={1} label={item.description} />}
         {showTag && (
           <Flex
@@ -155,22 +143,19 @@ export const ExternalVariableInputItem = ({
             rounded={'sm'}
           >
             <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-            {t('common:core.chat.Variable_Visiable_in_test')}
+            {t('chat:variable_invisable_in_share')}
           </Flex>
         )}
       </Box>
+    );
+  }, [item.description, item.label, showTag, t]);
+
+  return (
+    <Box key={item.id} mb={4} pl={1}>
+      {Label}
       <Controller
         control={control}
         name={`variables.${item.key}`}
-        rules={{
-          required: item.required,
-          validate: (value) => {
-            if (item.valueType === WorkflowIOValueTypeEnum.boolean) {
-              return value !== undefined;
-            }
-            return !!value;
-          }
-        }}
         render={({ field: { onChange, value } }) => {
           if (item.valueType === WorkflowIOValueTypeEnum.string) {
             return (
@@ -179,9 +164,7 @@ export const ExternalVariableInputItem = ({
                 minH={40}
                 maxH={160}
                 bg={'myGray.50'}
-                {...register(`variables.${item.key}`, {
-                  required: item.required
-                })}
+                {...register(`variables.${item.key}`)}
               />
             );
           }
@@ -231,7 +214,7 @@ const VariableInput = ({
         setValue(`variables.${item.key}`, item.defaultValue);
       }
     });
-  }, [variableList]);
+  }, [allVariableList, getValues, setValue, variableList]);
 
   return (
     <Box py={3}>
@@ -257,7 +240,7 @@ const VariableInput = ({
               rounded={'sm'}
             >
               <MyIcon name={'common/info'} color={'primary.600'} w={4} />
-              {t('common:core.chat.Visiable_in_test')}
+              {t('chat:variable_invisable_in_share')}
             </Flex>
             {externalVariableList.map((item) => (
               <ExternalVariableInputItem key={item.id} item={item} variablesForm={variablesForm} />

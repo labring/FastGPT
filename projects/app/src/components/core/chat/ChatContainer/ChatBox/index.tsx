@@ -921,14 +921,14 @@ const ChatBox = ({
 
     const container = ScrollContainerRef.current;
     if (container) {
-      container.addEventListener('scroll', checkVariableVisibility);
       checkVariableVisibility();
+      container.addEventListener('scroll', checkVariableVisibility);
 
       return () => {
         container.removeEventListener('scroll', checkVariableVisibility);
       };
     }
-  }, [setIsVariableVisible]);
+  }, [chatType, setIsVariableVisible]);
 
   const RenderRecords = useMemo(() => {
     return (
