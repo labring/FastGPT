@@ -169,7 +169,9 @@ export const DatasetSelectModal = ({
                         alignItems={'center'}
                         fontSize={'sm'}
                         color={
-                          activeVectorModel === item.vectorModel.name ? 'primary.600' : 'myGray.500'
+                          activeVectorModel === item.vectorModel.model
+                            ? 'primary.600'
+                            : 'myGray.500'
                         }
                       >
                         {item.type === DatasetTypeEnum.folder ? (
