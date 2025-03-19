@@ -429,8 +429,6 @@
   "core.chat.Start Chat": "開始對話",
   "core.chat.Type a message": "輸入問題，按 [Enter] 傳送 / 按 [Ctrl(Alt/Shift) + Enter] 換行",
   "core.chat.Unpin": "取消釘選",
-  "core.chat.Variable_Visiable_in_test": "該變量在免登錄鏈接中不可見",
-  "core.chat.Visiable_in_test": "自定義變量在免登錄鏈接中不可見",
   "core.chat.You need to a chat app": "您沒有可用的應用程式",
   "core.chat.error.Chat error": "對話發生錯誤",
   "core.chat.error.Messages empty": "API 內容為空，可能是文字過長",
