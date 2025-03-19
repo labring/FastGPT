@@ -297,8 +297,10 @@ const InputTypeConfig = ({
             <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('common:core.module.Default Value')}
             </FormLabel>
-            <Flex alignItems={'start'} flex={1} h={10}>
-              {inputType === FlowNodeInputTypeEnum.numberInput && (
+            <Flex alignItems={'center'} flex={1} h={10}>
+              {(inputType === FlowNodeInputTypeEnum.numberInput ||
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
                   min={min}
@@ -310,7 +312,8 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
-                inputType === VariableInputEnum.custom) && (
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
                   {...register('defaultValue')}
                   bg={'myGray.50'}
@@ -319,7 +322,13 @@ const InputTypeConfig = ({
                   maxH={100}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.JSONEditor && (
+              {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
+                (inputType === VariableInputEnum.custom &&
+                  ![
+                    WorkflowIOValueTypeEnum.number,
+                    WorkflowIOValueTypeEnum.string,
+                    WorkflowIOValueTypeEnum.boolean
+                  ].includes(valueType))) && (
                 <JsonEditor
                   bg={'myGray.50'}
                   resize
@@ -330,7 +339,9 @@ const InputTypeConfig = ({
                   defaultValue={defaultValue}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.switch && (
+              {(inputType === FlowNodeInputTypeEnum.switch ||
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Switch {...register('defaultValue')} />
               )}
               {inputType === FlowNodeInputTypeEnum.select && (
