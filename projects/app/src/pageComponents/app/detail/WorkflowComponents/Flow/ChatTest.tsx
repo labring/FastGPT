@@ -121,7 +121,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
               <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
               {t('common:core.chat.Run test')}
             </Flex>
-            {!isVariableVisible && <VariablePopover showExternalVariables={true} />}
+            {!isVariableVisible && <VariablePopover showExternalVariables />}
             <Box flex={1} />
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
