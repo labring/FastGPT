@@ -29,7 +29,11 @@ export const VariableInputItem = ({
   item: VariableItemType;
   variablesForm: UseFormReturn<any>;
 }) => {
-  const { register, control, setValue } = variablesForm;
+  const {
+    control,
+    setValue,
+    formState: { errors }
+  } = variablesForm;
 
   return (
     <Box key={item.id} mb={4} pl={1}>
@@ -54,6 +58,9 @@ export const VariableInputItem = ({
         key={`variables.${item.key}`}
         control={control}
         name={`variables.${item.key}`}
+        rules={{
+          required: item.required
+        }}
         render={({ field: { onChange, value } }) => {
           if (item.type === VariableInputEnum.input) {
             return (
@@ -63,6 +70,7 @@ export const VariableInputItem = ({
                 maxH={160}
                 bg={'myGray.50'}
                 value={value}
+                isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
                 onChange={onChange}
               />
             );
@@ -89,14 +97,14 @@ export const VariableInputItem = ({
                 bg={'white'}
                 value={value}
                 onChange={onChange}
+                isInvalid={errors?.variables && Object.keys(errors.variables).includes(item.key)}
               />
             );
           }
           return (
             <Textarea
-              {...register(`variables.${item.key}`, {
-                required: item.required
-              })}
+              value={value}
+              onChange={onChange}
               rows={5}
               bg={'myGray.50'}
               maxLength={item.maxLength || 4000}
@@ -279,6 +287,7 @@ const VariableInput = ({
                   size={'sm'}
                   maxW={'100px'}
                   onClick={handleSubmitChat(() => {
+                    console.log('start chat');
                     chatForm.setValue('chatStarted', true);
                   })}
                 >
