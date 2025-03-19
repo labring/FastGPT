@@ -31,7 +31,10 @@ import { WorkflowContext } from '../../context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppContext } from '../../../context';
-import { VariableInputItem } from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
+import {
+  ExternalVariableInputItem,
+  VariableInputItem
+} from '@/components/core/chat/ChatContainer/ChatBox/components/VariableInput';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { WorkflowNodeEdgeContext } from '../../context/workflowInitContext';
@@ -58,13 +61,17 @@ export const useDebug = () => {
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
-  const filteredVar = useMemo(() => {
-    const variables = appDetail.chatConfig?.variables;
-    return variables?.filter((item) => item.type !== VariableInputEnum.custom) || [];
+  const { filteredVar, customVar, variables } = useMemo(() => {
+    const variables = appDetail.chatConfig?.variables || [];
+    return {
+      filteredVar: variables.filter((item) => item.type !== VariableInputEnum.custom) || [],
+      customVar: variables.filter((item) => item.type === VariableInputEnum.custom) || [],
+      variables
+    };
   }, [appDetail.chatConfig?.variables]);
 
   const [defaultGlobalVariables, setDefaultGlobalVariables] = useState<Record<string, any>>(
-    filteredVar.reduce(
+    variables.reduce(
       (acc, item) => {
         acc[item.key] = item.defaultValue;
         return acc;
@@ -241,7 +248,7 @@ export const useDebug = () => {
         px={0}
       >
         <Box flex={'1 0 0'} overflow={'auto'} px={6}>
-          {filteredVar.length > 0 && (
+          {variables.length > 0 && (
             <LightRowTabs<TabEnum>
               gap={3}
               ml={-2}
@@ -256,6 +263,14 @@ export const useDebug = () => {
             />
           )}
           <Box display={currentTab === TabEnum.global ? 'block' : 'none'}>
+            {customVar.map((item) => (
+              <ExternalVariableInputItem
+                key={item.id}
+                item={{ ...item, key: item.key }}
+                variablesForm={variablesForm}
+                showTag={true}
+              />
+            ))}
             {filteredVar.map((item) => (
               <VariableInputItem
                 key={item.id}
@@ -354,13 +369,15 @@ export const useDebug = () => {
       </MyRightDrawer>
     );
   }, [
-    defaultGlobalVariables,
-    filteredVar,
-    onStartNodeDebug,
-    runtimeEdges,
-    runtimeNodeId,
     runtimeNodes,
-    t
+    runtimeEdges,
+    defaultGlobalVariables,
+    t,
+    variables.length,
+    customVar,
+    filteredVar,
+    runtimeNodeId,
+    onStartNodeDebug
   ]);
 
   return {
