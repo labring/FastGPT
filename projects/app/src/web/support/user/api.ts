@@ -96,7 +96,7 @@ export const getCaptchaPic = (username: string) =>
     captchaImage: string;
   }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
 
-export const postSyncMembers = () => POST('/proApi/support/user/team/org/sync');
+export const postSyncMembers = () => POST('/proApi/support/user/sync');
 
 export const GetSearchUserGroupOrg = (
   searchKey: string,
