@@ -59,6 +59,7 @@
   "to_dataset": "前往知识库",
   "unsupported_file_type": "不支持的文件类型",
   "upload": "上传",
+  "variable_invisable_in_share": "自定义变量在免登录链接中不可见",
   "view_citations": "查看引用",
   "web_site_sync": "Web站点同步"
 }

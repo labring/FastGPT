@@ -430,8 +430,6 @@
   "core.chat.Start Chat": "Start Chat",
   "core.chat.Type a message": "Enter a Question, Press [Enter] to Send / Press [Ctrl(Alt/Shift) + Enter] for New Line",
   "core.chat.Unpin": "Unpin",
-  "core.chat.Variable_Visiable_in_test": "This variable is not visible in the login-free link",
-  "core.chat.Visiable_in_test": "Custom variables are not visible in login-free links",
   "core.chat.You need to a chat app": "You Do Not Have an Available App",
   "core.chat.error.Chat error": "Chat Error",
   "core.chat.error.Messages empty": "API Content is Empty, Possibly Due to Text Being Too Long",
