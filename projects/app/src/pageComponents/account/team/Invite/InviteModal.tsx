@@ -1,6 +1,6 @@
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getInvitationLinkList, putUpdateInvitationInfo } from '@/web/support/user/team/api';
+import { getInvitationLinkList, putForbidInvitationLink } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
   Box,
@@ -79,18 +79,11 @@ const InviteModal = ({
     [copyData]
   );
 
-  const { runAsync: onForbid, loading: forbiding } = useRequest2(
-    (linkId: string) =>
-      putUpdateInvitationInfo({
-        linkId,
-        forbidden: true
-      }),
-    {
-      manual: true,
-      onSuccess: refetchInvitationLinkList,
-      successToast: t('account_team:forbid_success')
-    }
-  );
+  const { runAsync: onForbid, loading: forbiding } = useRequest2(putForbidInvitationLink, {
+    manual: true,
+    onSuccess: refetchInvitationLinkList,
+    successToast: t('account_team:forbid_success')
+  });
 
   return (
     <MyModal
