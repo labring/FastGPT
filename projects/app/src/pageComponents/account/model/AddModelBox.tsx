@@ -36,9 +36,9 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { Prompt_CQJson, Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { getCQPrompt, getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 
 export const AddModelButton = ({
   onCreate,
@@ -677,7 +677,9 @@ export const ModelEditModal = ({
                       <HStack spacing={1}>
                         <Box>{t('account:model.custom_cq_prompt')}</Box>
                         <QuestionTip
-                          label={t('account:model.custom_cq_prompt_tip', { prompt: Prompt_CQJson })}
+                          label={t('account:model.custom_cq_prompt_tip', {
+                            prompt: getCQPrompt()
+                          })}
                         />
                       </HStack>
                     </Td>
@@ -691,7 +693,7 @@ export const ModelEditModal = ({
                         <Box>{t('account:model.custom_extract_prompt')}</Box>
                         <QuestionTip
                           label={t('account:model.custom_extract_prompt_tip', {
-                            prompt: Prompt_ExtractJson
+                            prompt: getExtractJsonPrompt()
                           })}
                         />
                       </HStack>
