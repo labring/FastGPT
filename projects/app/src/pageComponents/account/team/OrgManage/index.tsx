@@ -94,9 +94,11 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const currentOrgs = useMemo(() => {
     if (orgs.length === 0) return [];
-    // Auto select the first org(root org is team)
     if (parentPath === '') {
-      setParentPath(getOrgChildrenPath(orgs[0]));
+      const rootOrg = orgs.find((org) => org.path === '');
+      if (rootOrg) {
+        setParentPath(getOrgChildrenPath(rootOrg));
+      }
       return [];
     }
 
