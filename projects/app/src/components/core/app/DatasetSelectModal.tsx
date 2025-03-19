@@ -41,17 +41,28 @@ export const DatasetSelectModal = ({
   const { Loading } = useLoading();
 
   const filterDatasets = useMemo(() => {
-    const filtered = {
-      selected: datasets.filter((item) =>
-        selectedDatasets.find((dataset) => dataset.datasetId === item._id)
-      ),
+    const selectedInDatasets = datasets.filter((item) =>
+      selectedDatasets.some((dataset) => dataset.datasetId === item._id)
+    );
+
+    const selectedNotInDatasets = selectedDatasets
+      .filter((selected) => !datasets.some((dataset) => dataset._id === selected.datasetId))
+      .map((selected) => ({
+        _id: selected.datasetId,
+        avatar: selected.avatar,
+        name: selected.name,
+        vectorModel: selected.vectorModel
+      }));
+
+    return {
+      selected: [...selectedInDatasets, ...selectedNotInDatasets],
       unSelected: datasets.filter(
-        (item) => !selectedDatasets.find((dataset) => dataset.datasetId === item._id)
+        (item) => !selectedDatasets.some((dataset) => dataset.datasetId === item._id)
       )
     };
-    return filtered;
   }, [datasets, selectedDatasets]);
-  const activeVectorModel = defaultSelectedDatasets[0]?.vectorModel?.model;
+
+  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
 
   return (
     <DatasetSelectContainer
@@ -200,13 +211,8 @@ export const DatasetSelectModal = ({
         <ModalFooter>
           <Button
             onClick={() => {
-              // filter out the dataset that is not in the kList
-              const filterDatasets = selectedDatasets.filter((dataset) => {
-                return datasets.find((item) => item._id === dataset.datasetId);
-              });
-
               onClose();
-              onChange(filterDatasets);
+              onChange(selectedDatasets);
             }}
           >
             {t('common:common.Done')}
