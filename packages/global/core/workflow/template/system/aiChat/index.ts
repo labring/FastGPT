@@ -17,7 +17,7 @@ import {
   Input_Template_History,
   Input_Template_System_Prompt,
   Input_Template_UserChatInput,
-  Input_Template_File_Link_Prompt
+  Input_Template_File_Link
 } from '../../input';
 import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
 import { getHandleConfig } from '../../utils';
@@ -129,7 +129,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     },
     Input_Template_History,
     Input_Template_Dataset_Quote,
-    Input_Template_File_Link_Prompt,
+    Input_Template_File_Link,
     { ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }
   ],
   outputs: [
