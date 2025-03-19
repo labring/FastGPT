@@ -433,6 +433,8 @@
   "core.chat.Start Chat": "开始对话",
   "core.chat.Type a message": "输入问题，发送 [Enter]/换行 [Ctrl(Alt/Shift) + Enter]",
   "core.chat.Unpin": "取消置顶",
+  "core.chat.Variable_Visiable_in_test": "该变量在免登录链接中不可见",
+  "core.chat.Visiable_in_test": "自定义变量在免登录链接中不可见",
   "core.chat.You need to a chat app": "你没有可用的应用",
   "core.chat.error.Chat error": "对话出现异常",
   "core.chat.error.Messages empty": "接口内容为空，可能文本超长了~",
