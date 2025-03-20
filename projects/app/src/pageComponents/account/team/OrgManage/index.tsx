@@ -26,7 +26,12 @@ import { useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
 import { TeamContext } from '../context';
-import { deleteOrg, deleteOrgMember, getOrgList } from '@/web/support/user/team/org/api';
+import {
+  deleteOrg,
+  deleteOrgMember,
+  getOrgList,
+  getOrgMembers
+} from '@/web/support/user/team/org/api';
 
 import IconButton from './IconButton';
 import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
@@ -37,8 +42,9 @@ import Path from '@/components/common/folder/Path';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { delRemoveMember } from '@/web/support/user/team/api';
+import { delRemoveMember, getTeamMembers } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -80,6 +86,15 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const [orgStack, setOrgStack] = useState<OrgType[]>([]);
   const currentOrg = useMemo(() => orgStack[orgStack.length - 1], [orgStack]);
 
+  const [rootOrg, setRootOrg] = useState<OrgType>();
+
+  const { data: members = [], ScrollData: MemberScrollData } = useScrollPagination(getOrgMembers, {
+    pageSize: 20,
+    params: {
+      orgId: currentOrg?._id ?? rootOrg?._id
+    },
+    refreshDeps: [currentOrg?._id, rootOrg?._id]
+  });
   const { feConfigs } = useSystemStore();
 
   const isSyncMember = feConfigs.register_method?.includes('sync');
@@ -101,12 +116,8 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
       manual: false,
       refreshDeps: [userInfo?.team?.teamId, path],
       onSuccess: (data) => {
-        if (data[0]?.path === '') {
-          const root = data[0];
-          root.name = userInfo?.team?.teamName ?? '';
-          root.avatar = userInfo?.team?.avatar ?? '';
-          setPath(getOrgChildrenPath(root));
-          setOrgStack([root]);
+        if (!rootOrg) {
+          setRootOrg(data[0]);
         }
       }
     }
@@ -201,38 +212,22 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
           <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={setPath} />
         </Box>
         <Flex flex={'1 0 0'} h={0} w={'100%'} gap={'4'}>
-          <TableContainer flex="1">
-            <Table>
-              <Thead>
-                <Tr bg={'white !important'}>
-                  <Th bg="myGray.100" borderLeftRadius="6px">
-                    {t('common:Name')}
-                  </Th>
-                  <Th bg="myGray.100" borderRightRadius="6px">
-                    {t('common:common.Action')}
-                  </Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {searchedOrgs.map((org) => (
-                  <Tr key={org._id} overflow={'unset'} onClick={() => onClickOrg(org)}>
-                    <Td>
-                      <HStack cursor={'pointer'} onClick={() => onClickOrg(org)}>
-                        <MemberTag name={org.name} avatar={org.avatar} />
-                        <Tag size="sm">{org.total}</Tag>
-                        <MyIcon
-                          name="core/chat/chevronRight"
-                          w={'1rem'}
-                          h={'1rem'}
-                          color={'myGray.500'}
-                        />
-                      </HStack>
-                    </Td>
+          <MemberScrollData flex="1">
+            <TableContainer>
+              <Table>
+                <Thead>
+                  <Tr bg={'white !important'}>
+                    <Th bg="myGray.100" borderLeftRadius="6px">
+                      {t('common:Name')}
+                    </Th>
+                    <Th bg="myGray.100" borderRightRadius="6px">
+                      {t('common:common.Action')}
+                    </Th>
                   </Tr>
-                ))}
-                {!searchOrg &&
-                  orgs.map((org) => (
-                    <Tr key={org._id} overflow={'unset'}>
+                </Thead>
+                <Tbody>
+                  {searchedOrgs.map((org) => (
+                    <Tr key={org._id} overflow={'unset'} onClick={() => onClickOrg(org)}>
                       <Td>
                         <HStack cursor={'pointer'} onClick={() => onClickOrg(org)}>
                           <MemberTag name={org.name} avatar={org.avatar} />
@@ -277,95 +272,153 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                       )}
                     </Tr>
                   ))}
-                {!searchOrg &&
-                  currentOrg?.members.map((member) => {
-                    return (
-                      <Tr key={member.tmbId}>
-                        <Td>
-                          <MemberTag name={member.name} avatar={member.avatar} />
-                        </Td>
-                        <Td w={'6rem'}>
-                          {isTeamAdmin && (
-                            <MyMenu
-                              trigger={'hover'}
-                              Button={<IconButton name="more" />}
-                              menuList={[
-                                {
-                                  children: [
-                                    {
-                                      menuItemStyles: {
-                                        _hover: {
-                                          color: 'red.600',
-                                          backgroundColor: 'red.50'
+                  {!searchOrg &&
+                    orgs
+                      .filter((org) => org.path !== '')
+                      .map((org) => (
+                        <Tr key={org._id} overflow={'unset'}>
+                          <Td>
+                            <HStack cursor={'pointer'} onClick={() => onClickOrg(org)}>
+                              <MemberTag name={org.name} avatar={org.avatar} />
+                              <Tag size="sm">{org.total}</Tag>
+                              <MyIcon
+                                name="core/chat/chevronRight"
+                                w={'1rem'}
+                                h={'1rem'}
+                                color={'myGray.500'}
+                              />
+                            </HStack>
+                          </Td>
+                          {isTeamAdmin && !isSyncMember && (
+                            <Td w={'6rem'}>
+                              <MyMenu
+                                trigger="hover"
+                                Button={<IconButton name="more" />}
+                                menuList={[
+                                  {
+                                    children: [
+                                      {
+                                        icon: 'edit',
+                                        label: t('account_team:edit_info'),
+                                        onClick: () => setEditOrg(org)
+                                      },
+                                      {
+                                        icon: 'common/file/move',
+                                        label: t('common:Move'),
+                                        onClick: () => setMovingOrg(org)
+                                      },
+                                      {
+                                        icon: 'delete',
+                                        label: t('account_team:delete'),
+                                        type: 'danger',
+                                        onClick: () => deleteOrgHandler(org._id)
+                                      }
+                                    ]
+                                  }
+                                ]}
+                              />
+                            </Td>
+                          )}
+                        </Tr>
+                      ))}
+                  {!searchOrg &&
+                    members.map((member) => {
+                      return (
+                        <Tr key={member.tmbId}>
+                          <Td>
+                            <MemberTag name={member.memberName} avatar={member.avatar} />
+                          </Td>
+                          <Td w={'6rem'}>
+                            {isTeamAdmin && (
+                              <MyMenu
+                                trigger={'hover'}
+                                Button={<IconButton name="more" />}
+                                menuList={[
+                                  {
+                                    children: [
+                                      {
+                                        menuItemStyles: {
+                                          _hover: {
+                                            color: 'red.600',
+                                            backgroundColor: 'red.50'
+                                          }
+                                        },
+                                        label: t('account_team:delete_from_team', {
+                                          username: member.memberName
+                                        }),
+                                        onClick: () => {
+                                          openDeleteMemberFromTeamModal(
+                                            () => deleteMemberFromTeamReq(member.tmbId),
+                                            undefined,
+                                            t('account_team:confirm_delete_from_team', {
+                                              username: member.memberName
+                                            })
+                                          )();
                                         }
                                       },
-                                      label: t('account_team:delete_from_team', {
-                                        username: member.name
-                                      }),
-                                      onClick: () => {
-                                        openDeleteMemberFromTeamModal(
-                                          () => deleteMemberFromTeamReq(member.tmbId),
-                                          undefined,
-                                          t('account_team:confirm_delete_from_team', {
-                                            username: member.name
-                                          })
-                                        )();
-                                      }
-                                    },
-                                    ...(isSyncMember
-                                      ? []
-                                      : [
-                                          {
-                                            menuItemStyles: {
-                                              _hover: {
-                                                color: 'red.600',
-                                                bgColor: 'red.50'
-                                              }
-                                            },
-                                            label: t('account_team:delete_from_org'),
-                                            onClick: () =>
-                                              openDeleteMemberFromOrgModal(
-                                                () => deleteMemberReq(currentOrg._id, member.tmbId),
-                                                undefined,
-                                                t('account_team:confirm_delete_from_org', {
-                                                  username: member.name
-                                                })
-                                              )()
-                                          }
-                                        ])
-                                  ]
-                                }
-                              ]}
-                            />
-                          )}
-                        </Td>
-                      </Tr>
-                    );
-                  })}
-              </Tbody>
-            </Table>
-          </TableContainer>
+                                      ...(isSyncMember
+                                        ? []
+                                        : [
+                                            {
+                                              menuItemStyles: {
+                                                _hover: {
+                                                  color: 'red.600',
+                                                  bgColor: 'red.50'
+                                                }
+                                              },
+                                              label: t('account_team:delete_from_org'),
+                                              onClick: () =>
+                                                openDeleteMemberFromOrgModal(
+                                                  () =>
+                                                    deleteMemberReq(currentOrg._id, member.tmbId),
+                                                  undefined,
+                                                  t('account_team:confirm_delete_from_org', {
+                                                    username: member.memberName
+                                                  })
+                                                )()
+                                            }
+                                          ])
+                                    ]
+                                  }
+                                ]}
+                              />
+                            )}
+                          </Td>
+                        </Tr>
+                      );
+                    })}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </MemberScrollData>
 
           {/* Slider */}
           {!isSyncMember && (
             <VStack w={'180px'} alignItems={'start'}>
               <HStack gap={'6px'}>
-                <Avatar src={currentOrg?.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
+                <Avatar
+                  src={currentOrg?.avatar || userInfo?.team.avatar}
+                  w={'1rem'}
+                  h={'1rem'}
+                  rounded={'xs'}
+                />
                 <Box fontWeight={500} color={'myGray.900'}>
-                  {currentOrg?.name}
+                  {currentOrg?.name || userInfo?.team.teamName}
                 </Box>
-                {currentOrg?.path !== '' && (
+                {currentOrg && currentOrg?.path !== '' && (
                   <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
                 )}
               </HStack>
-              <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
+              {currentOrg && (
+                <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
+              )}
 
               <Divider my={'20px'} />
 
               <Box fontWeight={500} fontSize="sm" color="myGray.900">
                 {t('common:common.Action')}
               </Box>
-              {currentOrg && isTeamAdmin && (
+              {isTeamAdmin && (
                 <VStack gap="13px" w="100%">
                   <ActionButton
                     icon="common/add2"
@@ -373,16 +426,16 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                     onClick={() => {
                       setEditOrg({
                         ...defaultOrgForm,
-                        parentId: currentOrg?._id
+                        parentId: currentOrg?._id ?? rootOrg?._id
                       });
                     }}
                   />
                   <ActionButton
                     icon="common/administrator"
                     text={t('account_team:manage_member')}
-                    onClick={() => setManageMemberOrg(currentOrg)}
+                    onClick={() => setManageMemberOrg(currentOrg ?? rootOrg)}
                   />
-                  {currentOrg?.path !== '' && (
+                  {currentOrg && currentOrg?.path !== '' && (
                     <>
                       <ActionButton
                         icon="common/file/move"
