@@ -248,9 +248,7 @@ const OutLink = (props: Props) => {
       <Flex
         h={'full'}
         gap={4}
-        {...(isEmbed
-          ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
-          : { p: [0, 5] })}
+        {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
         {(!quoteData || isPc) && (
           <PageContainer flex={'1 0 0'} w={0} isLoading={loading} p={'0 !important'}>
@@ -316,12 +314,12 @@ const OutLink = (props: Props) => {
 
 const Render = (props: Props) => {
   const { shareId, authToken, customUid, appId } = props;
-  const { localUId } = useShareChatStore();
+  const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const chatHistoryProviderParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || customUid || localUId };
+    return { shareId, outLinkUid: authToken || customUid || localUId || '' };
   }, [authToken, customUid, localUId, shareId]);
   const chatRecordProviderParams = useMemo(() => {
     return {
@@ -338,20 +336,32 @@ const Render = (props: Props) => {
     setUserDefaultLng(true);
   });
 
-  // Set outLinkAuthData
+  // Set default localUId
   useEffect(() => {
-    setOutLinkAuthData({
-      shareId,
-      outLinkUid: chatHistoryProviderParams.outLinkUid
-    });
+    if (loaded) {
+      if (!localUId) {
+        setLocalUId(`shareChat-${Date.now()}-${getNanoid(24)}`);
+      }
+    }
+  }, [loaded, localUId, setLocalUId]);
+
+  // Init outLinkAuthData
+  useEffect(() => {
+    if (chatHistoryProviderParams.outLinkUid) {
+      setOutLinkAuthData({
+        shareId,
+        outLinkUid: chatHistoryProviderParams.outLinkUid
+      });
+    }
     return () => {
       setOutLinkAuthData({});
     };
-  }, [chatHistoryProviderParams.outLinkUid, shareId]);
+  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+
   // Watch appId
   useEffect(() => {
     setAppId(appId);
-  }, [appId]);
+  }, [appId, setAppId]);
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
