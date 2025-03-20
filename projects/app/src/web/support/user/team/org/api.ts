@@ -7,7 +7,8 @@ import type {
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import type { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
 
-export const getOrgList = () => GET<OrgType[]>('/proApi/support/user/team/org/list');
+export const getOrgList = (path: string) =>
+  GET<OrgType[]>(`/proApi/support/user/team/org/list`, { orgPath: path });
 
 export const postCreateOrg = (data: postCreateOrgData) =>
   POST('/proApi/support/user/team/org/create', data);
