@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { RunCodeDto } from './dto/create-sandbox.dto';
-import { runSandbox } from './utils';
+import { runJsSandbox, runPythonSandbox } from './utils';
 
 @Controller('sandbox')
 export class SandboxController {
@@ -9,6 +9,12 @@ export class SandboxController {
   @Post('/js')
   @HttpCode(200)
   runJs(@Body() codeProps: RunCodeDto) {
-    return runSandbox(codeProps);
+    return runJsSandbox(codeProps);
+  }
+
+  @Post('/python')
+  @HttpCode(200)
+  runPython(@Body() codeProps: RunCodeDto) {
+    return runPythonSandbox(codeProps);
   }
 }

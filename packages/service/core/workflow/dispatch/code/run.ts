@@ -20,7 +20,7 @@ function getURL(codeType: string): string {
   let url: string;
   switch (codeType) {
     case 'py':
-      url = 'http://127.0.0.1:9985/python_code';
+      url = `${process.env.SANDBOX_URL}/sandbox/python`;
       break;
     case 'js':
       url = `${process.env.SANDBOX_URL}/sandbox/js`;
@@ -57,9 +57,6 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
     });
 
     if (runResult.success) {
-      if (codeType == 'py') {
-        runResult.data.codeReturn = JSON.parse(runResult.data.codeReturn.toLocaleString());
-      }
       return {
         [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {

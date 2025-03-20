@@ -1,0 +1,122 @@
+general:
+  debug: false
+  instance_name: "searxng"
+  privacypolicy_url: false
+  donation_url: false
+  contact_url: false
+  enable_metrics: true
+  open_metrics: ''
+
+brand:
+  new_issue_url: https://github.com/searxng/searxng/issues/new
+  docs_url: https://docs.searxng.org/
+  public_instances: https://searx.space
+  wiki_url: https://github.com/searxng/searxng/wiki
+  issue_url: https://github.com/searxng/searxng/issues
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  autocomplete_min: 4
+  default_lang: "auto"
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+  formats:
+    - html
+
+server:
+  port: 8080
+  bind_address: "0.0.0.0"
+  base_url: false
+  limiter: false
+  public_instance: false
+  secret_key: "example"
+  image_proxy: false
+  http_protocol_version: "1.0"
+  method: "POST"
+  default_http_headers:
+    X-Content-Type-Options: nosniff
+    X-Download-Options: noopen
+    X-Robots-Tag: noindex, nofollow
+    Referrer-Policy: no-referrer
+
+redis:
+  url: false
+
+ui:
+  static_path: ""
+  static_use_hash: false
+  templates_path: ""
+  default_theme: simple
+  default_locale: ""
+  query_in_title: false
+  infinite_scroll: false
+  center_alignment: false
+  theme_args:
+    simple_style: auto
+      # 启用 cn 分类
+  enabled_categories: [cn,en, general, images,en]
+  # 或者定义分类显示顺序
+  categories_order: [cn, en,general, images]
+
+outgoing:
+  request_timeout: 30.0
+  max_request_timeout: 40.0
+  pool_connections: 200
+  pool_maxsize: 50
+  enable_http2: false
+  retries: 5
+
+engines:
+    - name: bing
+      engine: bing
+      disabled: false
+      categories: cn
+    #- name: bilibili
+     # engine: bilibili
+     # shortcut: bil
+     # disabled: false
+     # categories: cn
+    - name : baidu
+      engine : json_engine
+      paging : True
+      first_page_num : 0
+      search_url : https://www.baidu.com/s?tn=json&wd={query}&pn={pageno}&rn=50
+      url_query : url
+      title_query : title
+      content_query : abs
+      categories : cn
+    - name : 360search
+      engine: 360search
+      disabled: false
+      categories: cn
+    - name : sogou
+      disabled: false
+      categories: cn
+
+    - name: google
+      disabled: false
+      categories: en
+    - name: yahoo
+      disabled: false
+      categories: en
+    - name: duckduckgo
+      disabled: false
+      categories: en
+
+
+
+search:
+    formats:
+        - html
+        - json
+doi_resolvers:
+  oadoi.org: 'https://oadoi.org/'
+  doi.org: 'https://doi.org/'
+  doai.io: 'https://dissem.in/'
+  sci-hub.se: 'https://sci-hub.se/'
+  sci-hub.st: 'https://sci-hub.st/'
+  sci-hub.ru: 'https://sci-hub.ru/'
+
+default_doi_resolver: 'oadoi.org'
+

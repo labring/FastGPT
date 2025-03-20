@@ -28,7 +28,7 @@ const CodeEditor = (props: Props) => {
   const fullName = getLanguage(language);
   return (
     <>
-      <MyEditor {...props} resize onOpenModal={onOpen} defaultLanguage={fullName} />
+      <MyEditor {...props} resize onOpenModal={onOpen} language={fullName} />
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
@@ -39,7 +39,7 @@ const CodeEditor = (props: Props) => {
         isCentered
       >
         <ModalBody flex={'1 0 0'} overflow={'auto'}>
-          <MyEditor {...props} bg={'myGray.50'} height={'100%'} defaultLanguage={fullName} />
+          <MyEditor {...props} bg={'myGray.50'} height={'100%'} language={fullName} />
         </ModalBody>
         <ModalFooter>
           <Button mr={2} onClick={onClose} px={6}>
