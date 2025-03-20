@@ -47,11 +47,11 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return {
       [NodeInputKeyEnum.code]: (item: FlowNodeInputItemType) => {
         return (
-          <Box mt={-3}>
+          <Box mt={-4}>
             <Flex mb={2} alignItems={'center'} className="nodrag">
               <MySelect
-                h={5}
                 fontSize="xs"
+                size="sm"
                 list={[
                   { label: 'JavaScript', value: 'js' },
                   { label: 'Python 3', value: 'py' }
