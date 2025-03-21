@@ -298,7 +298,9 @@ const InputTypeConfig = ({
               {t('common:core.module.Default Value')}
             </FormLabel>
             <Flex alignItems={'start'} flex={1} h={10}>
-              {inputType === FlowNodeInputTypeEnum.numberInput && (
+              {(inputType === FlowNodeInputTypeEnum.numberInput ||
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
                   min={min}
