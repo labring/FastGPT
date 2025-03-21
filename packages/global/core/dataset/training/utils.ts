@@ -14,9 +14,10 @@ export const getMaxChunkSize = (model: LLMModelItemType) => {
 };
 
 // QA
+export const defaultMaxChunkSize = 8000;
 export const getLLMDefaultChunkSize = (model?: LLMModelItemType) => {
-  if (!model) return 8000;
-  return Math.max(Math.min(model.maxContext - model.maxResponse, 8000), 2000);
+  if (!model) return defaultMaxChunkSize;
+  return Math.max(Math.min(model.maxContext - model.maxResponse, defaultMaxChunkSize), 2000);
 };
 
 export const getLLMMaxChunkSize = (model?: LLMModelItemType) => {

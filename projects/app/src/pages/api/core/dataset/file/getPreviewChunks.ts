@@ -15,7 +15,8 @@ import { authCollectionFile } from '@fastgpt/service/support/permission/auth/fil
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import {
   computeChunkSize,
-  computeChunkSplitter
+  computeChunkSplitter,
+  getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
@@ -132,7 +133,8 @@ async function handler(
 
   return rawText2Chunks({
     rawText,
-    chunkLen: chunkSize,
+    chunkSize,
+    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
     customReg: chunkSplitter ? [chunkSplitter] : [],
     isQAImport: isQAImport

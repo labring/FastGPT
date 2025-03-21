@@ -29,7 +29,8 @@ import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
 import {
   computeChunkSize,
-  computeChunkSplitter
+  computeChunkSplitter,
+  getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 
 export const createCollectionAndInsertData = async ({
@@ -72,7 +73,8 @@ export const createCollectionAndInsertData = async ({
   // 1. split chunks
   const chunks = rawText2Chunks({
     rawText,
-    chunkLen: chunkSize,
+    chunkSize,
+    maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
     customReg: chunkSplitter ? [chunkSplitter] : [],
     isQAImport

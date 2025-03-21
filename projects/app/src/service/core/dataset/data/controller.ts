@@ -8,13 +8,14 @@ import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/con
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const formatIndexes = async ({
   indexes,
@@ -43,8 +44,11 @@ const formatIndexes = async ({
     a?: string;
     indexSize: number;
   }) => {
-    const qChunks = splitText2Chunks({ text: q, chunkLen: indexSize }).chunks;
-    const aChunks = a ? splitText2Chunks({ text: a, chunkLen: indexSize }).chunks : [];
+    const qChunks = splitText2Chunks({
+      text: q,
+      chunkSize: indexSize
+    }).chunks;
+    const aChunks = a ? splitText2Chunks({ text: a, chunkSize: indexSize }).chunks : [];
 
     return [
       ...qChunks.map((text) => ({
@@ -96,7 +100,7 @@ const formatIndexes = async ({
         // If oversize tokens, split it
         const tokens = await countPromptTokens(item.text);
         if (tokens > indexSize) {
-          const splitText = splitText2Chunks({ text: item.text, chunkLen: 512 }).chunks;
+          const splitText = splitText2Chunks({ text: item.text, chunkSize: 512 }).chunks;
           return splitText.map((text) => ({
             text,
             type: item.type
@@ -124,33 +128,38 @@ export async function insertData2Dataset({
   chunkIndex = 0,
   indexSize = 512,
   indexes,
-  model,
+  embeddingModel,
   session
 }: CreateDatasetDataProps & {
-  model: string;
+  embeddingModel: string;
   indexSize?: number;
   session?: ClientSession;
 }) {
-  if (!q || !datasetId || !collectionId || !model) {
-    return Promise.reject('q, datasetId, collectionId, model is required');
+  if (!q || !datasetId || !collectionId || !embeddingModel) {
+    return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
   }
   if (String(teamId) === String(tmbId)) {
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  const embModel = getEmbeddingModel(model);
+  const embModel = getEmbeddingModel(embeddingModel);
   indexSize = Math.min(embModel.maxToken, indexSize);
 
   // 1. Get vector indexes and insert
   // Empty indexes check, if empty, create default index
-  const newIndexes = await formatIndexes({ indexes, q, a, indexSize });
+  const newIndexes = await formatIndexes({
+    indexes,
+    q,
+    a,
+    indexSize
+  });
 
   // insert to vector store
   const result = await Promise.all(
     newIndexes.map(async (item) => {
       const result = await insertDatasetDataVector({
         query: item.text,
-        model: getEmbeddingModel(model),
+        model: embModel,
         teamId,
         datasetId,
         collectionId

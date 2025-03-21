@@ -16,6 +16,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ const PreviewData = () => {
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -39,7 +41,8 @@ const PreviewData = () => {
         const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
-          chunkLen: chunkSize,
+          chunkSize,
+          maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
           overlapRatio: chunkOverlapRatio,
           customReg: chunkSplitter ? [chunkSplitter] : []
         });
