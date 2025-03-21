@@ -131,6 +131,10 @@ export async function rewriteAppWorkflowToSimple(formatNodes: StoreNodeItemType[
         if (!val) {
           input.value = [];
         } else if (Array.isArray(val)) {
+          // Not rewrite reference value
+          if (val.length === 2 && val.every((item) => typeof item === 'string')) {
+            return;
+          }
           input.value = val
             .map((dataset: { datasetId: string }) => ({
               datasetId: dataset.datasetId
