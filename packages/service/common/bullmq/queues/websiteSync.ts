@@ -5,7 +5,7 @@ export const WebsiteSyncQueueName = 'websiteSync';
 
 export type WebsiteSyncJobData = {
   dataset: DatasetSchemaType;
-  billId: string;
+  billId?: string;
 };
 export type WebsiteSyncJobReturn = void;
 
@@ -24,4 +24,28 @@ export async function getCurrentWebsiteSyncJob(datasetId: string) {
     return undefined;
   }
   return websiteSyncQueue.getJob(jobId);
+}
+
+const repeatDuration = 86400000; // every day
+export async function upsertWebsiteSyncJobScheduler(data: WebsiteSyncJobData) {
+  const datasetId = data.dataset._id.toString();
+  return websiteSyncQueue.upsertJobScheduler(
+    datasetId,
+    {
+      every: repeatDuration,
+      startDate: new Date().getTime() + repeatDuration // start tomorrow
+    },
+    {
+      name: data.dataset.name,
+      data
+    }
+  );
+}
+
+export async function getWebsiteSyncJobScheduler(datasetId: string) {
+  return websiteSyncQueue.getJobScheduler(datasetId);
+}
+
+export async function removeWebsiteSyncJobScheduler(datasetId: string) {
+  return websiteSyncQueue.removeJobScheduler(datasetId);
 }
