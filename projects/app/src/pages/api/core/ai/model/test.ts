@@ -63,10 +63,7 @@ async function handler(
 export default NextAPI(handler);
 
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
-  const ai = getAIApi({
-    timeout: 10000
-  });
-
+  console.log(`Test model`, model);
   const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
@@ -75,6 +72,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
     },
     model
   );
+
   const { response, isStreamResponse } = await createChatCompletion({
     body: requestBody,
     options: {
