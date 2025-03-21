@@ -4,7 +4,7 @@
 */
 import type { NextApiRequest } from 'next';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
-import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
+import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
@@ -16,6 +16,7 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 async function handler(req: NextApiRequest) {
   const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
@@ -45,7 +46,7 @@ async function handler(req: NextApiRequest) {
   // auth collection and get dataset
   const [
     {
-      dataset: { _id: datasetId, vectorModel }
+      dataset: { _id: datasetId, vectorModel, agentModel }
     }
   ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
@@ -60,9 +61,11 @@ async function handler(req: NextApiRequest) {
   // token check
   const token = await countPromptTokens(formatQ + formatA, '');
   const vectorModelData = getEmbeddingModel(vectorModel);
+  const llmModelData = getLLMModel(agentModel);
+  const maxChunkSize = getLLMMaxChunkSize(llmModelData);
 
-  if (token > vectorModelData.maxToken) {
-    return Promise.reject('Q Over Tokens');
+  if (token > maxChunkSize) {
+    return Promise.reject(`Content over max chunk size: ${maxChunkSize}`);
   }
 
   // Duplicate data check
@@ -82,7 +85,7 @@ async function handler(req: NextApiRequest) {
     q: formatQ,
     a: formatA,
     chunkIndex: 0,
-    model: vectorModelData.model,
+    embeddingModel: vectorModelData.model,
     indexes: formatIndexes
   });
 

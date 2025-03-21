@@ -568,7 +568,6 @@
   "core.dataset.import.Custom process": "自訂規則",
   "core.dataset.import.Custom process desc": "自訂設定資料處理規則",
   "core.dataset.import.Custom prompt": "自訂提示詞",
-  "core.dataset.import.Custom split char": "自訂分隔符",
   "core.dataset.import.Custom text": "自訂文字",
   "core.dataset.import.Custom text desc": "手動輸入一段文字作為資料集",
   "core.dataset.import.Data process params": "資料處理參數",

@@ -129,6 +129,16 @@ export const DatasetCollectionDataProcessModeMap = {
   }
 };
 
+export enum ChunkSettingModeEnum {
+  auto = 'auto',
+  custom = 'custom'
+}
+
+export enum DataChunkSplitModeEnum {
+  size = 'size',
+  char = 'char'
+}
+
 /* ------------ data -------------- */
 
 /* ------------ training -------------- */
