@@ -107,7 +107,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     overlapRatio = 0.15,
     customReg = []
   } = props;
-  console.log(chunkSize, maxSize);
+
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkSize * overlapRatio);
@@ -267,14 +267,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     // split text by special char
     const splitTexts = getSplitTexts({ text, step });
-    if (splitTexts.length === 1) {
-      return splitTextRecursively({
-        text: splitTexts[0].text,
-        step: step + 1,
-        lastText,
-        parentTitle: parentTitle + splitTexts[0].title
-      });
-    }
 
     const maxLen = splitTexts.length > 1 ? stepReges[step].maxLen : chunkSize;
     const minChunkLen = chunkSize * 0.7;
