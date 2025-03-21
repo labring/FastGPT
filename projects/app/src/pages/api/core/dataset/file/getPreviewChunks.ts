@@ -109,14 +109,6 @@ async function handler(
     chunkSplitter
   });
 
-  console.log({
-    trainingType,
-    chunkSettingMode,
-    chunkSplitMode,
-    chunkSize,
-    chunkSplitter
-  });
-
   const { rawText } = await readDatasetSourceRawText({
     teamId,
     tmbId,
