@@ -1,6 +1,7 @@
 import {
   DatasetCollectionTypeEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
@@ -104,7 +105,8 @@ export const createCollectionAndInsertData = async ({
       hashRawText: hashStr(rawText),
       rawTextLength: rawText.length,
       nextSyncTime: (() => {
-        if (!dataset.autoSync) return undefined;
+        // ignore auto collections sync for website datasets
+        if (!dataset.autoSync && dataset.type === DatasetTypeEnum.websiteDataset) return undefined;
         if (
           [DatasetCollectionTypeEnum.link, DatasetCollectionTypeEnum.apiFile].includes(
             createCollectionParams.type

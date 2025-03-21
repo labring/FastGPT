@@ -153,14 +153,14 @@ const CollectionCard = () => {
     ['refreshCollection'],
     () => {
       getData(pageNum);
-      if (datasetDetail.status === DatasetStatusEnum.syncing) {
+      if (datasetDetail.status !== DatasetStatusEnum.active) {
         loadDatasetDetail(datasetDetail._id);
       }
       return null;
     },
     {
       refetchInterval: 6000,
-      enabled: hasTrainingData || datasetDetail.status === DatasetStatusEnum.syncing
+      enabled: hasTrainingData || datasetDetail.status !== DatasetStatusEnum.active
     }
   );
 

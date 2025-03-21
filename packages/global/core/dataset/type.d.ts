@@ -29,7 +29,6 @@ export type DatasetSchemaType = {
   name: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
-  status: `${DatasetStatusEnum}`;
 
   vectorModel: string;
   agentModel: string;
@@ -192,6 +191,7 @@ export type DatasetListItemType = {
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {
+  status: `${DatasetStatusEnum}`;
   vectorModel: EmbeddingModelItemType;
   agentModel: LLMModelItemType;
   vlmModel?: LLMModelItemType;

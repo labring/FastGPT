@@ -15,7 +15,6 @@ export type DatasetUpdateBody = {
   name?: string;
   avatar?: string;
   intro?: string;
-  status?: DatasetSchemaType['status'];
 
   agentModel?: string;
   vlmModel?: string;
