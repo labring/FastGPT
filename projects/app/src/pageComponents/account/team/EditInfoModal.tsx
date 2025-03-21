@@ -117,7 +117,7 @@ function EditModal({
             ml={4}
             autoFocus
             bg={'myWhite.600'}
-            maxLength={20}
+            maxLength={100}
             placeholder={t('user:team.Team Name')}
             {...register('name', {
               required: t('common:common.Please Input Name')

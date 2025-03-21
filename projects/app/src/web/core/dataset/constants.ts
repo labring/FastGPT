@@ -60,14 +60,10 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   createTime: new Date(),
   trainingType: DatasetCollectionDataProcessModeEnum.chunk,
   chunkSize: 0,
+  indexSize: 512,
   permission: new DatasetPermission(),
   indexAmount: 0
 };
-
-export enum ChunkSettingModeEnum {
-  auto = 'auto',
-  custom = 'custom'
-}
 
 export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
   [DatasetTypeEnum.folder]: '',

@@ -49,7 +49,7 @@ const EditFolderModal = ({
           defaultValue={name}
           placeholder={t('common:dataset.Folder Name') || ''}
           autoFocus
-          maxLength={20}
+          maxLength={100}
         />
       </ModalBody>
       <ModalFooter>
