@@ -63,7 +63,7 @@ async function handler(
 export default NextAPI(handler);
 
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
-  console.log(`Test model`, model);
+  addLog.info(`Test model`, model);
   const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
