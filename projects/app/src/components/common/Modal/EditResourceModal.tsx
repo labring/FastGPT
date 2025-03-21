@@ -71,7 +71,7 @@ const EditResourceModal = ({
               {...register('name', { required: true })}
               bg={'myGray.50'}
               autoFocus
-              maxLength={20}
+              maxLength={100}
             />
           </HStack>
         </Box>

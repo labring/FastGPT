@@ -2,8 +2,7 @@ import { reTrainingDatasetFileCollectionParams } from '@fastgpt/global/core/data
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
-  DatasetSourceReadTypeEnum,
-  TrainingModeEnum
+  DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { hashStr } from '@fastgpt/global/common/string/tools';

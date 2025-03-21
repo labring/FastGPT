@@ -569,7 +569,6 @@
   "core.dataset.import.Custom process": "Custom Rules",
   "core.dataset.import.Custom process desc": "Customize segmentation and preprocessing rules",
   "core.dataset.import.Custom prompt": "Custom Prompt",
-  "core.dataset.import.Custom split char": "Custom Separator",
   "core.dataset.import.Custom text": "Custom Text",
   "core.dataset.import.Custom text desc": "Manually enter a piece of text as a dataset",
   "core.dataset.import.Data process params": "Data Processing Parameters",

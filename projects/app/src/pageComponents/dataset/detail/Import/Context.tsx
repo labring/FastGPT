@@ -10,11 +10,21 @@ import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TabEnum } from '../NavBar';
-import { ChunkSettingModeEnum } from '@/web/core/dataset/constants';
+import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { UseFormReturn, useForm } from 'react-hook-form';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  getMaxChunkSize,
+  getLLMDefaultChunkSize,
+  getLLMMaxChunkSize,
+  chunkAutoChunkSize,
+  minChunkSize,
+  getAutoIndexSize,
+  getMaxIndexSize
+} from '@fastgpt/global/core/dataset/training/utils';
 
 type TrainingFiledType = {
   chunkOverlapRatio: number;
@@ -22,6 +32,9 @@ type TrainingFiledType = {
   minChunkSize: number;
   autoChunkSize: number;
   chunkSize: number;
+  maxIndexSize?: number;
+  indexSize?: number;
+  autoIndexSize?: number;
   charsPointsPrice: number;
   priceTip: string;
   uploadRate: number;
@@ -47,9 +60,13 @@ export type ImportFormType = {
   autoIndexes: boolean;
 
   chunkSettingMode: ChunkSettingModeEnum;
+
+  chunkSplitMode: DataChunkSplitModeEnum;
   embeddingChunkSize: number;
   qaChunkSize: number;
-  customSplitChar: string;
+  chunkSplitter: string;
+  indexSize: number;
+
   qaPrompt: string;
   webSelector: string;
 };
@@ -199,9 +216,12 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       trainingType: DatasetCollectionDataProcessModeEnum.chunk,
 
       chunkSettingMode: ChunkSettingModeEnum.auto,
-      embeddingChunkSize: vectorModel?.defaultToken || 512,
-      qaChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
-      customSplitChar: '',
+
+      chunkSplitMode: DataChunkSplitModeEnum.size,
+      embeddingChunkSize: 2000,
+      indexSize: vectorModel?.defaultToken || 512,
+      qaChunkSize: getLLMDefaultChunkSize(agentModel),
+      chunkSplitter: '',
       qaPrompt: Prompt_AgentQA.description,
       webSelector: '',
       customPdfParse: false
@@ -215,17 +235,18 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   const chunkSettingMode = processParamsForm.watch('chunkSettingMode');
   const embeddingChunkSize = processParamsForm.watch('embeddingChunkSize');
   const qaChunkSize = processParamsForm.watch('qaChunkSize');
-  const customSplitChar = processParamsForm.watch('customSplitChar');
+  const chunkSplitter = processParamsForm.watch('chunkSplitter');
   const autoIndexes = processParamsForm.watch('autoIndexes');
+  const indexSize = processParamsForm.watch('indexSize');
 
   const TrainingModeMap = useMemo<TrainingFiledType>(() => {
     if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
       return {
         chunkSizeField: 'qaChunkSize',
         chunkOverlapRatio: 0,
-        maxChunkSize: Math.min(agentModel.maxResponse * 4, agentModel.maxContext * 0.7),
-        minChunkSize: 4000,
-        autoChunkSize: Math.min(agentModel.maxResponse * 1, agentModel.maxContext * 0.7),
+        maxChunkSize: getLLMMaxChunkSize(agentModel),
+        minChunkSize: 1000,
+        autoChunkSize: getLLMDefaultChunkSize(agentModel),
         chunkSize: qaChunkSize,
         charsPointsPrice: agentModel.charsPointsPrice || 0,
         priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
@@ -237,10 +258,13 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       return {
         chunkSizeField: 'embeddingChunkSize',
         chunkOverlapRatio: 0.2,
-        maxChunkSize: 2048,
-        minChunkSize: 100,
-        autoChunkSize: vectorModel?.defaultToken ? vectorModel.defaultToken * 2 : 1024,
+        maxChunkSize: getMaxChunkSize(agentModel),
+        minChunkSize: minChunkSize,
+        autoChunkSize: chunkAutoChunkSize,
         chunkSize: embeddingChunkSize,
+        maxIndexSize: getMaxIndexSize(vectorModel),
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        indexSize,
         charsPointsPrice: agentModel.charsPointsPrice || 0,
         priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
           price: agentModel.charsPointsPrice
@@ -251,10 +275,13 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       return {
         chunkSizeField: 'embeddingChunkSize',
         chunkOverlapRatio: 0.2,
-        maxChunkSize: vectorModel?.maxToken || 512,
-        minChunkSize: 100,
-        autoChunkSize: vectorModel?.defaultToken || 512,
+        maxChunkSize: getMaxChunkSize(agentModel),
+        minChunkSize: minChunkSize,
+        autoChunkSize: chunkAutoChunkSize,
         chunkSize: embeddingChunkSize,
+        maxIndexSize: getMaxIndexSize(vectorModel),
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        indexSize,
         charsPointsPrice: vectorModel.charsPointsPrice || 0,
         priceTip: t('dataset:import.Embedding Estimated Price Tips', {
           price: vectorModel.charsPointsPrice
@@ -265,30 +292,36 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   }, [
     trainingType,
     autoIndexes,
-    agentModel.maxResponse,
-    agentModel.maxContext,
-    agentModel.charsPointsPrice,
+    agentModel,
     qaChunkSize,
     t,
-    vectorModel.defaultToken,
-    vectorModel?.maxToken,
-    vectorModel.charsPointsPrice,
-    embeddingChunkSize
+    embeddingChunkSize,
+    vectorModel,
+    indexSize
   ]);
 
   const chunkSettingModeMap = useMemo(() => {
     if (chunkSettingMode === ChunkSettingModeEnum.auto) {
       return {
         chunkSize: TrainingModeMap.autoChunkSize,
-        customSplitChar: ''
+        indexSize: TrainingModeMap.autoIndexSize,
+        chunkSplitter: ''
       };
     } else {
       return {
         chunkSize: TrainingModeMap.chunkSize,
-        customSplitChar
+        indexSize: TrainingModeMap.indexSize,
+        chunkSplitter
       };
     }
-  }, [chunkSettingMode, TrainingModeMap.autoChunkSize, TrainingModeMap.chunkSize, customSplitChar]);
+  }, [
+    chunkSettingMode,
+    TrainingModeMap.autoChunkSize,
+    TrainingModeMap.autoIndexSize,
+    TrainingModeMap.chunkSize,
+    TrainingModeMap.indexSize,
+    chunkSplitter
+  ]);
 
   const contextValue = {
     ...TrainingModeMap,

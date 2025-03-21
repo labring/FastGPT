@@ -15,6 +15,8 @@ export type PushDataToTrainingQueueProps = {
   vectorModel: string;
   vlmModel?: string;
 
+  indexSize?: number;
+
   billId?: string;
   session?: ClientSession;
 };
