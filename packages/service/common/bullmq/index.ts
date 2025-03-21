@@ -1,12 +1,4 @@
-import {
-  ConnectionOptions,
-  Job,
-  Processor,
-  Queue,
-  QueueOptions,
-  Worker,
-  WorkerOptions
-} from 'bullmq';
+import { ConnectionOptions, Processor, Queue, QueueOptions, Worker, WorkerOptions } from 'bullmq';
 import { addLog } from '../system/log';
 
 const connection: ConnectionOptions = {
@@ -81,4 +73,16 @@ export function getWorker<DataType, ReturnType = any>(
   });
   workers.set(name, newWorker);
   return newWorker;
+}
+
+export function getAllQueues() {
+  return [...queues.values()];
+}
+
+export function getAllWorkers() {
+  return [...workers.values()];
+}
+
+export async function closeAllWorkers() {
+  return Promise.all(workers.values().map((worker) => worker.close()));
 }
