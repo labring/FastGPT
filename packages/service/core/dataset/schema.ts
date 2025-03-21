@@ -1,10 +1,5 @@
 import { getMongoModel, Schema } from '../../common/mongo';
-import {
-  DatasetStatusEnum,
-  DatasetStatusMap,
-  DatasetTypeEnum,
-  DatasetTypeMap
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -39,11 +34,6 @@ const DatasetSchema = new Schema({
     enum: Object.keys(DatasetTypeMap),
     required: true,
     default: DatasetTypeEnum.dataset
-  },
-  status: {
-    type: String,
-    enum: Object.keys(DatasetStatusMap),
-    default: DatasetStatusEnum.active
   },
   avatar: {
     type: String,

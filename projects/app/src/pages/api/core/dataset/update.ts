@@ -62,7 +62,6 @@ async function handler(
     apiServer,
     yuqueServer,
     feishuServer,
-    status,
     autoSync
   } = req.body;
 
@@ -123,7 +122,6 @@ async function handler(
         ...(agentModel && { agentModel }),
         ...(vlmModel && { vlmModel }),
         ...(websiteConfig && { websiteConfig }),
-        ...(status && { status }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),

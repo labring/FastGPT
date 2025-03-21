@@ -25,11 +25,9 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
-  TrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -295,6 +293,28 @@ const Header = ({}: {}) => {
                       ></Box>
                       <Box ml={2} color={'myGray.600'}>
                         {t('common:core.dataset.status.syncing')}
+                      </Box>
+                    </Flex>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.waiting && (
+                    <Flex
+                      ml={3}
+                      alignItems={'center'}
+                      px={3}
+                      py={1}
+                      borderRadius="md"
+                      border={theme.borders.base}
+                    >
+                      <Box
+                        animation={'zoomStopIcon 0.5s infinite alternate'}
+                        bg={'myGray.700'}
+                        w="8px"
+                        h="8px"
+                        borderRadius={'50%'}
+                        mt={'1px'}
+                      ></Box>
+                      <Box ml={2} color={'myGray.600'}>
+                        {t('common:core.dataset.status.waiting')}
                       </Box>
                     </Flex>
                   )}
