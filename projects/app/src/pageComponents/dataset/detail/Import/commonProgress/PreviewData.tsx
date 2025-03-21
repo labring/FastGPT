@@ -36,12 +36,12 @@ const PreviewData = () => {
     async () => {
       if (!previewFile) return;
       if (importSource === ImportDataSourceEnum.fileCustom) {
-        const customSplitChar = processParamsForm.getValues('customSplitChar');
+        const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
           chunkLen: chunkSize,
           overlapRatio: chunkOverlapRatio,
-          customReg: customSplitChar ? [customSplitChar] : []
+          customReg: chunkSplitter ? [chunkSplitter] : []
         });
         return chunks.map((chunk) => ({
           q: chunk,
@@ -61,9 +61,12 @@ const PreviewData = () => {
 
         customPdfParse: processParamsForm.getValues('customPdfParse'),
 
+        trainingType: processParamsForm.getValues('trainingType'),
+        chunkSettingMode: processParamsForm.getValues('chunkSettingMode'),
+        chunkSplitMode: processParamsForm.getValues('chunkSplitMode'),
         chunkSize,
+        chunkSplitter: processParamsForm.getValues('chunkSplitter'),
         overlapRatio: chunkOverlapRatio,
-        customSplitChar: processParamsForm.getValues('customSplitChar'),
 
         selector: processParamsForm.getValues('webSelector'),
         isQAImport: importSource === ImportDataSourceEnum.csvTable,

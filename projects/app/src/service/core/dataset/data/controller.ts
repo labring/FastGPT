@@ -5,7 +5,6 @@ import {
   UpdateDatasetDataProps
 } from '@fastgpt/global/core/dataset/controller';
 import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
-import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
@@ -14,16 +13,51 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 
-const formatIndexes = ({
+const formatIndexes = async ({
   indexes,
   q,
-  a = ''
+  a = '',
+  indexSize
 }: {
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & { dataId?: string })[];
   q: string;
   a?: string;
-}) => {
+  indexSize: number;
+}): Promise<
+  {
+    type: `${DatasetDataIndexTypeEnum}`;
+    text: string;
+    dataId?: string;
+  }[]
+> => {
+  /* get dataset data default index */
+  const getDefaultIndex = ({
+    q = '',
+    a,
+    indexSize
+  }: {
+    q?: string;
+    a?: string;
+    indexSize: number;
+  }) => {
+    const qChunks = splitText2Chunks({ text: q, chunkLen: indexSize }).chunks;
+    const aChunks = a ? splitText2Chunks({ text: a, chunkLen: indexSize }).chunks : [];
+
+    return [
+      ...qChunks.map((text) => ({
+        text,
+        type: DatasetDataIndexTypeEnum.default
+      })),
+      ...aChunks.map((text) => ({
+        text,
+        type: DatasetDataIndexTypeEnum.default
+      }))
+    ];
+  };
+
   indexes = indexes || [];
   // If index not type, set it to custom
   indexes = indexes
@@ -35,7 +69,7 @@ const formatIndexes = ({
     .filter((item) => !!item.text.trim());
 
   // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
-  const defaultIndexes = getDefaultIndex({ q, a });
+  const defaultIndexes = getDefaultIndex({ q, a, indexSize });
   const concatDefaultIndexes = defaultIndexes.map((item) => {
     const oldIndex = indexes!.find((index) => index.text === item.text);
     if (oldIndex) {
@@ -56,11 +90,24 @@ const formatIndexes = ({
     (item, index, self) => index === self.findIndex((t) => t.text === item.text)
   );
 
-  return indexes.map((index) => ({
-    type: index.type,
-    text: index.text,
-    dataId: index.dataId
-  }));
+  const chekcIndexes = (
+    await Promise.all(
+      indexes.map(async (item) => {
+        // If oversize tokens, split it
+        const tokens = await countPromptTokens(item.text);
+        if (tokens > indexSize) {
+          const splitText = splitText2Chunks({ text: item.text, chunkLen: 512 }).chunks;
+          return splitText.map((text) => ({
+            text,
+            type: item.type
+          }));
+        }
+        return item;
+      })
+    )
+  ).flat();
+
+  return chekcIndexes;
 };
 /* insert data.
  * 1. create data id
@@ -75,11 +122,13 @@ export async function insertData2Dataset({
   q,
   a = '',
   chunkIndex = 0,
+  indexSize = 512,
   indexes,
   model,
   session
 }: CreateDatasetDataProps & {
   model: string;
+  indexSize?: number;
   session?: ClientSession;
 }) {
   if (!q || !datasetId || !collectionId || !model) {
@@ -89,9 +138,12 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
+  const embModel = getEmbeddingModel(model);
+  indexSize = Math.min(embModel.maxToken, indexSize);
+
   // 1. Get vector indexes and insert
   // Empty indexes check, if empty, create default index
-  const newIndexes = formatIndexes({ indexes, q, a });
+  const newIndexes = await formatIndexes({ indexes, q, a, indexSize });
 
   // insert to vector store
   const result = await Promise.all(
@@ -163,8 +215,9 @@ export async function updateData2Dataset({
   q = '',
   a,
   indexes,
-  model
-}: UpdateDatasetDataProps & { model: string }) {
+  model,
+  indexSize = 512
+}: UpdateDatasetDataProps & { model: string; indexSize?: number }) {
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
   }
@@ -174,7 +227,7 @@ export async function updateData2Dataset({
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
   // 2. Compute indexes
-  const formatIndexesResult = formatIndexes({ indexes, q, a });
+  const formatIndexesResult = await formatIndexes({ indexes, q, a, indexSize });
 
   // 3. Patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];

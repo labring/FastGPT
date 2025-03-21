@@ -27,6 +27,10 @@ import { addDays } from 'date-fns';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getTrainingModeByCollection } from './utils';
+import {
+  computeChunkSize,
+  computeChunkSplitter
+} from '@fastgpt/global/core/dataset/training/utils';
 
 export const createCollectionAndInsertData = async ({
   dataset,
@@ -54,13 +58,16 @@ export const createCollectionAndInsertData = async ({
 
   const teamId = createCollectionParams.teamId;
   const tmbId = createCollectionParams.tmbId;
-  // Chunk split params
+
+  // Set default params
   const trainingType =
     createCollectionParams.trainingType || DatasetCollectionDataProcessModeEnum.chunk;
-  const chunkSize = createCollectionParams.chunkSize || 512;
-  const chunkSplitter = createCollectionParams.chunkSplitter;
-  const qaPrompt = createCollectionParams.qaPrompt;
-  const usageName = createCollectionParams.name;
+  const chunkSize = computeChunkSize({
+    ...createCollectionParams,
+    trainingType,
+    llmModel: getLLMModel(dataset.agentModel)
+  });
+  const chunkSplitter = computeChunkSplitter(createCollectionParams);
 
   // 1. split chunks
   const chunks = rawText2Chunks({
@@ -76,7 +83,7 @@ export const createCollectionAndInsertData = async ({
     teamId,
     insertLen: predictDataLimitLength(
       getTrainingModeByCollection({
-        trainingType,
+        trainingType: trainingType,
         autoIndexes: createCollectionParams.autoIndexes,
         imageIndex: createCollectionParams.imageIndex
       }),
@@ -88,6 +95,9 @@ export const createCollectionAndInsertData = async ({
     // 3. create collection
     const { _id: collectionId } = await createOneCollection({
       ...createCollectionParams,
+      trainingType,
+      chunkSize,
+      chunkSplitter,
 
       hashRawText: hashStr(rawText),
       rawTextLength: rawText.length,
@@ -111,7 +121,7 @@ export const createCollectionAndInsertData = async ({
       const { billId: newBillId } = await createTrainingUsage({
         teamId,
         tmbId,
-        appName: usageName,
+        appName: createCollectionParams.name,
         billSource: UsageSourceEnum.training,
         vectorModel: getEmbeddingModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name,
@@ -130,12 +140,13 @@ export const createCollectionAndInsertData = async ({
       agentModel: dataset.agentModel,
       vectorModel: dataset.vectorModel,
       vlmModel: dataset.vlmModel,
+      indexSize: createCollectionParams.indexSize,
       mode: getTrainingModeByCollection({
-        trainingType,
+        trainingType: trainingType,
         autoIndexes: createCollectionParams.autoIndexes,
         imageIndex: createCollectionParams.imageIndex
       }),
-      prompt: qaPrompt,
+      prompt: createCollectionParams.qaPrompt,
       billId: traingBillId,
       data: chunks.map((item, index) => ({
         ...item,
@@ -207,11 +218,14 @@ export async function createOneCollection({
   // Parse settings
   customPdfParse,
   imageIndex,
+  autoIndexes,
 
   // Chunk settings
-  trainingType = DatasetCollectionDataProcessModeEnum.chunk,
-  autoIndexes,
-  chunkSize = 512,
+  trainingType,
+  chunkSettingMode,
+  chunkSplitMode,
+  chunkSize,
+  indexSize,
   chunkSplitter,
   qaPrompt,
 
@@ -249,11 +263,14 @@ export async function createOneCollection({
         // Parse settings
         customPdfParse,
         imageIndex,
+        autoIndexes,
 
         // Chunk settings
         trainingType,
-        autoIndexes,
+        chunkSettingMode,
+        chunkSplitMode,
         chunkSize,
+        indexSize,
         chunkSplitter,
         qaPrompt
       }
