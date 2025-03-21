@@ -268,9 +268,11 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       {interactive.params.description && <Markdown source={interactive.params.description} />}
       {interactive.params.inputForm?.map((input) => (
         <Box key={input.label}>
-          <Flex mb={1} alignItems={'center'}>
-            <FormLabel required={input.required}>{input.label}</FormLabel>
-            {input.description && <QuestionTip ml={1} label={input.description} />}
+          <Flex mb={1} alignItems={'center'} w={'full'}>
+            <FormLabel required={input.required} w={'full'} whiteSpace={'pre-wrap'}>
+              {input.label}
+              {input.description && <QuestionTip ml={1} label={input.description} />}
+            </FormLabel>
           </Flex>
           {input.type === FlowNodeInputTypeEnum.input && (
             <MyTextarea
