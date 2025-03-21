@@ -3,7 +3,9 @@ const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
   DatasetCollectionTypeMap,
-  DatasetCollectionDataProcessModeEnum
+  DatasetCollectionDataProcessModeEnum,
+  ChunkSettingModeEnum,
+  DataChunkSplitModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetCollectionName } from '../schema';
 import {
@@ -94,11 +96,18 @@ const DatasetCollectionSchema = new Schema({
     type: String,
     enum: Object.values(DatasetCollectionDataProcessModeEnum)
   },
-  chunkSize: {
-    type: Number,
-    required: true
+  chunkSettingMode: {
+    type: String,
+    enum: Object.values(ChunkSettingModeEnum)
   },
+  chunkSplitMode: {
+    type: String,
+    enum: Object.values(DataChunkSplitModeEnum)
+  },
+  chunkSize: Number,
   chunkSplitter: String,
+
+  indexSize: Number,
   qaPrompt: String
 });
 

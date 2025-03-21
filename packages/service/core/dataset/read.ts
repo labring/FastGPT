@@ -185,7 +185,7 @@ export const readApiServerFileContent = async ({
 export const rawText2Chunks = ({
   rawText,
   isQAImport,
-  chunkLen = 512,
+  chunkSize = 512,
   ...splitProps
 }: {
   rawText: string;
@@ -198,7 +198,7 @@ export const rawText2Chunks = ({
 
   const { chunks } = splitText2Chunks({
     text: rawText,
-    chunkLen,
+    chunkSize,
     ...splitProps
   });
 

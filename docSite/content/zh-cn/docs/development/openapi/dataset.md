@@ -11,8 +11,6 @@ weight: 853
 | --------------------- | --------------------- |
 | ![](/imgs/getDatasetId.jpg) | ![](/imgs/getfile_id.webp) |
 
-
-
 ## 创建训练订单
 
 {{< tabs tabTotal="2" >}}
@@ -289,7 +287,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 ## 集合
 
-### 通用创建参数说明
+### 通用创建参数说明（必看）
 
 **入参**
 
@@ -300,8 +298,11 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | trainingType | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取 | ✅ |
 | autoIndexes | 是否自动生成索引(仅商业版支持) |  |
 | imageIndex | 是否自动生成图片索引(仅商业版支持) |  |
-| chunkSize | 预估块大小 |  |
-| chunkSplitter | 自定义最高优先分割符号 |  |
+| chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数 |  |
+| chunkSplitMode | 分块拆分模式。size: 按长度拆分; char: 按字符拆分。chunkSettingMode=auto时不生效。 |  |
+| chunkSize | 分块大小，默认 1500。chunkSettingMode=auto时不生效。 |  |
+| indexSize | 索引大小，默认 512，必须小于索引模型最大token。chunkSettingMode=auto时不生效。 |  |
+| chunkSplitter | 自定义最高优先分割符号，除非超出文件处理最大上下文，否则不会进行进一步拆分。chunkSettingMode=auto时不生效。 |  |
 | qaPrompt | qa拆分提示词 |  |
 | tags |  集合标签（字符串数组） |  |
 | createTime | 文件创建时间（Date / String） |  |
@@ -389,9 +390,8 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
     "name":"测试训练",
 
     "trainingType": "qa",
-    "chunkSize":8000,
-    "chunkSplitter":"",
-    "qaPrompt":"11",
+    "chunkSettingMode": "auto",
+    "qaPrompt":"",
 
     "metadata":{}
 }'
@@ -409,10 +409,6 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - parentId： 父级ID，不填则默认为根目录
 - name: 集合名称（必填）
 - metadata： 元数据（暂时没啥用）
-- trainingType: 训练模式（必填）
-- chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
-- chunkSplitter: 自定义最高优先分割符号（可选）
-- qaPrompt: qa拆分自定义提示词（可选）
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -462,8 +458,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
     "parentId": null,
 
     "trainingType": "chunk",
-    "chunkSize":512,
-    "chunkSplitter":"",
+    "chunkSettingMode": "auto",
     "qaPrompt":"",
 
     "metadata":{
@@ -483,10 +478,6 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 - datasetId: 知识库的ID(必填)
 - parentId： 父级ID，不填则默认为根目录
 - metadata.webPageSelector: 网页选择器，用于指定网页中的哪个元素作为文本(可选)
-- trainingType:训练模式（必填）
-- chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
-- chunkSplitter: 自定义最高优先分割符号（可选）
-- qaPrompt: qa拆分自定义提示词（可选）
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -545,13 +536,7 @@ curl --location --request POST 'http://localhost:3000/api/core/dataset/collectio
 
 {{% alert icon=" " context="success" %}}
 - file: 文件
-- data: 知识库相关信息（json序列化后传入）
-  - datasetId: 知识库的ID(必填)
-  - parentId： 父级ID，不填则默认为根目录
-  - trainingType:训练模式（必填）
-  - chunkSize: 每个 chunk 的长度（可选）. chunk模式:100~3000; qa模式: 4000~模型最大token（16k模型通常建议不超过10000）
-  - chunkSplitter: 自定义最高优先分割符号（可选）
-  - qaPrompt: qa拆分自定义提示词（可选）
+- data: 知识库相关信息（json序列化后传入）,参数说明见上方“通用创建参数说明”
 {{% /alert %}}
 
 {{< /markdownify >}}

@@ -16,6 +16,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ const PreviewData = () => {
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -36,12 +38,13 @@ const PreviewData = () => {
     async () => {
       if (!previewFile) return;
       if (importSource === ImportDataSourceEnum.fileCustom) {
-        const customSplitChar = processParamsForm.getValues('customSplitChar');
+        const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
-          chunkLen: chunkSize,
+          chunkSize,
+          maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
           overlapRatio: chunkOverlapRatio,
-          customReg: customSplitChar ? [customSplitChar] : []
+          customReg: chunkSplitter ? [chunkSplitter] : []
         });
         return chunks.map((chunk) => ({
           q: chunk,
@@ -61,9 +64,12 @@ const PreviewData = () => {
 
         customPdfParse: processParamsForm.getValues('customPdfParse'),
 
+        trainingType: processParamsForm.getValues('trainingType'),
+        chunkSettingMode: processParamsForm.getValues('chunkSettingMode'),
+        chunkSplitMode: processParamsForm.getValues('chunkSplitMode'),
         chunkSize,
+        chunkSplitter: processParamsForm.getValues('chunkSplitter'),
         overlapRatio: chunkOverlapRatio,
-        customSplitChar: processParamsForm.getValues('customSplitChar'),
 
         selector: processParamsForm.getValues('webSelector'),
         isQAImport: importSource === ImportDataSourceEnum.csvTable,

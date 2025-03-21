@@ -245,7 +245,7 @@ const insertData = async ({
       a: trainingData.a,
       chunkIndex: trainingData.chunkIndex,
       indexes: trainingData.indexes,
-      model: trainingData.model,
+      embeddingModel: trainingData.model,
       session
     });
     // delete data from training

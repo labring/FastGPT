@@ -26,7 +26,7 @@ function BasicInfo({
         </FormLabel>
         <Input
           placeholder={t('publish:publish_name')}
-          maxLength={20}
+          maxLength={100}
           {...register('name', {
             required: t('common:common.name_is_empty')
           })}
