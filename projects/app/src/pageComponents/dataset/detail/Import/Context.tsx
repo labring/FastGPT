@@ -322,7 +322,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
     TrainingModeMap.indexSize,
     chunkSplitter
   ]);
-  console.log(indexSize, 111);
+
   const contextValue = {
     ...TrainingModeMap,
     ...chunkSettingModeMap,
