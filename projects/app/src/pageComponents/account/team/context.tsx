@@ -1,8 +1,13 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';
-import { getTeamList, getTeamMembers, putSwitchTeam } from '@/web/support/user/team/api';
+import {
+  getTeamList,
+  getTeamMemberCount,
+  getTeamMembers,
+  putSwitchTeam
+} from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
@@ -84,12 +89,19 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshDeps: [userInfo?.team?.teamId]
   });
 
+  const { data: teamMemberCountData, refresh: refetchTeamMemberCount } = useRequest2(
+    getTeamMemberCount,
+    {
+      manual: false,
+      refreshDeps: [userInfo?.team?.teamId]
+    }
+  );
+
   // member action
   const {
     data: members = [],
     isLoading: loadingMembers,
-    refreshList: refetchMembers,
-    total: memberTotal,
+    refreshList: refetchMemberList,
     ScrollData: MemberScrollData
   } = useScrollPagination(getTeamMembers, {
     pageSize: 1000,
@@ -97,6 +109,11 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
       withLeaved: true
     }
   });
+
+  const refetchMembers = useCallback(() => {
+    refetchTeamMemberCount();
+    refetchMemberList();
+  }, [refetchTeamMemberCount, refetchMemberList]);
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
@@ -135,7 +152,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refetchMembers,
     groups,
     refetchGroups,
-    teamSize: memberTotal,
+    teamSize: teamMemberCountData?.count || 0,
     MemberScrollData
   };
 
