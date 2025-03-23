@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Tool Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 8px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .log-container {
+            height: 300px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .log-entry {
+            margin-bottom: 5px;
+            font-family: monospace;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Tool Client</h1>
+        
+        <div class="card">
+            <h2>Connection</h2>
+            <div id="status" class="status disconnected">Disconnected</div>
+            
+            <div class="input-group">
+                <label for="chatId">Chat ID:</label>
+                <input type="text" id="chatId" placeholder="Enter a unique chat ID">
+            </div>
+            
+            <button id="connectBtn">Connect</button>
+            <button id="disconnectBtn" disabled>Disconnect</button>
+        </div>
+        
+        <div class="card">
+            <h2>Tool Execution Log</h2>
+            <div class="log-container" id="logContainer"></div>
+        </div>
+    </div>
+    
+    <script>
+        let ws = null;
+        
+        // DOM elements
+        const statusEl = document.getElementById('status');
+        const chatIdInput = document.getElementById('chatId');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const logContainer = document.getElementById('logContainer');
+        
+        // Log message to UI
+        function log(message, isError = false) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.style.color = isError ? 'red' : 'black';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Update connection status UI
+        function updateConnectionStatus(connected) {
+            statusEl.textContent = connected ? 'Connected' : 'Disconnected';
+            statusEl.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            connectBtn.disabled = connected;
+            disconnectBtn.disabled = !connected;
+            chatIdInput.disabled = connected;
+        }
+        
+        // Connect to WebSocket server
+        connectBtn.addEventListener('click', () => {
+            const chatId = chatIdInput.value.trim();
+            if (!chatId) {
+                log('Please enter a Chat ID', true);
+                return;
+            }
+            
+            try {
+                // Close existing connection if any
+                if (ws) {
+                    ws.close();
+                }
+                
+                // Create a new WebSocket connection
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const host = window.location.hostname;
+                const port = window.location.port;
+                const wsUrl = `${protocol}//${host}:${port}?chatId=${encodeURIComponent(chatId)}`;
+                
+                log(`Connecting to ${wsUrl}...`);
+                ws = new WebSocket(wsUrl);
+                
+                // Connection opened
+                ws.addEventListener('open', () => {
+                    log(`Connected with Chat ID: ${chatId}`);
+                    updateConnectionStatus(true);
+                });
+                
+                // Listen for messages
+                ws.addEventListener('message', (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        log(`Received tool request: ${JSON.stringify(data)}`);
+                        
+                        // Process the tool request
+                        const { requestId, tool_name, tool_param } = data;
+                        
+                        // Simulate tool execution
+                        setTimeout(() => {
+                            // Send back a response
+                            const response = {
+                                requestId,
+                                result: {
+                                    success: true,
+                                    message: `Tool "${tool_name}" executed successfully`,
+                                    params: tool_param,
+                                    timestamp: new Date().toISOString()
+                                }
+                            };
+                            
+                            ws.send(JSON.stringify(response));
+                            log(`Sent response for request ${requestId}`);
+                        }, 1000);
+                    } catch (error) {
+                        log(`Error processing message: ${error.message}`, true);
+                    }
+                });
+                
+                // Connection closed
+                ws.addEventListener('close', () => {
+                    log('Connection closed');
+                    updateConnectionStatus(false);
+                });
+                
+                // Connection error
+                ws.addEventListener('error', (error) => {
+                    log(`WebSocket error: ${error}`, true);
+                    updateConnectionStatus(false);
+                });
+                
+            } catch (error) {
+                log(`Error creating WebSocket connection: ${error.message}`, true);
+            }
+        });
+        
+        // Disconnect from WebSocket server
+        disconnectBtn.addEventListener('click', () => {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+        });
+        
+        // Initialize UI
+        updateConnectionStatus(false);
+        log('Client ready. Please connect using a Chat ID.');
+    </script>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Bridge Example Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .connection-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .connected {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            color: #333;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, button {
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0069d9;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .logs {
+            background-color: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin-top: 10px;
+        }
+        .tool-result {
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Bridge Example</h1>
+    
+    <div class="connection-status disconnected" id="statusDisplay">
+        Disconnected
+    </div>
+    
+    <div class="card">
+        <h2>Connection Settings</h2>
+        <div>
+            <label for="chatIdInput">Chat ID:</label>
+            <input type="text" id="chatIdInput" value="example-chat-123">
+            <button id="connectButton">Connect</button>
+            <button id="disconnectButton" disabled>Disconnect</button>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Registered Tools</h2>
+        <div>
+            <p>The following tools are registered and can be executed by the server:</p>
+            
+            <h3>getTime</h3>
+            <p>Returns the current browser time.</p>
+            <button class="test-tool-btn" data-tool="getTime">Test getTime</button>
+            <div class="tool-result" id="getTimeResult"></div>
+            
+            <h3>calculateSum</h3>
+            <p>Adds two numbers together.</p>
+            <button class="test-tool-btn" data-tool="calculateSum">Test calculateSum</button>
+            <div class="tool-result" id="calculateSumResult"></div>
+            
+            <h3>fetchUserDetails</h3>
+            <p>Simulates fetching user details (with delay).</p>
+            <button class="test-tool-btn" data-tool="fetchUserDetails">Test fetchUserDetails</button>
+            <div class="tool-result" id="fetchUserDetailsResult"></div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <h2>Event Log</h2>
+        <div class="logs" id="logContainer"></div>
+    </div>
+    
+    <script src="client-library.js"></script>
+    <script>
+        // DOM Elements
+        const statusDisplay = document.getElementById('statusDisplay');
+        const chatIdInput = document.getElementById('chatIdInput');
+        const connectButton = document.getElementById('connectButton');
+        const disconnectButton = document.getElementById('disconnectButton');
+        const logContainer = document.getElementById('logContainer');
+        const testToolButtons = document.querySelectorAll('.test-tool-btn');
+        
+        // Client instance
+        let client = null;
+        
+        // Update UI based on connection status
+        function updateConnectionStatus(connected) {
+            statusDisplay.textContent = connected ? 'Connected' : 'Disconnected';
+            statusDisplay.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
+            connectButton.disabled = connected;
+            disconnectButton.disabled = !connected;
+            chatIdInput.disabled = connected;
+            
+            testToolButtons.forEach(btn => {
+                btn.disabled = !connected;
+            });
+        }
+        
+        // Log messages to the UI
+        function log(message, isError = false) {
+            const entry = document.createElement('div');
+            entry.style.color = isError ? 'red' : 'black';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+        
+        // Connect to the WebSocket Bridge server
+        connectButton.addEventListener('click', async () => {
+            const chatId = chatIdInput.value.trim();
+            if (!chatId) {
+                log('Please enter a Chat ID', true);
+                return;
+            }
+            
+            // Create a new client instance
+            client = new WebSocketBridgeClient({
+                chatId,
+                onConnected: () => {
+                    log('Connected to WebSocket Bridge server');
+                    updateConnectionStatus(true);
+                },
+                onDisconnected: () => {
+                    log('Disconnected from WebSocket Bridge server');
+                    updateConnectionStatus(false);
+                },
+                onReconnecting: (attempt) => {
+                    log(`Attempting to reconnect (${attempt})...`);
+                },
+                onError: (error) => {
+                    log(`Connection error: ${error}`, true);
+                }
+            });
+            
+            // Register tool handlers
+            registerToolHandlers();
+            
+            try {
+                log(`Connecting with Chat ID: ${chatId}...`);
+                await client.connect();
+            } catch (error) {
+                log(`Failed to connect: ${error.message}`, true);
+            }
+        });
+        
+        // Disconnect from the server
+        disconnectButton.addEventListener('click', () => {
+            if (client) {
+                client.disconnect();
+                client = null;
+            }
+        });
+        
+        // Register all tool handlers
+        function registerToolHandlers() {
+            // Tool: Get the current time
+            client.registerToolHandler('getTime', async (params) => {
+                log('Executing getTime tool');
+                const now = new Date();
+                
+                document.getElementById('getTimeResult').textContent = JSON.stringify({
+                    timestamp: now.toISOString(),
+                    formatted: now.toLocaleString()
+                }, null, 2);
+                
+                return {
+                    timestamp: now.toISOString(),
+                    formatted: now.toLocaleString()
+                };
+            });
+            
+            // Tool: Calculate the sum of two numbers
+            client.registerToolHandler('calculateSum', async (params) => {
+                log('Executing calculateSum tool');
+                log(`Parameters: ${JSON.stringify(params)}`);
+                
+                const a = Number(params?.a || 0);
+                const b = Number(params?.b || 0);
+                const sum = a + b;
+                
+                document.getElementById('calculateSumResult').textContent = JSON.stringify({
+                    a,
+                    b,
+                    sum
+                }, null, 2);
+                
+                return {
+                    a,
+                    b,
+                    sum
+                };
+            });
+            
+            // Tool: Fetch user details (simulated)
+            client.registerToolHandler('fetchUserDetails', async (params) => {
+                log('Executing fetchUserDetails tool');
+                log(`Parameters: ${JSON.stringify(params)}`);
+                
+                const userId = params?.userId || 'default-user';
+                
+                // Simulate an API call with a delay
+                return new Promise((resolve) => {
+                    log(`Fetching details for user: ${userId}`);
+                    
+                    setTimeout(() => {
+                        const result = {
+                            userId,
+                            name: `User ${userId}`,
+                            email: `user-${userId}@example.com`,
+                            accessLevel: 'standard',
+                            lastLogin: new Date().toISOString()
+                        };
+                        
+                        document.getElementById('fetchUserDetailsResult').textContent = JSON.stringify(result, null, 2);
+                        resolve(result);
+                    }, 2000);
+                });
+            });
+        }
+        
+        // Test tool buttons
+        testToolButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const toolName = btn.getAttribute('data-tool');
+                let params = {};
+                
+                // Add specific parameters for each tool
+                if (toolName === 'calculateSum') {
+                    params = { a: 5, b: 7 };
+                } else if (toolName === 'fetchUserDetails') {
+                    params = { userId: 'test-user-123' };
+                }
+                
+                // Make a direct HTTP request to test the tool
+                fetch('/execute-tool', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chatId: chatIdInput.value,
+                        tool_name: toolName,
+                        tool_param: params
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    log(`Server response for ${toolName}: ${JSON.stringify(data)}`);
+                })
+                .catch(error => {
+                    log(`Error testing ${toolName}: ${error.message}`, true);
+                });
+            });
+        });
+        
+        // Initialize UI
+        updateConnectionStatus(false);
+        log('Client ready. Please connect using a Chat ID.');
+    </script>
+</body>
+</html>

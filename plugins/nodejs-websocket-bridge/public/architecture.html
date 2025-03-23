@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Bridge Architecture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .diagram {
+            margin: 40px 0;
+            position: relative;
+            height: 400px;
+        }
+        .component {
+            position: absolute;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            text-align: center;
+            width: 200px;
+        }
+        .component h3 {
+            margin-top: 0;
+        }
+        .backend {
+            left: 50px;
+            top: 150px;
+            background-color: #e1f5fe;
+            border-color: #03a9f4;
+        }
+        .server {
+            left: 350px;
+            top: 150px;
+            background-color: #f1f8e9;
+            border-color: #8bc34a;
+            width: 250px;
+        }
+        .client {
+            right: 50px;
+            top: 150px; 
+            background-color: #fff3e0;
+            border-color: #ff9800;
+        }
+        .arrow {
+            position: absolute;
+            height: 2px;
+            background-color: #333;
+        }
+        .arrow-head {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+        }
+        .description {
+            margin-top: 40px;
+            line-height: 1.6;
+        }
+        .highlight {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .flow-step {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WebSocket Bridge Architecture</h1>
+        
+        <div class="diagram">
+            <!-- Components -->
+            <div class="component backend">
+                <h3>Backend System</h3>
+                <p>Sends HTTP requests with tool execution parameters</p>
+            </div>
+            
+            <div class="component server">
+                <h3>WebSocket Bridge Server</h3>
+                <p>Routes tool execution requests to web clients and returns results</p>
+            </div>
+            
+            <div class="component client">
+                <h3>Web Client</h3>
+                <p>Executes tools and returns results via WebSocket</p>
+            </div>
+            
+            <!-- HTTP Request Arrow (Backend to Server) -->
+            <div class="arrow" style="width: 100px; left: 250px; top: 140px;"></div>
+            <div class="arrow-head" style="border-width: 5px 0 5px 10px; border-color: transparent transparent transparent #333; left: 350px; top: 137px;"></div>
+            <div style="position: absolute; left: 280px; top: 120px;">HTTP POST</div>
+            
+            <!-- WebSocket Arrow (Server to Client) -->
+            <div class="arrow" style="width: 100px; left: 600px; top: 140px;"></div>
+            <div class="arrow-head" style="border-width: 5px 0 5px 10px; border-color: transparent transparent transparent #333; left: 700px; top: 137px;"></div>
+            <div style="position: absolute; left: 620px; top: 120px;">WebSocket</div>
+            
+            <!-- Return Arrow (Client to Server) -->
+            <div class="arrow" style="width: 100px; left: 600px; top: 180px;"></div>
+            <div class="arrow-head" style="border-width: 5px 10px 5px 0; border-color: transparent #333 transparent transparent; left: 590px; top: 177px;"></div>
+            <div style="position: absolute; left: 620px; top: 190px;">Result</div>
+            
+            <!-- Return Arrow (Server to Backend) -->
+            <div class="arrow" style="width: 100px; left: 250px; top: 180px;"></div>
+            <div class="arrow-head" style="border-width: 5px 10px 5px 0; border-color: transparent #333 transparent transparent; left: 240px; top: 177px;"></div>
+            <div style="position: absolute; left: 280px; top: 190px;">HTTP Response</div>
+            
+            <!-- Chat ID Identifier -->
+            <div style="position: absolute; left: 350px; top: 70px; border: 1px dashed #999; padding: 5px; border-radius: 5px; background-color: #fafafa;">
+                <span style="font-weight: bold;">chatId</span> identifies the connection
+            </div>
+            <div class="arrow" style="width: 2px; height: 40px; left: 400px; top: 100px;"></div>
+            
+            <!-- Request ID Identifier -->
+            <div style="position: absolute; left: 450px; top: 300px; border: 1px dashed #999; padding: 5px; border-radius: 5px; background-color: #fafafa;">
+                <span style="font-weight: bold;">requestId</span> tracks the request/response
+            </div>
+            <div class="arrow" style="width: 2px; height: 40px; left: 500px; top: 260px;"></div>
+        </div>
+        
+        <div class="description">
+            <h2>How It Works</h2>
+            
+            <div class="flow-step">
+                <strong>1. Connection Establishment</strong>: Web clients connect to the WebSocket server with a unique <span class="highlight">chatId</span>.
+            </div>
+            
+            <div class="flow-step">
+                <strong>2. Tool Execution Request</strong>: The backend system sends an HTTP POST request to the <span class="highlight">/execute-tool</span> endpoint with <span class="highlight">chatId</span>, <span class="highlight">tool_name</span>, and <span class="highlight">tool_param</span>.
+            </div>
+            
+            <div class="flow-step">
+                <strong>3. Message Routing</strong>: The server generates a unique <span class="highlight">requestId</span>, finds the WebSocket connection matching the <span class="highlight">chatId</span>, and forwards the request.
+            </div>
+            
+            <div class="flow-step">
+                <strong>4. Tool Execution</strong>: The web client executes the requested tool with the provided parameters.
+            </div>
+            
+            <div class="flow-step">
+                <strong>5. Result Return</strong>: The web client sends the result back to the server via the WebSocket connection, including the <span class="highlight">requestId</span>.
+            </div>
+            
+            <div class="flow-step">
+                <strong>6. Response Completion</strong>: The server matches the <span class="highlight">requestId</span> to the pending HTTP request and sends the result as the HTTP response.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
