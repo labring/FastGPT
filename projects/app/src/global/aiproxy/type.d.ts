@@ -44,4 +44,5 @@ export type ChannelLogListItemType = {
   completion_tokens: number;
   endpoint: string;
   content?: string;
+  retry_times?: number;
 };

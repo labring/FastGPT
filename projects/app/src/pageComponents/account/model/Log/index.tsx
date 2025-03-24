@@ -46,6 +46,7 @@ type LogDetailType = {
   completion_tokens: number;
   endpoint: string;
 
+  retry_times?: number;
   content?: string;
   request_body?: string;
   response_body?: string;
@@ -297,6 +298,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   const { t } = useTranslation();
   const { data: detailData } = useRequest2(
     async () => {
+      console.log(data);
       if (data.code === 200) return data;
       try {
         const res = await getLogDetail(data.id);
@@ -389,12 +391,19 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>{t('account_model:model')}</Title>
               <Container>{detailData?.model}</Container>
             </GridItem>
+
             <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
               <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>
               <Container>
                 {detailData?.prompt_tokens} / {detailData?.completion_tokens}
               </Container>
             </GridItem>
+            {detailData?.retry_times !== undefined && (
+              <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+                <Title>{t('account_model:retry_times')}</Title>
+                <Container>{detailData?.retry_times}</Container>
+              </GridItem>
+            )}
             {detailData?.content && (
               <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px" colSpan={2}>
                 <Title>Content</Title>
