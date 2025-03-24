@@ -1,4 +1,4 @@
-import { putUpdateGroup } from '@/web/support/user/team/group/api';
+import { putGroupChangeOwner, putUpdateGroup } from '@/web/support/user/team/group/api';
 import {
   Box,
   Flex,
@@ -38,10 +38,6 @@ export function ChangeOwnerModal({
     return item.memberName.toLowerCase().includes(inputValue.toLowerCase());
   });
 
-  const OldOwnerId = useMemo(() => {
-    return group?.members.find((item) => item.role === 'owner')?.tmbId;
-  }, [group]);
-
   const [keepAdmin, setKeepAdmin] = useState(true);
 
   const {
@@ -52,36 +48,14 @@ export function ChangeOwnerModal({
 
   const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
 
-  const onChangeOwner = async (tmbId: string) => {
-    if (!group) {
-      return;
+  const { runAsync, loading } = useRequest2(
+    (tmbId: string) => putGroupChangeOwner(groupId, tmbId),
+    {
+      onSuccess: () => Promise.all([onClose(), refetchGroups()]),
+      successToast: t('common:permission.change_owner_success'),
+      errorToast: t('common:permission.change_owner_failed')
     }
-
-    const newMemberList = group.members
-      .map((item) => {
-        if (item.tmbId === OldOwnerId) {
-          if (keepAdmin) {
-            return { tmbId: OldOwnerId, role: 'admin' };
-          }
-          return { tmbId: OldOwnerId, role: 'member' };
-        }
-        return item;
-      })
-      .filter((item) => item.tmbId !== tmbId) as any;
-
-    newMemberList.push({ tmbId, role: 'owner' });
-
-    return putUpdateGroup({
-      groupId,
-      memberList: newMemberList
-    });
-  };
-
-  const { runAsync, loading } = useRequest2(onChangeOwner, {
-    onSuccess: () => Promise.all([onClose(), refetchGroups()]),
-    successToast: t('common:permission.change_owner_success'),
-    errorToast: t('common:permission.change_owner_failed')
-  });
+  );
 
   const onConfirm = async () => {
     if (!selectedMember) {

@@ -32,8 +32,6 @@ type State = {
   loadAndGetGroups: (init?: boolean) => Promise<MemberGroupListType>;
 
   teamOrgs: OrgType[];
-  myOrgs: OrgType[];
-  loadAndGetOrgs: (init?: boolean) => Promise<OrgType[]>;
 };
 
 export const useUserStore = create<State>()(
@@ -118,23 +116,6 @@ export const useUserStore = create<State>()(
           set((state) => {
             state.teamMemberGroups = res;
             state.myGroups = res.filter((item) =>
-              item.members.map((i) => String(i.tmbId)).includes(String(state.userInfo?.team?.tmbId))
-            );
-          });
-
-          return res;
-        },
-        myOrgs: [],
-        loadAndGetOrgs: async (init = false) => {
-          if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
-
-          const randomRefresh = Math.random() > 0.7;
-          if (!randomRefresh && !init && get().myOrgs.length) return Promise.resolve(get().myOrgs);
-
-          const res = await getOrgList();
-          set((state) => {
-            state.teamOrgs = res;
-            state.myOrgs = res.filter((item) =>
               item.members.map((i) => String(i.tmbId)).includes(String(state.userInfo?.team?.tmbId))
             );
           });
