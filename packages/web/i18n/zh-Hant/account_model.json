@@ -35,6 +35,7 @@
   "model_tokens": "輸入/輸出 Tokens",
   "request_at": "請求時間",
   "request_duration": "請求時長: {{duration}}s",
+  "retry_times": "重試次數",
   "running_test": "測試中",
   "search_model": "搜索模型",
   "select_channel": "選擇渠道名",

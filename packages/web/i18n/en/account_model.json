@@ -37,6 +37,7 @@
   "model_tokens": "Input/Output tokens",
   "request_at": "Request time",
   "request_duration": "Request duration: {{duration}}s",
+  "retry_times": "Number of retry times",
   "running_test": "In testing",
   "search_model": "Search for models",
   "select_channel": "Select a channel name",
