@@ -247,9 +247,9 @@ const MultipleReferenceSelector = ({
 
   // Get valid item and remove invalid item
   const formatList = useMemo(() => {
-    if (!value) return [];
+    if (!value || !Array.isArray(value)) return [];
 
-    return value?.map((item) => {
+    return value.map((item) => {
       const [nodeName, outputName] = getSelectValue(item);
       return {
         rawValue: item,
