@@ -76,7 +76,15 @@ ollama serve #安装完成并启动服务后，你可以在浏览器中访问 ht
 
 ### Ollama 拉取模型镜像
 
-在安装后 Ollama 后，本地是没有模型镜像的，需要自己去拉取 Ollama 中的模型镜像，
+在安装后 Ollama 后，本地是没有模型镜像的，需要自己去拉取 Ollama 中的模型镜像。命令如下：
+
+```bash
+# Docker 部署需要先进容器，命令为： docker exec -it < Ollama 容器名 > /bin/sh
+ollama pull <模型名>
+```
+
+![](/imgs/Ollama-pull.png)
+
 
 ### 测试通信
 
@@ -90,7 +98,6 @@ curl http://XXX.XXX.XXX.XXX:11434  #容器部署地址为“http://<容器名>:<
 看到访问显示自己的 Ollama 服务以及启动，说明可以正常通信。
 
 ## 将 Ollama 接入 FastGPT
-
 
 ### 1. 查看 Ollama 所拥有的模型
 
