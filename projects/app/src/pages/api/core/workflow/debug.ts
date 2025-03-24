@@ -10,50 +10,16 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
-  getMaxHistoryLimitFromNodes,
-  getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
-  rewriteNodeOutputByHistories,
-  storeNodes2RuntimeNodes,
-  textAdaptGptResponse
-} from '@fastgpt/global/core/workflow/runtime/utils';
-import { responseWrite } from '@fastgpt/service/common/response';
-import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
-import { UserChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import {
-  getPluginRunUserQuery,
-  updatePluginInputByVariables
-} from '@fastgpt/global/core/workflow/utils';
-import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { getChatItems } from '@fastgpt/service/core/chat/controller';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<PostWorkflowDebugResponse> {
-  const {
-    nodes = [],
-    edges = [],
-    appId,
-    messages = [],
-    chatId = '',
-    chatConfig = defaultApp.chatConfig,
-    responseChatItemId = '' // 在内联类型中添加
-  } = req.body as PostWorkflowDebugProps & {
-    messages?: ChatCompletionMessageParam[];
-    chatId?: string;
-    responseChatItemId?: string; // 在内联类型中添加
-    chatConfig?: AppChatConfigType; // 在内联类型中添加
-  };
-  let variables = req.body.variables || {};
+  const { nodes = [], edges = [], variables = {}, appId } = req.body as PostWorkflowDebugProps;
+
   if (!nodes) {
     throw new Error('Prams Error');
   }
@@ -63,26 +29,130 @@ async function handler(
   if (!Array.isArray(edges)) {
     throw new Error('Edges is not array');
   }
+  let query: UserChatItemValueItemType[] = [];
+  query = [
+    {
+      type: ChatItemValueTypeEnum.text,
 
-  const entryNodeIds = nodes
-    .filter((node) => node.isEntry)
-    .map((node) => node.nodeId)
-    .filter((nodeId) => !!nodeId);
-  if (entryNodeIds.length === 0) {
-    throw new Error('No entry node found');
-  }
-  if (entryNodeIds.length > 1) {
-    throw new Error('More than one entry node found');
-  }
-  const isInteractiveNode = nodes.some(
-    (node) =>
-      node.nodeId === entryNodeIds[0] &&
-      (node.flowNodeType === 'userSelect' || node.flowNodeType === 'formInput')
-  );
-  console.log('isInteractiveNode', isInteractiveNode);
+      text: {
+        content: 'Cancel'
+      }
+    }
+  ];
 
-  const chatMessages = GPTMessages2Chats(messages);
-  //
+  let histories: ChatItemType[] = [
+    {
+      dataId: 'debug-history-1',
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: '启动工作流'
+          }
+        }
+      ]
+    },
+    {
+      dataId: 'debug-history-2',
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          type: ChatItemValueTypeEnum.interactive,
+          interactive: {
+            type: 'userSelect',
+            params: {
+              description: '请选择操作',
+              userSelectOptions: [
+                { value: 'Confirm', key: 'option1' },
+                { value: 'Cancel', key: 'option2' }
+              ],
+              // 已选择的值，使得此交互不会被getLastInteractiveValue返回
+              userSelectedVal: 'Confirm'
+            },
+            entryNodeIds: ['nodeId1'],
+            memoryEdges: [
+              {
+                source: 'workflowStartNodeId',
+                target: 'nodeId1',
+                sourceHandle: 'workflowStartNodeId-source-right',
+                targetHandle: 'nodeId1-target-left',
+                status: 'active'
+              }
+            ],
+            nodeOutputs: [
+              {
+                nodeId: 'workflowStartNodeId',
+                key: NodeOutputKeyEnum.userChatInput,
+                value: '启动工作流'
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      dataId: 'bglb040v1wPQ3C1iNaDStPhm',
+      obj: ChatRoleEnum.AI, // 使用枚举值
+      value: [
+        {
+          type: ChatItemValueTypeEnum.interactive, // 使用枚举值
+          interactive: {
+            type: 'userSelect',
+            params: {
+              description: '你是谁',
+              userSelectOptions: [
+                {
+                  value: 'Confirm',
+                  key: 'option1'
+                },
+                {
+                  value: 'Cancel',
+                  key: 'option2'
+                },
+                {
+                  value: 'wqeqweqwe',
+                  key: 'y7eOdrYzYS5C'
+                }
+              ]
+              // 重要：这里没有 userSelectedVal，所以这个交互会被getLastInteractiveValue返回
+            },
+            entryNodeIds: ['oQKWr1cGFVBG'],
+            memoryEdges: [
+              {
+                source: 'workflowStartNodeId',
+                target: 'oQKWr1cGFVBG',
+                sourceHandle: 'workflowStartNodeId-source-right',
+                targetHandle: 'oQKWr1cGFVBG-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'oQKWr1cGFVBG',
+                target: 'uFnqha6Nx9qw',
+                sourceHandle: 'oQKWr1cGFVBG-source-option1',
+                targetHandle: 'uFnqha6Nx9qw-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'oQKWr1cGFVBG',
+                target: '7kwgL1dVlwG6',
+                sourceHandle: 'oQKWr1cGFVBG-source-option2',
+                targetHandle: '7kwgL1dVlwG6-target-left',
+                status: 'waiting'
+              }
+            ],
+            nodeOutputs: [
+              {
+                nodeId: 'workflowStartNodeId',
+                key: NodeOutputKeyEnum.userChatInput,
+                value: 'Confirm'
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ];
   /* user auth */
   const [{ teamId, tmbId }, { app }] = await Promise.all([
     authCert({
@@ -91,70 +161,10 @@ async function handler(
     }),
     authApp({ req, authToken: true, appId, per: ReadPermissionVal })
   ]);
-  const appName = `${app.name}-Debug`;
 
   // auth balance
-  const isPlugin = app.type === AppTypeEnum.plugin;
+  const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
-  let userQuestion: UserChatItemType | undefined;
-  if (isInteractiveNode) {
-    userQuestion = (() => {
-      if (isPlugin) {
-        return getPluginRunUserQuery({
-          pluginInputs: getPluginInputsFromStoreNodes(app.modules),
-          variables,
-          files: variables.files
-        });
-      }
-
-      const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
-      if (!latestHumanChat) {
-        throw new Error('User question is empty');
-      }
-      return latestHumanChat;
-    })();
-  }
-
-  const limit = getMaxHistoryLimitFromNodes(nodes);
-  const [{ histories }, chatDetail, { timezone, externalProvider }] = await Promise.all([
-    getChatItems({
-      appId,
-      chatId,
-      offset: 0,
-      limit,
-      field: `dataId obj value nodeOutputs`
-    }),
-    MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables'),
-    // auth balance
-    getUserChatInfoAndAuthTeamPoints(tmbId)
-  ]);
-
-  if (chatDetail?.variables) {
-    variables = {
-      ...chatDetail.variables,
-      ...variables
-    };
-  }
-
-  const newHistories = concatHistories(histories, chatMessages);
-
-  // Get runtimeNodes
-  let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
-  if (isPlugin) {
-    runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
-    variables = {};
-  }
-  runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
-  let runtimeEdges = edges;
-  let query: UserChatItemValueItemType[] = [];
-  if (isInteractiveNode && userQuestion) {
-    runtimeEdges = initWorkflowEdgeStatus(edges, newHistories);
-    query = removeEmptyUserInput(userQuestion.value);
-  } else if (!isInteractiveNode) {
-    runtimeEdges = edges;
-    runtimeNodes = nodes;
-    query = [];
-  }
   /* start process */
   const { flowUsages, flowResponses, debugResponse, newVariables } = await dispatchWorkFlow({
     res,
@@ -174,20 +184,18 @@ async function handler(
       tmbId
     },
 
-    chatId,
-    responseChatItemId,
-    runtimeNodes,
-    runtimeEdges,
+    runtimeNodes: nodes,
+    runtimeEdges: edges,
     variables,
     query,
     chatConfig: defaultApp.chatConfig,
-    histories: newHistories,
+    histories,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
 
   createChatUsage({
-    appName,
+    appName: `${app.name}-Debug`,
     appId,
     teamId,
     tmbId,
