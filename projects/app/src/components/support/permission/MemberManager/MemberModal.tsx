@@ -113,6 +113,7 @@ function MemberModal({
   const { data: searchedData } = useRequest2(() => GetSearchUserGroupOrg(searchText), {
     manual: false,
     throttleWait: 500,
+    debounceWait: 200,
     refreshDeps: [searchText]
   });
 

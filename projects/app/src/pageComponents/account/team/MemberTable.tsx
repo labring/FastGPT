@@ -83,6 +83,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     {
       manual: false,
       throttleWait: 500,
+      debounceWait: 200,
       refreshDeps: [searchText]
     }
   );
