@@ -12,6 +12,7 @@
   "channel_status_unknown": "未知",
   "channel_type": "廠商",
   "clear_model": "清空模型",
+  "confirm_delete_channel": "確認刪除 【{{name}}】渠道？",
   "copy_model_id_success": "已復制模型id",
   "create_channel": "新增渠道",
   "default_url": "默認地址",
