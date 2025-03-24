@@ -19,9 +19,23 @@ type GroupMemberSchemaType = {
 type MemberGroupType = MemberGroupSchemaType & {
   members: {
     tmbId: string;
-    role: `${GroupMemberRole}`;
-  }[]; // we can get tmb's info from other api. there is no need but only need to get tmb's id
-  permission: TeamPermission;
+    name: string;
+    avatar: string;
+  }[];
+  count: number;
+  owner: {
+    tmbId: string;
+    name: string;
+    avatar: string;
+  };
+  canEdit: boolean;
 };
 
 type MemberGroupListType = MemberGroupType[];
+
+type GroupMemberItemType = {
+  tmbId: string;
+  name: string;
+  avatar: string;
+  role: `${GroupMemberRole}`;
+};

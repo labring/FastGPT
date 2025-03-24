@@ -1,4 +1,4 @@
-import { putUpdateOrgMembers } from '@/web/support/user/team/org/api';
+import { getOrgMembers, putUpdateOrgMembers } from '@/web/support/user/team/org/api';
 import {
   Box,
   Button,
@@ -18,10 +18,11 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
 import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 export type GroupFormType = {
   members: {
@@ -51,10 +52,20 @@ function OrgMemberManageModal({
 }) {
   const { t } = useTranslation();
   const { members: allMembers, MemberScrollData } = useContextSelector(TeamContext, (v) => v);
+  const { data: orgMembers, ScrollData: OrgMemberScrollData } = useScrollPagination(getOrgMembers, {
+    pageSize: 20,
+    params: {
+      orgId: currentOrg?._id ?? ''
+    }
+  });
 
   const [selectedMembers, setSelectedMembers] = useState<string[]>(
-    currentOrg.members.map((item) => item.tmbId)
+    orgMembers.map((item) => item.tmbId)
   );
+
+  useEffect(() => {
+    setSelectedMembers(orgMembers.map((item) => item.tmbId));
+  }, [orgMembers]);
 
   const [searchKey, setSearchKey] = useState('');
   const filterMembers = useMemo(() => {
@@ -150,9 +161,10 @@ function OrgMemberManageModal({
               })}
             </MemberScrollData>
           </Flex>
-          <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
-            <Box mt={2}>{`${t('common:chosen')}:${selectedMembers.length}`}</Box>
-            <Flex mt={3} flexDirection="column" flexGrow="1" overflow={'auto'} maxH={'400px'}>
+          {/* <Flex mt={3} flexDirection="column" flexGrow="1" overflow={'auto'} maxH={'100%'}> */}
+          <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
+            <OrgMemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
+              <Box mt={2}>{`${t('common:chosen')}:${selectedMembers.length}`}</Box>
               {selectedMembers.map((tmbId) => {
                 const member = allMembers.find((item) => item.tmbId === tmbId)!;
                 return (
@@ -179,7 +191,7 @@ function OrgMemberManageModal({
                   </HStack>
                 );
               })}
-            </Flex>
+            </OrgMemberScrollData>
           </Flex>
         </Grid>
       </ModalBody>

@@ -30,8 +30,6 @@ import { TeamContext } from './context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import { GetSearchUserGroupOrg, postSyncMembers } from '@/web/support/user/api';
@@ -52,9 +50,8 @@ const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTa
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const { userInfo, teamPlanStatus } = useUserStore();
-  const { feConfigs, setNotSufficientModalType } = useSystemStore();
+  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
 
   const {
     refetchGroups,
@@ -63,8 +60,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     members,
     refetchMembers,
     onSwitchTeam,
-    MemberScrollData,
-    orgs
+    MemberScrollData
   } = useContextSelector(TeamContext, (v) => v);
 
   const {
@@ -93,6 +89,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     {
       manual: false,
       throttleWait: 500,
+      debounceWait: 200,
       refreshDeps: [searchText]
     }
   );
@@ -281,16 +278,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                       <Td maxW={'300px'}>{member.contact || '-'}</Td>
                       <Td maxWidth="300px">
                         {(() => {
-                          const memberOrgs = orgs.filter((org) =>
-                            org.members.find((v) => String(v.tmbId) === String(member.tmbId))
-                          );
-                          const memberPathIds = memberOrgs.map((org) =>
-                            (org.path + '/' + org.pathId).split('/').slice(0)
-                          );
-                          const memberOrgNames = memberPathIds.map((pathIds) =>
-                            pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
-                          );
-                          return <OrgTags orgs={memberOrgNames} type="tag" />;
+                          return <OrgTags orgs={member.orgs || undefined} type="tag" />;
                         })()}
                       </Td>
                       <Td maxW={'300px'}>

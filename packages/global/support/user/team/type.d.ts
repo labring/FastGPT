@@ -82,6 +82,7 @@ export type TeamMemberItemType = {
   contact?: string;
   createTime: Date;
   updateTime?: Date;
+  orgs?: string[]; // full path name, pattern: /teamName/orgname1/orgname2
 };
 
 export type TeamTagItemType = {

@@ -18,7 +18,7 @@ import React, { useMemo, useRef, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
-import { putUpdateGroup } from '@/web/support/user/team/group/api';
+import { getGroupMembers, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -46,13 +46,26 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     return groups.find((item) => item._id === editGroupId);
   }, [editGroupId, groups]);
 
+  const { data: groupMembers } = useRequest2(
+    () => {
+      if (editGroupId) return getGroupMembers(editGroupId);
+      return Promise.resolve(undefined);
+    },
+    {
+      manual: false,
+      onSuccess: (data) => {
+        setMembers(data ?? []);
+      }
+    }
+  );
+
   const allMembers = useContextSelector(TeamContext, (v) => v.members);
   const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
   const MemberScrollData = useContextSelector(TeamContext, (v) => v.MemberScrollData);
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 
   const selectedMembersRef = useRef<HTMLDivElement>(null);
-  const [members, setMembers] = useState(group?.members || []);
+  const [members, setMembers] = useState(groupMembers || []);
 
   const [searchKey, setSearchKey] = useState('');
   const filtered = useMemo(() => {
@@ -67,6 +80,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async () => {
       if (!editGroupId || !members.length) return;
+      console.log(members);
       return putUpdateGroup({
         groupId: editGroupId,
         memberList: members
@@ -89,10 +103,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   }, [members, userInfo]);
 
   const handleToggleSelect = (memberId: string) => {
-    if (
-      myRole === 'owner' &&
-      memberId === group?.members.find((item) => item.role === 'owner')?.tmbId
-    ) {
+    if (myRole === 'owner' && memberId === members.find((item) => item.role === 'owner')?.tmbId) {
       toast({
         title: t('user:team.group.toast.can_not_delete_owner'),
         status: 'error'
@@ -102,7 +113,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
 
     if (
       myRole === 'admin' &&
-      group?.members.find((item) => String(item.tmbId) === memberId)?.role !== 'member'
+      members.find((item) => String(item.tmbId) === memberId)?.role !== 'member'
     ) {
       return;
     }
@@ -110,7 +121,17 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     if (isSelected(memberId)) {
       setMembers(members.filter((item) => item.tmbId !== memberId));
     } else {
-      setMembers([...members, { tmbId: memberId, role: 'member' }]);
+      const member = allMembers.find((m) => m.tmbId === memberId);
+      if (!member) return;
+      setMembers([
+        ...members,
+        {
+          name: member.memberName,
+          avatar: member.avatar,
+          tmbId: member.tmbId,
+          role: 'member'
+        }
+      ]);
     }
   };
 
@@ -188,7 +209,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
             <Box mt={2}>{t('common:chosen') + ': ' + members.length}</Box>
             <MemberScrollData ScrollContainerRef={selectedMembersRef} mt={3} flex={'1 0 0'} h={0}>
-              {members.map((member) => {
+              {members?.map((member) => {
                 return (
                   <HStack
                     onMouseEnter={() => setHoveredMemberId(member.tmbId)}
@@ -202,14 +223,8 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
                     _notLast={{ mb: 2 }}
                   >
                     <HStack>
-                      <Avatar
-                        src={allMembers.find((item) => item.tmbId === member.tmbId)?.avatar}
-                        w="1.5rem"
-                        borderRadius={'md'}
-                      />
-                      <Box>
-                        {allMembers.find((item) => item.tmbId === member.tmbId)?.memberName}
-                      </Box>
+                      <Avatar src={member.avatar} w="1.5rem" borderRadius={'md'} />
+                      <Box>{member.name}</Box>
                     </HStack>
                     <Box mr="auto">
                       {(() => {
