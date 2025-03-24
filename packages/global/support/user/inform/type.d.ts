@@ -19,6 +19,8 @@ export type SendInform2User = SendInformProps & {
 export type UserInformSchema = {
   _id: string;
   userId: string;
+  teamId?: string;
+  teamName?: string;
   time: Date;
   level: `${InformLevelEnum}`;
   title: string;

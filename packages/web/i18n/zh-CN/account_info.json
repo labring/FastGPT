@@ -28,6 +28,7 @@
   "exchange_success": "兑换成功",
   "expiration_time": "到期时间",
   "expired": "已过期",
+  "general_info": "通用信息",
   "group": "组",
   "help_chatbot": "机器人助手",
   "help_document": "帮助文档",
@@ -48,8 +49,8 @@
   "password_update_error": "修改密码异常",
   "password_update_success": "修改密码成功",
   "pending_usage": "待使用",
-  "personal_information": "个人信息",
   "phone_label": "手机号",
+  "please_bind_contact": "请绑定联系方式",
   "please_bind_notification_receiving_path": "请先绑定通知接收途径",
   "purchase_extra_package": "购买额外套餐",
   "reminder_create_bound_notification_account": "提醒创建者绑定通知账号",
@@ -58,6 +59,7 @@
   "standard_package_and_extra_resource_package": "包含标准套餐与额外资源包",
   "storage_capacity": "存储量",
   "team_balance": "团队余额",
+  "team_info": "团队信息",
   "token_validity_period": "积分有效期一年",
   "tokens": "积分",
   "type": "类型",
@@ -68,9 +70,8 @@
   "usage_balance": "使用余额: 使用余额",
   "usage_balance_notice": "由于系统升级，原“自动续费从余额扣款”模式取消，余额充值入口关闭。您的余额可用于购买积分",
   "user_account": "账号",
-  "user_team_team_name": "团队名",
+  "user_team_team_name": "团队",
   "verification_code": "验证码",
   "you_can_convert": "您可以兑换",
-  "yuan": "元",
-  "please_bind_contact": "请绑定联系方式"
+  "yuan": "元"
 }

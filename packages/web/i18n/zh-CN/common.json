@@ -275,7 +275,7 @@
   "compliance.chat": "内容由第三方 AI 生成，无法确保真实准确，仅供参考",
   "compliance.dataset": "请确保您的内容严格遵守相关法律法规，避免包含任何违法或侵权的内容。请谨慎上传可能涉及敏感信息的资料。",
   "confirm_choice": "确认选择",
-  "contact_way": "联系方式",
+  "contact_way": "通知接收",
   "contribute_app_template": "贡献模板",
   "core.Chat": "对话",
   "core.Max Token": "单条数据上限",
