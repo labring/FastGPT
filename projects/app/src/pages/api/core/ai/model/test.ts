@@ -45,6 +45,7 @@ async function handler(
         'Aiproxy-Channel': String(channelId)
       }
     : {};
+  addLog.debug(`Test model`, modelData);
 
   if (modelData.type === 'llm') {
     return testLLMModel(modelData, headers);
@@ -68,7 +69,6 @@ async function handler(
 export default NextAPI(handler);
 
 const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
-  addLog.info(`Test model`, model);
   const requestBody = llmCompletionsBodyFormat(
     {
       model: model.model,
