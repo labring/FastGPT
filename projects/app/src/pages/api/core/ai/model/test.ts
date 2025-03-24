@@ -35,6 +35,11 @@ async function handler(
 
   if (!modelData) return Promise.reject('Model not found');
 
+  if (channelId) {
+    delete modelData.requestUrl;
+    delete modelData.requestAuth;
+  }
+
   const headers: Record<string, string> = channelId
     ? {
         'Aiproxy-Channel': String(channelId)
