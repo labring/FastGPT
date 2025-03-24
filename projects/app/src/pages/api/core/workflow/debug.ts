@@ -18,7 +18,17 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<PostWorkflowDebugResponse> {
-  const { nodes = [], edges = [], variables = {}, appId } = req.body as PostWorkflowDebugProps;
+  const {
+    nodes = [],
+    edges = [],
+    variables = {},
+    appId,
+    query: requestQuery,
+    histories: requestHistories
+  } = req.body as PostWorkflowDebugProps & {
+    query?: UserChatItemValueItemType[];
+    histories?: ChatItemType[];
+  };
 
   if (!nodes) {
     throw new Error('Prams Error');
@@ -29,16 +39,8 @@ async function handler(
   if (!Array.isArray(edges)) {
     throw new Error('Edges is not array');
   }
-  const query: UserChatItemValueItemType[] = [
-    {
-      type: ChatItemValueTypeEnum.text,
 
-      text: {
-        content: 'Cancel'
-      }
-    }
-  ];
-  const query_form_input: UserChatItemValueItemType[] = [
+  const query_form_input: UserChatItemValueItemType[] = requestQuery || [
     {
       type: ChatItemValueTypeEnum.text,
       text: {
@@ -46,7 +48,7 @@ async function handler(
       }
     }
   ];
-  const histories_form_input: ChatItemType[] = [
+  const histories_form_input: ChatItemType[] = requestHistories || [
     {
       dataId: 'j2ywiLkIbMivBll5fzYvkuGK',
       obj: ChatRoleEnum.Human,
@@ -171,7 +173,16 @@ async function handler(
       ]
     }
   ];
-  const histories: ChatItemType[] = [
+  const query: UserChatItemValueItemType[] = requestQuery || [
+    {
+      type: ChatItemValueTypeEnum.text,
+
+      text: {
+        content: 'Cancel'
+      }
+    }
+  ];
+  const histories: ChatItemType[] = requestHistories || [
     {
       dataId: 'debug-history-1',
       obj: ChatRoleEnum.Human,
@@ -318,9 +329,9 @@ async function handler(
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,
-    query: query_form_input,
+    query: query,
     chatConfig: defaultApp.chatConfig,
-    histories: histories_form_input,
+    histories: histories,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
