@@ -34,9 +34,9 @@ const PreviewData = () => {
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
 
-  const { data = [], loading: isLoading } = useRequest2(
+  const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
-      if (!previewFile) return;
+      if (!previewFile) return { chunks: [], total: 0 };
       if (importSource === ImportDataSourceEnum.fileCustom) {
         const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
@@ -46,10 +46,13 @@ const PreviewData = () => {
           overlapRatio: chunkOverlapRatio,
           customReg: chunkSplitter ? [chunkSplitter] : []
         });
-        return chunks.map((chunk) => ({
-          q: chunk,
-          a: ''
-        }));
+        return {
+          chunks: chunks.map((chunk) => ({
+            q: chunk,
+            a: ''
+          })),
+          total: chunks.length
+        };
       }
 
       return getPreviewChunks({
@@ -81,7 +84,7 @@ const PreviewData = () => {
       manual: false,
       onSuccess(result) {
         if (!previewFile) return;
-        if (!result || result.length === 0) {
+        if (!result || result.total === 0) {
           toast({
             title: t('dataset:preview_chunk_empty'),
             status: 'error'
@@ -130,14 +133,14 @@ const PreviewData = () => {
           <Flex py={4} px={5} borderBottom={'base'} justifyContent={'space-between'}>
             <FormLabel fontSize={'md'}>{t('dataset:preview_chunk')}</FormLabel>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('dataset:preview_chunk_intro')}
+              {t('dataset:preview_chunk_intro', { total: data.total })}
             </Box>
           </Flex>
           <MyBox isLoading={isLoading} flex={'1 0 0'} h={0}>
             <Box h={'100%'} overflowY={'auto'} px={5} py={3}>
               {previewFile ? (
                 <>
-                  {data.map((item, index) => (
+                  {data.chunks.map((item, index) => (
                     <Box
                       key={index}
                       fontSize={'sm'}

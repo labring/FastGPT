@@ -80,7 +80,7 @@
   "permission.des.write": "Ability to add and change knowledge base content",
   "preview_chunk": "Preview chunks",
   "preview_chunk_empty": "Unable to read the contents of the file",
-  "preview_chunk_intro": "Display up to 10 pieces",
+  "preview_chunk_intro": "A total of {{total}} blocks, up to 10",
   "preview_chunk_not_selected": "Click on the file on the left to preview",
   "rebuild_embedding_start_tip": "Index model switching task has started",
   "rebuilding_index_count": "Number of indexes being rebuilt: {{count}}",
