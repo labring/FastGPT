@@ -22,7 +22,7 @@ import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { deleteGroup } from '@/web/support/user/team/group/api';
+import { deleteGroup, getGroupMembers } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -39,10 +39,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { groups, refetchGroups, members, refetchMembers } = useContextSelector(
-    TeamContext,
-    (v) => v
-  );
+  const { groups, refetchGroups, members, teamSize } = useContextSelector(TeamContext, (v) => v);
 
   const [editGroup, setEditGroup] = useState<MemberGroupType>();
   const {
@@ -64,7 +61,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { runAsync: delDeleteGroup } = useRequest2(deleteGroup, {
     onSuccess: () => {
       refetchGroups();
-      refetchMembers();
     }
   });
 
@@ -78,14 +74,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     onOpenManageGroupMember();
   };
 
-  const hasGroupManagePer = (group: (typeof groups)[0]) =>
-    userInfo?.team.permission.hasManagePer ||
-    ['admin', 'owner'].includes(
-      group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
-    );
-  const isGroupOwner = (group: (typeof groups)[0]) =>
-    userInfo?.team.permission.hasManagePer ||
-    group.members.find((item) => item.role === 'owner')?.tmbId === userInfo?.team.tmbId;
+  const hasGroupManagePer = (group: (typeof groups)[0]) => userInfo?.team.permission.hasManagePer;
+
+  const isGroupOwner = (group: (typeof groups)[0]) => userInfo?.team.permission.hasManagePer;
 
   const {
     isOpen: isOpenChangeOwner,
@@ -143,9 +134,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         }
                         avatar={group.avatar}
                       />
-                      <Box>
-                        ({group.name === DefaultGroupName ? members.length : group.members.length})
-                      </Box>
+                      <Box>({group.name === DefaultGroupName ? teamSize : group.count})</Box>
                     </HStack>
                   </Td>
                   <Td>
@@ -153,26 +142,18 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                       name={
                         group.name === DefaultGroupName
                           ? members.find((item) => item.role === 'owner')?.memberName ?? ''
-                          : members.find(
-                              (item) =>
-                                item.tmbId ===
-                                group.members.find((item) => item.role === 'owner')?.tmbId
-                            )?.memberName ?? ''
+                          : group.owner.name
                       }
                       avatar={
                         group.name === DefaultGroupName
                           ? members.find((item) => item.role === 'owner')?.avatar ?? ''
-                          : members.find(
-                              (i) =>
-                                i.tmbId ===
-                                group.members.find((item) => item.role === 'owner')?.tmbId
-                            )?.avatar ?? ''
+                          : group.owner.avatar
                       }
                     />
                   </Td>
                   <Td>
                     {group.name === DefaultGroupName ? (
-                      <AvatarGroup avatars={members.map((v) => v.avatar)} />
+                      <AvatarGroup avatars={members.map((v) => v.avatar)} total={teamSize} />
                     ) : hasGroupManagePer(group) ? (
                       <MyTooltip label={t('account_team:manage_member')}>
                         <Box cursor="pointer" onClick={() => onManageMember(group)}>
@@ -180,6 +161,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                             avatars={group.members.map(
                               (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
                             )}
+                            total={group.count}
                           />
                         </Box>
                       </MyTooltip>
@@ -188,6 +170,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         avatars={group.members.map(
                           (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
                         )}
+                        total={group.count}
                       />
                     )}
                   </Td>

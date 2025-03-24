@@ -35,7 +35,7 @@ import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { getGroupList } from '@/web/support/user/team/group/api';
-import { getOrgList } from '@/web/support/user/team/org/api';
+import { getOrgList, getOrgMembers } from '@/web/support/user/team/org/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
@@ -57,14 +57,52 @@ function MemberModal({
   const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
   const [searchText, setSearchText] = useState<string>('');
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
-  const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {
+  const [path, setPath] = useState('');
+  const [orgStack, setOrgStack] = useState<OrgType[]>([]);
+  const currentOrg = useMemo(() => orgStack[orgStack.length - 1], [orgStack]);
+
+  const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
     pageSize: 15
   });
 
-  const { data: [groups = [], orgs = []] = [], loading: loadingGroupsAndOrgs } = useRequest2(
+  const [rootOrg, setRootOrg] = useState<OrgType>();
+  const { data: orgMembers = [], ScrollData: OrgMemberScrollData } = useScrollPagination(
+    getOrgMembers,
+    {
+      pageSize: 20,
+      params: {
+        orgId: currentOrg?._id ?? rootOrg?._id
+      },
+      refreshDeps: [currentOrg?._id]
+    }
+  );
+  const onClickOrg = (org: OrgType) => {
+    setOrgStack([...orgStack, org]);
+    setPath(getOrgChildrenPath(org));
+  };
+
+  const { data: orgs = [] } = useRequest2(
+    () => {
+      const splitPath = path.split('/').filter(Boolean);
+      const orgs = orgStack.filter((o) => splitPath.includes(o.pathId));
+      setOrgStack(orgs);
+      return getOrgList(path);
+    },
+    {
+      manual: false,
+      refreshDeps: [path],
+      onSuccess: (data) => {
+        if (!rootOrg) {
+          setRootOrg(data[0]);
+        }
+      }
+    }
+  );
+
+  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
     async () => {
-      if (!userInfo?.team?.teamId) return [[], []];
-      return Promise.all([getGroupList(), getOrgList()]);
+      if (!userInfo?.team?.teamId) return [];
+      return getGroupList();
     },
     {
       manual: false,
@@ -72,69 +110,49 @@ function MemberModal({
     }
   );
 
-  const [parentPath, setParentPath] = useState('');
-
   const { data: searchedData } = useRequest2(() => GetSearchUserGroupOrg(searchText), {
     manual: false,
     throttleWait: 500,
+    debounceWait: 200,
     refreshDeps: [searchText]
   });
 
   const paths = useMemo(() => {
-    const splitPath = parentPath.split('/').filter(Boolean);
-    return splitPath
-      .map((id) => {
-        const org = orgs.find((org) => org.pathId === id)!;
-
-        if (org.path === '') return;
-
+    return orgStack
+      .map((org) => {
+        if (org?.path === '') return;
         return {
           parentId: getOrgChildrenPath(org),
           parentName: org.name
         };
       })
       .filter(Boolean) as ParentTreePathItemType[];
-  }, [parentPath, orgs]);
+  }, [orgStack]);
 
   const [selectedOrgIdList, setSelectedOrgIdList] = useState<string[]>([]);
-  const currentOrg = useMemo(() => {
-    const splitPath = parentPath.split('/');
-    const currentOrgId = splitPath[splitPath.length - 1];
-    if (!currentOrgId) return;
 
-    return orgs.find((org) => org.pathId === currentOrgId);
-  }, [orgs, parentPath]);
   const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
     if (searchText && searchedData) {
       const orgids = searchedData.orgs.map((item) => item._id);
       return orgs.filter((org) => orgids.includes(String(org._id)));
     }
-    if (!searchText && filterClass !== 'org') return [];
-    if (parentPath === '') {
-      setParentPath(`/${orgs[0].pathId}`);
-      return [];
-    }
     return orgs
-      .filter((org) => org.path === parentPath)
-      .map((item) => ({
-        ...item,
-        count:
-          item.members.length + orgs.filter((org) => org.path === getOrgChildrenPath(item)).length
+      .filter((org) => org.path !== '')
+      .map((org) => ({
+        ...org,
+        count: org.total
       }));
-  }, [searchText, filterClass, parentPath, orgs, searchedData]);
+  }, [searchText, orgs, searchedData]);
 
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const filterMembers = useMemo(() => {
     if (searchText) {
       return searchedData?.members || [];
     }
-    if (!searchText && filterClass !== 'member' && filterClass !== 'org') return [];
-    if (currentOrg && filterClass === 'org') {
-      return members.filter((item) => currentOrg.members.find((v) => v.tmbId === item.tmbId));
-    }
 
     return members;
-  }, [members, searchedData, searchText, filterClass, currentOrg]);
+  }, [searchText, members, searchedData?.members]);
+  console.log(filterMembers);
 
   const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
   const filterGroups = useMemo(() => {
@@ -197,19 +215,22 @@ function MemberModal({
         id: `org-${item._id}`,
         avatar: item.avatar,
         name: item.name,
-        onDelete: () => setSelectedOrgIdList(selectedOrgIdList.filter((v) => v !== item._id))
+        onDelete: () => setSelectedOrgIdList(selectedOrgIdList.filter((v) => v !== item._id)),
+        orgs: undefined
       })),
       ...selectedGroups.map((item) => ({
         id: `group-${item._id}`,
         avatar: item.avatar,
         name: item.name === DefaultGroupName ? userInfo?.team.teamName : item.name,
-        onDelete: () => setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== item._id))
+        onDelete: () => setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== item._id)),
+        orgs: undefined
       })),
       ...selectedMembers.map((item) => ({
         id: `member-${item.tmbId}`,
         avatar: item.avatar,
         name: item.memberName,
-        onDelete: () => setSelectedMembers(selectedMemberIdList.filter((v) => v !== item.tmbId))
+        onDelete: () => setSelectedMembers(selectedMemberIdList.filter((v) => v !== item.tmbId)),
+        orgs: item.orgs
       }))
     ];
   }, [
@@ -303,31 +324,57 @@ function MemberModal({
                     onClick={(parentId) => {
                       if (parentId === '') {
                         setFilterClass(undefined);
-                        setParentPath('');
+                        setPath('');
                       } else if (
                         parentId === 'member' ||
                         parentId === 'org' ||
                         parentId === 'group'
                       ) {
                         setFilterClass(parentId);
-                        setParentPath('');
+                        setPath('');
                       } else {
-                        setParentPath(parentId);
+                        setPath(parentId);
                       }
                     }}
                     rootName={t('common:common.Team')}
                   />
                 </Box>
               )}
-
-              {(filterClass === 'org' || filterClass === 'member') && (
-                <ScrollData
+              {(filterClass === 'member' || (searchText && filterMembers.length > 0)) && (
+                <TeamMemberScrollData
                   flexDirection={'column'}
                   gap={1}
                   userSelect={'none'}
                   height={'fit-content'}
                 >
-                  {filterOrgs?.map((org) => {
+                  {filterMembers?.map((member) => {
+                    const onChange = () => {
+                      setSelectedMembers((state) => {
+                        if (state.includes(member.tmbId)) {
+                          return state.filter((v) => v !== member.tmbId);
+                        }
+                        return [...state, member.tmbId];
+                      });
+                    };
+                    const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
+                    return (
+                      <MemberItemCard
+                        avatar={member.avatar}
+                        key={member.tmbId}
+                        name={member.memberName}
+                        permission={collaborator?.permission.value}
+                        onChange={onChange}
+                        isChecked={selectedMemberIdList.includes(member.tmbId)}
+                        orgs={member.orgs}
+                      />
+                    );
+                  })}
+                </TeamMemberScrollData>
+              )}
+
+              {(filterClass === 'org' || searchText) &&
+                (() => {
+                  const orgs = filterOrgs?.map((org) => {
                     const onChange = () => {
                       setSelectedOrgIdList((state) => {
                         if (state.includes(org._id)) {
@@ -374,47 +421,42 @@ function MemberModal({
                               bgColor: 'myGray.200'
                             }}
                             onClick={(e) => {
-                              setParentPath(getOrgChildrenPath(org));
+                              onClickOrg(org);
+                              // setPath(getOrgChildrenPath(org));
                               e.stopPropagation();
                             }}
                           />
                         )}
                       </HStack>
                     );
-                  })}
-                  {filterMembers?.map((member) => {
-                    const onChange = () => {
-                      setSelectedMembers((state) => {
-                        if (state.includes(member.tmbId)) {
-                          return state.filter((v) => v !== member.tmbId);
-                        }
-                        return [...state, member.tmbId];
-                      });
-                    };
-                    const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
-                    const memberOrgs = orgs.filter((org) =>
-                      org.members.find((v) => String(v.tmbId) === String(member.tmbId))
-                    );
-                    const memberPathIds = memberOrgs.map((org) =>
-                      (org.path + '/' + org.pathId).split('/').slice(0)
-                    );
-                    const memberOrgNames = memberPathIds.map((pathIds) =>
-                      pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
-                    );
-                    return (
-                      <MemberItemCard
-                        avatar={member.avatar}
-                        key={member.tmbId}
-                        name={member.memberName}
-                        permission={collaborator?.permission.value}
-                        onChange={onChange}
-                        isChecked={selectedMemberIdList.includes(member.tmbId)}
-                        orgs={memberOrgNames}
-                      />
-                    );
-                  })}
-                </ScrollData>
-              )}
+                  });
+                  return searchText ? (
+                    orgs
+                  ) : (
+                    <OrgMemberScrollData>
+                      {orgs}
+                      {orgMembers.map((member) => {
+                        return (
+                          <MemberItemCard
+                            avatar={member.avatar}
+                            key={member.tmbId}
+                            name={member.memberName}
+                            onChange={() => {
+                              setSelectedMembers((state) => {
+                                if (state.includes(member.tmbId)) {
+                                  return state.filter((v) => v !== member.tmbId);
+                                }
+                                return [...state, member.tmbId];
+                              });
+                            }}
+                            isChecked={selectedMemberIdList.includes(member.tmbId)}
+                            orgs={member.orgs}
+                          />
+                        );
+                      })}
+                    </OrgMemberScrollData>
+                  );
+                })()}
               {filterGroups?.map((group) => {
                 const onChange = () => {
                   setSelectedGroupIdList((state) => {
@@ -455,20 +497,7 @@ function MemberModal({
                     name={item.name ?? ''}
                     onChange={item.onDelete}
                     onDelete={item.onDelete}
-                    orgs={(() => {
-                      if (!item.id.startsWith('member-')) return [];
-                      const id = item.id.replace('member-', '');
-                      const memberOrgs = orgs.filter((org) =>
-                        org.members.find((v) => v.tmbId === id)
-                      );
-                      const memberPathIds = memberOrgs.map((org) =>
-                        (org.path + '/' + org.pathId).split('/').slice(0)
-                      );
-                      const memberOrgNames = memberPathIds.map((pathIds) =>
-                        pathIds.map((id) => orgs.find((v) => v.pathId === id)?.name).join('/')
-                      );
-                      return memberOrgNames;
-                    })()}
+                    orgs={item?.orgs}
                   />
                 );
               })}
