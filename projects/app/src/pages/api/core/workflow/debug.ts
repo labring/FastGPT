@@ -29,8 +29,7 @@ async function handler(
   if (!Array.isArray(edges)) {
     throw new Error('Edges is not array');
   }
-  let query: UserChatItemValueItemType[] = [];
-  query = [
+  const query: UserChatItemValueItemType[] = [
     {
       type: ChatItemValueTypeEnum.text,
 
@@ -39,8 +38,140 @@ async function handler(
       }
     }
   ];
-
-  let histories: ChatItemType[] = [
+  const query_form_input: UserChatItemValueItemType[] = [
+    {
+      type: ChatItemValueTypeEnum.text,
+      text: {
+        content: '{"未知":"未知","数字":2}'
+      }
+    }
+  ];
+  const histories_form_input: ChatItemType[] = [
+    {
+      dataId: 'j2ywiLkIbMivBll5fzYvkuGK',
+      obj: ChatRoleEnum.Human,
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: '123213'
+          }
+        }
+      ]
+    },
+    {
+      dataId: 'lRXcu9MtfCHlpUqeQWGSY4gu',
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          type: ChatItemValueTypeEnum.interactive,
+          interactive: {
+            type: 'userInput',
+            params: {
+              description: '这是个表单输入',
+              inputForm: [
+                {
+                  type: 'input',
+                  key: '未知',
+                  label: '未知',
+                  description: '未知',
+                  value: '',
+                  maxLength: 20,
+                  defaultValue: '未知',
+                  valueType: 'string',
+                  required: true,
+                  list: [
+                    {
+                      label: '',
+                      value: ''
+                    }
+                  ]
+                },
+                {
+                  type: 'numberInput',
+                  key: '数字',
+                  label: '数字',
+                  description: '数字',
+                  value: '',
+                  defaultValue: 2,
+                  valueType: 'number',
+                  required: false,
+                  list: [
+                    {
+                      label: '',
+                      value: ''
+                    }
+                  ],
+                  max: 2,
+                  min: 2
+                }
+              ]
+            },
+            entryNodeIds: ['mYvt4SN5KFwZ'],
+            memoryEdges: [
+              {
+                source: 'workflowStartNodeId',
+                target: 'oQKWr1cGFVBG',
+                sourceHandle: 'workflowStartNodeId-source-right',
+                targetHandle: 'oQKWr1cGFVBG-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'oQKWr1cGFVBG',
+                target: 'uFnqha6Nx9qw',
+                sourceHandle: 'oQKWr1cGFVBG-source-option1',
+                targetHandle: 'uFnqha6Nx9qw-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'oQKWr1cGFVBG',
+                target: '7kwgL1dVlwG6',
+                sourceHandle: 'oQKWr1cGFVBG-source-option2',
+                targetHandle: '7kwgL1dVlwG6-target-left',
+                status: 'waiting'
+              },
+              {
+                source: '7kwgL1dVlwG6',
+                target: 'dZpDaSXFO0td',
+                sourceHandle: '7kwgL1dVlwG6-source-right',
+                targetHandle: 'dZpDaSXFO0td-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'dZpDaSXFO0td',
+                target: 'uFnqha6Nx9qw',
+                sourceHandle: 'dZpDaSXFO0td-source-option2',
+                targetHandle: 'uFnqha6Nx9qw-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'workflowStartNodeId',
+                target: 'mYvt4SN5KFwZ',
+                sourceHandle: 'workflowStartNodeId-source-right',
+                targetHandle: 'mYvt4SN5KFwZ-target-left',
+                status: 'waiting'
+              },
+              {
+                source: 'mYvt4SN5KFwZ',
+                target: 'dfh8AqxAkoL4',
+                sourceHandle: 'mYvt4SN5KFwZ-source-right',
+                targetHandle: 'dfh8AqxAkoL4-target-left',
+                status: 'waiting'
+              }
+            ],
+            nodeOutputs: [
+              {
+                nodeId: 'workflowStartNodeId',
+                key: NodeOutputKeyEnum.userChatInput,
+                value: '123213'
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ];
+  const histories: ChatItemType[] = [
     {
       dataId: 'debug-history-1',
       obj: ChatRoleEnum.Human,
@@ -187,9 +318,9 @@ async function handler(
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,
-    query,
+    query: query_form_input,
     chatConfig: defaultApp.chatConfig,
-    histories,
+    histories: histories_form_input,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
