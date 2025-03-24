@@ -69,31 +69,37 @@ export const DatasetSelectModal = ({
             {selectedDatasets.map((item) =>
               (() => {
                 return (
-                  <Card
-                    key={item.datasetId}
-                    p={3}
-                    border={theme.borders.base}
-                    boxShadow={'sm'}
-                    bg={'primary.200'}
-                  >
-                    <Flex alignItems={'center'} h={'38px'}>
-                      <Avatar src={item.avatar} w={['1.25rem', '1.75rem']}></Avatar>
-                      <Box flex={'1 0 0'} w={0} className="textEllipsis" mx={3}>
-                        {item.name}
-                      </Box>
-                      <MyIcon
-                        name={'delete'}
-                        w={'14px'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'red.500' }}
-                        onClick={() => {
-                          setSelectedDatasets((state) =>
-                            state.filter((dataset) => dataset.datasetId !== item.datasetId)
-                          );
-                        }}
-                      />
-                    </Flex>
-                  </Card>
+                  <MyTooltip label={item.name}>
+                    <Card
+                      key={item.datasetId}
+                      p={3}
+                      border={'base'}
+                      boxShadow={'sm'}
+                      bg={'primary.200'}
+                    >
+                      <Flex alignItems={'center'} h={'38px'}>
+                        <Avatar
+                          src={item.avatar}
+                          w={['1.25rem', '1.75rem']}
+                          borderRadius={'sm'}
+                        ></Avatar>
+                        <Box flex={'1 0 0'} w={0} className="textEllipsis" mx={3} fontSize={'sm'}>
+                          {item.name}
+                        </Box>
+                        <MyIcon
+                          name={'delete'}
+                          w={'14px'}
+                          cursor={'pointer'}
+                          _hover={{ color: 'red.500' }}
+                          onClick={() => {
+                            setSelectedDatasets((state) =>
+                              state.filter((dataset) => dataset.datasetId !== item.datasetId)
+                            );
+                          }}
+                        />
+                      </Flex>
+                    </Card>
+                  </MyTooltip>
                 );
               })()
             )}
@@ -117,7 +123,7 @@ export const DatasetSelectModal = ({
                     label={
                       item.type === DatasetTypeEnum.folder
                         ? t('common:dataset.Select Folder')
-                        : t('common:dataset.Select Dataset')
+                        : item.name
                     }
                   >
                     <Card
@@ -152,14 +158,18 @@ export const DatasetSelectModal = ({
                       }}
                     >
                       <Flex alignItems={'center'} h={'38px'}>
-                        <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
+                        <Avatar
+                          src={item.avatar}
+                          w={['1.25rem', '1.75rem']}
+                          borderRadius={'sm'}
+                        ></Avatar>
                         <Box
                           flex={'1 0 0'}
                           w={0}
                           className="textEllipsis"
                           ml={3}
-                          fontSize={'md'}
                           color={'myGray.900'}
+                          fontSize={'sm'}
                         >
                           {item.name}
                         </Box>
