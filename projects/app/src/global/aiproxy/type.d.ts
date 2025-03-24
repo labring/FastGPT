@@ -30,6 +30,13 @@ export type CreateChannelProps = {
 };
 
 // Log
+export type ChannelLogUsageType = {
+  cache_creation_tokens?: number;
+  cached_tokens?: number;
+  input_tokens?: number;
+  output_tokens?: number;
+  total_tokens?: number;
+};
 export type ChannelLogListItemType = {
   token_name: string;
   model: string;
@@ -40,8 +47,8 @@ export type ChannelLogListItemType = {
   created_at: number;
   request_at: number;
   code: number;
-  prompt_tokens: number;
-  completion_tokens: number;
+  usage?: ChannelLogUsageType;
   endpoint: string;
   content?: string;
+  retry_times?: number;
 };
