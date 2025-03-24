@@ -53,6 +53,10 @@ export function getQueue<DataType, ReturnType = any>(
     return queue as Queue<DataType, ReturnType>;
   }
   const newQueue = new Queue<DataType, ReturnType>(name, { ...queueOpts, ...opts });
+  // default error handler, to avoid unhandled exceptions
+  newQueue.on('error', (error) => {
+    addLog.error(`MQ Queue [${name}]: ${error.message}`, error);
+  });
   queues.set(name, newQueue);
   return newQueue;
 }
