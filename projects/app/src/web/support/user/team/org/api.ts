@@ -6,8 +6,11 @@ import type {
 } from '@fastgpt/global/support/user/team/org/api';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import type { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 
-export const getOrgList = () => GET<OrgType[]>('/proApi/support/user/team/org/list');
+export const getOrgList = (path: string) =>
+  GET<OrgType[]>(`/proApi/support/user/team/org/list`, { orgPath: path });
 
 export const postCreateOrg = (data: postCreateOrgData) =>
   POST('/proApi/support/user/team/org/create', data);
@@ -28,3 +31,6 @@ export const putUpdateOrgMembers = (data: putUpdateOrgMembersData) =>
 
 // export const putChnageOrgOwner = (data: putChnageOrgOwnerData) =>
 //   PUT('/proApi/support/user/team/org/changeOwner', data);
+
+export const getOrgMembers = (data: PaginationProps<{ orgId: string }>) =>
+  GET<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/org/members`, data);
