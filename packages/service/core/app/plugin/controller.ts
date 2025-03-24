@@ -37,11 +37,12 @@ export async function splitCombinePluginId(id: string) {
   return { source, pluginId: id };
 }
 
-type ChildAppType = SystemPluginTemplateItemType & { teamId?: string };
+type ChildAppType = SystemPluginTemplateItemType & { teamId?: string; tmbId?: string };
+
 const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
-): Promise<SystemPluginTemplateItemType> => {
+): Promise<ChildAppType> => {
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
   if (!item) return Promise.reject(PluginErrEnum.unAuth);
 
@@ -67,12 +68,17 @@ const getSystemPluginTemplateById = async (
       : await getAppLatestVersion(plugin.associatedPluginId, app);
     if (!version.versionId) return Promise.reject('App version not found');
 
-    plugin.workflow = {
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig
+    return {
+      ...plugin,
+      workflow: {
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig
+      },
+      version: versionId || String(version.versionId),
+      teamId: String(app.teamId),
+      tmbId: String(app.tmbId)
     };
-    plugin.version = versionId || String(version.versionId);
   }
   return plugin;
 };
@@ -168,6 +174,7 @@ export async function getChildAppRuntimeById(
       return {
         id: String(item._id),
         teamId: String(item.teamId),
+        tmbId: String(item.tmbId),
         name: item.name,
         avatar: item.avatar,
         intro: item.intro,
@@ -187,6 +194,7 @@ export async function getChildAppRuntimeById(
         pluginOrder: 0
       };
     } else {
+      // System
       return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
@@ -194,6 +202,7 @@ export async function getChildAppRuntimeById(
   return {
     id: app.id,
     teamId: app.teamId,
+    tmbId: app.tmbId,
     name: app.name,
     avatar: app.avatar,
     showStatus: app.showStatus,

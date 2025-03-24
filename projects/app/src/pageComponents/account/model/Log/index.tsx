@@ -197,7 +197,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack>
           <FormLabel>{t('account_model:channel_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
@@ -210,7 +210,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack>
           <FormLabel>{t('account_model:model_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>

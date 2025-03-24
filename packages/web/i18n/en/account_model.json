@@ -12,6 +12,7 @@
   "channel_status_unknown": "unknown",
   "channel_type": "Manufacturer",
   "clear_model": "Clear the model",
+  "confirm_delete_channel": "Confirm the deletion of the [{{name}}] channel?",
   "copy_model_id_success": "Copyed model id",
   "create_channel": "Added channels",
   "default_url": "Default address",
