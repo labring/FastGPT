@@ -250,22 +250,24 @@ export const WholeResponseContent = ({
           value={activeModule?.similarity}
         />
         <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
-        <Row
-          label={t('common:core.chat.response.search using reRank')}
-          rawDom={
-            <Box border={'base'} borderRadius={'md'} p={2}>
-              {activeModule?.searchUsingReRank ? (
-                activeModule?.rerankModel ? (
-                  <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+        {activeModule?.searchUsingReRank !== undefined && (
+          <Row
+            label={t('common:core.chat.response.search using reRank')}
+            rawDom={
+              <Box border={'base'} borderRadius={'md'} p={2}>
+                {activeModule?.searchUsingReRank ? (
+                  activeModule?.rerankModel ? (
+                    <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                  ) : (
+                    'True'
+                  )
                 ) : (
-                  'True'
-                )
-              ) : (
-                `False`
-              )}
-            </Box>
-          }
-        />
+                  `False`
+                )}
+              </Box>
+            }
+          />
+        )}
         {activeModule.queryExtensionResult && (
           <>
             <Row

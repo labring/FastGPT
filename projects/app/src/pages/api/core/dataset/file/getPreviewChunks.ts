@@ -43,9 +43,12 @@ export type PostPreviewFilesChunksProps = {
   externalFileId?: string;
 };
 export type PreviewChunksResponse = {
-  q: string;
-  a: string;
-}[];
+  chunks: {
+    q: string;
+    a: string;
+  }[];
+  total: number;
+};
 
 async function handler(
   req: ApiRequestProps<PostPreviewFilesChunksProps>
@@ -123,13 +126,17 @@ async function handler(
     customPdfParse
   });
 
-  return rawText2Chunks({
+  const chunks = rawText2Chunks({
     rawText,
     chunkSize,
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
     customReg: chunkSplitter ? [chunkSplitter] : [],
     isQAImport: isQAImport
-  }).slice(0, 10);
+  });
+  return {
+    chunks: chunks.slice(0, 10),
+    total: chunks.length
+  };
 }
 export default NextAPI(handler);

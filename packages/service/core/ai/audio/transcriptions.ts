@@ -3,21 +3,25 @@ import { getAxiosConfig } from '../config';
 import axios from 'axios';
 import FormData from 'form-data';
 import { getSTTModel } from '../model';
+import { STTModelType } from '@fastgpt/global/core/ai/model.d';
 
 export const aiTranscriptions = async ({
-  model,
+  model: modelData,
   fileStream,
   headers
 }: {
-  model: string;
+  model: STTModelType;
   fileStream: fs.ReadStream;
   headers?: Record<string, string>;
 }) => {
+  if (!modelData) {
+    return Promise.reject('no model');
+  }
+
   const data = new FormData();
-  data.append('model', model);
+  data.append('model', modelData.model);
   data.append('file', fileStream);
 
-  const modelData = getSTTModel(model);
   const aiAxiosConfig = getAxiosConfig();
 
   const { data: result } = await axios<{ text: string }>({

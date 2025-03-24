@@ -80,7 +80,7 @@
   "permission.des.write": "可增加和变更知识库内容",
   "preview_chunk": "分块预览",
   "preview_chunk_empty": "无法读取该文件内容",
-  "preview_chunk_intro": "最多展示 10 个分块",
+  "preview_chunk_intro": "共 {{total}} 个分块，最多展示 10 个",
   "preview_chunk_not_selected": "点击左侧文件后进行预览",
   "rebuild_embedding_start_tip": "切换索引模型任务已开始",
   "rebuilding_index_count": "重建中索引数量：{{count}}",
