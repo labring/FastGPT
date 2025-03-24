@@ -37,6 +37,18 @@ export type DatasetSchemaType = {
   websiteConfig?: {
     url: string;
     selector: string;
+    // Chunk settings
+    autoIndexes?: boolean;
+    imageIndex?: boolean;
+    trainingType: DatasetCollectionDataProcessModeEnum;
+
+    chunkSettingMode?: ChunkSettingModeEnum;
+    chunkSplitMode?: DataChunkSplitModeEnum;
+
+    chunkSize?: number;
+    indexSize?: number;
+    chunkSplitter?: string;
+    qaPrompt?: string;
   };
   inheritPermission: boolean;
   apiServer?: APIFileServer;

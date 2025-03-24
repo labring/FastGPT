@@ -1,5 +1,11 @@
 import { getMongoModel, Schema } from '../../common/mongo';
-import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import {
+  ChunkSettingModeEnum,
+  DataChunkSplitModeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -71,7 +77,27 @@ const DatasetSchema = new Schema({
       selector: {
         type: String,
         default: 'body'
-      }
+      },
+      // Chunk settings
+      imageIndex: Boolean,
+      autoIndexes: Boolean,
+      trainingType: {
+        type: String,
+        enum: Object.values(DatasetCollectionDataProcessModeEnum)
+      },
+      chunkSettingMode: {
+        type: String,
+        enum: Object.values(ChunkSettingModeEnum)
+      },
+      chunkSplitMode: {
+        type: String,
+        enum: Object.values(DataChunkSplitModeEnum)
+      },
+      chunkSize: Number,
+      chunkSplitter: String,
+
+      indexSize: Number,
+      qaPrompt: String
     }
   },
   inheritPermission: {
@@ -87,8 +113,6 @@ const DatasetSchema = new Schema({
   yuqueServer: {
     type: Object
   },
-
-  autoSync: Boolean,
 
   // abandoned
   externalReadUrl: {

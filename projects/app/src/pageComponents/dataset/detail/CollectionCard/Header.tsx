@@ -55,8 +55,15 @@ const Header = ({}: {}) => {
   const { parentId = '' } = router.query as { parentId: string };
   const { isPc } = useSystem();
 
-  const { searchText, setSearchText, total, getData, pageNum, onOpenWebsiteModal } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const {
+    searchText,
+    setSearchText,
+    total,
+    getData,
+    pageNum,
+    onOpenWebsiteModal,
+    openWebSyncConfirm
+  } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
     getDatasetCollectionPathById(parentId)
@@ -272,7 +279,12 @@ const Header = ({}: {}) => {
               {datasetDetail?.websiteConfig?.url ? (
                 <Flex alignItems={'center'}>
                   {datasetDetail.status === DatasetStatusEnum.active && (
-                    <Button onClick={onOpenWebsiteModal}>{t('common:common.Config')}</Button>
+                    <Flex gap={2}>
+                      <Button onClick={onOpenWebsiteModal}>{t('common:common.Config')}</Button>
+                      <Button variant="outline" onClick={openWebSyncConfirm}>
+                        {t('common:core.dataset.website.Start Sync')}
+                      </Button>
+                    </Flex>
                   )}
                   {datasetDetail.status === DatasetStatusEnum.syncing && (
                     <Flex

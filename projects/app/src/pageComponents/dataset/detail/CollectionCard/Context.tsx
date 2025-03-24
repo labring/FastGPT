@@ -2,7 +2,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { Dispatch, ReactNode, SetStateAction, useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { useDisclosure } from '@chakra-ui/react';
@@ -75,6 +75,17 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const { openConfirm: openWebSyncConfirm, ConfirmModal: ConfirmWebSyncModal } = useConfirm({
     content: t('dataset:start_sync_website_tip')
   });
+
+  const syncWebsite = async () => {
+    await checkTeamWebSyncLimit();
+    const billId = await postCreateTrainingUsage({
+      name: t('common:core.dataset.training.Website Sync'),
+      datasetId: datasetId
+    });
+    await postWebsiteSync({ datasetId: datasetId, billId });
+    await loadDatasetDetail(datasetId);
+  };
+
   const {
     isOpen: isOpenWebsiteModal,
     onOpen: onOpenWebsiteModal,
@@ -83,19 +94,12 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const { mutate: onUpdateDatasetWebsiteConfig } = useRequest({
     mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
       onCloseWebsiteModal();
-      await checkTeamWebSyncLimit();
-
       await updateDataset({
         id: datasetId,
         websiteConfig
       });
-      const billId = await postCreateTrainingUsage({
-        name: t('common:core.dataset.training.Website Sync'),
-        datasetId: datasetId
-      });
-      await postWebsiteSync({ datasetId: datasetId, billId });
-      await loadDatasetDetail(datasetId);
 
+      await syncWebsite();
       return;
     },
     errorToast: t('common:common.Update Failed')
@@ -125,7 +129,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   });
 
   const contextValue: CollectionPageContextType = {
-    openWebSyncConfirm: openWebSyncConfirm(onUpdateDatasetWebsiteConfig),
+    openWebSyncConfirm: openWebSyncConfirm(syncWebsite),
     onOpenWebsiteModal,
 
     searchText,
@@ -150,10 +154,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
             <WebSiteConfigModal
               onClose={onCloseWebsiteModal}
               onSuccess={onUpdateDatasetWebsiteConfig}
-              defaultValue={{
-                url: datasetDetail?.websiteConfig?.url,
-                selector: datasetDetail?.websiteConfig?.selector
-              }}
             />
           )}
           <ConfirmWebSyncModal />
