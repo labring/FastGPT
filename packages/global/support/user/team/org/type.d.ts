@@ -24,9 +24,4 @@ type OrgType = Omit<OrgSchemaType, 'avatar'> & {
   avatar: string;
   permission: TeamPermission;
   total: number; // members + children orgs
-  members: {
-    tmbId: string;
-    name: string;
-    avatar: string;
-  }[];
 };

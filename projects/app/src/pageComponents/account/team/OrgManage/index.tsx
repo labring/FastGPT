@@ -95,6 +95,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
     },
     refreshDeps: [currentOrg?._id, rootOrg?._id]
   });
+
   const { feConfigs } = useSystemStore();
 
   const isSyncMember = feConfigs.register_method?.includes('sync');

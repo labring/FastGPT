@@ -4,8 +4,8 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Tag from '@fastgpt/web/components/common/Tag';
 import React from 'react';
 
-function OrgTags({ orgs, type = 'simple' }: { orgs: string[]; type?: 'simple' | 'tag' }) {
-  return (
+function OrgTags({ orgs, type = 'simple' }: { orgs?: string[]; type?: 'simple' | 'tag' }) {
+  return orgs?.length ? (
     <MyTooltip
       label={
         <VStack gap="1" alignItems={'start'}>
@@ -39,6 +39,10 @@ function OrgTags({ orgs, type = 'simple' }: { orgs: string[]; type?: 'simple' | 
         </Flex>
       )}
     </MyTooltip>
+  ) : (
+    <Box fontSize="xs" fontWeight={400} w="full" color="myGray.400" whiteSpace={'nowrap'}>
+      -
+    </Box>
   );
 }
 

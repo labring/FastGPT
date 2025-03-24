@@ -1,5 +1,8 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
-import type { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import type {
+  GroupMemberItemType,
+  MemberGroupListType
+} from '@fastgpt/global/support/permission/memberGroup/type';
 import type {
   postCreateGroupData,
   putUpdateGroupData
@@ -15,3 +18,6 @@ export const deleteGroup = (groupId: string) =>
 
 export const putUpdateGroup = (data: putUpdateGroupData) =>
   PUT('/proApi/support/user/team/group/update', data);
+
+export const getGroupMembers = (groupId: string) =>
+  GET<GroupMemberItemType[]>(`/proApi/support/user/team/group/members`, { groupId });
