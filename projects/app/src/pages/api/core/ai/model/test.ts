@@ -147,7 +147,7 @@ const testTTSModel = async (model: TTSModelType, headers: Record<string, string>
 const testSTTModel = async (model: STTModelType, headers: Record<string, string>) => {
   const path = isProduction ? '/app/data/test.mp3' : 'data/test.mp3';
   const { text } = await aiTranscriptions({
-    model: model.model,
+    model,
     fileStream: fs.createReadStream(path),
     headers
   });

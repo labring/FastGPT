@@ -66,7 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     // }
 
     const result = await aiTranscriptions({
-      model: getDefaultSTTModel().model,
+      model: getDefaultSTTModel(),
       fileStream: fs.createReadStream(file.path)
     });
 
