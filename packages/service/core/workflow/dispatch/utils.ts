@@ -117,6 +117,9 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     return Boolean(value);
   }
   try {
+    if (WorkflowIOValueTypeEnum.arrayString && typeof value === 'string') {
+      return [value];
+    }
     if (
       type &&
       [
@@ -124,7 +127,12 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
         WorkflowIOValueTypeEnum.chatHistory,
         WorkflowIOValueTypeEnum.datasetQuote,
         WorkflowIOValueTypeEnum.selectApp,
-        WorkflowIOValueTypeEnum.selectDataset
+        WorkflowIOValueTypeEnum.selectDataset,
+        WorkflowIOValueTypeEnum.arrayString,
+        WorkflowIOValueTypeEnum.arrayNumber,
+        WorkflowIOValueTypeEnum.arrayBoolean,
+        WorkflowIOValueTypeEnum.arrayObject,
+        WorkflowIOValueTypeEnum.arrayAny
       ].includes(type) &&
       typeof value !== 'object'
     ) {
