@@ -9,7 +9,6 @@ import type { UserType } from '@fastgpt/global/support/user/type.d';
 import type { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 import { getTeamPlanStatus } from './team/api';
 import { getGroupList } from './team/group/api';
-import { getOrgList } from './team/org/api';
 
 type State = {
   systemMsgReadId: string;
