@@ -581,7 +581,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       runtimeNodes,
       runtimeEdges,
       params,
-      mode: props.mode === 'debug' ? 'test' : props.mode
+      mode: props.mode === 'debug' ? 'test' : props.mode,
+      realmode: props.mode
     };
 
     // run module

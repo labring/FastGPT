@@ -65,6 +65,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   params: T;
+  realmode?: 'test' | 'chat' | 'debug';
 };
 
 export type SystemVariablesType = {
