@@ -66,8 +66,6 @@ function MemberModal({
     members: orgMembers,
     MemberScrollData: OrgMemberScrollData,
     onPathClick,
-    refresh,
-    updateCurrentOrg,
     orgs
   } = useOrg({ getPermission: false });
 
