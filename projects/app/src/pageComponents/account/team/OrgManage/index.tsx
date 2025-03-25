@@ -14,7 +14,7 @@ import {
   Tr,
   VStack
 } from '@chakra-ui/react';
-import type { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
@@ -32,12 +32,9 @@ import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
-import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
