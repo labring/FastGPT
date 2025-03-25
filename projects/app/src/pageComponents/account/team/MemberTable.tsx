@@ -20,8 +20,9 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import {
   delRemoveMember,
-  postRestoreMember,
-  putUpdateMemberNameByManager
+  getTeamMembers,
+  putUpdateMemberNameByManager,
+  postRestoreMember
 } from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
@@ -33,7 +34,6 @@ import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import { GetSearchUserGroupOrg, postSyncMembers } from '@/web/support/user/api';
-import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum
@@ -41,10 +41,12 @@ import {
 import format from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -55,19 +57,71 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
+  const isSyncMember = feConfigs?.register_method?.includes('sync');
 
-  const { myTeams, refetchTeams, members, refetchMembers, onSwitchTeam, MemberScrollData } =
-    useContextSelector(TeamContext, (v) => v);
+  const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 
   const {
     isOpen: isOpenTeamTagsAsync,
     onOpen: onOpenTeamTagsAsync,
     onClose: onCloseTeamTagsAsync
   } = useDisclosure();
+
+  // member action
+  const {
+    data: members = [],
+    isLoading: loadingMembers,
+    refreshList: refetchMemberList,
+    ScrollData: MemberScrollData
+  } = useScrollPagination(getTeamMembers, {
+    pageSize: 20,
+    params: {
+      withLeaved: true
+    }
+  });
+
+  const [searchText, setSearchText] = useState<string>('');
+  const { data: searchMembersData, run: refreshSearchMembers } = useRequest2(
+    async () => {
+      if (!searchText) return Promise.resolve();
+      return GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false });
+    },
+    {
+      manual: false,
+      throttleWait: 500,
+      refreshDeps: [searchText]
+    }
+  );
+
+  const onRefreshMembers = useCallback(() => {
+    refetchMemberList();
+    refreshSearchMembers();
+  }, [refetchMemberList, refreshSearchMembers]);
+
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
+
+  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(postSyncMembers, {
+    onSuccess: onRefreshMembers,
+    successToast: t('account_team:sync_member_success'),
+    errorToast: t('account_team:sync_member_failed')
+  });
+
+  const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
+    content: t('account_team:confirm_leave_team')
+  });
+  const { runAsync: onLeaveTeam } = useRequest2(delLeaveTeam, {
+    onSuccess() {
+      const defaultTeam = myTeams[0];
+      onSwitchTeam(defaultTeam.teamId);
+    },
+    errorToast: t('account_team:user_team_leave_team_failed')
+  });
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
     type: 'delete'
+  });
+  const { runAsync: onRemoveMember } = useRequest2(delRemoveMember, {
+    onSuccess: onRefreshMembers
   });
 
   const { ConfirmModal: ConfirmRestoreMemberModal, openConfirm: openRestoreMember } = useConfirm({
@@ -76,59 +130,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     iconSrc: 'common/confirm/restoreTip',
     iconColor: 'primary.500'
   });
-
-  const [searchText, setSearchText] = useState<string>('');
-  const isSyncMember = feConfigs.register_method?.includes('sync');
-
-  const { data: searchMembersData } = useRequest2(
-    async () => {
-      if (!searchText) return Promise.resolve();
-      return GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false });
-    },
-    {
-      manual: false,
-      throttleWait: 500,
-      debounceWait: 200,
-      refreshDeps: [searchText]
-    }
-  );
-
-  const { runAsync: onLeaveTeam } = useRequest2(
-    async () => {
-      const defaultTeam = myTeams[0];
-      // change to personal team
-      onSwitchTeam(defaultTeam.teamId);
-      return delLeaveTeam();
-    },
-    {
-      onSuccess() {
-        refetchTeams();
-        refetchMembers();
-      },
-      errorToast: t('account_team:user_team_leave_team_failed')
-    }
-  );
-  const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
-    content: t('account_team:confirm_leave_team')
-  });
-
-  const { runAsync: onSyncMember, loading: isSyncing } = useRequest2(postSyncMembers, {
-    onSuccess() {
-      refetchMembers();
-    },
-    successToast: t('account_team:sync_member_success'),
-    errorToast: t('account_team:sync_member_failed')
-  });
-
-  const { runAsync: onRestore, loading: isUpdateInvite } = useRequest2(postRestoreMember, {
-    onSuccess() {
-      refetchMembers();
-    },
-    successToast: t('common:user.team.invite.Accepted'),
+  const { runAsync: onRestore } = useRequest2(postRestoreMember, {
+    onSuccess: onRefreshMembers,
+    successToast: t('common:common.Success'),
     errorToast: t('common:user.team.invite.Reject')
   });
 
-  const isLoading = isUpdateInvite || isSyncing;
+  const isLoading = loadingMembers || isSyncing;
 
   const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
     title: t('account_team:edit_member'),
@@ -141,7 +149,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       defaultVal: memberName,
       onSuccess: (newName: string) => {
         return putUpdateMemberNameByManager(tmbId, newName).then(() => {
-          refetchMembers();
+          onRefreshMembers();
         });
       },
       onError: (err) => {
@@ -155,7 +163,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   return (
     <>
-      {isLoading && <MyLoading />}
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
         <HStack alignItems={'center'}>
@@ -237,7 +244,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
         </HStack>
       </Flex>
 
-      <Box flex={'1 0 0'} overflow={'auto'}>
+      <MyBox isLoading={isLoading} flex={'1 0 0'} overflow={'auto'}>
         <MemberScrollData>
           <TableContainer overflow={'unset'} fontSize={'sm'}>
             <Table overflow={'unset'}>
@@ -321,27 +328,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                 }}
                                 onClick={() => {
                                   openRemoveMember(
-                                    () => delRemoveMember(member.tmbId).then(refetchMembers),
-                                    undefined,
-                                    t('account_team:remove_tip', {
-                                      username: member.memberName
-                                    })
-                                  )();
-                                }}
-                              />
-                              <Icon
-                                name={'common/trash'}
-                                cursor={'pointer'}
-                                w="1rem"
-                                p="1"
-                                borderRadius="sm"
-                                _hover={{
-                                  color: 'red.600',
-                                  bgColor: 'myGray.100'
-                                }}
-                                onClick={() => {
-                                  openRemoveMember(
-                                    () => delRemoveMember(member.tmbId).then(refetchMembers),
+                                    () => onRemoveMember(member.tmbId),
                                     undefined,
                                     t('account_team:remove_tip', {
                                       username: member.memberName
@@ -385,7 +372,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
             <EditMemberNameModal />
           </TableContainer>
         </MemberScrollData>
-      </Box>
+      </MyBox>
 
       <ConfirmLeaveTeamModal />
       {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}

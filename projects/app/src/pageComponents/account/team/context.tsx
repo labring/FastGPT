@@ -13,10 +13,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { getGroupList } from '@/web/support/user/team/group/api';
-import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { useRouter } from 'next/router';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
@@ -55,6 +53,8 @@ export const TeamContext = createContext<TeamModalContextType>({
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const router = useRouter();
+
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo } = useUserStore();
 
@@ -96,10 +96,12 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
       await putSwitchTeam(teamId);
-      refetchMembers();
       return initUserInfo();
     },
     {
+      onSuccess: () => {
+        router.reload();
+      },
       errorToast: t('common:user.team.Switch Team Failed')
     }
   );
