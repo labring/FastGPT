@@ -1,6 +1,6 @@
 import { putMoveOrg } from '@/web/support/user/team/org/api';
 import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
-import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
@@ -15,13 +15,13 @@ function OrgMoveModal({
   onClose,
   onSuccess
 }: {
-  movingOrg: OrgType;
-  orgs: OrgType[];
+  movingOrg: OrgListItemType;
+  orgs: OrgListItemType[];
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const [selectedOrg, setSelectedOrg] = useState<OrgType>();
+  const [selectedOrg, setSelectedOrg] = useState<OrgListItemType>();
   const { userInfo } = useUserStore();
   const team = userInfo?.team!;
 
