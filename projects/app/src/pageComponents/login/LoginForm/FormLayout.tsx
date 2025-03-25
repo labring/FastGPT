@@ -134,6 +134,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         });
         router.replace(item.redirectUrl, '_self');
       }
+      item.pageType && setPageType(item.pageType);
     },
     [lastRoute, router, setLoginStore, setPageType]
   );
