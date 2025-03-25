@@ -26,7 +26,7 @@ import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import {
   GroupMemberItemType,
-  MemberGroupListType
+  MemberGroupListItemType
 } from '@fastgpt/global/support/permission/memberGroup/type';
 import { useMount } from 'ahooks';
 
@@ -43,24 +43,19 @@ export type GroupFormType = {
 function GroupEditModal({
   onClose,
   editGroupId,
-  groups,
-  refetchGroups
+  group,
+  onSuccess
 }: {
   onClose: () => void;
   editGroupId?: string;
-  groups: MemberGroupListType;
-  refetchGroups: () => void;
+  group: MemberGroupListItemType<true>;
+  onSuccess: () => void;
 }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
 
-  const group = useMemo(() => {
-    return groups.find((item) => item._id === editGroupId);
-  }, [editGroupId, groups]);
-
   const allMembers = useContextSelector(TeamContext, (v) => v.members);
-  const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
   const MemberScrollData = useContextSelector(TeamContext, (v) => v.MemberScrollData);
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 
@@ -94,7 +89,7 @@ function GroupEditModal({
       });
     },
     {
-      onSuccess: () => Promise.all([onClose(), refetchGroups(), refetchMembers()])
+      onSuccess: () => Promise.all([onClose(), onSuccess()])
     }
   );
 
