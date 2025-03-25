@@ -30,7 +30,7 @@ import {
 import Path from '@/components/common/folder/Path';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import { getTeamMembers } from '@/web/support/user/team/api';
@@ -39,6 +39,9 @@ import { getOrgList, getOrgMembers } from '@/web/support/user/team/org/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
+import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -57,47 +60,20 @@ function MemberModal({
   const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
   const [searchText, setSearchText] = useState<string>('');
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
-  const [path, setPath] = useState('');
-  const [orgStack, setOrgStack] = useState<OrgType[]>([]);
-  const currentOrg = useMemo(() => orgStack[orgStack.length - 1], [orgStack]);
+  const {
+    paths,
+    onClickOrg,
+    members: orgMembers,
+    MemberScrollData: OrgMemberScrollData,
+    onPathClick,
+    refresh,
+    updateCurrentOrg,
+    orgs
+  } = useOrg({ getPermission: false });
 
   const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
     pageSize: 15
   });
-
-  const [rootOrg, setRootOrg] = useState<OrgType>();
-  const { data: orgMembers = [], ScrollData: OrgMemberScrollData } = useScrollPagination(
-    getOrgMembers,
-    {
-      pageSize: 20,
-      params: {
-        orgId: currentOrg?._id ?? rootOrg?._id
-      },
-      refreshDeps: [currentOrg?._id]
-    }
-  );
-  const onClickOrg = (org: OrgType) => {
-    setOrgStack([...orgStack, org]);
-    setPath(getOrgChildrenPath(org));
-  };
-
-  const { data: orgs = [] } = useRequest2(
-    () => {
-      const splitPath = path.split('/').filter(Boolean);
-      const orgs = orgStack.filter((o) => splitPath.includes(o.pathId));
-      setOrgStack(orgs);
-      return getOrgList(path);
-    },
-    {
-      manual: false,
-      refreshDeps: [path],
-      onSuccess: (data) => {
-        if (!rootOrg) {
-          setRootOrg(data[0]);
-        }
-      }
-    }
-  );
 
   const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
     async () => {
@@ -117,21 +93,9 @@ function MemberModal({
     refreshDeps: [searchText]
   });
 
-  const paths = useMemo(() => {
-    return orgStack
-      .map((org) => {
-        if (org?.path === '') return;
-        return {
-          parentId: getOrgChildrenPath(org),
-          parentName: org.name
-        };
-      })
-      .filter(Boolean) as ParentTreePathItemType[];
-  }, [orgStack]);
+  const [selectedOrgList, setSelectedOrgIdList] = useState<OrgListItemType[]>([]);
 
-  const [selectedOrgIdList, setSelectedOrgIdList] = useState<string[]>([]);
-
-  const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
+  const filterOrgs: (OrgListItemType & { count?: number })[] = useMemo(() => {
     if (searchText && searchedData) {
       const orgids = searchedData.orgs.map((item) => item._id);
       return orgs.filter((org) => orgids.includes(String(org._id)));
@@ -144,7 +108,9 @@ function MemberModal({
       }));
   }, [searchText, orgs, searchedData]);
 
-  const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
+  const [selectedMemberList, setSelectedMemberList] = useState<
+    Omit<TeamMemberItemType, 'permission' | 'teamId'>[]
+  >([]);
   const filterMembers = useMemo(() => {
     if (searchText) {
       return searchedData?.members || [];
@@ -152,9 +118,8 @@ function MemberModal({
 
     return members;
   }, [searchText, members, searchedData?.members]);
-  console.log(filterMembers);
 
-  const [selectedGroupIdList, setSelectedGroupIdList] = useState<string[]>([]);
+  const [selectedGroupList, setSelectedGroupList] = useState<MemberGroupListType>([]);
   const filterGroups = useMemo(() => {
     if (searchText) {
       return searchedData?.groups.map((item) => ({
@@ -186,9 +151,9 @@ function MemberModal({
   const { runAsync: onConfirm, loading: isUpdating } = useRequest2(
     () =>
       onUpdateCollaborators({
-        members: selectedMemberIdList,
-        groups: selectedGroupIdList,
-        orgs: selectedOrgIdList,
+        members: selectedMemberList.map((item) => item.tmbId),
+        groups: selectedGroupList.map((item) => item._id),
+        orgs: selectedOrgList.map((item) => item._id),
         permission: selectedPermission!
       }),
     {
@@ -206,42 +171,31 @@ function MemberModal({
   ]);
 
   const selectedList = useMemo(() => {
-    const selectedOrgs = orgs.filter((org) => selectedOrgIdList.includes(org._id));
-    const selectedGroups = groups.filter((group) => selectedGroupIdList.includes(group._id));
-    const selectedMembers = members.filter((member) => selectedMemberIdList.includes(member.tmbId));
-
     return [
-      ...selectedOrgs.map((item) => ({
+      ...selectedOrgList.map((item) => ({
         id: `org-${item._id}`,
         avatar: item.avatar,
         name: item.name,
-        onDelete: () => setSelectedOrgIdList(selectedOrgIdList.filter((v) => v !== item._id)),
+        onDelete: () => setSelectedOrgIdList(selectedOrgList.filter((v) => v._id !== item._id)),
         orgs: undefined
       })),
-      ...selectedGroups.map((item) => ({
+      ...selectedGroupList.map((item) => ({
         id: `group-${item._id}`,
         avatar: item.avatar,
         name: item.name === DefaultGroupName ? userInfo?.team.teamName : item.name,
-        onDelete: () => setSelectedGroupIdList(selectedGroupIdList.filter((v) => v !== item._id)),
+        onDelete: () => setSelectedGroupList(selectedGroupList.filter((v) => v._id !== item._id)),
         orgs: undefined
       })),
-      ...selectedMembers.map((item) => ({
+      ...selectedMemberList.map((item) => ({
         id: `member-${item.tmbId}`,
         avatar: item.avatar,
         name: item.memberName,
-        onDelete: () => setSelectedMembers(selectedMemberIdList.filter((v) => v !== item.tmbId)),
+        onDelete: () =>
+          setSelectedMemberList(selectedMemberList.filter((v) => v.tmbId !== item.tmbId)),
         orgs: item.orgs
       }))
     ];
-  }, [
-    orgs,
-    groups,
-    members,
-    selectedOrgIdList,
-    selectedGroupIdList,
-    selectedMemberIdList,
-    userInfo?.team.teamName
-  ]);
+  }, [selectedOrgList, selectedGroupList, selectedMemberList, userInfo?.team.teamName]);
 
   return (
     <MyModal
@@ -324,36 +278,31 @@ function MemberModal({
                     onClick={(parentId) => {
                       if (parentId === '') {
                         setFilterClass(undefined);
-                        setPath('');
+                        onPathClick('');
                       } else if (
                         parentId === 'member' ||
                         parentId === 'org' ||
                         parentId === 'group'
                       ) {
                         setFilterClass(parentId);
-                        setPath('');
+                        onPathClick('');
                       } else {
-                        setPath(parentId);
+                        onPathClick(parentId);
                       }
                     }}
                     rootName={t('common:common.Team')}
                   />
                 </Box>
               )}
-              {(filterClass === 'member' || (searchText && filterMembers.length > 0)) && (
-                <TeamMemberScrollData
-                  flexDirection={'column'}
-                  gap={1}
-                  userSelect={'none'}
-                  height={'fit-content'}
-                >
-                  {filterMembers?.map((member) => {
+              {(filterClass === 'member' || (searchText && filterMembers.length > 0)) &&
+                (() => {
+                  const members = filterMembers?.map((member) => {
                     const onChange = () => {
-                      setSelectedMembers((state) => {
-                        if (state.includes(member.tmbId)) {
-                          return state.filter((v) => v !== member.tmbId);
+                      setSelectedMemberList((state) => {
+                        if (state.find((v) => v.tmbId === member.tmbId)) {
+                          return state.filter((v) => v.tmbId !== member.tmbId);
                         }
-                        return [...state, member.tmbId];
+                        return [...state, member];
                       });
                     };
                     const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
@@ -364,23 +313,33 @@ function MemberModal({
                         name={member.memberName}
                         permission={collaborator?.permission.value}
                         onChange={onChange}
-                        isChecked={selectedMemberIdList.includes(member.tmbId)}
+                        isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
                         orgs={member.orgs}
                       />
                     );
-                  })}
-                </TeamMemberScrollData>
-              )}
-
+                  });
+                  return searchText ? (
+                    members
+                  ) : (
+                    <TeamMemberScrollData
+                      flexDirection={'column'}
+                      gap={1}
+                      userSelect={'none'}
+                      height={'fit-content'}
+                    >
+                      {members}
+                    </TeamMemberScrollData>
+                  );
+                })()}
               {(filterClass === 'org' || searchText) &&
                 (() => {
                   const orgs = filterOrgs?.map((org) => {
                     const onChange = () => {
                       setSelectedOrgIdList((state) => {
-                        if (state.includes(org._id)) {
-                          return state.filter((v) => v !== org._id);
+                        if (state.find((v) => v._id === org._id)) {
+                          return state.filter((v) => v._id !== org._id);
                         }
-                        return [...state, org._id];
+                        return [...state, org];
                       });
                     };
                     const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
@@ -396,7 +355,7 @@ function MemberModal({
                         onClick={onChange}
                       >
                         <Checkbox
-                          isChecked={selectedOrgIdList.includes(org._id)}
+                          isChecked={!!selectedOrgList.find((v) => v._id === org._id)}
                           pointerEvents="none"
                         />
                         <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
@@ -442,14 +401,14 @@ function MemberModal({
                             key={member.tmbId}
                             name={member.memberName}
                             onChange={() => {
-                              setSelectedMembers((state) => {
-                                if (state.includes(member.tmbId)) {
-                                  return state.filter((v) => v !== member.tmbId);
+                              setSelectedMemberList((state) => {
+                                if (state.find((v) => v.tmbId === member.tmbId)) {
+                                  return state.filter((v) => v.tmbId !== member.tmbId);
                                 }
-                                return [...state, member.tmbId];
+                                return [...state, member];
                               });
                             }}
-                            isChecked={selectedMemberIdList.includes(member.tmbId)}
+                            isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
                             orgs={member.orgs}
                           />
                         );
@@ -459,11 +418,11 @@ function MemberModal({
                 })()}
               {filterGroups?.map((group) => {
                 const onChange = () => {
-                  setSelectedGroupIdList((state) => {
-                    if (state.includes(group._id)) {
-                      return state.filter((v) => v !== group._id);
+                  setSelectedGroupList((state) => {
+                    if (state.find((v) => v._id === group._id)) {
+                      return state.filter((v) => v._id !== group._id);
                     }
-                    return [...state, group._id];
+                    return [...state, group];
                   });
                 };
                 const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
@@ -476,7 +435,7 @@ function MemberModal({
                     }
                     permission={collaborator?.permission.value}
                     onChange={onChange}
-                    isChecked={selectedGroupIdList.includes(group._id)}
+                    isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
                   />
                 );
               })}
@@ -486,7 +445,7 @@ function MemberModal({
           <Flex h={'100%'} p="4" flexDirection="column">
             <Box>
               {`${t('user:has_chosen')}: `}
-              {selectedMemberIdList.length + selectedGroupIdList.length + selectedOrgIdList.length}
+              {selectedMemberList.length + selectedGroupList.length + selectedOrgList.length}
             </Box>
             <Flex flexDirection="column" mt="2" gap={1} overflow={'auto'} flex={'1 0 0'} h={0}>
               {selectedList.map((item) => {

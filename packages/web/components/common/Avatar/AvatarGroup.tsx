@@ -19,7 +19,7 @@ function AvatarGroup({
   avatars: string[];
   total?: number;
 }) {
-  const remain = total ?? avatars.length - max;
+  const remain = (total ?? avatars.length) - max;
   return (
     <Flex position="relative">
       {avatars.slice(0, max).map((avatar, index) => (
