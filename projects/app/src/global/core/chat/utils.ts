@@ -51,3 +51,5 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
     historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length
   };
 }
+
+export { isLLMNode };
