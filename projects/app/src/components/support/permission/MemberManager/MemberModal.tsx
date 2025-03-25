@@ -294,14 +294,9 @@ function MemberModal({
                   />
                 </Box>
               )}
-              {(filterClass === 'member' || (searchText && filterMembers.length > 0)) && (
-                <TeamMemberScrollData
-                  flexDirection={'column'}
-                  gap={1}
-                  userSelect={'none'}
-                  height={'fit-content'}
-                >
-                  {filterMembers?.map((member) => {
+              {(filterClass === 'member' || (searchText && filterMembers.length > 0)) &&
+                (() => {
+                  const members = filterMembers?.map((member) => {
                     const onChange = () => {
                       setSelectedMemberList((state) => {
                         if (state.find((v) => v.tmbId === member.tmbId)) {
@@ -322,10 +317,20 @@ function MemberModal({
                         orgs={member.orgs}
                       />
                     );
-                  })}
-                </TeamMemberScrollData>
-              )}
-
+                  });
+                  return searchText ? (
+                    members
+                  ) : (
+                    <TeamMemberScrollData
+                      flexDirection={'column'}
+                      gap={1}
+                      userSelect={'none'}
+                      height={'fit-content'}
+                    >
+                      {members}
+                    </TeamMemberScrollData>
+                  );
+                })()}
               {(filterClass === 'org' || searchText) &&
                 (() => {
                   const orgs = filterOrgs?.map((org) => {

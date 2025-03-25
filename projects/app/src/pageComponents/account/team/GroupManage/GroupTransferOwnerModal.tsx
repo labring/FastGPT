@@ -19,6 +19,8 @@ import React, { useMemo, useState } from 'react';
 import { TeamContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import { Omit } from '@fastgpt/web/components/common/DndDrag';
 
 export type ChangeOwnerModalProps = {
   groupId: string;
@@ -34,14 +36,25 @@ export function ChangeOwnerModal({
 }: ChangeOwnerModalProps & { onClose: () => void }) {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = React.useState('');
+  const { data: searchedData } = useRequest2(
+    async () => {
+      if (!inputValue) return;
+      return GetSearchUserGroupOrg(inputValue);
+    },
+    {
+      manual: false,
+      refreshDeps: [inputValue],
+      throttleWait: 500,
+      debounceWait: 200
+    }
+  );
+
   const { members: allMembers } = useContextSelector(TeamContext, (v) => v);
   const group = useMemo(() => {
     return groups.find((item) => item._id === groupId);
   }, [groupId, groups]);
 
-  const memberList = allMembers.filter((item) => {
-    return item.memberName.toLowerCase().includes(inputValue.toLowerCase());
-  });
+  const memberList = searchedData ? searchedData.members : allMembers;
 
   const [keepAdmin, setKeepAdmin] = useState(true);
 
@@ -51,7 +64,10 @@ export function ChangeOwnerModal({
     onOpen: onOpenMemberListMenu
   } = useDisclosure();
 
-  const [selectedMember, setSelectedMember] = useState<TeamMemberItemType | null>(null);
+  const [selectedMember, setSelectedMember] = useState<Omit<
+    TeamMemberItemType,
+    'permission' | 'teamId'
+  > | null>(null);
 
   const { runAsync, loading } = useRequest2(
     (tmbId: string) => putGroupChangeOwner(groupId, tmbId),
