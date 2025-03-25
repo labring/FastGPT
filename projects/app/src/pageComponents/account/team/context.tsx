@@ -23,21 +23,18 @@ const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
   members: TeamMemberItemType[];
-  groups: MemberGroupListType;
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
   setEditTeamData: React.Dispatch<React.SetStateAction<EditTeamFormDataType | undefined>>;
 
   refetchMembers: () => void;
   refetchTeams: () => void;
-  refetchGroups: () => void;
   teamSize: number;
   MemberScrollData: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
 export const TeamContext = createContext<TeamModalContextType>({
   myTeams: [],
-  groups: [],
   members: [],
   isLoading: false,
   onSwitchTeam: function (_teamId: string): void {
@@ -50,9 +47,6 @@ export const TeamContext = createContext<TeamModalContextType>({
     throw new Error('Function not implemented.');
   },
   refetchMembers: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  refetchGroups: function (): void {
     throw new Error('Function not implemented.');
   },
   teamSize: 0,
@@ -110,16 +104,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     }
   );
 
-  const {
-    data: groups = [],
-    loading: isLoadingGroups,
-    refresh: refetchGroups
-  } = useRequest2(getGroupList, {
-    manual: false,
-    refreshDeps: [userInfo?.team?.teamId]
-  });
-
-  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups;
+  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers;
 
   const contextValue = {
     myTeams,
@@ -131,8 +116,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     setEditTeamData,
     members,
     refetchMembers,
-    groups,
-    refetchGroups,
     teamSize: teamMemberCountData?.count || 0,
     MemberScrollData
   };
