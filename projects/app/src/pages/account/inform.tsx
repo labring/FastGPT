@@ -20,14 +20,14 @@ const InformTable = () => {
 
   const textStyles = {
     title: {
-      color: 'grayModern.900',
+      color: '#111824',
       fontSize: 'md',
-      fontWeight: 'medium',
+      fontWeight: 'bold',
       lineHeight: 6,
       letterSpacing: '0.15px'
     },
     time: {
-      color: 'grayModern.500',
+      color: '#667085',
       fontSize: 'sm',
       lineHeight: 5,
       letterSpacing: '0.25px'
@@ -49,13 +49,26 @@ const InformTable = () => {
   return (
     <AccountContainer>
       <Flex flexDirection="column" py={[0, 5]} h="100%" position="relative">
-        <Box px={[3, 8]} position="relative" flex="1 0 0" h={0} overflowY="auto">
+        <Box
+          px={[3, 8]}
+          position="relative"
+          flex="1 0 0"
+          h={0}
+          overflowY="auto"
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+        >
           {informs.map((item) => (
             <Box
               key={item._id}
               border={theme.borders.md}
               py={5}
               px={6}
+              maxH="168px"
+              maxW="800px"
+              minW="200px"
+              width="100%"
               borderRadius="md"
               position="relative"
               _notLast={{ mb: 4 }}
@@ -97,14 +110,23 @@ const InformTable = () => {
               <Box
                 mt={2}
                 fontSize="sm"
-                color="myGray.400"
-                maxH="168px"
+                fontWeight={400}
+                color="#485264"
                 overflow="hidden"
-                css={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 7,
-                  WebkitBoxOrient: 'vertical'
+                maxHeight={24}
+                sx={{
+                  lineHeight: '16px',
+                  '& h1, & h2, & h3, & h4, & h5, & h6': {
+                    my: '0 !important',
+                    py: 0.5,
+                    display: 'block',
+                    lineHeight: 'normal'
+                  },
+                  '& p': {
+                    my: 0
+                  }
                 }}
+                noOfLines={6}
               >
                 <Markdown source={item.content} />
               </Box>

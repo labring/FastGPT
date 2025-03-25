@@ -40,7 +40,14 @@ const ImportantInform = ({
           alignItems={'flex-start'}
           mb={3}
         >
-          <MyIcon name={'support/user/informLight'} w={5} h={5} mr={2} mt={'2px'} />
+          <MyIcon
+            name={'support/user/informLight'}
+            w={5}
+            h={5}
+            mr={2}
+            mt={'2px'}
+            color="blue.600"
+          />
           <Box flex={'1 0 0'}>
             <Box
               fontWeight="bold"
@@ -68,12 +75,13 @@ const ImportantInform = ({
             cursor={'pointer'}
             p={1}
             pt={0}
+            borderRadius={'4px'}
             _hover={{
               backgroundColor: 'rgba(17, 24, 36, 0.05)'
             }}
             onClick={() => onClickClose(inform._id)}
           >
-            <CloseIcon w={'20px'} />
+            <CloseIcon w={'12px'} />
           </Box>
         </Flex>
       ))}

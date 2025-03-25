@@ -30,6 +30,7 @@ const NotificationDetailsModal = ({ inform, onClose }: { inform: any; onClose: (
       iconSrc={'support/user/informLight'}
       title={t('account_inform:notification_detail')}
       onClose={onClose}
+      iconColor="blue.600"
       maxW="680px"
       maxH="80vh"
     >
