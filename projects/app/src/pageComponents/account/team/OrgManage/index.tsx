@@ -196,7 +196,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
         isLoading={isLoadingOrgs}
       >
         <Box mb={3}>
-          <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={setPath} />
+          <Path paths={paths} rootName={userInfo?.team?.teamName} />
         </Box>
         <Flex flex={'1 0 0'} h={0} w={'100%'} gap={'4'}>
           <MemberScrollData flex="1">
@@ -420,7 +420,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                   <ActionButton
                     icon="common/administrator"
                     text={t('account_team:manage_member')}
-                    onClick={() => setManageMemberOrg(currentOrg ?? rootOrg)}
+                    onClick={() => setManageMemberOrg(currentOrg)}
                   />
                   {currentOrg && currentOrg?.path !== '' && (
                     <>

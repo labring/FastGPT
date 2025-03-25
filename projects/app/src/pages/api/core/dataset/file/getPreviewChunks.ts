@@ -94,7 +94,7 @@ async function handler(
     per: WritePermissionVal
   });
 
-  if (fileAuthRes && (String(fileAuthRes.tmbId) !== String(tmbId) || !fileAuthRes.isRoot)) {
+  if (fileAuthRes && String(fileAuthRes.tmbId) !== String(tmbId) && !fileAuthRes.isRoot) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
 
