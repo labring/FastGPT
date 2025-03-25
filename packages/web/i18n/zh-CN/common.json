@@ -1,5 +1,7 @@
 {
   "App": "应用",
+  "Click to expand": "点击查看详情",
+  "Click_to_expand": "点击查看详情",
   "Download": "下载",
   "Export": "导出",
   "FAQ.ai_point_a": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。\nToken计算采用GPT3.5相同公式，1Token≈0.7中文字符≈0.9英文单词，连续出现的字符可能被认为是1个Tokens。",
@@ -541,6 +543,7 @@
   "core.dataset.collection.metadata.source name": "来源名",
   "core.dataset.collection.metadata.source size": "来源大小",
   "core.dataset.collection.status.active": "已就绪",
+  "core.dataset.collection.status.error": "训练异常",
   "core.dataset.collection.sync.result.sameRaw": "内容未变动，无需更新",
   "core.dataset.collection.sync.result.success": "开始同步",
   "core.dataset.data.Data Content": "相关数据内容",
