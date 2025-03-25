@@ -134,8 +134,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     { reg: /^(####\s[^\n]+\n)/gm, maxLen: chunkSize },
     { reg: /^(#####\s[^\n]+\n)/gm, maxLen: chunkSize },
 
-    { reg: /([\n]([`~]))/g, maxLen: chunkSize }, // code block
-    { reg: /([\n](?=\s*[0-9]+\.))/g, maxLen: chunkSize }, // 增大块，尽可能保证它是一个完整的段落。 (?![\*\-|>`0-9]): markdown special char
+    { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
+    {
+      reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
+      maxLen: maxSize
+    }, // Table 尽可能保证完整性
     { reg: /(\n{2,})/g, maxLen: chunkSize },
     { reg: /([\n])/g, maxLen: chunkSize },
     // ------ There's no overlap on the top
@@ -150,7 +153,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   const checkIsCustomStep = (step: number) => step < customRegLen;
   const checkIsMarkdownSplit = (step: number) =>
     step >= customRegLen && step <= markdownIndex + customRegLen;
-  +customReg.length;
+
   const checkForbidOverlap = (step: number) => step <= forbidOverlapIndex + customRegLen;
 
   // if use markdown title split, Separate record title
@@ -159,7 +162,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       return [
         {
           text,
-          title: ''
+          title: '',
+          chunkMaxSize: chunkSize
         }
       ];
     }
@@ -167,7 +171,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const isCustomStep = checkIsCustomStep(step);
     const isMarkdownSplit = checkIsMarkdownSplit(step);
 
-    const { reg } = stepReges[step];
+    const { reg, maxLen } = stepReges[step];
 
     const replaceText = (() => {
       if (typeof reg === 'string') {
@@ -194,15 +198,19 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         })()
       );
     })();
+
     const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
     return splitTexts
       .map((text) => {
         const matchTitle = isMarkdownSplit ? text.match(reg)?.[0] || '' : '';
+        // 如果一个分块没有匹配到，则使用默认块大小，否则使用最大块大小
+        const chunkMaxSize = text.match(reg) === null ? chunkSize : maxLen;
 
         return {
           text: isMarkdownSplit ? text.replace(matchTitle, '') : text,
-          title: matchTitle
+          title: matchTitle,
+          chunkMaxSize
         };
       })
       .filter((item) => !!item.title || !!item.text?.trim());
@@ -252,9 +260,9 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const isCustomStep = checkIsCustomStep(step);
     const forbidConcat = isCustomStep; // forbid=true时候，lastText肯定为空
 
-    // oversize
+    // Over step
     if (step >= stepReges.length) {
-      if (text.length < chunkSize * 3) {
+      if (text.length < maxSize) {
         return [text];
       }
       // use slice-chunkSize to split text
@@ -268,19 +276,18 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     // split text by special char
     const splitTexts = getSplitTexts({ text, step });
 
-    const maxLen = splitTexts.length > 1 ? stepReges[step].maxLen : chunkSize;
-    const minChunkLen = chunkSize * 0.7;
-
     const chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
       const item = splitTexts[i];
+
+      const maxLen = item.chunkMaxSize; // 当前块最大长度
 
       const lastTextLen = lastText.length;
       const currentText = item.text;
       const newText = lastText + currentText;
       const newTextLen = newText.length;
 
-      // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题时候，给小块都补充上所有标题（包含父级标题）
+      // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
         const innerChunks = splitTextRecursively({
@@ -290,11 +297,13 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           parentTitle: parentTitle + item.title
         });
 
+        // 只有标题，没有内容。
         if (innerChunks.length === 0) {
           chunks.push(`${parentTitle}${item.title}`);
           continue;
         }
 
+        // 在合并最深级标题时，需要补充标题
         chunks.push(
           ...innerChunks.map(
             (chunk) =>
@@ -307,7 +316,16 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
       // newText is too large(now, The lastText must be smaller than chunkSize)
       if (newTextLen > maxLen) {
-        // lastText greater minChunkLen, direct push it to chunks, not add to next chunk. (large lastText)
+        const minChunkLen = maxLen * 0.8; // 当前块最小长度
+        const maxChunkLen = maxLen * 1.2; // 当前块最大长度
+
+        // 新文本没有非常大，直接认为它是一个新的块
+        if (newTextLen < maxChunkLen) {
+          chunks.push(newText);
+          lastText = getOneTextOverlapText({ text: newText, step }); // next chunk will start with overlayText
+          continue;
+        }
+        // 上一个文本块已经挺大的，单独做一个块
         if (lastTextLen > minChunkLen) {
           chunks.push(lastText);
 
@@ -317,13 +335,13 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           continue;
         }
 
-        // 说明是新的文本块比较大，需要进一步拆分
+        // 说明是当前文本比较大，需要进一步拆分
 
-        // split new Text, split chunks must will greater 1 (small lastText)
+        // 把新的文本块进行一个拆分，并追加到 latestText 中
         const innerChunks = splitTextRecursively({
-          text: newText,
+          text: currentText,
           step: step + 1,
-          lastText: '',
+          lastText,
           parentTitle: parentTitle + item.title
         });
         const lastChunk = innerChunks[innerChunks.length - 1];
@@ -351,11 +369,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
       // Not overlap
       if (forbidConcat) {
-        chunks.push(item.text);
+        chunks.push(currentText);
         continue;
       }
 
-      lastText += item.text;
+      lastText = newText;
     }
 
     /* If the last chunk is independent, it needs to be push chunks. */

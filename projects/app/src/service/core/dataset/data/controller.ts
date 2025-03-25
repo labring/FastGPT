@@ -15,18 +15,19 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
-import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const formatIndexes = async ({
   indexes,
   q,
   a = '',
-  indexSize
+  indexSize,
+  maxIndexSize
 }: {
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & { dataId?: string })[];
   q: string;
   a?: string;
   indexSize: number;
+  maxIndexSize: number;
 }): Promise<
   {
     type: `${DatasetDataIndexTypeEnum}`;
@@ -46,9 +47,12 @@ const formatIndexes = async ({
   }) => {
     const qChunks = splitText2Chunks({
       text: q,
-      chunkSize: indexSize
+      chunkSize: indexSize,
+      maxSize: maxIndexSize
     }).chunks;
-    const aChunks = a ? splitText2Chunks({ text: a, chunkSize: indexSize }).chunks : [];
+    const aChunks = a
+      ? splitText2Chunks({ text: a, chunkSize: indexSize, maxSize: maxIndexSize }).chunks
+      : [];
 
     return [
       ...qChunks.map((text) => ({
@@ -100,7 +104,11 @@ const formatIndexes = async ({
         // If oversize tokens, split it
         const tokens = await countPromptTokens(item.text);
         if (tokens > indexSize) {
-          const splitText = splitText2Chunks({ text: item.text, chunkSize: 512 }).chunks;
+          const splitText = splitText2Chunks({
+            text: item.text,
+            chunkSize: 512,
+            maxSize: maxIndexSize
+          }).chunks;
           return splitText.map((text) => ({
             text,
             type: item.type
@@ -151,7 +159,8 @@ export async function insertData2Dataset({
     indexes,
     q,
     a,
-    indexSize
+    indexSize,
+    maxIndexSize: embModel.maxToken
   });
 
   // insert to vector store
@@ -236,7 +245,13 @@ export async function updateData2Dataset({
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
   // 2. Compute indexes
-  const formatIndexesResult = await formatIndexes({ indexes, q, a, indexSize });
+  const formatIndexesResult = await formatIndexes({
+    indexes,
+    q,
+    a,
+    indexSize,
+    maxIndexSize: getEmbeddingModel(model).maxToken
+  });
 
   // 3. Patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];
