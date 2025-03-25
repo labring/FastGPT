@@ -30,7 +30,7 @@ import {
 import Path from '@/components/common/folder/Path';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import { getTeamMembers } from '@/web/support/user/team/api';
@@ -39,6 +39,7 @@ import { getOrgList, getOrgMembers } from '@/web/support/user/team/org/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -57,47 +58,20 @@ function MemberModal({
   const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
   const [searchText, setSearchText] = useState<string>('');
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
-  const [path, setPath] = useState('');
-  const [orgStack, setOrgStack] = useState<OrgType[]>([]);
-  const currentOrg = useMemo(() => orgStack[orgStack.length - 1], [orgStack]);
+  const {
+    paths,
+    onClickOrg,
+    members: orgMembers,
+    MemberScrollData: OrgMemberScrollData,
+    onPathClick,
+    refresh,
+    updateCurrentOrg,
+    orgs
+  } = useOrg({ getPermission: false });
 
   const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
     pageSize: 15
   });
-
-  const [rootOrg, setRootOrg] = useState<OrgType>();
-  const { data: orgMembers = [], ScrollData: OrgMemberScrollData } = useScrollPagination(
-    getOrgMembers,
-    {
-      pageSize: 20,
-      params: {
-        orgId: currentOrg?._id ?? rootOrg?._id
-      },
-      refreshDeps: [currentOrg?._id]
-    }
-  );
-  const onClickOrg = (org: OrgType) => {
-    setOrgStack([...orgStack, org]);
-    setPath(getOrgChildrenPath(org));
-  };
-
-  const { data: orgs = [] } = useRequest2(
-    () => {
-      const splitPath = path.split('/').filter(Boolean);
-      const orgs = orgStack.filter((o) => splitPath.includes(o.pathId));
-      setOrgStack(orgs);
-      return getOrgList(path);
-    },
-    {
-      manual: false,
-      refreshDeps: [path],
-      onSuccess: (data) => {
-        if (!rootOrg) {
-          setRootOrg(data[0]);
-        }
-      }
-    }
-  );
 
   const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
     async () => {
@@ -117,21 +91,9 @@ function MemberModal({
     refreshDeps: [searchText]
   });
 
-  const paths = useMemo(() => {
-    return orgStack
-      .map((org) => {
-        if (org?.path === '') return;
-        return {
-          parentId: getOrgChildrenPath(org),
-          parentName: org.name
-        };
-      })
-      .filter(Boolean) as ParentTreePathItemType[];
-  }, [orgStack]);
-
   const [selectedOrgIdList, setSelectedOrgIdList] = useState<string[]>([]);
 
-  const filterOrgs: (OrgType & { count?: number })[] = useMemo(() => {
+  const filterOrgs: (OrgListItemType & { count?: number })[] = useMemo(() => {
     if (searchText && searchedData) {
       const orgids = searchedData.orgs.map((item) => item._id);
       return orgs.filter((org) => orgids.includes(String(org._id)));
@@ -324,16 +286,16 @@ function MemberModal({
                     onClick={(parentId) => {
                       if (parentId === '') {
                         setFilterClass(undefined);
-                        setPath('');
+                        onPathClick('');
                       } else if (
                         parentId === 'member' ||
                         parentId === 'org' ||
                         parentId === 'group'
                       ) {
                         setFilterClass(parentId);
-                        setPath('');
+                        onPathClick('');
                       } else {
-                        setPath(parentId);
+                        onPathClick(parentId);
                       }
                     }}
                     rootName={t('common:common.Team')}

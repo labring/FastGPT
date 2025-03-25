@@ -14,8 +14,7 @@ export type OrgFormType = {
   avatar: string;
   description?: string;
   name: string;
-  path: string;
-  parentId?: string;
+  path?: string;
 };
 
 export const defaultOrgForm: OrgFormType = {
@@ -29,11 +28,13 @@ export const defaultOrgForm: OrgFormType = {
 function OrgInfoModal({
   editOrg,
   onClose,
-  onSuccess
+  onSuccess,
+  updateCurrentOrg
 }: {
   editOrg: OrgFormType;
   onClose: () => void;
   onSuccess: () => void;
+  updateCurrentOrg: (data: { name?: string; avatar?: string; description?: string }) => void;
 }) {
   const { t } = useTranslation();
 
@@ -50,11 +51,10 @@ function OrgInfoModal({
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
     async (data: OrgFormType) => {
-      if (!editOrg.parentId) return;
       return postCreateOrg({
         name: data.name,
         avatar: data.avatar,
-        parentId: editOrg.parentId,
+        path: editOrg.path,
         description: data.description
       });
     },
@@ -67,7 +67,7 @@ function OrgInfoModal({
     }
   );
 
-  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async (data: OrgFormType) => {
       if (!editOrg._id) return;
       return putUpdateOrg({
@@ -144,7 +144,9 @@ function OrgInfoModal({
           isLoading={isLoading}
           onClick={handleSubmit((data) => {
             if (isEdit) {
-              onUpdate(data);
+              onUpdate(data).then(() => {
+                updateCurrentOrg(data);
+              });
             } else {
               onCreate(data);
             }

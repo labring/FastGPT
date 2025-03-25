@@ -18,18 +18,23 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
 import { TeamContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
+import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 export type ChangeOwnerModalProps = {
   groupId: string;
+  groups: MemberGroupListType;
+  refetchGroups: () => void;
 };
 
 export function ChangeOwnerModal({
   onClose,
-  groupId
+  groupId,
+  groups,
+  refetchGroups
 }: ChangeOwnerModalProps & { onClose: () => void }) {
   const { t } = useTranslation();
   const [inputValue, setInputValue] = React.useState('');
-  const { members: allMembers, groups, refetchGroups } = useContextSelector(TeamContext, (v) => v);
+  const { members: allMembers } = useContextSelector(TeamContext, (v) => v);
   const group = useMemo(() => {
     return groups.find((item) => item._id === groupId);
   }, [groupId, groups]);

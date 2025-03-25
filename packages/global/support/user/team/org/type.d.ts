@@ -21,12 +21,7 @@ type OrgMemberSchemaType = {
 };
 
 export type OrgListItemType = OrgSchemaType & {
-  permission: TeamPermission;
-  members: {
-    tmbId: string;
-    name: string;
-    avatar: string;
-  }[];
+  permission?: TeamPermission;
   total: number; // members + children orgs
 };
 
