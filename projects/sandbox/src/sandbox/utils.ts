@@ -7,7 +7,7 @@ import { strToBase64 } from './jsFn/str2Base64';
 import { createHmac } from './jsFn/crypto';
 
 import { spawn } from 'child_process';
-import { seccompPrefix } from './constants';
+import { pythonScript } from './constants';
 const CustomLogStr = 'CUSTOM_LOG';
 
 /* 
@@ -109,58 +109,19 @@ export const runJsSandbox = async ({
   }
 };
 
-function getImportsAndCleanedCode(code: string): { imports: string[]; cleanedCode: string } {
-  const importRegex = /^\s*(import\s+[\w., ]+|from\s+[\w.]+\s+import\s+[\w., ]+)(\s*#.*)?$/gm;
-  const printRegex = /^\s*print\(.*?\)\s*;?/gms;
-
-  const imports = Array.from(code.matchAll(importRegex)).map((match) => match[0].trim());
-
-  const cleanedCode = code.replace(importRegex, '').replace(printRegex, '');
-
-  return { imports, cleanedCode };
-}
-
-function getVariableDefinitionsCode(variables: Record<string, any>): string {
-  return Object.entries(variables)
-    .map(([key, value]) => {
-      if (typeof value === 'string') return `${key} = ${JSON.stringify(value)}`;
-      return `${key} = ${JSON.stringify(value, (_, v) => {
-        if (typeof v === 'boolean') return v ? 'True' : 'False';
-        if (v === null) return 'None';
-        return v;
-      })}`;
-    })
-    .join('\n');
-}
-
-function getMainCallCode(variables: Record<string, any>): string {
-  const variableKeys = Object.keys(variables);
-  const mainArgs = variableKeys.length > 0 ? variableKeys.join(', ') : '';
-  return `
-try:
-    res = main(${mainArgs})
-    print(json.dumps(res, default=type_converter))
-except Exception as e:
-    print(json.dumps({"ERROR": str(e)}))
-`;
-}
-
 export const runPythonSandbox = async ({
   code,
   variables = {}
 }: RunCodeDto): Promise<RunCodeResponse> => {
-  const { imports, cleanedCode } = getImportsAndCleanedCode(code);
-  const importsCode = imports.join('\n');
-  const variablesCode = getVariableDefinitionsCode(variables);
-  const mainCallCode = getMainCallCode(variables);
+  const mainCallCode = `
+data = ${JSON.stringify({ code, variables })}
+res = run_pythonCode(data)
+print(json.dumps(res))
+`;
 
-  const fullCode = [importsCode, seccompPrefix, variablesCode, cleanedCode, mainCallCode]
-    .filter(Boolean)
-    .join('\n');
+  const fullCode = [pythonScript, mainCallCode].filter(Boolean).join('\n');
 
-  const pythonProcess = spawn('python3', ['-u', '-c', fullCode], {
-    timeout: 10000
-  });
+  const pythonProcess = spawn('python3', ['-u', '-c', fullCode]);
 
   const stdoutPromise = new Promise<string>((resolve) => {
     const chunks: string[] = [];
@@ -168,42 +129,19 @@ export const runPythonSandbox = async ({
     pythonProcess.stdout.on('end', () => resolve(chunks.join('')));
   });
 
-  const stderrPromise = new Promise<string>((resolve) => {
-    const chunks: string[] = [];
-    pythonProcess.stderr.on('data', (data) => chunks.push(data.toString()));
-    pythonProcess.stderr.on('end', () => resolve(chunks.join('')));
-  });
-
-  const { exitCode, signal } = await new Promise<{ exitCode: number; signal: string | null }>(
-    (resolve, reject) => {
-      pythonProcess.on('close', (code, signal) => {
-        resolve({ exitCode: code === null ? -1 : code, signal });
-      });
-      pythonProcess.on('error', (err) => {
-        reject(err);
-      });
-    }
-  );
-
-  const [stdout, stderr] = await Promise.all([stdoutPromise, stderrPromise]);
-
-  if (signal === 'SIGTERM') {
-    throw new Error(`Sandbox timeout or Sandbox violation ${stderr}`);
-  }
-  if (exitCode !== 0) {
-    throw new Error(`Python execution failed (code ${exitCode}): ${stderr}`);
-  }
+  const stdout = await stdoutPromise;
 
   try {
     const parsedOutput = JSON.parse(stdout);
-    if (parsedOutput.ERROR) {
-      throw new Error(parsedOutput.ERROR);
+    if (parsedOutput.error) {
+      throw new Error(parsedOutput.error || 'Unknown error');
     }
-    return {
-      codeReturn: parsedOutput,
-      log: stderr || ''
-    };
+    return { codeReturn: parsedOutput, log: '' };
   } catch (err) {
-    throw new Error(`Invalid JSON output: ${stdout}`);
+    if (stdout.includes('malformed node or string on line 1'))
+      throw new Error(`The result should be a parsable variable, such as a list.  ${stdout}`);
+    else if (stdout.includes('Unexpected end of JSON input'))
+      throw new Error(`Not allowed print or ${stdout}`);
+    throw new Error(`Run failed: ${err}`);
   }
 };

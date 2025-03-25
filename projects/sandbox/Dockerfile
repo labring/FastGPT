@@ -5,21 +5,17 @@ FROM python:3.11-alpine AS python_base
 RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers
 
 WORKDIR /app
-
+COPY requirements.txt /app/requirements.txt
 RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libseccomp-2.5.5.tar.gz && \
     tar -zxvf libseccomp-2.5.5.tar.gz && \
     cd libseccomp-2.5.5 && \
     ./configure --prefix=/usr && \
     make && \
-    make install
-
-RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple Cython    
-
-#install python packages
-RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple numpy pandas
-
-WORKDIR /tmp/libseccomp-2.5.5/src/python
-RUN python setup.py install    
+    make install && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple Cython && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple -r /app/requirements.txt && \
+    cd src/python && \
+    python setup.py install  
 
 
 FROM node:20.14.0-alpine AS install
@@ -60,6 +56,7 @@ RUN pnpm --filter=sandbox build
 FROM node:20.14.0-alpine AS runner
 WORKDIR /app
 
+RUN apk add --no-cache libffi libffi-dev strace bash
 COPY --from=python_base /usr/local /usr/local
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/projects/sandbox /app/projects/sandbox
