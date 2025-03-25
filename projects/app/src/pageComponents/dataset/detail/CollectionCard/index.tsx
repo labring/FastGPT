@@ -10,7 +10,9 @@ import {
   Td,
   Tbody,
   MenuButton,
-  Switch
+  Switch,
+  Checkbox,
+  Button
 } from '@chakra-ui/react';
 import {
   delDatasetCollectionById,
@@ -70,7 +72,9 @@ const CollectionCard = () => {
     title: t('common:Rename')
   });
 
-  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
+  // 状态管理：跟踪选中的集合 ID
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<string[]>([]);
+  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionIds: string[] }>();
 
   const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
     useContextSelector(CollectionPageContext, (v) => v);
@@ -113,15 +117,17 @@ const CollectionCard = () => {
       successToast: t('common:common.Update Success')
     }
   );
+
+  // 修改删除函数以支持批量删除
   const { runAsync: onDelCollection, loading: isDeleting } = useRequest2(
-    (collectionId: string) => {
-      return delDatasetCollectionById({
-        id: collectionId
-      });
+    (collectionIds: string | string[]) => {
+      const ids = Array.isArray(collectionIds) ? collectionIds : [collectionIds];
+      return Promise.all(ids.map((id) => delDatasetCollectionById({ id })));
     },
     {
       onSuccess() {
         getData(pageNum);
+        setSelectedCollectionIds([]); // 清空选中状态
       },
       successToast: t('common:common.Delete Success'),
       errorToast: t('common:common.Delete Failed')
@@ -186,11 +192,44 @@ const CollectionCard = () => {
         {/* header */}
         <Header />
 
+        {/* 批量操作按钮 */}
+        {selectedCollectionIds.length > 0 && (
+          <Flex justifyContent={'flex-end'} mt={2}>
+            <Button
+              onClick={() =>
+                openDeleteConfirm(() =>
+                  selectedCollectionIds.map((id) => onDelCollection(id)), undefined
+                )()
+              }
+            >
+              {t('common:common.Delete')}
+            </Button>
+            <Button
+              ml={2}
+              onClick={() => setMoveCollectionData({ collectionIds: selectedCollectionIds })}
+            >
+              {t('common:Move')}
+            </Button>
+          </Flex>
+        )}
+
         {/* collection table */}
         <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'}>
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
+                <Th py={4}>
+                  <Checkbox
+                    isChecked={selectedCollectionIds.length === formatCollections.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedCollectionIds(formatCollections.map((c) => c._id));
+                      } else {
+                        setSelectedCollectionIds([]);
+                      }
+                    }}
+                  />
+                </Th>
                 <Th py={4}>{t('common:common.Name')}</Th>
                 <Th py={4}>{t('dataset:collection.training_type')}</Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
@@ -225,12 +264,29 @@ const CollectionCard = () => {
                         query: {
                           datasetId: datasetDetail._id,
                           collectionId: collection._id,
-                          currentTab: TabEnum.dataCard
+                          currentTab: TabEnum.dataCard,
+                          parentId: collection.parentId
                         }
                       });
                     }
                   }}
                 >
+                  <Td py={2} onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                      isChecked={selectedCollectionIds.includes(collection._id)}
+                      onChange={(e) => {
+                        e.stopPropagation(); // 防止触发行点击事件
+                        e.preventDefault(); // 防止触发全选事件
+                        if (e.target.checked) {
+                          setSelectedCollectionIds([...selectedCollectionIds, collection._id]);
+                        } else {
+                          setSelectedCollectionIds(
+                            selectedCollectionIds.filter((id) => id !== collection._id)
+                          );
+                        }
+                      }}
+                    />
+                  </Td>
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <Flex alignItems={'center'}>
                       <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
@@ -344,7 +400,7 @@ const CollectionCard = () => {
                                   </Flex>
                                 ),
                                 onClick: () =>
-                                  setMoveCollectionData({ collectionId: collection._id })
+                                  setMoveCollectionData({ collectionIds: [collection._id] })
                               },
                               {
                                 label: (
@@ -417,15 +473,17 @@ const CollectionCard = () => {
           <SelectCollections
             datasetId={datasetDetail._id}
             type="folder"
-            defaultSelectedId={[moveCollectionData.collectionId]}
+            defaultSelectedId={moveCollectionData.collectionIds}
             onClose={() => setMoveCollectionData(undefined)}
             onSuccess={async ({ parentId }) => {
-              await putDatasetCollectionById({
-                id: moveCollectionData.collectionId,
-                parentId
-              });
+              await Promise.all(
+                moveCollectionData.collectionIds.map((id) =>
+                  putDatasetCollectionById({ id, parentId })
+                )
+              );
               getData(pageNum);
               setMoveCollectionData(undefined);
+              setSelectedCollectionIds([]); // 清空选中状态
               toast({
                 status: 'success',
                 title: t('common:common.folder.Move Success')
