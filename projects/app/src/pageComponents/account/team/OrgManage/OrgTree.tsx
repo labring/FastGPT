@@ -1,29 +1,38 @@
 import { Box, HStack, VStack } from '@chakra-ui/react';
-import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useToggle } from 'ahooks';
-import { useMemo } from 'react';
+import { useState } from 'react';
 import IconButton from './IconButton';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getOrgList } from '@/web/support/user/team/org/api';
+import { getChildrenByOrg } from '@fastgpt/service/support/permission/org/controllers';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 
 function OrgTreeNode({
   org,
-  list,
   selectedOrg,
   setSelectedOrg,
   index = 0
 }: {
-  org: OrgType;
-  list: OrgType[];
-  selectedOrg?: OrgType;
-  setSelectedOrg: (org?: OrgType) => void;
+  org: OrgListItemType;
+  selectedOrg?: OrgListItemType;
+  setSelectedOrg: (org?: OrgListItemType) => void;
   index?: number;
 }) {
-  const children = useMemo(
-    () => list.filter((item) => item.path === getOrgChildrenPath(org)),
-    [org, list]
-  );
   const [isExpanded, toggleIsExpanded] = useToggle(index === 0);
+  const [canBeExpanded, setCanBeExpanded] = useState(true);
+  const { data: orgs = [], runAsync: getOrgs } = useRequest2(() =>
+    getOrgList({ orgPath: getOrgChildrenPath(org) })
+  );
+  const onClickExpand = async () => {
+    const data = await getOrgs();
+    if (data.length < 1) {
+      setCanBeExpanded(false);
+    }
+    toggleIsExpanded.toggle();
+  };
 
   return (
     <Box userSelect={'none'}>
@@ -34,7 +43,7 @@ function OrgTreeNode({
         pr={2}
         pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
         cursor={'pointer'}
-        {...(selectedOrg === org
+        {...(selectedOrg?._id === org._id
           ? {
               bg: 'primary.50 !important',
               onClick: () => setSelectedOrg(undefined)
@@ -43,19 +52,17 @@ function OrgTreeNode({
               onClick: () => setSelectedOrg(org)
             })}
       >
-        {index > 0 && (
-          <IconButton
-            name={isExpanded ? 'common/downArrowFill' : 'common/rightArrowFill'}
-            color={'myGray.500'}
-            p={0}
-            w={'1.25rem'}
-            visibility={children.length > 0 ? 'visible' : 'hidden'}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleIsExpanded.toggle();
-            }}
-          />
-        )}
+        <IconButton
+          name={isExpanded ? 'common/downArrowFill' : 'common/rightArrowFill'}
+          color={'myGray.500'}
+          p={0}
+          w={'1.25rem'}
+          visibility={canBeExpanded ? 'visible' : 'hidden'}
+          onClick={(e) => {
+            onClickExpand();
+            e.stopPropagation();
+          }}
+        />
         <HStack
           flex={'1 0 0'}
           onClick={() => setSelectedOrg(org)}
@@ -67,13 +74,12 @@ function OrgTreeNode({
         </HStack>
       </HStack>
       {isExpanded &&
-        children.length > 0 &&
-        children.map((child) => (
+        orgs.length > 0 &&
+        orgs.map((child) => (
           <Box key={child._id} mt={0.5}>
             <OrgTreeNode
               org={child}
               index={index + 1}
-              list={list}
               selectedOrg={selectedOrg}
               setSelectedOrg={setSelectedOrg}
             />
@@ -84,19 +90,29 @@ function OrgTreeNode({
 }
 
 function OrgTree({
-  orgs,
   selectedOrg,
   setSelectedOrg
 }: {
-  orgs: OrgType[];
-  selectedOrg?: OrgType;
-  setSelectedOrg: (org?: OrgType) => void;
+  selectedOrg?: OrgListItemType;
+  setSelectedOrg: (org?: OrgListItemType) => void;
 }) {
-  const root = orgs[0];
-  if (!root) return;
+  const { userInfo } = useUserStore();
+  const root: OrgListItemType = {
+    _id: '',
+    path: '',
+    pathId: '',
+    name: userInfo?.team.teamName || '',
+    avatar: userInfo?.team.avatar || ''
+  } as any;
 
   return (
-    <OrgTreeNode org={root} list={orgs} setSelectedOrg={setSelectedOrg} selectedOrg={selectedOrg} />
+    <OrgTreeNode
+      key={'root'}
+      org={root}
+      selectedOrg={selectedOrg}
+      setSelectedOrg={setSelectedOrg}
+      index={1}
+    />
   );
 }
 

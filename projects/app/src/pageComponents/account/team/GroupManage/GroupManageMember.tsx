@@ -24,7 +24,10 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { GroupMemberItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import {
+  GroupMemberItemType,
+  MemberGroupListType
+} from '@fastgpt/global/support/permission/memberGroup/type';
 import { useMount } from 'ahooks';
 
 export type GroupFormType = {
@@ -37,13 +40,21 @@ export type GroupFormType = {
 // 1. Owner can not be deleted, toast
 // 2. Owner/Admin can manage members
 // 3. Owner can add/remove admins
-function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
+function GroupEditModal({
+  onClose,
+  editGroupId,
+  groups,
+  refetchGroups
+}: {
+  onClose: () => void;
+  editGroupId?: string;
+  groups: MemberGroupListType;
+  refetchGroups: () => void;
+}) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
 
-  const groups = useContextSelector(TeamContext, (v) => v.groups);
-  const refetchGroups = useContextSelector(TeamContext, (v) => v.refetchGroups);
   const group = useMemo(() => {
     return groups.find((item) => item._id === editGroupId);
   }, [editGroupId, groups]);

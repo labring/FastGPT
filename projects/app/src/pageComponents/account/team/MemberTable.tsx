@@ -47,15 +47,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const {
-    refetchGroups,
-    myTeams,
-    refetchTeams,
-    members,
-    refetchMembers,
-    onSwitchTeam,
-    MemberScrollData
-  } = useContextSelector(TeamContext, (v) => v);
+  const { myTeams, refetchTeams, members, refetchMembers, onSwitchTeam, MemberScrollData } =
+    useContextSelector(TeamContext, (v) => v);
 
   const {
     isOpen: isOpenTeamTagsAsync,
@@ -79,7 +72,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const isSyncMember = feConfigs.register_method?.includes('sync');
 
   const { data: searchMembersData } = useRequest2(
-    () => GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false }),
+    async () => {
+      if (!searchText) return Promise.resolve();
+      return GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false });
+    },
     {
       manual: false,
       throttleWait: 500,
@@ -278,7 +274,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                 openRemoveMember(
                                   () =>
                                     delRemoveMember(member.tmbId).then(() =>
-                                      Promise.all([refetchGroups(), refetchMembers()])
+                                      Promise.all([refetchMembers()])
                                     ),
                                   undefined,
                                   t('account_team:remove_tip', {

@@ -22,7 +22,7 @@ import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { deleteGroup, getGroupMembers } from '@/web/support/user/team/group/api';
+import { deleteGroup, getGroupList, getGroupMembers } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -39,9 +39,19 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { groups, refetchGroups, members, teamSize } = useContextSelector(TeamContext, (v) => v);
+  const { members, teamSize } = useContextSelector(TeamContext, (v) => v);
+
+  const {
+    data: groups = [],
+    loading: isLoadingGroups,
+    refresh: refetchGroups
+  } = useRequest2(getGroupList, {
+    manual: false,
+    refreshDeps: [userInfo?.team?.teamId]
+  });
 
   const [editGroup, setEditGroup] = useState<MemberGroupType>();
+
   const {
     isOpen: isOpenGroupInfo,
     onOpen: onOpenGroupInfo,
@@ -106,7 +116,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
         )}
       </Flex>
 
-      <MyBox flex={'1 0 0'} overflow={'auto'}>
+      <MyBox flex={'1 0 0'} overflow={'auto'} isLoading={isLoadingGroups}>
         <TableContainer overflow={'unset'} fontSize={'sm'}>
           <Table overflow={'unset'}>
             <Thead>
@@ -230,10 +240,17 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
       <ConfirmDeleteGroupModal />
       {isOpenChangeOwner && editGroup && (
-        <ChangeOwnerModal groupId={editGroup._id} onClose={onCloseChangeOwner} />
+        <ChangeOwnerModal
+          groupId={editGroup._id}
+          onClose={onCloseChangeOwner}
+          groups={groups}
+          refetchGroups={refetchGroups}
+        />
       )}
       {isOpenGroupInfo && (
         <GroupInfoModal
+          groups={groups}
+          refetchGroups={refetchGroups}
           onClose={() => {
             onCloseGroupInfo();
             setEditGroup(undefined);
@@ -243,6 +260,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       )}
       {isOpenManageGroupMember && editGroup && (
         <GroupManageMember
+          groups={groups}
+          refetchGroups={refetchGroups}
           onClose={() => {
             onCloseManageGroupMember();
             setEditGroup(undefined);
