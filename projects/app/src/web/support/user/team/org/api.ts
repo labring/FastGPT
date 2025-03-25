@@ -4,13 +4,14 @@ import type {
   putUpdateOrgData,
   putUpdateOrgMembersData
 } from '@fastgpt/global/support/user/team/org/api';
-import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import type { putMoveOrgType } from '@fastgpt/global/support/user/team/org/api';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
-export const getOrgList = (path: string) =>
-  GET<OrgType[]>(`/proApi/support/user/team/org/list`, { orgPath: path });
+export const getOrgList = (parentId: ParentIdType) =>
+  GET<OrgListItemType[]>(`/proApi/support/user/team/org/list`, { parentId });
 
 export const postCreateOrg = (data: postCreateOrgData) =>
   POST('/proApi/support/user/team/org/create', data);

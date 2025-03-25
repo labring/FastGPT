@@ -14,7 +14,7 @@ import {
   Tr,
   VStack
 } from '@chakra-ui/react';
-import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
@@ -23,9 +23,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
-import { useContextSelector } from 'use-context-selector';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
-import { TeamContext } from '../context';
 import {
   deleteOrg,
   deleteOrgMember,
@@ -39,10 +37,10 @@ import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Path from '@/components/common/folder/Path';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { delRemoveMember, getTeamMembers } from '@/web/support/user/team/api';
+import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
@@ -82,24 +80,16 @@ function ActionButton({
 function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo, isTeamAdmin } = useUserStore();
-  const [searchOrg, setSearchOrg] = useState('');
-  const [orgStack, setOrgStack] = useState<OrgType[]>([]);
-  const currentOrg = useMemo(() => orgStack[orgStack.length - 1], [orgStack]);
-
-  const [rootOrg, setRootOrg] = useState<OrgType>();
-
-  const { data: members = [], ScrollData: MemberScrollData } = useScrollPagination(getOrgMembers, {
-    pageSize: 20,
-    params: {
-      orgId: currentOrg?._id ?? rootOrg?._id
-    },
-    refreshDeps: [currentOrg?._id, rootOrg?._id]
-  });
-
   const { feConfigs } = useSystemStore();
-
   const isSyncMember = feConfigs.register_method?.includes('sync');
-  const [path, setPath] = useState('');
+
+  const [searchOrg, setSearchOrg] = useState('');
+
+  const [parentId, setParentId] = useState<ParentIdType>();
+  const [currentOrg, setCurrentOrg] = useState<OrgListItemType>();
+
+  // 用于 org 层级
+  const [orgStack, setOrgStack] = useState<OrgListItemType[]>([]);
 
   const {
     data: orgs = [],
@@ -107,43 +97,35 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
     refresh: refetchOrgs
   } = useRequest2(
     () => {
-      // sync path to orgStack
-      const splitPath = path.split('/').filter(Boolean);
-      const orgs = orgStack.filter((o) => splitPath.includes(o.pathId));
-      setOrgStack(orgs);
-      return getOrgList(path);
+      return getOrgList(parentId);
     },
     {
       manual: false,
-      refreshDeps: [userInfo?.team?.teamId, path],
-      onSuccess: (data) => {
-        if (!rootOrg) {
-          setRootOrg(data[0]);
-        }
-      }
+      refreshDeps: [userInfo?.team?.teamId, parentId]
     }
   );
 
   const paths = useMemo(() => {
+    if (!currentOrg) return [];
     return orgStack
       .map((org) => {
-        if (org?.path === '') return;
         return {
           parentId: getOrgChildrenPath(org),
           parentName: org.name
         };
       })
       .filter(Boolean) as ParentTreePathItemType[];
-  }, [orgStack]);
+  }, [currentOrg, orgStack]);
 
-  const onClickOrg = (org: OrgType) => {
+  const onClickOrg = (org: OrgListItemType) => {
+    setParentId(currentOrg?._id);
     setOrgStack([...orgStack, org]);
-    setPath(getOrgChildrenPath(org));
+    setCurrentOrg(org);
   };
 
   const [editOrg, setEditOrg] = useState<OrgFormType>();
-  const [manageMemberOrg, setManageMemberOrg] = useState<OrgType>();
-  const [movingOrg, setMovingOrg] = useState<OrgType>();
+  const [manageMemberOrg, setManageMemberOrg] = useState<OrgListItemType>();
+  const [movingOrg, setMovingOrg] = useState<OrgListItemType>();
 
   // Delete org
   const { ConfirmModal: ConfirmDeleteOrgModal, openConfirm: openDeleteOrgModal } = useConfirm({
@@ -155,6 +137,14 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
     onSuccess: () => {
       refetchOrgs();
     }
+  });
+
+  const { data: members = [], ScrollData: MemberScrollData } = useScrollPagination(getOrgMembers, {
+    pageSize: 20,
+    params: {
+      orgId: currentOrg?._id
+    },
+    refreshDeps: [currentOrg?._id]
   });
 
   // Delete member
@@ -183,11 +173,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const searchedOrgs = useMemo(() => {
     if (!searchOrg) return [];
 
-    return orgs
-      .filter((org) => org.name.includes(searchOrg))
-      .map((org) => ({
-        ...org
-      }));
+    return orgs.filter((org) => org.name.includes(searchOrg));
   }, [orgs, searchOrg]);
 
   return (
@@ -231,7 +217,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                     <Tr key={org._id} overflow={'unset'} onClick={() => onClickOrg(org)}>
                       <Td>
                         <HStack cursor={'pointer'} onClick={() => onClickOrg(org)}>
-                          <MemberTag name={org.name} avatar={org.avatar} />
+                          <MemberTag name={org.name} avatar={org.avatar!} />
                           <Tag size="sm">{org.total}</Tag>
                           <MyIcon
                             name="core/chat/chevronRight"
@@ -427,7 +413,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                     onClick={() => {
                       setEditOrg({
                         ...defaultOrgForm,
-                        parentId: currentOrg?._id ?? rootOrg?._id
+                        parentId: currentOrg?._id
                       });
                     }}
                   />

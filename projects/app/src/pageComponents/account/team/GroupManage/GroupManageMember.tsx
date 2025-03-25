@@ -24,6 +24,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { GroupMemberItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { useMount } from 'ahooks';
 
 export type GroupFormType = {
   members: {
@@ -46,26 +48,20 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
     return groups.find((item) => item._id === editGroupId);
   }, [editGroupId, groups]);
 
-  const { data: groupMembers } = useRequest2(
-    () => {
-      if (editGroupId) return getGroupMembers(editGroupId);
-      return Promise.resolve(undefined);
-    },
-    {
-      manual: false,
-      onSuccess: (data) => {
-        setMembers(data ?? []);
-      }
-    }
-  );
-
   const allMembers = useContextSelector(TeamContext, (v) => v.members);
   const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
   const MemberScrollData = useContextSelector(TeamContext, (v) => v.MemberScrollData);
   const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 
   const selectedMembersRef = useRef<HTMLDivElement>(null);
-  const [members, setMembers] = useState(groupMembers || []);
+  const [members, setMembers] = useState<GroupMemberItemType[]>([]);
+
+  useMount(async () => {
+    if (editGroupId) {
+      const data = await getGroupMembers(editGroupId);
+      setMembers(data);
+    }
+  });
 
   const [searchKey, setSearchKey] = useState('');
   const filtered = useMemo(() => {
@@ -80,7 +76,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
   const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async () => {
       if (!editGroupId || !members.length) return;
-      console.log(members);
+
       return putUpdateGroup({
         groupId: editGroupId,
         memberList: members
@@ -209,7 +205,7 @@ function GroupEditModal({ onClose, editGroupId }: { onClose: () => void; editGro
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
             <Box mt={2}>{t('common:chosen') + ': ' + members.length}</Box>
             <MemberScrollData ScrollContainerRef={selectedMembersRef} mt={3} flex={'1 0 0'} h={0}>
-              {members?.map((member) => {
+              {members.map((member) => {
                 return (
                   <HStack
                     onMouseEnter={() => setHoveredMemberId(member.tmbId)}
