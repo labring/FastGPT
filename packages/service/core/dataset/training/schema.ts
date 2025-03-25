@@ -98,6 +98,11 @@ const TrainingDataSchema = new Schema({
       }
     ],
     default: []
+  },
+
+  errorMsg: {
+    type: String,
+    default: ''
   }
 });
 

@@ -1,5 +1,7 @@
 {
   "App": "應用程式",
+  "Click to expand": "點擊查看詳情",
+  "Click_to_expand": "點擊查看詳情",
   "Download": "下載",
   "Export": "匯出",
   "FAQ.ai_point_a": "每次呼叫 AI 模型時，都會消耗一定數量的 AI 點數。詳細的計算標準請參考上方的「AI 點數計算標準」。\nToken 計算採用與 GPT3.5 相同的公式，1 Token ≈ 0.7 個中文字 ≈ 0.9 個英文單字，連續出現的字元可能會被視為 1 個 Token。",
@@ -537,6 +539,7 @@
   "core.dataset.collection.metadata.source name": "來源名稱",
   "core.dataset.collection.metadata.source size": "來源大小",
   "core.dataset.collection.status.active": "已就緒",
+  "core.dataset.collection.status.error": "訓練異常",
   "core.dataset.collection.sync.result.sameRaw": "內容未變更，無需更新",
   "core.dataset.collection.sync.result.success": "開始同步",
   "core.dataset.data.Data Content": "相關資料內容",

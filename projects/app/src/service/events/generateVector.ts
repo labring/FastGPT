@@ -117,6 +117,17 @@ export async function generateVector(): Promise<any> {
     return reduceQueueAndReturn();
   } catch (err: any) {
     addLog.error(`[Vector Queue] Error`, err);
+    await MongoDatasetTraining.updateOne(
+      {
+        teamId: data.teamId,
+        datasetId: data.datasetId,
+        _id: data._id
+      },
+      {
+        errorMsg: err.message || 'unknown error',
+        lockTime: addMinutes(new Date(), -10)
+      }
+    );
     return reduceQueueAndReturn(1000);
   }
 }

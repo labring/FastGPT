@@ -1,5 +1,7 @@
 {
   "App": "Application",
+  "Click to expand": "Click to expand",
+  "Click_to_expand": "Click to expand",
   "Download": "Download",
   "Export": "Export",
   "FAQ.ai_point_a": "Each time you use the AI model, a certain amount of AI points will be deducted. For detailed calculation standards, please refer to the 'AI Points Calculation Standards' above.\nToken calculation uses the same formula as GPT-3.5, where 1 Token ≈ 0.7 Chinese characters ≈ 0.9 English words. Consecutive characters may be considered as 1 Token.",
@@ -538,6 +540,7 @@
   "core.dataset.collection.metadata.source name": "Source Name",
   "core.dataset.collection.metadata.source size": "Source Size",
   "core.dataset.collection.status.active": "Ready",
+  "core.dataset.collection.status.error": "Error",
   "core.dataset.collection.sync.result.sameRaw": "Content Unchanged, No Update Needed",
   "core.dataset.collection.sync.result.success": "Sync Started",
   "core.dataset.data.Data Content": "Related Data Content",

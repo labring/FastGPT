@@ -176,7 +176,17 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     generateQA();
   } catch (err: any) {
     addLog.error(`[QA Queue] Error`, err);
-    reduceQueue();
+    await MongoDatasetTraining.updateOne(
+      {
+        teamId: data.teamId,
+        datasetId: data.datasetId,
+        _id: data._id
+      },
+      {
+        errorMsg: err.message || 'unknown error',
+        lockTime: addMinutes(new Date(), -10)
+      }
+    );
 
     setTimeout(() => {
       generateQA();
