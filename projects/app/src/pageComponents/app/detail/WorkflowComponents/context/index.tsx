@@ -35,6 +35,8 @@ import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflow
 import WorkflowEventContextProvider from './workflowEventContext';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum, ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /* 
   Context
@@ -161,18 +163,34 @@ type WorkflowContextType = {
         runtimeNodes: RuntimeNodeItemType[];
         runtimeEdges: RuntimeEdgeItemType[];
         nextRunNodes: RuntimeNodeItemType[];
+        query?: UserChatItemValueItemType[];
+        variables: Record<string, any>;
       }
     | undefined;
+  setWorkflowDebugData: React.Dispatch<
+    React.SetStateAction<
+      | {
+          runtimeNodes: RuntimeNodeItemType[];
+          runtimeEdges: RuntimeEdgeItemType[];
+          nextRunNodes: RuntimeNodeItemType[];
+          query?: UserChatItemValueItemType[];
+          variables: Record<string, any>;
+        }
+      | undefined
+    >
+  >;
   onNextNodeDebug: () => Promise<void>;
   onStartNodeDebug: ({
     entryNodeId,
     runtimeNodes,
     runtimeEdges,
+    query,
     variables
   }: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
+    query?: UserChatItemValueItemType[];
     variables: Record<string, any>;
   }) => Promise<void>;
   onStopNodeDebug: () => void;
@@ -194,6 +212,7 @@ type DebugDataType = {
   runtimeEdges: RuntimeEdgeItemType[];
   nextRunNodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
+  query?: UserChatItemValueItemType[];
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
@@ -236,6 +255,20 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   workflowDebugData: undefined,
+  setWorkflowDebugData: function (
+    value: React.SetStateAction<
+      | {
+          runtimeNodes: RuntimeNodeItemType[];
+          runtimeEdges: RuntimeEdgeItemType[];
+          nextRunNodes: RuntimeNodeItemType[];
+          query?: UserChatItemValueItemType[];
+          variables: Record<string, any>;
+        }
+      | undefined
+    >
+  ): void {
+    throw new Error('Function not implemented.');
+  },
   onNextNodeDebug: function (): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -549,7 +582,37 @@ const WorkflowContextProvider = ({
   });
 
   /* debug */
-  const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
+  const [workflowDebugData, setWorkflowDebugData] = useState<
+    DebugDataType & {
+      query?: UserChatItemValueItemType[];
+    }
+  >();
+  // 添加这个函数用于捕获入口节点的输入值
+  const captureEntryInputValues = (entryNodeId: string, nodes: RuntimeNodeItemType[]) => {
+    const entryNode = nodes.find((node) => node.nodeId === entryNodeId);
+    if (!entryNode || !entryNode.inputs) return null;
+
+    // 提取用户输入值
+    const userInput = entryNode.inputs.find((input) => input.key === 'userChatInput')?.value || '';
+    return userInput;
+  };
+  // 添加函数用于准备调试数据
+  const prepareDebugData = (entryNodeId: string, nodes: RuntimeNodeItemType[]) => {
+    const userInput = captureEntryInputValues(entryNodeId, nodes);
+    if (!userInput) return null;
+
+    // 构建查询项
+    const queryItem: UserChatItemValueItemType = {
+      type: ChatItemValueTypeEnum.text,
+      text: {
+        content: userInput
+      }
+    };
+
+    return {
+      query: [queryItem]
+    };
+  };
   const onNextNodeDebug = useCallback(
     async (debugData = workflowDebugData) => {
       if (!debugData) return;
@@ -611,7 +674,7 @@ const WorkflowContextProvider = ({
       });
 
       try {
-        // 4. Run one step
+        // 4. Run one step - 添加历史记录和查询到请求中
         const { finishedEdges, finishedNodes, nextStepRunNodes, flowResponses, newVariables } =
           await postWorkflowDebug({
             nodes: runtimeNodes,
@@ -621,6 +684,7 @@ const WorkflowContextProvider = ({
               cTime: formatTime2YMDHMW(),
               ...debugData.variables
             },
+            query: debugData.query || [],
             appId
           });
         // 5. Store debug result
@@ -629,7 +693,8 @@ const WorkflowContextProvider = ({
           // edges need to save status
           runtimeEdges: finishedEdges,
           nextRunNodes: nextStepRunNodes,
-          variables: newVariables
+          variables: newVariables,
+          query: debugData.query // 保留查询
         };
         setWorkflowDebugData(newStoreDebugData);
 
@@ -719,10 +784,12 @@ const WorkflowContextProvider = ({
       runtimeEdges: RuntimeEdgeItemType[];
       variables: Record<string, any>;
     }) => {
+      const debugHistoryData = prepareDebugData(entryNodeId, runtimeNodes);
       const data = {
         runtimeNodes,
         runtimeEdges,
         nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
+        query: debugHistoryData?.query || [],
         variables
       };
       onStopNodeDebug();
@@ -992,6 +1059,7 @@ const WorkflowContextProvider = ({
       flowData2StoreData,
 
       // debug
+      setWorkflowDebugData,
       workflowDebugData,
       onNextNodeDebug,
       onStartNodeDebug,

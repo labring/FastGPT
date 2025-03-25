@@ -9,6 +9,7 @@ export type PostWorkflowDebugProps = {
   edges: RuntimeEdgeItemType[];
   variables: Record<string, any>;
   appId: string;
+  query?: UserChatItemValueItemType[];
 };
 
 export type PostWorkflowDebugResponse = {

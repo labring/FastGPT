@@ -32,11 +32,10 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     query
   } = props;
   const { isEntry } = node;
-  const mode = props.realmode;
   const interactive = getLastInteractiveValue(histories);
 
   // Interactive node is not the entry node, return interactive result
-  if ((!isEntry || interactive?.type !== 'userInput') && mode !== 'debug') {
+  if (!isEntry || interactive?.type !== 'userInput') {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',

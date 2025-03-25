@@ -29,6 +29,16 @@ import { WorkflowEventContext } from '../../../context/workflowEventContext';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
+import {
+  RenderUserSelectInteractive,
+  RenderUserFormInteractive
+} from '@/components/core/chat/components/InteractiveComponents';
+import {
+  InteractiveBasicType,
+  UserInputInteractive,
+  UserSelectInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -62,6 +72,7 @@ const NodeCard = (props: Props) => {
     w = 'full',
     h = 'full',
     nodeId,
+    flowNodeType,
     selected,
     menuForbid,
     isTool = false,
@@ -670,11 +681,59 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
   debugResult: FlowNodeItemType['debugResult'];
 }) {
   const { t } = useTranslation();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+
+  // 获取当前节点
+  const node = useMemo(() => nodeList.find((node) => node.nodeId === nodeId), [nodeList, nodeId]);
+  const firstInteractive = useMemo(() => {
+    if (
+      node &&
+      node.flowNodeType === FlowNodeTypeEnum.userSelect &&
+      !node.debugResult?.response?.userSelectResult
+    ) {
+      return true;
+    }
+    if (
+      node &&
+      node.flowNodeType === FlowNodeTypeEnum.formInput &&
+      !node.debugResult?.response?.formInputResult
+    ) {
+      return true;
+    }
+    return false; // 明确返回值
+  }, [node]);
 
   const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
+
+  const interactive: UserSelectInteractive | UserInputInteractive | undefined = useMemo(() => {
+    const description = node?.inputs?.find((input) => input.key === 'description')?.value;
+    const userSelectOptions = node?.inputs?.find(
+      (input) => input.key === 'userSelectOptions'
+    )?.value;
+    const formInputForms = node?.inputs?.find((input) => input.key === 'userInputForms')?.value;
+    if (node?.flowNodeType === FlowNodeTypeEnum.userSelect) {
+      return {
+        type: 'userSelect',
+        params: {
+          description,
+          userSelectOptions
+        }
+      };
+    }
+    if (node?.flowNodeType === FlowNodeTypeEnum.formInput) {
+      return {
+        type: 'userInput',
+        params: {
+          description,
+          inputForm: formInputForms
+        }
+      };
+    }
+    return undefined;
+  }, [node]);
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('common:core.workflow.Confirm stop debug')
@@ -784,22 +843,34 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
                     {t('common:common.Next Step')}
                   </Button>
                 )}
-              {workflowDebugData?.nextRunNodes && workflowDebugData?.nextRunNodes.length === 0 && (
-                <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
-                  {t('common:core.workflow.debug.Done')}
-                </Button>
-              )}
+              {!firstInteractive &&
+                workflowDebugData?.nextRunNodes &&
+                workflowDebugData?.nextRunNodes.length === 0 && (
+                  <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
+                    {t('common:core.workflow.debug.Done')}
+                  </Button>
+                )}
             </Flex>
             {/* Response list */}
             {debugResult.status !== 'skipped' && (
               <Box borderTop={'base'} mt={1} overflowY={'auto'} minH={'250px'}>
-                {!debugResult.message && !response && (
+                {!debugResult.message && !response && !firstInteractive && (
                   <EmptyTip text={t('common:core.workflow.debug.Not result')} pt={2} pb={5} />
                 )}
                 {debugResult.message && (
                   <Box color={'red.600'} px={3} py={4}>
                     {debugResult.message}
                   </Box>
+                )}
+                {firstInteractive && interactive && (
+                  <>
+                    {interactive.type === 'userSelect' && (
+                      <RenderUserSelectInteractive interactive={interactive} nodeId={nodeId} />
+                    )}
+                    {interactive.type === 'userInput' && (
+                      <RenderUserFormInteractive interactive={interactive} nodeId={nodeId} />
+                    )}
+                  </>
                 )}
                 {response && <WholeResponseContent activeModule={response} />}
               </Box>
@@ -809,6 +880,8 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
       </>
     ) : null;
   }, [
+    interactive,
+    firstInteractive,
     debugResult,
     nodeId,
     onChangeNode,
