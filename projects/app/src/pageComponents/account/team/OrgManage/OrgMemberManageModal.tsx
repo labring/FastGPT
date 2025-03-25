@@ -56,10 +56,7 @@ function OrgMemberManageModal({
     ScrollData: MemberScrollData,
     isLoading: isLoadingMembers
   } = useScrollPagination(getTeamMembers, {
-    pageSize: 20,
-    params: {
-      withLeaved: false
-    }
+    pageSize: 20
   });
 
   const {
