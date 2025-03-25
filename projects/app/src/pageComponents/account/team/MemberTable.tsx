@@ -268,7 +268,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           <Box className={'textEllipsis'}>
                             {member.memberName}
                             {member.status !== 'active' && (
-                              <Tag ml="2" colorSchema="gray">
+                              <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
                                 {t('account_team:leave')}
                               </Tag>
                             )}
