@@ -55,6 +55,14 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
   };
 }
 
+export const getTeamOwner = async (teamId: string) => {
+  const tmb = await MongoTeamMember.findOne({
+    teamId,
+    role: TeamMemberRoleEnum.owner
+  }).lean();
+  return tmb;
+};
+
 export async function getTmbInfoByTmbId({ tmbId }: { tmbId: string }) {
   if (!tmbId) {
     return Promise.reject('tmbId or userId is required');

@@ -4,15 +4,13 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 import { useTranslation } from 'next-i18next';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../context';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
-import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 export type GroupFormType = {
   avatar: string;
@@ -21,17 +19,15 @@ export type GroupFormType = {
 
 function GroupInfoModal({
   onClose,
-  editGroupId,
-  groups,
-  refetchGroups
+  editGroup,
+  onSuccess
 }: {
   onClose: () => void;
-  editGroupId?: string;
-  groups: MemberGroupListType;
-  refetchGroups: () => void;
+  editGroup?: MemberGroupListItemType<true>;
+  onSuccess: () => void;
 }) {
-  const { refetchMembers } = useContextSelector(TeamContext, (v) => v);
   const { t } = useTranslation();
+
   const {
     File: AvatarSelect,
     onOpen: onOpenSelectAvatar,
@@ -41,14 +37,10 @@ function GroupInfoModal({
     multiple: false
   });
 
-  const group = useMemo(() => {
-    return groups.find((item) => item._id === editGroupId);
-  }, [editGroupId, groups]);
-
   const { register, handleSubmit, getValues, setValue } = useForm<GroupFormType>({
     defaultValues: {
-      name: group?.name || '',
-      avatar: group?.avatar || DEFAULT_TEAM_AVATAR
+      name: editGroup?.name || '',
+      avatar: editGroup?.avatar || DEFAULT_TEAM_AVATAR
     }
   });
 
@@ -74,21 +66,21 @@ function GroupInfoModal({
       });
     },
     {
-      onSuccess: () => Promise.all([onClose(), refetchGroups(), refetchMembers()])
+      onSuccess: () => Promise.all([onClose(), onSuccess()])
     }
   );
 
   const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async (data: GroupFormType) => {
-      if (!editGroupId) return;
+      if (!editGroup) return;
       return putUpdateGroup({
-        groupId: editGroupId,
+        groupId: editGroup._id,
         name: data.name,
         avatar: data.avatar
       });
     },
     {
-      onSuccess: () => Promise.all([onClose(), refetchGroups(), refetchMembers()])
+      onSuccess: () => Promise.all([onClose(), onSuccess()])
     }
   );
 
@@ -97,8 +89,8 @@ function GroupInfoModal({
   return (
     <MyModal
       onClose={onClose}
-      title={editGroupId ? t('user:team.group.edit') : t('user:team.group.create')}
-      iconSrc={group?.avatar ?? DEFAULT_TEAM_AVATAR}
+      title={editGroup ? t('user:team.group.edit') : t('user:team.group.create')}
+      iconSrc={editGroup?.avatar ?? DEFAULT_TEAM_AVATAR}
     >
       <ModalBody flex={1} overflow={'auto'} display={'flex'} flexDirection={'column'} gap={4}>
         <FormLabel w="80px">{t('user:team.avatar_and_name')}</FormLabel>
@@ -120,14 +112,14 @@ function GroupInfoModal({
         <Button
           isLoading={isLoading}
           onClick={handleSubmit((data) => {
-            if (editGroupId) {
+            if (editGroup) {
               onUpdate(data);
             } else {
               onCreate(data);
             }
           })}
         >
-          {editGroupId ? t('common:common.Save') : t('common:new_create')}
+          {editGroup ? t('common:common.Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
       <AvatarSelect onSelect={onSelectAvatar} />
