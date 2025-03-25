@@ -227,13 +227,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const [{ histories }, { nodes, edges, chatConfig }, chatDetail] = await Promise.all([
       getChatItems({
         appId: app._id,
+        customUid,
         chatId,
         offset: 0,
         limit,
         field: `dataId obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),
-      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
+      MongoChat.findOne({ appId: app._id, customUid, chatId }, 'source variableList variables')
     ]);
 
     // Get store variables(Api variable precedence)
@@ -554,10 +555,12 @@ const authTeamSpaceChat = async ({
 const authHeaderRequest = async ({
   req,
   appId,
+  customUid,
   chatId
 }: {
   req: NextApiRequest;
   appId?: string;
+  customUid?: string;
   chatId?: string;
 }): Promise<AuthResponseType> => {
   const {
@@ -612,7 +615,7 @@ const authHeaderRequest = async ({
 
   const [{ timezone, externalProvider }, chat] = await Promise.all([
     getUserChatInfoAndAuthTeamPoints(tmbId),
-    MongoChat.findOne({ appId, chatId }).lean()
+    MongoChat.findOne({ appId, customUid, chatId }).lean()
   ]);
 
   if (

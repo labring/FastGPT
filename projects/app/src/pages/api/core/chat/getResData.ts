@@ -9,6 +9,7 @@ import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 
 export type getResDataQuery = OutLinkChatAuthProps & {
   chatId?: string;
+  customUid?: string;
   dataId: string;
   appId: string;
 };
@@ -21,8 +22,8 @@ async function handler(
   req: ApiRequestProps<getResDataBody, getResDataQuery>,
   res: ApiResponseType<any>
 ): Promise<getResDataResponse> {
-  const { appId, chatId, dataId, shareId } = req.query;
-  if (!appId || !chatId || !dataId) {
+  const { appId, customUid, chatId, dataId, shareId } = req.query;
+  if (!appId || !customUid || !chatId || !dataId) {
     return {};
   }
 
@@ -36,6 +37,7 @@ async function handler(
     MongoChatItem.findOne(
       {
         appId,
+        customUid,
         chatId,
         dataId
       },

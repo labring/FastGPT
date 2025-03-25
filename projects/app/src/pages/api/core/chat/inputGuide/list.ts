@@ -10,6 +10,7 @@ import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type ChatInputGuideProps = PaginationProps<{
   appId: string;
+  customUid: string;
   searchKey: string;
 }>;
 export type ChatInputGuideResponse = PaginationResponse<ChatInputGuideSchemaType>;
@@ -18,13 +19,14 @@ async function handler(
   req: ApiRequestProps<ChatInputGuideProps>,
   res: NextApiResponse<any>
 ): Promise<ChatInputGuideResponse> {
-  const { appId, searchKey } = req.body;
+  const { appId, customUid, searchKey } = req.body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   await authApp({ req, appId, authToken: true, per: ReadPermissionVal });
 
   const params = {
     appId,
+    customUid,
     ...(searchKey && { text: { $regex: new RegExp(searchKey, 'i') } })
   };
 

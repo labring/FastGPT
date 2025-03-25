@@ -15,7 +15,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ): Promise<InitChatResponse | void> {
-  let { appId, chatId } = req.query as InitChatProps;
+  let { appId, customUid, chatId } = req.query as InitChatProps;
 
   if (!appId) {
     return jsonRes(res, {
@@ -33,7 +33,7 @@ async function handler(
       appId,
       per: ReadPermissionVal
     }),
-    chatId ? MongoChat.findOne({ appId, chatId }) : undefined
+    chatId ? MongoChat.findOne({ appId, customUid, chatId }) : undefined
   ]);
 
   // auth chat permission
@@ -51,6 +51,7 @@ async function handler(
   return {
     chatId,
     appId,
+    customUid,
     title: chat?.title,
     userAvatar: undefined,
     variables: chat?.variables,

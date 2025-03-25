@@ -53,6 +53,7 @@ export type Props = {
   edges: StoreEdgeItemType[];
   variables: Record<string, any>;
   appId: string;
+  customUid: string;
   appName: string;
   chatId: string;
   chatConfig: AppChatConfigType;
@@ -75,6 +76,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     variables = {},
     appName,
     appId,
+    customUid,
     chatConfig,
     chatId
   } = req.body as Props;
@@ -119,11 +121,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       getChatItems({
         appId,
         chatId,
+        customUid,
         offset: 0,
         limit,
         field: `dataId obj value nodeOutputs`
       }),
-      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables'),
+      MongoChat.findOne({ appId: app._id, customUid, chatId }, 'source variableList variables'),
       // auth balance
       getUserChatInfoAndAuthTeamPoints(tmbId)
     ]);

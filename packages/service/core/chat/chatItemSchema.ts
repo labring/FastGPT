@@ -28,6 +28,10 @@ const ChatItemSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: userCollectionName
   },
+  customUid: {
+    type: String,
+    require: true
+  },
   chatId: {
     type: String,
     require: true

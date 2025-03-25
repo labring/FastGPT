@@ -15,6 +15,7 @@ export type GetChatSpeechProps = OutLinkChatAuthProps & {
 /* ---------- chat ----------- */
 export type InitChatProps = {
   appId?: string;
+  customUid?: string;
   chatId?: string;
   loadCustomFeedbacks?: boolean;
 };
@@ -40,6 +41,7 @@ export type InitTeamChatProps = {
 export type InitChatResponse = {
   chatId?: string;
   appId: string;
+  customUid?: string;
   userAvatar?: string;
   title?: string;
   variables?: Record<string, any>;
@@ -58,11 +60,13 @@ export type InitChatResponse = {
 /* ---------- history ----------- */
 export type GetHistoriesProps = OutLinkChatAuthProps & {
   appId?: string;
+  customUid?: string;
   source?: `${ChatSourceEnum}`;
 };
 
 export type UpdateHistoryProps = OutLinkChatAuthProps & {
   appId: string;
+  customUid: string;
   chatId: string;
   title?: string;
   customTitle?: string;
@@ -86,6 +90,7 @@ export type DeleteChatItemProps = OutLinkChatAuthProps & {
 
 export type AdminUpdateFeedbackParams = AdminFbkType & {
   appId: string;
+  customUid: string;
   chatId: string;
   dataId: string;
 };

@@ -9,7 +9,7 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } =
+    const { appId, customUid, chatId, dataId, datasetId, feedbackDataId, q, a } =
       req.body as AdminUpdateFeedbackParams;
 
     if (!dataId || !datasetId || !feedbackDataId || !q) {
@@ -27,6 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await MongoChatItem.findOneAndUpdate(
       {
         appId,
+        customUid,
         chatId,
         dataId
       },

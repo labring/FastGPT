@@ -8,12 +8,14 @@ import { MongoChat } from './chatSchema';
 
 export async function getChatItems({
   appId,
+  customUid,
   chatId,
   offset,
   limit,
   field
 }: {
   appId: string;
+  customUid?: string;
   chatId?: string;
   offset: number;
   limit: number;
@@ -24,8 +26,12 @@ export async function getChatItems({
   }
 
   const [histories, total] = await Promise.all([
-    MongoChatItem.find({ chatId, appId }, field).sort({ _id: -1 }).skip(offset).limit(limit).lean(),
-    MongoChatItem.countDocuments({ chatId, appId })
+    MongoChatItem.find({ chatId, customUid, appId }, field)
+      .sort({ _id: -1 })
+      .skip(offset)
+      .limit(limit)
+      .lean(),
+    MongoChatItem.countDocuments({ chatId, customUid, appId })
   ]);
   histories.reverse();
 
@@ -55,10 +61,12 @@ export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
 export const addCustomFeedbacks = async ({
   appId,
   chatId,
+  customUid,
   dataId,
   feedbacks
 }: {
   appId: string;
+  customUid?: string;
   chatId?: string;
   dataId?: string;
   feedbacks: string[];
@@ -69,6 +77,7 @@ export const addCustomFeedbacks = async ({
     await MongoChatItem.findOneAndUpdate(
       {
         appId,
+        customUid,
         chatId,
         dataId
       },

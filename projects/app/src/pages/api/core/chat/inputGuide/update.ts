@@ -8,6 +8,7 @@ export type updateChatInputGuideQuery = {};
 
 export type updateInputGuideBody = {
   appId: string;
+  customUid: string;
   dataId: string;
   text: string;
 };
@@ -18,13 +19,14 @@ async function handler(
   req: ApiRequestProps<updateInputGuideBody, updateChatInputGuideQuery>,
   res: ApiResponseType<any>
 ): Promise<updateInputGuideResponse> {
-  const { appId, dataId, text } = req.body;
+  const { appId, customUid, dataId, text } = req.body;
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   await MongoChatInputGuide.findOneAndUpdate(
     {
       _id: dataId,
-      appId
+      appId,
+      customUid
     },
     {
       text

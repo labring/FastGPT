@@ -9,7 +9,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 
 /* update chat top, custom title */
 async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiResponse) {
-  const { appId, chatId, title, customTitle, top } = req.body;
+  const { appId, customUid, chatId, title, customTitle, top } = req.body;
   await authChatCrud({
     req,
     authToken: true,
@@ -19,7 +19,7 @@ async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiRes
   });
 
   await MongoChat.findOneAndUpdate(
-    { appId, chatId },
+    { appId, customUid, chatId },
     {
       updateTime: new Date(),
       ...(title !== undefined && { title }),

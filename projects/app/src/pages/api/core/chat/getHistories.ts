@@ -20,7 +20,7 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   _res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  const { appId, shareId, outLinkUid, teamId, teamToken, source } = req.body;
+  const { appId, customUid, shareId, outLinkUid, teamId, teamToken, source } = req.body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const match = await (async () => {
@@ -49,6 +49,7 @@ async function handler(
       return {
         tmbId,
         appId,
+        customUid,
         source
       };
     }

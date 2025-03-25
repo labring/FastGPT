@@ -10,6 +10,7 @@ import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 export type QueryChatInputGuideBody = OutLinkChatAuthProps & {
   appId: string;
+  customUid: string;
   searchKey: string;
 };
 export type QueryChatInputGuideResponse = string[];
@@ -18,7 +19,7 @@ async function handler(
   req: ApiRequestProps<QueryChatInputGuideBody>,
   res: NextApiResponse<any>
 ): Promise<QueryChatInputGuideResponse> {
-  const { appId, searchKey } = req.body;
+  const { appId, customUid, searchKey } = req.body;
 
   // tmp auth
   const { teamId } = await authChatCrud({ req, authToken: true, ...req.body });
@@ -29,6 +30,7 @@ async function handler(
 
   const params = {
     appId,
+    customUid,
     ...(searchKey && { text: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } })
   };
 

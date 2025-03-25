@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
-export type countChatInputGuideTotalQuery = { appId: string };
+export type countChatInputGuideTotalQuery = { appId: string; customUid: string };
 
 export type countChatInputGuideTotalBody = {};
 
@@ -15,15 +15,15 @@ async function handler(
 ): Promise<countChatInputGuideTotalResponse> {
   await authCert({ req, authToken: true });
 
-  const appId = req.query.appId;
-  if (!appId) {
+  const { appId, customUid } = req.query;
+  if (!appId || !customUid) {
     return {
       total: 0
     };
   }
 
   return {
-    total: await MongoChatInputGuide.countDocuments({ appId })
+    total: await MongoChatInputGuide.countDocuments({ appId, customUid })
   };
 }
 
