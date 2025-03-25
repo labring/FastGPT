@@ -24,12 +24,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
 import MemberTag from '@/components/support/user/team/Info/MemberTag';
-import {
-  deleteOrg,
-  deleteOrgMember,
-  getOrgList,
-  getOrgMembers
-} from '@/web/support/user/team/org/api';
+import { deleteOrg, deleteOrgMember } from '@/web/support/user/team/org/api';
 
 import IconButton from './IconButton';
 import { defaultOrgForm, type OrgFormType } from './OrgInfoModal';
@@ -43,6 +38,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -82,50 +78,24 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { userInfo, isTeamAdmin } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isSyncMember = feConfigs.register_method?.includes('sync');
-
-  const [searchOrg, setSearchOrg] = useState('');
-
-  const [parentId, setParentId] = useState<ParentIdType>();
-  const [currentOrg, setCurrentOrg] = useState<OrgListItemType>();
-
-  // 用于 org 层级
-  const [orgStack, setOrgStack] = useState<OrgListItemType[]>([]);
-
-  const {
-    data: orgs = [],
-    loading: isLoadingOrgs,
-    refresh: refetchOrgs
-  } = useRequest2(
-    () => {
-      return getOrgList(parentId);
-    },
-    {
-      manual: false,
-      refreshDeps: [userInfo?.team?.teamId, parentId]
-    }
-  );
-
-  const paths = useMemo(() => {
-    if (!currentOrg) return [];
-    return orgStack
-      .map((org) => {
-        return {
-          parentId: getOrgChildrenPath(org),
-          parentName: org.name
-        };
-      })
-      .filter(Boolean) as ParentTreePathItemType[];
-  }, [currentOrg, orgStack]);
-
-  const onClickOrg = (org: OrgListItemType) => {
-    setParentId(currentOrg?._id);
-    setOrgStack([...orgStack, org]);
-    setCurrentOrg(org);
-  };
-
   const [editOrg, setEditOrg] = useState<OrgFormType>();
   const [manageMemberOrg, setManageMemberOrg] = useState<OrgListItemType>();
   const [movingOrg, setMovingOrg] = useState<OrgListItemType>();
+
+  const [searchOrg, setSearchOrg] = useState('');
+
+  const {
+    currentOrg,
+    orgs,
+    isLoadingOrgs,
+    paths,
+    onClickOrg,
+    members,
+    MemberScrollData,
+    onPathClick,
+    refresh,
+    updateCurrentOrg
+  } = useOrg();
 
   // Delete org
   const { ConfirmModal: ConfirmDeleteOrgModal, openConfirm: openDeleteOrgModal } = useConfirm({
@@ -134,17 +104,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   });
   const deleteOrgHandler = (orgId: string) => openDeleteOrgModal(() => deleteOrgReq(orgId))();
   const { runAsync: deleteOrgReq } = useRequest2(deleteOrg, {
-    onSuccess: () => {
-      refetchOrgs();
-    }
-  });
-
-  const { data: members = [], ScrollData: MemberScrollData } = useScrollPagination(getOrgMembers, {
-    pageSize: 20,
-    params: {
-      orgId: currentOrg?._id
-    },
-    refreshDeps: [currentOrg?._id]
+    onSuccess: refresh
   });
 
   // Delete member
@@ -159,15 +119,11 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
     });
 
   const { runAsync: deleteMemberReq } = useRequest2(deleteOrgMember, {
-    onSuccess: () => {
-      refetchOrgs();
-    }
+    onSuccess: refresh
   });
 
   const { runAsync: deleteMemberFromTeamReq } = useRequest2(delRemoveMember, {
-    onSuccess: () => {
-      refetchOrgs();
-    }
+    onSuccess: refresh
   });
 
   const searchedOrgs = useMemo(() => {
@@ -196,7 +152,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
         isLoading={isLoadingOrgs}
       >
         <Box mb={3}>
-          <Path paths={paths} rootName={userInfo?.team?.teamName} />
+          <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={onPathClick} />
         </Box>
         <Flex flex={'1 0 0'} h={0} w={'100%'} gap={'4'}>
           <MemberScrollData flex="1">
@@ -356,8 +312,14 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                                               label: t('account_team:delete_from_org'),
                                               onClick: () =>
                                                 openDeleteMemberFromOrgModal(
-                                                  () =>
-                                                    deleteMemberReq(currentOrg._id, member.tmbId),
+                                                  () => {
+                                                    if (currentOrg) {
+                                                      return deleteMemberReq(
+                                                        currentOrg._id,
+                                                        member.tmbId
+                                                      );
+                                                    }
+                                                  },
                                                   undefined,
                                                   t('account_team:confirm_delete_from_org', {
                                                     username: member.memberName
@@ -383,20 +345,15 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
           {!isSyncMember && (
             <VStack w={'180px'} alignItems={'start'}>
               <HStack gap={'6px'}>
-                <Avatar
-                  src={currentOrg?.avatar || userInfo?.team.avatar}
-                  w={'1rem'}
-                  h={'1rem'}
-                  rounded={'xs'}
-                />
+                <Avatar src={currentOrg.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
                 <Box fontWeight={500} color={'myGray.900'}>
-                  {currentOrg?.name || userInfo?.team.teamName}
+                  {currentOrg.name}
                 </Box>
-                {currentOrg && currentOrg?.path !== '' && (
+                {currentOrg?.path !== '' && (
                   <IconButton name="edit" onClick={() => setEditOrg(currentOrg)} />
                 )}
               </HStack>
-              {currentOrg && (
+              {currentOrg?.path !== '' && (
                 <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
               )}
 
@@ -413,7 +370,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                     onClick={() => {
                       setEditOrg({
                         ...defaultOrgForm,
-                        parentId: currentOrg?._id
+                        path: currentOrg.path
                       });
                     }}
                   />
@@ -422,7 +379,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                     text={t('account_team:manage_member')}
                     onClick={() => setManageMemberOrg(currentOrg)}
                   />
-                  {currentOrg && currentOrg?.path !== '' && (
+                  {currentOrg?.path !== '' && (
                     <>
                       <ActionButton
                         icon="common/file/move"
@@ -447,21 +404,21 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
         <OrgInfoModal
           editOrg={editOrg}
           onClose={() => setEditOrg(undefined)}
-          onSuccess={refetchOrgs}
+          onSuccess={refresh}
+          updateCurrentOrg={updateCurrentOrg}
         />
       )}
       {!!movingOrg && (
         <OrgMoveModal
-          orgs={orgs}
           movingOrg={movingOrg}
           onClose={() => setMovingOrg(undefined)}
-          onSuccess={refetchOrgs}
+          onSuccess={refresh}
         />
       )}
       {!!manageMemberOrg && (
         <OrgMemberManageModal
           currentOrg={manageMemberOrg}
-          refetchOrgs={refetchOrgs}
+          refetchOrgs={refresh}
           onClose={() => setManageMemberOrg(undefined)}
         />
       )}

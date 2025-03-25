@@ -12,14 +12,25 @@ import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
+import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 export type GroupFormType = {
   avatar: string;
   name: string;
 };
 
-function GroupInfoModal({ onClose, editGroupId }: { onClose: () => void; editGroupId?: string }) {
-  const { refetchGroups, groups, refetchMembers } = useContextSelector(TeamContext, (v) => v);
+function GroupInfoModal({
+  onClose,
+  editGroupId,
+  groups,
+  refetchGroups
+}: {
+  onClose: () => void;
+  editGroupId?: string;
+  groups: MemberGroupListType;
+  refetchGroups: () => void;
+}) {
+  const { refetchMembers } = useContextSelector(TeamContext, (v) => v);
   const { t } = useTranslation();
   const {
     File: AvatarSelect,

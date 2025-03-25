@@ -44,24 +44,20 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useState } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
+  const { toast } = useToast();
+
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
 
-  const {
-    refetchGroups,
-    myTeams,
-    refetchTeams,
-    members,
-    refetchMembers,
-    onSwitchTeam,
-    MemberScrollData
-  } = useContextSelector(TeamContext, (v) => v);
+  const { myTeams, refetchTeams, members, refetchMembers, onSwitchTeam, MemberScrollData } =
+    useContextSelector(TeamContext, (v) => v);
 
   const {
     isOpen: isOpenTeamTagsAsync,
@@ -85,7 +81,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const isSyncMember = feConfigs.register_method?.includes('sync');
 
   const { data: searchMembersData } = useRequest2(
-    () => GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false }),
+    async () => {
+      if (!searchText) return Promise.resolve();
+      return GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false });
+    },
     {
       manual: false,
       throttleWait: 500,
@@ -137,13 +136,12 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     canEmpty: false,
     rows: 1
   });
-
   const handleEditMemberName = (tmbId: string, memberName: string) => {
     openEditMemberName({
       defaultVal: memberName,
       onSuccess: (newName: string) => {
         return putUpdateMemberNameByManager(tmbId, newName).then(() => {
-          Promise.all([refetchGroups(), refetchMembers()]);
+          refetchMembers();
         });
       },
       onError: (err) => {
@@ -323,10 +321,27 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                 }}
                                 onClick={() => {
                                   openRemoveMember(
-                                    () =>
-                                      delRemoveMember(member.tmbId).then(() =>
-                                        Promise.all([refetchGroups(), refetchMembers()])
-                                      ),
+                                    () => delRemoveMember(member.tmbId).then(refetchMembers),
+                                    undefined,
+                                    t('account_team:remove_tip', {
+                                      username: member.memberName
+                                    })
+                                  )();
+                                }}
+                              />
+                              <Icon
+                                name={'common/trash'}
+                                cursor={'pointer'}
+                                w="1rem"
+                                p="1"
+                                borderRadius="sm"
+                                _hover={{
+                                  color: 'red.600',
+                                  bgColor: 'myGray.100'
+                                }}
+                                onClick={() => {
+                                  openRemoveMember(
+                                    () => delRemoveMember(member.tmbId).then(refetchMembers),
                                     undefined,
                                     t('account_team:remove_tip', {
                                       username: member.memberName
