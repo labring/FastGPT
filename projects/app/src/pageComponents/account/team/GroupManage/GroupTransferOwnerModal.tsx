@@ -1,4 +1,4 @@
-import { putGroupChangeOwner, putUpdateGroup } from '@/web/support/user/team/group/api';
+import { putGroupChangeOwner } from '@/web/support/user/team/group/api';
 import {
   Box,
   Flex,
@@ -15,26 +15,24 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { TeamContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
-import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { Omit } from '@fastgpt/web/components/common/DndDrag';
 
-export type ChangeOwnerModalProps = {
-  groupId: string;
-  groups: MemberGroupListType;
-  refetchGroups: () => void;
-};
-
 export function ChangeOwnerModal({
-  onClose,
-  groupId,
-  groups,
-  refetchGroups
-}: ChangeOwnerModalProps & { onClose: () => void }) {
+  group,
+  onSuccess,
+  onClose
+}: {
+  group: MemberGroupListItemType<true>;
+  onSuccess: () => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
+
   const [inputValue, setInputValue] = React.useState('');
   const { data: searchedData } = useRequest2(
     async () => {
@@ -50,13 +48,7 @@ export function ChangeOwnerModal({
   );
 
   const { members: allMembers } = useContextSelector(TeamContext, (v) => v);
-  const group = useMemo(() => {
-    return groups.find((item) => item._id === groupId);
-  }, [groupId, groups]);
-
   const memberList = searchedData ? searchedData.members : allMembers;
-
-  const [keepAdmin, setKeepAdmin] = useState(true);
 
   const {
     isOpen: isOpenMemberListMenu,
@@ -69,10 +61,12 @@ export function ChangeOwnerModal({
     'permission' | 'teamId'
   > | null>(null);
 
-  const { runAsync, loading } = useRequest2(
-    (tmbId: string) => putGroupChangeOwner(groupId, tmbId),
+  const [keepAdmin, setKeepAdmin] = useState(true);
+
+  const { runAsync: onTransfer, loading } = useRequest2(
+    (tmbId: string) => putGroupChangeOwner(group._id, tmbId),
     {
-      onSuccess: () => Promise.all([onClose(), refetchGroups()]),
+      onSuccess: () => Promise.all([onClose(), onSuccess()]),
       successToast: t('common:permission.change_owner_success'),
       errorToast: t('common:permission.change_owner_failed')
     }
@@ -82,7 +76,7 @@ export function ChangeOwnerModal({
     if (!selectedMember) {
       return;
     }
-    await runAsync(selectedMember.tmbId);
+    await onTransfer(selectedMember.tmbId);
   };
 
   return (
@@ -92,7 +86,6 @@ export function ChangeOwnerModal({
       iconColor="primary.600"
       onClose={onClose}
       title={t('common:permission.change_owner')}
-      isLoading={loading}
     >
       <ModalBody>
         <HStack>
@@ -181,7 +174,9 @@ export function ChangeOwnerModal({
           <Button onClick={onClose} variant={'whiteBase'}>
             {t('common:common.Cancel')}
           </Button>
-          <Button onClick={onConfirm}>{t('common:common.Confirm')}</Button>
+          <Button isLoading={loading} isDisabled={!selectedMember} onClick={onConfirm}>
+            {t('common:common.Confirm')}
+          </Button>
         </HStack>
       </ModalFooter>
     </MyModal>
