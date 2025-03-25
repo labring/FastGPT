@@ -365,7 +365,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
-    /* select fe response field */
+    /* select fe response  field */
     const feResponseData = responseAllData
       ? flowResponses
       : filterPublicNodeResponseData({ flowResponses, responseDetail });
