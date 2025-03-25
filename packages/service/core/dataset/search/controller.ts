@@ -134,12 +134,10 @@ export const filterDatasetDataByMaxTokens = async (
     let totalTokens = 0;
 
     for await (const item of tokensScoreFilter) {
+      results.push(item);
+
       totalTokens += item.tokens;
 
-      if (totalTokens > maxTokens + 500) {
-        break;
-      }
-      results.push(item);
       if (totalTokens > maxTokens) {
         break;
       }
