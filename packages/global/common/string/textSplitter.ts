@@ -135,11 +135,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     { reg: /^(#####\s[^\n]+\n)/gm, maxLen: chunkSize },
 
     { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
-    // Table 特殊处理，自动补表头
     {
       reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
       maxLen: maxSize
-    },
+    }, // Table 尽可能保证完整性
     { reg: /(\n{2,})/g, maxLen: chunkSize },
     { reg: /([\n])/g, maxLen: chunkSize },
     // ------ There's no overlap on the top
