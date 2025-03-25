@@ -7,7 +7,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {

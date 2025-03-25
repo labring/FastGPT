@@ -16,7 +16,6 @@ import { useTranslation } from 'next-i18next';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { getOrgList } from '@/web/support/user/team/org/api';
 import { OrgType } from '@fastgpt/global/support/user/team/org/type';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));
@@ -25,7 +24,6 @@ type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
   members: TeamMemberItemType[];
   groups: MemberGroupListType;
-  orgs: OrgType[];
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
   setEditTeamData: React.Dispatch<React.SetStateAction<EditTeamFormDataType | undefined>>;
@@ -33,7 +31,6 @@ type TeamModalContextType = {
   refetchMembers: () => void;
   refetchTeams: () => void;
   refetchGroups: () => void;
-  refetchOrgs: () => void;
   teamSize: number;
   MemberScrollData: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
@@ -42,7 +39,6 @@ export const TeamContext = createContext<TeamModalContextType>({
   myTeams: [],
   groups: [],
   members: [],
-  orgs: [],
   isLoading: false,
   onSwitchTeam: function (_teamId: string): void {
     throw new Error('Function not implemented.');
@@ -57,9 +53,6 @@ export const TeamContext = createContext<TeamModalContextType>({
     throw new Error('Function not implemented.');
   },
   refetchGroups: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  refetchOrgs: function (): void {
     throw new Error('Function not implemented.');
   },
   teamSize: 0,
@@ -78,15 +71,6 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   } = useRequest2(() => getTeamList(TeamMemberStatusEnum.active), {
     manual: false,
     refreshDeps: [userInfo?._id]
-  });
-
-  const {
-    data: orgs = [],
-    loading: isLoadingOrgs,
-    refresh: refetchOrgs
-  } = useRequest2(getOrgList, {
-    manual: false,
-    refreshDeps: [userInfo?.team?.teamId]
   });
 
   const { data: teamMemberCountData, refresh: refetchTeamMemberCount } = useRequest2(
@@ -135,16 +119,13 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshDeps: [userInfo?.team?.teamId]
   });
 
-  const isLoading =
-    isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups || isLoadingOrgs;
+  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups;
 
   const contextValue = {
     myTeams,
     refetchTeams,
     isLoading,
     onSwitchTeam,
-    orgs,
-    refetchOrgs,
 
     // create | update team
     setEditTeamData,

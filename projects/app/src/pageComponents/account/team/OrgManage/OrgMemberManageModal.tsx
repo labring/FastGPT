@@ -21,7 +21,7 @@ import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '../context';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 export type GroupFormType = {
@@ -46,7 +46,7 @@ function OrgMemberManageModal({
   refetchOrgs,
   onClose
 }: {
-  currentOrg: OrgType;
+  currentOrg: OrgListItemType;
   refetchOrgs: () => void;
   onClose: () => void;
 }) {
