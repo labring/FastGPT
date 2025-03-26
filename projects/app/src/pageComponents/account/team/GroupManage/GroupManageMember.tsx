@@ -1,35 +1,19 @@
-import {
-  Box,
-  ModalBody,
-  Flex,
-  Button,
-  ModalFooter,
-  Checkbox,
-  Grid,
-  HStack,
-  Select
-} from '@chakra-ui/react';
+import { Box, ModalBody, Flex, Button, ModalFooter, Grid, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../context';
-import { getGroupMembers, putUpdateGroup } from '@/web/support/user/team/group/api';
+import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import {
-  GroupMemberItemType,
-  MemberGroupListItemType
-} from '@fastgpt/global/support/permission/memberGroup/type';
-import { useMount } from 'ahooks';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
@@ -76,7 +60,6 @@ function GroupEditModal({
     pageSize: 20,
     params: {
       status: 'active',
-      withPermission: true,
       withOrgs: true,
       searchKey
     }
@@ -93,12 +76,9 @@ function GroupEditModal({
       TeamMemberItemType<{ withOrgs: true; withPermission: true; withGroupRole: true }>
     >
   >(getTeamMembers, {
-    pageSize: 20,
+    pageSize: 100000,
     params: {
       groupId: groupId
-      // status: 'active',
-      // withPermission: false,
-      // withOrgs: false
     }
   });
 
