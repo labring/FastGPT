@@ -20,8 +20,6 @@ function OrgMoveModal({
 }) {
   const { t } = useTranslation();
   const [selectedOrg, setSelectedOrg] = useState<OrgListItemType>();
-  const { userInfo } = useUserStore();
-  const team = userInfo?.team!;
 
   const { runAsync: onMoveOrg, loading } = useRequest2(putMoveOrg, {
     onSuccess: () => {
@@ -39,7 +37,7 @@ function OrgMoveModal({
       iconColor="primary.600"
     >
       <ModalBody>
-        <OrgTree selectedOrg={selectedOrg} setSelectedOrg={setSelectedOrg} />
+        <OrgTree selectedOrg={selectedOrg} setSelectedOrg={setSelectedOrg} movingOrg={movingOrg} />
       </ModalBody>
       <ModalFooter>
         <Button

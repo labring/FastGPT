@@ -1,34 +1,25 @@
-import {
-  Box,
-  ModalBody,
-  Flex,
-  Button,
-  ModalFooter,
-  Checkbox,
-  Grid,
-  HStack
-} from '@chakra-ui/react';
+import { Box, ModalBody, Flex, Button, ModalFooter, Grid, HStack } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Tag from '@fastgpt/web/components/common/Tag';
 
 import { useTranslation } from 'next-i18next';
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../context';
-import { getGroupMembers, putUpdateGroup } from '@/web/support/user/team/group/api';
+import { putUpdateGroup } from '@/web/support/user/team/group/api';
 import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import {
-  GroupMemberItemType,
-  MemberGroupListItemType
-} from '@fastgpt/global/support/permission/memberGroup/type';
-import { useMount } from 'ahooks';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import _ from 'lodash';
+import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 
 export type GroupFormType = {
   members: {
@@ -53,42 +44,65 @@ function GroupEditModal({
   const { userInfo } = useUserStore();
   const { toast } = useToast();
 
-  const allMembers = useContextSelector(TeamContext, (v) => v.members);
-  const MemberScrollData = useContextSelector(TeamContext, (v) => v.MemberScrollData);
-  const [hoveredMemberId, setHoveredMemberId] = useState<string>();
+  const [searchKey, setSearchKey] = useState('');
+  const [selected, setSelected] = useState<
+    { name: string; tmbId: string; avatar: string; role: `${GroupMemberRole}` }[]
+  >([]);
 
-  const selectedMembersRef = useRef<HTMLDivElement>(null);
-  const [members, setMembers] = useState<GroupMemberItemType[]>([]);
-  const editGroupId = useMemo(() => {
-    return group?._id;
-  }, [group]);
+  const {
+    data: allMembers = [],
+    ScrollData: MemberScrollData,
+    refreshList
+  } = useScrollPagination<
+    any,
+    PaginationResponse<TeamMemberItemType<{ withOrgs: true; withPermission: true }>>
+  >(getTeamMembers, {
+    pageSize: 20,
+    params: {
+      status: 'active',
+      withOrgs: true,
+      searchKey
+    }
+  });
+  const refetchMemberList = _.debounce(refreshList, 200);
 
-  useMount(async () => {
-    console.log('aaaaaa');
-    if (editGroupId) {
-      const data = await getGroupMembers(editGroupId);
-      console.log(data);
-      setMembers(data);
+  useEffect(() => refetchMemberList, [searchKey]);
+
+  const groupId = useMemo(() => String(group._id), [group._id]);
+
+  const { data: groupMembers = [], ScrollData: GroupScrollData } = useScrollPagination<
+    any,
+    PaginationResponse<
+      TeamMemberItemType<{ withOrgs: true; withPermission: true; withGroupRole: true }>
+    >
+  >(getTeamMembers, {
+    pageSize: 100000,
+    params: {
+      groupId: groupId
     }
   });
 
-  const [searchKey, setSearchKey] = useState('');
-  const filtered = useMemo(() => {
-    return [
-      ...allMembers.filter((member) => {
-        if (member.memberName.toLowerCase().includes(searchKey.toLowerCase())) return true;
-        return false;
-      })
-    ];
-  }, [searchKey, allMembers]);
+  useEffect(() => {
+    if (!groupId) return;
+    setSelected(
+      groupMembers.map((item) => ({
+        name: item.memberName,
+        tmbId: item.tmbId,
+        avatar: item.avatar,
+        role: (item.groupRole ?? 'member') as `${GroupMemberRole}`
+      }))
+    );
+  }, [groupId, groupMembers]);
+
+  const [hoveredMemberId, setHoveredMemberId] = useState<string>();
 
   const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async () => {
-      if (!editGroupId || !members.length) return;
+      if (!group._id || !groupMembers.length) return;
 
       return putUpdateGroup({
-        groupId: editGroupId,
-        memberList: members
+        groupId: group._id,
+        memberList: selected
       });
     },
     {
@@ -97,18 +111,21 @@ function GroupEditModal({
   );
 
   const isSelected = (memberId: string) => {
-    return members.find((item) => item.tmbId === memberId);
+    return selected.find((item) => item.tmbId === memberId);
   };
 
   const myRole = useMemo(() => {
     if (userInfo?.team.permission.hasManagePer) {
       return 'owner';
     }
-    return members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? 'member';
-  }, [members, userInfo]);
+    return groupMembers.find((item) => item.tmbId === userInfo?.team.tmbId)?.groupRole ?? 'member';
+  }, [groupMembers, userInfo]);
 
   const handleToggleSelect = (memberId: string) => {
-    if (myRole === 'owner' && memberId === members.find((item) => item.role === 'owner')?.tmbId) {
+    if (
+      myRole === 'owner' &&
+      memberId === groupMembers.find((item) => item.role === 'owner')?.tmbId
+    ) {
       toast({
         title: t('user:team.group.toast.can_not_delete_owner'),
         status: 'error'
@@ -118,18 +135,18 @@ function GroupEditModal({
 
     if (
       myRole === 'admin' &&
-      members.find((item) => String(item.tmbId) === memberId)?.role !== 'member'
+      selected.find((item) => String(item.tmbId) === memberId)?.role !== 'member'
     ) {
       return;
     }
 
     if (isSelected(memberId)) {
-      setMembers(members.filter((item) => item.tmbId !== memberId));
+      setSelected(selected.filter((item) => item.tmbId !== memberId));
     } else {
       const member = allMembers.find((m) => m.tmbId === memberId);
       if (!member) return;
-      setMembers([
-        ...members,
+      setSelected([
+        ...selected,
         {
           name: member.memberName,
           avatar: member.avatar,
@@ -142,14 +159,14 @@ function GroupEditModal({
 
   const handleToggleAdmin = (memberId: string) => {
     if (myRole === 'owner' && isSelected(memberId)) {
-      const oldRole = members.find((item) => item.tmbId === memberId)?.role;
+      const oldRole = groupMembers.find((item) => item.tmbId === memberId)?.groupRole;
       if (oldRole === 'admin') {
-        setMembers(
-          members.map((item) => (item.tmbId === memberId ? { ...item, role: 'member' } : item))
+        setSelected(
+          selected.map((item) => (item.tmbId === memberId ? { ...item, role: 'member' } : item))
         );
       } else {
-        setMembers(
-          members.map((item) => (item.tmbId === memberId ? { ...item, role: 'admin' } : item))
+        setSelected(
+          selected.map((item) => (item.tmbId === memberId ? { ...item, role: 'admin' } : item))
         );
       }
     }
@@ -184,37 +201,24 @@ function GroupEditModal({
               }}
             />
             <MemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
-              {filtered.map((member) => {
+              {allMembers.map((member) => {
                 return (
-                  <HStack
-                    py="2"
-                    px={3}
-                    borderRadius={'md'}
-                    alignItems="center"
+                  <MemberItemCard
+                    avatar={member.avatar}
                     key={member.tmbId}
-                    cursor={'pointer'}
-                    _hover={{
-                      bg: 'myGray.50',
-                      ...(!isSelected(member.tmbId) ? { svg: { color: 'myGray.50' } } : {})
-                    }}
-                    _notLast={{ mb: 2 }}
-                    onClick={() => handleToggleSelect(member.tmbId)}
-                  >
-                    <Checkbox
-                      isChecked={!!isSelected(member.tmbId)}
-                      icon={<MyIcon name={'common/check'} w={'12px'} />}
-                    />
-                    <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box>{member.memberName}</Box>
-                  </HStack>
+                    name={member.memberName}
+                    onChange={() => handleToggleSelect(member.tmbId)}
+                    isChecked={!!isSelected(member.tmbId)}
+                    orgs={member.orgs}
+                  />
                 );
               })}
             </MemberScrollData>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4" h={'100%'}>
-            <Box mt={2}>{t('common:chosen') + ': ' + members.length}</Box>
-            <MemberScrollData ScrollContainerRef={selectedMembersRef} mt={3} flex={'1 0 0'} h={0}>
-              {members.map((member) => {
+            <Box mt={2}>{t('common:chosen') + ': ' + selected.length}</Box>
+            <GroupScrollData mt={3} flex={'1 0 0'} h={0}>
+              {selected.map((member) => {
                 return (
                   <HStack
                     onMouseEnter={() => setHoveredMemberId(member.tmbId)}
@@ -284,7 +288,7 @@ function GroupEditModal({
                   </HStack>
                 );
               })}
-            </MemberScrollData>
+            </GroupScrollData>
           </Flex>
         </Grid>
       </ModalBody>

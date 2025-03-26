@@ -29,12 +29,14 @@ function OrgInfoModal({
   editOrg,
   onClose,
   onSuccess,
-  updateCurrentOrg
+  updateCurrentOrg,
+  parentId
 }: {
   editOrg: OrgFormType;
   onClose: () => void;
   onSuccess: () => void;
   updateCurrentOrg: (data: { name?: string; avatar?: string; description?: string }) => void;
+  parentId?: string;
 }) {
   const { t } = useTranslation();
 
@@ -51,10 +53,11 @@ function OrgInfoModal({
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
     async (data: OrgFormType) => {
+      if (parentId === undefined) return;
       return postCreateOrg({
         name: data.name,
         avatar: data.avatar,
-        path: editOrg.path,
+        orgId: parentId,
         description: data.description
       });
     },
