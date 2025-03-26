@@ -15,12 +15,16 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TeamContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { Omit } from '@fastgpt/web/components/common/DndDrag';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import _ from 'lodash';
 
 export function ChangeOwnerModal({
   group,
@@ -33,22 +37,24 @@ export function ChangeOwnerModal({
 }) {
   const { t } = useTranslation();
 
-  const [inputValue, setInputValue] = React.useState('');
-  const { data: searchedData } = useRequest2(
-    async () => {
-      if (!inputValue) return;
-      return GetSearchUserGroupOrg(inputValue);
-    },
+  const [searchKey, setSearchKey] = React.useState('');
+
+  const {
+    data: members = [],
+    ScrollData: MemberScrollData,
+    refreshList
+  } = useScrollPagination<any, PaginationResponse<TeamMemberItemType<{ withGroupRole: true }>>>(
+    getTeamMembers,
     {
-      manual: false,
-      refreshDeps: [inputValue],
-      throttleWait: 500,
-      debounceWait: 200
+      pageSize: 20,
+      params: {
+        searchKey: searchKey
+      }
     }
   );
 
-  const { members: allMembers } = useContextSelector(TeamContext, (v) => v);
-  const memberList = searchedData ? searchedData.members : allMembers;
+  const search = _.debounce(refreshList, 500);
+  useEffect(() => search, [searchKey]);
 
   const {
     isOpen: isOpenMemberListMenu,
@@ -108,9 +114,9 @@ export function ChangeOwnerModal({
             )}
             <Input
               placeholder={t('common:permission.change_owner_placeholder')}
-              value={inputValue}
+              value={searchKey}
               onChange={(e) => {
-                setInputValue(e.target.value);
+                setSearchKey(e.target.value);
                 setSelectedMember(null);
               }}
               onFocus={() => {
@@ -120,7 +126,7 @@ export function ChangeOwnerModal({
               {...(selectedMember && { pl: '10' })}
             />
           </Flex>
-          {isOpenMemberListMenu && memberList.length > 0 && (
+          {isOpenMemberListMenu && members.length > 0 && (
             <Flex
               mt={2}
               w={'100%'}
@@ -134,26 +140,28 @@ export function ChangeOwnerModal({
               maxH={'300px'}
               overflow={'auto'}
             >
-              {memberList.map((item) => (
-                <Box
-                  key={item.tmbId}
-                  p="2"
-                  _hover={{ bg: 'myGray.100' }}
-                  mx="1"
-                  borderRadius="md"
-                  cursor={'pointer'}
-                  onClickCapture={() => {
-                    setInputValue(item.memberName);
-                    setSelectedMember(item);
-                    onCloseMemberListMenu();
-                  }}
-                >
-                  <Flex align="center">
-                    <Avatar src={item.avatar} w="1.25rem" />
-                    <Box ml="2">{item.memberName}</Box>
-                  </Flex>
-                </Box>
-              ))}
+              <MemberScrollData>
+                {members.map((item) => (
+                  <Box
+                    key={item.tmbId}
+                    p="2"
+                    _hover={{ bg: 'myGray.100' }}
+                    mx="1"
+                    borderRadius="md"
+                    cursor={'pointer'}
+                    onClickCapture={() => {
+                      setSearchKey(item.memberName);
+                      setSelectedMember(item);
+                      onCloseMemberListMenu();
+                    }}
+                  >
+                    <Flex align="center">
+                      <Avatar src={item.avatar} w="1.25rem" />
+                      <Box ml="2">{item.memberName}</Box>
+                    </Flex>
+                  </Box>
+                ))}
+              </MemberScrollData>
             </Flex>
           )}
 

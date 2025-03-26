@@ -1,9 +1,8 @@
-// orgId, pathid, path === null ===> root org
 export type postCreateOrgData = {
   name: string;
   description?: string;
   avatar?: string;
-  path?: string;
+  orgId?: string;
 };
 
 export type putUpdateOrgMembersData = {

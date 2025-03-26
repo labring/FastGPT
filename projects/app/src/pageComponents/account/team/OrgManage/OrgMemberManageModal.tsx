@@ -1,14 +1,5 @@
-import { getOrgMembers, putUpdateOrgMembers } from '@/web/support/user/team/org/api';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Grid,
-  HStack,
-  ModalBody,
-  ModalFooter
-} from '@chakra-ui/react';
+import { putUpdateOrgMembers } from '@/web/support/user/team/org/api';
+import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter } from '@chakra-ui/react';
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -17,11 +8,11 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
 import { getTeamMembers } from '@/web/support/user/team/api';
+import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 
 export type GroupFormType = {
   members: {
@@ -29,16 +20,6 @@ export type GroupFormType = {
     role: `${GroupMemberRole}`;
   }[];
 };
-
-function CheckboxIcon({
-  name
-}: {
-  isChecked?: boolean;
-  isIndeterminate?: boolean;
-  name: IconNameType;
-}) {
-  return <MyIcon name={name} w="12px" />;
-}
 
 function OrgMemberManageModal({
   currentOrg,
@@ -56,17 +37,24 @@ function OrgMemberManageModal({
     ScrollData: MemberScrollData,
     isLoading: isLoadingMembers
   } = useScrollPagination(getTeamMembers, {
-    pageSize: 20
+    pageSize: 20,
+    params: {
+      withOrgs: true,
+      withPermission: false,
+      status: 'active'
+    }
   });
 
   const {
     data: orgMembers,
     ScrollData: OrgMemberScrollData,
     isLoading: isLoadingOrgMembers
-  } = useScrollPagination(getOrgMembers, {
-    pageSize: 20,
+  } = useScrollPagination(getTeamMembers, {
+    pageSize: 100000,
     params: {
-      orgPath: getOrgChildrenPath(currentOrg)
+      orgId: currentOrg._id,
+      withOrgs: false,
+      withPermission: false
     }
   });
 
@@ -83,11 +71,6 @@ function OrgMemberManageModal({
   }, [orgMembers]);
 
   const [searchKey, setSearchKey] = useState('');
-  const filterMembers = useMemo(() => {
-    if (!searchKey) return allMembers;
-    const regx = new RegExp(searchKey, 'i');
-    return allMembers.filter((member) => regx.test(member.memberName));
-  }, [searchKey, allMembers]);
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
     () => {
@@ -165,35 +148,20 @@ function OrgMemberManageModal({
               }}
             />
             <MemberScrollData mt={3} flexGrow="1" overflow={'auto'} isLoading={isLoadingMembers}>
-              {filterMembers.map((member) => {
+              {allMembers.map((member) => {
                 return (
-                  <HStack
-                    py="2"
-                    px={3}
-                    borderRadius={'md'}
-                    alignItems="center"
+                  <MemberItemCard
+                    avatar={member.avatar}
                     key={member.tmbId}
-                    cursor={'pointer'}
-                    _hover={{
-                      bg: 'myGray.50',
-                      ...(!isSelected(member.tmbId) ? { svg: { color: 'myGray.50' } } : {})
-                    }}
-                    _notLast={{ mb: 2 }}
-                    onClick={() => handleToggleSelect(member.tmbId)}
-                  >
-                    <Checkbox
-                      isChecked={!!isSelected(member.tmbId)}
-                      icon={<CheckboxIcon name={'common/check'} />}
-                      pointerEvents="none"
-                    />
-                    <Avatar src={member.avatar} w="1.5rem" borderRadius={'50%'} />
-                    <Box>{member.memberName}</Box>
-                  </HStack>
+                    name={member.memberName}
+                    onChange={() => handleToggleSelect(member.tmbId)}
+                    isChecked={!!isSelected(member.tmbId)}
+                    orgs={member.orgs}
+                  />
                 );
               })}
             </MemberScrollData>
           </Flex>
-          {/* <Flex mt={3} flexDirection="column" flexGrow="1" overflow={'auto'} maxH={'100%'}> */}
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
             <OrgMemberScrollData
               mt={3}

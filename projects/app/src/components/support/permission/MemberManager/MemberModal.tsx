@@ -19,7 +19,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import {
@@ -39,6 +39,7 @@ import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import _ from 'lodash';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -55,7 +56,6 @@ function MemberModal({
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const collaboratorList = useContextSelector(CollaboratorContext, (v) => v.collaboratorList);
-  const [searchText, setSearchText] = useState<string>('');
   const [filterClass, setFilterClass] = useState<'member' | 'org' | 'group'>();
   const {
     paths,
@@ -63,18 +63,35 @@ function MemberModal({
     members: orgMembers,
     MemberScrollData: OrgMemberScrollData,
     onPathClick,
-    orgs
-  } = useOrg({ getPermission: false });
+    orgs,
+    searchKey,
+    setSearchKey
+  } = useOrg({ withPermission: false });
 
-  const { data: members, ScrollData: TeamMemberScrollData } = useScrollPagination(getTeamMembers, {
-    pageSize: 15
+  const {
+    data: members,
+    ScrollData: TeamMemberScrollData,
+    refreshList
+  } = useScrollPagination(getTeamMembers, {
+    pageSize: 15,
+    params: {
+      withPermission: true,
+      withOrgs: true,
+      status: 'active',
+      searchKey
+    }
   });
 
-  const { data: groups = [], loading: loadingGroupsAndOrgs } = useRequest2(
+  const {
+    data: groups = [],
+    loading: loadingGroupsAndOrgs,
+    runAsync: refreshGroups
+  } = useRequest2(
     async () => {
       if (!userInfo?.team?.teamId) return [];
       return getGroupList<false>({
-        withMembers: false
+        withMembers: false,
+        searchKey
       });
     },
     {
@@ -83,53 +100,20 @@ function MemberModal({
     }
   );
 
-  const { data: searchedData } = useRequest2(() => GetSearchUserGroupOrg(searchText), {
-    manual: false,
-    throttleWait: 500,
-    debounceWait: 200,
-    refreshDeps: [searchText]
-  });
+  const search = _.debounce(() => {
+    refreshList();
+    refreshGroups();
+  }, 200);
+
+  useEffect(search, [searchKey]);
 
   const [selectedOrgList, setSelectedOrgIdList] = useState<OrgListItemType[]>([]);
-
-  const filterOrgs: (OrgListItemType & { count?: number })[] = useMemo(() => {
-    if (searchText && searchedData) {
-      const orgids = searchedData.orgs.map((item) => item._id);
-      return orgs.filter((org) => orgids.includes(String(org._id)));
-    }
-    return orgs
-      .filter((org) => org.path !== '')
-      .map((org) => ({
-        ...org,
-        count: org.total
-      }));
-  }, [searchText, orgs, searchedData]);
 
   const [selectedMemberList, setSelectedMemberList] = useState<
     Omit<TeamMemberItemType, 'permission' | 'teamId'>[]
   >([]);
-  const filterMembers = useMemo(() => {
-    if (searchText) {
-      return searchedData?.members || [];
-    }
-
-    return members;
-  }, [searchText, members, searchedData?.members]);
 
   const [selectedGroupList, setSelectedGroupList] = useState<MemberGroupListItemType<false>[]>([]);
-  const filterGroups = useMemo(() => {
-    if (searchText) {
-      return searchedData?.groups.map((item) => ({
-        groupName: item.name,
-        _id: item.id,
-        ...item
-      }));
-    }
-    if (!searchText && filterClass !== 'group') return [];
-
-    return groups;
-  }, [searchText, filterClass, groups, searchedData]);
-
   const permissionList = useContextSelector(CollaboratorContext, (v) => v.permissionList);
   const getPerLabelList = useContextSelector(CollaboratorContext, (v) => v.getPerLabelList);
   const [selectedPermission, setSelectedPermission] = useState<number | undefined>(
@@ -225,12 +209,12 @@ function MemberModal({
             <SearchInput
               placeholder={t('user:search_group_org_user')}
               bgColor="myGray.50"
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => setSearchKey(e.target.value)}
             />
 
             <Flex flexDirection="column" mt="3" overflow={'auto'} flex={'1 0 0'} h={0}>
               {/* Entry */}
-              {!searchText && !filterClass && (
+              {!searchKey && !filterClass && (
                 <>
                   {entryList.current.map((item) => {
                     return (
@@ -257,7 +241,7 @@ function MemberModal({
               )}
 
               {/* Path */}
-              {!searchText && filterClass && (
+              {!searchKey && filterClass && (
                 <Box mb={1}>
                   <Path
                     paths={[
@@ -291,9 +275,9 @@ function MemberModal({
                   />
                 </Box>
               )}
-              {(filterClass === 'member' || (searchText && filterMembers.length > 0)) &&
+              {(filterClass === 'member' || searchKey) &&
                 (() => {
-                  const members = filterMembers?.map((member) => {
+                  const Members = members?.map((member) => {
                     const onChange = () => {
                       setSelectedMemberList((state) => {
                         if (state.find((v) => v.tmbId === member.tmbId)) {
@@ -315,8 +299,8 @@ function MemberModal({
                       />
                     );
                   });
-                  return searchText ? (
-                    members
+                  return searchKey ? (
+                    Members
                   ) : (
                     <TeamMemberScrollData
                       flexDirection={'column'}
@@ -324,13 +308,13 @@ function MemberModal({
                       userSelect={'none'}
                       height={'fit-content'}
                     >
-                      {members}
+                      {Members}
                     </TeamMemberScrollData>
                   );
                 })()}
-              {(filterClass === 'org' || searchText) &&
+              {(filterClass === 'org' || searchKey) &&
                 (() => {
-                  const orgs = filterOrgs?.map((org) => {
+                  const Orgs = orgs?.map((org) => {
                     const onChange = () => {
                       setSelectedOrgIdList((state) => {
                         if (state.find((v) => v._id === org._id)) {
@@ -356,18 +340,18 @@ function MemberModal({
                           pointerEvents="none"
                         />
                         <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
-                        <HStack ml="2" w="full" gap="5px">
+                        <HStack w="full">
                           <Text>{org.name}</Text>
-                          {org.count && (
+                          {org.total && (
                             <>
                               <Tag size="sm" my="auto">
-                                {org.count}
+                                {org.total}
                               </Tag>
                             </>
                           )}
                         </HStack>
                         <PermissionTags permission={collaborator?.permission.value} />
-                        {org.count && (
+                        {org.total && (
                           <MyIcon
                             name="core/chat/chevronRight"
                             w="16px"
@@ -386,11 +370,11 @@ function MemberModal({
                       </HStack>
                     );
                   });
-                  return searchText ? (
-                    orgs
+                  return searchKey ? (
+                    Orgs
                   ) : (
                     <OrgMemberScrollData>
-                      {orgs}
+                      {Orgs}
                       {orgMembers.map((member) => {
                         return (
                           <MemberItemCard
@@ -413,29 +397,30 @@ function MemberModal({
                     </OrgMemberScrollData>
                   );
                 })()}
-              {filterGroups?.map((group) => {
-                const onChange = () => {
-                  setSelectedGroupList((state) => {
-                    if (state.find((v) => v._id === group._id)) {
-                      return state.filter((v) => v._id !== group._id);
-                    }
-                    return [...state, group];
-                  });
-                };
-                const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
-                return (
-                  <MemberItemCard
-                    avatar={group.avatar}
-                    key={group._id}
-                    name={
-                      group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
-                    }
-                    permission={collaborator?.permission.value}
-                    onChange={onChange}
-                    isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
-                  />
-                );
-              })}
+              {(filterClass === 'group' || searchKey) &&
+                groups?.map((group) => {
+                  const onChange = () => {
+                    setSelectedGroupList((state) => {
+                      if (state.find((v) => v._id === group._id)) {
+                        return state.filter((v) => v._id !== group._id);
+                      }
+                      return [...state, group];
+                    });
+                  };
+                  const collaborator = collaboratorList?.find((v) => v.groupId === group._id);
+                  return (
+                    <MemberItemCard
+                      avatar={group.avatar}
+                      key={group._id}
+                      name={
+                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
+                      }
+                      permission={collaborator?.permission.value}
+                      onChange={onChange}
+                      isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
+                    />
+                  );
+                })}
             </Flex>
           </Flex>
 

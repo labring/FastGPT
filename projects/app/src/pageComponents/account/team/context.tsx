@@ -20,20 +20,17 @@ const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
-  members: TeamMemberItemType[];
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
   setEditTeamData: React.Dispatch<React.SetStateAction<EditTeamFormDataType | undefined>>;
 
-  refetchMembers: () => void;
+  refetchTeamSize: () => void;
   refetchTeams: () => void;
   teamSize: number;
-  MemberScrollData: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
 export const TeamContext = createContext<TeamModalContextType>({
   myTeams: [],
-  members: [],
   isLoading: false,
   onSwitchTeam: function (_teamId: string): void {
     throw new Error('Function not implemented.');
@@ -44,11 +41,10 @@ export const TeamContext = createContext<TeamModalContextType>({
   refetchTeams: function (): void {
     throw new Error('Function not implemented.');
   },
-  refetchMembers: function (): void {
+  refetchTeamSize: function (): void {
     throw new Error('Function not implemented.');
   },
-  teamSize: 0,
-  MemberScrollData: () => <></>
+  teamSize: 0
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
@@ -67,31 +63,10 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshDeps: [userInfo?._id]
   });
 
-  const { data: teamMemberCountData, refresh: refetchTeamMemberCount } = useRequest2(
-    getTeamMemberCount,
-    {
-      manual: false,
-      refreshDeps: [userInfo?.team?.teamId]
-    }
-  );
-
-  // member action
-  const {
-    data: members = [],
-    isLoading: loadingMembers,
-    refreshList: refetchMemberList,
-    ScrollData: MemberScrollData
-  } = useScrollPagination(getTeamMembers, {
-    pageSize: 20,
-    params: {
-      withLeaved: true
-    }
+  const { data: teamMemberCountData, refresh: refetchTeamSize } = useRequest2(getTeamMemberCount, {
+    manual: false,
+    refreshDeps: [userInfo?.team?.teamId]
   });
-
-  const refetchMembers = useCallback(() => {
-    refetchTeamMemberCount();
-    refetchMemberList();
-  }, [refetchTeamMemberCount, refetchMemberList]);
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
     async (teamId: string) => {
@@ -106,7 +81,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     }
   );
 
-  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers;
+  const isLoading = isLoadingTeams || isSwitchingTeam;
 
   const contextValue = {
     myTeams,
@@ -116,10 +91,8 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
     // create | update team
     setEditTeamData,
-    members,
-    refetchMembers,
     teamSize: teamMemberCountData?.count || 0,
-    MemberScrollData
+    refetchTeamSize
   };
 
   return (
