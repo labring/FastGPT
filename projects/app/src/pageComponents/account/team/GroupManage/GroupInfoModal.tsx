@@ -2,7 +2,6 @@ import { Input, HStack, ModalBody, Button, ModalFooter } from '@chakra-ui/react'
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
