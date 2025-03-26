@@ -42,9 +42,9 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
 
   const errorCount = await MongoDatasetTraining.countDocuments(
     {
-      collectionId: new Types.ObjectId(id as string),
-      errorMsg: { $exists: true, $ne: '' },
-      retryCount: { $lt: 0 }
+      collectionId: id,
+      errorMsg: { $exists: true },
+      retryCount: { $lte: 0 }
     },
     readFromSecondary
   );

@@ -45,11 +45,7 @@ const DataCard = () => {
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
-  const [errorModal, setErrorModal] = useState<{
-    collectionId: string;
-  }>({
-    collectionId: ''
-  });
+  const [errorModalId, setErrorModalId] = useState('');
   const { toast } = useToast();
 
   const scrollParams = useMemo(
@@ -196,9 +192,7 @@ const DataCard = () => {
                 rounded={'full'}
                 ml={2}
                 onClick={() => {
-                  setErrorModal({
-                    collectionId: collection._id
-                  });
+                  setErrorModalId(collection._id);
                 }}
               >
                 <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
@@ -381,12 +375,12 @@ const DataCard = () => {
           }}
         />
       )}
-      {errorModal.collectionId && (
+      {errorModalId && (
         <TrainingStates
           datasetId={datasetId}
           defaultTab={'errors'}
-          collectionId={errorModal.collectionId}
-          onClose={() => setErrorModal({ collectionId: '' })}
+          collectionId={errorModalId}
+          onClose={() => setErrorModalId('')}
         />
       )}
       <ConfirmModal />

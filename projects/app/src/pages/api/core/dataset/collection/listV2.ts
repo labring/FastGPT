@@ -170,8 +170,7 @@ async function handler(
       trainingAmount:
         trainingAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
-      hasError:
-        trainingAmount.find((amount) => String(amount._id) === String(item._id))?.hasError || false,
+      hasError: trainingAmount.find((amount) => String(amount._id) === String(item._id))?.hasError,
       permission
     }))
   );
