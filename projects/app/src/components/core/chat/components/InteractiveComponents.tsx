@@ -10,18 +10,13 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  InteractiveBasicType,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  AIChatItemValueItemType,
-  ChatItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { StoreEdgeItemType, RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { initWorkflowEdgeStatus } from '@fastgpt/global/core/workflow/runtime/utils';
