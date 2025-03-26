@@ -41,7 +41,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { PaginationResponse, PaginationProps } from '@fastgpt/web/common/fetch/type';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { effect } from '@chakra-ui/styled-system';
 import _ from 'lodash';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 
