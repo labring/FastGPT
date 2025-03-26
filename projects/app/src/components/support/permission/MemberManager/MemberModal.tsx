@@ -275,44 +275,43 @@ function MemberModal({
                   />
                 </Box>
               )}
-              {filterClass === 'member' ||
-                (searchKey &&
-                  (() => {
-                    const Members = members?.map((member) => {
-                      const onChange = () => {
-                        setSelectedMemberList((state) => {
-                          if (state.find((v) => v.tmbId === member.tmbId)) {
-                            return state.filter((v) => v.tmbId !== member.tmbId);
-                          }
-                          return [...state, member];
-                        });
-                      };
-                      const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
-                      return (
-                        <MemberItemCard
-                          avatar={member.avatar}
-                          key={member.tmbId}
-                          name={member.memberName}
-                          permission={collaborator?.permission.value}
-                          onChange={onChange}
-                          isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
-                          orgs={member.orgs}
-                        />
-                      );
-                    });
-                    return searchKey ? (
-                      Members
-                    ) : (
-                      <TeamMemberScrollData
-                        flexDirection={'column'}
-                        gap={1}
-                        userSelect={'none'}
-                        height={'fit-content'}
-                      >
-                        {Members}
-                      </TeamMemberScrollData>
+              {(filterClass === 'member' || searchKey) &&
+                (() => {
+                  const Members = members?.map((member) => {
+                    const onChange = () => {
+                      setSelectedMemberList((state) => {
+                        if (state.find((v) => v.tmbId === member.tmbId)) {
+                          return state.filter((v) => v.tmbId !== member.tmbId);
+                        }
+                        return [...state, member];
+                      });
+                    };
+                    const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
+                    return (
+                      <MemberItemCard
+                        avatar={member.avatar}
+                        key={member.tmbId}
+                        name={member.memberName}
+                        permission={collaborator?.permission.value}
+                        onChange={onChange}
+                        isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
+                        orgs={member.orgs}
+                      />
                     );
-                  })())}
+                  });
+                  return searchKey ? (
+                    Members
+                  ) : (
+                    <TeamMemberScrollData
+                      flexDirection={'column'}
+                      gap={1}
+                      userSelect={'none'}
+                      height={'fit-content'}
+                    >
+                      {Members}
+                    </TeamMemberScrollData>
+                  );
+                })()}
               {(filterClass === 'org' || searchKey) &&
                 (() => {
                   const Orgs = orgs?.map((org) => {
