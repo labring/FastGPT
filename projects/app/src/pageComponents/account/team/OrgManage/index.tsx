@@ -289,7 +289,12 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
             <VStack w={'180px'} alignItems={'start'}>
               <HStack gap={'6px'}>
                 <Avatar src={currentOrg.avatar} w={'1rem'} h={'1rem'} rounded={'xs'} />
-                <Box fontWeight={500} color={'myGray.900'}>
+                <Box
+                  title={currentOrg.name}
+                  fontWeight={500}
+                  color={'myGray.900'}
+                  className="textEllipsis3"
+                >
                   {currentOrg.name}
                 </Box>
                 {currentOrg?.path !== '' && (
