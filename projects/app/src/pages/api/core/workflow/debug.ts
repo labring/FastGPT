@@ -23,10 +23,7 @@ async function handler(
     appId,
     query: requestQuery,
     history: requestHistories
-  } = req.body as PostWorkflowDebugProps & {
-    query?: UserChatItemValueItemType[];
-    history?: ChatItemType[];
-  };
+  } = req.body as PostWorkflowDebugProps;
 
   if (!nodes) {
     throw new Error('Prams Error');
@@ -42,10 +39,7 @@ async function handler(
     throw new Error('No entry node found');
   }
 
-  const isEntryNodeInteractive =
-    entryNode.flowNodeType === 'formInput' || entryNode.flowNodeType === 'userSelect';
-
-  const histories: ChatItemType[] = isEntryNodeInteractive ? requestHistories || [] : [];
+  const histories: ChatItemType[] = requestHistories || [];
   const query: UserChatItemValueItemType[] = requestQuery || [];
 
   /* user auth */
