@@ -11,7 +11,7 @@ function MemberTag({ name, avatar }: Props) {
   return (
     <HStack>
       {avatar && <Avatar src={avatar} w={['18px', '22px']} rounded="50%" />}
-      <Box maxW={'150px'} className={'textEllipsis'}>
+      <Box maxW={'45vw'} className={'textEllipsis'} fontSize={'sm'}>
         {name || '-'}
       </Box>
     </HStack>
