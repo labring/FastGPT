@@ -10,9 +10,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -24,10 +22,10 @@ async function handler(
     variables = {},
     appId,
     query: requestQuery,
-    histories: requestHistories
+    history: requestHistories
   } = req.body as PostWorkflowDebugProps & {
     query?: UserChatItemValueItemType[];
-    histories?: ChatItemType[];
+    history?: ChatItemType[];
   };
 
   if (!nodes) {
@@ -39,26 +37,16 @@ async function handler(
   if (!Array.isArray(edges)) {
     throw new Error('Edges is not array');
   }
+  const entryNode = nodes.find((node) => node.isEntry === true);
+  if (!entryNode) {
+    throw new Error('No entry node found');
+  }
 
-  const query_form_input: UserChatItemValueItemType[] = requestQuery || [
-    {
-      type: ChatItemValueTypeEnum.text,
-      text: {
-        content: '{"未知":"未知","数字":2}'
-      }
-    }
-  ];
+  const isEntryNodeInteractive =
+    entryNode.flowNodeType === 'formInput' || entryNode.flowNodeType === 'userSelect';
 
-  const query: UserChatItemValueItemType[] =
-    requestQuery ||
-    [
-      // {
-      //   type: ChatItemValueTypeEnum.text,
-      //   text: {
-      //     content: 'Cancel'
-      //   }
-      // }
-    ];
+  const histories: ChatItemType[] = isEntryNodeInteractive ? requestHistories || [] : [];
+  const query: UserChatItemValueItemType[] = requestQuery || [];
 
   /* user auth */
   const [{ teamId, tmbId }, { app }] = await Promise.all([
@@ -96,7 +84,7 @@ async function handler(
     variables,
     query: query,
     chatConfig: defaultApp.chatConfig,
-    histories: [],
+    histories: histories,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });

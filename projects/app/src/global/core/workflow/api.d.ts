@@ -10,6 +10,7 @@ export type PostWorkflowDebugProps = {
   variables: Record<string, any>;
   appId: string;
   query?: UserChatItemValueItemType[];
+  history?: ChatItemType[];
 };
 
 export type PostWorkflowDebugResponse = {

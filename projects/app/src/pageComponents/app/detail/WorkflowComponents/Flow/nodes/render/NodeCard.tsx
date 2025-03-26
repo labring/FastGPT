@@ -830,6 +830,7 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
                 </Button>
               )}
               {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
+                !firstInteractive &&
                 !debugResult.isExpired &&
                 workflowDebugData?.nextRunNodes &&
                 workflowDebugData.nextRunNodes.length > 0 && (

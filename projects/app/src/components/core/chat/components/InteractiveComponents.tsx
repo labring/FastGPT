@@ -16,9 +16,15 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  AIChatItemValueItemType,
+  ChatItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { StoreEdgeItemType, RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { initWorkflowEdgeStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 
 export const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive,
@@ -29,42 +35,78 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
 }) {
   const { t } = useTranslation();
   const [selectedValue, setSelectedValue] = useState<string | undefined>(undefined);
-  const { onChangeNode, onNextNodeDebug, workflowDebugData, setWorkflowDebugData } =
-    useContextSelector(WorkflowContext, (v) => ({
+  // 在两个组件中更新上下文选择器，添加 onStartNodeDebug
+  const { onChangeNode, onStartNodeDebug, workflowDebugData } = useContextSelector(
+    WorkflowContext,
+    (v) => ({
       onChangeNode: v.onChangeNode,
-      onNextNodeDebug: v.onNextNodeDebug,
-      workflowDebugData: v.workflowDebugData,
-      setWorkflowDebugData: v.setWorkflowDebugData
+      onStartNodeDebug: v.onStartNodeDebug,
+      // onNextNodeDebug: v.onNextNodeDebug, // 不再使用
+      workflowDebugData: v.workflowDebugData
+    })
+  );
+  /**
+   * 创建交互数据结构
+   * @param nodeId 交互节点ID
+   * @param interactive 交互组件数据
+   * @param edges 当前的边数组
+   * @returns 交互数据结构
+   */
+  const createInteractiveData = (
+    nodeId: string,
+    interactive: UserSelectInteractive | UserInputInteractive,
+    edges: StoreEdgeItemType[]
+  ) => {
+    // 创建 memoryEdges - 指向交互节点的边设为 active
+    const memoryEdges: RuntimeEdgeItemType[] = edges.map((edge) => ({
+      ...edge,
+      status: edge.target === nodeId ? ('active' as const) : ('waiting' as const)
     }));
 
+    return {
+      ...interactive,
+      entryNodeIds: [nodeId],
+      memoryEdges,
+      nodeOutputs: [] // 如果有需要可以填充节点输出数据
+    };
+  };
+
+  /**
+   * 创建模拟的历史记录
+   * @param nodeId 交互节点ID
+   * @param interactive 交互组件数据
+   * @param edges 当前的边数组
+   * @returns 模拟的历史记录
+   */
+  const createMockHistory = (
+    nodeId: string,
+    interactive: UserSelectInteractive | UserInputInteractive,
+    edges: StoreEdgeItemType[]
+  ): ChatItemType[] => {
+    const interactiveData = createInteractiveData(nodeId, interactive, edges);
+
+    return [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            type: ChatItemValueTypeEnum.interactive,
+            interactive: interactiveData
+          }
+        ]
+      }
+    ];
+  };
   const handleSelect = useCallback(
     (value: string) => {
       if (!nodeId || !workflowDebugData) return;
 
       // 保存选中的值到本地状态
       setSelectedValue(value);
-
-      // 更新查询以包含用户的选择
-      const updatedQuery: UserChatItemValueItemType[] = [
-        ...(workflowDebugData.query || []),
-        {
-          type: ChatItemValueTypeEnum.text,
-          text: {
-            content: value
-          }
-        } as UserChatItemValueItemType
-      ];
-
-      // 更新工作流调试数据
-      setWorkflowDebugData({
-        ...workflowDebugData,
-        query: updatedQuery
-      });
     },
-    [nodeId, onChangeNode, workflowDebugData, setWorkflowDebugData]
+    [nodeId, workflowDebugData]
   );
 
-  // 处理下一步调试的逻辑
   const handleStartDebug = useCallback(() => {
     if (!nodeId || !workflowDebugData) return;
 
@@ -76,10 +118,67 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
       value: true
     });
 
-    // 然后调用onNextNodeDebug函数
-    onNextNodeDebug();
-  }, [nodeId, workflowDebugData, onNextNodeDebug, onChangeNode]);
+    // 更新此节点的值（将用户选择保存到节点）
+    if (selectedValue) {
+      onChangeNode({
+        nodeId,
+        type: 'attr',
+        key: 'userSelectedVal',
+        value: selectedValue
+      });
+    }
 
+    // 创建包含用户选择的查询数据
+    const updatedQuery: UserChatItemValueItemType[] = [
+      ...(workflowDebugData.query || []),
+      {
+        type: ChatItemValueTypeEnum.text,
+        text: {
+          content: selectedValue || ''
+        }
+      } as UserChatItemValueItemType
+    ];
+    // 创建模拟的历史记录
+    const mockHistory = createMockHistory(nodeId, interactive, workflowDebugData.runtimeEdges);
+
+    // 使用模拟的历史记录初始化边状态
+    const updatedRuntimeEdges = initWorkflowEdgeStatus(workflowDebugData.runtimeEdges, mockHistory);
+
+    // 更新 runtimeNodes 以反映用户的选择
+    const updatedRuntimeNodes = workflowDebugData.runtimeNodes.map((node) => {
+      if (node.nodeId === nodeId) {
+        // 找到我们需要的输入字段并更新它
+        return {
+          ...node,
+          inputs: node.inputs.map((input) => {
+            // 根据您的实际字段结构，这里可能需要调整
+            if (input.key === 'userSelect' || input.key === 'selectedOption') {
+              return {
+                ...input,
+                value: selectedValue
+              };
+            }
+            return input;
+          }),
+          // 添加或更新任何需要的节点属性
+          userSelectedVal: selectedValue
+        };
+      }
+      return node;
+    });
+
+    // 更新 runtimeEdges 状态
+
+    // 使用 onStartNodeDebug 替代 onNextNodeDebug，带上更新后的 nodes 和 edges
+    onStartNodeDebug({
+      entryNodeId: nodeId,
+      runtimeNodes: updatedRuntimeNodes,
+      runtimeEdges: updatedRuntimeEdges,
+      variables: workflowDebugData.variables,
+      query: updatedQuery,
+      history: mockHistory
+    });
+  }, [nodeId, workflowDebugData, onStartNodeDebug, onChangeNode, selectedValue, interactive]);
   return (
     <Box px={4} py={3}>
       {interactive?.params?.description && (
@@ -155,7 +254,6 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
     </Box>
   );
 });
-
 export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive,
   nodeId
@@ -164,60 +262,166 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   nodeId?: string;
 }) {
   const { t } = useTranslation();
-  const { register, setValue, handleSubmit: handleSubmitChat, control, reset } = useForm();
+  const {
+    register,
+    setValue,
+    handleSubmit: handleSubmitChat,
+    control,
+    reset,
+    getValues
+  } = useForm();
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const { onChangeNode, onNextNodeDebug, workflowDebugData, setWorkflowDebugData } =
-    useContextSelector(WorkflowContext, (v) => ({
+  // 在两个组件中更新上下文选择器，添加 onStartNodeDebug
+  const { onChangeNode, onStartNodeDebug, workflowDebugData } = useContextSelector(
+    WorkflowContext,
+    (v) => ({
       onChangeNode: v.onChangeNode,
-      onNextNodeDebug: v.onNextNodeDebug,
-      workflowDebugData: v.workflowDebugData,
-      setWorkflowDebugData: v.setWorkflowDebugData
+      onStartNodeDebug: v.onStartNodeDebug,
+      workflowDebugData: v.workflowDebugData
+    })
+  );
+
+  /**
+   * 创建交互数据结构
+   * @param nodeId 交互节点ID
+   * @param interactive 交互组件数据
+   * @param edges 当前的边数组
+   * @returns 交互数据结构
+   */
+  const createInteractiveData = (
+    nodeId: string,
+    interactive: UserInputInteractive,
+    edges: StoreEdgeItemType[]
+  ) => {
+    // 创建 memoryEdges - 指向交互节点的边设为 active
+    const memoryEdges: RuntimeEdgeItemType[] = edges.map((edge) => ({
+      ...edge,
+      status: edge.target === nodeId ? ('active' as const) : ('waiting' as const)
     }));
+
+    return {
+      ...interactive,
+      entryNodeIds: [nodeId],
+      memoryEdges,
+      nodeOutputs: [] // 如果有需要可以填充节点输出数据
+    };
+  };
+
+  /**
+   * 创建模拟的历史记录
+   * @param nodeId 交互节点ID
+   * @param interactive 交互组件数据
+   * @param edges 当前的边数组
+   * @returns 模拟的历史记录
+   */
+  const createMockHistory = (
+    nodeId: string,
+    interactive: UserInputInteractive,
+    edges: StoreEdgeItemType[]
+  ): ChatItemType[] => {
+    // 创建一个新的 interactive 对象，确保 submitted 为 false
+    const adjustedInteractive = {
+      ...interactive,
+      params: {
+        ...interactive.params,
+        submitted: false // 关键修改点：确保 submitted 为 false
+      }
+    };
+
+    const interactiveData = createInteractiveData(nodeId, adjustedInteractive, edges);
+
+    return [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            type: ChatItemValueTypeEnum.interactive,
+            interactive: interactiveData
+          }
+        ]
+      }
+    ];
+  };
 
   const onSubmit = useCallback(
     (data: any) => {
       if (!nodeId || !workflowDebugData) return;
 
-      // 标记表单已提交
       setIsSubmitted(true);
 
-      const jsonData = JSON.stringify(data);
+      // 直接调用 handleStartDebug，合并提交和下一步操作
+      const formData = getValues();
 
-      // 更新查询以包含用户的表单数据
+      onChangeNode({
+        nodeId,
+        type: 'attr',
+        key: 'isEntry',
+        value: true
+      });
+
       const updatedQuery: UserChatItemValueItemType[] = [
         ...(workflowDebugData.query || []),
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: jsonData
+            content: JSON.stringify(formData)
           }
         } as UserChatItemValueItemType
       ];
 
-      // 更新工作流调试数据
-      setWorkflowDebugData({
-        ...workflowDebugData,
-        query: updatedQuery
+      const updatedInteractive = {
+        ...interactive,
+        params: {
+          ...interactive.params,
+          submitted: true
+        }
+      };
+
+      const mockHistory = createMockHistory(
+        nodeId,
+        updatedInteractive,
+        workflowDebugData.runtimeEdges
+      );
+
+      const updatedRuntimeEdges = initWorkflowEdgeStatus(
+        workflowDebugData.runtimeEdges,
+        mockHistory
+      );
+
+      const updatedRuntimeNodes = workflowDebugData.runtimeNodes.map((node) => {
+        if (node.nodeId === nodeId) {
+          return {
+            ...node,
+            inputs: node.inputs.map((input) => {
+              const formField = interactive.params.inputForm?.find(
+                (field) => field.label === input.key || field.key === input.key
+              );
+
+              if (formField) {
+                return {
+                  ...input,
+                  value: formData[formField.label]
+                };
+              }
+              return input;
+            }),
+            formSubmitted: true
+          };
+        }
+        return node;
+      });
+
+      onStartNodeDebug({
+        entryNodeId: nodeId,
+        runtimeNodes: updatedRuntimeNodes,
+        runtimeEdges: updatedRuntimeEdges,
+        variables: workflowDebugData.variables,
+        query: updatedQuery,
+        history: mockHistory
       });
     },
-    [nodeId, onChangeNode, workflowDebugData, setWorkflowDebugData]
+    [nodeId, workflowDebugData, onStartNodeDebug, onChangeNode, getValues, interactive]
   );
-
-  // 处理下一步调试的逻辑
-  const handleStartDebug = useCallback(() => {
-    if (!nodeId || !workflowDebugData) return;
-
-    // 先将当前节点设置为入口节点
-    onChangeNode({
-      nodeId,
-      type: 'attr',
-      key: 'isEntry',
-      value: true
-    });
-
-    // 然后调用onNextNodeDebug函数
-    onNextNodeDebug();
-  }, [nodeId, workflowDebugData, onNextNodeDebug, onChangeNode]);
 
   useEffect(() => {
     if (interactive.type === 'userInput') {
@@ -375,37 +579,15 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
           ))}
 
           <Flex w={'full'} justifyContent={'flex-end'} mt={3} gap={2}>
-            {!isSubmitted && !interactive.params.submitted && (
-              <Button
-                type="submit"
-                colorScheme="blue"
-                size="md"
-                height="44px"
-                px={8}
-                fontWeight="medium"
-                borderRadius="md"
-                boxShadow="sm"
-                _hover={{ transform: 'translateY(-1px)', boxShadow: 'md' }}
-                _active={{ transform: 'translateY(0)' }}
-                transition="all 0.2s"
-              >
-                {t('common:Submit')}
-              </Button>
-            )}
-
-            {/* 提交完成后显示下一步按钮 */}
-            {(isSubmitted || interactive.params.submitted) && (
-              <Button
-                size="md"
-                height="44px"
-                leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
-                colorScheme="blue"
-                variant="solid"
-                onClick={handleStartDebug}
-              >
-                {t('common:common.Next Step')}
-              </Button>
-            )}
+            <Button
+              type="submit"
+              size="sm"
+              leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
+              colorScheme="blue"
+              variant="solid"
+            >
+              {t('common:Submit')}
+            </Button>
           </Flex>
         </Flex>
       </Box>
