@@ -85,13 +85,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     iconColor: 'primary.500'
   });
 
-  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
-    title: t('account_team:edit_member'),
-    tip: t('account_team:edit_member_tip'),
-    canEmpty: false,
-    rows: 1
-  });
-
   const [searchText, setSearchText] = useState<string>('');
   const isSyncMember = feConfigs.register_method?.includes('sync');
 
@@ -140,6 +133,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   });
 
   const isLoading = isUpdateInvite || isSyncing;
+
+  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
+    title: t('account_team:edit_member'),
+    tip: t('account_team:edit_member_tip'),
+    canEmpty: false,
+    rows: 1
+  });
 
   const handleEditMemberName = (tmbId: string, memberName: string) => {
     openEditMemberName({
