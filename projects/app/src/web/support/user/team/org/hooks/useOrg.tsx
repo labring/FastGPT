@@ -6,6 +6,7 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList, getOrgMembers } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { getTeamMembers } from '../../api';
 
 function useOrg({ getPermission = true }: { getPermission?: boolean } = {}) {
   const [orgStack, setOrgStack] = useState<OrgListItemType[]>([]);
@@ -59,10 +60,13 @@ function useOrg({ getPermission = true }: { getPermission?: boolean } = {}) {
     data: members = [],
     ScrollData: MemberScrollData,
     refreshList: refetchMembers
-  } = useScrollPagination(getOrgMembers, {
+  } = useScrollPagination(getTeamMembers, {
     pageSize: 20,
     params: {
-      orgPath: path
+      orgId: currentOrg._id ?? '',
+      withOrgs: false,
+      withPermission: true,
+      status: 'active'
     },
     refreshDeps: [path]
   });
