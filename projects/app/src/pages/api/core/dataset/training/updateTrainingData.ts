@@ -43,6 +43,8 @@ async function handler(req: NextApiRequest) {
       errorMsg: ''
     }
   );
+
+  return {};
 }
 
 export default NextAPI(handler);

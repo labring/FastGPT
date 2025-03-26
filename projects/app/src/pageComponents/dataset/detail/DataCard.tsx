@@ -188,7 +188,7 @@ const DataCard = () => {
                 indexAmount: collection?.indexAmount ?? '-'
               })}
             </Box>
-            {collection?.errorCount && (
+            {!!collection?.errorCount && (
               <MyTag
                 colorSchema={'red'}
                 type={'fill'}

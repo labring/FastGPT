@@ -12,15 +12,18 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-
-const ERROR_QUERY_LIMIT = 30;
+import {
+  DatasetDataSchemaType,
+  DatasetTrainingSchemaType
+} from '@fastgpt/global/core/dataset/type';
 
 type IndexCounts = {
   default: number;
   image: number;
   auto: number;
 };
+
+type TrainingCounts = Record<TrainingModeEnum, number>;
 
 export type TrainingErrorItem = {
   data: DatasetTrainingSchemaType[];
@@ -35,8 +38,16 @@ export type DatasetCollectionTrainingDetailType = {
     autoIndexes: boolean;
   };
   indexesCounts: IndexCounts;
-  trainingCounts: Record<TrainingModeEnum, number>;
+  trainingCounts: TrainingCounts;
+  trainingWaitingCounts: TrainingCounts;
   errorList?: TrainingErrorItem;
+};
+
+const defaultTrainingCounts: TrainingCounts = {
+  qa: 0,
+  chunk: 0,
+  image: 0,
+  auto: 0
 };
 
 const getErrorQuery = (collectionId: string) => ({
@@ -45,7 +56,7 @@ const getErrorQuery = (collectionId: string) => ({
   retryCount: { $lt: 0 }
 });
 
-const getIndexCounts = (data: any[]): IndexCounts =>
+const getIndexCounts = (data: DatasetDataSchemaType[]): IndexCounts =>
   data.reduce(
     (acc, { indexes }) => {
       if (!Array.isArray(indexes)) return acc;
@@ -67,6 +78,26 @@ const getIndexCounts = (data: any[]): IndexCounts =>
     { default: 0, image: 0, auto: 0 }
   );
 
+const getTrainingCountsAggregation = (collectionId: string, expireAt?: Date) => {
+  const matchStage = {
+    collectionId: new Types.ObjectId(collectionId),
+    ...(expireAt && { expireAt: { $lt: expireAt } })
+  };
+
+  return [
+    { $match: matchStage },
+    {
+      $group: {
+        _id: null,
+        qa: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.qa] }, 1, 0] } },
+        chunk: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.chunk] }, 1, 0] } },
+        image: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.image] }, 1, 0] } },
+        auto: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.auto] }, 1, 0] } }
+      }
+    }
+  ];
+};
+
 async function handler(req: NextApiRequest) {
   const { collectionId } = req.query;
 
@@ -81,49 +112,54 @@ async function handler(req: NextApiRequest) {
     per: ReadPermissionVal
   });
 
-  const [modeStats, errorItems, errorTotal, allData] = await Promise.all([
-    MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: { collectionId: new Types.ObjectId(collectionId as string) }
-        },
-        {
-          $group: {
-            _id: '$mode',
-            count: { $sum: 1 }
-          }
-        },
-        {
-          $project: {
-            mode: '$_id',
-            count: 1,
-            _id: 0
-          }
+  // 获取最小过期时间
+  const [minExpireAtResult] = await MongoDatasetTraining.aggregate(
+    [
+      {
+        $match: { collectionId: new Types.ObjectId(collectionId as string) }
+      },
+      {
+        $group: {
+          _id: null,
+          minExpireAt: { $min: '$expireAt' }
         }
-      ],
-      readFromSecondary
-    ),
-    MongoDatasetTraining.find(
-      getErrorQuery(collectionId as string),
-      { mode: 1, chunkIndex: 1, errorMsg: 1 },
-      { ...readFromSecondary, limit: ERROR_QUERY_LIMIT }
-    ).lean(),
-    MongoDatasetTraining.countDocuments(getErrorQuery(collectionId as string), readFromSecondary),
-    MongoDatasetData.find({
-      teamId: collection.teamId,
-      datasetId: collection.datasetId,
-      collectionId: collection._id
-    })
-  ]);
+      }
+    ],
+    readFromSecondary
+  );
+
+  const minExpireAt = minExpireAtResult?.minExpireAt || new Date();
+
+  // 并行执行所有查询
+  const [trainingCounts, errorItems, errorTotal, allData, trainingWaitingCounts] =
+    await Promise.all([
+      // 获取训练计数
+      MongoDatasetTraining.aggregate(
+        getTrainingCountsAggregation(collectionId as string),
+        readFromSecondary
+      ),
+      // 获取错误项
+      MongoDatasetTraining.find(
+        getErrorQuery(collectionId as string),
+        { mode: 1, chunkIndex: 1, errorMsg: 1 },
+        { ...readFromSecondary, limit: 30 }
+      ).lean(),
+      // 获取错误总数
+      MongoDatasetTraining.countDocuments(getErrorQuery(collectionId as string), readFromSecondary),
+      // 获取所有数据
+      MongoDatasetData.find({
+        teamId: collection.teamId,
+        datasetId: collection.datasetId,
+        collectionId: collection._id
+      }),
+      // 获取等待训练计数
+      MongoDatasetTraining.aggregate(
+        getTrainingCountsAggregation(collectionId as string, minExpireAt),
+        readFromSecondary
+      )
+    ]);
 
   const indexesCounts = getIndexCounts(allData);
-  const trainingCounts = Object.values(TrainingModeEnum).reduce(
-    (acc, mode) => ({
-      ...acc,
-      [mode]: modeStats.find((stat) => stat.mode === mode)?.count || 0
-    }),
-    {} as Record<TrainingModeEnum, number>
-  );
 
   return {
     trainingType: collection.trainingType,
@@ -133,7 +169,8 @@ async function handler(req: NextApiRequest) {
       autoIndexes: collection.autoIndexes
     },
     indexesCounts,
-    trainingCounts,
+    trainingCounts: trainingCounts[0] || defaultTrainingCounts,
+    trainingWaitingCounts: trainingWaitingCounts[0] || defaultTrainingCounts,
     errorList: { data: errorItems, total: errorTotal }
   };
 }
