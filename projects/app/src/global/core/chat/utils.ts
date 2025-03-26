@@ -3,7 +3,7 @@ import { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-const isLLMNode = (item: ChatHistoryItemResType) =>
+export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
 export function transformPreviewHistories(
