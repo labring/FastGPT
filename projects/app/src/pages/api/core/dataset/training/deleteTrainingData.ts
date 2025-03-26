@@ -4,8 +4,14 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
+
+export type deleteTrainingDataBody = {
+  datasetId: string;
+  dataId: string;
+};
+
 async function handler(req: NextApiRequest) {
-  const { datasetId, dataId } = req.body;
+  const { datasetId, dataId } = req.body as deleteTrainingDataBody;
 
   if (!datasetId || !dataId) {
     return Promise.reject(CommonErrEnum.missingParams);

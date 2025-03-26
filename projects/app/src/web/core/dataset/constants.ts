@@ -77,6 +77,13 @@ export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
   [DatasetTypeEnum.externalFile]: ''
 };
 
+export enum TrainingStatus {
+  Normal = 'Normal',
+  Error = 'Error',
+  InProgress = 'InProgress',
+  NotStarted = 'NotStarted'
+}
+
 export const TrainingText = {
   [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
   [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),

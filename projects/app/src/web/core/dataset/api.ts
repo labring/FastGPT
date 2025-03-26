@@ -69,6 +69,7 @@ import {
   getTrainingDataDetailBody,
   getTrainingDataDetailResponse
 } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
+import { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -234,11 +235,11 @@ export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
     timeout: 600000
   });
 
-export const deleteTrainingData = (data: { datasetId: string; dataId: string }) =>
-  POST<{ success: boolean; message: string }>(`/core/dataset/training/deleteTrainingData`, data);
+export const deleteTrainingData = (data: deleteTrainingDataBody) =>
+  DELETE(`/core/dataset/training/deleteTrainingData`, data);
 
 export const updateTrainingData = (data: updateTrainingDataBody) =>
-  POST<{ success: boolean; message: string }>(`/core/dataset/training/updateTrainingData`, data);
+  PUT(`/core/dataset/training/updateTrainingData`, data);
 
 export const getTrainingDataDetail = (data: getTrainingDataDetailBody) =>
   POST<getTrainingDataDetailResponse>(`/core/dataset/training/getTrainingDataDetail`, data);
