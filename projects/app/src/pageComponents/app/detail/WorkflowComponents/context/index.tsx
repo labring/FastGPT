@@ -167,16 +167,11 @@ type WorkflowContextType = {
         history?: ChatItemType[];
       }
     | undefined;
-  onNextNodeDebug: (
-    history?: ChatItemType[],
-    query?: UserChatItemValueItemType[],
-    debugData?: {
-      runtimeNodes: RuntimeNodeItemType[];
-      runtimeEdges: RuntimeEdgeItemType[];
-      nextRunNodes: RuntimeNodeItemType[];
-      variables: Record<string, any>;
-    }
-  ) => Promise<void>;
+  onNextNodeDebug: (params?: {
+    history?: ChatItemType[];
+    query?: UserChatItemValueItemType[];
+    debugData?: DebugDataType;
+  }) => Promise<void>;
   onStartNodeDebug: ({
     entryNodeId,
     runtimeNodes,
@@ -253,11 +248,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   workflowDebugData: undefined,
-  onNextNodeDebug: function (
-    history?: ChatItemType[],
-    query?: UserChatItemValueItemType[],
-    debugData?: any
-  ): Promise<void> {
+  onNextNodeDebug: function (params?: {
+    history?: ChatItemType[];
+    query?: UserChatItemValueItemType[];
+    debugData?: DebugDataType;
+  }): Promise<void> {
     throw new Error('Function not implemented.');
   },
   onStartNodeDebug: function ({
@@ -576,11 +571,13 @@ const WorkflowContextProvider = ({
   /* debug */
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const onNextNodeDebug = useCallback(
-    async (
-      history?: ChatItemType[],
-      query?: UserChatItemValueItemType[],
-      debugData = workflowDebugData
-    ) => {
+    async (params?: {
+      history?: ChatItemType[];
+      query?: UserChatItemValueItemType[];
+      debugData?: DebugDataType;
+    }) => {
+      // 解构参数并提供默认值
+      const { history, query, debugData = workflowDebugData } = params || {};
       if (!debugData) return;
       // 1. Cancel node selected status and debugResult.showStatus
       setNodes((state) =>
@@ -707,7 +704,7 @@ const WorkflowContextProvider = ({
 
         // Check for an empty response
         if (flowResponses.length === 0 && nextStepRunNodes.length > 0) {
-          onNextNodeDebug(history, query, newStoreDebugData);
+          onNextNodeDebug({ history, query, debugData: newStoreDebugData });
         }
       } catch (error) {
         entryNodes.forEach((node) => {
@@ -767,7 +764,11 @@ const WorkflowContextProvider = ({
       onStopNodeDebug();
       setWorkflowDebugData(data);
 
-      onNextNodeDebug(history, query, data);
+      onNextNodeDebug({
+        history,
+        query,
+        debugData: data
+      });
     }
   );
 
