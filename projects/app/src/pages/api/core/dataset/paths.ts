@@ -41,3 +41,5 @@ async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> 
 }
 
 export default NextAPI(handler);
+
+export { getParents };
