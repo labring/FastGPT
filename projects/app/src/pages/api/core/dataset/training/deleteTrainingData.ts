@@ -1,7 +1,7 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 
@@ -17,11 +17,11 @@ async function handler(req: NextApiRequest) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const { teamId } = await authDataset({
+  const { teamId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
-    datasetId,
+    collectionId: dataId,
     per: OwnerPermissionVal
   });
 

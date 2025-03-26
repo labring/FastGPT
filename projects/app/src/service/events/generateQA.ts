@@ -26,6 +26,7 @@ import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -183,8 +184,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
         _id: data._id
       },
       {
-        errorMsg: err.message || 'unknown error',
-        lockTime: addMinutes(new Date(), -10)
+        errorMsg: getErrText(err, 'unknown error')
       }
     );
 

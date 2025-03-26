@@ -63,13 +63,13 @@ import type {
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
 import type { GetQueueLenResponse } from '@/pages/api/core/dataset/training/getQueueLen';
-import { DatasetCollectionTrainingDetailType } from '@/pages/api/core/dataset/collection/trainingDetail';
-import { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
-import {
+import type { DatasetCollectionTrainingDetailType } from '@/pages/api/core/dataset/collection/trainingDetail';
+import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
+import type {
   getTrainingDataDetailBody,
   getTrainingDataDetailResponse
 } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
-import { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
+import type { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>

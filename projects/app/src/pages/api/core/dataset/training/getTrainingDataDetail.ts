@@ -1,6 +1,6 @@
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 
@@ -22,15 +22,15 @@ export type getTrainingDataDetailResponse =
 async function handler(req: NextApiRequest): Promise<getTrainingDataDetailResponse> {
   const { datasetId, dataId } = req.body as getTrainingDataDetailBody;
 
-  const { teamId } = await authDataset({
+  const { teamId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
-    datasetId,
-    per: OwnerPermissionVal
+    collectionId: dataId,
+    per: ReadPermissionVal
   });
 
-  const data = await MongoDatasetTraining.findOne({ teamId, datasetId, _id: dataId });
+  const data = await MongoDatasetTraining.findOne({ teamId, datasetId, _id: dataId }).lean();
 
   if (!data) {
     return undefined;

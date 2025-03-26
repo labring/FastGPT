@@ -92,11 +92,6 @@ const ProgressView = ({
 }) => {
   const { t } = useTranslation();
 
-  const firstIndex = trainingDetail?.trainingCounts
-    ? Object.values(trainingDetail.trainingCounts).findIndex((count) => count > 0)
-    : -1;
-  const highLightIndex = firstIndex === -1 ? 0 : firstIndex;
-
   const counts = getTrainingCounts(trainingDetail);
 
   const tagStyle = {
@@ -202,6 +197,11 @@ const ProgressView = ({
       progressValue: undefined
     }
   ];
+
+  const firstIndex = statesArray.findIndex(
+    (item) => item.status === TrainingStatus.InProgress || item.status === TrainingStatus.Error
+  );
+  const highLightIndex = firstIndex === -1 ? statesArray.length - 1 : firstIndex;
 
   return (
     <Flex flexDirection={'column'} gap={6}>

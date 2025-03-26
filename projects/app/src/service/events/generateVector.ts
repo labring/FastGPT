@@ -14,6 +14,7 @@ import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { Document } from '@fastgpt/service/common/mongo';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -124,8 +125,7 @@ export async function generateVector(): Promise<any> {
         _id: data._id
       },
       {
-        errorMsg: err.message || 'unknown error',
-        lockTime: addMinutes(new Date(), -10)
+        errorMsg: getErrText(err, 'unknown error')
       }
     );
     return reduceQueueAndReturn(1000);
