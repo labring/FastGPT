@@ -21,8 +21,8 @@ async function handler(
     edges = [],
     variables = {},
     appId,
-    query: requestQuery,
-    history: requestHistories
+    query = [],
+    history = []
   } = req.body as PostWorkflowDebugProps;
 
   if (!nodes) {
@@ -38,9 +38,6 @@ async function handler(
   if (!entryNode) {
     throw new Error('No entry node found');
   }
-
-  const histories: ChatItemType[] = requestHistories || [];
-  const query: UserChatItemValueItemType[] = requestQuery || [];
 
   /* user auth */
   const [{ teamId, tmbId }, { app }] = await Promise.all([
@@ -78,7 +75,7 @@ async function handler(
     variables,
     query: query,
     chatConfig: defaultApp.chatConfig,
-    histories: histories,
+    histories: history,
     stream: false,
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
