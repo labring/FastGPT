@@ -78,18 +78,18 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     type: 'delete'
   });
 
-  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
-    title: t('account_team:edit_member'),
-    tip: t('account_team:edit_member_tip'),
-    canEmpty: false,
-    rows: 1
-  });
-
   const { ConfirmModal: ConfirmRestoreMemberModal, openConfirm: openRestoreMember } = useConfirm({
     type: 'common',
     title: t('account_team:restore_tip_title'),
     iconSrc: 'common/confirm/restoreTip',
     iconColor: 'primary.500'
+  });
+
+  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
+    title: t('account_team:edit_member'),
+    tip: t('account_team:edit_member_tip'),
+    canEmpty: false,
+    rows: 1
   });
 
   const [searchText, setSearchText] = useState<string>('');

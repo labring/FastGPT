@@ -20,6 +20,17 @@ export type UserInformSchema = {
   _id: string;
   userId: string;
   teamId?: string;
+  time: Date;
+  level: `${InformLevelEnum}`;
+  title: string;
+  content: string;
+  read: boolean;
+};
+
+export type UserInformType = {
+  _id: string;
+  userId: string;
+  teamId?: string;
   teamName?: string;
   time: Date;
   level: `${InformLevelEnum}`;
