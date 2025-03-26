@@ -42,12 +42,10 @@ export type GroupFormType = {
 // 3. Owner can add/remove admins
 function GroupEditModal({
   onClose,
-  editGroupId,
   group,
   onSuccess
 }: {
   onClose: () => void;
-  editGroupId?: string;
   group: MemberGroupListItemType<true>;
   onSuccess: () => void;
 }) {
@@ -61,10 +59,15 @@ function GroupEditModal({
 
   const selectedMembersRef = useRef<HTMLDivElement>(null);
   const [members, setMembers] = useState<GroupMemberItemType[]>([]);
+  const editGroupId = useMemo(() => {
+    return group?._id;
+  }, [group]);
 
   useMount(async () => {
+    console.log('aaaaaa');
     if (editGroupId) {
       const data = await getGroupMembers(editGroupId);
+      console.log(data);
       setMembers(data);
     }
   });
