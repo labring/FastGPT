@@ -17,7 +17,6 @@ import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -34,14 +33,12 @@ export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
-  chatTime,
-  interactive
+  chatTime
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
   chatTime?: Date;
-  interactive?: UserInputInteractive;
 }) => {
   const { t } = useTranslation();
 
