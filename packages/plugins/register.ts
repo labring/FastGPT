@@ -29,7 +29,8 @@ const packagePluginList = [
   'databaseConnection',
   'Doc2X',
   'Doc2X/PDF2text',
-  'searchXNG'
+  'searchXNG',
+  'email'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
