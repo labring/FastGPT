@@ -49,3 +49,5 @@ export async function getDatasetCollectionPaths({
 
   return find(parentId);
 }
+
+export { handler };
