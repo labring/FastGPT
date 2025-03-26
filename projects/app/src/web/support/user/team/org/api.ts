@@ -10,8 +10,11 @@ import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/t
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
-export const getOrgList = (params: { orgPath: string; getPermission?: boolean }) =>
-  GET<OrgListItemType[]>(`/proApi/support/user/team/org/list`, params);
+export const getOrgList = (params: {
+  orgId: string;
+  withPermission?: boolean;
+  searchKey?: string;
+}) => POST<OrgListItemType[]>(`/proApi/support/user/team/org/list`, params);
 
 export const postCreateOrg = (data: postCreateOrgData) =>
   POST('/proApi/support/user/team/org/create', data);

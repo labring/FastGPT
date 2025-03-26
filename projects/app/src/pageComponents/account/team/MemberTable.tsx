@@ -41,12 +41,15 @@ import {
 import format from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import _ from 'lodash';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -55,11 +58,26 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
+  const statusOptions = [
+    {
+      label: t('common:common.All'),
+      value: undefined
+    },
+    {
+      label: t('common:user.team.member.active'),
+      value: 'active'
+    },
+    {
+      label: t('account_team:leave'),
+      value: 'inactive'
+    }
+  ];
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
   const isSyncMember = feConfigs?.register_method?.includes('sync');
 
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
+  const [status, setStatus] = useState<string>();
 
   const {
     isOpen: isOpenTeamTagsAsync,
@@ -68,35 +86,36 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   } = useDisclosure();
 
   // member action
+  const [searchKey, setSearchKey] = useState<string>('');
   const {
     data: members = [],
     isLoading: loadingMembers,
     refreshList: refetchMemberList,
     ScrollData: MemberScrollData
-  } = useScrollPagination(getTeamMembers, {
+  } = useScrollPagination<
+    any,
+    PaginationResponse<TeamMemberItemType<{ withOrgs: true; withPermission: true }>>
+  >(getTeamMembers, {
     pageSize: 20,
     params: {
-      withLeaved: true
+      status,
+      withPermission: true,
+      withOrgs: true,
+      searchKey
     }
   });
 
-  const [searchText, setSearchText] = useState<string>('');
-  const { data: searchMembersData, run: refreshSearchMembers } = useRequest2(
-    async () => {
-      if (!searchText) return Promise.resolve();
-      return GetSearchUserGroupOrg(searchText, { members: true, orgs: false, groups: false });
-    },
-    {
-      manual: false,
-      throttleWait: 500,
-      refreshDeps: [searchText]
-    }
-  );
+  const refreshList = _.debounce(() => {
+    refetchMemberList();
+  }, 200);
+
+  useEffect(() => {
+    refreshList();
+  }, [searchKey, status]);
 
   const onRefreshMembers = useCallback(() => {
     refetchMemberList();
-    refreshSearchMembers();
-  }, [refetchMemberList, refreshSearchMembers]);
+  }, [refetchMemberList]);
 
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
 
@@ -166,10 +185,13 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
         <HStack alignItems={'center'}>
+          <Box>
+            <MySelect list={statusOptions} value={status} onChange={(v) => setStatus(v)} />
+          </Box>
           <Box width={'200px'}>
             <SearchInput
               placeholder={t('account_team:search_member')}
-              onChange={(e) => setSearchText(e.target.value)}
+              onChange={(e) => setSearchKey(e.target.value)}
             />
           </Box>
           {userInfo?.team.permission.hasManagePer && feConfigs?.show_team_chat && (
@@ -264,107 +286,104 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {(searchText && searchMembersData ? searchMembersData.members : members).map(
-                  (member) => (
-                    <Tr key={member.tmbId} overflow={'unset'}>
-                      <Td>
-                        <HStack>
-                          <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
-                          <Box className={'textEllipsis'}>
-                            {member.memberName}
-                            {member.status !== 'active' && (
-                              <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
-                                {t('account_team:leave')}
-                              </Tag>
-                            )}
-                          </Box>
-                        </HStack>
-                      </Td>
-                      <Td maxW={'300px'}>{member.contact || '-'}</Td>
-                      <Td maxWidth="300px">
-                        {(() => {
-                          return <OrgTags orgs={member.orgs || undefined} type="tag" />;
-                        })()}
-                      </Td>
-                      <Td maxW={'300px'}>
-                        <VStack gap={0} alignItems="flex-start">
-                          <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
-                          <Box>
-                            {member.updateTime
-                              ? format(new Date(member.updateTime), 'yyyy-MM-dd HH:mm:ss')
-                              : '-'}
-                          </Box>
-                        </VStack>
-                      </Td>
-                      <Td>
-                        {userInfo?.team.permission.hasManagePer &&
-                          member.role !== TeamMemberRoleEnum.owner &&
-                          member.tmbId !== userInfo?.team.tmbId &&
-                          (member.status === TeamMemberStatusEnum.active ? (
-                            <>
-                              <Icon
-                                name={'edit'}
-                                cursor={'pointer'}
-                                w="1rem"
-                                p="1"
-                                borderRadius="sm"
-                                _hover={{
-                                  color: 'blue.600',
-                                  bgColor: 'myGray.100'
-                                }}
-                                onClick={() =>
-                                  handleEditMemberName(member.tmbId, member.memberName)
-                                }
-                              />
-                              <Icon
-                                name={'common/trash'}
-                                cursor={'pointer'}
-                                w="1rem"
-                                p="1"
-                                borderRadius="sm"
-                                _hover={{
-                                  color: 'red.600',
-                                  bgColor: 'myGray.100'
-                                }}
-                                onClick={() => {
-                                  openRemoveMember(
-                                    () => onRemoveMember(member.tmbId),
-                                    undefined,
-                                    t('account_team:remove_tip', {
-                                      username: member.memberName
-                                    })
-                                  )();
-                                }}
-                              />
-                            </>
-                          ) : (
-                            member.status === TeamMemberStatusEnum.forbidden && (
-                              <Icon
-                                name={'common/confirm/restoreTip'}
-                                cursor={'pointer'}
-                                w="1rem"
-                                p="1"
-                                borderRadius="sm"
-                                _hover={{
-                                  color: 'primary.500',
-                                  bgColor: 'myGray.100'
-                                }}
-                                onClick={() => {
-                                  openRestoreMember(
-                                    () => onRestore(member.tmbId),
-                                    undefined,
-                                    t('account_team:restore_tip', {
-                                      username: member.memberName
-                                    })
-                                  )();
-                                }}
-                              />
-                            )
-                          ))}
-                      </Td>
-                    </Tr>
-                  )
-                )}
+                {members.map((member) => (
+                  <Tr key={member.tmbId} overflow={'unset'}>
+                    <Td>
+                      <HStack>
+                        <Avatar src={member.avatar} w={['18px', '22px']} borderRadius={'50%'} />
+                        <Box className={'textEllipsis'}>
+                          {member.memberName}
+                          {member.status !== 'active' && (
+                            <Tag ml="2" colorSchema="gray" bg={'myGray.100'} color={'myGray.700'}>
+                              {t('account_team:leave')}
+                            </Tag>
+                          )}
+                        </Box>
+                      </HStack>
+                    </Td>
+                    <Td maxW={'300px'}>{member.contact || '-'}</Td>
+                    <Td maxWidth="300px">
+                      {(() => {
+                        return <OrgTags orgs={member.orgs || undefined} type="tag" />;
+                      })()}
+                    </Td>
+                    <Td maxW={'300px'}>
+                      <VStack gap={0}>
+                        <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
+                        <Box>
+                          {member.updateTime
+                            ? format(new Date(member.updateTime), 'yyyy-MM-dd HH:mm:ss')
+                            : '-'}
+                        </Box>
+                      </VStack>
+                    </Td>
+                    <Td>
+                      {userInfo?.team.permission.hasManagePer &&
+                        member.role !== TeamMemberRoleEnum.owner &&
+                        member.tmbId !== userInfo?.team.tmbId &&
+                        (member.status === TeamMemberStatusEnum.active ? (
+                          <>
+                            {' '}
+                            <Icon
+                              name={'edit'}
+                              cursor={'pointer'}
+                              w="1rem"
+                              p="1"
+                              borderRadius="sm"
+                              _hover={{
+                                color: 'blue.600',
+                                bgColor: 'myGray.100'
+                              }}
+                              onClick={() => handleEditMemberName(member.tmbId, member.memberName)}
+                            />
+                            <Icon
+                              name={'common/trash'}
+                              cursor={'pointer'}
+                              w="1rem"
+                              p="1"
+                              borderRadius="sm"
+                              _hover={{
+                                color: 'red.600',
+                                bgColor: 'myGray.100'
+                              }}
+                              onClick={() => {
+                                openRemoveMember(
+                                  () => onRemoveMember(member.tmbId),
+                                  undefined,
+                                  t('account_team:remove_tip', {
+                                    username: member.memberName
+                                  })
+                                )();
+                              }}
+                            />
+                          </>
+                        ) : (
+                          member.status === TeamMemberStatusEnum.forbidden && (
+                            <Icon
+                              name={'common/confirm/restoreTip'}
+                              cursor={'pointer'}
+                              w="1rem"
+                              p="1"
+                              borderRadius="sm"
+                              _hover={{
+                                color: 'primary.500',
+                                bgColor: 'myGray.100'
+                              }}
+                              onClick={() => {
+                                openRestoreMember(
+                                  () => onRestore(member.tmbId),
+                                  undefined,
+                                  t('account_team:restore_tip', {
+                                    username: member.memberName
+                                  })
+                                )();
+                              }}
+                            />
+                          )
+                        ))}
+                    </Td>
+                  </Tr>
+                ))}
               </Tbody>
             </Table>
             <ConfirmRemoveMemberModal />

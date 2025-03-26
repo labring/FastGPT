@@ -14,17 +14,19 @@ function OrgTreeNode({
   org,
   selectedOrg,
   setSelectedOrg,
-  index = 0
+  index = 0,
+  movingOrg
 }: {
   org: OrgListItemType;
   selectedOrg?: OrgListItemType;
   setSelectedOrg: (org?: OrgListItemType) => void;
   index?: number;
+  movingOrg: OrgListItemType;
 }) {
   const [isExpanded, toggleIsExpanded] = useToggle(index === 0);
   const [canBeExpanded, setCanBeExpanded] = useState(true);
   const { data: orgs = [], runAsync: getOrgs } = useRequest2(() =>
-    getOrgList({ orgPath: getOrgChildrenPath(org) })
+    getOrgList({ orgId: org._id, withPermission: false })
   );
   const onClickExpand = async () => {
     const data = await getOrgs();
@@ -34,6 +36,9 @@ function OrgTreeNode({
     toggleIsExpanded.toggle();
   };
 
+  if (org._id === movingOrg._id) {
+    return <></>;
+  }
   return (
     <Box userSelect={'none'}>
       <HStack
@@ -78,6 +83,7 @@ function OrgTreeNode({
         orgs.map((child) => (
           <Box key={child._id} mt={0.5}>
             <OrgTreeNode
+              movingOrg={movingOrg}
               org={child}
               index={index + 1}
               selectedOrg={selectedOrg}
@@ -91,10 +97,12 @@ function OrgTreeNode({
 
 function OrgTree({
   selectedOrg,
-  setSelectedOrg
+  setSelectedOrg,
+  movingOrg
 }: {
   selectedOrg?: OrgListItemType;
   setSelectedOrg: (org?: OrgListItemType) => void;
+  movingOrg: OrgListItemType;
 }) {
   const { userInfo } = useUserStore();
   const root: OrgListItemType = {
@@ -107,6 +115,7 @@ function OrgTree({
 
   return (
     <OrgTreeNode
+      movingOrg={movingOrg}
       key={'root'}
       org={root}
       selectedOrg={selectedOrg}
