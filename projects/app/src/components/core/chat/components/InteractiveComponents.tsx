@@ -34,17 +34,14 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
   nodeId?: string;
 }) {
   const { t } = useTranslation();
-  const [selectedValue, setSelectedValue] = useState<string | undefined>(undefined);
+
   // 在两个组件中更新上下文选择器，添加 onStartNodeDebug
-  const { onChangeNode, onStartNodeDebug, workflowDebugData } = useContextSelector(
-    WorkflowContext,
-    (v) => ({
-      onChangeNode: v.onChangeNode,
-      onStartNodeDebug: v.onStartNodeDebug,
-      // onNextNodeDebug: v.onNextNodeDebug, // 不再使用
-      workflowDebugData: v.workflowDebugData
-    })
-  );
+  const { onStartNodeDebug, workflowDebugData } = useContextSelector(WorkflowContext, (v) => ({
+    onStartNodeDebug: v.onStartNodeDebug,
+    // onNextNodeDebug: v.onNextNodeDebug, // 不再使用
+    workflowDebugData: v.workflowDebugData
+  }));
+
   /**
    * 创建交互数据结构
    * @param nodeId 交互节点ID
@@ -97,88 +94,68 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
       }
     ];
   };
-  const handleSelect = useCallback(
+
+  // 合并选择和下一步操作
+  const handleSelectAndNext = useCallback(
     (value: string) => {
       if (!nodeId || !workflowDebugData) return;
 
-      // 保存选中的值到本地状态
-      setSelectedValue(value);
+      // 创建包含用户选择的查询数据
+      const updatedQuery: UserChatItemValueItemType[] = [
+        ...(workflowDebugData.query || []),
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: value || ''
+          }
+        } as UserChatItemValueItemType
+      ];
+
+      // 创建模拟的历史记录
+      const mockHistory = createMockHistory(nodeId, interactive, workflowDebugData.runtimeEdges);
+
+      // 使用模拟的历史记录初始化边状态
+      const updatedRuntimeEdges = initWorkflowEdgeStatus(
+        workflowDebugData.runtimeEdges,
+        mockHistory
+      );
+
+      // 更新 runtimeNodes 以反映用户的选择
+      const updatedRuntimeNodes = workflowDebugData.runtimeNodes.map((node) => {
+        if (node.nodeId === nodeId) {
+          // 找到我们需要的输入字段并更新它
+          return {
+            ...node,
+            inputs: node.inputs.map((input) => {
+              // 根据您的实际字段结构，这里可能需要调整
+              if (input.key === 'userSelect' || input.key === 'selectedOption') {
+                return {
+                  ...input,
+                  value: value
+                };
+              }
+              return input;
+            }),
+            // 添加或更新任何需要的节点属性
+            userSelectedVal: value
+          };
+        }
+        return node;
+      });
+
+      // 使用 onStartNodeDebug 替代 onNextNodeDebug，带上更新后的 nodes 和 edges
+      onStartNodeDebug({
+        entryNodeId: nodeId,
+        runtimeNodes: updatedRuntimeNodes,
+        runtimeEdges: updatedRuntimeEdges,
+        variables: workflowDebugData.variables,
+        query: updatedQuery,
+        history: mockHistory
+      });
     },
-    [nodeId, workflowDebugData]
+    [nodeId, workflowDebugData, onStartNodeDebug, interactive]
   );
 
-  const handleStartDebug = useCallback(() => {
-    if (!nodeId || !workflowDebugData) return;
-
-    // 先将当前节点设置为入口节点
-    onChangeNode({
-      nodeId,
-      type: 'attr',
-      key: 'isEntry',
-      value: true
-    });
-
-    // 更新此节点的值（将用户选择保存到节点）
-    if (selectedValue) {
-      onChangeNode({
-        nodeId,
-        type: 'attr',
-        key: 'userSelectedVal',
-        value: selectedValue
-      });
-    }
-
-    // 创建包含用户选择的查询数据
-    const updatedQuery: UserChatItemValueItemType[] = [
-      ...(workflowDebugData.query || []),
-      {
-        type: ChatItemValueTypeEnum.text,
-        text: {
-          content: selectedValue || ''
-        }
-      } as UserChatItemValueItemType
-    ];
-    // 创建模拟的历史记录
-    const mockHistory = createMockHistory(nodeId, interactive, workflowDebugData.runtimeEdges);
-
-    // 使用模拟的历史记录初始化边状态
-    const updatedRuntimeEdges = initWorkflowEdgeStatus(workflowDebugData.runtimeEdges, mockHistory);
-
-    // 更新 runtimeNodes 以反映用户的选择
-    const updatedRuntimeNodes = workflowDebugData.runtimeNodes.map((node) => {
-      if (node.nodeId === nodeId) {
-        // 找到我们需要的输入字段并更新它
-        return {
-          ...node,
-          inputs: node.inputs.map((input) => {
-            // 根据您的实际字段结构，这里可能需要调整
-            if (input.key === 'userSelect' || input.key === 'selectedOption') {
-              return {
-                ...input,
-                value: selectedValue
-              };
-            }
-            return input;
-          }),
-          // 添加或更新任何需要的节点属性
-          userSelectedVal: selectedValue
-        };
-      }
-      return node;
-    });
-
-    // 更新 runtimeEdges 状态
-
-    // 使用 onStartNodeDebug 替代 onNextNodeDebug，带上更新后的 nodes 和 edges
-    onStartNodeDebug({
-      entryNodeId: nodeId,
-      runtimeNodes: updatedRuntimeNodes,
-      runtimeEdges: updatedRuntimeEdges,
-      variables: workflowDebugData.variables,
-      query: updatedQuery,
-      history: mockHistory
-    });
-  }, [nodeId, workflowDebugData, onStartNodeDebug, onChangeNode, selectedValue, interactive]);
   return (
     <Box px={4} py={3}>
       {interactive?.params?.description && (
@@ -195,8 +172,7 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
       )}
       <Flex flexDirection={'column'} gap={3} maxW={'400px'} mx="auto">
         {interactive.params.userSelectOptions?.map((option) => {
-          const selected =
-            option.value === selectedValue || option.value === interactive?.params?.userSelectedVal;
+          const selected = option.value === interactive?.params?.userSelectedVal;
 
           return (
             <Button
@@ -212,9 +188,7 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
                 bg: 'primary.50',
                 borderColor: 'primary.300'
               }}
-              isDisabled={
-                selectedValue !== undefined || interactive?.params?.userSelectedVal !== undefined
-              }
+              isDisabled={interactive?.params?.userSelectedVal !== undefined}
               {...(selected
                 ? {
                     borderColor: 'primary.500',
@@ -229,28 +203,13 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
                     }
                   }
                 : {})}
-              onClick={() => handleSelect(option.value)}
+              onClick={() => handleSelectAndNext(option.value)}
             >
               {option.value}
             </Button>
           );
         })}
       </Flex>
-
-      {/* 添加下一步按钮，在选择完成后显示 */}
-      {(selectedValue !== undefined || interactive?.params?.userSelectedVal !== undefined) && (
-        <Flex justify="flex-end" mt={4}>
-          <Button
-            size="sm"
-            leftIcon={<MyIcon name={'core/workflow/debugNext'} w={'16px'} />}
-            colorScheme="blue"
-            variant="solid"
-            onClick={handleStartDebug}
-          >
-            {t('common:common.Next Step')}
-          </Button>
-        </Flex>
-      )}
     </Box>
   );
 });
@@ -272,14 +231,10 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   } = useForm();
   const [isSubmitted, setIsSubmitted] = useState(false);
   // 在两个组件中更新上下文选择器，添加 onStartNodeDebug
-  const { onChangeNode, onStartNodeDebug, workflowDebugData } = useContextSelector(
-    WorkflowContext,
-    (v) => ({
-      onChangeNode: v.onChangeNode,
-      onStartNodeDebug: v.onStartNodeDebug,
-      workflowDebugData: v.workflowDebugData
-    })
-  );
+  const { onStartNodeDebug, workflowDebugData } = useContextSelector(WorkflowContext, (v) => ({
+    onStartNodeDebug: v.onStartNodeDebug,
+    workflowDebugData: v.workflowDebugData
+  }));
 
   /**
    * 创建交互数据结构
@@ -352,13 +307,6 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
       // 直接调用 handleStartDebug，合并提交和下一步操作
       const formData = getValues();
 
-      onChangeNode({
-        nodeId,
-        type: 'attr',
-        key: 'isEntry',
-        value: true
-      });
-
       const updatedQuery: UserChatItemValueItemType[] = [
         ...(workflowDebugData.query || []),
         {
@@ -420,7 +368,7 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
         history: mockHistory
       });
     },
-    [nodeId, workflowDebugData, onStartNodeDebug, onChangeNode, getValues, interactive]
+    [nodeId, workflowDebugData, onStartNodeDebug, getValues, interactive]
   );
 
   useEffect(() => {
