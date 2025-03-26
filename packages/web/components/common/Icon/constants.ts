@@ -423,6 +423,7 @@ export const iconPaths = {
   'plugins/dingding': () => import('./icons/plugins/dingding.svg'),
   'plugins/doc2x': () => import('./icons/plugins/doc2x.svg'),
   'plugins/qiwei': () => import('./icons/plugins/qiwei.svg'),
+  'plugins/email': () => import('./icons/plugins/email.svg'),
   'plugins/textEditor': () => import('./icons/plugins/textEditor.svg'),
   point: () => import('./icons/point.svg'),
   preview: () => import('./icons/preview.svg'),
