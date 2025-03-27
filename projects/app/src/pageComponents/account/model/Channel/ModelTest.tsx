@@ -50,7 +50,7 @@ const ModelTest = ({
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
   const [isAllTesting, setIsAllTesting] = useState(false); // 全部测试的loading状态
 
-  // 检查是否所有按钮都在loading状态
+  // 检查是否有按钮都在loading状态
   const isAnyModelLoading = testModelList.some((item) => item.isLoading);
 
   const statusMap = useRef({
