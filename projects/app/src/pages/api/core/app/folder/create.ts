@@ -16,7 +16,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
-import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 export type CreateAppFolderBody = {
@@ -33,21 +33,9 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
   }
 
   // 凭证校验
-  const { teamId, tmbId } = await authUserPer({
-    req,
-    authToken: true,
-    per: TeamWritePermissionVal
-  });
-
-  if (parentId) {
-    // if it is not a root folder
-    await authApp({
-      req,
-      appId: parentId,
-      per: WritePermissionVal,
-      authToken: true
-    });
-  }
+  const { teamId, tmbId } = parentId
+    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // Create app
   await mongoSessionRun(async (session) => {
