@@ -130,19 +130,19 @@ export function responseWrite({
   write,
   event,
   data,
-  isV2 = false
+  version = 'v1'
 }: {
   res?: NextApiResponse;
   write?: (text: string) => void;
   event?: string;
   data: string;
-  isV2?: boolean;
+  version?: 'v1' | 'v2';
 }) {
   const Write = write || res?.write;
 
   if (!Write) return;
 
-  if (!isV2) {
+  if (version === 'v1') {
     event && Write(`event: ${event}\n`);
     Write(`data: ${data}\n\n`);
   } else {

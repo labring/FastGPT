@@ -130,7 +130,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     timezone,
     externalProvider,
     stream = false,
-    isV2 = false,
+    version = 'v1',
     ...props
   } = data;
 
@@ -627,7 +627,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       };
     })();
 
-    if (node.showStatus && !props.isToolCall && isV2) {
+    if (node.showStatus && !props.isToolCall && version === 'v2') {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeResponse,
         data: {

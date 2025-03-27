@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { createCompletionsHandler } from '@/service/core/chat/completions';
 
-const handler = createCompletionsHandler({ isV2: false });
+const handler = createCompletionsHandler({ version: 'v1' });
 
 export default NextAPI(handler);
 
