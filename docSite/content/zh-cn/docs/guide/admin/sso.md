@@ -25,22 +25,33 @@ FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，�
 
 ### 内置的通用协议/IM
 
-
-1. 飞书：SSO 和成员同步
-2. 企微：SSO 和成员同步
-3. 钉钉：SSO
-4. Saml2.0: SSO
-5. Oauth2.0: SSO
+{{< table "table-hover table-striped-columns" >}}
+| 协议/功能      | SSO 支持 | 成员同步支持 |
+|----------------|----------|--------------|
+| 飞书           | 是       | 是           |
+| 企业微信（企微）| 是       | 是           |
+| 钉钉           | 是       | 否           |
+| Saml2.0        | 是       | 否           |
+| Oauth2.0       | 是       | 否           |
+{{< /table >}}
 
 ### 系统配置教程
 
 首先确认外部成员系统是否可以通过中转镜像进行接入，如果可以，则可以直接部署，如果不可以，请看本文最后的“如何对接非标准系统”。
 
 1. 首先需要参考后文的**通用外部成员系统配置**进行配置。
+
 2. 在商业版后台配置按钮文字，图标等。
+
+{{< table "table-hover table-striped-columns" >}}
+| <div style="text-align:center">企业微信</div> | <div style="text-align:center">钉钉</div> | <div style="text-align:center">飞书</div> |
+|-----------|-----------------|--------------|
+| ![企业微信](/imgs/sso15.png)  |  ![钉钉](/imgs/sso16.png)       | ![飞书](/imgs/sso17.png)     |   
+{{< /table >}}
+
 3. 设置“团队模式”为“同步模式”。
 
-![](/imgs/sso1.png)
+   ![](/imgs/sso1.png)
 
 #### 可选配置
 
@@ -161,10 +172,13 @@ type UserListResponseListType = {
 #### 如何对接非标准系统
 
 1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 fastgpt-pro
-2. 可以参考该模版库：https://github.com/labring/fastgpt-sso-template 进行开发
-3. 由 fastgpt 团队定制开发：
-4. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。
-5. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接，具体参考开发 README。
+
+   a. 可以参考该模版库：https://github.com/labring/fastgpt-sso-template 进行开发
+2. 由 fastgpt 团队定制开发：
+
+   a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。
+
+   b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接，具体参考开发 README。
 
 ## 通用外部成员系统配置
 
@@ -213,172 +227,180 @@ EXTERNAL_USER_SERVICE_AUTH_TOKEN=xxxxx
 
 ### 飞书
 
-#### 参数获取
+1. **参数获取**
 
-##### App ID和App Secret
+   App ID和App Secret
 
-进入开发者后台，点击企业自建应用，在凭证与基础信息页面查看应用凭证。
-![](/imgs/sso3.png)
+   进入开发者后台，点击企业自建应用，在凭证与基础信息页面查看应用凭证。
 
-#### 权限配置
+   ![](/imgs/sso3.png)
 
-进入开发者后台，点击企业自建应用，在开发配置的权限管理页面开通权限。
-![](/imgs/sso4.png)
-对于开通用户SSO登录而言，开启用户身份权限的以下内容
+2. **权限配置**
 
-1. ***获取通讯录基本信息***
-2. ***获取用户基本信息***
-3. ***获取用户邮箱信息***
-4. ***获取用户 user ID***
+   进入开发者后台，点击企业自建应用，在开发配置的权限管理页面开通权限。
 
-对于开启企业同步相关内容而言，开启身份权限的内容与上面一致，但要注意是开启应用权限
+   ![](/imgs/sso4.png)
 
-#### 重定向URL
+   对于开通用户SSO登录而言，开启用户身份权限的以下内容
 
-进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向URL
-![](/imgs/sso5.png)
+   1. ***获取通讯录基本信息***
+   2. ***获取用户基本信息***
+   3. ***获取用户邮箱信息***
+   4. ***获取用户 user ID***
 
-#### 模板参数配置
+   对于开启企业同步相关内容而言，开启身份权限的内容与上面一致，但要注意是开启应用权限
 
-```bash
-# #飞书 - feishu -如果是私有化部署，这里的配置前缀可能会有变化
-# #（以下皆为官方api接口）
-# SSO_PROVIDER=feishu
-# # oauth 接口
-# SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
-# #获取token 接口
-# FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
-# #获取用户信息接口
-# FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
-# #重定向地址，因为飞书获取用户信息要校验所以需要填
-# FEISHU_REDIRECT_URI=xxx
-# #飞书APP的应用ID，一般以cli开头
-# FEISHU_APP_ID=xxx
-# #飞书APP的应用密钥
-# FEISHU_APP_SECRET=xxx
-```
+3. **重定向URL**
+
+   进入开发者后台，点击企业自建应用，在开发配置的安全设置中设置重定向URL
+   ![](/imgs/sso5.png)
+
+4. **环境变量配置**
+
+   ```bash
+   # #飞书 - feishu -如果是私有化部署，这里的配置前缀可能会有变化
+   # #（以下皆为官方api接口）
+   # SSO_PROVIDER=feishu
+   # # oauth 接口
+   # SSO_TARGET_URL=https://accounts.feishu.cn/open-apis/authen/v1/authorize
+   # #获取token 接口
+   # FEISHU_TOKEN_URL=https://open.feishu.cn/open-apis/authen/v2/oauth/token
+   # #获取用户信息接口
+   # FEISHU_GET_USER_INFO_URL=https://open.feishu.cn/open-apis/authen/v1/user_info
+   # #重定向地址，因为飞书获取用户信息要校验所以需要填
+   # FEISHU_REDIRECT_URI=xxx
+   # #飞书APP的应用ID，一般以cli开头
+   # FEISHU_APP_ID=xxx
+   # #飞书APP的应用密钥
+   # FEISHU_APP_SECRET=xxx
+   ```
 
 ### 钉钉
 
-#### 参数获取
+1. **参数获取**
 
-##### CLIENT_ID与CLIENT_SECRET
+   CLIENT_ID与CLIENT_SECRET
 
-进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的Client ID与Client secret。
-![](/imgs/sso6.png)
+   进入钉钉开放平台，点击应用开发，选择自己的应用进入，记录在凭证与基础信息页面下的Client ID与Client secret。
+   ![](/imgs/sso6.png)
 
-#### 权限配置
+2. **权限配置**
 
-进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的权限管理页面操作，需要开通的权限包括：
+   进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的权限管理页面操作，需要开通的权限包括：
 
-1. ***个人手机号信息***
-2. ***通讯录个人信息读权限***
-3. ***获取钉钉开放接口用户访问凭证的基础权限***
+   1. ***个人手机号信息***
+   2. ***通讯录个人信息读权限***
+   3. ***获取钉钉开放接口用户访问凭证的基础权限***
 
-#### 重定向URL
+3. **重定向URL**
 
-进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的安全设置页面操作
-需要填写的内容有两个：
+   进入钉钉开放平台，点击应用开发，选择自己的应用进入，在开发配置的安全设置页面操作
+   需要填写的内容有两个：
 
-1. 服务器出口IP （调用钉钉服务端API的服务器IP列表）
-2. 重定向URL（回调域名）
+   1. 服务器出口IP （调用钉钉服务端API的服务器IP列表）
+   2. 重定向URL（回调域名）
 
-```bash
-# #钉钉 - dingtalk
-# SSO_PROVIDER=dingtalk
-# #oauth 接口
-# SSO_TARGET_URL=https://login.dingtalk.com/oauth2/auth
-# #获取token 接口
-# DINGTALK_TOKEN_URL=https://api.dingtalk.com/v1.0/oauth2/userAccessToken
-# #获取用户信息接口
-# DINGTALK_GET_USER_INFO_URL=https://oapi.dingtalk.com/v1.0/contact/users/me
-# #钉钉APP的应用ID
-# DINGTALK_CLIENT_ID=xxx
-# #钉钉APP的应用密钥
-# DINGTALK_CLIENT_SECRET=xxx
-```
+4. **环境变量配置**
+
+   ```bash
+   # #钉钉 - dingtalk
+   # SSO_PROVIDER=dingtalk
+   # #oauth 接口
+   # SSO_TARGET_URL=https://login.dingtalk.com/oauth2/auth
+   # #获取token 接口
+   # DINGTALK_TOKEN_URL=https://api.dingtalk.com/v1.0/oauth2/userAccessToken
+   # #获取用户信息接口
+   # DINGTALK_GET_USER_INFO_URL=https://oapi.dingtalk.com/v1.0/contact/users/me
+   # #钉钉APP的应用ID
+   # DINGTALK_CLIENT_ID=xxx
+   # #钉钉APP的应用密钥
+   # DINGTALK_CLIENT_SECRET=xxx
+   ```
 
 ### 企业微信
 
-#### 参数获取
+#### **参数获取**
 
-1. 企业的 CorpID
+   1. 企业的 CorpID
 
-   a. 使用管理员账号登陆企业微信管理后台 `https://work.weixin.qq.com/wework_admin/loginpage_wx`
-   
-   b. 点击 【我的企业】 页面，查看企业的 **企业ID**
+      a. 使用管理员账号登陆企业微信管理后台 `https://work.weixin.qq.com/wework_admin/loginpage_wx`
+      
+      b. 点击 【我的企业】 页面，查看企业的 **企业ID**
 
-![](/imgs/sso7.png)
+      ![](/imgs/sso7.png)
 
-2. 创建一个供 FastGPT 使用的内部应用：
+   2. 创建一个供 FastGPT 使用的内部应用：
 
-   a. 获取应用的 AgentID 和 Secret
+      a. 获取应用的 AgentID 和 Secret
 
-   b. 保证这个应用的可见范围为全部（也就是根部门）
+      b. 保证这个应用的可见范围为全部（也就是根部门）
 
-![](/imgs/sso8.png)
+      ![](/imgs/sso8.png)
 
 
-![](/imgs/sso9.png)
+      ![](/imgs/sso9.png)
 
-3. 一个域名。并且要求：
+   3. 一个域名。并且要求：
 
-   a. 解析到可公网访问的服务器上
+      a. 解析到可公网访问的服务器上
 
-   b. 可以在该服务的根目录地址上挂载静态文件（以便进行域名归属认证 ，按照配置处的提示进行操作，只需要挂载一个静态文件，认证后可以删除）
+      b. 可以在该服务的根目录地址上挂载静态文件（以便进行域名归属认证 ，按照配置处的提示进行操作，只需要挂载一个静态文件，认证后可以删除）
 
-   c. 配置网页授权，JS-SDK以及企业微信授权登陆
+      c. 配置网页授权，JS-SDK以及企业微信授权登陆
 
-   d. 可以在【企业微信授权登陆】页面下方设置“在工作台隐藏应用”
+      d. 可以在【企业微信授权登陆】页面下方设置“在工作台隐藏应用”
 
-![](/imgs/sso10.png)
-![](/imgs/sso11.png)
-![](/imgs/sso12.png)
-4. 获取 “通讯录同步助手” secret
+      ![](/imgs/sso10.png)
 
-   获取通讯录，组织成员 ID 需要使用 “通讯录同步助手” secret
+      ![](/imgs/sso11.png)
 
-   【安全与管理】-- 【管理工具】 -- 【通讯录同步】
+      ![](/imgs/sso12.png)
 
-![](/imgs/sso13.png)
+   4. 获取 “通讯录同步助手” secret
 
-5. 开启接口同步
+      获取通讯录，组织成员 ID 需要使用 “通讯录同步助手” secret
 
-6. 获取 Secret
+      【安全与管理】-- 【管理工具】 -- 【通讯录同步】
 
-7. 配置企业可信 IP
+      ![](/imgs/sso13.png)
 
-![](/imgs/sso14.png)
+   5. 开启接口同步
 
-#### 环境变量
+   6. 获取 Secret
 
-```bash
-## 企业微信 - wecom
-# SSO_PROVIDER=wecom
-# （以下皆为官方api接口）
-# oauth 接口，在企微终端使用
-# WECOM_TARGET_URL_OAUTH=https://open.weixin.qq.com/connect/oauth2/authorize
-# # sso 接口，扫码
-# WECOM_TARGET_URL_SSO=https://login.work.weixin.qq.com/wwlogin/sso/login
-# # 获取用户id（只能拿id)
-# WECOM_GET_USER_ID_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo
-# # 获取用户详细信息（除了名字都有）
-# WECOM_GET_USER_INFO_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail
-# # 获取用户信息（有名字，没其他信息）
-# WECOM_GET_USER_NAME_URL=https://qyapi.weixin.qq.com/cgi-bin/user/get
-# # 获取组织 id 列表
-# WECOM_GET_DEPARTMENT_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/department/list
-# # 获取用户 id 列表
-# WECOM_GET_USER_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/user/list_id
-# # 企微 CorpId
-# WECOM_CORPID=
-# # 企微 App 的 AgentId 一般是 1000xxx
-# WECOM_AGENTID=
-# # 企微 App 的 Secret
-# WECOM_APP_SECRET=
-# # 通讯录同步助手的 Secret
-# WECOM_SYNC_SECRET=
-```
+   7. 配置企业可信 IP
+
+      ![](/imgs/sso14.png)
+
+#### **环境变量**
+
+   ```bash
+   ## 企业微信 - wecom
+   # SSO_PROVIDER=wecom
+   # （以下皆为官方api接口）
+   # oauth 接口，在企微终端使用
+   # WECOM_TARGET_URL_OAUTH=https://open.weixin.qq.com/connect/oauth2/authorize
+   # # sso 接口，扫码
+   # WECOM_TARGET_URL_SSO=https://login.work.weixin.qq.com/wwlogin/sso/login
+   # # 获取用户id（只能拿id)
+   # WECOM_GET_USER_ID_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserinfo
+   # # 获取用户详细信息（除了名字都有）
+   # WECOM_GET_USER_INFO_URL=https://qyapi.weixin.qq.com/cgi-bin/auth/getuserdetail
+   # # 获取用户信息（有名字，没其他信息）
+   # WECOM_GET_USER_NAME_URL=https://qyapi.weixin.qq.com/cgi-bin/user/get
+   # # 获取组织 id 列表
+   # WECOM_GET_DEPARTMENT_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/department/list
+   # # 获取用户 id 列表
+   # WECOM_GET_USER_LIST_URL=https://qyapi.weixin.qq.com/cgi-bin/user/list_id
+   # # 企微 CorpId
+   # WECOM_CORPID=
+   # # 企微 App 的 AgentId 一般是 1000xxx
+   # WECOM_AGENTID=
+   # # 企微 App 的 Secret
+   # WECOM_APP_SECRET=
+   # # 通讯录同步助手的 Secret
+   # WECOM_SYNC_SECRET=
+   ```
 
 ### 标准 OAuth2.0
 
