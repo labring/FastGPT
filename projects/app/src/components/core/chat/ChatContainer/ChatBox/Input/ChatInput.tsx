@@ -49,8 +49,8 @@ const TouchListenComponent = ({
   const startYRef = useRef(0);
   const isCancle = useRef(false);
   const isPressing = useRef(false);
-  const [showPopup, setShowPopup] = useState(false);
-  const state =useRef(false);
+  const [showshortPopup, setShowshortPopup] = useState(false);
+  const [showmovePopup, setShowmovePopup] = useState(false);
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
@@ -71,8 +71,7 @@ const TouchListenComponent = ({
       const touch = e.touches[0] as Touch;
       const currentY = touch.pageY;
       const deltaY = startYRef.current - currentY;
-      setShowPopup(true);
-      state.current = true;
+      setShowmovePopup(true);
       if (deltaY > 30 && !isCancle.current) {
         isCancle.current = true;
       } else if (deltaY <= 30 && isCancle) {
@@ -90,12 +89,14 @@ const TouchListenComponent = ({
       elapsedTimeRef.current = timeDifference;
       startTimeRef.current = endTime;
       isPressing.current = false;
+      setShowmovePopup(false);
+      setShowshortPopup(false);
       if (isCancle.current) {
         stopSpeak(true);
       } else {
         if (timeDifference < 200) {
           stopSpeak(true);
-          setShowPopup(true);
+          setShowshortPopup(true);
         } else {
           stopSpeak(false);
         }
@@ -106,9 +107,9 @@ const TouchListenComponent = ({
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>; // 明确指定 timer 的类型
-    if (showPopup) {
+    if (showshortPopup || showmovePopup) {
       timer = setTimeout(() => {
-        setShowPopup(false);
+        setShowshortPopup(false);
       }, 1000);
     }
     return () => {
@@ -116,7 +117,7 @@ const TouchListenComponent = ({
         clearTimeout(timer);
       }
     };
-  }, [showPopup]);
+  }, [showshortPopup,showmovePopup]);
 
   return (
     <div
@@ -143,7 +144,7 @@ const TouchListenComponent = ({
           }}
         />
       </Flex>
-      {showPopup && (
+      {showmovePopup && (
         <div
           style={{
             position: 'fixed',
@@ -157,8 +158,25 @@ const TouchListenComponent = ({
             zIndex: 1000
           }}
         >
-          {state.current ? <h2>上滑取消</h2>:<h2>说话时间太短</h2>}
+          <h2>上滑取消</h2>
         </div>
+      )}
+      {showshortPopup && (
+          <div
+              style={{
+                position: 'fixed',
+                top: '0%',
+                left: '50%',
+                transform: 'translate(-50%, 50%)',
+                backgroundColor: 'white',
+                padding: '20px',
+                borderRadius: '5px',
+                boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
+                zIndex: 1000
+              }}
+          >
+            <h2>说话时间太短</h2>
+          </div>
       )}
     </div>
   );
@@ -528,9 +546,9 @@ const ChatInput = ({
                 onClick={finishSpeak}
               >
                 <MyIcon
-                  name="core/chat/cancelSpeak"
-                  width={['20px', '22px']}
-                  height={['20px', '22px']}
+                  name={'core/chat/backText'}
+                  width={['22px', '24px']}
+                  height={['22px', '24px']}
                   color="blue.600"
                 />
               </Flex>
