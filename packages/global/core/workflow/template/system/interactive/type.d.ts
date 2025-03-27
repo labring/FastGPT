@@ -41,7 +41,7 @@ type InteractiveBasicType = {
   };
 };
 
-type UserSelectInteractive = {
+type UserSelectInteractive = InteractiveBasicType & {
   type: 'userSelect';
   params: {
     description: string;
@@ -50,7 +50,7 @@ type UserSelectInteractive = {
   };
 };
 
-type UserInputInteractive = {
+type UserInputInteractive = InteractiveBasicType & {
   type: 'userInput';
   params: {
     description: string;
@@ -58,6 +58,5 @@ type UserInputInteractive = {
     submitted?: boolean;
   };
 };
-
 export type InteractiveNodeResponseType = UserSelectInteractive | UserInputInteractive;
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;
