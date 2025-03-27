@@ -48,13 +48,13 @@ export function ChangeOwnerModal({
     {
       pageSize: 20,
       params: {
-        searchKey: searchKey
-      }
+        searchKey
+      },
+      refreshDeps: [searchKey],
+      debounceWait: 200,
+      throttleWait: 500
     }
   );
-
-  const search = _.debounce(refreshList, 500);
-  useEffect(() => search, [searchKey]);
 
   const {
     isOpen: isOpenMemberListMenu,

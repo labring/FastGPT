@@ -13,6 +13,7 @@ import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
+import { isSea } from 'node:sea';
 
 export type GroupFormType = {
   members: {
@@ -31,6 +32,7 @@ function OrgMemberManageModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [searchKey, setSearchKey] = useState('');
 
   const {
     data: allMembers,
@@ -41,8 +43,12 @@ function OrgMemberManageModal({
     params: {
       withOrgs: true,
       withPermission: false,
-      status: 'active'
-    }
+      status: 'active',
+      searchKey
+    },
+    throttleWait: 500,
+    debounceWait: 200,
+    refreshDeps: [searchKey]
   });
 
   const {
@@ -69,8 +75,6 @@ function OrgMemberManageModal({
       }))
     );
   }, [orgMembers]);
-
-  const [searchKey, setSearchKey] = useState('');
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
     () => {

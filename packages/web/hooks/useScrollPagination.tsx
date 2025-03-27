@@ -14,6 +14,7 @@ import {
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
+import { useRequest2 } from './useRequest';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -183,22 +184,21 @@ export function useScrollPagination<
 >(
   api: (data: TParams) => Promise<TData>,
   {
-    refreshDeps,
     scrollLoadType = 'bottom',
 
     pageSize = 10,
     params = {},
     EmptyTip,
-    showErrorToast = true
+    showErrorToast = true,
+    ...props
   }: {
-    refreshDeps?: any[];
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
     params?: Record<string, any>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
-  }
+  } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -338,13 +338,13 @@ export function useScrollPagination<
   );
 
   // Reload data
-  useRequest(
+  useRequest2(
     async () => {
       loadData(true);
     },
     {
       manual: false,
-      refreshDeps
+      ...props
     }
   );
 
