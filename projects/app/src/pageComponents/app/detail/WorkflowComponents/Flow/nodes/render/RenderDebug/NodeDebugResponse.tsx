@@ -13,10 +13,10 @@ import {
   RenderUserFormInteractive
 } from '@/components/core/chat/components/InteractiveComponents';
 
-interface NodeDebugResponseProps {
+type NodeDebugResponseProps = {
   nodeId: string;
   debugResult: FlowNodeItemType['debugResult'];
-}
+};
 
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
