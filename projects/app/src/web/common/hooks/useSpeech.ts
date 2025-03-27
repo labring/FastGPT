@@ -16,6 +16,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   const intervalRef = useRef<any>();
   const startTimestamp = useRef(0);
   const cancelWhisperSignal = useRef(false);
+  const [needSpeak,setNeedspeak]=useState(false);
+  const [pendingStream, setPendingStream] = useState<MediaStream | null>(null); // 新增挂起流状态
+  const stopCalledRef = useRef(false);
 
   const speakingTimeString = useMemo(() => {
     const minutes: number = Math.floor(audioSecond / 60);
@@ -50,6 +53,20 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     }
   }, []);
 
+  const prepareSpeak = () => {
+    setNeedspeak(true);
+    console.log("切换为说话");
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      return toast({
+        status: 'warning',
+        title: t('common:common.speech.not support')
+      });
+    }
+    return {
+      needSpeak,
+    };
+   }
+
   const startSpeak = async (onFinish: (text: string) => void) => {
     if (!navigator?.mediaDevices?.getUserMedia) {
       return toast({
@@ -59,13 +76,24 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     }
     try {
       cancelWhisperSignal.current = false;
+      stopCalledRef.current = false;
+      setPendingStream(null); // 重置挂起状态
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
 
+      // 检查是否需要取消
+      if (stopCalledRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        setPendingStream(null);
+        console.log("取消流创建")
+        return;
+      }
+
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       setIsSpeaking(true);
+      console.log("创建完成",mediaRecorder);
 
       mediaRecorder.current.onstart = () => {
         startTimestamp.current = Date.now();
@@ -113,12 +141,14 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
           formData.append('file', blob, filename);
           formData.append(
-            'data',
-            JSON.stringify({
-              ...props,
-              duration
-            })
+              'data',
+              JSON.stringify({
+                ...props,
+                duration
+              })
           );
+
+
 
           setIsTransCription(true);
           try {
@@ -141,6 +171,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         stream.getTracks().forEach((track) => track.stop());
 
         setIsTransCription(false);
+        console.log("关闭流")
         setIsSpeaking(false);
       };
 
@@ -160,11 +191,28 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   };
 
   const stopSpeak = (cancel = false) => {
+    console.log("cancel", cancel);
     cancelWhisperSignal.current = cancel;
+    stopCalledRef.current = true;
+    console.log(mediaRecorder);
+    // 立即停止挂起的流
+    if (pendingStream) {
+      pendingStream.getTracks().forEach(track => track.stop());
+      setPendingStream(null);
+    }
     if (mediaRecorder.current) {
       mediaRecorder.current?.stop();
       clearInterval(intervalRef.current);
     }
+  };
+
+  const finishSpeak = () => {
+
+    setNeedspeak(false);
+    stopSpeak(true);
+    return {
+      needSpeak,
+    };
   };
 
   useEffect(() => {
@@ -179,16 +227,20 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     };
   }, []);
 
-  // listen minuted. over 60 seconds, stop speak
-  useEffect(() => {
-    if (audioSecond >= 60) {
-      stopSpeak();
-    }
-  }, [audioSecond]);
+  // // listen minuted. over 60 seconds, stop speak
+  // useEffect(() => {
+  //   if (audioSecond >= 60) {
+  //     console.log(audioSecond)
+  //     stopSpeak();
+  //   }
+  // }, [audioSecond]);
 
   return {
     startSpeak,
     stopSpeak,
+    prepareSpeak,
+    finishSpeak,
+    needSpeak,
     isSpeaking,
     isTransCription,
     renderAudioGraph,
