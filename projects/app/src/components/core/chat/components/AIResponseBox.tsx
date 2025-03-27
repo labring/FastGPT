@@ -88,7 +88,6 @@ const RenderText = React.memo(function RenderText({
   let source = text || '';
   return <Markdown source={source} showAnimation={showAnimation} />;
 });
-
 const RenderTool = React.memo(
   function RenderTool({
     showAnimation,
@@ -210,7 +209,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive: InteractiveBasicType & UserInputInteractive;
 }) {
   const { t } = useTranslation();
-
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
       return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
@@ -220,7 +218,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
     }
     return {};
   }, [interactive]);
-
   const handleFormSubmit = useCallback((data: Record<string, any>) => {
     onSendPrompt({
       text: JSON.stringify(data),
