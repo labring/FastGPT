@@ -6,6 +6,8 @@ import { timeDelay } from './jsFn/delay';
 import { strToBase64 } from './jsFn/str2Base64';
 import { createHmac } from './jsFn/crypto';
 
+import { spawn } from 'child_process';
+import { pythonScript } from './constants';
 const CustomLogStr = 'CUSTOM_LOG';
 
 /* 
@@ -49,7 +51,7 @@ function registerSystemFn(jail: IsolatedVM.Reference<Record<string | number | sy
   ]);
 }
 
-export const runSandbox = async ({
+export const runJsSandbox = async ({
   code,
   variables = {}
 }: RunCodeDto): Promise<RunCodeResponse> => {
@@ -104,5 +106,42 @@ export const runSandbox = async ({
     context.release();
     isolate.dispose();
     return Promise.reject(err);
+  }
+};
+
+export const runPythonSandbox = async ({
+  code,
+  variables = {}
+}: RunCodeDto): Promise<RunCodeResponse> => {
+  const mainCallCode = `
+data = ${JSON.stringify({ code, variables })}
+res = run_pythonCode(data)
+print(json.dumps(res))
+`;
+
+  const fullCode = [pythonScript, mainCallCode].filter(Boolean).join('\n');
+
+  const pythonProcess = spawn('python3', ['-u', '-c', fullCode]);
+
+  const stdoutPromise = new Promise<string>((resolve) => {
+    const chunks: string[] = [];
+    pythonProcess.stdout.on('data', (data) => chunks.push(data.toString()));
+    pythonProcess.stdout.on('end', () => resolve(chunks.join('')));
+  });
+
+  const stdout = await stdoutPromise;
+
+  try {
+    const parsedOutput = JSON.parse(stdout);
+    if (parsedOutput.error) {
+      throw new Error(parsedOutput.error || 'Unknown error');
+    }
+    return { codeReturn: parsedOutput, log: '' };
+  } catch (err) {
+    if (stdout.includes('malformed node or string on line 1'))
+      throw new Error(`The result should be a parsable variable, such as a list.  ${stdout}`);
+    else if (stdout.includes('Unexpected end of JSON input'))
+      throw new Error(`Not allowed print or ${stdout}`);
+    throw new Error(`Run failed: ${err}`);
   }
 };
