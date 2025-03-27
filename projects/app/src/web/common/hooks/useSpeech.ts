@@ -91,6 +91,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       setIsSpeaking(true);
+
       mediaRecorder.current.onstart = () => {
         startTimestamp.current = Date.now();
         setAudioSecond(0);
@@ -137,14 +138,12 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
           formData.append('file', blob, filename);
           formData.append(
-              'data',
-              JSON.stringify({
-                ...props,
-                duration
-              })
+            'data',
+            JSON.stringify({
+              ...props,
+              duration
+            })
           );
-
-
 
           setIsTransCription(true);
           try {
