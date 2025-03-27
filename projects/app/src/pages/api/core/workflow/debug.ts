@@ -34,10 +34,6 @@ async function handler(
   if (!Array.isArray(edges)) {
     throw new Error('Edges is not array');
   }
-  const entryNode = nodes.find((node) => node.isEntry === true);
-  if (!entryNode) {
-    throw new Error('No entry node found');
-  }
 
   /* user auth */
   const [{ teamId, tmbId }, { app }] = await Promise.all([
