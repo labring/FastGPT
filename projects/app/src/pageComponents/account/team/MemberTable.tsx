@@ -102,16 +102,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       withPermission: true,
       withOrgs: true,
       searchKey
-    }
+    },
+    refreshDeps: [searchKey, status],
+    throttleWait: 500,
+    debounceWait: 200
   });
-
-  const refreshList = _.debounce(() => {
-    refetchMemberList();
-  }, 200);
-
-  useEffect(() => {
-    refreshList();
-  }, [searchKey, status]);
 
   const onRefreshMembers = useCallback(() => {
     refetchMemberList();

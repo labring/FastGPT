@@ -41,14 +41,11 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     () => getOrgList({ orgId: currentOrg._id, withPermission: withPermission, searchKey }),
     {
       manual: false,
-      refreshDeps: [userInfo?.team?.teamId, path, currentOrg._id]
+      refreshDeps: [userInfo?.team?.teamId, path, currentOrg._id, searchKey],
+      debounceWait: 200,
+      throttleWait: 500
     }
   );
-  const search = _.debounce(() => {
-    if (!searchKey) return;
-    refetchOrgs();
-  }, 200);
-  useEffect(() => search, [searchKey]);
 
   const paths = useMemo(() => {
     if (!currentOrg) return [];
@@ -63,14 +60,19 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
   }, [currentOrg, orgStack]);
 
   const onClickOrg = (org: OrgListItemType) => {
-    setOrgStack([...orgStack, org]);
-    setSearchKey('');
+    if (searchKey) {
+      setOrgStack([org]);
+      setSearchKey('');
+    } else {
+      setOrgStack([...orgStack, org]);
+    }
   };
 
   const {
     data: members = [],
     ScrollData: MemberScrollData,
-    refreshList: refetchMembers
+    refreshList: refetchMembers,
+    isLoading: isLoadingMembers
   } = useScrollPagination(getTeamMembers, {
     pageSize: 20,
     params: {
@@ -106,11 +108,13 @@ function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {
     ]);
   };
 
+  const isLoading = isLoadingOrgs || isLoadingMembers;
+
   return {
     orgStack,
     currentOrg,
     orgs,
-    isLoadingOrgs,
+    isLoading,
     paths,
     onClickOrg,
     members,

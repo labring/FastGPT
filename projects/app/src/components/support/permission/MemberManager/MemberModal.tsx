@@ -79,7 +79,10 @@ function MemberModal({
       withOrgs: true,
       status: 'active',
       searchKey
-    }
+    },
+    throttleWait: 500,
+    debounceWait: 200,
+    refreshDeps: [searchKey]
   });
 
   const {
@@ -99,13 +102,6 @@ function MemberModal({
       refreshDeps: [userInfo?.team?.teamId]
     }
   );
-
-  const search = _.debounce(() => {
-    refreshList();
-    refreshGroups();
-  }, 200);
-
-  useEffect(search, [searchKey]);
 
   const [selectedOrgList, setSelectedOrgIdList] = useState<OrgListItemType[]>([]);
 
