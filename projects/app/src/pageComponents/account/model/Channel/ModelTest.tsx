@@ -33,7 +33,7 @@ type ModelTestItem = {
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
   duration?: number;
-  isLoading?: boolean; // 添加独立的loading状态
+  loading?: boolean; // 单个模型的loading状态
 };
 
 const ModelTest = ({
@@ -48,10 +48,8 @@ const ModelTest = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
-  const [isAllTesting, setIsAllTesting] = useState(false); // 全部测试的loading状态
 
-  // 检查是否有按钮都在loading状态
-  const isAnyModelLoading = testModelList.some((item) => item.isLoading);
+  const isAnyModelLoading = testModelList.some((item) => item.loading);
 
   const statusMap = useRef({
     waiting: {
@@ -91,7 +89,7 @@ const ModelTest = ({
             ),
             model: modelData.model,
             status: 'waiting',
-            isLoading: false
+            loading: false
           };
         })
         .filter(Boolean) as ModelTestItem[];
@@ -101,14 +99,13 @@ const ModelTest = ({
 
   const { runAsync: onStartTest } = useRequest2(
     async () => {
-      setIsAllTesting(true);
       try {
         let errorNum = 0;
         const testModel = async (model: string) => {
           setTestModelList((prev) =>
             prev.map((item) =>
               item.model === model
-                ? { ...item, status: 'running', message: '', isLoading: true }
+                ? { ...item, status: 'running', message: '', loading: true }
                 : item
             )
           );
@@ -119,7 +116,7 @@ const ModelTest = ({
             setTestModelList((prev) =>
               prev.map((item) =>
                 item.model === model
-                  ? { ...item, status: 'success', duration: duration / 1000, isLoading: false }
+                  ? { ...item, status: 'success', duration: duration / 1000, loading: false }
                   : item
               )
             );
@@ -127,7 +124,7 @@ const ModelTest = ({
             setTestModelList((prev) =>
               prev.map((item) =>
                 item.model === model
-                  ? { ...item, status: 'error', message: getErrText(error), isLoading: false }
+                  ? { ...item, status: 'error', message: getErrText(error), loading: false }
                   : item
               )
             );
@@ -147,8 +144,8 @@ const ModelTest = ({
             title: t('account_model:test_failed', { num: errorNum })
           });
         }
-      } finally {
-        setIsAllTesting(false);
+      } catch (error) {
+        console.error('Error during model testing:', error);
       }
     },
     {
@@ -161,7 +158,7 @@ const ModelTest = ({
 
     setTestModelList((prev) =>
       prev.map((item) =>
-        item.model === model ? { ...item, status: 'running', message: '', isLoading: true } : item
+        item.model === model ? { ...item, status: 'running', message: '', loading: true } : item
       )
     );
 
@@ -172,7 +169,7 @@ const ModelTest = ({
       setTestModelList((prev) =>
         prev.map((item) =>
           item.model === model
-            ? { ...item, status: 'success', duration: duration / 1000, isLoading: false }
+            ? { ...item, status: 'success', duration: duration / 1000, loading: false }
             : item
         )
       );
@@ -180,7 +177,7 @@ const ModelTest = ({
       setTestModelList((prev) =>
         prev.map((item) =>
           item.model === model
-            ? { ...item, status: 'error', message: getErrText(error), isLoading: false }
+            ? { ...item, status: 'error', message: getErrText(error), loading: false }
             : item
         )
       );
@@ -231,7 +228,7 @@ const ModelTest = ({
                     </Td>
                     <Td>
                       <MyIconButton
-                        isLoading={item.isLoading}
+                        isLoading={item.loading}
                         icon={'core/chat/sendLight'}
                         tip={t('account:model.test_model')}
                         onClick={() => onTestOneModel(item.model)}
@@ -248,11 +245,7 @@ const ModelTest = ({
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>
-        <Button
-          isLoading={isAllTesting || isAnyModelLoading}
-          variant={'primary'}
-          onClick={onStartTest}
-        >
+        <Button isLoading={isAnyModelLoading} variant={'primary'} onClick={onStartTest}>
           {t('account_model:start_test', { num: testModelList.length })}
         </Button>
       </ModalFooter>
