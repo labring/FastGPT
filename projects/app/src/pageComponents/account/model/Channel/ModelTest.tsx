@@ -49,8 +49,6 @@ const ModelTest = ({
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
 
-  const isAnyModelLoading = testModelList.some((item) => item.loading);
-
   const statusMap = useRef({
     waiting: {
       label: t('account_model:waiting_test'),
@@ -97,7 +95,7 @@ const ModelTest = ({
     }
   });
 
-  const { runAsync: onStartTest } = useRequest2(
+  const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest2(
     async () => {
       try {
         let errorNum = 0;
@@ -153,36 +151,41 @@ const ModelTest = ({
     }
   );
 
-  const onTestOneModel = async (model: string) => {
-    const start = Date.now();
-
-    setTestModelList((prev) =>
-      prev.map((item) =>
-        item.model === model ? { ...item, status: 'running', message: '', loading: true } : item
-      )
-    );
-
-    try {
-      await getTestModel({ model, channelId });
-      const duration = Date.now() - start;
+  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest2(
+    async (model: string) => {
+      const start = Date.now();
 
       setTestModelList((prev) =>
         prev.map((item) =>
-          item.model === model
-            ? { ...item, status: 'success', duration: duration / 1000, loading: false }
-            : item
+          item.model === model ? { ...item, status: 'running', message: '', loading: true } : item
         )
       );
-    } catch (error) {
-      setTestModelList((prev) =>
-        prev.map((item) =>
-          item.model === model
-            ? { ...item, status: 'error', message: getErrText(error), loading: false }
-            : item
-        )
-      );
+
+      try {
+        await getTestModel({ model, channelId });
+        const duration = Date.now() - start;
+
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model
+              ? { ...item, status: 'success', duration: duration / 1000, loading: false }
+              : item
+          )
+        );
+      } catch (error) {
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model
+              ? { ...item, status: 'error', message: getErrText(error), loading: false }
+              : item
+          )
+        );
+      }
+    },
+    {
+      manual: true
     }
-  };
+  );
 
   return (
     <MyModal
@@ -245,7 +248,11 @@ const ModelTest = ({
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>
-        <Button isLoading={isAnyModelLoading} variant={'primary'} onClick={onStartTest}>
+        <Button
+          isLoading={isAnyModelLoading || testingOneModel}
+          variant={'primary'}
+          onClick={onStartTest}
+        >
           {t('account_model:start_test', { num: testModelList.length })}
         </Button>
       </ModalFooter>
