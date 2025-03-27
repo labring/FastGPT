@@ -350,7 +350,7 @@ fastgpt-sso:
 
 FastGPT 提供如下标准接口支持：
 
-1. https://example.com/getAuthURL 获取鉴权重定向地址
+1. https://example.com/login/oauth/getAuthURL 获取鉴权重定向地址
 2. https://example.com/login/oauth/getUserInfo?code=xxxxx 消费 code，换取用户信息
 3. https://example.com/org/list 获取组织列表
 4. https://example.com/user/list 获取成员列表
@@ -361,12 +361,13 @@ FastGPT 提供如下标准接口支持：
 
 redirect_uri  会自动拼接到该地址的 query中。
 
-GET /login/oauth/getAuthURL
+返回如下信息(JSON):
+
 ```JSON
 {
-  "success": true,
-  "message": "错误信息",
-  "authURL": "https://example.com/somepath/login/oauth?redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider%0A"
+   "success": true,
+   "message": "错误信息",
+   "authURL": "https://example.com/somepath/login/oauth?redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider%0A"
 }
 ```
 
@@ -390,9 +391,6 @@ curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&stat
 
 该接口接受一个 code 参数作为鉴权，消费 code 返回用户信息。
 
-https://oauth.example/login/oauth/getUserInfo?code=xxxx
-
-GET /login/oauth/getUserInfo?code=xxxxxx
 返回如下信息(JSON):
 
 ```JSON
@@ -427,8 +425,6 @@ curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
 ### 获取组织
 
 1. 同步组织 /org/list
-
-GET https://example.com/org/list
 
 ⚠️注意：只能存在一个根部门。如果你的系统中存在多个根部门，需要先进行处理，加一个虚拟的根部门。
 返回值类型：
@@ -476,8 +472,6 @@ curl -X GET "https://example.com/org/list" \
 
 1. 同步用户 /user/list
 
-GET https://example.com/user/list
-
 返回值类型：
 
 ```typescript
@@ -508,14 +502,14 @@ curl -X GET "https://example.com/user/list" \
   "message": "",
   "userList": [
     {
-      "username": "sync-123456789",
+      "username": "od-123456789",
       "memberName": "张三",
       "avatar": "https://example.webp",
       "contact": "+861234567890",
       "orgs": ["od-125151515", "od-51516152"]
     },
     {
-      "username": "sync-12345678999",
+      "username": "od-12345678999",
       "memberName": "李四",
       "avatar": "",
       "contact": "",
