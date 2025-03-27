@@ -18,5 +18,6 @@ export type PostWorkflowDebugResponse = {
   finishedEdges: RuntimeEdgeItemType[];
   nextStepRunNodes: RuntimeNodeItemType[];
   flowResponses: ChatHistoryItemResType[];
+  workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   newVariables: Record<string, any>;
 };
