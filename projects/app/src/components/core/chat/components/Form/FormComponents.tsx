@@ -95,7 +95,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
   );
 });
 
-export interface FormItem {
+export type FormItem = {
   label: string;
   key?: string;
   type: FlowNodeInputTypeEnum;
@@ -110,7 +110,7 @@ export interface FormItem {
     label: string;
     value: string;
   }>;
-}
+};
 
 export interface FormInputComponentProps {
   inputForm: FormItem[];
