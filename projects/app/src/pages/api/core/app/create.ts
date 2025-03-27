@@ -17,6 +17,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
+import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -36,18 +37,15 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
   }
 
   // 凭证校验
-  const [{ teamId, tmbId, userId }] = await Promise.all([
-    authUserPer({ req, authToken: true, per: WritePermissionVal }),
-    ...(parentId
-      ? [authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })]
-      : [])
-  ]);
+  const { teamId, tmbId, userId } = parentId
+    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // 上限校验
   await checkTeamAppLimit(teamId);
   const tmb = await MongoTeamMember.findById({ _id: tmbId }, 'userId').populate<{
-    user: { avatar: string; username: string };
-  }>('user', 'avatar username');
+    user: { username: string };
+  }>('user', 'username');
 
   // 创建app
   const appId = await onCreateApp({
@@ -60,7 +58,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     chatConfig,
     teamId,
     tmbId,
-    userAvatar: tmb?.user?.avatar,
+    userAvatar: tmb?.avatar,
     username: tmb?.user?.username
   });
 
