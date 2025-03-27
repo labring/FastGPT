@@ -11,16 +11,13 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-// 定义IconName类型 - 这应该与MyIcon组件要求的类型匹配
 type IconName = 'core/workflow/debugNext' | 'common/loading' | 'core/chat/think';
 
-// 定义选项接口
 export interface SelectOption {
   key: string;
   value: string;
 }
 
-// 定义SelectOptionsComponent接口
 export interface SelectOptionsComponentProps {
   options: SelectOption[];
   description?: string;
@@ -30,9 +27,6 @@ export interface SelectOptionsComponentProps {
   variant?: string;
 }
 
-/**
- * 共享的选项按钮组件
- */
 export const SelectOptionsComponent = React.memo(function SelectOptionsComponent({
   options = [],
   description,
@@ -101,7 +95,6 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
   );
 });
 
-// 定义表单项接口
 export interface FormItem {
   label: string;
   key?: string;
@@ -119,7 +112,6 @@ export interface FormItem {
   }>;
 }
 
-// 定义FormInputComponent接口
 export interface FormInputComponentProps {
   inputForm: FormItem[];
   description?: string;
@@ -132,9 +124,6 @@ export interface FormInputComponentProps {
   isCompact?: boolean;
 }
 
-/**
- * 共享的表单呈现组件
- */
 export const FormInputComponent = React.memo(function FormInputComponent({
   inputForm = [],
   description,
@@ -319,7 +308,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   );
 });
 
-// 定义FormHandler接口
 export interface UseFormHandlerReturn<T extends FieldValues = Record<string, any>> {
   register: UseFormReturn<T>['register'];
   setValue: UseFormReturn<T>['setValue'];
@@ -330,9 +318,6 @@ export interface UseFormHandlerReturn<T extends FieldValues = Record<string, any
   getValues: UseFormReturn<T>['getValues'];
 }
 
-/**
- * 创建共享的表单Hook
- */
 export const useFormHandler = <T extends FieldValues = Record<string, any>>(
   formConfig: UseFormProps<T> = {},
   onSubmitCallback?: (data: T) => void

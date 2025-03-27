@@ -17,7 +17,6 @@ import {
   SelectOptionsComponent
 } from './Form/FormComponents';
 
-// 创建共用的交互式调试 Hook
 const useInteractiveDebug = (
   interactive: UserSelectInteractive | UserInputInteractive,
   nodeId?: string
@@ -27,7 +26,6 @@ const useInteractiveDebug = (
     workflowDebugData: v.workflowDebugData
   }));
 
-  // 处理交互数据结构
   const interactiveData = useMemo(() => {
     return {
       ...interactive,
@@ -37,7 +35,6 @@ const useInteractiveDebug = (
     };
   }, [interactive]);
 
-  // 创建模拟的历史记录
   const createMockHistory = useCallback((): ChatItemType[] => {
     return [
       {
@@ -52,12 +49,9 @@ const useInteractiveDebug = (
     ];
   }, [interactiveData]);
 
-  // 启动调试的通用函数
   const startDebug = useCallback(
     (userContent: string, nodeUpdater: (node: any) => any) => {
       if (!nodeId || !workflowDebugData) return;
-
-      // 创建包含用户交互的查询数据
       const updatedQuery: UserChatItemValueItemType[] = [
         ...(workflowDebugData.query || []),
         {
@@ -139,7 +133,6 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { startDebug } = useInteractiveDebug(interactive, nodeId);
 
-  // 处理默认值
   const defaultValues = useMemo(() => {
     return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
       acc[item.label] = !!item.value ? item.value : item.defaultValue;
@@ -147,7 +140,6 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
     }, {});
   }, [interactive.params.inputForm]);
 
-  // 提交表单时的处理
   const handleFormSubmit = useCallback(
     (formData: Record<string, any>) => {
       if (!nodeId) return;
@@ -170,7 +162,6 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
     [nodeId, startDebug, interactive.params.inputForm]
   );
 
-  // 设置已提交状态
   useEffect(() => {
     if (interactive.params.submitted) {
       setIsSubmitted(true);

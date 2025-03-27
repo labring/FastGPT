@@ -6,7 +6,6 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
   Flex,
   HStack
 } from '@chakra-ui/react';
@@ -16,7 +15,7 @@ import {
   ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import {
@@ -223,7 +222,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 }) {
   const { t } = useTranslation();
 
-  // 处理默认值
   const defaultValues = useMemo(() => {
     if (interactive.type === 'userInput') {
       return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
@@ -234,7 +232,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
     return {};
   }, [interactive]);
 
-  // 提交表单时的处理
   const handleFormSubmit = useCallback((data: Record<string, any>) => {
     onSendPrompt({
       text: JSON.stringify(data),
