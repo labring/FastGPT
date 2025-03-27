@@ -1,4 +1,7 @@
 {
+  "notification_detail": "notification details",
   "no_notifications": "No notification yet",
-  "read": "Read"
+  "read": "Read",
+  "system": "official",
+  "team": "team"
 }

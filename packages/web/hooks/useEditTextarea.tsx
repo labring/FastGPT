@@ -17,13 +17,15 @@ export const useEditTextarea = ({
   tip,
   placeholder = '',
   canEmpty = true,
-  valueRule
+  valueRule,
+  rows = 10
 }: {
   title: string;
   tip?: string;
   placeholder?: string;
   canEmpty?: boolean;
   valueRule?: (val: string) => string | void;
+  rows?: number;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -105,7 +107,7 @@ export const useEditTextarea = ({
             placeholder={placeholder}
             autoFocus
             maxLength={maxLength}
-            rows={10}
+            rows={rows}
             bg={'myGray.50'}
           />
         </ModalBody>
