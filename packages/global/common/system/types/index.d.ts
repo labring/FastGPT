@@ -112,7 +112,7 @@ export type SystemEnvType = {
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
-  pgHNSWEfSearch: number;
+  hnswEfSearch: number;
   tokenWorkers: number; // token count max worker
 
   oneapiUrl?: string;
