@@ -1,18 +1,43 @@
 import { PermissionKeyEnum } from '../constant';
 import { PermissionListType } from '../type';
 import { PermissionList } from '../constant';
-export const TeamPermissionList: PermissionListType = {
+import { i18nT } from '../../../../web/i18n/utils';
+export enum TeamPermissionKeyEnum {
+  appCreate = 'appCreate',
+  datasetCreate = 'datasetCreate',
+  apikeyCreate = 'apikeyCreate'
+}
+
+export const TeamPermissionList: PermissionListType<TeamPermissionKeyEnum> = {
   [PermissionKeyEnum.read]: {
     ...PermissionList[PermissionKeyEnum.read],
-    value: 0b100
+    value: 0b000100
   },
   [PermissionKeyEnum.write]: {
     ...PermissionList[PermissionKeyEnum.write],
-    value: 0b010
+    value: 0b000010
   },
   [PermissionKeyEnum.manage]: {
     ...PermissionList[PermissionKeyEnum.manage],
-    value: 0b001
+    value: 0b000001
+  },
+  [TeamPermissionKeyEnum.appCreate]: {
+    checkBoxType: 'multiple',
+    description: '',
+    name: i18nT('common:permission.team.appCreate'),
+    value: 0b001000
+  },
+  [TeamPermissionKeyEnum.datasetCreate]: {
+    checkBoxType: 'multiple',
+    description: '',
+    name: i18nT('common:permission.team.datasetCreate'),
+    value: 0b010000
+  },
+  [TeamPermissionKeyEnum.apikeyCreate]: {
+    checkBoxType: 'multiple',
+    description: '',
+    name: i18nT('common:permission.team.apikeyCreate'),
+    value: 0b100000
   }
 };
 
