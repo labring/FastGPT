@@ -11,7 +11,7 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   concatHistories,
   getChatTitleFromChatMessage,
@@ -25,8 +25,8 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { chatValue2RuntimePrompt, GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import {
   getLastInteractiveValue,
   getMaxHistoryLimitFromNodes,
@@ -36,7 +36,7 @@ import {
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';

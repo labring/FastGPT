@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Card, Flex, FlexProps } from '@chakra-ui/react';
+import { Box, Button, Card, Flex, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';

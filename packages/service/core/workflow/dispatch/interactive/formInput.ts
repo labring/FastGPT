@@ -1,11 +1,11 @@
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
+import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import {
+import type {
   UserInputFormItemType,
   UserInputInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';

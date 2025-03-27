@@ -1,7 +1,13 @@
 import React, { useCallback } from 'react';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { Controller, useForm, UseFormProps, UseFormReturn, FieldValues } from 'react-hook-form';
+import {
+  Controller,
+  useForm,
+  type UseFormProps,
+  type UseFormReturn,
+  type FieldValues
+} from 'react-hook-form';
 import Markdown from '@/components/Markdown';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';

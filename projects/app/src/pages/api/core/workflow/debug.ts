@@ -5,7 +5,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
-import { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
+import type { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
