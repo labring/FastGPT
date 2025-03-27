@@ -55,7 +55,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
   const prepareSpeak = () => {
     setNeedspeak(true);
-    console.log("切换为说话");
     if (!navigator?.mediaDevices?.getUserMedia) {
       return toast({
         status: 'warning',
@@ -86,15 +85,12 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       if (stopCalledRef.current) {
         stream.getTracks().forEach(track => track.stop());
         setPendingStream(null);
-        console.log("取消流创建")
         return;
       }
 
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       setIsSpeaking(true);
-      console.log("创建完成",mediaRecorder);
-
       mediaRecorder.current.onstart = () => {
         startTimestamp.current = Date.now();
         setAudioSecond(0);
@@ -171,7 +167,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         stream.getTracks().forEach((track) => track.stop());
 
         setIsTransCription(false);
-        console.log("关闭流")
         setIsSpeaking(false);
       };
 
@@ -191,10 +186,8 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   };
 
   const stopSpeak = (cancel = false) => {
-    console.log("cancel", cancel);
     cancelWhisperSignal.current = cancel;
     stopCalledRef.current = true;
-    console.log(mediaRecorder);
     // 立即停止挂起的流
     if (pendingStream) {
       pendingStream.getTracks().forEach(track => track.stop());
@@ -227,13 +220,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     };
   }, []);
 
-  // // listen minuted. over 60 seconds, stop speak
-  // useEffect(() => {
-  //   if (audioSecond >= 60) {
-  //     console.log(audioSecond)
-  //     stopSpeak();
-  //   }
-  // }, [audioSecond]);
+  // listen minuted. over 60 seconds, stop speak
+  useEffect(() => {
+    if (audioSecond >= 60) {
+      console.log(audioSecond)
+      stopSpeak();
+    }
+  }, [audioSecond]);
 
   return {
     startSpeak,
