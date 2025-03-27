@@ -40,10 +40,7 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
         params: {
           description,
           userSelectOptions
-        },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
+        }
       }
     };
   }

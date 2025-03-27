@@ -42,10 +42,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
         params: {
           description,
           inputForm: userInputForms
-        },
-        entryNodeIds: [],
-        memoryEdges: [],
-        nodeOutputs: []
+        }
       }
     };
   }

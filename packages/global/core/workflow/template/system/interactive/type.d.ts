@@ -30,9 +30,9 @@ export type UserInputFormItemType = {
 };
 
 type InteractiveBasicType = {
-  entryNodeIds: string[];
-  memoryEdges: RuntimeEdgeItemType[];
-  nodeOutputs: NodeOutputItemType[];
+  entryNodeIds?: string[];
+  memoryEdges?: RuntimeEdgeItemType[];
+  nodeOutputs?: NodeOutputItemType[];
 
   toolParams?: {
     entryNodeIds: string[]; // 记录工具中，交互节点的 Id，而不是起始工作流的入口
