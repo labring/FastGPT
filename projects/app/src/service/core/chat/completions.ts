@@ -91,7 +91,7 @@ type AuthResponseType = {
 };
 
 type CompletionsConfig = {
-  isV2: boolean;
+  version: 'v1' | 'v2';
 };
 
 export const createCompletionsHandler = (config: CompletionsConfig) => {
@@ -237,7 +237,7 @@ export const createCompletionsHandler = (config: CompletionsConfig) => {
         detail,
         streamResponse: stream,
         showNodeStatus,
-        isV2: config.isV2
+        version: config.version
       });
 
       const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
@@ -269,7 +269,7 @@ export const createCompletionsHandler = (config: CompletionsConfig) => {
             stream,
             maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             workflowStreamResponse: workflowResponseWrite,
-            isV2: config.isV2
+            version: config.version
           });
         }
         return Promise.reject('您的工作流版本过低，请重新发布一次');
@@ -347,7 +347,7 @@ export const createCompletionsHandler = (config: CompletionsConfig) => {
           res,
           event: detail ? SseResponseEventEnum.answer : undefined,
           data: '[DONE]',
-          isV2: config.isV2
+          version: config.version
         });
 
         res.end();
