@@ -55,10 +55,10 @@ import {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -260,8 +260,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res,
       detail,
       streamResponse: stream,
-      id: chatId,
-      showNodeStatus
+      showNodeStatus,
+      isV2: true
     });
 
     /* start flow controller */
@@ -295,7 +295,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           histories: newHistories,
           stream,
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-          workflowStreamResponse: workflowResponseWrite
+          workflowStreamResponse: workflowResponseWrite,
+          isV2: true
         });
       }
       return Promise.reject('您的工作流版本过低，请重新发布一次');
@@ -380,15 +381,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseWrite({
         res,
         event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
+        data: '[DONE]',
+        isV2: true
       });
-
-      if (detail) {
-        workflowResponseWrite({
-          event: SseResponseEventEnum.flowResponses,
-          data: feResponseData
-        });
-      }
 
       res.end();
     } else {

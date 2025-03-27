@@ -129,19 +129,29 @@ export function responseWrite({
   res,
   write,
   event,
-  data
+  data,
+  isV2 = false
 }: {
   res?: NextApiResponse;
   write?: (text: string) => void;
   event?: string;
   data: string;
+  isV2?: boolean;
 }) {
   const Write = write || res?.write;
 
   if (!Write) return;
 
-  event && Write(`event: ${event}\n`);
-  Write(`data: ${data}\n\n`);
+  if (!isV2) {
+    event && Write(`event: ${event}\n`);
+    Write(`data: ${data}\n\n`);
+  } else {
+    const dataJSON = {
+      event,
+      data
+    };
+    Write(`${JSON.stringify(dataJSON)}\n\n`);
+  }
 }
 
 export const responseWriteNodeStatus = ({
