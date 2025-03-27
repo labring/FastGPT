@@ -31,7 +31,7 @@ import {
   type SelectOptionType,
   FormInputComponent,
   type FormItemType
-} from './Form/FormComponents';
+} from './Interactive/InteractiveComponents';
 const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
   eventBus.emit(EventNameEnum.sendQuestion, e);
 const formatJsonString = (jsonString: string) => {

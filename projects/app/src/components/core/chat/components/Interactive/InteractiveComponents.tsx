@@ -29,7 +29,6 @@ const DescriptionBox = React.memo(function DescriptionBox({
   description?: string;
 }) {
   if (!description) return null;
-
   return (
     <Box
       mb={4}

@@ -15,7 +15,7 @@ import {
   type FormItemType,
   FormInputComponent,
   SelectOptionsComponent
-} from '@/components/core/chat/components/Form/FormComponents';
+} from '@/components/core/chat/components/Interactive/InteractiveComponents';
 const useInteractiveDebug = (
   interactive: UserSelectInteractive | UserInputInteractive,
   nodeId?: string
