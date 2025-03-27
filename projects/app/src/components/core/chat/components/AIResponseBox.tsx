@@ -33,18 +33,8 @@ import {
   FormItem
 } from './Form/FormComponents';
 
-type props = {
-  value: UserChatItemValueItemType | AIChatItemValueItemType;
-  isLastResponseValue: boolean;
-  isChatting: boolean;
-};
-
-interface SendPromptParams {
-  text: string;
-  isInteractivePrompt: boolean;
-}
-
-const onSendPrompt = (e: SendPromptParams) => eventBus.emit(EventNameEnum.sendQuestion, e);
+const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
+  eventBus.emit(EventNameEnum.sendQuestion, e);
 
 const RenderText = React.memo(function RenderText({
   showAnimation,
@@ -254,7 +244,15 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   );
 });
 
-const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
+const AIResponseBox = React.memo(function AIResponseBox({
+  value,
+  isLastResponseValue,
+  isChatting
+}: {
+  value: UserChatItemValueItemType | AIChatItemValueItemType;
+  isLastResponseValue: boolean;
+  isChatting: boolean;
+}) {
   if (value.type === ChatItemValueTypeEnum.text && value.text)
     return (
       <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
@@ -277,6 +275,6 @@ const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
   }
 
   return null;
-};
+});
 
-export default React.memo(AIResponseBox);
+export default AIResponseBox;
