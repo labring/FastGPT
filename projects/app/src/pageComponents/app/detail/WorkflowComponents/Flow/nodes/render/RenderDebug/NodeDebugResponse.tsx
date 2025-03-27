@@ -12,26 +12,20 @@ import {
   RenderUserSelectInteractive,
   RenderUserFormInteractive
 } from './InteractiveComponents/DebugInteractive';
-
 type NodeDebugResponseProps = {
   nodeId: string;
   debugResult: FlowNodeItemType['debugResult'];
 };
-
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
-
   const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
-
   const interactive = debugResult?.workflowInteractiveResponse;
-
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('common:core.workflow.Confirm stop debug')
   });
-
   const RenderStatus = useMemo(() => {
     const map = {
       running: {
@@ -55,15 +49,11 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
         icon: 'core/workflow/runSkip'
       }
     };
-
     const statusData = map[debugResult?.status || 'running'];
-
     const response = debugResult?.response;
-
     const onStop = () => {
       openConfirm(onStopNodeDebug)();
     };
-
     return !!debugResult && !!statusData ? (
       <>
         <Flex px={3} bg={statusData.bg} borderTopRadius={'md'} py={3}>
@@ -184,7 +174,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
     t,
     workflowDebugData
   ]);
-
   return (
     <>
       {RenderStatus}
@@ -192,5 +181,4 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
     </>
   );
 };
-
 export default React.memo(NodeDebugResponse);
