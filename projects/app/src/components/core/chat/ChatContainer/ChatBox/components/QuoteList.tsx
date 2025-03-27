@@ -18,7 +18,7 @@ const QuoteList = React.memo(function QuoteList({
   rawSearch: SearchDataResponseItemType[];
 }) {
   const theme = useTheme();
-  const { chatId, appId, outLinkAuthData } = useChatStore();
+  const { appId, outLinkAuthData } = useChatStore();
 
   const RawSourceBoxProps = useContextSelector(ChatBoxContext, (v) => ({
     chatItemDataId,
@@ -39,10 +39,11 @@ const QuoteList = React.memo(function QuoteList({
         collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
         chatItemDataId,
         appId,
-        chatId,
+        chatId: RawSourceBoxProps.chatId,
         ...outLinkAuthData
       }),
     {
+      refreshDeps: [rawSearch, RawSourceBoxProps.chatId],
       manual: false
     }
   );
