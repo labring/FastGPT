@@ -355,29 +355,27 @@ FastGPT 提供如下标准接口支持：
 3. https://example.com/org/list 获取组织列表
 4. https://example.com/user/list 获取成员列表
 
-### 获取登录重定向地址
+### 获取 SSO 登录重定向地址
 
-返回一个重定向登录地址，fastgpt 会自动重定向到该地址。
+返回一个重定向登录地址，fastgpt 会自动重定向到该地址。redirect_uri  会自动拼接到该地址的 query中。
 
-redirect_uri  会自动拼接到该地址的 query中。
-
-返回如下信息(JSON):
-
-```JSON
-{
-   "success": true,
-   "message": "错误信息",
-   "authURL": "https://example.com/somepath/login/oauth?redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider%0A"
-}
-```
-
-curl示例
+{{< tabs tabTotal="2" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
 
 ```bash
 curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
 -H "Authorization: Bearer your_token_here" \
 -H "Content-Type: application/json"
 ```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+成功：
 
 ```JSON
 {
@@ -387,23 +385,28 @@ curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&stat
 }
 ```
 
-### 获取用户信息
-
-该接口接受一个 code 参数作为鉴权，消费 code 返回用户信息。
-
-返回如下信息(JSON):
+失败：
 
 ```JSON
 {
-  "success": true,
-  "message": "错误信息",
-  "username": "用户名，用于注册 fastgpt，全局唯一的， fastgpt不会自动拼接任何前缀",
-  "avatar": "头像，可以为空",
-  "contact": "联系方式，最好不为空"
+   "success": false,
+   "message": "错误信息",
+   "authURL": ""
 }
 ```
 
-curl示例
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+
+### SSO 获取用户信息
+
+该接口接受一个 code 参数作为鉴权，消费 code 返回用户信息。
+
+{{< tabs tabTotal="2" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
 
 ```bash
 curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
@@ -411,25 +414,60 @@ curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
 -H "Content-Type: application/json"
 ```
 
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+成功：
 ```JSON
 {
   "success": true,
   "message": "",
-  "username": "open-123456789“,
+  "username": "fastgpt-123456789",
   "avatar": "https://example.webp",
   "contact": "+861234567890",
-  "memberName": "非必填",
+  "memberName": "成员名（非必填）",
 }
 ```
 
+失败：
+```JSON
+{
+  "success": false,
+  "message": "错误信息",
+  "username": "",
+  "avatar": "",
+  "contact": ""
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
 ### 获取组织
 
-1. 同步组织 /org/list
+{{< tabs tabTotal="2" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
 
-⚠️注意：只能存在一个根部门。如果你的系统中存在多个根部门，需要先进行处理，加一个虚拟的根部门。
-返回值类型：
+```bash
+curl -X GET "https://example.com/org/list" \
+-H "Authorization: Bearer your_token_here" \
+-H "Content-Type: application/json"
+```
 
-```typescript
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+⚠️注意：只能存在一个根部门。如果你的系统中存在多个根部门，需要先进行处理，加一个虚拟的根部门。返回值类型：
+
+```ts
 type OrgListResponseType = {
     message?: string; // 报错信息
     success: boolean;
@@ -439,14 +477,6 @@ type OrgListResponseType = {
         parentId: string; // parentId，如果为根部门，传空字符串。
     }[];
 }
-```
-
-curl示例
-
-```bash
-curl -X GET "https://example.com/org/list" \
--H "Authorization: Bearer your_token_here" \
--H "Content-Type: application/json"
 ```
 
 ```JSON
@@ -468,9 +498,29 @@ curl -X GET "https://example.com/org/list" \
 }
 ```
 
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+
 ### 获取成员
 
-1. 同步用户 /user/list
+
+{{< tabs tabTotal="2" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl -X GET "https://example.com/user/list" \
+-H "Authorization: Bearer your_token_here" \
+-H "Content-Type: application/json"
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
 
 返回值类型：
 
@@ -479,8 +529,7 @@ type UserListResponseListType = {
     message?: string; // 报错信息
     success: boolean;
     userList: {
-      username: string; // 唯一 id username 必须与 SSO 接口返回的用户 username 相同
-                        // 必须携带一个前缀，例如: sync-aaaaa，和 sso 接口返回的前缀一致 
+      username: string; // 唯一 id username 必须与 SSO 接口返回的用户 username 相同。并且必须携带一个前缀，例如: sync-aaaaa，和 sso 接口返回的前缀一致 
       memberName?: string; // 名字，作为 tmbname
       avatar?: string;
       contact?: string; // email or phone number
@@ -490,26 +539,20 @@ type UserListResponseListType = {
 ```
 curl示例
 
-```bash
-curl -X GET "https://example.com/user/list" \
--H "Authorization: Bearer your_token_here" \
--H "Content-Type: application/json"
-```
-
 ```JSON
 {
   "success": true,
   "message": "",
   "userList": [
     {
-      "username": "od-123456789",
+      "username": "fastgpt-123456789",
       "memberName": "张三",
       "avatar": "https://example.webp",
       "contact": "+861234567890",
       "orgs": ["od-125151515", "od-51516152"]
     },
     {
-      "username": "od-12345678999",
+      "username": "fastgpt-12345678999",
       "memberName": "李四",
       "avatar": "",
       "contact": "",
@@ -519,6 +562,12 @@ curl -X GET "https://example.com/user/list" \
 
 }
 ```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+
 
 
 ## 如何对接非标准系统
