@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest) {
   return await getParents(type === 'current' ? dataset._id : dataset.parentId);
 }
 
-async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> {
+export async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> {
   if (!parentId) {
     return [];
   }
@@ -41,5 +41,3 @@ async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> 
 }
 
 export default NextAPI(handler);
-
-export { getParents };
