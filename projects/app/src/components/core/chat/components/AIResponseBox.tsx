@@ -10,7 +10,7 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
+import type {
   AIChatItemValueItemType,
   ToolModuleResponseItemType,
   UserChatItemValueItemType
@@ -18,7 +18,7 @@ import {
 import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import {
+import type {
   InteractiveBasicType,
   UserInputInteractive,
   UserSelectInteractive
@@ -28,13 +28,60 @@ import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import {
   SelectOptionsComponent,
-  SelectOption,
+  type SelectOptionType,
   FormInputComponent,
-  FormItem
+  type FormItemType
 } from './Form/FormComponents';
 
 const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
   eventBus.emit(EventNameEnum.sendQuestion, e);
+
+const formatJsonString = (jsonString: string) => {
+  try {
+    return JSON.stringify(JSON.parse(jsonString), null, 2);
+  } catch (error) {
+    return jsonString;
+  }
+};
+
+const StyledAccordionItem = React.memo(function StyledAccordionItem({
+  children
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AccordionItem borderTop={'none'} borderBottom={'none'}>
+      {children}
+    </AccordionItem>
+  );
+});
+
+const StyledAccordionButton = React.memo(function StyledAccordionButton({
+  children,
+  py = 0
+}: {
+  children: React.ReactNode;
+  py?: number | string;
+}) {
+  return (
+    <AccordionButton
+      w={'auto'}
+      bg={'white'}
+      borderRadius={'md'}
+      borderWidth={'1px'}
+      borderColor={'myGray.200'}
+      boxShadow={'1'}
+      pl={3}
+      pr={2.5}
+      py={py}
+      _hover={{
+        bg: 'auto'
+      }}
+    >
+      {children}
+    </AccordionButton>
+  );
+});
 
 const RenderText = React.memo(function RenderText({
   showAnimation,
@@ -58,44 +105,20 @@ const RenderTool = React.memo(
     return (
       <Box>
         {tools.map((tool) => {
-          const toolParams = (() => {
-            try {
-              return JSON.stringify(JSON.parse(tool.params), null, 2);
-            } catch (error) {
-              return tool.params;
-            }
-          })();
-          const toolResponse = (() => {
-            try {
-              return JSON.stringify(JSON.parse(tool.response), null, 2);
-            } catch (error) {
-              return tool.response;
-            }
-          })();
+          const toolParams = formatJsonString(tool.params);
+          const toolResponse = formatJsonString(tool.response);
 
           return (
             <Accordion key={tool.id} allowToggle _notLast={{ mb: 2 }}>
-              <AccordionItem borderTop={'none'} borderBottom={'none'}>
-                <AccordionButton
-                  w={'auto'}
-                  bg={'white'}
-                  borderRadius={'md'}
-                  borderWidth={'1px'}
-                  borderColor={'myGray.200'}
-                  boxShadow={'1'}
-                  pl={3}
-                  pr={2.5}
-                  _hover={{
-                    bg: 'auto'
-                  }}
-                >
+              <StyledAccordionItem>
+                <StyledAccordionButton>
                   <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
                   <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
                     {tool.toolName}
                   </Box>
                   {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
                   <AccordionIcon color={'myGray.600'} ml={5} />
-                </AccordionButton>
+                </StyledAccordionButton>
                 <AccordionPanel
                   py={0}
                   px={0}
@@ -120,7 +143,7 @@ ${toolResponse}`}
                     />
                   )}
                 </AccordionPanel>
-              </AccordionItem>
+              </StyledAccordionItem>
             </Accordion>
           );
         })}
@@ -144,21 +167,8 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 
   return (
     <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
-      <AccordionItem borderTop={'none'} borderBottom={'none'}>
-        <AccordionButton
-          w={'auto'}
-          bg={'white'}
-          borderRadius={'md'}
-          borderWidth={'1px'}
-          borderColor={'myGray.200'}
-          boxShadow={'1'}
-          pl={3}
-          pr={2.5}
-          py={1}
-          _hover={{
-            bg: 'auto'
-          }}
-        >
+      <StyledAccordionItem>
+        <StyledAccordionButton py={1}>
           <HStack mr={2} spacing={1}>
             <MyIcon name={'core/chat/think'} w={'0.85rem'} />
             <Box fontSize={'sm'}>{t('chat:ai_reasoning')}</Box>
@@ -166,7 +176,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 
           {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
           <AccordionIcon color={'myGray.600'} ml={5} />
-        </AccordionButton>
+        </StyledAccordionButton>
         <AccordionPanel
           py={0}
           pr={0}
@@ -178,7 +188,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
         >
           <Markdown source={content} showAnimation={showAnimation} />
         </AccordionPanel>
-      </AccordionItem>
+      </StyledAccordionItem>
     </Accordion>
   );
 });
@@ -190,7 +200,7 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
 }) {
   return (
     <SelectOptionsComponent
-      options={(interactive.params.userSelectOptions || []) as SelectOption[]}
+      options={(interactive.params.userSelectOptions || []) as SelectOptionType[]}
       description={interactive.params.description}
       selectedValue={interactive.params.userSelectedVal}
       onSelectOption={(value: string) => {
@@ -232,7 +242,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
       <FormInputComponent
-        inputForm={(interactive.params.inputForm || []) as FormItem[]}
+        inputForm={(interactive.params.inputForm || []) as FormItemType[]}
         description={interactive.params.description}
         onSubmit={handleFormSubmit}
         isDisabled={interactive.params.submitted}
@@ -244,6 +254,44 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   );
 });
 
+const getResponseRenderer = (
+  value: UserChatItemValueItemType | AIChatItemValueItemType,
+  isChatting: boolean,
+  isLastResponseValue: boolean
+) => {
+  if (value.type === ChatItemValueTypeEnum.text && value.text) {
+    return (
+      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
+    );
+  }
+
+  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
+    return (
+      <RenderResoningContent
+        isChatting={isChatting}
+        isLastResponseValue={isLastResponseValue}
+        content={value.reasoning.content}
+      />
+    );
+  }
+
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
+    return <RenderTool showAnimation={isChatting} tools={value.tools} />;
+  }
+
+  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
+    if (value.interactive.type === 'userSelect') {
+      return <RenderUserSelectInteractive interactive={value.interactive} />;
+    }
+    if (value.interactive?.type === 'userInput') {
+      return <RenderUserFormInteractive interactive={value.interactive} />;
+    }
+  }
+
+  return null;
+};
+
+// AI响应框主组件
 const AIResponseBox = React.memo(function AIResponseBox({
   value,
   isLastResponseValue,
@@ -253,28 +301,7 @@ const AIResponseBox = React.memo(function AIResponseBox({
   isLastResponseValue: boolean;
   isChatting: boolean;
 }) {
-  if (value.type === ChatItemValueTypeEnum.text && value.text)
-    return (
-      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
-    );
-  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning)
-    return (
-      <RenderResoningContent
-        isChatting={isChatting}
-        isLastResponseValue={isLastResponseValue}
-        content={value.reasoning.content}
-      />
-    );
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools)
-    return <RenderTool showAnimation={isChatting} tools={value.tools} />;
-  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
-    if (value.interactive.type === 'userSelect')
-      return <RenderUserSelectInteractive interactive={value.interactive} />;
-    if (value.interactive?.type === 'userInput')
-      return <RenderUserFormInteractive interactive={value.interactive} />;
-  }
-
-  return null;
+  return getResponseRenderer(value, isChatting, isLastResponseValue);
 });
 
 export default AIResponseBox;
