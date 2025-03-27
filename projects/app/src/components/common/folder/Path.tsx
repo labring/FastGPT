@@ -46,7 +46,7 @@ const FolderPath = (props: {
             borderRadius={'md'}
             maxW={'45vw'}
             className={'textEllipsis'}
-            {...(i === concatPaths.length - 1
+            {...(i === concatPaths.length - 1 && concatPaths.length > 1
               ? {
                   cursor: 'default',
                   color: 'myGray.700',
