@@ -16,7 +16,6 @@ import {
   FormInputComponent,
   SelectOptionsComponent
 } from '@/components/core/chat/components/Form/FormComponents';
-
 const useInteractiveDebug = (
   interactive: UserSelectInteractive | UserInputInteractive,
   nodeId?: string
@@ -25,7 +24,6 @@ const useInteractiveDebug = (
     onStartNodeDebug: v.onStartNodeDebug,
     workflowDebugData: v.workflowDebugData
   }));
-
   const interactiveData = useMemo(() => {
     return {
       ...interactive,
@@ -34,7 +32,6 @@ const useInteractiveDebug = (
       nodeOutputs: interactive?.nodeOutputs || []
     };
   }, [interactive]);
-
   const createMockHistory = useCallback((): ChatItemType[] => {
     return [
       {
@@ -48,7 +45,6 @@ const useInteractiveDebug = (
       }
     ];
   }, [interactiveData]);
-
   const startDebug = useCallback(
     (userContent: string, nodeUpdater: (node: any) => any) => {
       if (!nodeId || !workflowDebugData) return;
@@ -59,7 +55,6 @@ const useInteractiveDebug = (
           text: { content: userContent }
         }
       ];
-
       const mockHistory = createMockHistory();
       const updatedRuntimeEdges = initWorkflowEdgeStatus(
         workflowDebugData.runtimeEdges,
@@ -68,7 +63,6 @@ const useInteractiveDebug = (
       const updatedRuntimeNodes = workflowDebugData.runtimeNodes.map((node) =>
         node.nodeId === nodeId ? nodeUpdater(node) : node
       );
-
       onStartNodeDebug({
         entryNodeId: nodeId,
         runtimeNodes: updatedRuntimeNodes,
@@ -80,10 +74,8 @@ const useInteractiveDebug = (
     },
     [nodeId, workflowDebugData, onStartNodeDebug, createMockHistory]
   );
-
   return { workflowDebugData, interactiveData, startDebug };
 };
-
 export const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive,
   nodeId
@@ -92,7 +84,6 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
   nodeId?: string;
 }) {
   const { startDebug } = useInteractiveDebug(interactive, nodeId);
-
   const handleSelectAndNext = useCallback(
     (value: string) => {
       startDebug(value || '', (node) => ({
@@ -108,7 +99,6 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
     },
     [startDebug]
   );
-
   return (
     <Box px={4} py={3}>
       <SelectOptionsComponent
@@ -121,7 +111,6 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
     </Box>
   );
 });
-
 export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive,
   nodeId
@@ -132,19 +121,16 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   const { t } = useTranslation();
   const [isSubmitted, setIsSubmitted] = useState(false);
   const { startDebug } = useInteractiveDebug(interactive, nodeId);
-
   const defaultValues = useMemo(() => {
     return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
       acc[item.label] = !!item.value ? item.value : item.defaultValue;
       return acc;
     }, {});
   }, [interactive.params.inputForm]);
-
   const handleFormSubmit = useCallback(
     (formData: Record<string, any>) => {
       if (!nodeId) return;
       setIsSubmitted(true);
-
       startDebug(JSON.stringify(formData), (node) => ({
         ...node,
         inputs: node.inputs.map((input: { key: string }) => {
@@ -161,13 +147,11 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
     },
     [nodeId, startDebug, interactive.params.inputForm]
   );
-
   useEffect(() => {
     if (interactive.params.submitted) {
       setIsSubmitted(true);
     }
   }, [interactive.params.submitted]);
-
   return (
     <Box px={4} py={4} bg="white" borderRadius="md">
       <FormInputComponent
