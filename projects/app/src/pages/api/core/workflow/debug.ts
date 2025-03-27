@@ -52,33 +52,34 @@ async function handler(
   const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
   /* start process */
-  const { flowUsages, flowResponses, debugResponse, newVariables } = await dispatchWorkFlow({
-    res,
-    requestOrigin: req.headers.origin,
-    mode: 'debug',
-    timezone,
-    externalProvider,
-    uid: tmbId,
+  const { flowUsages, flowResponses, debugResponse, newVariables, workflowInteractiveResponse } =
+    await dispatchWorkFlow({
+      res,
+      requestOrigin: req.headers.origin,
+      mode: 'debug',
+      timezone,
+      externalProvider,
+      uid: tmbId,
 
-    runningAppInfo: {
-      id: app._id,
-      teamId: app.teamId,
-      tmbId: app.tmbId
-    },
-    runningUserInfo: {
-      teamId,
-      tmbId
-    },
+      runningAppInfo: {
+        id: app._id,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: {
+        teamId,
+        tmbId
+      },
 
-    runtimeNodes: nodes,
-    runtimeEdges: edges,
-    variables,
-    query: query,
-    chatConfig: defaultApp.chatConfig,
-    histories: history,
-    stream: false,
-    maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-  });
+      runtimeNodes: nodes,
+      runtimeEdges: edges,
+      variables,
+      query: query,
+      chatConfig: defaultApp.chatConfig,
+      histories: history,
+      stream: false,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+    });
 
   createChatUsage({
     appName: `${app.name}-Debug`,
@@ -92,7 +93,8 @@ async function handler(
   return {
     ...debugResponse,
     newVariables,
-    flowResponses
+    flowResponses,
+    workflowInteractiveResponse
   };
 }
 
