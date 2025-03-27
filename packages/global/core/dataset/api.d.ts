@@ -1,5 +1,10 @@
 import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import { DatasetCollectionTypeEnum, DatasetCollectionDataProcessModeEnum } from './constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetCollectionDataProcessModeEnum,
+  ChunkSettingModeEnum,
+  DataChunkSplitModeEnum
+} from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
 import { ParentIdType } from 'common/parentFolder/type';
 
@@ -33,7 +38,13 @@ export type DatasetCollectionChunkMetadataType = {
   trainingType?: DatasetCollectionDataProcessModeEnum;
   imageIndex?: boolean;
   autoIndexes?: boolean;
+
+  chunkSettingMode?: ChunkSettingModeEnum;
+  chunkSplitMode?: DataChunkSplitModeEnum;
+
   chunkSize?: number;
+  indexSize?: number;
+
   chunkSplitter?: string;
   qaPrompt?: string;
   metadata?: Record<string, any>;

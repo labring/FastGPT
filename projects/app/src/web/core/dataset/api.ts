@@ -27,12 +27,7 @@ import type {
   TextCreateDatasetCollectionParams,
   UpdateDatasetCollectionTagParams
 } from '@fastgpt/global/core/dataset/api.d';
-import type {
-  GetTrainingQueueProps,
-  GetTrainingQueueResponse,
-  SearchTestProps,
-  SearchTestResponse
-} from '@/global/core/dataset/api.d';
+import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
@@ -67,6 +62,7 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
+import type { GetQueueLenResponse } from '@/pages/api/core/dataset/training/getQueueLen';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -215,8 +211,8 @@ export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
   POST(`/core/dataset/training/rebuildEmbedding`, data);
 
 /* get length of system training queue */
-export const getTrainingQueueLen = (data: GetTrainingQueueProps) =>
-  GET<GetTrainingQueueResponse>(`/core/dataset/training/getQueueLen`, data);
+export const getTrainingQueueLen = () =>
+  GET<GetQueueLenResponse>(`/core/dataset/training/getQueueLen`);
 export const getDatasetTrainingQueue = (datasetId: string) =>
   GET<getDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
     datasetId

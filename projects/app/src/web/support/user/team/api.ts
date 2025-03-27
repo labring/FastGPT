@@ -21,7 +21,6 @@ import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fe
 import type {
   InvitationInfoType,
   InvitationLinkCreateType,
-  InvitationLinkUpdateType,
   InvitationType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
 
@@ -35,8 +34,18 @@ export const putSwitchTeam = (teamId: string) =>
   PUT<string>(`/proApi/support/user/team/switch`, { teamId });
 
 /* --------------- team member ---------------- */
-export const getTeamMembers = (props: PaginationProps<{ withLeaved?: boolean }>) =>
-  GET<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props);
+export const getTeamMembers = (
+  props: PaginationProps<{
+    status?: 'active' | 'inactive';
+    withOrgs?: boolean;
+    withPermission?: boolean;
+    searchKey?: string;
+    orgId?: string;
+    groupId?: string;
+  }>
+) => POST<PaginationResponse<TeamMemberItemType>>(`/proApi/support/user/team/member/list`, props);
+export const getTeamMemberCount = () =>
+  GET<{ count: number }>(`/proApi/support/user/team/member/count`);
 
 // export const postInviteTeamMember = (data: InviteMemberProps) =>
 //   POST<InviteMemberResponse>(`/proApi/support/user/team/member/invite`, data);
@@ -66,9 +75,8 @@ export const postAcceptInvitationLink = (linkId: string) =>
 
 export const getInvitationInfo = (linkId: string) =>
   GET<InvitationInfoType>(`/proApi/support/user/team/invitationLink/info`, { linkId });
-
-export const putUpdateInvitationInfo = (data: InvitationLinkUpdateType) =>
-  PUT('/proApi/support/user/team/invitationLink/update', data);
+export const putForbidInvitationLink = (linkId: string) =>
+  PUT<string>(`/proApi/support/user/team/invitationLink/forbid`, { linkId });
 
 /* -------------- team collaborator -------------------- */
 export const getTeamClbs = () =>

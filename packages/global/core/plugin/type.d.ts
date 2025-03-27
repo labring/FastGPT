@@ -41,6 +41,8 @@ export type PluginTemplateType = PluginRuntimeType & {
 export type PluginRuntimeType = {
   id: string;
   teamId?: string;
+  tmbId?: string;
+
   name: string;
   avatar: string;
   showStatus?: boolean;

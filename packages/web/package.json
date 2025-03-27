@@ -34,7 +34,8 @@
     "react-hook-form": "7.43.1",
     "react-i18next": "14.1.2",
     "react-photo-view": "^1.2.6",
-    "use-context-selector": "^1.4.4"
+    "use-context-selector": "^1.4.4",
+    "zustand": "^4.3.5"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.5",

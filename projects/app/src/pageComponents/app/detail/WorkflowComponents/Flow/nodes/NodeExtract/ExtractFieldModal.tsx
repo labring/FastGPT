@@ -96,7 +96,7 @@ const ExtractFieldModal = ({
           <Input
             bg={'myGray.50'}
             placeholder="name/age/sql"
-            maxLength={20}
+            maxLength={100}
             {...register('key', { required: true })}
           />
         </Flex>

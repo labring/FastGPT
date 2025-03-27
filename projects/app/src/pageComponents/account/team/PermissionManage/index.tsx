@@ -75,6 +75,7 @@ function PermissionManage({
   const { data: searchResult } = useRequest2(() => GetSearchUserGroupOrg(searchKey), {
     manual: false,
     throttleWait: 500,
+    debounceWait: 200,
     refreshDeps: [searchKey]
   });
 
