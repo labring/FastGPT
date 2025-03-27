@@ -81,7 +81,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const {
     currentOrg,
     orgs,
-    isLoadingOrgs,
+    isLoading,
     paths,
     onClickOrg,
     members,
@@ -134,18 +134,14 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
           />
         </Box>
       </Flex>
-      <MyBox
-        flex={'1 0 0'}
-        h={0}
-        display={'flex'}
-        flexDirection={'column'}
-        isLoading={isLoadingOrgs}
-      >
+      <MyBox flex={'1 0 0'} h={0} display={'flex'} flexDirection={'column'}>
         <Box mb={3}>
-          <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={onPathClick} />
+          {!searchKey && (
+            <Path paths={paths} rootName={userInfo?.team?.teamName} onClick={onPathClick} />
+          )}
         </Box>
         <Flex flex={'1 0 0'} h={0} w={'100%'} gap={'4'}>
-          <MemberScrollData flex="1">
+          <MemberScrollData flex="1" isLoading={isLoading}>
             <TableContainer>
               <Table>
                 <Thead>
