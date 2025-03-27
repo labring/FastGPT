@@ -24,19 +24,19 @@ export const TeamPermissionList: PermissionListType<TeamPermissionKeyEnum> = {
   [TeamPermissionKeyEnum.appCreate]: {
     checkBoxType: 'multiple',
     description: '',
-    name: i18nT('common:permission.team.appCreate'),
+    name: i18nT('account_team:permission_appCreate'),
     value: 0b001000
   },
   [TeamPermissionKeyEnum.datasetCreate]: {
     checkBoxType: 'multiple',
     description: '',
-    name: i18nT('common:permission.team.datasetCreate'),
+    name: i18nT('account_team:permission_datasetCreate'),
     value: 0b010000
   },
   [TeamPermissionKeyEnum.apikeyCreate]: {
     checkBoxType: 'multiple',
     description: '',
-    name: i18nT('common:permission.team.apikeyCreate'),
+    name: i18nT('account_team:permission_apikeyCreate'),
     value: 0b100000
   }
 };

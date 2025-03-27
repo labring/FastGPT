@@ -77,5 +77,13 @@
   "user_team_invite_member": "邀请成员",
   "user_team_leave_team": "离开团队",
   "user_team_leave_team_failed": "离开团队失败",
-  "waiting": "待接受"
+  "waiting": "待接受",
+  "permission_appCreate": "创建应用",
+  "permission_datasetCreate": "创建知识库",
+  "permission_apikeyCreate": "创建 API 密钥",
+  "permission_appCreate_tip": "可以在根目录创建应用，（文件夹下的创建权限由文件夹控制）",
+  "permission_datasetCreate_Tip": "可以在根目录创建知识库，（文件夹下的创建权限由文件夹控制）",
+  "permission_apikeyCreate_Tip": "可以创建全局的 APIKey",
+  "permission_manage": "管理员",
+  "permission_manage_tip": "可以管理成员、创建群组、管理所有群组、为群组和成员分配权限"
 }
