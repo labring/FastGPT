@@ -10,14 +10,11 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-
 type IconNameType = 'core/workflow/debugNext' | 'common/loading' | 'core/chat/think';
-
 export type SelectOptionType = {
   key: string;
   value: string;
 };
-
 export type SelectOptionsComponentPropsType = {
   options: SelectOptionType[];
   description?: string;
@@ -26,7 +23,6 @@ export type SelectOptionsComponentPropsType = {
   isDisabled?: boolean;
   variant?: string;
 };
-
 const DescriptionBox = React.memo(function DescriptionBox({
   description
 }: {
@@ -49,7 +45,6 @@ const DescriptionBox = React.memo(function DescriptionBox({
     </Box>
   );
 });
-
 const inputBaseStyle = {
   bg: 'white',
   borderWidth: '1px',
@@ -61,7 +56,6 @@ const inputBaseStyle = {
   },
   borderRadius: 'md'
 };
-
 export const SelectOptionsComponent = React.memo(function SelectOptionsComponent({
   options = [],
   description,
@@ -116,7 +110,6 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
     </Box>
   );
 });
-
 export type FormItemType = {
   label: string;
   key?: string;
@@ -133,7 +126,6 @@ export type FormItemType = {
     value: string;
   }>;
 };
-
 export type FormInputComponentProps = {
   inputForm: FormItemType[];
   description?: string;
@@ -145,8 +137,6 @@ export type FormInputComponentProps = {
   submitButtonIcon?: IconNameType;
   isCompact?: boolean;
 };
-
-// 表单项标签组件
 const FormItemLabel = React.memo(function FormItemLabel({
   label,
   required,
@@ -165,8 +155,6 @@ const FormItemLabel = React.memo(function FormItemLabel({
     </Flex>
   );
 });
-
-// 渲染不同类型的表单输入项
 const renderFormInput = (
   input: FormItemType,
   register: any,
@@ -175,7 +163,6 @@ const renderFormInput = (
   isDisabled: boolean
 ) => {
   const { type, label, required, maxLength, min, max, defaultValue, list } = input;
-
   switch (type) {
     case FlowNodeInputTypeEnum.input:
       return (
@@ -189,7 +176,6 @@ const renderFormInput = (
           p={3}
         />
       );
-
     case FlowNodeInputTypeEnum.textarea:
       return (
         <Textarea
@@ -201,7 +187,6 @@ const renderFormInput = (
           p={3}
         />
       );
-
     case FlowNodeInputTypeEnum.numberInput:
       return (
         <Box position="relative">
@@ -232,7 +217,6 @@ const renderFormInput = (
           />
         </Box>
       );
-
     case FlowNodeInputTypeEnum.select:
       return (
         <Controller
@@ -261,12 +245,10 @@ const renderFormInput = (
           }}
         />
       );
-
     default:
       return null;
   }
 };
-
 export const FormInputComponent = React.memo(function FormInputComponent({
   inputForm = [],
   description,
@@ -282,7 +264,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   const { register, setValue, handleSubmit, control, reset, getValues } = useForm({
     defaultValues
   });
-
   const handleFormSubmit = useCallback(
     (data: Record<string, any>) => {
       if (onSubmit) {
@@ -291,7 +272,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     },
     [onSubmit]
   );
-
   return (
     <Box>
       <DescriptionBox description={description} />
@@ -335,7 +315,6 @@ export const FormInputComponent = React.memo(function FormInputComponent({
     </Box>
   );
 });
-
 export type UseFormHandlerReturnType<T extends FieldValues = Record<string, any>> = {
   register: UseFormReturn<T>['register'];
   setValue: UseFormReturn<T>['setValue'];
@@ -345,14 +324,12 @@ export type UseFormHandlerReturnType<T extends FieldValues = Record<string, any>
   reset: UseFormReturn<T>['reset'];
   getValues: UseFormReturn<T>['getValues'];
 };
-
 export const useFormHandler = <T extends FieldValues = Record<string, any>>(
   formConfig: UseFormProps<T> = {},
   onSubmitCallback?: (data: T) => void
 ): UseFormHandlerReturnType<T> => {
   const methods = useForm<T>(formConfig);
   const { handleSubmit } = methods;
-
   const onSubmit = useCallback(
     (data: T) => {
       if (onSubmitCallback) {
@@ -361,7 +338,6 @@ export const useFormHandler = <T extends FieldValues = Record<string, any>>(
     },
     [onSubmitCallback]
   );
-
   return {
     ...methods,
     onSubmit: handleSubmit(onSubmit)

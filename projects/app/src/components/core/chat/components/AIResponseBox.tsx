@@ -32,10 +32,8 @@ import {
   FormInputComponent,
   type FormItemType
 } from './Form/FormComponents';
-
 const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
   eventBus.emit(EventNameEnum.sendQuestion, e);
-
 const formatJsonString = (jsonString: string) => {
   try {
     return JSON.stringify(JSON.parse(jsonString), null, 2);
@@ -43,7 +41,6 @@ const formatJsonString = (jsonString: string) => {
     return jsonString;
   }
 };
-
 const StyledAccordionItem = React.memo(function StyledAccordionItem({
   children
 }: {
@@ -55,7 +52,6 @@ const StyledAccordionItem = React.memo(function StyledAccordionItem({
     </AccordionItem>
   );
 });
-
 const StyledAccordionButton = React.memo(function StyledAccordionButton({
   children,
   py = 0
@@ -82,7 +78,6 @@ const StyledAccordionButton = React.memo(function StyledAccordionButton({
     </AccordionButton>
   );
 });
-
 const RenderText = React.memo(function RenderText({
   showAnimation,
   text
@@ -107,7 +102,6 @@ const RenderTool = React.memo(
         {tools.map((tool) => {
           const toolParams = formatJsonString(tool.params);
           const toolResponse = formatJsonString(tool.response);
-
           return (
             <Accordion key={tool.id} allowToggle _notLast={{ mb: 2 }}>
               <StyledAccordionItem>
@@ -152,7 +146,6 @@ ${toolResponse}`}
   },
   (prevProps, nextProps) => isEqual(prevProps, nextProps)
 );
-
 const RenderResoningContent = React.memo(function RenderResoningContent({
   content,
   isChatting,
@@ -164,7 +157,6 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
-
   return (
     <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
       <StyledAccordionItem>
@@ -173,7 +165,6 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
             <MyIcon name={'core/chat/think'} w={'0.85rem'} />
             <Box fontSize={'sm'}>{t('chat:ai_reasoning')}</Box>
           </HStack>
-
           {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
           <AccordionIcon color={'myGray.600'} ml={5} />
         </StyledAccordionButton>
@@ -192,7 +183,6 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
     </Accordion>
   );
 });
-
 const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive
 }: {
@@ -214,7 +204,6 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
     />
   );
 });
-
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive
 }: {
@@ -238,7 +227,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       isInteractivePrompt: true
     });
   }, []);
-
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
       <FormInputComponent
@@ -253,7 +241,6 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
     </Flex>
   );
 });
-
 const getResponseRenderer = (
   value: UserChatItemValueItemType | AIChatItemValueItemType,
   isChatting: boolean,
@@ -264,7 +251,6 @@ const getResponseRenderer = (
       <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
     );
   }
-
   if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
     return (
       <RenderResoningContent
@@ -274,11 +260,9 @@ const getResponseRenderer = (
       />
     );
   }
-
   if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   }
-
   if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
     if (value.interactive.type === 'userSelect') {
       return <RenderUserSelectInteractive interactive={value.interactive} />;
@@ -287,10 +271,8 @@ const getResponseRenderer = (
       return <RenderUserFormInteractive interactive={value.interactive} />;
     }
   }
-
   return null;
 };
-
 const AIResponseBox = React.memo(function AIResponseBox({
   value,
   isLastResponseValue,
@@ -302,5 +284,4 @@ const AIResponseBox = React.memo(function AIResponseBox({
 }) {
   return getResponseRenderer(value, isChatting, isLastResponseValue);
 });
-
 export default AIResponseBox;
