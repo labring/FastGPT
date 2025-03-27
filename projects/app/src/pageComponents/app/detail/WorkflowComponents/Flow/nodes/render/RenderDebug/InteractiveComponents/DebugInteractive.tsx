@@ -11,10 +11,10 @@ import {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
-  SelectOptionsComponent,
-  SelectOption,
+  type SelectOption,
+  type FormItem,
   FormInputComponent,
-  FormItem
+  SelectOptionsComponent
 } from '@/components/core/chat/components/Form/FormComponents';
 
 const useInteractiveDebug = (

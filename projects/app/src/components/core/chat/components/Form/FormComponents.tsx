@@ -13,19 +13,19 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type IconName = 'core/workflow/debugNext' | 'common/loading' | 'core/chat/think';
 
-export interface SelectOption {
+export type SelectOption = {
   key: string;
   value: string;
-}
+};
 
-export interface SelectOptionsComponentProps {
+export type SelectOptionsComponentProps = {
   options: SelectOption[];
   description?: string;
   selectedValue?: string;
   onSelectOption: (value: string) => void;
   isDisabled?: boolean;
   variant?: string;
-}
+};
 
 export const SelectOptionsComponent = React.memo(function SelectOptionsComponent({
   options = [],
@@ -112,7 +112,7 @@ export type FormItem = {
   }>;
 };
 
-export interface FormInputComponentProps {
+export type FormInputComponentProps = {
   inputForm: FormItem[];
   description?: string;
   onSubmit?: (data: Record<string, any>) => void;
@@ -122,7 +122,7 @@ export interface FormInputComponentProps {
   showSubmitButton?: boolean;
   submitButtonIcon?: IconName;
   isCompact?: boolean;
-}
+};
 
 export const FormInputComponent = React.memo(function FormInputComponent({
   inputForm = [],
@@ -308,7 +308,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   );
 });
 
-export interface UseFormHandlerReturn<T extends FieldValues = Record<string, any>> {
+export type UseFormHandlerReturn<T extends FieldValues = Record<string, any>> = {
   register: UseFormReturn<T>['register'];
   setValue: UseFormReturn<T>['setValue'];
   handleSubmit: UseFormReturn<T>['handleSubmit'];
@@ -316,7 +316,7 @@ export interface UseFormHandlerReturn<T extends FieldValues = Record<string, any
   control: UseFormReturn<T>['control'];
   reset: UseFormReturn<T>['reset'];
   getValues: UseFormReturn<T>['getValues'];
-}
+};
 
 export const useFormHandler = <T extends FieldValues = Record<string, any>>(
   formConfig: UseFormProps<T> = {},
