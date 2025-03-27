@@ -11,7 +11,7 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d
 import {
   RenderUserSelectInteractive,
   RenderUserFormInteractive
-} from '@/components/core/chat/components/InteractiveComponents';
+} from './InteractiveComponents/DebugInteractive';
 
 type NodeDebugResponseProps = {
   nodeId: string;
