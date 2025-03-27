@@ -67,7 +67,7 @@ const main = async ({
     if (bcc && !validateEmails(bcc)) {
       throw new Error('Invalid BCC email format');
     }
-    console.log({ SSL });
+
     // 创建SMTP传输对象
     const transporter = nodemailer.createTransport({
       host: smtpHost,
@@ -83,7 +83,6 @@ const main = async ({
     try {
       attachmentsArray = JSON.parse(attachments || '[]');
     } catch (error) {
-      console.log('Parse attachments error:', error);
       throw new Error('Attachment format parsing error, please check attachment configuration');
     }
 
