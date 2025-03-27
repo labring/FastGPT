@@ -26,58 +26,15 @@ interface NodeDebugResponseProps {
 
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
-  const node = useMemo(() => nodeList.find((node) => node.nodeId === nodeId), [nodeList, nodeId]);
-  const firstInteractive = useMemo(() => {
-    if (
-      node &&
-      node.flowNodeType === FlowNodeTypeEnum.userSelect &&
-      !node.debugResult?.response?.userSelectResult
-    ) {
-      return true;
-    }
-    if (
-      node &&
-      node.flowNodeType === FlowNodeTypeEnum.formInput &&
-      !node.debugResult?.response?.formInputResult
-    ) {
-      return true;
-    }
-    return false;
-  }, [node]);
+  const firstInteractive = debugResult?.workflowInteractiveResponse;
 
   const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
     WorkflowContext,
     (v) => v
   );
 
-  const interactive: UserSelectInteractive | UserInputInteractive | undefined = useMemo(() => {
-    const description = node?.inputs?.find((input) => input.key === 'description')?.value;
-    const userSelectOptions = node?.inputs?.find(
-      (input) => input.key === 'userSelectOptions'
-    )?.value;
-    const formInputForms = node?.inputs?.find((input) => input.key === 'userInputForms')?.value;
-    if (node?.flowNodeType === FlowNodeTypeEnum.userSelect) {
-      return {
-        type: 'userSelect',
-        params: {
-          description,
-          userSelectOptions
-        }
-      };
-    }
-    if (node?.flowNodeType === FlowNodeTypeEnum.formInput) {
-      return {
-        type: 'userInput',
-        params: {
-          description,
-          inputForm: formInputForms
-        }
-      };
-    }
-    return undefined;
-  }, [node]);
+  const interactive = debugResult?.workflowInteractiveResponse;
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('common:core.workflow.Confirm stop debug')

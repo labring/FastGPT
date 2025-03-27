@@ -638,19 +638,25 @@ const WorkflowContextProvider = ({
 
       try {
         // 4. Run one step
-        const { finishedEdges, finishedNodes, nextStepRunNodes, flowResponses, newVariables } =
-          await postWorkflowDebug({
-            nodes: runtimeNodes,
-            edges: debugData.runtimeEdges,
-            variables: {
-              appId,
-              cTime: formatTime2YMDHMW(),
-              ...debugData.variables
-            },
-            query, // 添加 query 参数
-            history,
-            appId
-          });
+        const {
+          finishedEdges,
+          finishedNodes,
+          nextStepRunNodes,
+          flowResponses,
+          newVariables,
+          workflowInteractiveResponse
+        } = await postWorkflowDebug({
+          nodes: runtimeNodes,
+          edges: debugData.runtimeEdges,
+          variables: {
+            appId,
+            cTime: formatTime2YMDHMW(),
+            ...debugData.variables
+          },
+          query, // 添加 query 参数
+          history,
+          appId
+        });
         // 5. Store debug result
         const newStoreDebugData = {
           runtimeNodes: finishedNodes,
@@ -659,10 +665,13 @@ const WorkflowContextProvider = ({
           nextRunNodes: nextStepRunNodes,
           variables: newVariables,
           query,
-          history
+          history,
+          workflowInteractiveResponse: workflowInteractiveResponse
         };
         setWorkflowDebugData(newStoreDebugData);
-
+        if (workflowInteractiveResponse) {
+          console.log('workflowInteractiveResponse', workflowInteractiveResponse);
+        }
         // 6. selected entry node and Update entry node debug result
         setNodes((state) =>
           state.map((node) => {
@@ -695,7 +704,8 @@ const WorkflowContextProvider = ({
                   status: 'success',
                   response: result,
                   showResult: true,
-                  isExpired: false
+                  isExpired: false,
+                  workflowInteractiveResponse: workflowInteractiveResponse
                 }
               }
             };
