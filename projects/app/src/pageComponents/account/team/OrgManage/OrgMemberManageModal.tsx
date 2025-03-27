@@ -3,7 +3,6 @@ import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter } from '@chakra
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -31,32 +30,32 @@ function OrgMemberManageModal({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const [searchKey, setSearchKey] = useState('');
 
-  const {
-    data: allMembers,
-    ScrollData: MemberScrollData,
-    isLoading: isLoadingMembers
-  } = useScrollPagination(getTeamMembers, {
+  const { data: allMembers, ScrollData: MemberScrollData } = useScrollPagination(getTeamMembers, {
     pageSize: 20,
     params: {
       withOrgs: true,
       withPermission: false,
-      status: 'active'
-    }
+      status: 'active',
+      searchKey
+    },
+    throttleWait: 500,
+    debounceWait: 200,
+    refreshDeps: [searchKey]
   });
 
-  const {
-    data: orgMembers,
-    ScrollData: OrgMemberScrollData,
-    isLoading: isLoadingOrgMembers
-  } = useScrollPagination(getTeamMembers, {
-    pageSize: 100000,
-    params: {
-      orgId: currentOrg._id,
-      withOrgs: false,
-      withPermission: false
+  const { data: orgMembers, ScrollData: OrgMemberScrollData } = useScrollPagination(
+    getTeamMembers,
+    {
+      pageSize: 100000,
+      params: {
+        orgId: currentOrg._id,
+        withOrgs: false,
+        withPermission: false
+      }
     }
-  });
+  );
 
   const [selected, setSelected] = useState<{ name: string; tmbId: string; avatar: string }[]>([]);
 
@@ -69,8 +68,6 @@ function OrgMemberManageModal({
       }))
     );
   }, [orgMembers]);
-
-  const [searchKey, setSearchKey] = useState('');
 
   const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
     () => {
@@ -147,7 +144,7 @@ function OrgMemberManageModal({
                 setSearchKey(e.target.value);
               }}
             />
-            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'} isLoading={isLoadingMembers}>
+            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
               {allMembers.map((member) => {
                 return (
                   <MemberItemCard
@@ -163,12 +160,7 @@ function OrgMemberManageModal({
             </MemberScrollData>
           </Flex>
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
-            <OrgMemberScrollData
-              mt={3}
-              flexGrow="1"
-              overflow={'auto'}
-              isLoading={isLoadingOrgMembers}
-            >
+            <OrgMemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
               <Box mt={2}>{`${t('common:chosen')}:${selected.length}`}</Box>
               {selected.map((member) => {
                 return (

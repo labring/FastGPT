@@ -14,6 +14,7 @@ import {
 } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
+import { useRequest2 } from './useRequest';
 
 type ItemHeight<T> = (index: number, data: T) => number;
 const thresholdVal = 100;
@@ -183,22 +184,21 @@ export function useScrollPagination<
 >(
   api: (data: TParams) => Promise<TData>,
   {
-    refreshDeps,
     scrollLoadType = 'bottom',
 
     pageSize = 10,
     params = {},
     EmptyTip,
-    showErrorToast = true
+    showErrorToast = true,
+    ...props
   }: {
-    refreshDeps?: any[];
     scrollLoadType?: 'top' | 'bottom';
 
     pageSize?: number;
     params?: Record<string, any>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
-  }
+  } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -213,6 +213,7 @@ export function useScrollPagination<
   const loadData = useLockFn(
     async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && !init) return;
+      setTrue();
 
       if (init) {
         setData([]);
@@ -220,8 +221,6 @@ export function useScrollPagination<
       }
 
       const offset = init ? 0 : data.length;
-
-      setTrue();
 
       try {
         const res = await api({
@@ -274,7 +273,7 @@ export function useScrollPagination<
     ({
       children,
       ScrollContainerRef,
-      isLoading,
+      isLoading: isLoadingProp,
       ...props
     }: {
       isLoading?: boolean;
@@ -283,7 +282,7 @@ export function useScrollPagination<
     } & BoxProps) => {
       const ref = ScrollContainerRef || ScrollRef;
       const loadText = useMemo(() => {
-        if (isLoading) return t('common:common.is_requesting');
+        if (isLoading || isLoadingProp) return t('common:common.is_requesting');
         if (noMore) return t('common:common.request_end');
         return t('common:common.request_more');
       }, [isLoading, noMore]);
@@ -338,13 +337,13 @@ export function useScrollPagination<
   );
 
   // Reload data
-  useRequest(
+  useRequest2(
     async () => {
       loadData(true);
     },
     {
       manual: false,
-      refreshDeps
+      ...props
     }
   );
 

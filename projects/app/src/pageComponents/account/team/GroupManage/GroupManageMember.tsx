@@ -62,11 +62,11 @@ function GroupEditModal({
       status: 'active',
       withOrgs: true,
       searchKey
-    }
+    },
+    throttleWait: 500,
+    debounceWait: 200,
+    refreshDeps: [searchKey]
   });
-  const refetchMemberList = _.debounce(refreshList, 200);
-
-  useEffect(() => refetchMemberList, [searchKey]);
 
   const groupId = useMemo(() => String(group._id), [group._id]);
 
