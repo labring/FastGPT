@@ -97,53 +97,49 @@ const ModelTest = ({
 
   const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest2(
     async () => {
-      try {
-        let errorNum = 0;
-        const testModel = async (model: string) => {
+      let errorNum = 0;
+      setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
+
+      const testModel = async (model: string) => {
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model ? { ...item, status: 'running', message: '' } : item
+          )
+        );
+        const start = Date.now();
+        try {
+          await getTestModel({ model, channelId });
+          const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
               item.model === model
-                ? { ...item, status: 'running', message: '', loading: true }
+                ? { ...item, status: 'success', duration: duration / 1000, loading: false }
                 : item
             )
           );
-          const start = Date.now();
-          try {
-            await getTestModel({ model, channelId });
-            const duration = Date.now() - start;
-            setTestModelList((prev) =>
-              prev.map((item) =>
-                item.model === model
-                  ? { ...item, status: 'success', duration: duration / 1000, loading: false }
-                  : item
-              )
-            );
-          } catch (error) {
-            setTestModelList((prev) =>
-              prev.map((item) =>
-                item.model === model
-                  ? { ...item, status: 'error', message: getErrText(error), loading: false }
-                  : item
-              )
-            );
-            errorNum++;
-          }
-        };
-
-        await batchRun(
-          testModelList.map((item) => item.model),
-          testModel,
-          5
-        );
-
-        if (errorNum > 0) {
-          toast({
-            status: 'warning',
-            title: t('account_model:test_failed', { num: errorNum })
-          });
+        } catch (error) {
+          setTestModelList((prev) =>
+            prev.map((item) =>
+              item.model === model
+                ? { ...item, status: 'error', message: getErrText(error), loading: false }
+                : item
+            )
+          );
+          errorNum++;
         }
-      } catch (error) {
-        console.error('Error during model testing:', error);
+      };
+
+      await batchRun(
+        testModelList.map((item) => item.model),
+        testModel,
+        5
+      );
+
+      if (errorNum > 0) {
+        toast({
+          status: 'warning',
+          title: t('account_model:test_failed', { num: errorNum })
+        });
       }
     },
     {
@@ -186,6 +182,8 @@ const ModelTest = ({
       manual: true
     }
   );
+
+  const isTesting = isAnyModelLoading || testingOneModel;
 
   return (
     <MyModal
@@ -230,12 +228,14 @@ const ModelTest = ({
                       </Flex>
                     </Td>
                     <Td>
-                      <MyIconButton
-                        isLoading={item.loading}
-                        icon={'core/chat/sendLight'}
-                        tip={t('account:model.test_model')}
-                        onClick={() => onTestOneModel(item.model)}
-                      />
+                      {(!isAnyModelLoading || item.loading) && (
+                        <MyIconButton
+                          isLoading={item.loading}
+                          icon={'core/chat/sendLight'}
+                          tip={t('account:model.test_model')}
+                          onClick={() => onTestOneModel(item.model)}
+                        />
+                      )}
                     </Td>
                   </Tr>
                 );
@@ -248,11 +248,7 @@ const ModelTest = ({
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
           {t('common:common.Cancel')}
         </Button>
-        <Button
-          isLoading={isAnyModelLoading || testingOneModel}
-          variant={'primary'}
-          onClick={onStartTest}
-        >
+        <Button isLoading={isTesting} variant={'primary'} onClick={onStartTest}>
           {t('account_model:start_test', { num: testModelList.length })}
         </Button>
       </ModalFooter>
