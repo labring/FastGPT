@@ -213,6 +213,7 @@ export function useScrollPagination<
   const loadData = useLockFn(
     async (init = false, ScrollContainerRef?: RefObject<HTMLDivElement>) => {
       if (noMore && !init) return;
+      setTrue();
 
       if (init) {
         setData([]);
@@ -220,8 +221,6 @@ export function useScrollPagination<
       }
 
       const offset = init ? 0 : data.length;
-
-      setTrue();
 
       try {
         const res = await api({
@@ -274,10 +273,8 @@ export function useScrollPagination<
     ({
       children,
       ScrollContainerRef,
-      isLoading,
       ...props
     }: {
-      isLoading?: boolean;
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {

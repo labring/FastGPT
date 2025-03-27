@@ -230,7 +230,7 @@ const TeamCloud = ({
   );
 
   return (
-    <ScrollData isLoading={isLoading || isLoadingVersion} flex={'1 0 0'} px={5}>
+    <ScrollData flex={'1 0 0'} px={5}>
       {scrollDataList.map((item, index) => {
         const firstPublishedIndex = scrollDataList.findIndex((data) => data.isPublish);
 

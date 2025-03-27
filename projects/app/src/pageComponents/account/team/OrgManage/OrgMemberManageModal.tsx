@@ -151,7 +151,7 @@ function OrgMemberManageModal({
                 setSearchKey(e.target.value);
               }}
             />
-            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'} isLoading={isLoadingMembers}>
+            <MemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
               {allMembers.map((member) => {
                 return (
                   <MemberItemCard
@@ -167,12 +167,7 @@ function OrgMemberManageModal({
             </MemberScrollData>
           </Flex>
           <Flex flexDirection="column" p="4" overflowY="auto" overflowX="hidden">
-            <OrgMemberScrollData
-              mt={3}
-              flexGrow="1"
-              overflow={'auto'}
-              isLoading={isLoadingOrgMembers}
-            >
+            <OrgMemberScrollData mt={3} flexGrow="1" overflow={'auto'}>
               <Box mt={2}>{`${t('common:chosen')}:${selected.length}`}</Box>
               {selected.map((member) => {
                 return (
