@@ -24,6 +24,8 @@ FastGPT-pro 中，有一套标准的SSO 和成员同步接口，系统会根据�
 
 FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，将他们转成 fastgpt-pro 可识别的接口。
 
+   ![](/imgs/sso2.png)
+
 ## 系统配置教程
 
 ### 1. 部署 SSO-service 镜像
@@ -344,7 +346,7 @@ fastgpt-sso:
 
 以下是 FastGPT-pro 中，SSO 和成员同步的标准接口文档，如果需要对接非标准系统，可以参考该章节进行开发。
 
-![](/imgs/sso2.png)
+![](/imgs/sso18.png)
 
 FastGPT 提供如下标准接口支持：
 
@@ -368,6 +370,22 @@ GET /login/oauth/getAuthURL
 }
 ```
 
+curl示例
+
+```bash
+curl -X GET "https://redict.example/login/oauth/getAuthURL?redirect_uri=xxx&state=xxxx" \
+-H "Authorization: Bearer your_token_here" \
+-H "Content-Type: application/json"
+```
+
+```JSON
+{
+  "success": true,
+  "message": "",
+  "authURL": "https://example.com/somepath/login/oauth?redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider%0A"
+}
+```
+
 ### 获取用户信息
 
 该接口接受一个 code 参数作为鉴权，消费 code 返回用户信息。
@@ -384,6 +402,25 @@ GET /login/oauth/getUserInfo?code=xxxxxx
   "username": "用户名，用于注册 fastgpt，全局唯一的， fastgpt不会自动拼接任何前缀",
   "avatar": "头像，可以为空",
   "contact": "联系方式，最好不为空"
+}
+```
+
+curl示例
+
+```bash
+curl -X GET "https://oauth.example/login/oauth/getUserInfo?code=xxxxxx" \
+-H "Authorization: Bearer your_token_here" \
+-H "Content-Type: application/json"
+```
+
+```JSON
+{
+  "success": true,
+  "message": "",
+  "username": "open-123456789“,
+  "avatar": "https://example.webp",
+  "contact": "+861234567890",
+  "memberName": "非必填",
 }
 ```
 
@@ -405,6 +442,33 @@ type OrgListResponseType = {
         name: string; // 名字
         parentId: string; // parentId，如果为根部门，传空字符串。
     }[];
+}
+```
+
+curl示例
+
+```bash
+curl -X GET "https://example.com/org/list" \
+-H "Authorization: Bearer your_token_here" \
+-H "Content-Type: application/json"
+```
+
+```JSON
+{
+  "success": true,
+  "message": "",
+   "orgList": [
+      {
+         "id": "od-125151515",
+         "name": "根部门",
+         "parentId": ""
+      },
+      {
+         "id": "od-51516152",
+         "name": "子部门",
+         "parentId": "od-125151515"
+      }
+   ]
 }
 ```
 
@@ -430,6 +494,38 @@ type UserListResponseListType = {
     }[];
 }
 ```
+curl示例
+
+```bash
+curl -X GET "https://example.com/user/list" \
+-H "Authorization: Bearer your_token_here" \
+-H "Content-Type: application/json"
+```
+
+```JSON
+{
+  "success": true,
+  "message": "",
+  "userList": [
+    {
+      "username": "sync-123456789",
+      "memberName": "张三",
+      "avatar": "https://example.webp",
+      "contact": "+861234567890",
+      "orgs": ["od-125151515", "od-51516152"]
+    },
+    {
+      "username": "sync-12345678999",
+      "memberName": "李四",
+      "avatar": "",
+      "contact": "",
+      "orgs": ["od-125151515"]
+    }
+  ]
+
+}
+```
+
 
 ## 如何对接非标准系统
 
