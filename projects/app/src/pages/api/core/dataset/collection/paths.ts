@@ -5,7 +5,7 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { NextAPI } from '@/service/middleware/entry';
 
-async function handler(req: NextApiRequest) {
+export async function handler(req: NextApiRequest) {
   const { parentId } = req.query as { parentId: string };
 
   if (!parentId) {
