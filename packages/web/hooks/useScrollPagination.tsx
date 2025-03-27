@@ -273,14 +273,16 @@ export function useScrollPagination<
     ({
       children,
       ScrollContainerRef,
+      isLoading: isLoadingProp,
       ...props
     }: {
+      isLoading?: boolean;
       children: ReactNode;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
     } & BoxProps) => {
       const ref = ScrollContainerRef || ScrollRef;
       const loadText = useMemo(() => {
-        if (isLoading) return t('common:common.is_requesting');
+        if (isLoading || isLoadingProp) return t('common:common.is_requesting');
         if (noMore) return t('common:common.request_end');
         return t('common:common.request_more');
       }, [isLoading, noMore]);

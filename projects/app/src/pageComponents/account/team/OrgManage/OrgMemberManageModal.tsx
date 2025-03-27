@@ -3,7 +3,6 @@ import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter } from '@chakra
 import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -13,7 +12,6 @@ import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
-import { isSea } from 'node:sea';
 
 export type GroupFormType = {
   members: {
@@ -34,11 +32,7 @@ function OrgMemberManageModal({
   const { t } = useTranslation();
   const [searchKey, setSearchKey] = useState('');
 
-  const {
-    data: allMembers,
-    ScrollData: MemberScrollData,
-    isLoading: isLoadingMembers
-  } = useScrollPagination(getTeamMembers, {
+  const { data: allMembers, ScrollData: MemberScrollData } = useScrollPagination(getTeamMembers, {
     pageSize: 20,
     params: {
       withOrgs: true,
@@ -51,18 +45,17 @@ function OrgMemberManageModal({
     refreshDeps: [searchKey]
   });
 
-  const {
-    data: orgMembers,
-    ScrollData: OrgMemberScrollData,
-    isLoading: isLoadingOrgMembers
-  } = useScrollPagination(getTeamMembers, {
-    pageSize: 100000,
-    params: {
-      orgId: currentOrg._id,
-      withOrgs: false,
-      withPermission: false
+  const { data: orgMembers, ScrollData: OrgMemberScrollData } = useScrollPagination(
+    getTeamMembers,
+    {
+      pageSize: 100000,
+      params: {
+        orgId: currentOrg._id,
+        withOrgs: false,
+        withPermission: false
+      }
     }
-  });
+  );
 
   const [selected, setSelected] = useState<{ name: string; tmbId: string; avatar: string }[]>([]);
 
