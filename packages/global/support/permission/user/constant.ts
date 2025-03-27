@@ -44,4 +44,7 @@ export const TeamPermissionList: PermissionListType<TeamPermissionKeyEnum> = {
 export const TeamReadPermissionVal = TeamPermissionList['read'].value;
 export const TeamWritePermissionVal = TeamPermissionList['write'].value;
 export const TeamManagePermissionVal = TeamPermissionList['manage'].value;
+export const TeamAppCreatePermissionVal = TeamPermissionList['appCreate'].value;
+export const TeamDatasetCreatePermissionVal = TeamPermissionList['datasetCreate'].value;
+export const TeamApikeyCreatePermissionVal = TeamPermissionList['apikeyCreate'].value;
 export const TeamDefaultPermissionVal = TeamReadPermissionVal;
