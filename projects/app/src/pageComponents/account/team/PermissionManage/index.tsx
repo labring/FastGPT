@@ -214,26 +214,26 @@ function PermissionManage({
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
-                    {t('common:permission.team.appCreate')}
-                    <QuestionTip ml="1" label={t('user:team.group.appCreate_tip')} />
+                    {t('account_team:permission_appCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_appCreate_tip')} />
                   </Box>
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
-                    {t('common:permission.team.datasetCreate')}
-                    <QuestionTip ml="1" label={t('user:team.group.datasetCreate_Tip')} />
+                    {t('account_team:permission_datasetCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_datasetCreate_Tip')} />
                   </Box>
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
-                    {t('common:permission.team.apikeyCreate')}
-                    <QuestionTip ml="1" label={t('user:team.group.apikeyCreate_Tip')} />
+                    {t('account_team:permission_apikeyCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_apikeyCreate_Tip')} />
                   </Box>
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
-                    {t('user:team.group.permission.manage')}
-                    <QuestionTip ml="1" label={t('user:team.group.manage_tip')} />
+                    {t('account_team:permission_manage')}
+                    <QuestionTip ml="1" label={t('account_team:permission_manage_tip')} />
                   </Box>
                 </Th>
                 <Th bg="myGray.100" borderRightRadius="md">
