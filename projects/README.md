@@ -2,8 +2,8 @@
 
 该目录为 FastGPT 主项目。
 
-- app 前端项目，用于展示和使用 FastGPT。
-- sandbox 沙盒项目，用于测试和开发 （需求python环境为python:3.11，额外安装的包请于requirements.txt填写，同时注意个别包可能额外安装库（如pandas需要安装libffi））。
+- app fastgpt 核心应用。
+- sandbox 沙盒项目，用于运行工作流里的代码执行 （需求python环境为python:3.11，额外安装的包请于requirements.txt填写，同时注意个别包可能额外安装库（如pandas需要安装libffi））。
   - 新加入python包遇见超时或者权限拦截的问题(确定不是自己的语法问题)，请进入docker容器内部执行以下指令：
 
   ```shell

@@ -18,7 +18,9 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import {
   JS_TEMPLATE,
-  PY_TEMPLATE
+  PY_TEMPLATE,
+  SandboxCodeTypeEnum,
+  SNADBOX_CODE_TEMPLATE
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 
@@ -49,16 +51,16 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         return (
           <Box mt={-4}>
             <Flex mb={2} alignItems={'center'} className="nodrag">
-              <MySelect
+              <MySelect<SandboxCodeTypeEnum>
                 fontSize="xs"
                 size="sm"
                 list={[
-                  { label: 'JavaScript', value: 'js' },
-                  { label: 'Python 3', value: 'py' }
+                  { label: 'JavaScript', value: SandboxCodeTypeEnum.js },
+                  { label: 'Python 3', value: SandboxCodeTypeEnum.py }
                 ]}
                 value={codeType?.value}
-                onchange={(newLang) => {
-                  const oldLang = codeType.value;
+                onChange={(newLang) => {
+                  console.log(newLang);
                   openSwitchLangConfirm(() => {
                     onChangeNode({
                       nodeId,
@@ -73,7 +75,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       key: item.key,
                       value: {
                         ...item,
-                        value: oldLang === 'py' ? JS_TEMPLATE : PY_TEMPLATE
+                        value: SNADBOX_CODE_TEMPLATE[newLang]
                       }
                     });
                   })();

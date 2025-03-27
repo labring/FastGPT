@@ -5,7 +5,7 @@ FROM python:3.11-alpine AS python_base
 RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers
 
 WORKDIR /app
-COPY requirements.txt /app/requirements.txt
+COPY projects/sandbox/requirements.txt /app/requirements.txt
 RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libseccomp-2.5.5.tar.gz && \
     tar -zxvf libseccomp-2.5.5.tar.gz && \
     cd libseccomp-2.5.5 && \

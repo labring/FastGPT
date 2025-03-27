@@ -10,22 +10,26 @@ import { spawn } from 'child_process';
 import { pythonScript } from './constants';
 const CustomLogStr = 'CUSTOM_LOG';
 
-/* 
-  Rewrite code to add custom functions: Promise function; Log.
-*/
-function getFnCode(code: string) {
-  // rewrite log
-  code = code.replace(/console\.log/g, `${CustomLogStr}`);
+export const runJsSandbox = async ({
+  code,
+  variables = {}
+}: RunCodeDto): Promise<RunCodeResponse> => {
+  /* 
+    Rewrite code to add custom functions: Promise function; Log.
+  */
+  function getFnCode(code: string) {
+    // rewrite log
+    code = code.replace(/console\.log/g, `${CustomLogStr}`);
 
-  // Promise function rewrite
-  const rewriteSystemFn = `
+    // Promise function rewrite
+    const rewriteSystemFn = `
     const thisDelay = (...args) => global_delay.applySyncPromise(undefined,args)
 `;
 
-  // rewrite delay
-  code = code.replace(/delay\((.*)\)/g, `thisDelay($1)`);
+    // rewrite delay
+    code = code.replace(/delay\((.*)\)/g, `thisDelay($1)`);
 
-  const runCode = `
+    const runCode = `
     (async() => { 
         try {
             ${rewriteSystemFn}
@@ -38,23 +42,18 @@ function getFnCode(code: string) {
         }
     })
 `;
-  return runCode;
-}
+    return runCode;
+  }
+  // Register global function
+  function registerSystemFn(jail: IsolatedVM.Reference<Record<string | number | symbol, any>>) {
+    return Promise.all([
+      jail.set('global_delay', new Reference(timeDelay)),
+      jail.set('countToken', countToken),
+      jail.set('strToBase64', strToBase64),
+      jail.set('createHmac', createHmac)
+    ]);
+  }
 
-// Register global function
-function registerSystemFn(jail: IsolatedVM.Reference<Record<string | number | symbol, any>>) {
-  return Promise.all([
-    jail.set('global_delay', new Reference(timeDelay)),
-    jail.set('countToken', countToken),
-    jail.set('strToBase64', strToBase64),
-    jail.set('createHmac', createHmac)
-  ]);
-}
-
-export const runJsSandbox = async ({
-  code,
-  variables = {}
-}: RunCodeDto): Promise<RunCodeResponse> => {
   const logData = [];
 
   const isolate = new Isolate({ memoryLimit: 32 });
@@ -127,21 +126,24 @@ print(json.dumps(res))
     const chunks: string[] = [];
     pythonProcess.stdout.on('data', (data) => chunks.push(data.toString()));
     pythonProcess.stdout.on('end', () => resolve(chunks.join('')));
+    pythonProcess.stderr.on('error', (error) => resolve(JSON.stringify({ error })));
   });
 
   const stdout = await stdoutPromise;
 
   try {
+    console.log(stdout, 111);
     const parsedOutput = JSON.parse(stdout);
     if (parsedOutput.error) {
-      throw new Error(parsedOutput.error || 'Unknown error');
+      return Promise.reject(parsedOutput.error || 'Unknown error');
     }
     return { codeReturn: parsedOutput, log: '' };
   } catch (err) {
-    if (stdout.includes('malformed node or string on line 1'))
-      throw new Error(`The result should be a parsable variable, such as a list.  ${stdout}`);
-    else if (stdout.includes('Unexpected end of JSON input'))
-      throw new Error(`Not allowed print or ${stdout}`);
-    throw new Error(`Run failed: ${err}`);
+    if (stdout.includes('malformed node or string on line 1')) {
+      return Promise.reject(`The result should be a parsable variable, such as a list.  ${stdout}`);
+    } else if (stdout.includes('Unexpected end of JSON input')) {
+      return Promise.reject(`Not allowed print or ${stdout}`);
+    }
+    return Promise.reject(`Run failed: ${err}`);
   }
 };
