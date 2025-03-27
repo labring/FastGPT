@@ -20,6 +20,7 @@ export enum WorkflowIOValueTypeEnum {
   number = 'number',
   boolean = 'boolean',
   object = 'object',
+
   arrayString = 'arrayString',
   arrayNumber = 'arrayNumber',
   arrayBoolean = 'arrayBoolean',

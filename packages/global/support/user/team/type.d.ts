@@ -70,7 +70,13 @@ export type TeamTmbItemType = {
   permission: TeamPermission;
 } & ThirdPartyAccountType;
 
-export type TeamMemberItemType = {
+export type TeamMemberItemType<
+  Options extends {
+    withPermission?: boolean;
+    withOrgs?: boolean;
+    withGroupRole?: boolean;
+  } = { withPermission: true; withOrgs: true; withGroupRole: false }
+> = {
   userId: string;
   tmbId: string;
   teamId: string;
@@ -78,11 +84,24 @@ export type TeamMemberItemType = {
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-  permission: TeamPermission;
   contact?: string;
   createTime: Date;
   updateTime?: Date;
-};
+} & (Options extends { withPermission: true }
+  ? {
+      permission: TeamPermission;
+    }
+  : {}) &
+  (Options extends { withOrgs: true }
+    ? {
+        orgs?: string[]; // full path name, pattern: /teamName/orgname1/orgname2
+      }
+    : {}) &
+  (Options extends { withGroupRole: true }
+    ? {
+        groupRole?: `${GroupMemberRole}`;
+      }
+    : {});
 
 export type TeamTagItemType = {
   label: string;

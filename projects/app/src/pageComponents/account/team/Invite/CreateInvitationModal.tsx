@@ -22,7 +22,13 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 
-function CreateInvitationModal({ onClose }: { onClose: () => void }) {
+function CreateInvitationModal({
+  onSuccess,
+  onClose
+}: {
+  onSuccess: (linkId: string) => void;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const expiresOptions: Array<{ label: string; value: InvitationLinkExpiresType }> = [
     { label: t('account_team:30mins'), value: '30m' }, // 30 mins
@@ -43,9 +49,11 @@ function CreateInvitationModal({ onClose }: { onClose: () => void }) {
 
   const { runAsync: createInvitationLink, loading } = useRequest2(postCreateInvitationLink, {
     manual: true,
-    successToast: t('common:common.Create Success'),
     errorToast: t('common:common.Create Failed'),
-    onFinally: () => onClose()
+    onSuccess: (data) => {
+      onSuccess(data);
+      onClose();
+    }
   });
 
   return (
@@ -55,7 +63,7 @@ function CreateInvitationModal({ onClose }: { onClose: () => void }) {
       iconColor="primary.500"
       title={<Box>{t('account_team:create_invitation_link')}</Box>}
     >
-      <ModalCloseButton onClick={onClose} />
+      <ModalCloseButton onClick={() => onClose()} />
       <ModalBody>
         <Grid gap={6} templateColumns="max-content 1fr" alignItems="center">
           <>
@@ -91,7 +99,7 @@ function CreateInvitationModal({ onClose }: { onClose: () => void }) {
         </Grid>
       </ModalBody>
       <ModalFooter>
-        <Button isLoading={loading} onClick={onClose} variant="outline">
+        <Button isLoading={loading} onClick={() => onClose()} variant="outline">
           {t('common:common.Cancel')}
         </Button>
         <Button isLoading={loading} onClick={handleSubmit(createInvitationLink)} ml="4">

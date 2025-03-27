@@ -13,6 +13,7 @@ import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constan
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
+import { GET, POST } from '@/web/common/api/request';
 
 interface Props {
   children: React.ReactNode;
@@ -48,8 +49,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           {
             label: feConfigs.sso.title || 'Unknown',
             provider: OAuthEnum.sso,
-            icon: feConfigs.sso.icon,
-            redirectUrl: `${feConfigs.sso.url}/login/oauth/authorize?redirect_uri=${encodeURIComponent(redirectUri)}&state=${state.current}`
+            icon: feConfigs.sso.icon
           }
         ]
       : []),
@@ -60,16 +60,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             provider: OAuthEnum.wechat,
             icon: 'common/wechatFill',
             pageType: LoginPageTypeEnum.wechat
-          }
-        ]
-      : []),
-    ...(feConfigs?.oauth?.dingtalk
-      ? [
-          {
-            label: t('user:login.Dingtalk'),
-            provider: OAuthEnum.dingtalk,
-            icon: 'common/dingtalkFill',
-            redirectUrl: `https://login.dingtalk.com/oauth2/auth?client_id=${feConfigs?.oauth?.dingtalk}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=openid&prompt=consent`
           }
         ]
       : []),
@@ -104,18 +94,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           }
         ]
       : []),
-    ...(feConfigs?.oauth?.wecom
-      ? [
-          {
-            label: t('login:wecom'),
-            provider: OAuthEnum.wecom,
-            icon: 'common/wecom',
-            redirectUrl: isWecomWorkTerminal
-              ? `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${feConfigs?.oauth?.wecom?.corpid}&redirect_uri=${redirectUri}&response_type=code&scope=snsapi_privateinfo&agentid=${feConfigs?.oauth?.wecom?.agentid}&state=${state.current}#wechat_redirect`
-              : `https://login.work.weixin.qq.com/wwlogin/sso/login?login_type=CorpApp&appid=${feConfigs?.oauth?.wecom?.corpid}&agentid=${feConfigs?.oauth?.wecom?.agentid}&redirect_uri=${redirectUri}&state=${state.current}`
-          }
-        ]
-      : []),
     ...(pageType !== LoginPageTypeEnum.passwordLogin
       ? [
           {
@@ -135,6 +113,19 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
 
   const onClickOauth = useCallback(
     async (item: OAuthItem) => {
+      if (item.provider === OAuthEnum.sso) {
+        const redirectUrl = await POST<string>('/proApi/support/user/account/login/getAuthURL', {
+          redirectUri,
+          isWecomWorkTerminal
+        });
+        setLoginStore({
+          provider: item.provider as OAuthEnum,
+          lastRoute,
+          state: state.current
+        });
+        router.replace(redirectUrl, '_self');
+        return;
+      }
       if (item.redirectUrl) {
         setLoginStore({
           provider: item.provider as OAuthEnum,
@@ -152,14 +143,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   useEffect(() => {
     if (rootLogin) return;
     const sso = oAuthList.find((item) => item.provider === OAuthEnum.sso);
-    const wecom = oAuthList.find((item) => item.provider === OAuthEnum.wecom);
-    if (feConfigs?.sso?.autoLogin && sso) {
-      // sso auto
-      onClickOauth(sso);
-    } else if (isWecomWorkTerminal && wecom) {
-      // Auto wecom login
-      onClickOauth(wecom);
-    }
+    // sso auto login
+    if (sso && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) onClickOauth(sso);
   }, [rootLogin, feConfigs?.sso?.autoLogin, isWecomWorkTerminal, onClickOauth]);
 
   return (

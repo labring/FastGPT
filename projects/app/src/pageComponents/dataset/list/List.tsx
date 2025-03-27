@@ -239,8 +239,8 @@ function List() {
                   <Box
                     flex={1}
                     className={'textEllipsis3'}
+                    whiteSpace={'pre-wrap'}
                     py={3}
-                    wordBreak={'break-all'}
                     fontSize={'xs'}
                     color={'myGray.500'}
                   >

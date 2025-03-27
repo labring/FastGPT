@@ -72,7 +72,7 @@ const EditFolderModal = ({
             {...register('name', { required: true })}
             bg={'myGray.50'}
             autoFocus
-            maxLength={20}
+            maxLength={100}
           />
         </Box>
         <Box mt={4}>

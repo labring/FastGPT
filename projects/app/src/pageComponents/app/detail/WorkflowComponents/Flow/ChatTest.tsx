@@ -21,6 +21,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 
 type Props = {
   isOpen: boolean;
@@ -45,6 +46,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
+  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   return (
@@ -115,10 +117,12 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
             bg={'myGray.25'}
             borderBottom={'1px solid #F4F4F7'}
           >
-            <Flex fontSize={'16px'} fontWeight={'bold'} flex={1} alignItems={'center'}>
+            <Flex fontSize={'16px'} fontWeight={'bold'} alignItems={'center'} mr={3}>
               <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
               {t('common:core.chat.Run test')}
             </Flex>
+            {!isVariableVisible && <VariablePopover showExternalVariables />}
+            <Box flex={1} />
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
                 className="chat"

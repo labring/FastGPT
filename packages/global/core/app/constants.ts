@@ -1,4 +1,3 @@
-import { PROMPT_QUESTION_GUIDE } from '../ai/prompt/agent';
 import {
   AppTTSConfigType,
   AppFileSelectConfigType,

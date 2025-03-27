@@ -48,7 +48,7 @@ const Team = () => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { setEditTeamData, isLoading, teamSize } = useContextSelector(TeamContext, (v) => v);
+  const { setEditTeamData, teamSize } = useContextSelector(TeamContext, (v) => v);
 
   const Tabs = useMemo(
     () => (
@@ -75,7 +75,7 @@ const Team = () => {
   );
 
   return (
-    <AccountContainer isLoading={isLoading}>
+    <AccountContainer>
       <Flex h={'100%'} flexDirection={'column'}>
         {/* header */}
         <Flex

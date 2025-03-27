@@ -13,38 +13,38 @@ export enum DatasetTypeEnum {
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
-    label: 'folder_dataset',
-    collectionLabel: 'common.Folder'
+    label: i18nT('dataset:folder_dataset'),
+    collectionLabel: i18nT('common:Folder')
   },
   [DatasetTypeEnum.dataset]: {
     icon: 'core/dataset/commonDatasetOutline',
-    label: 'common_dataset',
-    collectionLabel: 'common.File'
+    label: i18nT('dataset:common_dataset'),
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.websiteDataset]: {
     icon: 'core/dataset/websiteDatasetOutline',
-    label: 'website_dataset',
-    collectionLabel: 'common.Website'
+    label: i18nT('dataset:website_dataset'),
+    collectionLabel: i18nT('common:common.Website')
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
-    label: 'external_file',
-    collectionLabel: 'common.File'
+    label: i18nT('dataset:external_file'),
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.apiDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
-    label: 'api_file',
-    collectionLabel: 'common.File'
+    label: i18nT('dataset:api_file'),
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.feishu]: {
     icon: 'core/dataset/feishuDatasetOutline',
-    label: 'feishu_dataset',
-    collectionLabel: 'common.File'
+    label: i18nT('dataset:feishu_dataset'),
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.yuque]: {
     icon: 'core/dataset/yuqueDatasetOutline',
-    label: 'yuque_dataset',
-    collectionLabel: 'common.File'
+    label: i18nT('dataset:yuque_dataset'),
+    collectionLabel: i18nT('common:common.File')
   }
 };
 
@@ -128,6 +128,16 @@ export const DatasetCollectionDataProcessModeMap = {
     tooltip: i18nT('common:core.dataset.training.Auto mode Tip')
   }
 };
+
+export enum ChunkSettingModeEnum {
+  auto = 'auto',
+  custom = 'custom'
+}
+
+export enum DataChunkSplitModeEnum {
+  size = 'size',
+  char = 'char'
+}
 
 /* ------------ data -------------- */
 

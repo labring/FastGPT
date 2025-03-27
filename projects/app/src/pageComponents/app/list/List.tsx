@@ -212,7 +212,9 @@ const ListItem = () => {
                   fontSize={'xs'}
                   color={'myGray.500'}
                 >
-                  <Box className={'textEllipsis2'}>{app.intro || t('common:common.no_intro')}</Box>
+                  <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
+                    {app.intro || t('common:common.no_intro')}
+                  </Box>
                 </Box>
                 <Flex
                   h={'24px'}
