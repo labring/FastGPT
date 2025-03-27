@@ -17,7 +17,12 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { delRemoveMember, postRestoreMember } from '@/web/support/user/team/api';
+import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
+import {
+  delRemoveMember,
+  postRestoreMember,
+  putUpdateMemberNameByManager
+} from '@/web/support/user/team/api';
 import Tag from '@fastgpt/web/components/common/Tag';
 import Icon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
@@ -40,6 +45,7 @@ import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useState } from 'react';
 import { downloadFetch } from '@/web/common/system/utils';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -127,6 +133,30 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   });
 
   const isLoading = isUpdateInvite || isSyncing;
+
+  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
+    title: t('account_team:edit_member'),
+    tip: t('account_team:edit_member_tip'),
+    canEmpty: false,
+    rows: 1
+  });
+
+  const handleEditMemberName = (tmbId: string, memberName: string) => {
+    openEditMemberName({
+      defaultVal: memberName,
+      onSuccess: (newName: string) => {
+        return putUpdateMemberNameByManager(tmbId, newName).then(() => {
+          Promise.all([refetchGroups(), refetchMembers()]);
+        });
+      },
+      onError: (err) => {
+        toast({
+          title: '',
+          status: 'error'
+        });
+      }
+    });
+  };
 
   return (
     <>
@@ -222,7 +252,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                     {t('account_team:user_name')}
                   </Th>
                   <Th bgColor="myGray.100">{t('common:contact_way')}</Th>
-                  <Th bgColor="myGray.100">{t('account_team:org')}</Th>
+                  <Th bgColor="myGray.100" pl={9}>
+                    {t('account_team:org')}
+                  </Th>
                   <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
                   <Th borderRightRadius="6px" bgColor="myGray.100">
                     {t('common:common.Action')}
@@ -262,7 +294,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         })()}
                       </Td>
                       <Td maxW={'300px'}>
-                        <VStack gap={0}>
+                        <VStack gap={0} alignItems="flex-start">
                           <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
                           <Box>
                             {member.updateTime
@@ -276,29 +308,45 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                           member.role !== TeamMemberRoleEnum.owner &&
                           member.tmbId !== userInfo?.team.tmbId &&
                           (member.status === TeamMemberStatusEnum.active ? (
-                            <Icon
-                              name={'common/trash'}
-                              cursor={'pointer'}
-                              w="1rem"
-                              p="1"
-                              borderRadius="sm"
-                              _hover={{
-                                color: 'red.600',
-                                bgColor: 'myGray.100'
-                              }}
-                              onClick={() => {
-                                openRemoveMember(
-                                  () =>
-                                    delRemoveMember(member.tmbId).then(() =>
-                                      Promise.all([refetchGroups(), refetchMembers()])
-                                    ),
-                                  undefined,
-                                  t('account_team:remove_tip', {
-                                    username: member.memberName
-                                  })
-                                )();
-                              }}
-                            />
+                            <>
+                              <Icon
+                                name={'edit'}
+                                cursor={'pointer'}
+                                w="1rem"
+                                p="1"
+                                borderRadius="sm"
+                                _hover={{
+                                  color: 'blue.600',
+                                  bgColor: 'myGray.100'
+                                }}
+                                onClick={() =>
+                                  handleEditMemberName(member.tmbId, member.memberName)
+                                }
+                              />
+                              <Icon
+                                name={'common/trash'}
+                                cursor={'pointer'}
+                                w="1rem"
+                                p="1"
+                                borderRadius="sm"
+                                _hover={{
+                                  color: 'red.600',
+                                  bgColor: 'myGray.100'
+                                }}
+                                onClick={() => {
+                                  openRemoveMember(
+                                    () =>
+                                      delRemoveMember(member.tmbId).then(() =>
+                                        Promise.all([refetchGroups(), refetchMembers()])
+                                      ),
+                                    undefined,
+                                    t('account_team:remove_tip', {
+                                      username: member.memberName
+                                    })
+                                  )();
+                                }}
+                              />
+                            </>
                           ) : (
                             member.status === TeamMemberStatusEnum.forbidden && (
                               <Icon
@@ -331,6 +379,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
             </Table>
             <ConfirmRemoveMemberModal />
             <ConfirmRestoreMemberModal />
+            <EditMemberNameModal />
           </TableContainer>
         </MemberScrollData>
       </Box>
