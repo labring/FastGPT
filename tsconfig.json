@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "verbatimModuleSyntax": true,
     "target": "es2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
