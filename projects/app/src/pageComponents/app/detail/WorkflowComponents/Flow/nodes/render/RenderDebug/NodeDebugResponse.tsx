@@ -5,8 +5,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
-import { WorkflowEventContext } from '../../../../context/workflowEventContext';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { WholeResponseContent } from '@/components/core/chat/components/WholeResponseModal';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -14,10 +12,6 @@ import {
   RenderUserSelectInteractive,
   RenderUserFormInteractive
 } from '@/components/core/chat/components/InteractiveComponents';
-import {
-  UserInputInteractive,
-  UserSelectInteractive
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 interface NodeDebugResponseProps {
   nodeId: string;
@@ -26,8 +20,6 @@ interface NodeDebugResponseProps {
 
 const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
   const { t } = useTranslation();
-
-  const firstInteractive = debugResult?.workflowInteractiveResponse;
 
   const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } = useContextSelector(
     WorkflowContext,
@@ -131,7 +123,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                 </Button>
               )}
               {(debugResult.status === 'success' || debugResult.status === 'skipped') &&
-                !firstInteractive &&
+                !interactive &&
                 !debugResult.isExpired &&
                 workflowDebugData?.nextRunNodes &&
                 workflowDebugData.nextRunNodes.length > 0 && (
@@ -145,7 +137,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                     {t('common:common.Next Step')}
                   </Button>
                 )}
-              {!firstInteractive &&
+              {!interactive &&
                 workflowDebugData?.nextRunNodes &&
                 workflowDebugData?.nextRunNodes.length === 0 && (
                   <Button ml={2} size={'sm'} variant={'primary'} onClick={onStopNodeDebug}>
@@ -156,7 +148,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
             {/* Response list */}
             {debugResult.status !== 'skipped' && (
               <Box borderTop={'base'} mt={1} overflowY={'auto'} minH={'250px'}>
-                {!debugResult.message && !response && !firstInteractive && (
+                {!debugResult.message && !response && !interactive && (
                   <EmptyTip text={t('common:core.workflow.debug.Not result')} pt={2} pb={5} />
                 )}
                 {debugResult.message && (
@@ -164,7 +156,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                     {debugResult.message}
                   </Box>
                 )}
-                {firstInteractive && interactive && (
+                {interactive && (
                   <>
                     {interactive.type === 'userSelect' && (
                       <RenderUserSelectInteractive interactive={interactive} nodeId={nodeId} />
@@ -183,7 +175,6 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
     ) : null;
   }, [
     interactive,
-    firstInteractive,
     debugResult,
     nodeId,
     onChangeNode,
