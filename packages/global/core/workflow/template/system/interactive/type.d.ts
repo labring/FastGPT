@@ -30,9 +30,9 @@ export type UserInputFormItemType = {
 };
 
 type InteractiveBasicType = {
-  entryNodeIds?: string[];
-  memoryEdges?: RuntimeEdgeItemType[];
-  nodeOutputs?: NodeOutputItemType[];
+  entryNodeIds: string[];
+  memoryEdges: RuntimeEdgeItemType[];
+  nodeOutputs: NodeOutputItemType[];
 
   toolParams?: {
     entryNodeIds: string[]; // 记录工具中，交互节点的 Id，而不是起始工作流的入口
@@ -41,7 +41,12 @@ type InteractiveBasicType = {
   };
 };
 
-type UserSelectInteractive = InteractiveBasicType & {
+type InteractiveNodeType = {
+  entryNodeIds?: string[];
+  memoryEdges?: RuntimeEdgeItemType[];
+  nodeOutputs?: NodeOutputItemType[];
+};
+type UserSelectInteractive = InteractiveNodeType & {
   type: 'userSelect';
   params: {
     description: string;
@@ -50,7 +55,7 @@ type UserSelectInteractive = InteractiveBasicType & {
   };
 };
 
-type UserInputInteractive = InteractiveBasicType & {
+type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
   params: {
     description: string;
