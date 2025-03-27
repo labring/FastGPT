@@ -21,8 +21,10 @@
   "delete_from_team": "移出团队",
   "delete_org": "删除部门",
   "edit_info": "编辑信息",
+  "edit_member": "编辑用户",
+  "edit_member_tip": "成员名",
   "edit_org_info": "编辑部门信息",
-  "expires": "有效期",
+  "expires": "过期时间",
   "export_members": "导出成员",
   "forbid_hint": "停用后，该邀请链接将失效。 该操作不可撤销，是否确认停用？",
   "forbid_success": "停用成功",
@@ -33,6 +35,7 @@
   "has_forbidden": "已失效",
   "has_invited": "已邀请",
   "ignore": "忽略",
+  "invitation_copy_link": "【{{systemName}}】 {{userName}} 邀请您加入{{teamName}}团队，链接：{{url}}",
   "invitation_link_auto_clean_hint": "已失效链接将在30天后自动清理",
   "invitation_link_description": "链接描述",
   "invitation_link_list": "链接列表",
@@ -53,6 +56,7 @@
   "org_name": "部门名称",
   "owner": "所有者",
   "permission": "权限",
+  "please_bind_contact": "请绑定联系方式",
   "remark": "备注",
   "remove_tip": "确认将 {{username}} 移出团队？成员将被标记为“已离职”，不删除操作数据，账号下资源自动转让给团队所有者。",
   "restore_tip": "确认将 {{username}} 加入团队吗？仅恢复该成员账号可用性及相关权限，无法恢复账号下资源。",
@@ -73,7 +77,5 @@
   "user_team_invite_member": "邀请成员",
   "user_team_leave_team": "离开团队",
   "user_team_leave_team_failed": "离开团队失败",
-  "waiting": "待接受",
-  "invitation_copy_link": "【{{systemName}}】 {{userName}} 邀请您加入{{teamName}}团队，链接：{{url}}",
-  "please_bind_contact": "请绑定联系方式"
+  "waiting": "待接受"
 }

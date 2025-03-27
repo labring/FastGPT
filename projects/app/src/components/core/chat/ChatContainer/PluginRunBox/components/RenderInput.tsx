@@ -18,6 +18,7 @@ import { ChatBoxInputFormType } from '../../ChatBox/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const RenderInput = () => {
   const { t } = useTranslation();
@@ -213,36 +214,43 @@ const RenderInput = () => {
         </Box>
       )}
       {/* Filed */}
-      {formatPluginInputs.map((input) => {
-        return (
-          <Controller
-            key={`variables.${input.key}`}
-            control={control}
-            name={`variables.${input.key}`}
-            rules={{
-              validate: (value) => {
-                if (!input.required) return true;
-                if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                  return value !== undefined;
+      {formatPluginInputs
+        .filter((input) => {
+          if (outLinkAuthData && Object.keys(outLinkAuthData).length > 0) {
+            return input.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable;
+          }
+          return true;
+        })
+        .map((input) => {
+          return (
+            <Controller
+              key={`variables.${input.key}`}
+              control={control}
+              name={`variables.${input.key}`}
+              rules={{
+                validate: (value) => {
+                  if (!input.required) return true;
+                  if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+                    return value !== undefined;
+                  }
+                  return !!value;
                 }
-                return !!value;
-              }
-            }}
-            render={({ field: { onChange, value } }) => {
-              return (
-                <RenderPluginInput
-                  value={value}
-                  onChange={onChange}
-                  isDisabled={isDisabledInput}
-                  isInvalid={errors && Object.keys(errors).includes(input.key)}
-                  input={input}
-                  setUploading={setUploading}
-                />
-              );
-            }}
-          />
-        );
-      })}
+              }}
+              render={({ field: { onChange, value } }) => {
+                return (
+                  <RenderPluginInput
+                    value={value}
+                    onChange={onChange}
+                    isDisabled={isDisabledInput}
+                    isInvalid={errors && Object.keys(errors).includes(input.key)}
+                    input={input}
+                    setUploading={setUploading}
+                  />
+                );
+              }}
+            />
+          );
+        })}
       {/* Run Button */}
       {onStartChat && onNewChat && (
         <Flex justifyContent={'end'} mt={8}>

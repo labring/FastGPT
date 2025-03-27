@@ -58,6 +58,7 @@
   "to_dataset": "前往知識庫",
   "unsupported_file_type": "不支援的檔案類型",
   "upload": "上傳",
+  "variable_invisable_in_share": "自定義變量在免登錄鏈接中不可見",
   "view_citations": "檢視引用",
   "web_site_sync": "網站同步"
 }

@@ -65,6 +65,7 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
 
   const requestBody: T = {
     ...body,
+    model: modelData.model,
     temperature:
       typeof body.temperature === 'number'
         ? computedTemperature({

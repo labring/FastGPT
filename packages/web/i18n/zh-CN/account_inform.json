@@ -1,4 +1,7 @@
 {
+  "notification_detail": "通知详情",
+  "no_notifications": "暂无通知",
   "read": "已读",
-  "no_notifications": "暂无通知"
+  "system": "官方",
+  "team": "团队"
 }

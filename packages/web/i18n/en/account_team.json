@@ -18,8 +18,10 @@
   "delete": "delete",
   "delete_org": "Delete organization",
   "edit_info": "Edit information",
+  "edit_member": "Edit user",
+  "edit_member_tip": "Name",
   "edit_org_info": "Edit organization information",
-  "expires": "Expiration",
+  "expires": "Expiration time",
   "forbid_hint": "After forbidden, this invitation link will become invalid. This action is irreversible. Are you sure you want to deactivate?",
   "forbid_success": "Forbid success",
   "forbidden": "Forbidden",
@@ -29,6 +31,7 @@
   "has_forbidden": "Forbidden",
   "has_invited": "Invited",
   "ignore": "Ignore",
+  "invitation_copy_link": "[{{systemName}}] {{userName}} invites you to join the {{teamName}} team, link: {{url}}",
   "invitation_link_auto_clean_hint": "Expired links will be automatically cleaned up after 30 days",
   "invitation_link_description": "Link description",
   "invitation_link_list": "Invitation link list",
@@ -58,6 +61,5 @@
   "user_team_invite_member": "Invite members",
   "user_team_leave_team": "Leave the team",
   "user_team_leave_team_failed": "Failure to leave the team",
-  "waiting": "To be accepted",
-  "invitation_copy_link": "[{{systemName}}] {{userName}} invites you to join the {{teamName}} team, link: {{url}}"
+  "waiting": "To be accepted"
 }

@@ -1,16 +1,17 @@
+import { defaultMaxChunkSize } from '../../core/dataset/training/utils';
 import { getErrText } from '../error/utils';
-import { replaceRegChars } from './tools';
 
 export const CUSTOM_SPLIT_SIGN = '-----CUSTOM_SPLIT_SIGN-----';
 
 type SplitProps = {
   text: string;
-  chunkLen: number;
+  chunkSize: number;
+  maxSize?: number;
   overlapRatio?: number;
   customReg?: string[];
 };
-export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkLen'> & {
-  chunkLen?: number;
+export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkSize'> & {
+  chunkSize?: number;
 };
 
 type SplitResponse = {
@@ -56,7 +57,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkLen } = props;
+  let { text = '', chunkSize } = props;
   const splitText2Lines = text.split('\n');
   const header = splitText2Lines[0];
   const headerSize = header.split('|').length - 2;
@@ -72,7 +73,7 @@ ${mdSplitString}
 `;
 
   for (let i = 2; i < splitText2Lines.length; i++) {
-    if (chunk.length + splitText2Lines[i].length > chunkLen * 1.2) {
+    if (chunk.length + splitText2Lines[i].length > chunkSize * 1.2) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -99,11 +100,17 @@ ${mdSplitString}
   5. 标点分割：重叠
 */
 const commonSplit = (props: SplitProps): SplitResponse => {
-  let { text = '', chunkLen, overlapRatio = 0.15, customReg = [] } = props;
+  let {
+    text = '',
+    chunkSize,
+    maxSize = defaultMaxChunkSize,
+    overlapRatio = 0.15,
+    customReg = []
+  } = props;
 
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
-  const overlapLen = Math.round(chunkLen * overlapRatio);
+  const overlapLen = Math.round(chunkSize * overlapRatio);
 
   // replace code block all \n to codeBlockMarker
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
@@ -115,34 +122,38 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const markdownIndex = 4;
   const forbidOverlapIndex = 8;
-  const stepReges: { reg: RegExp; maxLen: number }[] = [
-    ...customReg.map((text) => ({
-      reg: new RegExp(`(${replaceRegChars(text)})`, 'g'),
-      maxLen: chunkLen * 1.4
-    })),
-    { reg: /^(#\s[^\n]+\n)/gm, maxLen: chunkLen * 1.2 },
-    { reg: /^(##\s[^\n]+\n)/gm, maxLen: chunkLen * 1.4 },
-    { reg: /^(###\s[^\n]+\n)/gm, maxLen: chunkLen * 1.6 },
-    { reg: /^(####\s[^\n]+\n)/gm, maxLen: chunkLen * 1.8 },
-    { reg: /^(#####\s[^\n]+\n)/gm, maxLen: chunkLen * 1.8 },
 
-    { reg: /([\n]([`~]))/g, maxLen: chunkLen * 4 }, // code block
-    { reg: /([\n](?=\s*[0-9]+\.))/g, maxLen: chunkLen * 2 }, // 增大块，尽可能保证它是一个完整的段落。 (?![\*\-|>`0-9]): markdown special char
-    { reg: /(\n{2,})/g, maxLen: chunkLen * 1.6 },
-    { reg: /([\n])/g, maxLen: chunkLen * 1.2 },
+  const stepReges: { reg: RegExp | string; maxLen: number }[] = [
+    ...customReg.map((text) => ({
+      reg: text.replaceAll('\\n', '\n'),
+      maxLen: chunkSize
+    })),
+    { reg: /^(#\s[^\n]+\n)/gm, maxLen: chunkSize },
+    { reg: /^(##\s[^\n]+\n)/gm, maxLen: chunkSize },
+    { reg: /^(###\s[^\n]+\n)/gm, maxLen: chunkSize },
+    { reg: /^(####\s[^\n]+\n)/gm, maxLen: chunkSize },
+    { reg: /^(#####\s[^\n]+\n)/gm, maxLen: chunkSize },
+
+    { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
+    {
+      reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
+      maxLen: maxSize
+    }, // Table 尽可能保证完整性
+    { reg: /(\n{2,})/g, maxLen: chunkSize },
+    { reg: /([\n])/g, maxLen: chunkSize },
     // ------ There's no overlap on the top
-    { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.2 },
-    { reg: /([！]|!\s)/g, maxLen: chunkLen * 1.2 },
-    { reg: /([？]|\?\s)/g, maxLen: chunkLen * 1.4 },
-    { reg: /([；]|;\s)/g, maxLen: chunkLen * 1.6 },
-    { reg: /([，]|,\s)/g, maxLen: chunkLen * 2 }
+    { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkSize },
+    { reg: /([！]|!\s)/g, maxLen: chunkSize },
+    { reg: /([？]|\?\s)/g, maxLen: chunkSize },
+    { reg: /([；]|;\s)/g, maxLen: chunkSize },
+    { reg: /([，]|,\s)/g, maxLen: chunkSize }
   ];
 
   const customRegLen = customReg.length;
   const checkIsCustomStep = (step: number) => step < customRegLen;
   const checkIsMarkdownSplit = (step: number) =>
     step >= customRegLen && step <= markdownIndex + customRegLen;
-  +customReg.length;
+
   const checkForbidOverlap = (step: number) => step <= forbidOverlapIndex + customRegLen;
 
   // if use markdown title split, Separate record title
@@ -151,7 +162,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       return [
         {
           text,
-          title: ''
+          title: '',
+          chunkMaxSize: chunkSize
         }
       ];
     }
@@ -159,27 +171,46 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const isCustomStep = checkIsCustomStep(step);
     const isMarkdownSplit = checkIsMarkdownSplit(step);
 
-    const { reg } = stepReges[step];
+    const { reg, maxLen } = stepReges[step];
 
-    const splitTexts = text
-      .replace(
+    const replaceText = (() => {
+      if (typeof reg === 'string') {
+        let tmpText = text;
+        reg.split('|').forEach((itemReg) => {
+          tmpText = tmpText.replaceAll(
+            itemReg,
+            (() => {
+              if (isCustomStep) return splitMarker;
+              if (isMarkdownSplit) return `${splitMarker}$1`;
+              return `$1${splitMarker}`;
+            })()
+          );
+        });
+        return tmpText;
+      }
+
+      return text.replace(
         reg,
         (() => {
           if (isCustomStep) return splitMarker;
           if (isMarkdownSplit) return `${splitMarker}$1`;
           return `$1${splitMarker}`;
         })()
-      )
-      .split(`${splitMarker}`)
-      .filter((part) => part.trim());
+      );
+    })();
+
+    const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
     return splitTexts
       .map((text) => {
         const matchTitle = isMarkdownSplit ? text.match(reg)?.[0] || '' : '';
+        // 如果一个分块没有匹配到，则使用默认块大小，否则使用最大块大小
+        const chunkMaxSize = text.match(reg) === null ? chunkSize : maxLen;
 
         return {
           text: isMarkdownSplit ? text.replace(matchTitle, '') : text,
-          title: matchTitle
+          title: matchTitle,
+          chunkMaxSize
         };
       })
       .filter((item) => !!item.title || !!item.text?.trim());
@@ -188,7 +219,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   /* Gets the overlap at the end of a text as the beginning of the next block */
   const getOneTextOverlapText = ({ text, step }: { text: string; step: number }): string => {
     const forbidOverlap = checkForbidOverlap(step);
-    const maxOverlapLen = chunkLen * 0.4;
+    const maxOverlapLen = chunkSize * 0.4;
 
     // step >= stepReges.length: Do not overlap incomplete sentences
     if (forbidOverlap || overlapLen === 0 || step >= stepReges.length) return '';
@@ -229,15 +260,15 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const isCustomStep = checkIsCustomStep(step);
     const forbidConcat = isCustomStep; // forbid=true时候，lastText肯定为空
 
-    // oversize
+    // Over step
     if (step >= stepReges.length) {
-      if (text.length < chunkLen * 3) {
+      if (text.length < maxSize) {
         return [text];
       }
-      // use slice-chunkLen to split text
+      // use slice-chunkSize to split text
       const chunks: string[] = [];
-      for (let i = 0; i < text.length; i += chunkLen - overlapLen) {
-        chunks.push(text.slice(i, i + chunkLen));
+      for (let i = 0; i < text.length; i += chunkSize - overlapLen) {
+        chunks.push(text.slice(i, i + chunkSize));
       }
       return chunks;
     }
@@ -245,19 +276,18 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     // split text by special char
     const splitTexts = getSplitTexts({ text, step });
 
-    const maxLen = splitTexts.length > 1 ? stepReges[step].maxLen : chunkLen;
-    const minChunkLen = chunkLen * 0.7;
-
     const chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
       const item = splitTexts[i];
+
+      const maxLen = item.chunkMaxSize; // 当前块最大长度
 
       const lastTextLen = lastText.length;
       const currentText = item.text;
       const newText = lastText + currentText;
       const newTextLen = newText.length;
 
-      // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题时候，给小块都补充上所有标题（包含父级标题）
+      // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
         // split new Text, split chunks must will greater 1 (small lastText)
         const innerChunks = splitTextRecursively({
@@ -267,11 +297,13 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           parentTitle: parentTitle + item.title
         });
 
+        // 只有标题，没有内容。
         if (innerChunks.length === 0) {
           chunks.push(`${parentTitle}${item.title}`);
           continue;
         }
 
+        // 在合并最深级标题时，需要补充标题
         chunks.push(
           ...innerChunks.map(
             (chunk) =>
@@ -282,9 +314,18 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         continue;
       }
 
-      // newText is too large(now, The lastText must be smaller than chunkLen)
+      // newText is too large(now, The lastText must be smaller than chunkSize)
       if (newTextLen > maxLen) {
-        // lastText greater minChunkLen, direct push it to chunks, not add to next chunk. (large lastText)
+        const minChunkLen = maxLen * 0.8; // 当前块最小长度
+        const maxChunkLen = maxLen * 1.2; // 当前块最大长度
+
+        // 新文本没有非常大，直接认为它是一个新的块
+        if (newTextLen < maxChunkLen) {
+          chunks.push(newText);
+          lastText = getOneTextOverlapText({ text: newText, step }); // next chunk will start with overlayText
+          continue;
+        }
+        // 上一个文本块已经挺大的，单独做一个块
         if (lastTextLen > minChunkLen) {
           chunks.push(lastText);
 
@@ -294,13 +335,13 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           continue;
         }
 
-        // 说明是新的文本块比较大，需要进一步拆分
+        // 说明是当前文本比较大，需要进一步拆分
 
-        // split new Text, split chunks must will greater 1 (small lastText)
+        // 把新的文本块进行一个拆分，并追加到 latestText 中
         const innerChunks = splitTextRecursively({
-          text: newText,
+          text: currentText,
           step: step + 1,
-          lastText: '',
+          lastText,
           parentTitle: parentTitle + item.title
         });
         const lastChunk = innerChunks[innerChunks.length - 1];
@@ -328,16 +369,16 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
       // Not overlap
       if (forbidConcat) {
-        chunks.push(item.text);
+        chunks.push(currentText);
         continue;
       }
 
-      lastText += item.text;
+      lastText = newText;
     }
 
     /* If the last chunk is independent, it needs to be push chunks. */
     if (lastText && chunks[chunks.length - 1] && !chunks[chunks.length - 1].endsWith(lastText)) {
-      if (lastText.length < chunkLen * 0.4) {
+      if (lastText.length < chunkSize * 0.4) {
         chunks[chunks.length - 1] = chunks[chunks.length - 1] + lastText;
       } else {
         chunks.push(lastText);
@@ -371,9 +412,9 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
 /**
  * text split into chunks
- * chunkLen - one chunk len. max: 3500
+ * chunkSize - one chunk len. max: 3500
  * overlapLen - The size of the before and after Text
- * chunkLen > overlapLen
+ * chunkSize > overlapLen
  * markdown
  */
 export const splitText2Chunks = (props: SplitProps): SplitResponse => {

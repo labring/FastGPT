@@ -45,6 +45,7 @@ import TeamSelector from '@/pageComponents/account/TeamSelector';
 import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
+import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
@@ -76,7 +77,7 @@ const Info = () => {
           <Flex justifyContent={'center'} maxW={'1080px'}>
             <Box flex={'0 0 330px'}>
               <MyInfo onOpenContact={onOpenContact} />
-              <Box mt={9}>
+              <Box mt={6}>
                 <Other onOpenContact={onOpenContact} />
               </Box>
             </Box>
@@ -162,8 +163,23 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
   const labelStyles: BoxProps = {
     flex: '0 0 80px',
-    fontSize: 'sm',
-    color: 'myGray.900'
+    color: 'var(--light-general-on-surface-lowest, var(--Gray-Modern-500, #667085))',
+    fontFamily: '"PingFang SC"',
+    fontSize: '14px',
+    fontStyle: 'normal',
+    fontWeight: 400,
+    lineHeight: '20px',
+    letterSpacing: '0.25px'
+  };
+
+  const titleStyles: BoxProps = {
+    color: 'var(--light-general-on-surface, var(--Gray-Modern-900, #111824))',
+    fontFamily: '"PingFang SC"',
+    fontSize: '16px',
+    fontStyle: 'normal',
+    fontWeight: 500,
+    lineHeight: '24px',
+    letterSpacing: '0.15px'
   };
 
   const isSyncMember = feConfigs.register_method?.includes('sync');
@@ -171,27 +187,69 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     <Box>
       {/* user info */}
       {isPc && (
-        <Flex alignItems={'center'} fontSize={'md'} h={'30px'}>
-          <MyIcon mr={2} name={'support/user/userLight'} w={'1.25rem'} />
-          {t('account_info:personal_information')}
+        <Flex alignItems={'center'} h={'30px'} {...titleStyles}>
+          <MyIcon mr={2} name={'core/dataset/fileCollection'} w={'1.25rem'} />
+          {t('account_info:general_info')}
         </Flex>
       )}
 
       <Box mt={[0, 6]} fontSize={'sm'}>
+        <Flex alignItems={'center'}>
+          <Box {...labelStyles}>{t('account_info:user_account')}&nbsp;</Box>
+          <Box flex={1}>{userInfo?.username}</Box>
+        </Flex>
+        {feConfigs?.isPlus && (
+          <Flex mt={4} alignItems={'center'}>
+            <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
+            <Box flex={1}>*****</Box>
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+              {t('account_info:change')}
+            </Button>
+          </Flex>
+        )}
+        {feConfigs?.isPlus && (
+          <Flex mt={4} alignItems={'center'}>
+            <Box {...labelStyles}>{t('common:contact_way')}&nbsp;</Box>
+            <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
+              {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
+            </Box>
+
+            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
+              {t('account_info:change')}
+            </Button>
+          </Flex>
+        )}
+
+        <MyDivider my={6} />
+
+        {isPc && (
+          <Flex alignItems={'center'} h={'30px'} {...titleStyles} mt={6}>
+            <MyIcon mr={2} name={'support/team/group'} w={'1.25rem'} />
+            {t('account_info:team_info')}
+          </Flex>
+        )}
+
+        {feConfigs.isPlus && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box {...labelStyles}>{t('account_info:user_team_team_name')}&nbsp;</Box>
+            <Flex flex={'1 0 0'} w={0} align={'center'}>
+              <TeamSelector height={'28px'} w={'100%'} showManage />
+            </Flex>
+          </Flex>
+        )}
+
         {isPc ? (
-          <Flex alignItems={'center'} cursor={'pointer'}>
-            <Box {...labelStyles}>{t('account_info:avatar')}:&nbsp;</Box>
+          <Flex mt={4} alignItems={'center'} cursor={'pointer'}>
+            <Box {...labelStyles}>{t('account_info:avatar')}&nbsp;</Box>
 
             <MyTooltip label={t('account_info:select_avatar')}>
               <Box
-                w={['44px', '56px']}
-                h={['44px', '56px']}
+                w={['22px', '32px']}
+                h={['22px', '32px']}
                 borderRadius={'50%'}
                 border={theme.borders.base}
                 overflow={'hidden'}
-                p={'2px'}
                 boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-                mb={2}
                 onClick={onOpenSelectFile}
               >
                 <Avatar src={userInfo?.avatar} borderRadius={'50%'} w={'100%'} h={'100%'} />
@@ -228,7 +286,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
         )}
         {feConfigs?.isPlus && (
           <Flex mt={[0, 4]} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:member_name')}:&nbsp;</Box>
+            <Box {...labelStyles}>{t('account_info:member_name')}&nbsp;</Box>
             <Input
               flex={'1 0 0'}
               disabled={isSyncMember}
@@ -236,7 +294,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
               transform={'translateX(-11px)'}
-              maxLength={20}
+              maxLength={100}
               onBlur={async (e) => {
                 const val = e.target.value;
                 if (val === userInfo?.team?.memberName) return;
@@ -248,43 +306,10 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             />
           </Flex>
         )}
-        <Flex alignItems={'center'} mt={6}>
-          <Box {...labelStyles}>{t('account_info:user_account')}:&nbsp;</Box>
-          <Box flex={1}>{userInfo?.username}</Box>
-        </Flex>
-        {feConfigs?.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:password')}:&nbsp;</Box>
-            <Box flex={1}>*****</Box>
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('account_info:change')}
-            </Button>
-          </Flex>
-        )}
-        {feConfigs?.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('common:contact_way')}:&nbsp;</Box>
-            <Box flex={1} {...(!userInfo?.contact ? { color: 'red.600' } : {})}>
-              {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
-            </Box>
-
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
-              {t('account_info:change')}
-            </Button>
-          </Flex>
-        )}
-        {feConfigs.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box {...labelStyles}>{t('account_info:user_team_team_name')}:&nbsp;</Box>
-            <Flex flex={'1 0 0'} w={0} align={'center'}>
-              <TeamSelector height={'28px'} w={'100%'} showManage />
-            </Flex>
-          </Flex>
-        )}
         {feConfigs?.isPlus && (userInfo?.team?.balance ?? 0) > 0 && (
-          <Box mt={6} whiteSpace={'nowrap'}>
+          <Box mt={4} whiteSpace={'nowrap'}>
             <Flex alignItems={'center'}>
-              <Box {...labelStyles}>{t('account_info:team_balance')}:&nbsp;</Box>
+              <Box {...labelStyles}>{t('account_info:team_balance')}&nbsp;</Box>
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong>{' '}
                 {t('account_info:yuan')}
@@ -298,6 +323,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Flex>
           </Box>
         )}
+
+        <MyDivider my={6} />
       </Box>
       {isOpenConversionModal && (
         <ConversionModal onClose={onCloseConversionModal} onOpenContact={onOpenContact} />
@@ -418,7 +445,16 @@ const PlanUsage = () => {
   return standardPlan ? (
     <Box mt={[6, 0]}>
       <Flex fontSize={['md', 'lg']} h={'30px'}>
-        <Flex alignItems={'center'}>
+        <Flex
+          alignItems={'center'}
+          color="var(--light-general-on-surface, var(--Gray-Modern-900, #111824))"
+          fontFamily='"PingFang SC"'
+          fontSize="16px"
+          fontStyle="normal"
+          fontWeight={500}
+          lineHeight="24px"
+          letterSpacing="0.15px"
+        >
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('account_info:package_and_usage')}
         </Flex>
@@ -601,7 +637,7 @@ const Other = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
   return (
     <Box>
-      <Grid gridGap={4} mt={3}>
+      <Grid gridGap={4}>
         {feConfigs?.docUrl && (
           <Link
             href={getDocPath('/docs/intro')}

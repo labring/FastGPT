@@ -33,6 +33,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import { ChannelLogUsageType } from '@/global/aiproxy/type';
 
 type LogDetailType = {
   id: number;
@@ -42,10 +43,10 @@ type LogDetailType = {
   duration: number;
   request_at: string;
   code: number;
-  prompt_tokens: number;
-  completion_tokens: number;
+  usage?: ChannelLogUsageType;
   endpoint: string;
 
+  retry_times?: number;
   content?: string;
   request_body?: string;
   response_body?: string;
@@ -159,8 +160,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
         duration: durationSecond,
         request_at: formatTime2YMDHMS(item.request_at),
         code: item.code,
-        prompt_tokens: item.prompt_tokens,
-        completion_tokens: item.completion_tokens,
+        usage: item.usage,
         request_id: item.request_id,
         endpoint: item.endpoint,
         content: item.content
@@ -197,7 +197,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack>
           <FormLabel>{t('account_model:channel_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
@@ -210,7 +210,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             />
           </Box>
         </HStack>
-        <HStack flex={'0 0 200px'}>
+        <HStack>
           <FormLabel>{t('account_model:model_name')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect<string>
@@ -260,7 +260,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>{item.channelName}</Td>
                     <Td>{item.model}</Td>
                     <Td>
-                      {item.prompt_tokens} / {item.completion_tokens}
+                      {item.usage?.input_tokens} / {item.usage?.output_tokens}
                     </Td>
                     <Td color={item.duration > 10 ? 'red.600' : ''}>{item.duration.toFixed(2)}s</Td>
                     <Td color={item.code === 200 ? 'green.600' : 'red.600'}>
@@ -297,6 +297,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
   const { t } = useTranslation();
   const { data: detailData } = useRequest2(
     async () => {
+      console.log(data);
       if (data.code === 200) return data;
       try {
         const res = await getLogDetail(data.id);
@@ -363,7 +364,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>RequestID</Title>
               <Container>{detailData?.request_id}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>{t('account_model:channel_status')}</Title>
               <Container color={detailData.code === 200 ? 'green.600' : 'red.600'}>
                 {detailData?.code}
@@ -373,7 +374,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>Endpoint</Title>
               <Container>{detailData?.endpoint}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>{t('account_model:channel_name')}</Title>
               <Container>{detailData?.channelName}</Container>
             </GridItem>
@@ -381,7 +382,7 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>{t('account_model:request_at')}</Title>
               <Container>{detailData?.request_at}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title>{t('account_model:duration')}</Title>
               <Container>{detailData?.duration.toFixed(2)}s</Container>
             </GridItem>
@@ -389,20 +390,26 @@ const LogDetail = ({ data, onClose }: { data: LogDetailType; onClose: () => void
               <Title>{t('account_model:model')}</Title>
               <Container>{detailData?.model}</Container>
             </GridItem>
-            <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px">
+            <GridItem display={'flex'} borderBottomWidth="1px">
               <Title flex={'0 0 150px'}>{t('account_model:model_tokens')}</Title>
               <Container>
-                {detailData?.prompt_tokens} / {detailData?.completion_tokens}
+                {detailData?.usage?.input_tokens} / {detailData?.usage?.output_tokens}
               </Container>
             </GridItem>
+            {detailData?.retry_times !== undefined && (
+              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
+                <Title>{t('account_model:retry_times')}</Title>
+                <Container>{detailData?.retry_times}</Container>
+              </GridItem>
+            )}
             {detailData?.content && (
-              <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px" colSpan={2}>
+              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
                 <Title>Content</Title>
                 <Container>{detailData?.content}</Container>
               </GridItem>
             )}
             {detailData?.request_body && (
-              <GridItem display={'flex'} borderBottomWidth="1px" borderRightWidth="1px" colSpan={2}>
+              <GridItem display={'flex'} borderBottomWidth="1px" colSpan={2}>
                 <Title>Request Body</Title>
                 <Container userSelect={'all'}>{detailData?.request_body}</Container>
               </GridItem>

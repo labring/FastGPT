@@ -48,15 +48,6 @@ export type InsertOneDatasetDataProps = PushDatasetDataChunkProps & {
   collectionId: string;
 };
 
-export type GetTrainingQueueProps = {
-  vectorModel: string;
-  agentModel: string;
-};
-export type GetTrainingQueueResponse = {
-  vectorTrainingCount: number;
-  agentTrainingCount: number;
-};
-
 /* -------------- search ---------------- */
 export type SearchTestProps = {
   datasetId: string;

@@ -35,7 +35,7 @@ import {
 import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import {
-  Input_Template_File_Link_Prompt,
+  Input_Template_File_Link,
   Input_Template_UserChatInput
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from './constants';
@@ -175,7 +175,7 @@ export function form2AppWorkflow(
           value: selectedDatasets?.length > 0 ? [datasetNodeId, 'quoteQA'] : undefined
         },
         {
-          ...Input_Template_File_Link_Prompt,
+          ...Input_Template_File_Link,
           value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
         },
         {
@@ -502,7 +502,7 @@ export function form2AppWorkflow(
               value: formData.aiSettings.maxHistories
             },
             {
-              ...Input_Template_File_Link_Prompt,
+              ...Input_Template_File_Link,
               value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
             },
             {

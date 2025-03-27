@@ -7,7 +7,6 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 
 export type OrgFormType = {
@@ -15,8 +14,7 @@ export type OrgFormType = {
   avatar: string;
   description?: string;
   name: string;
-  path: string;
-  parentId?: string;
+  path?: string;
 };
 
 export const defaultOrgForm: OrgFormType = {
@@ -30,11 +28,15 @@ export const defaultOrgForm: OrgFormType = {
 function OrgInfoModal({
   editOrg,
   onClose,
-  onSuccess
+  onSuccess,
+  updateCurrentOrg,
+  parentId
 }: {
   editOrg: OrgFormType;
   onClose: () => void;
   onSuccess: () => void;
+  updateCurrentOrg: (data: { name?: string; avatar?: string; description?: string }) => void;
+  parentId?: string;
 }) {
   const { t } = useTranslation();
 
@@ -51,11 +53,11 @@ function OrgInfoModal({
 
   const { run: onCreate, loading: isLoadingCreate } = useRequest2(
     async (data: OrgFormType) => {
-      if (!editOrg.parentId) return;
+      if (parentId === undefined) return;
       return postCreateOrg({
         name: data.name,
         avatar: data.avatar,
-        parentId: editOrg.parentId,
+        orgId: parentId,
         description: data.description
       });
     },
@@ -68,7 +70,7 @@ function OrgInfoModal({
     }
   );
 
-  const { run: onUpdate, loading: isLoadingUpdate } = useRequest2(
+  const { runAsync: onUpdate, loading: isLoadingUpdate } = useRequest2(
     async (data: OrgFormType) => {
       if (!editOrg._id) return;
       return putUpdateOrg({
@@ -145,7 +147,9 @@ function OrgInfoModal({
           isLoading={isLoading}
           onClick={handleSubmit((data) => {
             if (isEdit) {
-              onUpdate(data);
+              onUpdate(data).then(() => {
+                updateCurrentOrg(data);
+              });
             } else {
               onCreate(data);
             }

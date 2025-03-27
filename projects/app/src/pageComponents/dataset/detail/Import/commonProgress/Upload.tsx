@@ -49,7 +49,7 @@ const Upload = () => {
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const retrainNewCollectionId = useRef('');
 
-  const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
+  const { importSource, parentId, sources, setSources, processParamsForm, chunkSize, indexSize } =
     useContextSelector(DatasetImportContext, (v) => v);
 
   const { handleSubmit } = processParamsForm;
@@ -81,7 +81,7 @@ const Upload = () => {
   }, [waitingFilesCount, totalFilesCount, allFinished, t]);
 
   const { runAsync: startUpload, loading: isLoading } = useRequest2(
-    async ({ trainingType, customSplitChar, qaPrompt, webSelector }: ImportFormType) => {
+    async ({ trainingType, chunkSplitter, qaPrompt, webSelector }: ImportFormType) => {
       if (sources.length === 0) return;
       const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
@@ -111,10 +111,16 @@ const Upload = () => {
           trainingType,
           imageIndex: processParamsForm.getValues('imageIndex'),
           autoIndexes: processParamsForm.getValues('autoIndexes'),
+
+          chunkSettingMode: processParamsForm.getValues('chunkSettingMode'),
+          chunkSplitMode: processParamsForm.getValues('chunkSplitMode'),
+
           chunkSize,
-          chunkSplitter: customSplitChar,
+          indexSize,
+          chunkSplitter,
           qaPrompt: trainingType === DatasetCollectionDataProcessModeEnum.qa ? qaPrompt : undefined
         };
+
         if (importSource === ImportDataSourceEnum.reTraining) {
           const res = await postReTrainingDatasetFileCollection({
             ...commonParams,

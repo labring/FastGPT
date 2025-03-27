@@ -74,6 +74,8 @@ type ChatItemContextType = {
 
   quoteData?: QuoteDataType;
   setQuoteData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
+  isVariableVisible: boolean;
+  setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
 } & ContextProps;
 
 export const ChatItemContext = createContext<ChatItemContextType>({
@@ -97,6 +99,10 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   quoteData: undefined,
   setQuoteData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
     throw new Error('Function not implemented.');
+  },
+  isVariableVisible: true,
+  setIsVariableVisible: function (value: React.SetStateAction<boolean>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -116,6 +122,8 @@ const ChatItemContextProvider = ({
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
   const [quoteData, setQuoteData] = useState<QuoteDataType>();
+  const [isVariableVisible, setIsVariableVisible] = useState(true);
+
   const [chatBoxData, setChatBoxData] = useState<ChatBoxDataType>({
     ...defaultChatData
   });
@@ -172,7 +180,9 @@ const ChatItemContextProvider = ({
       showNodeStatus,
 
       quoteData,
-      setQuoteData
+      setQuoteData,
+      isVariableVisible,
+      setIsVariableVisible
     };
   }, [
     chatBoxData,
@@ -187,7 +197,9 @@ const ChatItemContextProvider = ({
     // isShowFullText,
     showNodeStatus,
     quoteData,
-    setQuoteData
+    setQuoteData,
+    isVariableVisible,
+    setIsVariableVisible
   ]);
 
   return <ChatItemContext.Provider value={contextValue}>{children}</ChatItemContext.Provider>;
