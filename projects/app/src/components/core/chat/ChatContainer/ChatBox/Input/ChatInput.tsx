@@ -1,6 +1,6 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex, Spinner, Textarea, Toast} from '@chakra-ui/react';
+import { Box, Flex, Spinner, Textarea} from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -23,8 +23,8 @@ const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
 const fileTypeFilter = (file: File) => {
   return (
-      file.type.includes('image') ||
-      documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
+    file.type.includes('image') ||
+    documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
   );
 };
 
@@ -313,17 +313,16 @@ const ChatInput = ({
     whisperConfig?.autoSend
   ]);
   useEffect(() => {
-    if (!stream) return;
-
+    if (!stream) {
+      return;
+    }
     const audioContext = new AudioContext();
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 4096;
     analyser.smoothingTimeConstant = 1;
     const source = audioContext.createMediaStreamSource(stream);
     source.connect(analyser);
-
     let animationFrameId: number | null = null;
-
     const renderCurve = () => {
         const canvas = canvasRef.current;
         if (!canvas) return;
