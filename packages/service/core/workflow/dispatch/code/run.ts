@@ -4,6 +4,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import axios from 'axios';
 import { formatHttpError } from '../utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 
 type RunCodeType = ModuleDispatchProps<{
   [NodeInputKeyEnum.codeType]: string;
@@ -17,19 +18,11 @@ type RunCodeResponse = DispatchNodeResultType<{
 }>;
 
 function getURL(codeType: string): string {
-  let url: string;
-  switch (codeType) {
-    case 'py':
-      url = `${process.env.SANDBOX_URL}/sandbox/python`;
-      break;
-    case 'js':
-      url = `${process.env.SANDBOX_URL}/sandbox/js`;
-      break;
-    default:
-      url = `${process.env.SANDBOX_URL}/sandbox/js`;
-      break;
+  if (codeType == SandboxCodeTypeEnum.py) {
+    return `${process.env.SANDBOX_URL}/sandbox/python`;
+  } else {
+    return `${process.env.SANDBOX_URL}/sandbox/js`;
   }
-  return url;
 }
 
 export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeResponse> => {
@@ -37,7 +30,7 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
     params: { codeType, code, [NodeInputKeyEnum.addInputParam]: customVariables }
   } = props;
 
-  if (codeType != 'js' && !process.env.SANDBOX_URL) {
+  if (!process.env.SANDBOX_URL) {
     return {
       [NodeOutputKeyEnum.error]: 'Can not find SANDBOX_URL in env'
     };
@@ -70,7 +63,7 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
         ...runResult.data.codeReturn
       };
     } else {
-      throw new Error('Run code failed');
+      return Promise.reject('Run code failed');
     }
   } catch (error) {
     return {

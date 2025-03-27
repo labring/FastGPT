@@ -68,12 +68,14 @@ export const CodeNode: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.codeType,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
       value: 'js'
     },
     {
       key: NodeInputKeyEnum.code,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       label: '',
+      valueType: WorkflowIOValueTypeEnum.string,
       value: JS_TEMPLATE
     }
   ],

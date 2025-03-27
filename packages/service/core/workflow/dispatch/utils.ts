@@ -106,6 +106,7 @@ export const getHistories = (history?: ChatItemType[] | number, histories: ChatI
 /* value type format */
 export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   if (value === undefined) return;
+  if (!type) return value;
 
   if (type === 'string') {
     if (typeof value !== 'object') return String(value);
