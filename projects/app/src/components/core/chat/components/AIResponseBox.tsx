@@ -291,7 +291,6 @@ const getResponseRenderer = (
   return null;
 };
 
-// AI响应框主组件
 const AIResponseBox = React.memo(function AIResponseBox({
   value,
   isLastResponseValue,

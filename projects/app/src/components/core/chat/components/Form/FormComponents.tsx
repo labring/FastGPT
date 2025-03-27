@@ -27,6 +27,41 @@ export type SelectOptionsComponentPropsType = {
   variant?: string;
 };
 
+const DescriptionBox = React.memo(function DescriptionBox({
+  description
+}: {
+  description?: string;
+}) {
+  if (!description) return null;
+
+  return (
+    <Box
+      mb={4}
+      p={4}
+      border="1px solid"
+      borderColor="blue.200"
+      bg="blue.50"
+      borderRadius="md"
+      boxShadow="sm"
+      textAlign="center"
+    >
+      <Markdown source={description} />
+    </Box>
+  );
+});
+
+const inputBaseStyle = {
+  bg: 'white',
+  borderWidth: '1px',
+  borderColor: 'gray.300',
+  _hover: { borderColor: 'gray.400' },
+  _focus: {
+    borderColor: 'primary.500',
+    boxShadow: '0 0 0 1px var(--chakra-colors-primary-500)'
+  },
+  borderRadius: 'md'
+};
+
 export const SelectOptionsComponent = React.memo(function SelectOptionsComponent({
   options = [],
   description,
@@ -37,20 +72,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
 }: SelectOptionsComponentPropsType) {
   return (
     <Box>
-      {description && (
-        <Box
-          mb={4}
-          p={4}
-          border="1px solid"
-          borderColor="blue.200"
-          bg="blue.50"
-          borderRadius="md"
-          boxShadow="sm"
-          textAlign="center"
-        >
-          <Markdown source={description} />
-        </Box>
-      )}
+      <DescriptionBox description={description} />
       <Flex flexDirection={'column'} gap={3} maxW={'400px'} mx="auto">
         {options.map((option: SelectOptionType) => {
           const selected = option.value === selectedValue;
@@ -118,10 +140,131 @@ export type FormInputComponentProps = {
   onSubmit?: (data: Record<string, any>) => void;
   isDisabled?: boolean;
   defaultValues?: Record<string, any>;
-  submitButtonText?: 'common:Submit' | string; // 使用联合类型指定特定的i18n键名
+  submitButtonText?: 'common:Submit' | string;
   showSubmitButton?: boolean;
   submitButtonIcon?: IconNameType;
   isCompact?: boolean;
+};
+
+// 表单项标签组件
+const FormItemLabel = React.memo(function FormItemLabel({
+  label,
+  required,
+  description
+}: {
+  label: string;
+  required?: boolean;
+  description?: string;
+}) {
+  return (
+    <Flex mb={2} alignItems={'center'}>
+      <FormLabel required={required} mb={0} fontWeight="medium" color="gray.700">
+        {label}
+      </FormLabel>
+      {description && <QuestionTip ml={1} label={description} />}
+    </Flex>
+  );
+});
+
+// 渲染不同类型的表单输入项
+const renderFormInput = (
+  input: FormItemType,
+  register: any,
+  control: any,
+  setValue: any,
+  isDisabled: boolean
+) => {
+  const { type, label, required, maxLength, min, max, defaultValue, list } = input;
+
+  switch (type) {
+    case FlowNodeInputTypeEnum.input:
+      return (
+        <MyTextarea
+          isDisabled={isDisabled}
+          {...register(label, { required })}
+          {...inputBaseStyle}
+          autoHeight
+          minH={40}
+          maxH={100}
+          p={3}
+        />
+      );
+
+    case FlowNodeInputTypeEnum.textarea:
+      return (
+        <Textarea
+          isDisabled={isDisabled}
+          {...register(label, { required })}
+          {...inputBaseStyle}
+          rows={5}
+          maxLength={maxLength || 4000}
+          p={3}
+        />
+      );
+
+    case FlowNodeInputTypeEnum.numberInput:
+      return (
+        <Box position="relative">
+          <MyNumberInput
+            min={min}
+            max={max}
+            defaultValue={defaultValue}
+            isDisabled={isDisabled}
+            {...inputBaseStyle}
+            register={register}
+            name={label}
+            isRequired={required}
+            sx={{
+              '& input': {
+                width: '100%',
+                height: '40px',
+                px: 3,
+                borderRadius: 'md',
+                border: 'none',
+                _focus: { outline: 'none' }
+              },
+              '& button': {
+                border: 'none',
+                bg: 'transparent',
+                color: 'gray.500'
+              }
+            }}
+          />
+        </Box>
+      );
+
+    case FlowNodeInputTypeEnum.select:
+      return (
+        <Controller
+          key={label}
+          control={control}
+          name={label}
+          rules={{ required }}
+          render={({ field: { ref, value } }) => {
+            if (!list) return <></>;
+            return (
+              <MySelect
+                ref={ref}
+                width={'100%'}
+                variant="outline"
+                borderColor="gray.300"
+                borderRadius="md"
+                height="40px"
+                bg="white"
+                _hover={{ borderColor: 'gray.400' }}
+                list={list}
+                value={value}
+                isDisabled={isDisabled}
+                onChange={(e) => setValue(label, e)}
+              />
+            );
+          }}
+        />
+      );
+
+    default:
+      return null;
+  }
 };
 
 export const FormInputComponent = React.memo(function FormInputComponent({
@@ -151,20 +294,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
 
   return (
     <Box>
-      {description && (
-        <Box
-          mb={4}
-          p={4}
-          border="1px solid"
-          borderColor="blue.200"
-          bg="blue.50"
-          borderRadius="md"
-          boxShadow="sm"
-          textAlign="center"
-        >
-          <Markdown source={description} />
-        </Box>
-      )}
+      <DescriptionBox description={description} />
       <Box
         as="form"
         onSubmit={handleSubmit(handleFormSubmit)}
@@ -176,114 +306,12 @@ export const FormInputComponent = React.memo(function FormInputComponent({
         <Flex flexDirection={'column'} gap={5} w={'100%'}>
           {inputForm.map((input: FormItemType) => (
             <Box key={input.label} mb={2}>
-              <Flex mb={2} alignItems={'center'}>
-                <FormLabel required={input.required} mb={0} fontWeight="medium" color="gray.700">
-                  {input.label}
-                </FormLabel>
-                {input.description && <QuestionTip ml={1} label={input.description} />}
-              </Flex>
-              {input.type === FlowNodeInputTypeEnum.input && (
-                <MyTextarea
-                  isDisabled={isDisabled}
-                  {...register(input.label, {
-                    required: input.required
-                  })}
-                  bg={'white'}
-                  borderWidth="1px"
-                  borderColor="gray.300"
-                  _hover={{ borderColor: 'gray.400' }}
-                  _focus={{
-                    borderColor: 'primary.500',
-                    boxShadow: '0 0 0 1px var(--chakra-colors-primary-500)'
-                  }}
-                  autoHeight
-                  minH={40}
-                  maxH={100}
-                  borderRadius="md"
-                  p={3}
-                />
-              )}
-              {input.type === FlowNodeInputTypeEnum.textarea && (
-                <Textarea
-                  isDisabled={isDisabled}
-                  bg={'white'}
-                  borderWidth="1px"
-                  borderColor="gray.300"
-                  _hover={{ borderColor: 'gray.400' }}
-                  _focus={{
-                    borderColor: 'primary.500',
-                    boxShadow: '0 0 0 1px var(--chakra-colors-primary-500)'
-                  }}
-                  {...register(input.label, {
-                    required: input.required
-                  })}
-                  rows={5}
-                  maxLength={input.maxLength || 4000}
-                  borderRadius="md"
-                  p={3}
-                />
-              )}
-              {input.type === FlowNodeInputTypeEnum.numberInput && (
-                <Box position="relative">
-                  <MyNumberInput
-                    min={input.min}
-                    max={input.max}
-                    defaultValue={input.defaultValue}
-                    isDisabled={isDisabled}
-                    bg={'white'}
-                    borderWidth="1px"
-                    borderRadius="md"
-                    borderColor="gray.300"
-                    _hover={{ borderColor: 'gray.400' }}
-                    _focus={{ borderColor: 'primary.500' }}
-                    register={register}
-                    name={input.label}
-                    isRequired={input.required}
-                    sx={{
-                      '& input': {
-                        width: '100%',
-                        height: '40px',
-                        px: 3,
-                        borderRadius: 'md',
-                        border: 'none',
-                        _focus: { outline: 'none' }
-                      },
-                      '& button': {
-                        border: 'none',
-                        bg: 'transparent',
-                        color: 'gray.500'
-                      }
-                    }}
-                  />
-                </Box>
-              )}
-              {input.type === FlowNodeInputTypeEnum.select && (
-                <Controller
-                  key={input.label}
-                  control={control}
-                  name={input.label}
-                  rules={{ required: input.required }}
-                  render={({ field: { ref, value } }) => {
-                    if (!input.list) return <></>;
-                    return (
-                      <MySelect
-                        ref={ref}
-                        width={'100%'}
-                        variant="outline"
-                        borderColor="gray.300"
-                        borderRadius="md"
-                        height="40px"
-                        bg="white"
-                        _hover={{ borderColor: 'gray.400' }}
-                        list={input.list}
-                        value={value}
-                        isDisabled={isDisabled}
-                        onChange={(e) => setValue(input.label, e)}
-                      />
-                    );
-                  }}
-                />
-              )}
+              <FormItemLabel
+                label={input.label}
+                required={input.required}
+                description={input.description}
+              />
+              {renderFormInput(input, register, control, setValue, isDisabled)}
             </Box>
           ))}
 
