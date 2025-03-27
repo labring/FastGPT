@@ -11,8 +11,8 @@ import {
   checkInvalidVector
 } from '@/service/common/system/cronTask';
 
-let deleteImageAmount = 0;
-async function checkInvalidImg(start: Date, end: Date, limit = 50) {
+export let deleteImageAmount = 0;
+export async function checkInvalidImg(start: Date, end: Date, limit = 50) {
   const images = await MongoImage.find(
     {
       createTime: {
@@ -88,5 +88,3 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
-
-export { deleteImageAmount, checkInvalidImg };
