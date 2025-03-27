@@ -187,7 +187,7 @@ export class PgVectorCtrl {
     try {
       const results: any = await PgClient.query(
         `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
+          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SET LOCAL hnsw.iterative_scan = relaxed_order;
           WITH relaxed_results AS MATERIALIZED (
             select id, collection_id, vector <#> '[${vector}]' AS score

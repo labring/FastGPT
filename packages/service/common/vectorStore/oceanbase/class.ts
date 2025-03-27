@@ -170,7 +170,7 @@ export class ObVectorCtrl {
         } & RowDataPacket)[][]
       >(
         `BEGIN;
-          SET ob_hnsw_ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
+          SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
           SELECT id, collection_id, inner_product(vector, [${vector}]) AS score
             FROM ${DatasetVectorTableName}
             WHERE team_id='${teamId}'

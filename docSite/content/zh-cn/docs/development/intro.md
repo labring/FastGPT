@@ -71,7 +71,7 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 - `vectorMaxProcess`: 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
 - `qaMaxProcess`: QA 生成最大进程
 - `vlmMaxProcess`: 图片理解模型最大进程
-- `pgHNSWEfSearch`: PostgreSQL vector 索引参数，越大搜索精度越高但是速度越慢，具体可看 pgvector 官方说明。
+- `hnswEfSearch`: 向量搜索参数，仅对 PG 和 OB 生效，越大搜索精度越高但是速度越慢。
 
 ### 5. 运行
 
