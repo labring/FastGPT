@@ -46,6 +46,10 @@
               {
                 "label": "Microsoft SQL Server",
                 "value": "Microsoft SQL Server"
+              },
+              {
+                "label": "dmdb",
+                "value": "dmdb"
               }
             ],
             "required": true
