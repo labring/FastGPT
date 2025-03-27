@@ -17,7 +17,6 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import {
   delRemoveMember,
   getTeamMembers,
@@ -50,6 +49,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import _ from 'lodash';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -157,11 +157,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   const isLoading = loadingMembers || isSyncing;
 
-  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTextarea({
+  const { EditModal: EditMemberNameModal, onOpenModal: openEditMemberName } = useEditTitle({
     title: t('account_team:edit_member'),
     tip: t('account_team:edit_member_tip'),
-    canEmpty: false,
-    rows: 1
+    canEmpty: false
   });
   const handleEditMemberName = (tmbId: string, memberName: string) => {
     openEditMemberName({
@@ -323,8 +322,8 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         member.tmbId !== userInfo?.team.tmbId &&
                         (member.status === TeamMemberStatusEnum.active ? (
                           <>
-                            {' '}
                             <Icon
+                              mr={2}
                               name={'edit'}
                               cursor={'pointer'}
                               w="1rem"
