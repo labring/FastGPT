@@ -11,15 +11,15 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-type IconName = 'core/workflow/debugNext' | 'common/loading' | 'core/chat/think';
+type IconNameType = 'core/workflow/debugNext' | 'common/loading' | 'core/chat/think';
 
-export type SelectOption = {
+export type SelectOptionType = {
   key: string;
   value: string;
 };
 
-export type SelectOptionsComponentProps = {
-  options: SelectOption[];
+export type SelectOptionsComponentPropsType = {
+  options: SelectOptionType[];
   description?: string;
   selectedValue?: string;
   onSelectOption: (value: string) => void;
@@ -34,7 +34,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
   onSelectOption,
   isDisabled = false,
   variant = 'outline'
-}: SelectOptionsComponentProps) {
+}: SelectOptionsComponentPropsType) {
   return (
     <Box>
       {description && (
@@ -52,7 +52,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
         </Box>
       )}
       <Flex flexDirection={'column'} gap={3} maxW={'400px'} mx="auto">
-        {options.map((option: SelectOption) => {
+        {options.map((option: SelectOptionType) => {
           const selected = option.value === selectedValue;
 
           return (
@@ -95,7 +95,7 @@ export const SelectOptionsComponent = React.memo(function SelectOptionsComponent
   );
 });
 
-export type FormItem = {
+export type FormItemType = {
   label: string;
   key?: string;
   type: FlowNodeInputTypeEnum;
@@ -113,14 +113,14 @@ export type FormItem = {
 };
 
 export type FormInputComponentProps = {
-  inputForm: FormItem[];
+  inputForm: FormItemType[];
   description?: string;
   onSubmit?: (data: Record<string, any>) => void;
   isDisabled?: boolean;
   defaultValues?: Record<string, any>;
   submitButtonText?: 'common:Submit' | string; // 使用联合类型指定特定的i18n键名
   showSubmitButton?: boolean;
-  submitButtonIcon?: IconName;
+  submitButtonIcon?: IconNameType;
   isCompact?: boolean;
 };
 
@@ -174,7 +174,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
         borderRadius="md"
       >
         <Flex flexDirection={'column'} gap={5} w={'100%'}>
-          {inputForm.map((input: FormItem) => (
+          {inputForm.map((input: FormItemType) => (
             <Box key={input.label} mb={2}>
               <Flex mb={2} alignItems={'center'}>
                 <FormLabel required={input.required} mb={0} fontWeight="medium" color="gray.700">
@@ -308,7 +308,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
   );
 });
 
-export type UseFormHandlerReturn<T extends FieldValues = Record<string, any>> = {
+export type UseFormHandlerReturnType<T extends FieldValues = Record<string, any>> = {
   register: UseFormReturn<T>['register'];
   setValue: UseFormReturn<T>['setValue'];
   handleSubmit: UseFormReturn<T>['handleSubmit'];
@@ -321,7 +321,7 @@ export type UseFormHandlerReturn<T extends FieldValues = Record<string, any>> = 
 export const useFormHandler = <T extends FieldValues = Record<string, any>>(
   formConfig: UseFormProps<T> = {},
   onSubmitCallback?: (data: T) => void
-): UseFormHandlerReturn<T> => {
+): UseFormHandlerReturnType<T> => {
   const methods = useForm<T>(formConfig);
   const { handleSubmit } = methods;
 

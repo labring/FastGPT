@@ -4,15 +4,15 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { initWorkflowEdgeStatus } from '@fastgpt/global/core/workflow/runtime/utils';
-import {
+import type {
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
-  type SelectOption,
-  type FormItem,
+  type SelectOptionType,
+  type FormItemType,
   FormInputComponent,
   SelectOptionsComponent
 } from '@/components/core/chat/components/Form/FormComponents';
@@ -112,7 +112,7 @@ export const RenderUserSelectInteractive = React.memo(function RenderInteractive
   return (
     <Box px={4} py={3}>
       <SelectOptionsComponent
-        options={(interactive.params.userSelectOptions || []) as SelectOption[]}
+        options={(interactive.params.userSelectOptions || []) as SelectOptionType[]}
         description={interactive.params.description}
         selectedValue={interactive.params.userSelectedVal}
         onSelectOption={handleSelectAndNext}
@@ -171,7 +171,7 @@ export const RenderUserFormInteractive = React.memo(function RenderFormInput({
   return (
     <Box px={4} py={4} bg="white" borderRadius="md">
       <FormInputComponent
-        inputForm={(interactive.params.inputForm || []) as FormItem[]}
+        inputForm={(interactive.params.inputForm || []) as FormItemType[]}
         description={interactive.params.description}
         onSubmit={handleFormSubmit}
         isDisabled={isSubmitted || interactive.params.submitted}
