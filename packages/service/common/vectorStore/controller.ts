@@ -1,13 +1,15 @@
 /* vector crud */
 import { PgVectorCtrl } from './pg/class';
+import { ObVectorCtrl } from './oceanbase/class';
 import { getVectorsByText } from '../../core/ai/embedding';
 import { InsertVectorProps } from './controller.d';
 import { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
+import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
+  if (OCEANBASE_ADDRESS) return new ObVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
 
   return new PgVectorCtrl();

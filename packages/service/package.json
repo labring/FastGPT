@@ -26,6 +26,7 @@
     "mammoth": "^1.6.0",
     "mongoose": "^8.10.1",
     "multer": "1.4.5-lts.1",
+    "mysql2": "^3.11.3",
     "next": "14.2.25",
     "nextjs-cors": "^2.2.0",
     "node-cron": "^3.0.3",
