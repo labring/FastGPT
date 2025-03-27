@@ -97,7 +97,9 @@ const TrainingDataSchema = new Schema({
       }
     ],
     default: []
-  }
+  },
+
+  errorMsg: String
 });
 
 TrainingDataSchema.virtual('dataset', {

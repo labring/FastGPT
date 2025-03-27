@@ -21,6 +21,7 @@ import {
   llmCompletionsBodyFormat,
   llmStreamResponseToAnswerText
 } from '@fastgpt/service/core/ai/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -171,7 +172,16 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     generateQA();
   } catch (err: any) {
     addLog.error(`[QA Queue] Error`, err);
-    reduceQueue();
+    await MongoDatasetTraining.updateOne(
+      {
+        teamId: data.teamId,
+        datasetId: data.datasetId,
+        _id: data._id
+      },
+      {
+        errorMsg: getErrText(err, 'unknown error')
+      }
+    );
 
     setTimeout(() => {
       generateQA();

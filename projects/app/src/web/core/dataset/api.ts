@@ -67,6 +67,13 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
 import type { GetQuoteDataResponse } from '@/pages/api/core/dataset/data/getQuoteData';
 import type { GetQuotePermissionResponse } from '@/pages/api/core/dataset/data/getPermission';
+import type { DatasetCollectionTrainingDetailType } from '@/pages/api/core/dataset/collection/trainingDetail';
+import type { updateTrainingDataBody } from '@/pages/api/core/dataset/training/updateTrainingData';
+import type {
+  getTrainingDataDetailBody,
+  getTrainingDataDetailResponse
+} from '@/pages/api/core/dataset/training/getTrainingDataDetail';
+import type { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -117,6 +124,10 @@ export const getDatasetCollectionPathById = (parentId: string) =>
   GET<ParentTreePathItemType[]>(`/core/dataset/collection/paths`, { parentId });
 export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
+export const getDatasetCollectionTrainingDetail = (collectionId: string) =>
+  GET<DatasetCollectionTrainingDetailType>(`/core/dataset/collection/trainingDetail`, {
+    collectionId
+  });
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const postCreateDatasetFileCollection = (data: FileIdCreateDatasetCollectionParams) =>
@@ -227,6 +238,15 @@ export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
     maxQuantity: 1,
     timeout: 600000
   });
+
+export const deleteTrainingData = (data: deleteTrainingDataBody) =>
+  DELETE(`/core/dataset/training/deleteTrainingData`, data);
+
+export const updateTrainingData = (data: updateTrainingDataBody) =>
+  PUT(`/core/dataset/training/updateTrainingData`, data);
+
+export const getTrainingDataDetail = (data: getTrainingDataDetailBody) =>
+  POST<getTrainingDataDetailResponse>(`/core/dataset/training/getTrainingDataDetail`, data);
 
 /* ================== read source ======================== */
 export const getCollectionSource = (data: readCollectionSourceBody) =>
