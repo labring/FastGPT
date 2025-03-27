@@ -10,7 +10,6 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
-import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 async function handler(
   req: NextApiRequest,
