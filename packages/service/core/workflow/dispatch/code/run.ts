@@ -4,9 +4,10 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import axios from 'axios';
 import { formatHttpError } from '../utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SandboxCodeTypeEnum } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 
 type RunCodeType = ModuleDispatchProps<{
-  [NodeInputKeyEnum.codeType]: 'js';
+  [NodeInputKeyEnum.codeType]: string;
   [NodeInputKeyEnum.code]: string;
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 }>;
@@ -15,6 +16,14 @@ type RunCodeResponse = DispatchNodeResultType<{
   [NodeOutputKeyEnum.rawResponse]?: Record<string, any>;
   [key: string]: any;
 }>;
+
+function getURL(codeType: string): string {
+  if (codeType == SandboxCodeTypeEnum.py) {
+    return `${process.env.SANDBOX_URL}/sandbox/python`;
+  } else {
+    return `${process.env.SANDBOX_URL}/sandbox/js`;
+  }
+}
 
 export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeResponse> => {
   const {
@@ -27,7 +36,7 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
     };
   }
 
-  const sandBoxRequestUrl = `${process.env.SANDBOX_URL}/sandbox/js`;
+  const sandBoxRequestUrl = getURL(codeType);
   try {
     const { data: runResult } = await axios.post<{
       success: boolean;
@@ -39,6 +48,8 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
       code,
       variables: customVariables
     });
+
+    console.log(runResult);
 
     if (runResult.success) {
       return {
@@ -52,7 +63,7 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
         ...runResult.data.codeReturn
       };
     } else {
-      throw new Error('Run code failed');
+      return Promise.reject('Run code failed');
     }
   } catch (error) {
     return {

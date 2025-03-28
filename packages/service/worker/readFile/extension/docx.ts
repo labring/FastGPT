@@ -13,6 +13,7 @@ export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Rea
         buffer
       },
       {
+        ignoreEmptyParagraphs: false,
         convertImage: images.imgElement(async (image) => {
           const imageBase64 = await image.readAsBase64String();
           const uuid = crypto.randomUUID();

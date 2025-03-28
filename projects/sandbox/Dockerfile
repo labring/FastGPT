@@ -1,8 +1,22 @@
 # --------- install dependence -----------
 FROM python:3.11-alpine AS python_base
-
+ENV VERSION_RELEASE = Alpine3.11
 # 安装make和g++
-RUN apk add --no-cache make g++
+RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers
+
+WORKDIR /app
+COPY projects/sandbox/requirements.txt /app/requirements.txt
+RUN wget https://github.com/seccomp/libseccomp/releases/download/v2.5.5/libseccomp-2.5.5.tar.gz && \
+    tar -zxvf libseccomp-2.5.5.tar.gz && \
+    cd libseccomp-2.5.5 && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple Cython && \
+    pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple -r /app/requirements.txt && \
+    cd src/python && \
+    python setup.py install  
+
 
 FROM node:20.14.0-alpine AS install
 
@@ -10,7 +24,7 @@ WORKDIR /app
 
 ARG proxy
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
-RUN apk add --no-cache make g++
+RUN apk add --no-cache make g++ python3
 
 # copy py3.11
 COPY --from=python_base /usr/local /usr/local
@@ -42,9 +56,12 @@ RUN pnpm --filter=sandbox build
 FROM node:20.14.0-alpine AS runner
 WORKDIR /app
 
+RUN apk add --no-cache libffi libffi-dev strace bash
+COPY --from=python_base /usr/local /usr/local
 COPY --from=builder /app/node_modules /app/node_modules
 COPY --from=builder /app/projects/sandbox /app/projects/sandbox
 
 ENV NODE_ENV=production
+ENV PATH="/usr/local/bin:${PATH}"
 
 CMD ["node", "--no-node-snapshot", "projects/sandbox/dist/main.js"]
