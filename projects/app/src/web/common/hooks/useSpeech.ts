@@ -16,6 +16,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   const intervalRef = useRef<any>();
   const startTimestamp = useRef(0);
   const cancelWhisperSignal = useRef(false);
+  const [needSpeak,setNeedspeak]=useState(false);
+  const [pendingStream, setPendingStream] = useState<MediaStream | null>(null); // 新增挂起流状态
+  const stopCalledRef = useRef(false);
 
   const speakingTimeString = useMemo(() => {
     const minutes: number = Math.floor(audioSecond / 60);
@@ -50,6 +53,19 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     }
   }, []);
 
+  const prepareSpeak = () => {
+    setNeedspeak(true);
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      return toast({
+        status: 'warning',
+        title: t('common:common.speech.not support')
+      });
+    }
+    return {
+      needSpeak,
+    };
+   }
+
   const startSpeak = async (onFinish: (text: string) => void) => {
     if (!navigator?.mediaDevices?.getUserMedia) {
       return toast({
@@ -59,9 +75,18 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     }
     try {
       cancelWhisperSignal.current = false;
+      stopCalledRef.current = false;
+      setPendingStream(null); // 重置挂起状态
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
+
+      // 检查是否需要取消
+      if (stopCalledRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        setPendingStream(null);
+        return;
+      }
 
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
@@ -161,10 +186,25 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
   const stopSpeak = (cancel = false) => {
     cancelWhisperSignal.current = cancel;
+    stopCalledRef.current = true;
+    // 立即停止挂起的流
+    if (pendingStream) {
+      pendingStream.getTracks().forEach(track => track.stop());
+      setPendingStream(null);
+    }
     if (mediaRecorder.current) {
       mediaRecorder.current?.stop();
       clearInterval(intervalRef.current);
     }
+  };
+
+  const finishSpeak = () => {
+
+    setNeedspeak(false);
+    stopSpeak(true);
+    return {
+      needSpeak,
+    };
   };
 
   useEffect(() => {
@@ -189,6 +229,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   return {
     startSpeak,
     stopSpeak,
+    prepareSpeak,
+    finishSpeak,
+    needSpeak,
     isSpeaking,
     isTransCription,
     renderAudioGraph,
