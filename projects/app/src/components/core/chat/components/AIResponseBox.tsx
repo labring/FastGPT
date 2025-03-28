@@ -6,8 +6,10 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  Button,
   Flex,
-  HStack
+  HStack,
+  Textarea
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -24,7 +26,15 @@ import type {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useTranslation } from 'next-i18next';
+import { Controller, useForm } from 'react-hook-form';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
+import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import {
   SelectOptionsComponent,
@@ -86,6 +96,9 @@ const RenderText = React.memo(function RenderText({
   text?: string;
 }) {
   let source = text || '';
+  // First empty line
+  // if (!source && !isLastChild) return null;
+
   return <Markdown source={source} showAnimation={showAnimation} />;
 });
 const RenderTool = React.memo(
@@ -99,19 +112,44 @@ const RenderTool = React.memo(
     return (
       <Box>
         {tools.map((tool) => {
-          const toolParams = formatJsonString(tool.params);
-          const toolResponse = formatJsonString(tool.response);
+          const toolParams = (() => {
+            try {
+              return JSON.stringify(JSON.parse(tool.params), null, 2);
+            } catch (error) {
+              return tool.params;
+            }
+          })();
+          const toolResponse = (() => {
+            try {
+              return JSON.stringify(JSON.parse(tool.response), null, 2);
+            } catch (error) {
+              return tool.response;
+            }
+          })();
+
           return (
             <Accordion key={tool.id} allowToggle _notLast={{ mb: 2 }}>
-              <StyledAccordionItem>
-                <StyledAccordionButton>
+              <AccordionItem borderTop={'none'} borderBottom={'none'}>
+                <AccordionButton
+                  w={'auto'}
+                  bg={'white'}
+                  borderRadius={'md'}
+                  borderWidth={'1px'}
+                  borderColor={'myGray.200'}
+                  boxShadow={'1'}
+                  pl={3}
+                  pr={2.5}
+                  _hover={{
+                    bg: 'auto'
+                  }}
+                >
                   <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
                   <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
                     {tool.toolName}
                   </Box>
                   {showAnimation && !tool.response && <MyIcon name={'common/loading'} w={'14px'} />}
                   <AccordionIcon color={'myGray.600'} ml={5} />
-                </StyledAccordionButton>
+                </AccordionButton>
                 <AccordionPanel
                   py={0}
                   px={0}
@@ -136,7 +174,7 @@ ${toolResponse}`}
                     />
                   )}
                 </AccordionPanel>
-              </StyledAccordionItem>
+              </AccordionItem>
             </Accordion>
           );
         })}
@@ -156,6 +194,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 }) {
   const { t } = useTranslation();
   const showAnimation = isChatting && isLastResponseValue;
+
   return (
     <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
       <StyledAccordionItem>
@@ -164,6 +203,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
             <MyIcon name={'core/chat/think'} w={'0.85rem'} />
             <Box fontSize={'sm'}>{t('chat:ai_reasoning')}</Box>
           </HStack>
+
           {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
           <AccordionIcon color={'myGray.600'} ml={5} />
         </StyledAccordionButton>
@@ -224,9 +264,9 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
       isInteractivePrompt: true
     });
   }, []);
+
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
-
       <FormInputComponent
         inputForm={(interactive.params.inputForm || []) as FormItemType[]}
         description={interactive.params.description}
