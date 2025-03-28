@@ -122,17 +122,24 @@ print(json.dumps(res))
 
   const pythonProcess = spawn('python3', ['-u', '-c', fullCode]);
 
-  const stdoutPromise = new Promise<string>((resolve) => {
-    const chunks: string[] = [];
-    pythonProcess.stdout.on('data', (data) => chunks.push(data.toString()));
-    pythonProcess.stdout.on('end', () => resolve(chunks.join('')));
-    pythonProcess.stderr.on('error', (error) => resolve(JSON.stringify({ error })));
-  });
+  const stdoutChunks: string[] = [];
+  const stderrChunks: string[] = [];
 
+  pythonProcess.stdout.on('data', (data) => stdoutChunks.push(data.toString()));
+  pythonProcess.stderr.on('data', (data) => stderrChunks.push(data.toString()));
+
+  const stdoutPromise = new Promise<string>((resolve) => {
+    pythonProcess.on('close', (code) => {
+      if (code !== 0) {
+        resolve(JSON.stringify({ error: stderrChunks.join('') }));
+      } else {
+        resolve(stdoutChunks.join(''));
+      }
+    });
+  });
   const stdout = await stdoutPromise;
 
   try {
-    console.log(stdout, 111);
     const parsedOutput = JSON.parse(stdout);
     if (parsedOutput.error) {
       return Promise.reject(parsedOutput.error || 'Unknown error');
