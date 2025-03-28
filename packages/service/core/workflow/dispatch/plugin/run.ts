@@ -90,7 +90,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       id: String(plugin.id),
       // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
       teamId: plugin.teamId || runningAppInfo.teamId,
-      tmbId: plugin.tmbId || runningAppInfo.tmbId
+      tmbId: plugin.tmbId || runningAppInfo.tmbId,
+      isChildApp: true
     },
     variables: runtimeVariables,
     query: getPluginRunUserQuery({

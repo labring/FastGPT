@@ -112,7 +112,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runningAppInfo: {
       id: String(appData._id),
       teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId)
+      tmbId: String(appData.tmbId),
+      isChildApp: true
     },
     runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
     runtimeEdges: initWorkflowEdgeStatus(edges),
