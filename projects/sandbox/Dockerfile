@@ -1,6 +1,6 @@
 # --------- install dependence -----------
 FROM python:3.11-alpine AS python_base
-
+ENV VERSION_RELEASE = Alpine3.11
 # 安装make和g++
 RUN apk add --no-cache make g++ tar wget gperf automake libtool linux-headers
 
