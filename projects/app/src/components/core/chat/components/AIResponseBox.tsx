@@ -6,45 +6,71 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
   Flex,
-  HStack,
-  Textarea
+  HStack
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
+import type {
   AIChatItemValueItemType,
   ToolModuleResponseItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import {
+import type {
   InteractiveBasicType,
   UserInputInteractive,
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useTranslation } from 'next-i18next';
-import { Controller, useForm } from 'react-hook-form';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
-
-type props = {
-  value: UserChatItemValueItemType | AIChatItemValueItemType;
-  isLastResponseValue: boolean;
-  isChatting: boolean;
-};
-
-const onSendPrompt: SendPromptFnType = (e) => eventBus.emit(EventNameEnum.sendQuestion, e);
-
+import {
+  SelectOptionsComponent,
+  type SelectOptionType,
+  FormInputComponent,
+  type FormItemType
+} from './Interactive/InteractiveComponents';
+const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
+  eventBus.emit(EventNameEnum.sendQuestion, e);
+const StyledAccordionItem = React.memo(function StyledAccordionItem({
+  children
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AccordionItem borderTop={'none'} borderBottom={'none'}>
+      {children}
+    </AccordionItem>
+  );
+});
+const StyledAccordionButton = React.memo(function StyledAccordionButton({
+  children,
+  py = 0
+}: {
+  children: React.ReactNode;
+  py?: number | string;
+}) {
+  return (
+    <AccordionButton
+      w={'auto'}
+      bg={'white'}
+      borderRadius={'md'}
+      borderWidth={'1px'}
+      borderColor={'myGray.200'}
+      boxShadow={'1'}
+      pl={3}
+      pr={2.5}
+      py={py}
+      _hover={{
+        bg: 'auto'
+      }}
+    >
+      {children}
+    </AccordionButton>
+  );
+});
 const RenderText = React.memo(function RenderText({
   showAnimation,
   text
@@ -154,21 +180,8 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 
   return (
     <Accordion allowToggle defaultIndex={isLastResponseValue ? 0 : undefined}>
-      <AccordionItem borderTop={'none'} borderBottom={'none'}>
-        <AccordionButton
-          w={'auto'}
-          bg={'white'}
-          borderRadius={'md'}
-          borderWidth={'1px'}
-          borderColor={'myGray.200'}
-          boxShadow={'1'}
-          pl={3}
-          pr={2.5}
-          py={1}
-          _hover={{
-            bg: 'auto'
-          }}
-        >
+      <StyledAccordionItem>
+        <StyledAccordionButton py={1}>
           <HStack mr={2} spacing={1}>
             <MyIcon name={'core/chat/think'} w={'0.85rem'} />
             <Box fontSize={'sm'}>{t('chat:ai_reasoning')}</Box>
@@ -176,7 +189,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 
           {showAnimation && <MyIcon name={'common/loading'} w={'0.85rem'} />}
           <AccordionIcon color={'myGray.600'} ml={5} />
-        </AccordionButton>
+        </StyledAccordionButton>
         <AccordionPanel
           py={0}
           pr={0}
@@ -188,7 +201,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
         >
           <Markdown source={content} showAnimation={showAnimation} />
         </AccordionPanel>
-      </AccordionItem>
+      </StyledAccordionItem>
     </Accordion>
   );
 });
@@ -198,41 +211,19 @@ const RenderUserSelectInteractive = React.memo(function RenderInteractive({
   interactive: InteractiveBasicType & UserSelectInteractive;
 }) {
   return (
-    <>
-      {interactive?.params?.description && <Markdown source={interactive.params.description} />}
-      <Flex flexDirection={'column'} gap={2} w={'250px'}>
-        {interactive.params.userSelectOptions?.map((option) => {
-          const selected = option.value === interactive?.params?.userSelectedVal;
-
-          return (
-            <Button
-              key={option.key}
-              variant={'whitePrimary'}
-              whiteSpace={'pre-wrap'}
-              isDisabled={interactive?.params?.userSelectedVal !== undefined}
-              {...(selected
-                ? {
-                    _disabled: {
-                      cursor: 'default',
-                      borderColor: 'primary.300',
-                      bg: 'primary.50 !important',
-                      color: 'primary.600'
-                    }
-                  }
-                : {})}
-              onClick={() => {
-                onSendPrompt({
-                  text: option.value,
-                  isInteractivePrompt: true
-                });
-              }}
-            >
-              {option.value}
-            </Button>
-          );
-        })}
-      </Flex>
-    </>
+    <SelectOptionsComponent
+      options={(interactive.params.userSelectOptions || []) as SelectOptionType[]}
+      description={interactive.params.description}
+      selectedValue={interactive.params.userSelectedVal}
+      onSelectOption={(value: string) => {
+        onSendPrompt({
+          text: value,
+          isInteractivePrompt: true
+        });
+      }}
+      isDisabled={interactive.params.userSelectedVal !== undefined}
+      variant="whitePrimary"
+    />
   );
 });
 const RenderUserFormInteractive = React.memo(function RenderFormInput({
@@ -241,110 +232,47 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   interactive: InteractiveBasicType & UserInputInteractive;
 }) {
   const { t } = useTranslation();
-  const { register, setValue, handleSubmit: handleSubmitChat, control, reset } = useForm();
-
-  const onSubmit = useCallback((data: any) => {
+  const defaultValues = useMemo(() => {
+    if (interactive.type === 'userInput') {
+      return interactive.params.inputForm?.reduce((acc: Record<string, any>, item) => {
+        acc[item.label] = !!item.value ? item.value : item.defaultValue;
+        return acc;
+      }, {});
+    }
+    return {};
+  }, [interactive]);
+  const handleFormSubmit = useCallback((data: Record<string, any>) => {
     onSendPrompt({
       text: JSON.stringify(data),
       isInteractivePrompt: true
     });
   }, []);
 
-  useEffect(() => {
-    if (interactive.type === 'userInput') {
-      const defaultValues = interactive.params.inputForm?.reduce(
-        (acc: Record<string, any>, item) => {
-          acc[item.label] = !!item.value ? item.value : item.defaultValue;
-          return acc;
-        },
-        {}
-      );
-      reset(defaultValues);
-    }
-  }, []);
-
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
-      {interactive.params.description && <Markdown source={interactive.params.description} />}
-      {interactive.params.inputForm?.map((input) => (
-        <Box key={input.label}>
-          <FormLabel mb={1} required={input.required} whiteSpace={'pre-wrap'}>
-            {input.label}
-            {input.description && <QuestionTip ml={1} label={input.description} />}
-          </FormLabel>
-          {input.type === FlowNodeInputTypeEnum.input && (
-            <MyTextarea
-              isDisabled={interactive.params.submitted}
-              {...register(input.label, {
-                required: input.required
-              })}
-              bg={'white'}
-              autoHeight
-              minH={40}
-              maxH={100}
-            />
-          )}
-          {input.type === FlowNodeInputTypeEnum.textarea && (
-            <Textarea
-              isDisabled={interactive.params.submitted}
-              bg={'white'}
-              {...register(input.label, {
-                required: input.required
-              })}
-              rows={5}
-              maxLength={input.maxLength || 4000}
-            />
-          )}
-          {input.type === FlowNodeInputTypeEnum.numberInput && (
-            <MyNumberInput
-              min={input.min}
-              max={input.max}
-              defaultValue={input.defaultValue}
-              isDisabled={interactive.params.submitted}
-              bg={'white'}
-              register={register}
-              name={input.label}
-              isRequired={input.required}
-            />
-          )}
-          {input.type === FlowNodeInputTypeEnum.select && (
-            <Controller
-              key={input.label}
-              control={control}
-              name={input.label}
-              rules={{ required: input.required }}
-              render={({ field: { ref, value } }) => {
-                if (!input.list) return <></>;
-                return (
-                  <MySelect
-                    ref={ref}
-                    width={'100%'}
-                    list={input.list}
-                    value={value}
-                    isDisabled={interactive.params.submitted}
-                    onChange={(e) => setValue(input.label, e)}
-                  />
-                );
-              }}
-            />
-          )}
-        </Box>
-      ))}
-      {!interactive.params.submitted && (
-        <Flex w={'full'} justifyContent={'end'}>
-          <Button onClick={handleSubmitChat(onSubmit)}>{t('common:Submit')}</Button>
-        </Flex>
-      )}
+      <FormInputComponent
+        inputForm={(interactive.params.inputForm || []) as FormItemType[]}
+        description={interactive.params.description}
+        onSubmit={handleFormSubmit}
+        isDisabled={interactive.params.submitted}
+        defaultValues={defaultValues}
+        submitButtonText="common:Submit"
+        isCompact={true}
+      />
     </Flex>
   );
 });
-
-const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
-  if (value.type === ChatItemValueTypeEnum.text && value.text)
+const getResponseRenderer = (
+  value: UserChatItemValueItemType | AIChatItemValueItemType,
+  isChatting: boolean,
+  isLastResponseValue: boolean
+) => {
+  if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
       <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
     );
-  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning)
+  }
+  if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
     return (
       <RenderResoningContent
         isChatting={isChatting}
@@ -352,14 +280,29 @@ const AIResponseBox = ({ value, isLastResponseValue, isChatting }: props) => {
         content={value.reasoning.content}
       />
     );
-  if (value.type === ChatItemValueTypeEnum.tool && value.tools)
-    return <RenderTool showAnimation={isChatting} tools={value.tools} />;
-  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
-    if (value.interactive.type === 'userSelect')
-      return <RenderUserSelectInteractive interactive={value.interactive} />;
-    if (value.interactive?.type === 'userInput')
-      return <RenderUserFormInteractive interactive={value.interactive} />;
   }
+  if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
+    return <RenderTool showAnimation={isChatting} tools={value.tools} />;
+  }
+  if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
+    if (value.interactive.type === 'userSelect') {
+      return <RenderUserSelectInteractive interactive={value.interactive} />;
+    }
+    if (value.interactive?.type === 'userInput') {
+      return <RenderUserFormInteractive interactive={value.interactive} />;
+    }
+  }
+  return null;
 };
-
-export default React.memo(AIResponseBox);
+const AIResponseBox = React.memo(function AIResponseBox({
+  value,
+  isLastResponseValue,
+  isChatting
+}: {
+  value: UserChatItemValueItemType | AIChatItemValueItemType;
+  isLastResponseValue: boolean;
+  isChatting: boolean;
+}) {
+  return getResponseRenderer(value, isChatting, isLastResponseValue);
+});
+export default AIResponseBox;

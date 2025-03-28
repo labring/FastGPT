@@ -35,6 +35,7 @@ import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflow
 import WorkflowEventContextProvider from './workflowEventContext';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 /* 
   Context
@@ -161,19 +162,30 @@ type WorkflowContextType = {
         runtimeNodes: RuntimeNodeItemType[];
         runtimeEdges: RuntimeEdgeItemType[];
         nextRunNodes: RuntimeNodeItemType[];
+        variables: Record<string, any>;
+        query?: UserChatItemValueItemType[];
+        history?: ChatItemType[];
       }
     | undefined;
-  onNextNodeDebug: () => Promise<void>;
+  onNextNodeDebug: (params?: {
+    history?: ChatItemType[];
+    query?: UserChatItemValueItemType[];
+    debugData?: DebugDataType;
+  }) => Promise<void>;
   onStartNodeDebug: ({
     entryNodeId,
     runtimeNodes,
     runtimeEdges,
-    variables
+    variables,
+    query,
+    history
   }: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
     variables: Record<string, any>;
+    query?: UserChatItemValueItemType[];
+    history?: ChatItemType[];
   }) => Promise<void>;
   onStopNodeDebug: () => void;
 
@@ -236,17 +248,25 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   workflowDebugData: undefined,
-  onNextNodeDebug: function (): Promise<void> {
+  onNextNodeDebug: function (params?: {
+    history?: ChatItemType[];
+    query?: UserChatItemValueItemType[];
+    debugData?: DebugDataType;
+  }): Promise<void> {
     throw new Error('Function not implemented.');
   },
   onStartNodeDebug: function ({
     entryNodeId,
     runtimeNodes,
-    runtimeEdges
+    runtimeEdges,
+    query,
+    history
   }: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
+    query?: UserChatItemValueItemType[];
+    history?: ChatItemType[];
   }): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -551,7 +571,13 @@ const WorkflowContextProvider = ({
   /* debug */
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const onNextNodeDebug = useCallback(
-    async (debugData = workflowDebugData) => {
+    async (params?: {
+      history?: ChatItemType[];
+      query?: UserChatItemValueItemType[];
+      debugData?: DebugDataType;
+    }) => {
+      // 解构参数并提供默认值
+      const { history, query, debugData = workflowDebugData } = params || {};
       if (!debugData) return;
       // 1. Cancel node selected status and debugResult.showStatus
       setNodes((state) =>
@@ -612,27 +638,40 @@ const WorkflowContextProvider = ({
 
       try {
         // 4. Run one step
-        const { finishedEdges, finishedNodes, nextStepRunNodes, flowResponses, newVariables } =
-          await postWorkflowDebug({
-            nodes: runtimeNodes,
-            edges: debugData.runtimeEdges,
-            variables: {
-              appId,
-              cTime: formatTime2YMDHMW(),
-              ...debugData.variables
-            },
-            appId
-          });
+        const {
+          finishedEdges,
+          finishedNodes,
+          nextStepRunNodes,
+          flowResponses,
+          newVariables,
+          workflowInteractiveResponse
+        } = await postWorkflowDebug({
+          nodes: runtimeNodes,
+          edges: debugData.runtimeEdges,
+          variables: {
+            appId,
+            cTime: formatTime2YMDHMW(),
+            ...debugData.variables
+          },
+          query, // 添加 query 参数
+          history,
+          appId
+        });
         // 5. Store debug result
         const newStoreDebugData = {
           runtimeNodes: finishedNodes,
           // edges need to save status
           runtimeEdges: finishedEdges,
           nextRunNodes: nextStepRunNodes,
-          variables: newVariables
+          variables: newVariables,
+          query,
+          history,
+          workflowInteractiveResponse: workflowInteractiveResponse
         };
         setWorkflowDebugData(newStoreDebugData);
-
+        if (workflowInteractiveResponse) {
+          console.log('workflowInteractiveResponse', workflowInteractiveResponse);
+        }
         // 6. selected entry node and Update entry node debug result
         setNodes((state) =>
           state.map((node) => {
@@ -665,7 +704,8 @@ const WorkflowContextProvider = ({
                   status: 'success',
                   response: result,
                   showResult: true,
-                  isExpired: false
+                  isExpired: false,
+                  workflowInteractiveResponse: workflowInteractiveResponse
                 }
               }
             };
@@ -674,7 +714,7 @@ const WorkflowContextProvider = ({
 
         // Check for an empty response
         if (flowResponses.length === 0 && nextStepRunNodes.length > 0) {
-          onNextNodeDebug(newStoreDebugData);
+          onNextNodeDebug({ history, query, debugData: newStoreDebugData });
         }
       } catch (error) {
         entryNodes.forEach((node) => {
@@ -712,23 +752,33 @@ const WorkflowContextProvider = ({
       entryNodeId,
       runtimeNodes,
       runtimeEdges,
-      variables
+      variables,
+      query,
+      history
     }: {
       entryNodeId: string;
       runtimeNodes: RuntimeNodeItemType[];
       runtimeEdges: RuntimeEdgeItemType[];
       variables: Record<string, any>;
+      query?: UserChatItemValueItemType[];
+      history?: ChatItemType[];
     }) => {
       const data = {
         runtimeNodes,
         runtimeEdges,
         nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
-        variables
+        variables,
+        query,
+        history
       };
       onStopNodeDebug();
       setWorkflowDebugData(data);
 
-      onNextNodeDebug(data);
+      onNextNodeDebug({
+        history,
+        query,
+        debugData: data
+      });
     }
   );
 

@@ -9,6 +9,8 @@ export type PostWorkflowDebugProps = {
   edges: RuntimeEdgeItemType[];
   variables: Record<string, any>;
   appId: string;
+  query?: UserChatItemValueItemType[];
+  history?: ChatItemType[];
 };
 
 export type PostWorkflowDebugResponse = {
@@ -16,5 +18,6 @@ export type PostWorkflowDebugResponse = {
   finishedEdges: RuntimeEdgeItemType[];
   nextStepRunNodes: RuntimeNodeItemType[];
   flowResponses: ChatHistoryItemResType[];
+  workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   newVariables: Record<string, any>;
 };

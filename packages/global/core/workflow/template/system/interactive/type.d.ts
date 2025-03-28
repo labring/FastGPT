@@ -41,7 +41,12 @@ type InteractiveBasicType = {
   };
 };
 
-type UserSelectInteractive = {
+type InteractiveNodeType = {
+  entryNodeIds?: string[];
+  memoryEdges?: RuntimeEdgeItemType[];
+  nodeOutputs?: NodeOutputItemType[];
+};
+type UserSelectInteractive = InteractiveNodeType & {
   type: 'userSelect';
   params: {
     description: string;
@@ -50,7 +55,7 @@ type UserSelectInteractive = {
   };
 };
 
-type UserInputInteractive = {
+type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
   params: {
     description: string;
@@ -58,6 +63,5 @@ type UserInputInteractive = {
     submitted?: boolean;
   };
 };
-
 export type InteractiveNodeResponseType = UserSelectInteractive | UserInputInteractive;
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;

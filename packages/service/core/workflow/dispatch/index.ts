@@ -44,14 +44,14 @@ import {
   textAdaptGptResponse,
   replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { DispatchFlowResponse } from './type';
+import type { DispatchFlowResponse } from './type';
 import { dispatchStopToolCall } from './agent/runTool/stopTool';
 import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchIfElse } from './tools/runIfElse';
-import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { dispatchSystemConfig } from './init/systemConfig';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
@@ -62,7 +62,7 @@ import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchCustomFeedback } from './tools/customFeedback';
 import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchUserSelect } from './interactive/userSelect';
-import {
+import type {
   WorkflowInteractiveResponseType,
   InteractiveNodeResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
