@@ -23,6 +23,7 @@ import { NextApiResponse } from 'next';
 import { AppDetailType, AppSchema } from '../../app/type';
 import { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from 'core/app/constants';
+import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 
 export type FlowNodeCommonType = {
   parentNodeId?: string;
@@ -120,6 +121,7 @@ export type FlowNodeItemType = FlowNodeTemplateType & {
     showResult?: boolean; // show and hide result modal
     response?: ChatHistoryItemResType;
     isExpired?: boolean;
+    workflowInteractiveResponse?: WorkflowInteractiveResponseType;
   };
   isFolded?: boolean;
 };
