@@ -1,3 +1,4 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import nodemailer from 'nodemailer';
 
 interface Props {
@@ -45,7 +46,7 @@ const main = async ({
   cc,
   bcc,
   attachments
-}: Props): Promise<{ email: Response }> => {
+}: Props): Promise<Response> => {
   try {
     // 验证SMTP配置
     if (!smtpHost || !smtpPort || !smtpUser || !smtpPass) {
@@ -107,17 +108,13 @@ const main = async ({
     });
 
     return {
-      email: {
-        success: true,
-        messageId: info.messageId
-      }
+      success: true,
+      messageId: info.messageId
     };
   } catch (error: any) {
     return {
-      email: {
-        success: false,
-        error: error.message + ', please check SMTP configuration'
-      }
+      success: false,
+      error: getErrText(error)
     };
   }
 };

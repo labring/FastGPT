@@ -25,10 +25,7 @@
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -47,16 +44,11 @@
             "canSelectImg": true,
             "required": true,
             "customInputConfig": {
-              "selectValueTypeList": [
-                "string"
-              ]
+              "selectValueTypeList": ["string"]
             }
           },
           {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -76,10 +68,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "select",
-              "reference"
-            ],
+            "renderTypeList": ["select", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -103,10 +92,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -126,10 +112,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -149,10 +132,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -172,9 +152,7 @@
             "required": true
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -195,9 +173,7 @@
             "toolDescription": "请输入收件人邮箱，多个邮箱用逗号分隔"
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -218,9 +194,7 @@
             "toolDescription": "请输入邮件主题"
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -241,9 +215,7 @@
             "toolDescription": "请输入邮件内容，支持HTML格式"
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -264,9 +236,7 @@
             "toolDescription": "请输入抄送邮箱，多个邮箱用逗号分隔"
           },
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["input", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -287,10 +257,7 @@
             "toolDescription": "请输入密送邮箱，多个邮箱用逗号分隔"
           },
           {
-            "renderTypeList": [
-              "input",
-              "reference"
-            ],
+            "renderTypeList": ["JSONEditor", "reference"],
             "selectedTypeIndex": 0,
             "valueType": "string",
             "canEdit": true,
@@ -309,9 +276,7 @@
             "canSelectImg": true,
             "required": false,
             "customInputConfig": {
-              "selectValueTypeList": [
-                "arrayObject"
-              ]
+              "selectValueTypeList": ["arrayObject"]
             },
             "toolDescription": "必须是json数组格式\n[{\"filename\":\"附件名\",\"path\":\"附件url\"}]",
             "maxLength": 0
@@ -412,15 +377,13 @@
         "flowNodeType": "pluginOutput",
         "showStatus": false,
         "position": {
-          "x": 2789.7339249104393,
-          "y": 65.70047816597139
+          "x": 2135.4991928806685,
+          "y": -98.02524442647456
         },
         "version": "481",
         "inputs": [
           {
-            "renderTypeList": [
-              "reference"
-            ],
+            "renderTypeList": ["reference"],
             "valueType": "string",
             "canEdit": true,
             "key": "发送结果",
@@ -428,10 +391,7 @@
             "isToolOutput": true,
             "description": "",
             "required": true,
-            "value": [
-              "uOX6ITvPWm9O",
-              "eUdpiaV7kjVe"
-            ]
+            "value": ["uOX6ITvPWm9O", "httpRawResponse"]
           }
         ],
         "outputs": []
@@ -458,16 +418,14 @@
         "flowNodeType": "httpRequest468",
         "showStatus": true,
         "position": {
-          "x": 1708.1995625319528,
-          "y": -411.11551079769964
+          "x": 1340.0519095857342,
+          "y": -393.02524442647456
         },
         "version": "481",
         "inputs": [
           {
             "key": "system_addInputParam",
-            "renderTypeList": [
-              "addInputParam"
-            ],
+            "renderTypeList": ["addInputParam"],
             "valueType": "dynamic",
             "label": "",
             "required": false,
@@ -499,9 +457,7 @@
           },
           {
             "key": "system_httpMethod",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "string",
             "label": "",
             "value": "POST",
@@ -513,9 +469,7 @@
           },
           {
             "key": "system_httpTimeout",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "number",
             "label": "",
             "value": 30,
@@ -529,24 +483,20 @@
           },
           {
             "key": "system_httpReqUrl",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "label": "",
             "description": "common:core.module.input.description.Http Request Url",
             "placeholder": "https://api.ai.com/getInventory",
             "required": false,
-            "value": "email",
+            "value": "smtpEmail",
             "valueDesc": "",
             "debugLabel": "",
             "toolDescription": ""
           },
           {
             "key": "system_httpHeader",
-            "renderTypeList": [
-              "custom"
-            ],
+            "renderTypeList": ["custom"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -559,9 +509,7 @@
           },
           {
             "key": "system_httpParams",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -573,9 +521,7 @@
           },
           {
             "key": "system_httpJsonBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": "{\n\"smtpHost\": \"{{$pluginInput.smtpHost$}}\",\n\"smtpPort\": \"{{$pluginInput.smtpPort$}}\",\n\"SSL\": {{$pluginInput.SSL$}},\n\"smtpUser\": \"{{$pluginInput.smtpUser$}}\",\n\"smtpPass\": \"{{$pluginInput.smtpPass$}}\",\n\"fromName\": \"{{$pluginInput.fromName$}}\",\n\"to\": \"{{$pluginInput.to$}}\",\n\"subject\": \"{{$pluginInput.subject$}}\",\n\"content\": \"{{$pluginInput.content$}}\",\n\"cc\": \"{{$pluginInput.cc$}}\",\n\"bcc\": \"{{$pluginInput.bcc$}}\",\n\"attachments\":'{{$pluginInput.attachments$}}'\n}",
             "label": "",
@@ -587,9 +533,7 @@
           },
           {
             "key": "system_httpFormBody",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "any",
             "value": [],
             "label": "",
@@ -601,13 +545,13 @@
           },
           {
             "key": "system_httpContentType",
-            "renderTypeList": [
-              "hidden"
-            ],
+            "renderTypeList": ["hidden"],
             "valueType": "string",
             "value": "json",
             "label": "",
-            "required": false
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
           }
         ],
         "outputs": [
@@ -657,13 +601,6 @@
             },
             "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
             "valueDesc": ""
-          },
-          {
-            "id": "eUdpiaV7kjVe",
-            "valueType": "string",
-            "type": "dynamic",
-            "key": "email",
-            "label": "email"
           }
         ]
       }

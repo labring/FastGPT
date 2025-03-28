@@ -30,7 +30,7 @@ const packagePluginList = [
   'Doc2X',
   'Doc2X/PDF2text',
   'searchXNG',
-  'email'
+  'smtpEmail'
 ];
 
 export const list = [...staticPluginList, ...packagePluginList];
