@@ -6,10 +6,8 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  Button,
   Flex,
-  HStack,
-  Textarea
+  HStack
 } from '@chakra-ui/react';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
@@ -26,15 +24,7 @@ import type {
   UserSelectInteractive
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { isEqual } from 'lodash';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useTranslation } from 'next-i18next';
-import { Controller, useForm } from 'react-hook-form';
-import MySelect from '@fastgpt/web/components/common/MySelect';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
-import { SendPromptFnType } from '../ChatContainer/ChatBox/type';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import {
   SelectOptionsComponent,
@@ -44,13 +34,6 @@ import {
 } from './Interactive/InteractiveComponents';
 const onSendPrompt = (e: { text: string; isInteractivePrompt: boolean }) =>
   eventBus.emit(EventNameEnum.sendQuestion, e);
-const formatJsonString = (jsonString: string) => {
-  try {
-    return JSON.stringify(JSON.parse(jsonString), null, 2);
-  } catch (error) {
-    return jsonString;
-  }
-};
 const StyledAccordionItem = React.memo(function StyledAccordionItem({
   children
 }: {
