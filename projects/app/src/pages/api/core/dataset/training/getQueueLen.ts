@@ -1,27 +1,31 @@
 import type { NextApiRequest } from 'next';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { GetTrainingQueueProps } from '@/global/core/dataset/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+
+export type GetQueueLenResponse = {
+  vectorTrainingCount: number;
+  qaTrainingCount: number;
+  autoTrainingCount: number;
+  imageTrainingCount: number;
+};
 
 async function handler(req: NextApiRequest) {
   await authCert({ req, authToken: true });
-  const { vectorModel, agentModel } = req.query as GetTrainingQueueProps;
 
   // get queue data
-  // 分别统计 model = vectorModel和agentModel的数量
   const data = await MongoDatasetTraining.aggregate(
     [
       {
         $match: {
-          lockTime: { $lt: new Date('2040/1/1') },
-          $or: [{ model: { $eq: vectorModel } }, { model: { $eq: agentModel } }]
+          lockTime: { $lt: new Date('2040/1/1') }
         }
       },
       {
         $group: {
-          _id: '$model',
+          _id: '$mode',
           count: { $sum: 1 }
         }
       }
@@ -31,12 +35,16 @@ async function handler(req: NextApiRequest) {
     }
   );
 
-  const vectorTrainingCount = data.find((item) => item._id === vectorModel)?.count || 0;
-  const agentTrainingCount = data.find((item) => item._id === agentModel)?.count || 0;
+  const vectorTrainingCount = data.find((item) => item._id === TrainingModeEnum.chunk)?.count || 0;
+  const qaTrainingCount = data.find((item) => item._id === TrainingModeEnum.qa)?.count || 0;
+  const autoTrainingCount = data.find((item) => item._id === TrainingModeEnum.auto)?.count || 0;
+  const imageTrainingCount = data.find((item) => item._id === TrainingModeEnum.image)?.count || 0;
 
   return {
     vectorTrainingCount,
-    agentTrainingCount
+    qaTrainingCount,
+    autoTrainingCount,
+    imageTrainingCount
   };
 }
 

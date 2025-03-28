@@ -22,6 +22,9 @@ const NotSufficientModal = dynamic(() => import('@/components/support/wallet/Not
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
+const ManualCopyModal = dynamic(() =>
+  import('@fastgpt/web/hooks/useCopyData').then((mod) => mod.ManualCopyModal)
+);
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -162,6 +165,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         </>
       )}
 
+      <ManualCopyModal />
       <Loading loading={loading} zIndex={999999} />
     </>
   );

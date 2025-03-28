@@ -1,4 +1,10 @@
-import { deleteChannel, getChannelList, putChannel, putChannelStatus } from '@/web/core/ai/channel';
+import {
+  deleteChannel,
+  getChannelList,
+  getChannelProviders,
+  putChannel,
+  putChannelStatus
+} from '@/web/core/ai/channel';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import React, { useState } from 'react';
 import {
@@ -32,6 +38,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const EditChannelModal = dynamic(() => import('./EditChannelModal'), { ssr: false });
 const ModelTest = dynamic(() => import('./ModelTest'), { ssr: false });
@@ -47,6 +54,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     runAsync: refreshChannelList,
     loading: loadingChannelList
   } = useRequest2(getChannelList, {
+    manual: false
+  });
+
+  const { data: channelProviders = {} } = useRequest2(getChannelProviders, {
     manual: false
   });
 
@@ -67,6 +78,9 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     }
   );
 
+  const { openConfirm, ConfirmModal } = useConfirm({
+    type: 'delete'
+  });
   const { runAsync: onDeleteChannel, loading: loadingDeleteChannel } = useRequest2(deleteChannel, {
     manual: true,
     onSuccess: () => {
@@ -111,7 +125,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
             </Thead>
             <Tbody>
               {channelList.map((item) => {
-                const providerData = aiproxyIdMap[item.type];
+                const providerData = aiproxyIdMap[item.type] || {
+                  label: channelProviders[item.type]?.name || 'Invalid provider',
+                  provider: 'Other'
+                };
                 const provider = getModelProvider(providerData?.provider);
 
                 return (
@@ -119,14 +136,10 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                     <Td>{item.id}</Td>
                     <Td>{item.name}</Td>
                     <Td>
-                      {providerData ? (
-                        <HStack>
-                          <MyIcon name={provider?.avatar as any} w={'1rem'} />
-                          <Box>{t(providerData?.label as any)}</Box>
-                        </HStack>
-                      ) : (
-                        'Invalid provider'
-                      )}
+                      <HStack>
+                        <MyIcon name={provider?.avatar as any} w={'1rem'} />
+                        <Box>{t(providerData?.label as any)}</Box>
+                      </HStack>
                     </Td>
                     <Td>
                       <MyTag
@@ -203,7 +216,14 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                                 type: 'danger',
                                 icon: 'delete',
                                 label: t('common:common.Delete'),
-                                onClick: () => onDeleteChannel(item.id)
+                                onClick: () =>
+                                  openConfirm(
+                                    () => onDeleteChannel(item.id),
+                                    undefined,
+                                    t('account_model:confirm_delete_channel', {
+                                      name: item.name
+                                    })
+                                  )()
                               }
                             ]
                           }
@@ -229,6 +249,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       {!!modelTestData && (
         <ModelTest {...modelTestData} onClose={() => setTestModelData(undefined)} />
       )}
+      <ConfirmModal />
     </>
   );
 };

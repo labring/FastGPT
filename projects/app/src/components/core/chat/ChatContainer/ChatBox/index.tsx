@@ -65,6 +65,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -103,7 +104,8 @@ const ChatBox = ({
   showVoiceIcon = true,
   showEmptyIntro = false,
   active = true,
-  onStartChat
+  onStartChat,
+  chatType
 }: Props) => {
   const ScrollContainerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
@@ -129,6 +131,8 @@ const ChatBox = ({
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
   const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const setIsVariableVisible = useContextSelector(ChatItemContext, (v) => v.setIsVariableVisible);
+
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
@@ -150,6 +154,12 @@ const ChatBox = ({
   // Workflow running, there are user input or selection
   const isInteractive = useMemo(() => checkIsInteractiveByHistories(chatRecords), [chatRecords]);
 
+  const externalVariableList = useMemo(() => {
+    if (chatType === 'chat') {
+      return allVariableList.filter((item) => item.type === VariableInputEnum.custom);
+    }
+    return [];
+  }, [allVariableList, chatType]);
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
@@ -162,7 +172,9 @@ const ChatBox = ({
   const chatStartedWatch = watch('chatStarted');
   const chatStarted =
     chatBoxData?.appId === appId &&
-    (chatStartedWatch || chatRecords.length > 0 || variableList.length === 0);
+    (chatStartedWatch ||
+      chatRecords.length > 0 ||
+      [...variableList, ...externalVariableList].length === 0);
 
   // 滚动到底部
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
@@ -891,6 +903,33 @@ const ChatBox = ({
     }
   }));
 
+  // Visibility check
+  useEffect(() => {
+    const checkVariableVisibility = () => {
+      if (!ScrollContainerRef.current) return;
+      const container = ScrollContainerRef.current;
+      const variableInput = container.querySelector('#variable-input');
+      if (!variableInput) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const elementRect = variableInput.getBoundingClientRect();
+
+      setIsVariableVisible(
+        elementRect.bottom > containerRect.top && elementRect.top < containerRect.bottom
+      );
+    };
+
+    const container = ScrollContainerRef.current;
+    if (container) {
+      checkVariableVisibility();
+      container.addEventListener('scroll', checkVariableVisibility);
+
+      return () => {
+        container.removeEventListener('scroll', checkVariableVisibility);
+      };
+    }
+  }, [chatType, setIsVariableVisible]);
+
   const RenderRecords = useMemo(() => {
     return (
       <ScrollData
@@ -906,8 +945,14 @@ const ChatBox = ({
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
           {/* variable input */}
-          {!!variableList?.length && (
-            <VariableInput chatStarted={chatStarted} chatForm={chatForm} />
+          {(!!variableList?.length || !!externalVariableList?.length) && (
+            <Box id="variable-input">
+              <VariableInput
+                chatStarted={chatStarted}
+                chatForm={chatForm}
+                showExternalVariables={chatType === 'chat'}
+              />
+            </Box>
           )}
           {/* chat history */}
           <Box id={'history'}>
@@ -1006,7 +1051,9 @@ const ChatBox = ({
     chatForm,
     chatRecords,
     chatStarted,
+    chatType,
     delOneMessage,
+    externalVariableList?.length,
     isChatting,
     onAddUserDislike,
     onAddUserLike,

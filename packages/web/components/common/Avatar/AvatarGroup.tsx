@@ -10,7 +10,16 @@ import { Box, Flex } from '@chakra-ui/react';
  * @param [groupId] - group id to make the key unique
  * @returns
  */
-function AvatarGroup({ avatars, max = 3 }: { max?: number; avatars: string[] }) {
+function AvatarGroup({
+  avatars,
+  max = 3,
+  total
+}: {
+  max?: number;
+  avatars: string[];
+  total?: number;
+}) {
+  const remain = (total ?? avatars.length) - max;
   return (
     <Flex position="relative">
       {avatars.slice(0, max).map((avatar, index) => (
@@ -24,10 +33,10 @@ function AvatarGroup({ avatars, max = 3 }: { max?: number; avatars: string[] }) 
           borderRadius={'50%'}
         />
       ))}
-      {avatars.length > max && (
+      {remain > 0 && (
         <Box
           position="relative"
-          left={`${(max - 1) * 15}px`}
+          left={`${(max - 1) * 15 + 15}px`}
           w={'24px'}
           h={'24px'}
           borderRadius="50%"
@@ -37,7 +46,7 @@ function AvatarGroup({ avatars, max = 3 }: { max?: number; avatars: string[] }) 
           fontSize="sm"
           color="myGray.500"
         >
-          +{avatars.length - max}
+          +{String(remain)}
         </Box>
       )}
     </Flex>

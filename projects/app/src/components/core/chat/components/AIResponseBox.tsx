@@ -226,6 +226,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
   }, []);
   return (
     <Flex flexDirection={'column'} gap={2} w={'250px'}>
+
       <FormInputComponent
         inputForm={(interactive.params.inputForm || []) as FormItemType[]}
         description={interactive.params.description}

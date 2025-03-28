@@ -294,7 +294,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               title={t('account_info:click_modify_nickname')}
               borderColor={'transparent'}
               transform={'translateX(-11px)'}
-              maxLength={20}
+              maxLength={100}
               onBlur={async (e) => {
                 const val = e.target.value;
                 if (val === userInfo?.team?.memberName) return;

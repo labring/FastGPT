@@ -1,29 +1,25 @@
-import { putMoveOrg } from '@/web/support/user/team/org/api';
+import { getOrgList, putMoveOrg } from '@/web/support/user/team/org/api';
 import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
-import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useMemo, useState } from 'react';
 import OrgTree from './OrgTree';
-import dynamic from 'next/dynamic';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 
 function OrgMoveModal({
   movingOrg,
-  orgs,
   onClose,
   onSuccess
 }: {
-  movingOrg: OrgType;
-  orgs: OrgType[];
+  movingOrg: OrgListItemType;
   onClose: () => void;
   onSuccess: () => void;
 }) {
   const { t } = useTranslation();
-  const [selectedOrg, setSelectedOrg] = useState<OrgType>();
-  const { userInfo } = useUserStore();
-  const team = userInfo?.team!;
+  const [selectedOrg, setSelectedOrg] = useState<OrgListItemType>();
 
   const { runAsync: onMoveOrg, loading } = useRequest2(putMoveOrg, {
     onSuccess: () => {
@@ -31,11 +27,6 @@ function OrgMoveModal({
       onSuccess();
     }
   });
-
-  const filterMovingOrgs = useMemo(
-    () => orgs.filter((org) => org._id !== movingOrg._id),
-    [movingOrg._id, orgs]
-  );
 
   return (
     <MyModal
@@ -46,11 +37,7 @@ function OrgMoveModal({
       iconColor="primary.600"
     >
       <ModalBody>
-        <OrgTree
-          orgs={filterMovingOrgs}
-          selectedOrg={selectedOrg}
-          setSelectedOrg={setSelectedOrg}
-        />
+        <OrgTree selectedOrg={selectedOrg} setSelectedOrg={setSelectedOrg} movingOrg={movingOrg} />
       </ModalBody>
       <ModalFooter>
         <Button

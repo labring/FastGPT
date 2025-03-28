@@ -76,6 +76,7 @@ const TrainingDataSchema = new Schema({
     type: Number,
     default: 0
   },
+  indexSize: Number,
   weight: {
     type: Number,
     default: 0
