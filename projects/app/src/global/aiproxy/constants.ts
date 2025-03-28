@@ -130,7 +130,7 @@ export const aiproxyIdMap: Record<
     provider: 'Ollama'
   },
   23: {
-    label: 'OneAPI',
+    label: i18nT('account_model:Hunyuan'),
     provider: 'Hunyuan'
   },
   44: {
