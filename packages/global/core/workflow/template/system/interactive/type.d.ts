@@ -5,9 +5,35 @@ import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
 
+type InteractiveBasicType = {
+  entryNodeIds: string[];
+  memoryEdges: RuntimeEdgeItemType[];
+  nodeOutputs: NodeOutputItemType[];
+
+  toolParams?: {
+    entryNodeIds: string[]; // 记录工具中，交互节点的 Id，而不是起始工作流的入口
+    memoryMessages: ChatCompletionMessageParam[]; // 这轮工具中，产生的新的 messages
+    toolCallId: string; // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
+  };
+};
+
+type InteractiveNodeType = {
+  entryNodeIds?: string[];
+  memoryEdges?: RuntimeEdgeItemType[];
+  nodeOutputs?: NodeOutputItemType[];
+};
+
 export type UserSelectOptionItemType = {
   key: string;
   value: string;
+};
+type UserSelectInteractive = InteractiveNodeType & {
+  type: 'userSelect';
+  params: {
+    description: string;
+    userSelectOptions: UserSelectOptionItemType[];
+    userSelectedVal?: string;
+  };
 };
 
 export type UserInputFormItemType = {
@@ -28,29 +54,7 @@ export type UserInputFormItemType = {
   // select
   list?: { label: string; value: string }[];
 };
-
-type InteractiveBasicType = {
-  entryNodeIds: string[];
-  memoryEdges: RuntimeEdgeItemType[];
-  nodeOutputs: NodeOutputItemType[];
-
-  toolParams?: {
-    entryNodeIds: string[]; // 记录工具中，交互节点的 Id，而不是起始工作流的入口
-    memoryMessages: ChatCompletionMessageParam[]; // 这轮工具中，产生的新的 messages
-    toolCallId: string; // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
-  };
-};
-
-type UserSelectInteractive = {
-  type: 'userSelect';
-  params: {
-    description: string;
-    userSelectOptions: UserSelectOptionItemType[];
-    userSelectedVal?: string;
-  };
-};
-
-type UserInputInteractive = {
+type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
   params: {
     description: string;
@@ -58,6 +62,5 @@ type UserInputInteractive = {
     submitted?: boolean;
   };
 };
-
 export type InteractiveNodeResponseType = UserSelectInteractive | UserInputInteractive;
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;

@@ -1,5 +1,5 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import {
+import type {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
@@ -30,7 +30,6 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     query
   } = props;
   const { nodeId, isEntry } = node;
-
   const interactive = getLastInteractiveValue(histories);
 
   // Interactive node is not the entry node, return interactive result
