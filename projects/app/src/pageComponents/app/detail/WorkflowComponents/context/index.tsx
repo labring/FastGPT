@@ -36,6 +36,7 @@ import WorkflowEventContextProvider from './workflowEventContext';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
 import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 /* 
   Context
@@ -157,21 +158,8 @@ type WorkflowContextType = {
     | undefined;
 
   // debug
-  workflowDebugData:
-    | {
-        runtimeNodes: RuntimeNodeItemType[];
-        runtimeEdges: RuntimeEdgeItemType[];
-        nextRunNodes: RuntimeNodeItemType[];
-        variables: Record<string, any>;
-        query?: UserChatItemValueItemType[];
-        history?: ChatItemType[];
-      }
-    | undefined;
-  onNextNodeDebug: (params?: {
-    history?: ChatItemType[];
-    query?: UserChatItemValueItemType[];
-    debugData?: DebugDataType;
-  }) => Promise<void>;
+  workflowDebugData?: DebugDataType;
+  onNextNodeDebug: (params: DebugDataType) => Promise<void>;
   onStartNodeDebug: ({
     entryNodeId,
     runtimeNodes,
@@ -201,11 +189,14 @@ type WorkflowContextType = {
   >;
 };
 
-type DebugDataType = {
+export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   nextRunNodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
+  history?: ChatItemType[];
+  query?: UserChatItemValueItemType[];
+  workflowInteractiveResponse?: WorkflowInteractiveResponseType;
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
@@ -571,14 +562,7 @@ const WorkflowContextProvider = ({
   /* debug */
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const onNextNodeDebug = useCallback(
-    async (params?: {
-      history?: ChatItemType[];
-      query?: UserChatItemValueItemType[];
-      debugData?: DebugDataType;
-    }) => {
-      // 解构参数并提供默认值
-      const { history, query, debugData = workflowDebugData } = params || {};
-      if (!debugData) return;
+    async (debugData: DebugDataType) => {
       // 1. Cancel node selected status and debugResult.showStatus
       setNodes((state) =>
         state.map((node) => ({
@@ -653,25 +637,21 @@ const WorkflowContextProvider = ({
             cTime: formatTime2YMDHMW(),
             ...debugData.variables
           },
-          query, // 添加 query 参数
-          history,
+          query: debugData.query, // 添加 query 参数
+          history: debugData.history,
           appId
         });
+
         // 5. Store debug result
-        const newStoreDebugData = {
+        setWorkflowDebugData({
           runtimeNodes: finishedNodes,
           // edges need to save status
           runtimeEdges: finishedEdges,
           nextRunNodes: nextStepRunNodes,
           variables: newVariables,
-          query,
-          history,
           workflowInteractiveResponse: workflowInteractiveResponse
-        };
-        setWorkflowDebugData(newStoreDebugData);
-        if (workflowInteractiveResponse) {
-          console.log('workflowInteractiveResponse', workflowInteractiveResponse);
-        }
+        });
+
         // 6. selected entry node and Update entry node debug result
         setNodes((state) =>
           state.map((node) => {
@@ -712,9 +692,13 @@ const WorkflowContextProvider = ({
           })
         );
 
-        // Check for an empty response
-        if (flowResponses.length === 0 && nextStepRunNodes.length > 0) {
-          onNextNodeDebug({ history, query, debugData: newStoreDebugData });
+        // Check for an empty response(Skip node)
+        if (
+          !workflowInteractiveResponse &&
+          flowResponses.length === 0 &&
+          nextStepRunNodes.length > 0
+        ) {
+          onNextNodeDebug(debugData);
         }
       } catch (error) {
         entryNodes.forEach((node) => {
@@ -732,7 +716,7 @@ const WorkflowContextProvider = ({
         console.log(error);
       }
     },
-    [appId, onChangeNode, setNodes, workflowDebugData]
+    [appId, onChangeNode, setNodes]
   );
   const onStopNodeDebug = useMemoizedFn(() => {
     setWorkflowDebugData(undefined);
@@ -763,7 +747,7 @@ const WorkflowContextProvider = ({
       query?: UserChatItemValueItemType[];
       history?: ChatItemType[];
     }) => {
-      const data = {
+      const data: DebugDataType = {
         runtimeNodes,
         runtimeEdges,
         nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
@@ -774,11 +758,7 @@ const WorkflowContextProvider = ({
       onStopNodeDebug();
       setWorkflowDebugData(data);
 
-      onNextNodeDebug({
-        history,
-        query,
-        debugData: data
-      });
+      onNextNodeDebug(data);
     }
   );
 

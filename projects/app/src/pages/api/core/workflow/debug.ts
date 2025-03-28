@@ -10,6 +10,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { defaultApp } from '@/web/core/app/constants';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
+
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -23,14 +24,15 @@ async function handler(
     history = []
   } = req.body as PostWorkflowDebugProps;
   if (!nodes) {
-    throw new Error('Prams Error');
+    return Promise.reject('Prams Error');
   }
   if (!Array.isArray(nodes)) {
-    throw new Error('Nodes is not array');
+    return Promise.reject('Nodes is not array');
   }
   if (!Array.isArray(edges)) {
-    throw new Error('Edges is not array');
+    return Promise.reject('Edges is not array');
   }
+
   /* user auth */
   const [{ teamId, tmbId }, { app }] = await Promise.all([
     authCert({
@@ -39,8 +41,10 @@ async function handler(
     }),
     authApp({ req, authToken: true, appId, per: ReadPermissionVal })
   ]);
+
   // auth balance
   const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+
   /* start process */
   const { flowUsages, flowResponses, debugResponse, newVariables, workflowInteractiveResponse } =
     await dispatchWorkFlow({
@@ -68,6 +72,7 @@ async function handler(
       stream: false,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES
     });
+
   createChatUsage({
     appName: `${app.name}-Debug`,
     appId,
@@ -76,6 +81,7 @@ async function handler(
     source: UsageSourceEnum.fastgpt,
     flowUsages
   });
+
   return {
     ...debugResponse,
     newVariables,
@@ -83,6 +89,7 @@ async function handler(
     workflowInteractiveResponse
   };
 }
+
 export default NextAPI(handler);
 export const config = {
   api: {

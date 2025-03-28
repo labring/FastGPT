@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Card, Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -13,7 +13,6 @@ import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -410,7 +409,7 @@ const NodeCard = (props: Props) => {
           })}
       {...customStyle}
     >
-      <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
+      {debugResult && <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />}
       {Header}
       <Flex flexDirection={'column'} flex={1} my={!isFolded ? 3 : 0} gap={2}>
         {!isFolded ? children : <Box h={4} />}

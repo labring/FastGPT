@@ -451,6 +451,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
     if (interactiveResponse) {
       pushStore(nodeRunResult.node, nodeRunResult.result);
+
+      if (props.mode === 'debug') {
+        debugNextStepRunNodes = debugNextStepRunNodes.concat([nodeRunResult.node]);
+      }
+
       nodeInteractiveResponse = {
         entryNodeIds: [nodeRunResult.node.nodeId],
         interactiveResponse
