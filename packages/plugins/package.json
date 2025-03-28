@@ -5,6 +5,7 @@
   "dependencies": {
     "cheerio": "1.0.0-rc.12",
     "@types/pg": "^8.6.6",
+    "@types/nodemailer": "^6.4.17",
     "axios": "^1.8.2",
     "duck-duck-scrape": "^2.2.5",
     "echarts": "5.4.1",
@@ -13,6 +14,7 @@
     "mssql": "^11.0.1",
     "mysql2": "^3.11.3",
     "json5": "^2.2.3",
+    "nodemailer": "^6.10.0",
     "pg": "^8.10.0",
     "wikijs": "^6.4.1"
   },
