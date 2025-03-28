@@ -126,3 +126,10 @@ export type SystemEnvType = {
     price?: number; // n points/1 page
   };
 };
+
+export type customPdfParseType = {
+  url?: string;
+  key?: string;
+  doc2xKey?: string;
+  price?: number;
+};
