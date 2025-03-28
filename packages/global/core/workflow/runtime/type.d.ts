@@ -59,6 +59,7 @@ export type ChatDispatchProps = {
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;
   workflowDispatchDeep?: number;
+  version?: 'v1' | 'v2';
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
