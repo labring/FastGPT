@@ -451,10 +451,7 @@ it(`Test splitText2Chunks 1`, () => {
   };
 
   const { chunks } = splitText2Chunks({ customReg: ['\\n\\n'], text: mock.text, chunkSize: 2000 });
-  fs.writeFileSync(
-    '/Users/yjl/fastgpt-pro/FastGPT/test/cases/function/packages/global/common/string/test.md',
-    chunks.join('------')
-  );
+
   expect(chunks).toEqual(mock.result);
 });
 
