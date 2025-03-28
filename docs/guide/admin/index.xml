@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>商业版后台 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/guide/admin/</link><description>Recent content in 商业版后台 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/guide/admin/index.xml" rel="self" type="application/rss+xml"/><item><title>SSO &amp; 外部成员同步</title><link>https://doc.tryfastgpt.ai/docs/guide/admin/sso/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/admin/sso/</guid><description>如果你不需要用到 SSO/成员同步功能，或者是只需要用 Github、google、microsoft、公众号的快速登录，可以跳过本章节。本章适合需要接入自己的成员系统或主流 办公IM 的用户。
+介绍 link为了方便地接入外部成员系统，FastGPT 提供一套接入外部系统的标准接口，以及一个 FastGPT-SSO-Service 镜像作为适配器。
+通过这套标注接口，你可以可以实现：
+SSO 登录。从外部系统回调后，在 FastGPT 中创建一个用户。 成员和组织架构同步（下面都简称成员同步）。 原理
+FastGPT-pro 中，有一套标准的SSO 和成员同步接口，系统会根据这套接口进行 SSO 和成员同步操作。
+FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，将他们转成 fastgpt-pro 可识别的接口。
+系统配置教程 link1. 部署 SSO-service 镜像 link使用 docker-compose 部署：
+fastgpt-sso: image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0 container_name: fastgpt-sso restart: always networks: - fastgpt environment: - SSO_PROVIDER=example - AUTH_TOKEN=xxxxx # 鉴权信息，fastgpt-pro 会用到。 # 具体对接提供商的环境变量。 根据不同的提供商，你需要配置不同的环境变量，下面是内置的通用协议/IM：
+协议/功能 SSO 成员同步支持 飞书 是 是 企业微信 是 是 钉钉 是 否 Saml2.0 是 否 Oauth2.</description></item><item><title>团队模式说明文档</title><link>https://doc.tryfastgpt.ai/docs/guide/admin/teammode/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/admin/teammode/</guid><description>介绍 link目前支持的团队模式：
+多团队模式（默认模式） 单团队模式（全局只有一个团队） 成员同步模式（所有成员自外部同步） 团队模式 短信/邮箱 注册 管理员直接添加 SSO 注册 是否创建默认团队 是否加入 Root 团队 是否创建默认团队 是否加入 Root 团队 是否创建默认团队 是否加入 Root 团队 单团队模式 ❌ ✅ ❌ ✅ ❌ ✅ 多团队模式 ✅ ❌ ✅ ❌ ✅ ❌ 同步模式 ❌ ❌ ❌ ✅ ❌ ✅ 多团队模式（默认模式） link多团队模式下，每个用户创建时默认创建以自己为所有者的默认团队。
+单团队模式 link单团队模式是 v4.9 推出的新功能。为了简化企业进行人员和资源的管理，开启单团队模式后，所有新增的用户都不再创建自己的默认团队，而是加入 root 用户所在的团队。
+同步模式 link在完成系统配置，开启同步模式的情况下，外部成员系统的成员会自动同步到 FastGPT 中。
+具体的同步方式和规则请参考 SSO &amp;amp; 外部成员同步。
+配置 link在 fastgpt-pro 的系统配置-成员配置中，可以配置团队模式。</description></item></channel></rss>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>模型配置方案 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/development/modelconfig/</link><description>Recent content in 模型配置方案 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/development/modelconfig/index.xml" rel="self" type="application/rss+xml"/><item><title>FastGPT 模型配置说明</title><link>https://doc.tryfastgpt.ai/docs/development/modelconfig/intro/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/modelconfig/intro/</guid><description>在 4.8.20 版本以前，FastGPT 模型配置在 config.json 文件中声明，你可以在 https://github.com/labring/FastGPT/blob/main/projects/app/data/model.json 中找到旧版的配置文件示例。
+从 4.8.20 版本开始，你可以直接在 FastGPT 页面中进行模型配置，并且系统内置了大量模型，无需从 0 开始配置。下面介绍模型配置的基本流程：
+配置模型 link1. 对接模型提供商 linkAI Proxy link从 4.8.23 版本开始， FastGPT 支持在页面上配置模型提供商，即使用 AI Proxy 接入教程 来进行模型聚合，从而可以对接更多模型提供商。
+One API link也可以使用 OneAPI 接入教程。你需要先在各服务商申请好 API 接入 OneAPI 后，才能在 FastGPT 中使用这些模型。示例流程如下：
+除了各模型官方的服务外，还有一些第三方服务商提供模型接入服务，当然你也可以用 Ollama 等来部署本地模型，最终都需要接入 OneAPI，下面是一些第三方服务商：
+SiliconCloud(硅基流动): 提供开源模型调用的平台。
+Sealos AIProxy: 提供国内各家模型代理，无需逐一申请 api。
+在 OneAPI 配置好模型后，你就可以打开 FastGPT 页面，启用对应模型了。
+2. 配置介绍 link 🤖
+注意：
+目前语音识别模型和重排模型仅会生效一个，所以配置时候，只需要配置一个即可。 系统至少需要一个语言模型和一个索引模型才能正常使用。 核心配置 link 模型 ID：接口请求时候，Body 中model字段的值，全局唯一。 自定义请求地址/Key：如果需要绕过OneAPI，可以设置自定义请求地址和 Token。一般情况下不需要，如果 OneAPI 不支持某些模型，可以使用该特性。 模型类型 link 语言模型 - 进行文本对话，多模态模型支持图片识别。 索引模型 - 对文本块进行索引，用于相关文本检索。 重排模型 - 对检索结果进行重排，用于优化检索排名。 语音合成 - 将文本转换为语音。 语音识别 - 将语音转换为文本。 启用模型 link系统内置了目前主流厂商的模型，如果你不熟悉配置，直接点击启用即可，需要注意的是，模型 ID需要和 OneAPI 中渠道的模型一致。</description></item><item><title>通过 AI Proxy 接入模型</title><link>https://doc.tryfastgpt.ai/docs/development/modelconfig/ai-proxy/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/modelconfig/ai-proxy/</guid><description>从 FastGPT 4.8.23 版本开始，引入 AI Proxy 来进一步方便模型的配置。
+AI Proxy 与 One API 类似，也是作为一个 OpenAI 接口管理 &amp;amp; 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
+部署 linkDocker 版本 linkdocker-compose.yml 文件已加入了 AI Proxy 配置，可直接使用。点击查看最新的 yml 配置
+从旧版升级的用户，可以复制 yml 里，ai proxy 的配置，加入到旧的 yml 文件中。
+运行原理 linkAI proxy 核心模块:
+渠道管理：管理各家模型提供商的 API Key 和可用模型列表。 模型调用：根据请求的模型，选中对应的渠道；根据渠道的 API 格式，构造请求体，发送请求；格式化响应体成标准格式返回。 调用日志：详细记录模型调用的日志，并在错误时候可以记录其入参和报错信息，方便排查。 运行流程：
+在 FastGPT 中使用 linkAI proxy 相关功能，可以在账号-模型提供商页面找到。
+1. 创建渠道 link在模型提供商的配置页面，点击模型渠道，进入渠道配置页面
+点击右上角的“新增渠道”，即可进入渠道配置页面
+以阿里云的模型为例，进行如下配置
+渠道名：展示在外部的渠道名称，仅作标识; 厂商：模型对应的厂商，不同厂商对应不同的默认地址和 API 密钥格式; 模型：当前渠道具体可以使用的模型，系统内置了主流的一些模型，如果下拉框中没有想要的选项，可以点击“新增模型”，增加自定义模型; 模型映射：将 FastGPT 请求的模型，映射到具体提供的模型上。例如： { &amp;#34;gpt-4o-test&amp;#34;: &amp;#34;gpt-4o&amp;#34;, } FatGPT 中的模型为 gpt-4o-test，向 AI Proxy 发起请求时也是 gpt-4o-test。AI proxy 在向上游发送请求时，实际的model为 gpt-4o。</description></item><item><title>通过 OneAPI 接入模型</title><link>https://doc.tryfastgpt.ai/docs/development/modelconfig/one-api/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/modelconfig/one-api/</guid><description>FastGPT 目前采用模型分离的部署方案，FastGPT 中只兼容 OpenAI 的模型规范（OpenAI 不存在的模型采用一个较为通用的规范），并通过 One API 来实现对不同模型接口的统一。
+One API 是一个 OpenAI 接口管理 &amp;amp; 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
+FastGPT 与 One API 关系 link可以把 One API 当做一个网关，FastGPT 与 One API 关系：
+部署 linkSealos 版本 link 北京区: 点击部署 OneAPI 新加坡区(可用 GPT) 点击部署 OneAPI 部署完后，可以打开 OneAPI 访问链接，进行下一步操作。
+OneAPI 基础教程 link概念 link 渠道： OneApi 中一个渠道对应一个 Api Key，这个 Api Key 可以是GPT、微软、ChatGLM、文心一言的。一个Api Key通常可以调用同一个厂商的多个模型。 One API 会根据请求传入的模型来决定使用哪一个渠道，如果一个模型对应了多个渠道，则会随机调用。 令牌：访问 One API 所需的凭证，只需要这1个凭证即可访问One API上配置的模型。因此FastGPT中，只需要配置One API的baseurl和令牌即可。令牌不要设置任何的模型范围权限，否则容易报错。 大致工作流程 link 客户端请求 One API 根据请求中的 model 参数，匹配对应的渠道（根据渠道里的模型进行匹配，必须完全一致）。如果匹配到多个渠道，则随机选择一个（同优先级）。 One API 向真正的地址发出请求。 One API 将结果返回给客户端。 1.</description></item><item><title>通过 SiliconCloud 体验开源模型</title><link>https://doc.tryfastgpt.ai/docs/development/modelconfig/siliconcloud/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/modelconfig/siliconcloud/</guid><description>SiliconCloud(硅基流动) 是一个以提供开源模型调用为主的平台，并拥有自己的加速引擎。帮助用户低成本、快速的进行开源模型的测试和使用。实际体验下来，他们家模型的速度和稳定性都非常不错，并且种类丰富，覆盖语言、向量、重排、TTS、STT、绘图、视频生成模型，可以满足 FastGPT 中所有模型需求。
+如果你想部分模型使用 SiliconCloud 的模型，可额外参考OneAPI接入硅基流动。
+本文会介绍完全使用 SiliconCloud 模型来部署 FastGPT 的方案。
+1. 注册 SiliconCloud 账号 link 点击注册硅基流动账号 进入控制台，获取 API key: https://cloud.siliconflow.cn/account/ak 2. 修改 FastGPT 环境变量 link OPENAI_BASE_URL=https://api.siliconflow.cn/v1 # 填写 SiliconCloud 控制台提供的 Api Key CHAT_API_KEY=sk-xxxxxx 3. 修改 FastGPT 模型配置 link系统内置了几个硅基流动的模型进行体验，如果需要其他模型，可以手动添加。
+这里启动了 Qwen2.5 72b 的纯语言和视觉模型；选择 bge-m3 作为向量模型；选择 bge-reranker-v2-m3 作为重排模型。选择 fish-speech-1.5 作为语音模型；选择 SenseVoiceSmall 作为语音输入模型。
+4. 体验测试 link测试对话和图片识别 link随便新建一个简易应用，选择对应模型，并开启图片上传后进行测试：
+可以看到，72B 的模型，性能还是非常快的，这要是本地没几个 4090，不说配置环境，输出怕都要 30s 了。
+测试知识库导入和知识库问答 link新建一个知识库（由于只配置了一个向量模型，页面上不会展示向量模型选择）
+导入本地文件，直接选择文件，然后一路下一步即可。79 个索引，大概花了 20s 的时间就完成了。现在我们去测试一下知识库问答。
+首先回到我们刚创建的应用，选择知识库，调整一下参数后即可开始对话：
+对话完成后，点击底部的引用，可以查看引用详情，同时可以看到具体的检索和重排得分：
+测试语音播放 link继续在刚刚的应用中，左侧配置中找到语音播放，点击后可以从弹窗中选择语音模型，并进行试听：</description></item><item><title>通过 PPIO LLM API 接入模型</title><link>https://doc.tryfastgpt.ai/docs/development/modelconfig/ppio/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/modelconfig/ppio/</guid><description>FastGPT 还可以通过 PPIO LLM API 接入模型。
+warning 以下内容搬运自 FastGPT 接入 PPIO LLM API，可能会有更新不及时的情况。
+FastGPT 是一个将 AI 开发、部署和使用全流程简化为可视化操作的平台。它使开发者不需要深入研究算法， 用户也不需要掌握复杂技术，通过一站式服务将人工智能技术变成易于使用的工具。
+PPIO 派欧云提供简单易用的 API 接口，让开发者能够轻松调用 DeepSeek 等模型。
+对开发者：无需重构架构，3 个接口完成从文本生成到决策推理的全场景接入，像搭积木一样设计 AI 工作流； 对生态：自动适配从中小应用到企业级系统的资源需求，让智能随业务自然生长。 下方教程提供完整接入方案（含密钥配置），帮助您快速将 FastGPT 与 PPIO API 连接起来。
+1. 配置前置条件 link(1) 获取 API 接口地址
+固定为: https://api.ppinfra.com/v3/openai/chat/completions。
+(2) 获取 【API 密钥】
+登录派欧云控制台 API 秘钥管理 页面，点击创建按钮。 注册账号填写邀请码【VOJL20】得 50 代金券
+(3) 生成并保存 【API 密钥】
+warning 秘钥在服务端是加密存储，请在生成时保存好秘钥；若遗失可以在控制台上删除并创建一个新的秘钥。
+(4) 获取需要使用的模型 ID
+deepseek 系列：
+DeepSeek R1：deepseek/deepseek-r1/community
+DeepSeek V3：deepseek/deepseek-v3/community
+其他模型 ID、最大上下文及价格可参考：模型列表</description></item></channel></rss>

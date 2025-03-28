@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>迁移&amp;备份 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/development/migration/</link><description>Recent content in 迁移&amp;备份 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/development/migration/index.xml" rel="self" type="application/rss+xml"/><item><title>Docker Mongo迁移(dump模式)</title><link>https://doc.tryfastgpt.ai/docs/development/migration/docker_mongo/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/migration/docker_mongo/</guid><description>作者 linkhttps://github.com/samqin123
+相关PR。有问题可打开这里与作者交流
+介绍 link如何使用Mongodump来完成从A环境到B环境的Fastgpt的mongodb迁移
+前提说明：
+A环境：我在阿里云上部署的fastgpt，现在需要迁移到B环境。 B环境：是新环境比如腾讯云新部署的fastgpt，更特殊一点的是，NAS（群晖或者QNAP）部署了fastgpt，mongo必须改成4.2或者4.4版本（其实云端更方便，支持fastgpt mongo默认版本） C环境：妥善考虑，用本地电脑作为C环境过渡，保存相关文件并分离操作 ‍
+1. 环境准备：进入 docker mongo 【A环境】 link docker exec -it mongo sh mongo -u &amp;#39;username&amp;#39; -p &amp;#39;password&amp;#39; &amp;gt;&amp;gt; show dbs 看到fastgpt数据库，以及其它几个，确定下导出数据库名称 准备： 检查数据库，容器和宿主机都创建一下 backup 目录 【A环境 + C环境】
+准备： link检查数据库，容器和宿主机都创建一下“数据导出导入”临时目录 ，比如data/backup 【A环境建目录 + C环境建目录用于同步到容器中】
+先在【A环境】创建文件目录，用于dump导出操作 link容器：（先进入fastgpt docker容器）
+docker exec -it fastgpt sh mkdir -p /data/backup 建好后，未来导出mongo的数据，会在A环境本地fastgpt的安装目录/Data/下看到自动同步好的目录，数据会在data\backup中，然后可以衔接后续的压缩和下载转移动作。如果没有同步到本地，也可以手动建一下，配合docker cp 把文件拷到本地用（基本不会发生）
+然后，【C环境】宿主机目录类似操作，用于把上传的文件自动同步到C环境部署的fastgpt容器里。 link到fastgpt目录，进入mongo目录，有data目录，下面建backup
+mkdir -p /fastgpt/data/backup 准备好后，后续上传
+### 新fastgpt环境【B】中也需要建一个，比如/fastgpt/mongobackup目录，注意不要在fastgpt/data目录下建立目录 mkdir -p /fastgpt/mongobackup
+###2. 正题开始，从fastgpt老环境【A】中导出数据 进入A环境，使用mongodump 导出mongo数据库。 #### 2.</description></item><item><title>Docker 数据库迁移(无脑操作)</title><link>https://doc.tryfastgpt.ai/docs/development/migration/docker_db/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/migration/docker_db/</guid><description>1. 停止服务 link docker-compose down 2. Copy文件夹 linkDocker 部署数据库都会通过 volume 挂载本地的目录进入容器，如果要迁移，直接复制这些目录即可。
+PG 数据: pg/data Mongo 数据: mongo/data
+直接把pg 和 mongo目录全部复制走即可。</description></item></channel></rss>

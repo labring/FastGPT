@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>基础教程 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/guide/course/</link><description>Recent content in 基础教程 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/guide/course/index.xml" rel="self" type="application/rss+xml"/><item><title>快速上手</title><link>https://doc.tryfastgpt.ai/docs/guide/course/quick-start/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/course/quick-start/</guid><description>更多使用技巧，查看视频教程
+知识库 link开始前，请准备一份测试电子文档，WORD、PDF、TXT、excel、markdown 都可以，比如公司休假制度、不涉密的销售说辞、产品知识等等。
+这里使用 FastGPT 中文 README 文件为例。
+首先我们需要创建一个知识库。
+知识库创建完之后我们需要上传一点内容。
+上传内容这里有四种模式：
+手动输入：手动输入问答对，是最精准的数据 QA 拆分：选择文本文件，让AI自动生成问答对 直接分段：选择文本文件，直接将其按分段进行处理 CSV 导入：批量导入问答对 这里，我们选择 QA 拆分，让 AI 自动生成问答，若问答质量不高，可以后期手动修改。
+点击上传后我们需要等待数据处理完成，直到我们上传的文件状态为可用。
+应用 link点击「应用」按钮来新建一个应用，这里有四个模板，我们选择「知识库 + 对话引导」。
+应用创建后来再应用详情页找到「知识库」模块，把我们刚刚创建的知识库添加进去。
+添加完知识库后记得点击「保存并预览」，这样我们的应用就和知识库关联起来了。
+然后我们就可以愉快的开始聊天啦。</description></item><item><title>AI 相关参数配置说明</title><link>https://doc.tryfastgpt.ai/docs/guide/course/ai_settings/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/course/ai_settings/</guid><description>在 FastGPT 的 AI 对话模块中，有一个 AI 高级配置，里面包含了 AI 模型的参数配置，本文详细介绍这些配置的含义。
+流响应（高级编排 AI 对话 特有） link旧版名字叫做：返回 AI 内容；新版改名：流响应。
+这是一个开关，打开的时候，当 AI 对话模块运行时，会将其输出的内容返回到浏览器（API响应）； 如果关闭，会强制使用非流模式调用模型，并且 AI 输出的内容不会返回到浏览器，但是生成的内容仍可以通过【AI回复】进行输出。你可以将【AI回复】连接到其他模块中进行二次使用。
+最大上下文 link代表模型最多容纳的文字数量。
+函数调用 link支持函数调用的模型，在使用工具时更加准确。
+温度 link越低回答越严谨，少废话（实测下来，感觉差别不大）
+回复上限 link最大回复 token 数量。注意，是回复的Tokens！不是上下文 tokens。
+通常，回复上限=min(模型允许的最大回复上限, 最大上下文-已用上下文)
+所以，一般配置模型时，不会把最大上下文配置成模型实际最大上下文，而是预留预定空间给回答，例如 128k 模型，可以配置 max_context=115000
+系统提示词 link被放置在上下文数组的最前面，role 为 system，用于引导模型。
+记忆轮数（仅简易模式） link可以配置模型支持的记忆轮数，如果模型的超出上下文，系统会自动截断，尽可能保证不超模型上下文。
+所以尽管配置 30 轮对话，实际运行时候，不一定会达到 30 轮。
+引用模板 &amp;amp; 引用提示词 link进行知识库搜索后，你可以自定义组织检索结果构成的提示词，这个配置，仅工作流中 AI 对话节点可用。并且，只会在有引用知识库内容时才会生效。
+AI 对话消息组成 link想使用明白这两个变量，首先要了解传递传递给 AI 模型的消息格式。它是一个数组，FastGPT 中这个数组的组成形式为：
+[ 内置提示词（config.json 配置，一般为空） 系统提示词 （用户输入的提示词） 历史记录 问题（由引用提示词、引用模板和用户问题组成） ] 🍅</description></item><item><title>对话问题引导</title><link>https://doc.tryfastgpt.ai/docs/guide/course/chat_input_guide/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/course/chat_input_guide/</guid><description> 什么是自定义问题引导 link你可以为你的应用提前预设一些问题，用户在输入时，会根据输入的内容，动态搜索这些问题作为提示，从而引导用户更快的进行提问。
+你可以直接在 FastGPT 中配置词库，或者提供自定义词库接口。
+自定义词库接口 link需要保证这个接口可以被用户浏览器访问。
+请求：
+curl --location --request GET &amp;#39;http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&amp;amp;searchKey=你&amp;#39; 其中 appId 为应用ID，searchKey 为搜索关键字，最多是50个字符。
+响应
+{ &amp;#34;code&amp;#34;: 200, &amp;#34;statusText&amp;#34;: &amp;#34;&amp;#34;, &amp;#34;message&amp;#34;: &amp;#34;&amp;#34;, &amp;#34;data&amp;#34;: [ &amp;#34;是你&amp;#34;, &amp;#34;你是谁呀&amp;#34;, &amp;#34;你好好呀&amp;#34;, &amp;#34;你好呀&amp;#34;, &amp;#34;你是谁！&amp;#34;, &amp;#34;你好&amp;#34; ] } data是一个数组，包含了搜索到的问题，最多只需要返回5个问题。
+参数说明：
+appId - 应用ID searchKey - 搜索关键字</description></item><item><title>知识库集合标签</title><link>https://doc.tryfastgpt.ai/docs/guide/course/collection_tags/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/course/collection_tags/</guid><description>知识库集合标签是 FastGPT 商业版特有功能。它允许你对知识库中的数据集合添加标签进行分类，更高效地管理知识库数据。
+而进一步可以在问答中，搜索知识库时添加集合过滤，实现更精确的搜索。
+标签基础操作说明 link在知识库详情页面，可以对标签进行管理，可执行的操作有
+创建标签 修改标签名 删除标签 将一个标签赋给多个数据集合 给一个数据集合添加多个标签 也可以利用标签对数据集合进行筛选
+知识库搜索-集合过滤说明 link利用标签可以在知识库搜索时，通过填写「集合过滤」这一栏来实现更精确的搜索，具体的填写示例如下
+{ &amp;#34;tags&amp;#34;: { &amp;#34;$and&amp;#34;: [&amp;#34;标签 1&amp;#34;,&amp;#34;标签 2&amp;#34;], &amp;#34;$or&amp;#34;: [&amp;#34;有 $and 标签时，and 生效，or 不生效&amp;#34;] }, &amp;#34;createTime&amp;#34;: { &amp;#34;$gte&amp;#34;: &amp;#34;YYYY-MM-DD HH:mm 格式即可，集合的创建时间大于该时间&amp;#34;, &amp;#34;$lte&amp;#34;: &amp;#34;YYYY-MM-DD HH:mm 格式即可，集合的创建时间小于该时间,可和 $gte 共同使用&amp;#34; } } 在填写时有两个注意的点，
+标签值可以为 string 类型的标签名，也可以为 null，而 null 代表着未设置标签的数据集合 标签过滤有 $and 和 $or 两种条件类型，在同时设置了 $and 和 $or 的情况下，只有 $and 会生效</description></item><item><title>文件输入功能介绍</title><link>https://doc.tryfastgpt.ai/docs/guide/course/fileinput/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/course/fileinput/</guid><description>从 4.8.9 版本起，FastGPT 支持在简易模式和工作流中，配置用户上传文件、图片功能。下面先简单介绍下如何使用文件输入功能，最后是介绍下文件解析的工作原理。
+简易模式中使用 link简易模式打开文件上传后，会使用工具调用模式，也就是由模型自行决策，是否需要读取文件内容。
+可以找到左侧文件上传的配置项，点击其右侧的开启/关闭按键，即可打开配置弹窗。
+随后，你的调试对话框中，就会出现一个文件选择的 icon，可以点击文件选择 icon，选择你需要上传的文件。
+工作模式
+从 4.8.13 版本起，简易模式的文件读取将会强制解析文件并放入 system 提示词中，避免连续对话时，模型有时候不会主动调用读取文件的工具。
+工作流中使用 link工作流中，可以在系统配置中，找到文件输入配置项，点击其右侧的开启/关闭按键，即可打开配置弹窗。
+在工作流中，使用文件的方式很多，最简单的就是类似下图中，直接通过工具调用接入文档解析，实现和简易模式一样的效果。
+当然，你也可以在工作流中，对文档进行内容提取、内容分析等，然后将分析的结果传递给 HTTP 或者其他模块，从而实现文件处理的 SOP。
+文档解析工作原理 link不同于图片识别，LLM 模型目前没有支持直接解析文档的能力，所有的文档“理解”都是通过文档转文字后拼接 prompt 实现。这里通过几个 FAQ 来解释文档解析的工作原理，理解文档解析的原理，可以更好的在工作流中使用文档解析功能。
+上传的文件如何存储在数据库中 linkFastGPT 的对话记录存储结构中，role=user 的消息，value 值会按以下结构存储：
+type UserChatItemValueItemType = { type: &amp;#39;text&amp;#39; | &amp;#39;file&amp;#39; text?: { content: string; }; file?: { type: &amp;#39;img&amp;#39; | &amp;#39;doc&amp;#39; name?: string; url: string; }; }; 也就是说，上传的图片和文档，都会以 URL 的形式存储在库中，并不会存储解析后的文档内容。
+图片如何处理 link文档解析节点不会处理图片，图片链接会被过滤，图片识别请直接使用支持图片识别的 LLM 模型。
+文档解析节点如何工作 link文档解析依赖文档解析节点，这个节点会接收一个array&amp;lt;string&amp;gt;类型的输入，对应的是文件输入的 URL；输出的是一个string，对应的是文档解析后的内容。</description></item></channel></rss>

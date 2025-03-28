@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>本地模型使用 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/</link><description>Recent content in 本地模型使用 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/development/custom-models/index.xml" rel="self" type="application/rss+xml"/><item><title>接入 Marker PDF 文档解析</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/marker/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/marker/</guid><description>背景 linkPDF 是一个相对复杂的文件格式，在 FastGPT 内置的 pdf 解析器中，依赖的是 pdfjs 库解析，该库基于逻辑解析，无法有效的理解复杂的 pdf 文件。所以我们在解析 pdf 时候，如果遇到图片、表格、公式等非简单文本内容，会发现解析效果不佳。
+市面上目前有多种解析 PDF 的方法，比如使用 Marker，该项目使用了 Surya 模型，基于视觉解析，可以有效提取图片、表格、公式等复杂内容。
+在 FastGPT v4.9.0 版本中，开源版用户可以在config.json文件中添加systemEnv.customPdfParse配置，来使用 Marker 解析 PDF 文件。商业版用户直接在 Admin 后台根据表单指引填写即可。需重新拉取 Marker 镜像，接口格式已变动。
+使用教程 link1. 安装 Marker link参考文档 Marker 安装教程，安装 Marker 模型。封装的 API 已经适配了 FastGPT 自定义解析服务。
+这里介绍快速 Docker 安装的方法：
+docker pull crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2 docker run --gpus all -itd -p 7231:7232 --name model_pdf_v2 -e PROCESSES_PER_GPU=&amp;#34;2&amp;#34; crpi-h3snc261q1dosroc.cn-hangzhou.personal.cr.aliyuncs.com/marker11/marker_images:v0.2 2. 添加 FastGPT 文件配置 link { xxx &amp;#34;systemEnv&amp;#34;: { xxx &amp;#34;customPdfParse&amp;#34;: { &amp;#34;url&amp;#34;: &amp;#34;http://xxxx.</description></item><item><title>使用 Xinference 接入本地模型</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/xinference/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/xinference/</guid><description>Xinference 是一款开源模型推理平台，除了支持 LLM，它还可以部署 Embedding 和 ReRank 模型，这在企业级 RAG 构建中非常关键。同时，Xinference 还提供 Function Calling 等高级功能。还支持分布式部署，也就是说，随着未来应用调用量的增长，它可以进行水平扩展。
+安装 Xinference linkXinference 支持多种推理引擎作为后端，以满足不同场景下部署大模型的需要，下面会分使用场景来介绍一下这三种推理后端，以及他们的使用方法。
+1. 服务器 link如果你的目标是在一台 Linux 或者 Window 服务器上部署大模型，可以选择 Transformers 或 vLLM 作为 Xinference 的推理后端：
+Transformers：通过集成 Huggingface 的 Transformers 库作为后端，Xinference 可以最快地 集成当今自然语言处理（NLP）领域的最前沿模型（自然也包括 LLM）。 vLLM: vLLM 是由加州大学伯克利分校开发的一个开源库，专为高效服务大型语言模型（LLM）而设计。它引入了 PagedAttention 算法， 通过有效管理注意力键和值来改善内存管理，吞吐量能够达到 Transformers 的 24 倍，因此 vLLM 适合在生产环境中使用，应对高并发的用户访问。 假设你服务器配备 NVIDIA 显卡，可以参考这篇文章中的指令来安装 CUDA，从而让 Xinference 最大限度地利用显卡的加速功能。
+Docker 部署 link你可以使用 Xinference 官方的 Docker 镜像来一键安装和启动 Xinference 服务（确保你的机器上已经安装了 Docker），命令如下：
+docker run -p 9997:9997 --gpus all xprobe/xinference:latest xinference-local -H 0.</description></item><item><title>接入 bge-rerank 重排模型</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/bge-rerank/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/bge-rerank/</guid><description>不同模型推荐配置 link推荐配置如下：
+模型名 内存 显存 硬盘空间 启动命令 bge-reranker-base &amp;gt;=4GB &amp;gt;=4GB &amp;gt;=8GB python app.py bge-reranker-large &amp;gt;=8GB &amp;gt;=8GB &amp;gt;=8GB python app.py bge-reranker-v2-m3 &amp;gt;=8GB &amp;gt;=8GB &amp;gt;=8GB python app.py 源码部署 link1. 安装环境 link Python 3.9, 3.10 CUDA 11.7 科学上网环境 2. 下载代码 link3 个模型代码分别为：
+https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-base https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-large https://github.com/labring/FastGPT/tree/main/plugins/model/rerank-bge/bge-reranker-v2-m3 3. 安装依赖 link pip install -r requirements.txt 4. 下载模型 link3个模型的 huggingface 仓库地址如下：
+https://huggingface.co/BAAI/bge-reranker-base https://huggingface.co/BAAI/bge-reranker-large https://huggingface.co/BAAI/bge-reranker-v2-m3 在对应代码目录下 clone 模型。目录结构：
+bge-reranker-base/ app.py Dockerfile requirements.txt 5. 运行代码 link python app.py 启动成功后应该会显示如下地址：</description></item><item><title>接入 ChatGLM2-6B</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/chatglm2/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/chatglm2/</guid><description>前言 linkFastGPT 允许你使用自己的 OpenAI API KEY 来快速调用 OpenAI 接口，目前集成了 GPT-3.5, GPT-4 和 embedding，可构建自己的知识库。但考虑到数据安全的问题，我们并不能将所有的数据都交付给云端大模型。
+那么如何在 FastGPT 上接入私有化模型呢？本文就以清华的 ChatGLM2 为例，为各位讲解如何在 FastGPT 中接入私有化模型。
+ChatGLM2-6B 简介 linkChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，具体介绍可参阅 ChatGLM2-6B 项目主页。
+warning 注意，ChatGLM2-6B 权重对学术研究完全开放，在获得官方的书面许可后，亦允许商业使用。本教程只是介绍了一种用法，无权给予任何授权！
+推荐配置 link依据官方数据，同样是生成 8192 长度，量化等级为 FP16 要占用 12.8GB 显存、int8 为 8.1GB 显存、int4 为 5.1GB 显存，量化后会稍微影响性能，但不多。
+因此推荐配置如下：
+类型 内存 显存 硬盘空间 启动命令 fp16 &amp;gt;=16GB &amp;gt;=16GB &amp;gt;=25GB python openai_api.py 16 int8 &amp;gt;=16GB &amp;gt;=9GB &amp;gt;=25GB python openai_api.py 8 int4 &amp;gt;=16GB &amp;gt;=6GB &amp;gt;=25GB python openai_api.</description></item><item><title>接入 M3E 向量模型</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/m3e/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/m3e/</guid><description>前言 linkFastGPT 默认使用了 openai 的 embedding 向量模型，如果你想私有部署的话，可以使用 M3E 向量模型进行替换。M3E 向量模型属于小模型，资源使用不高，CPU 也可以运行。下面教程是基于 “睡大觉” 同学提供的一个的镜像。
+部署镜像 link镜像名: stawky/m3e-large-api:latest
+国内镜像： registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/m3e-large-api:latest 端口号: 6008 环境变量：
+# 设置安全凭证（即oneapi中的渠道密钥） 默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk 也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。 接入 One API link添加一个渠道，参数如下：
+测试 linkcurl 例子：
+curl --location --request POST &amp;#39;https://domain/v1/embeddings&amp;#39; \ --header &amp;#39;Authorization: Bearer xxxx&amp;#39; \ --header &amp;#39;Content-Type: application/json&amp;#39; \ --data-raw &amp;#39;{ &amp;#34;model&amp;#34;: &amp;#34;m3e&amp;#34;, &amp;#34;input&amp;#34;: [&amp;#34;laf是什么&amp;#34;] }&amp;#39; Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型。
+接入 FastGPT link修改 config.json 配置文件，在 vectorModels 中加入 M3E 模型：</description></item><item><title>接入 ChatGLM2-m3e 模型</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/chatglm2-m3e/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/chatglm2-m3e/</guid><description>前言 linkFastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
+部署镜像 link 镜像名: stawky/chatglm2-m3e:latest 国内镜像名: registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest 端口号: 6006 # 设置安全凭证（即oneapi中的渠道密钥）
+默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。 接入 One API link为 chatglm2 和 m3e-large 各添加一个渠道，参数如下：
+这里我填入 m3e 作为向量模型，chatglm2 作为语言模型
+测试 linkcurl 例子：
+curl --location --request POST &amp;#39;https://domain/v1/embeddings&amp;#39; \
+--header &amp;#39;Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk&amp;#39; \
+--header &amp;#39;Content-Type: application/json&amp;#39; \
+--data-raw &amp;#39;{
+&amp;#34;model&amp;#34;: &amp;#34;m3e&amp;#34;,
+&amp;#34;input&amp;#34;: [&amp;#34;laf是什么&amp;#34;]
+}&amp;#39; curl --location --request POST &amp;#39;https://domain/v1/chat/completions&amp;#39; \
+--header &amp;#39;Authorization: Bearer sk-aaabbbcccdddeeefffggghhhiiijjjkkk&amp;#39; \
+--header &amp;#39;Content-Type: application/json&amp;#39; \
+--data-raw &amp;#39;{
+&amp;#34;model&amp;#34;: &amp;#34;chatglm2&amp;#34;,
+&amp;#34;messages&amp;#34;: [{&amp;#34;role&amp;#34;: &amp;#34;user&amp;#34;, &amp;#34;content&amp;#34;: &amp;#34;Hello!</description></item><item><title>使用 Ollama 接入本地模型</title><link>https://doc.tryfastgpt.ai/docs/development/custom-models/ollama/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/custom-models/ollama/</guid><description>Ollama 是一个开源的AI大模型部署工具，专注于简化大语言模型的部署和使用，支持一键下载和运行各种大模型。
+安装 Ollama linkOllama 本身支持多种安装方式，但是推荐使用 Docker 拉取镜像部署。如果是个人设备上安装了 Ollama 后续需要解决如何让 Docker 中 FastGPT 容器访问宿主机 Ollama的问题，较为麻烦。
+Docker 安装（推荐） link你可以使用 Ollama 官方的 Docker 镜像来一键安装和启动 Ollama 服务（确保你的机器上已经安装了 Docker），命令如下：
+docker pull ollama/ollama docker run --rm -d --name ollama -p 11434:11434 ollama/ollama 如果你的 FastGPT 是在 Docker 中进行部署的，建议在拉取 Ollama 镜像时保证和 FastGPT 镜像处于同一网络，否则可能出现 FastGPT 无法访问的问题，命令如下：
+docker run --rm -d --name ollama --network （你的 Fastgpt 容器所在网络） -p 11434:11434 ollama/ollama 主机安装 link如果你不想使用 Docker ，也可以采用主机安装，以下是主机安装的一些方式。
+MacOS link如果你使用的是 macOS，且系统中已经安装了 Homebrew 包管理器，可通过以下命令来安装 Ollama：</description></item></channel></rss>

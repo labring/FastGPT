@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>开发与部署指南 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/development/</link><description>Recent content in 开发与部署指南 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/development/index.xml" rel="self" type="application/rss+xml"/><item><title>快速开始本地开发</title><link>https://doc.tryfastgpt.ai/docs/development/intro/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/intro/</guid><description>本文档介绍了如何设置开发环境以构建和测试 FastGPT，。
+前置依赖项 link您需要在计算机上安装和配置以下依赖项才能构建 FastGPT：
+Git Docker（构建镜像） Node.js v20.14.0（版本尽量一样，可以使用nvm管理node版本） pnpm 推荐版本 9.4.0 (目前官方的开发环境) make命令: 根据不同平台，百度安装 (官方是GNU Make 4.3) 开始本地开发 link check_circle 用户默认的时区为 Asia/Shanghai,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。 建议先服务器装好数据库，再进行本地开发。 1. Fork 存储库 link您需要 Fork 存储库。
+2. 克隆存储库 link克隆您在 GitHub 上 Fork 的存储库：
+git clone git@github.com:&amp;lt;github_username&amp;gt;/FastGPT.git 目录简要说明
+projects 目录下为 FastGPT 应用代码。其中 app 为 FastGPT 核心应用。（后续可能会引入其他应用） NextJS 框架前后端放在一起，API 服务位于 src/pages/api 目录内。 packages 目录为共用代码，通过 workspace 被注入到 projects 中，已配置 monorepo 自动注入，无需额外打包。 3. 安装数据库 link第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践，或者新建文件夹并配置相关文件用以运行docker。数据库部署教程：Docker 快速部署。部署完了，可以本地访问其数据库。</description></item><item><title>Sealos 一键部署</title><link>https://doc.tryfastgpt.ai/docs/development/sealos/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/sealos/</guid><description>部署架构图 link 多模型支持 linkFastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、Azure 、国内主流模型和本地模型等。
+可参考：Sealos 快速部署 OneAPI
+一键部署 link使用 Sealos 服务，无需采购服务器、无需域名，支持高并发 &amp;amp; 动态伸缩，并且数据库应用采用 kubeblocks 的数据库，在 IO 性能方面，远超于简单的 Docker 容器部署。可以根据需求，再下面两个区域选择部署。
+新加坡区 link新加披区的服务器在国外，可以直接访问 OpenAI，但国内用户需要梯子才可以正常访问新加坡区。国际区价格稍贵，点击下面按键即可部署👇
+北京区 link北京区服务提供商为火山云，国内用户可以稳定访问，但无法访问 OpenAI 等境外服务，价格约为新加坡区的 1/4。点击下面按键即可部署👇
+1. 开始部署 link由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
+根据提示，输入root_password，和 openai/oneapi 的地址和密钥。
+点击部署后，会跳转到应用管理页面。可以点击fastgpt主应用右侧的详情按键（名字为 fastgpt-xxxx）， 如下图所示。
+点击详情后，会跳转到 fastgpt 的部署管理页面，点击外网访问地址中的链接，即可打开 fastgpt 服务。
+如需绑定自定义域名、修改部署参数，可以点击右上角变更，根据 sealos 的指引完成。
+2. 登录 link用户名：root
+密码是刚刚一键部署时设置的root_password
+3. 配置模型 link4. 配置模型 link务必先配置至少一组模型，否则系统无法正常使用。
+点击查看模型配置教程
+收费 linkSealos 采用按量计费的方式，也就是申请了多少 cpu、内存、磁盘，就按该申请量进行计费。具体的计费标准，可以打开sealos控制面板中的费用中心进行查看。
+Sealos 使用 link简介 linkFastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据库，使用多 Api Key 时候需要安装 OneAPI（一个应用和一个数据库），总计3个应用和3个数据库。</description></item><item><title>Docker Compose 快速部署</title><link>https://doc.tryfastgpt.ai/docs/development/docker/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/docker/</guid><description>前置知识 link 基础的网络知识：端口，防火墙…… Docker 和 Docker Compose 基础知识 大模型相关接口和参数 RAG 相关知识：向量模型，向量数据库，向量检索 部署架构图 link 🤖
+MongoDB：用于存储除了向量外的各类数据
+PostgreSQL/Milvus：存储向量数据
+OneAPI: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
+推荐配置 linkPgVector版本 link非常轻量，适合知识库索引量在 5000 万以下。
+环境 最低配置（单节点） 推荐配置 测试（可以把计算进程设置少一些） 2c4g 2c8g 100w 组向量 4c8g 50GB 4c16g 50GB 500w 组向量 8c32g 200GB 16c64g 200GB Milvus版本 link对于亿级以上向量性能更优秀。
+点击查看 Milvus 官方推荐配置
+环境 最低配置（单节点） 推荐配置 测试 2c8g 4c16g 100w 组向量 未测试 500w 组向量 zilliz cloud版本 linkZilliz Cloud 由 Milvus 原厂打造，是全托管的 SaaS 向量数据库服务，性能优于 Milvus 并提供 SLA，点击使用 Zilliz Cloud。</description></item><item><title>配置文件介绍</title><link>https://doc.tryfastgpt.ai/docs/development/configuration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/configuration/</guid><description>由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 projects/app/data/config.json 看到默认的配置文件。可以参考 docker-compose 快速部署 来挂载配置文件。
+开发环境下，你需要将示例配置文件 config.json 复制成 config.local.json 文件才会生效。
+下面配置文件示例中包含了系统参数和各个模型配置：
+4.8.20+ 版本新配置文件示例 link 从4.8.20版本开始，模型在页面中进行配置。
+{ &amp;#34;feConfigs&amp;#34;: { &amp;#34;lafEnv&amp;#34;: &amp;#34;https://laf.dev&amp;#34; // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。 }, &amp;#34;systemEnv&amp;#34;: { &amp;#34;vectorMaxProcess&amp;#34;: 15, // 向量处理线程数量 &amp;#34;qaMaxProcess&amp;#34;: 15, // 问答拆分线程数量 &amp;#34;vlmMaxProcess&amp;#34;: 15, // 图片理解模型最大处理进程 &amp;#34;tokenWorkers&amp;#34;: 50, // Token 计算线程保持数，会持续占用内存，不能设置太大。 &amp;#34;hnswEfSearch&amp;#34;: 100, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%&amp;#43;精度。 &amp;#34;customPdfParse&amp;#34;: { // 4.9.0 新增配置 &amp;#34;url&amp;#34;: &amp;#34;&amp;#34;, // 自定义 PDF 解析服务地址 &amp;#34;key&amp;#34;: &amp;#34;&amp;#34;, // 自定义 PDF 解析服务密钥 &amp;#34;doc2xKey&amp;#34;: &amp;#34;&amp;#34;, // doc2x 服务密钥 &amp;#34;price&amp;#34;: 0 // PDF 解析服务价格 } } } 自定义 PDF 解析配置 link自定义 PDF 服务解析的优先级高于 Doc2x 服务，所以如果使用 Doc2x 服务，请勿配置自定义 PDF 服务。</description></item><item><title>私有部署常见问题</title><link>https://doc.tryfastgpt.ai/docs/development/faq/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/development/faq/</guid><description>一、错误排查方式 link可以先找找Issue，或新提 Issue，私有部署错误，务必提供详细的操作步骤、日志、截图，否则很难排查。
+获取后端错误 link docker ps -a 查看所有容器运行状态，检查是否全部 running，如有异常，尝试docker logs 容器名查看对应日志。 容器都运行正常的，docker logs 容器名 查看报错日志 前端错误 link前端报错时，页面会出现崩溃，并提示检查控制台日志。可以打开浏览器控制台，并查看console中的 log 日志。还可以点击对应 log 的超链接，会提示到具体错误文件，可以把这些详细错误信息提供，方便排查。
+OneAPI 错误 link带有requestId的，都是 OneAPI 提示错误，大部分都是因为模型接口报错。可以参考 OneAPI 常见错误
+二、通用问题 link前端页面崩溃 link 90% 情况是模型配置不正确：确保每类模型都至少有一个启用；检查模型中一些对象参数是否异常（数组和对象），如果为空，可以尝试给个空数组或空对象。 少部分是由于浏览器兼容问题，由于项目中包含一些高阶语法，可能低版本浏览器不兼容，可以将具体操作步骤和控制台中错误信息提供 issue。 关闭浏览器翻译功能，如果浏览器开启了翻译，可能会导致页面崩溃。 通过sealos部署的话，是否没有本地部署的一些限制？ link 这是索引模型的长度限制，通过任何方式部署都一样的，但不同索引模型的配置不一样，可以在后台修改参数。
+怎么挂载小程序配置文件 link将验证文件，挂载到指定位置：/app/projects/app/public/xxxx.txt
+然后重启。例如:
+数据库3306端口被占用了，启动服务失败 link 把端口映射改成 3307 之类的，例如 3307:3306。
+本地部署的限制 link具体内容参考https://fael3z0zfze.feishu.cn/wiki/OFpAw8XzAi36Guk8dfucrCKUnjg。
+能否纯本地运行 link可以。需要准备好向量模型和LLM模型。
+其他模型没法进行问题分类/内容提取 link 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置toolChoice=false和functionCall=false，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。 如果已经配置正常，并且没有错误日志，则说明可能提示词不太适合该模型，可以通过修改customCQPrompt来自定义提示词。 页面崩溃 link 关闭翻译 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。 95%情况是配置文件不对。会提示 xxx undefined 提示URI malformed，请 Issue 反馈具体操作和页面，这是由于特殊字符串编码解析报错。 某些api不兼容问题（较少） 开启内容补全后，响应速度变慢 link 问题补全需要经过一轮AI生成。 会进行3~5轮的查询，如果数据库性能不足，会有明显影响。 页面中可以正常回复，API 报错 link页面中是用 stream=true 模式，所以API也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。 和上一个问题一样，curl 测试。</description></item></channel></rss>

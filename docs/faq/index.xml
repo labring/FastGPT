@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>FAQ on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/faq/</link><description>Recent content in FAQ on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/faq/index.xml" rel="self" type="application/rss+xml"/><item><title>Docker 部署问题</title><link>https://doc.tryfastgpt.ai/docs/faq/docker/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/docker/</guid><description/></item><item><title>私有部署常见问题</title><link>https://doc.tryfastgpt.ai/docs/faq/privatedeploy/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/privatedeploy/</guid><description/></item><item><title>聊天框问题</title><link>https://doc.tryfastgpt.ai/docs/faq/chat/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/chat/</guid><description>我修改了工作台的应用，为什么在“聊天”时没有更新配置？ link应用需要点击发布后，聊天才会更新应用。
+浏览器不支持语音输入 link 首先需要确保浏览器、电脑本身麦克风权限的开启。 确认浏览器允许该站点使用麦克风，并且选择正确的麦克风来源。 需有 SSL 证书的站点才可以使用麦克风。</description></item><item><title>应用使用问题</title><link>https://doc.tryfastgpt.ai/docs/faq/app/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/app/</guid><description>多轮对话中如何使连续问题被问题分类节点正确的归类 link问题分类节点具有获取上下文信息的能力，当处理两个关联性较大的问题时，模型的判断准确性往往依赖于这两个问题之间的联系和模型的能力。例如，当用户先问“我该如何使用这个功能？”接着又询问“这个功能有什么限制？”时，模型借助上下文信息，就能够更精准地理解并响应。
+但是，当连续问题之间的关联性较小，模型判断的准确度可能会受到限制。在这种情况下，我们可以引入全局变量的概念来记录分类结果。在后续的问题分类阶段，首先检查全局变量是否存有分类结果。如果有，那么直接沿用该结果；若没有，则让模型自行判断。
+建议：构建批量运行脚本进行测试，评估问题分类的准确性。
+定时执行的时机问题 link系统编排配置中的定时执行，如果用户打开分享的连接，停留在那个页面，定时执行触发问题：
+定时执行会在应用发布后生效，会在后台生效。
+V4.8.18-FIX2中提到“ 1. 修复 HTTP 节点， {{}} 格式引用变量兼容问题。建议尽快替换 / 模式取变量， {{}} 语法已弃用。”替换{{}}引用格式是仅仅只有在http节点，还是所有节点的都会有影响？ link只有 http 节点用到这个语法。
+工作流类型的应用在运行预览可以正常提问返回，但是发布免登录窗口之后有问题。 link一般是没正确发布，在工作流右上角点击【保存并发布】。
+如何解决猜你想问使用中文回答显示 link注意需要更新到V4.8.17及以上，把猜你想问的提示词改成中文。 AI对话回答要求中的Markdown语法取消 link修改知识库默认提示词, 默认用的是标准模板提示词，会要求按 Markdown 输出，可以去除该要求：
+应用在不同来源效果不一致 linkQ: 应用在调试和正式发布后，效果不一致；在 API 调用时，效果不一致。
+A: 通常是由于上下文不一致导致，可以在对话日志中，找到对应的记录，并查看运行详情来进行比对。
+在针对知识库的回答要求里有, 要给它配置提示词，不然他就是默认的，默认的里面就有该语法。 工作流操作：一个工作流，以一个问题分类节点开始，根据不同的分类导入到不同的分支，访问相应的知识库和AI对话，AI对话返回内容后，怎么样不进入问题分类节点，而是将问题到知识库搜索，然后把历史记录一起作为背景再次AI查询。 link做个判断器，如果是初次开始对话也就是历史记录为0，就走问题分类；不为零直接走知识库和ai。
+实时对话，设置 fastgpt 定时，比如每隔 3000MS 去拿一次 webhook发送过来的消息到AI页面 link定时执行没有这么高频率的去拿信息的，想要实现在企微里面的实时对话的机器人， 目前通过低代码的工作流构建应该是不行的，只能自己写代码，然后去调用 FastGPT 的 APIKey 回复。企业微信似乎没有提供「自动监听」群聊消息的接口（或是通过 at 机器人这种触发消息推送）。应该只能发消息给应用，接收这个 https://developer.work.weixin.qq.com/document/path/90238 文档中的消息推送实现实时对话。或者是定时去拿群聊消息，通过这个文档所示的接口https://developer.work.weixin.qq.com/document/path/98914，然后用这个接口 https://developer.work.weixin.qq.com/document/path/90248 去推送消息。
+工作流连接数据库 link工作流提供该连接数据库功能，用这个数据库连接的 plugin 可以实现 text2SQL，但是相对危险，不建议做写入等操作。
+关于循环体，协助理解循环体的循环条件和终止条件、循环的方式，循环体内参数调用后、在循环体内属于是局部作用域的参数还是全局作用域的参数 link可理解为 for 函数，传一个数组，每个数据都执行一次。
+公式无法正常显示 link添加相关提示词，引导模型按 Markdown 输出公式</description></item><item><title>知识库使用问题</title><link>https://doc.tryfastgpt.ai/docs/faq/dataset/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/dataset/</guid><description>上传的文件内容出现中文乱码 link将文件另存为 UTF-8 编码格式。
+知识库配置里的文件处理模型是什么？与索引模型有什么区别？ link 文件处理模型：用于数据处理的【增强处理】和【问答拆分】。在【增强处理】中，生成相关问题和摘要，在【问答拆分】中执行问答对生成。 索引模型：用于向量化，即通过对文本数据进行处理和组织，构建出一个能够快速查询的数据结构。 知识库支持Excel类文件的导入 linkxlsx等都可以上传的，不止支持CSV。
+知识库tokens的计算方式 link统一按gpt3.5标准。
+误删除重排模型后，重排模型怎么加入到fastgpt link config.json文件里面配置后就可以勾选重排模型
+线上平台上创建了应用和知识库，到期之后如果短期内不续费，数据是否会被清理。 link免费版是三十天不登录后清空知识库，应用不会动。其他付费套餐到期后自动切免费版。 基于知识库的查询，但是问题相关的答案过多。ai回答到一半就不继续回答。 linkFastGPT回复长度计算公式:
+最大回复=min(配置的最大回复（内置的限制），最大上下文（输入和输出的总和）-历史记录)
+18K模型-&amp;gt;输入与输出的和
+输出增多-&amp;gt;输入减小
+所以可以：
+检查配置的最大回复（回复上限） 减小输入来增大输出，即减小历史记录，在工作流其实也就是“聊天记录” 配置的最大回复：
+另外私有化部署的时候，后台配模型参数，可以在配置最大上文时，预留一些空间，比如 128000 的模型，可以只配置 120000, 剩余的空间后续会被安排给输出
+受到模型上下文的限制，有时候达不到聊天记录的轮次，连续对话字数过多就会报上下文不够的错误。 linkFastGPT回复长度计算公式:
+最大回复=min(配置的最大回复（内置的限制），最大上下文（输入和输出的总和）-历史记录)
+18K模型-&amp;gt;输入与输出的和
+输出增多-&amp;gt;输入减小
+所以可以：
+检查配置的最大回复（回复上限） 减小输入来增大输出，即减小历史记录，在工作流其实也就是“聊天记录” 配置的最大回复：
+另外，私有化部署的时候，后台配模型参数，可以在配置最大上文时，预留一些空间，比如 128000 的模型，可以只配置 120000, 剩余的空间后续会被安排给输出。</description></item><item><title>接入外部渠道</title><link>https://doc.tryfastgpt.ai/docs/faq/external_channel_integration/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/external_channel_integration/</guid><description>接入cow，图文对话无法直接显示图片 link 提示词给引导，不要以markdown格式输出。图片需要二开 cow 实现图片链接截取并发送。
+可以获取到用户发送问答的记录吗 link 在应用的对话日志里可以查看。</description></item><item><title>报错</title><link>https://doc.tryfastgpt.ai/docs/faq/error/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/error/</guid><description>当前分组上游负载已饱和，请稍后再试(request id:202407100753411462086782835521) link 是oneapi渠道的问题，可以换个模型用or换一家中转站
+使用API时在日志中报错Connection Error link 大概率是api-key填写了openapi，然后部署的服务器在国内，不能访问海外的api，可以使用中转或者反代的手段解决访问不到的问题</description></item><item><title>积分消耗</title><link>https://doc.tryfastgpt.ai/docs/faq/points_consumption/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/points_consumption/</guid><description>接入oneapi后，为什么还会消耗fastgpt的积分 link 矢量数据库检索会默认消耗。可以查看看绑定提示和使用记录。</description></item><item><title>其他问题</title><link>https://doc.tryfastgpt.ai/docs/faq/other/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/faq/other/</guid><description>oneapi 官网是哪个 link只有开源的 README，没官网，GitHub: https://github.com/songquanpeng/one-api
+想做多用户 link开源版未支持多用户，仅商业版支持。</description></item></channel></rss>

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>工作台 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/</link><description>Recent content in 工作台 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/guide/workbench/index.xml" rel="self" type="application/rss+xml"/><item><title>简易模式</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/basic-mode/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/basic-mode/</guid><description/></item><item><title>工作流&amp;插件</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/intro/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/intro/</guid><description>FastGPT 从 V4 版本开始采用新的交互方式来构建 AI 应用。使用了 Flow 节点编排（工作流）的方式来实现复杂工作流，提高可玩性和扩展性。但同时也提高了上手的门槛，有一定开发背景的用户使用起来会比较容易。
+查看视频教程
+什么是节点？ link在程序中，节点可以理解为一个个 Function 或者接口。可以理解为它就是一个步骤。将多个节点一个个拼接起来，即可一步步的去实现最终的 AI 输出。
+如下图，这是一个最简单的 AI 对话。它由用流程开始和 AI 对话节点组成。
+执行流程如下：
+用户输入问题后，【流程开始】节点执行，用户问题被保存。 【AI 对话】节点执行，此节点有两个必填参数“聊天记录” “用户问题”，聊天记录的值是默认输入的6条，表示此模块上下文长度。用户问题选择的是【流程开始】模块中保存的用户问题。 【AI 对话】节点根据传入的聊天记录和用户问题，调用对话接口，从而实现回答。 节点分类 link从功能上，节点可以分为 2 类：
+系统节点：用户引导（配置一些对话框信息）、用户问题（流程入口）。 功能节点：知识库搜索、AI 对话等剩余节点。（这些节点都有输入和输出，可以自由组合）。 节点的组成 link每个节点会包含 3 个核心部分：输入、输出和触发器。
+AI模型、提示词、聊天记录、用户问题，知识库引用为输入，节点的输入可以是手动输入也可以是变量引用，变量引用的范围包括“全局变量”和之前任意一个节点的输出。 新的上下文和AI回复内容为输出，输出可以被之后任意节点变量引用。 节点的上下左右有四个“触发器”可以被用来连接，被连接的节点按顺序决定是否执行。 重点 - 工作流是如何运行的 linkFastGPT的工作流从【流程开始】节点开始执行，可以理解为从用户输入问题开始，没有固定的出口，是以节点运行结束作为出口，如果在一个轮调用中，所有节点都不再运行，则工作流结束。
+下面我们来看下，工作流是如何运行的，以及每个节点何时被触发执行。
+如上图所示节点会“被连接”也会“连接其他节点”，我们称“被连接”的那根线为前置线，“连接其他节点的线”为后置线。上图例子中【知识库搜索】模块左侧有一根前置线，右侧有一根后置线。而【AI对话】节点只有左侧一根前置线。
+FastGPT工作流中的线有以下几种状态：
+waiting：被连接的节点等待执行。 active：被连接的节点可以执行。 skip：被连接的节点不需要执行跳过。 节点执行的原则：
+判断前置线中有没有状态为 waiting 的，如果有则等待。 判断前置线中状态有没有状态为 active 如果有则执行。 如果前置线中状态即没有 waiting 也没有 active 则认为此节点需要跳过。 节点执行完毕后，需要根据实际情况更改后置线的状态为active或skip并且更改前置线状态为waiting等待下一轮执行。 让我们看一下上面例子的执行过程：
+【流程开始】节点执行完毕，更改后置线为active。 【知识库搜索】节点判断前置线状态为active开始执行，执行完毕后更改后置线状态为active 前置线状态为waiting。 【AI对话】节点判断前置线状态为active开始执行，流程执行结束。 如何连接节点 link 为了方便连接，FastGPT 每个节点的上下左右都有连接点，左和上是前置线连接点，右和下是后置线连接点。 可以点击连接线中间的 x 来删除连接线。 可以左键点击选中连接线 如何阅读？ link 建议从左往右阅读。 从 用户问题 节点开始。用户问题节点，代表的是用户发送了一段文本，触发任务开始。 关注【AI 对话】和【指定回复】节点，这两个节点是输出答案的地方。 FAQ link想合并多个输出结果怎么实现？ link 文本加工，可以对字符串进行合并。 知识库搜索合并，可以合并多个知识库搜索结果 其他结果，无法直接合并，可以考虑传入到HTTP节点中进行合并，使用[Laf](https://laf.</description></item><item><title>使用 Gapier 快速导入Agent工具</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/gapier/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/gapier/</guid><description>FastGPT V4.7版本加入了工具调用，可以兼容 GPTs 的 Actions。这意味着，你可以直接导入兼容 GPTs 的 Agent 工具。
+Gapier 是一个在线 GPTs Actions工具，提供了50多种现成工具，并且每天有免费额度进行测试，方便用户试用，官方地址为：https://gapier.com/。
+现在，我们开始把 Gapier 的工具导入到 FastGPT 中。
+1. 创建插件 link Step1 Step2 Step3 登录Gapier 复制相关参数 Step4 Step5 Step6 自定义请求头: Authorization
+请求值: Bearer 复制的key 创建完后，如果需要变更，无需重新创建，只需要修改对应参数即可，会自动做差值比较更新。
+2. 应用绑定工具 link简易模式 link Step1 Step2 Step3 Step4 高级编排 link Step1 Step2 Step3 Step4 3. 工具调用说明 link不同模型的区别 link不同模型调用工具采用不同的方法，有些模型支持 toolChoice 和 functionCall 效果会更好。不支持这两种方式的模型通过提示词调用，但是效果不是很好，并且为了保证顺利调用，FastGPT内置的提示词，仅支持每次调用一个工具。
+具体哪些模型支持 functionCall 可以官网查看（当然，也需要OneAPI支持），同时需要调整模型配置文件中的对应字段（详细看配置字段说明）。
+线上版用户，可以在模型选择时，看到是否支持函数调用的标识。</description></item></channel></rss>

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>系统插件 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/guide/plugins/</link><description>Recent content in 系统插件 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/guide/plugins/index.xml" rel="self" type="application/rss+xml"/><item><title>如何提交系统插件</title><link>https://doc.tryfastgpt.ai/docs/guide/plugins/how_to_submit_system_plugin/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/plugins/how_to_submit_system_plugin/</guid><description>如何向 FastGPT 社区提交系统插件
+系统插件原则 link 尽可能的轻量简洁，以解决实际问题的工具为主 不允许有密集 cpu 计算，不会占用大量内存占用或网络消耗 不允许操作数据库 不允许往固定的私人地址发送请求（不包含请求某些在线服务，例如 gapier, firecrawl等) 不允许使用私人包，可使用主流的开源包 什么插件可以合并 link由于目前未采用按需安装的模式，合并进仓库的插件会全部展示给用户使用。
+为了控制插件的质量以及避免数量过多带来的繁琐，并不是所有的插件都会被合并到开源仓库中，你可以提前 PR 与我们沟通插件的内容。
+后续实现插件按需安装后，我们会允许更多的社区插件合入。
+如何写一个系统插件 - 初步 linkFastGPT 系统插件和用户工作台的插件效果是一致的，所以你需要提前了解“插件”的定义和功能。
+在 FastGPT 中，插件是一种特殊的工作流，它允许你将一个工作流封装起来，并自定义入口参数和出口参数，类似于代码里的 “子函数”。
+跑通 FastGPT dev 环境 link 需要在 dev 环境下执行下面的操作。
+在 FastGPT 工作台中，创建一个插件 link 选择基础模板即可。
+创建系统插件配置 link 系统插件配置以及自定义代码，都会在 packages/plugins 目录下。
+在 packages/plugins/src 下，复制一份 template 目录，并修改名字。 打开目录里面的 template.json 文件，配置如下： 目录还有一个 index.ts 文件，下文再提。 { &amp;#34;author&amp;#34;: &amp;#34;填写你的名字&amp;#34;, &amp;#34;version&amp;#34;: &amp;#34;当前系统版本号&amp;#34;, &amp;#34;name&amp;#34;: &amp;#34;插件名&amp;#34;, &amp;#34;avatar&amp;#34;: &amp;#34;插件头像，需要配成 icon 格式。直接把 logo 图在 pr 评论区提交即可，我们会帮你加入。&amp;#34;, &amp;#34;intro&amp;#34;: &amp;#34; 插件的描述，这个描述会影响工具调用&amp;#34;, &amp;#34;showStatus&amp;#34;: false, // 是否在对话过程展示状态 &amp;#34;weight&amp;#34;: 10, // 排序权重，均默认 10 &amp;#34;isTool&amp;#34;: true, // 是否作为工具调用节点 &amp;#34;templateType&amp;#34;: &amp;#34;tools&amp;#34;, // 都填写 tools 即可，由官方来分类 &amp;#34;workflow&amp;#34;: { // 这个对象先不管，待会直接粘贴导出的工作流即可 &amp;#34;nodes&amp;#34;: [], &amp;#34;edges&amp;#34;: [] } } 打开 packages/plugins/register 文件，注册你的插件。在 list 数组中，加入一个你插件目录的名字，如下图的例子。如需构建插件组（带目录），可参考 DuckDuckGo 插件。 无需额外写代码的插件，直接放在 staticPluginList 内，需要在项目内额外写代码的，写在 packagePluginList 中。</description></item><item><title>SearXNG 搜索插件配置与使用说明</title><link>https://doc.tryfastgpt.ai/docs/guide/plugins/searxng_plugin_guide/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/plugins/searxng_plugin_guide/</guid><description>SearXNG是一款免费的互联网元搜索引擎，它汇总了来自各种搜索服务和数据库的结果。它不会跟踪或分析用户。用户可以自行部署它进行使用。本文介绍 Searxng 的部署以及接入 FastGPT 插件。
+1. 部署应用 link这里介绍在 Sealos 中部署 SearXNG 的方法。Docker 部署，可以直接参考 SearXNG 官方教程。
+点击打开 Sealos 北京区，点击应用部署，并新建一个应用：
+打开应用部署 点击新建应用 2. 部署配置 link把下面参数，填入配置中：
+镜像名: searxng/searxng:latest CPU: 0.2 内存: 512M 容器暴露端口: 8080 开启公网访问 点击高级配置，填写环境变量和配置文件 环境变量
+填下面两个内容，主要是为了减小并发，不然内存占用非常大。
+UWSGI_WORKERS=4 UWSGI_THREADS=4 配置文件
+新增一个配置文件，文件名：/etc/searx/settings.yml 文件内容：
+general: debug: false instance_name: &amp;#34;searxng&amp;#34; privacypolicy_url: false donation_url: false contact_url: false enable_metrics: true open_metrics: &amp;#39;&amp;#39; brand: new_issue_url: https://github.com/searxng/searxng/issues/new docs_url: https://docs.searxng.org/ public_instances: https://searx.space wiki_url: https://github.com/searxng/searxng/wiki issue_url: https://github.com/searxng/searxng/issues search: safe_search: 0 autocomplete: &amp;#34;&amp;#34; autocomplete_min: 4 default_lang: &amp;#34;auto&amp;#34; ban_time_on_fail: 5 max_ban_time_on_fail: 120 formats: - html server: port: 8080 bind_address: &amp;#34;0.</description></item><item><title>Google 搜索插件填写说明</title><link>https://doc.tryfastgpt.ai/docs/guide/plugins/google_search_plugin_guide/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/plugins/google_search_plugin_guide/</guid><description>创建Google Custom Search Engine link https://programmablesearchengine.google.com/
+我们连到Custom Search Engine control panel 建立Search Engine
+取得搜索引擎的ID，即cx
+获取api key link https://developers.google.com/custom-search/v1/overview?hl=zh-cn
+填入插件输入参数 link 将搜索引擎ID填入cx字段，api key填入key字段</description></item><item><title>Bing 搜索插件填写说明</title><link>https://doc.tryfastgpt.ai/docs/guide/plugins/bing_search_plugin/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/plugins/bing_search_plugin/</guid><description> 打开微软Azure官网，登陆账号 link https://portal.azure.com/
+创建bing web搜索资源 link 搜索Bing Search v7，点击创建
+https://portal.azure.com/#create/Microsoft.BingSearch
+进入资源详情点击管理密钥 link 4. 复制任意一个密钥填入插件输入 link</description></item><item><title>Doc2x 插件填写说明</title><link>https://doc.tryfastgpt.ai/docs/guide/plugins/doc2x_plugin_guide/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/plugins/doc2x_plugin_guide/</guid><description>打开docx官网，创建账号，并复制 apikey link https://doc2x.noedgeai.com/
+填写apikey到fastgpt中 link 工作流****中：
+简易模式使用：</description></item></channel></rss>

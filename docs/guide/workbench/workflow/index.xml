@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>工作流节点 on FastGPT</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/</link><description>Recent content in 工作流节点 on FastGPT</description><generator>Hugo -- gohugo.io</generator><language>zh-cn</language><atom:link href="https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/index.xml" rel="self" type="application/rss+xml"/><item><title>AI 对话</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/ai_chat/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/ai_chat/</guid><description>特点 link 可重复添加 触发执行 核心模块 参数说明 linkAI模型 link可以通过 config.json 配置可选的对话模型，通过 one-api 来实现多模型接入。
+点击AI模型后，可以配置模型的相关参数。
+🍅
+具体配置参数介绍可以参考: AI参数配置说明</description></item><item><title>知识库搜索</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/dataset_search/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/dataset_search/</guid><description>知识库搜索具体参数说明，以及内部逻辑请移步：FastGPT知识库搜索方案
+特点 link 可重复添加（复杂编排时防止线太乱，可以更美观） 有外部输入 有静态配置 触发执行 核心模块 参数说明 link输入 - 关联的知识库 link可以选择一个或多个相同向量模型的知识库，用于向量搜索。
+输入 - 搜索参数 link点击查看参数介绍
+输出 - 引用内容 link以数组格式输出引用，长度可以为 0。意味着，即使没有搜索到内容，这个输出链路也会走通。</description></item><item><title>工具调用&amp;终止</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/tool/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/tool/</guid><description> 什么是工具 link工具可以是一个系统模块，例如：AI对话、知识库搜索、HTTP模块等。也可以是一个插件。
+工具调用可以让 LLM 更动态的决策流程，而不都是固定的流程。（当然，缺点就是费tokens）
+工具的组成 link 工具介绍。通常是模块的介绍或插件的介绍，这个介绍会告诉LLM，这个工具的作用是什么。 工具参数。对于系统模块来说，工具参数已经是固定的，无需额外配置。对于插件来说，工具参数是一个可配置项。 工具是如何运行的 link要了解工具如何运行的，首先需要知道它的运行条件。
+需要工具的介绍（或者叫描述）。这个介绍会告诉LLM，这个工具的作用是什么，LLM会根据上下文语义，决定是否需要调用这个工具。 工具的参数。有些工具调用时，可能需要一些特殊的参数。参数中有2个关键的值：参数介绍和是否必须。 结合工具的介绍、参数介绍和参数是否必须，LLM会决定是否调用这个工具。有以下几种情况：
+无参数的工具：直接根据工具介绍，决定是否需要执行。例如：获取当前时间。 有参数的工具： 无必须的参数：尽管上下文中，没有适合的参数，也可以调用该工具。但有时候，LLM会自己伪造一个参数。 有必须的参数：如果没有适合的参数，LLM可能不会调用该工具。可以通过提示词，引导用户提供参数。 工具调用逻辑 link在支持函数调用的模型中，可以一次性调用多个工具，调用逻辑如下：
+怎么用 link 高级编排中，拖动工具调用的连接点，可用的工具头部会出现一个菱形，可以将它与工具调用模块底部的菱形相连接。
+被连接的工具，会自动分离工具输入与普通的输入，并且可以编辑介绍，可以通过调整介绍，使得该工具调用时机更加精确。
+关于工具调用，如何调试仍然是一个玄学，所以建议，不要一次性增加太多工具，选择少量工具调优后再进一步尝试。
+用途 link默认情况下，工具调用节点，在决定调用工具后，会将工具运行的结果，返回给AI，让 AI 对工具运行的结果进行总结输出。有时候，如果你不需要 AI 进行进一步的总结输出，可以使用该节点，将其接入对于工具流程的末尾。
+如下图，在执行知识库搜索后，发送给了 HTTP 请求，搜索将不会返回搜索的结果给工具调用进行 AI 总结。
+附加节点 link当您使用了工具调用节点，同时就会出现工具调用终止节点和自定义变量节点，能够进一步提升工具调用的使用体验。
+工具调用终止 link工具调用终止可用于结束本次调用，即可以接在某个工具后面，当工作流执行到这个节点时，便会强制结束本次工具调用，不再调用其他工具，也不会再调用 AI 针对工具调用结果回答问题。
+自定义工具变量 link自定义变量可以扩展工具的变量输入，即对于一些未被视作工具参数或无法工具调用的节点，可以自定义工具变量，填上对应的参数描述，那么工具调用便会相对应的调用这个节点，进而调用其之后的工作流。
+相关示例 link 谷歌搜索 发送飞书webhook</description></item><item><title>问题分类</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/question_classify/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/question_classify/</guid><description>特点 link 可重复添加 有外部输入 需要手动配置 触发执行 function_call 模块 功能 link可以将用户的问题进行分类，分类后执行不同操作。在一些较模糊的场景中，分类效果不是很明显。
+参数说明 link系统提示词 link被放置在对话最前面，可用于补充说明分类内容的定义。例如问题会被分为：
+打招呼 Laf 常见问题 其他问题 由于 Laf 不是一个明确的东西，需要给它一个定义，此时提示词里可以填入 Laf 的定义：
+Laf 是云开发平台，可以快速的开发应用 Laf 是一个开源的 BaaS 开发平台（Backend as a Service) Laf 是一个开箱即用的 serverless 开发平台 Laf 是一个集「函数计算」、「数据库」、「对象存储」等于一身的一站式开发平台 Laf 可以是开源版的腾讯云开发、开源版的 Google Firebase、开源版的 UniCloud 聊天记录 link适当增加一些聊天记录，可以联系上下文进行分类。
+用户问题 link用户输入的内容。
+分类内容 link依然以这 3 个分类为例，可以看到最终组成的 Function。其中返回值由系统随机生成，不需要关心。
+打招呼 Laf 常见问题 其他问题 const agentFunction = { name: agentFunName, description: &amp;#39;判断用户问题的类型属于哪方面，返回对应的枚举字段&amp;#39;, parameters: { type: &amp;#39;object&amp;#39;, properties: { type: { type: &amp;#39;string&amp;#39;, description: `打招呼，返回: abc；Laf 常见问题，返回：vvv；其他问题，返回：aaa` enum: [&amp;#34;abc&amp;#34;,&amp;#34;vvv&amp;#34;,&amp;#34;aaa&amp;#34;] } }, required: [&amp;#39;type&amp;#39;] } }; 上面的 Function 必然会返回 type = abc，vvv，aaa 其中一个值，从而实现分类判断。</description></item><item><title>文本内容提取</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/content_extract/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/content_extract/</guid><description>特点 link 可重复添加 需要手动配置 触发执行 function_call 模块 核心模块 功能 link从文本中提取结构化数据，通常是配合 HTTP 模块实现扩展。也可以做一些直接提取操作，例如：翻译。
+参数说明 link提取要求描述 link顾名思义，给模型设置一个目标，需要提取哪些内容。
+示例 1
+你是实验室预约助手，从对话中提取出姓名，预约时间，实验室号。当前时间 {{cTime}}
+示例 2
+你是谷歌搜索助手，从对话中提取出搜索关键词
+示例 3
+将我的问题直接翻译成英文，不要回答问题
+历史记录 link通常需要一些历史记录，才能更完整的提取用户问题。例如上图中需要提供姓名、时间和实验室名，用户可能一开始只给了时间和实验室名，没有提供自己的姓名。再经过一轮缺失提示后，用户输入了姓名，此时需要结合上一次的记录才能完整的提取出 3 个内容。
+目标字段 link目标字段与提取的结果相对应，从上图可以看到，每增加一个字段，输出会增加一个对应的出口。
+key: 字段的唯一标识，不可重复！ 字段描述：描述该字段是关于什么的，例如：姓名、时间、搜索词等等。 必须：是否强制模型提取该字段，可能提取出来是空字符串。 输出介绍 link 完整提取结果: 一个 JSON 字符串，包含所有字段的提取结果。 目标字段提取结果：类型均为字符串。</description></item><item><title>用户选择</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/user-selection/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/user-selection/</guid><description>特点 link 用户交互 可重复添加 触发执行 功能 link「用户选择」节点属于用户交互节点，当触发这个节点时，对话会进入“交互”状态，会记录工作流的状态，等用户完成交互后，继续向下执行工作流
+比如上图中的例子，当触发用户选择节点时，对话框隐藏，对话进入“交互状态”
+当用户做出选择时，节点会判断用户的选择，执行“是”的分支
+作用 link基础的用法为提出需要用户做抉择的问题，然后根据用户的反馈设计不同的工作流流程</description></item><item><title>表单输入</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/form_input/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/form_input/</guid><description>特点 link 用户交互 可重复添加 触发执行 功能 link「表单输入」节点属于用户交互节点，当触发这个节点时，对话会进入“交互”状态，会记录工作流的状态，等用户完成交互后，继续向下执行工作流
+比如上图中的例子，当触发表单输入节点时，对话框隐藏，对话进入“交互状态”
+当用户填完必填的信息并点击提交后，节点能够收集用户填写的表单信息，传递到后续的节点中使用
+作用 link能够精准收集需要的用户信息，再根据用户信息进行后续操作</description></item><item><title>文本拼接</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/text_editor/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/text_editor/</guid><description>特点 link 可重复添加 有外部输入 触发执行 手动配置 功能 link对输入文本进行固定加工处理，入参仅支持字符串和数字格式，入参以变量形式使用在文本编辑区域。
+根据上方示例图的处理方式，对任何输入都会在前面拼接“用户的问题是:”。
+作用 link给任意模块输入自定格式文本，或处理 AI 模块系统提示词。
+示例 link 接入谷歌搜索</description></item><item><title>指定回复</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/reply/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/reply/</guid><description>特点 link 可重复添加（防止复杂编排时线太乱，重复添加可以更美观） 可手动输入 可外部输入 会输出结果给客户端 指定回复模块通常用户特殊状态回复，回复内容有两种：
+一种是手动输入固定内容。 一种是通过变量引用。 图 1</description></item><item><title>文档解析</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/document_parsing/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/document_parsing/</guid><description> 开启文件上传后，可使用文档解析组件。
+功能 link作用 link</description></item><item><title>HTTP 请求</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/http/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/http/</guid><description>特点 link 可重复添加 手动配置 触发执行 核中核模块 介绍 linkHTTP 模块会向对应的地址发送一个 HTTP 请求，实际操作与 Postman 和 ApiFox 这类直流工具使用差不多。
+Params 为路径请求参数，GET请求中用的居多。 Body 为请求体，POST/PUT请求中用的居多。 Headers 为请求头，用于传递一些特殊的信息。 自定义变量中可以接收前方节点的输出作为变量 3 种数据中均可以通过 {{}} 来引用变量。 url 也可以通过 {{}} 来引用变量。 变量来自于全局变量、系统变量、前方节点输出 参数结构 link系统变量说明 link你可以将鼠标放置在请求参数旁边的问号中，里面会提示你可用的变量。
+appId: 应用的ID chatId: 当前对话的ID，测试模式下不存在。 responseChatItemId: 当前对话中，响应的消息ID，测试模式下不存在。 variables: 当前对话的全局变量。 cTime: 当前时间。 histories: 历史记录（默认最多取10条，无法修改长度） Params, Headers link不多描述，使用方法和Postman, ApiFox 基本一致。
+可通过 {{key}} 来引入变量。例如：
+key value appId {{appId}} Authorization Bearer {{token}} Body link只有特定请求类型下会生效。
+可以写一个自定义的 Json，并通过 {{key}} 来引入变量。例如：
+假设有一组变量 Http 模块中的Body声明 最终得到的解析 { &amp;#34;string&amp;#34;: &amp;#34;字符串&amp;#34;, &amp;#34;number&amp;#34;: 123, &amp;#34;boolean&amp;#34;: true, &amp;#34;array&amp;#34;: [1, 2, 3], &amp;#34;obj&amp;#34;: { &amp;#34;name&amp;#34;: &amp;#34;FastGPT&amp;#34;, &amp;#34;url&amp;#34;: &amp;#34;https://tryfastgpt.</description></item><item><title>判断器</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/tfswitch/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/tfswitch/</guid><description>特点 link 可重复添加 有外部输入 触发执行 功能 link对任意变量进行IF判断，若满足条件则执行IF分支，不满足条件执行ELSE分支。
+上述例子中若「知识库引用」变量的长度等于0则执行IF分支，否则执行ELSE分支。
+支持增加更多的判断条件和分支，同编程语言中的IF语句逻辑相同。
+作用 link适用场景有：让大模型做判断后输出固定内容，根据大模型回复内容判断是否触发后续模块。</description></item><item><title>变量更新</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/variable_update/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/variable_update/</guid><description>特点 link 可重复添加 有外部输入 触发执行 手动配置 功能 link 更新指定节点的输出值 更新全局变量 作用 link最基础的使用场景为
+给一个「自定义变量」类型的全局变量赋值，从而实现全局变量无需用户输入 更新「变量更新」节点前的工作流节点输出，在后续使用中，使用的节点输出值为新的输出</description></item><item><title>代码运行</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/sandbox/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/sandbox/</guid><description>功能 link可用于执行一段简单的 js 代码，用于进行一些复杂的数据处理。代码运行在沙盒中，无法进行网络请求、dom和异步操作。如需复杂操作，需外挂 HTTP 实现。
+注意事项
+私有化用户需要部署fastgpt-sandbox 镜像，并配置SANDBOX_URL环境变量。 沙盒最大运行 10s， 32M 内存限制。 变量输入 link可在自定义输入中添加代码运行需要的变量，在代码的 main 函数中，可解构出相同名字的变量。
+如上图，自定义输入中有 data1 和 data2 两个变量，main 函数中可以解构出相同名字的变量。
+结果输出 link务必返回一个 object 对象
+自定义输出中，可以添加变量名来获取 object 对应 key 下的值。例如上图中，返回了一个对象：
+{ result: data1, data2 } 他有 2 个 key：result和 data2(js 缩写，key=data2，value=data2)。这时候自定义输出中就可以添加 2 个变量来获取对应 key 下的 value。
+内置 JS 全局变量 linkdelay 延迟 link延迟 1 秒后返回
+async function main({data1, data2}){ await delay(1000) return { result: &amp;#34;111&amp;#34; } } countToken 统计 token link function main({input}){ return { result: countToken(input) } } strToBase64 字符串转 base64(4.</description></item><item><title>批量运行</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/loop/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/loop/</guid><description>节点概述 link【批量运行】节点是 FastGPT V4.8.11 版本新增的一个重要功能模块。它允许工作流对数组类型的输入数据进行迭代处理，每次处理数组中的一个元素，并自动执行后续节点，直到完成整个数组的处理。
+这个节点的设计灵感来自编程语言中的循环结构，但以可视化的方式呈现。
+在程序中，节点可以理解为一个个 Function 或者接口。可以理解为它就是一个步骤。将多个节点一个个拼接起来，即可一步步的去实现最终的 AI 输出。
+【批量运行】节点本质上也是一个 Function，它的主要职责是自动化地重复执行特定的工作流程。
+核心特性 link 数组批量处理
+支持输入数组类型数据 自动遍历数组元素 保持处理顺序 支持并行处理 (性能优化) 自动迭代执行
+自动触发后续节点 支持条件终止 支持循环计数 维护执行上下文 与其他节点协同
+支持与 AI 对话节点配合 支持与 HTTP 节点配合 支持与内容提取节点配合 支持与判断器节点配合 应用场景 link【批量运行】节点的主要作用是通过自动化的方式扩展工作流的处理能力，使 FastGPT 能够更好地处理批量任务和复杂的数据处理流程。特别是在处理大规模数据或需要多轮迭代的场景下，批量运行节点能显著提升工作流的效率和自动化程度。
+【批量运行】节点特别适合以下场景：
+批量数据处理
+批量翻译文本 批量总结文档 批量生成内容 数据流水线处理
+对搜索结果逐条分析 对知识库检索结果逐条处理 对 HTTP 请求返回的数组数据逐项处理 递归或迭代任务
+长文本分段处理 多轮优化内容 链式数据处理 使用方法 link输入参数设置 link【批量运行】节点需要配置两个核心输入参数：
+数组 (必填)：接收一个数组类型的输入，可以是：
+字符串数组 (Array&amp;lt;string&amp;gt;) 数字数组 (Array&amp;lt;number&amp;gt;) 布尔数组 (Array&amp;lt;boolean&amp;gt;) 对象数组 (Array&amp;lt;object&amp;gt;) 循环体 (必填)：定义每次循环需要执行的节点流程，包含：
+循环体开始：标记循环开始的位置。 循环体结束：标记循环结束的位置，并可选择输出结果变量。 循环体配置 link 在循环体内部，可以添加任意类型的节点，如：</description></item><item><title>知识库搜索引用合并</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/knowledge_base_search_merge/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/knowledge_base_search_merge/</guid><description> 作用 link将多个知识库搜索结果合并成一个结果进行输出，并会通过 RRF 进行重新排序（根据排名情况），并且支持最大 tokens 过滤。
+使用方法 linkAI对话只能接收一个知识库引用内容。因此，如果调用了多个知识库，无法直接引用所有知识库（如下图）
+使用知识库搜索引用合并，可以把多个知识库的搜索结果合在一起。
+可用例子： link 经过问题分类后对不同知识库进行检索，然后统一给一个 AI 进行回答，此时可以用到合并，不需要每个分支都添加一个 AI 对话。</description></item><item><title>问题优化</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/coreferenceresolution/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/coreferenceresolution/</guid><description>特点 link 可重复添加 有外部输入 触发执行 背景 link在 RAG 中，我们需要根据输入的问题去数据库里执行 embedding 搜索，查找相关的内容，从而查找到相似的内容（简称知识库搜索）。
+在搜索的过程中，尤其是连续对话的搜索，我们通常会发现后续的问题难以搜索到合适的内容，其中一个原因是知识库搜索只会使用“当前”的问题去执行。看下面的例子：
+用户在提问“第二点是什么”的时候，只会去知识库里查找“第二点是什么”，压根查不到内容。实际上需要查询的是“QA结构是什么”。因此我们需要引入一个【问题优化】模块，来对用户当前的问题进行补全，从而使得知识库搜索能够搜索到合适的内容。使用补全后效果如下：
+功能 link调用 AI 去对用户当前的问题进行补全。目前主要是补全“指代”词，使得检索词更加的完善可靠，从而增强上下文连续对话的知识库搜索能力。
+遇到最大的难题在于：模型对于【补全】的概念可能不清晰，且对于长上下文往往无法准确的知道应该如何补全。
+示例 link 接入谷歌搜索</description></item><item><title>Laf 函数调用</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/laf/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/laf/</guid><description>介绍 linkLaf 函数调用模块可以调用 Laf 账号下的云函数，其工作原理与 HTTP 模块相同，有以下特殊特征：
+只能使用 POST 请求 请求自带系统参数 systemParams，无需通过变量传递。 绑定 Laf 账号 link要调用 Laf 云函数，首先需要绑定 Laf 账号和应用，并且在应用中创建云函数。
+Laf 提供了 PAT(访问凭证) 来实现 Laf 平台外的快捷登录，可以访问 Laf 文档查看详细如何获取 PAT。
+在获取到 PAT 后，我们可以进入 FastGPT 的账号页或是在高级编排中的 Laf模块 对 Laf 账号进行绑定。Laf 账号是团队共享的，仅团队管理员可配置。
+填入 PAT 验证后，选择需要绑定的应用（应用需要是 Running 状态），即可调用该应用下的云函数。
+编写云函数 linkLaf 云函数拥有根据 interface 自动生成 OpenAPI 的能力，可以参照下面的代码编写云函数，以便自动生成 OpenAPI 文档。
+Laf模块可以根据 OpenAPI 文档，自动识别出入参，无需手动添加数据类型。如果不会写 TS，可忽略，手动在 FastGPT 中添加参数即可。
+import cloud from &amp;#39;@lafjs/cloud&amp;#39; interface IRequestBody { // 自定义入参，FastGPT 传入的均为POST请求。 data1: string // 必填参数 data2?</description></item><item><title>自定义反馈</title><link>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/custom_feedback/</link><pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate><guid>https://doc.tryfastgpt.ai/docs/guide/workbench/workflow/custom_feedback/</guid><description>该模块为临时模块，后续会针对该模块进行更全面的设计。
+特点 link 可重复添加 无外部输入 自动执行 介绍 link自定义反馈模块，可以为你的对话增加一个反馈标记，从而方便在后台更好的分析对话的数据。
+在调试模式下，不会记录反馈内容，而是直接提示: 自动反馈测试: 反馈内容。
+在对话模式（对话、分享窗口、带 chatId 的 API 调用）时，会将反馈内容记录到对话日志中。（会延迟60s记录）
+作用 link自定义反馈模块的功能类似于程序开发的埋点，便于你观测的对话中的数据。</description></item></channel></rss>
