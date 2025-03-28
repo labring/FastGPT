@@ -60,12 +60,20 @@ f.load()
 """
 
 def remove_print_statements(code):
+    class PrintRemover(ast.NodeTransformer):
+        def visit_Expr(self, node):
+            if (
+                isinstance(node.value, ast.Call)
+                and isinstance(node.value.func, ast.Name)
+                and node.value.func.id == "print"
+            ):
+                return None
+            return node
+
     tree = ast.parse(code)
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call):
-            if isinstance(node.value.func, ast.Name) and node.value.func.id == "print":
-                tree.body.remove(node)
-    return ast.unparse(tree)
+    modified_tree = PrintRemover().visit(tree)
+    ast.fix_missing_locations(modified_tree)
+    return ast.unparse(modified_tree)
 
 def detect_dangerous_imports(code):
     dangerous_modules = ["os", "sys", "subprocess", "shutil", "socket", "ctypes", "multiprocessing", "threading", "pickle"]
