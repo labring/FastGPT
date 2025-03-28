@@ -436,6 +436,28 @@ FastGPT是一款基于大语言模型（LLM）的智能问答系统，专为提�
   expect(chunks).toEqual(mock.result);
 });
 
+// 自定义分隔符测试：换行符号
+it(`Test splitText2Chunks 1`, () => {
+  const mock = {
+    text: `111
+222
+
+333`,
+    result: [
+      `111
+222`,
+      '333'
+    ]
+  };
+
+  const { chunks } = splitText2Chunks({ customReg: ['\\n\\n'], text: mock.text, chunkSize: 2000 });
+  fs.writeFileSync(
+    '/Users/yjl/fastgpt-pro/FastGPT/test/cases/function/packages/global/common/string/test.md',
+    chunks.join('------')
+  );
+  expect(chunks).toEqual(mock.result);
+});
+
 // 长代码块分割
 it(`Test splitText2Chunks 7`, () => {
   const mock = {
