@@ -1,6 +1,5 @@
-import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex, Spinner, Textarea} from '@chakra-ui/react';
+import { Box, Flex, Spinner, Textarea } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -18,6 +17,7 @@ import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import VoiceInput from './VoiceInput';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -25,160 +25,6 @@ const fileTypeFilter = (file: File) => {
   return (
     file.type.includes('image') ||
     documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
-  );
-};
-
-interface TouchListenComponentProps {
-  isSpeaking: boolean;
-  needSpeak: boolean;
-  isTransCription: boolean;
-  readyspeak: () => void;
-  stopSpeak: (param: boolean) => void;
-  canvasRef: React.MutableRefObject<HTMLCanvasElement|null>;
-}
-const TouchListenComponent = ({
-  isSpeaking,
-  isTransCription,
-  readyspeak,
-  stopSpeak,
-  canvasRef,
-  needSpeak
-}: TouchListenComponentProps) => {
-  const startTimeRef = useRef(0);
-  const elapsedTimeRef = useRef(0);
-  const startYRef = useRef(0);
-  const isCancle = useRef(false);
-  const isPressing = useRef(false);
-  const [showshortPopup, setShowshortPopup] = useState(false);
-  const [showmovePopup, setShowmovePopup] = useState(false);
-
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      if (isPressing.current) return; // 防止重复触发
-      startTimeRef.current = Date.now();
-      const touch = e.touches[0] as Touch;
-      startYRef.current = touch.pageY;
-      isCancle.current = false;
-
-      isPressing.current = true;
-      readyspeak();
-    },
-    [readyspeak]
-  );
-
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      const touch = e.touches[0] as Touch;
-      const currentY = touch.pageY;
-      const deltaY = startYRef.current - currentY;
-      setShowmovePopup(true);
-      if (deltaY > 30 && !isCancle.current) {
-        isCancle.current = true;
-      } else if (deltaY <= 30 && isCancle) {
-        isCancle.current = false;
-      }
-    },
-    [startYRef]
-  );
-
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent<HTMLDivElement>) => {
-      if (!isPressing.current) return;
-      const endTime = Date.now();
-      const timeDifference = endTime - startTimeRef.current;
-      elapsedTimeRef.current = timeDifference;
-      startTimeRef.current = endTime;
-      isPressing.current = false;
-      setShowmovePopup(false);
-      setShowshortPopup(false);
-      if (isCancle.current) {
-        stopSpeak(true);
-      } else {
-        if (timeDifference < 200) {
-          stopSpeak(true);
-          setShowshortPopup(true);
-        } else {
-          stopSpeak(false);
-        }
-      }
-    },
-    [isCancle, stopSpeak]
-  );
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>; // 明确指定 timer 的类型
-    if (showshortPopup || showmovePopup) {
-      timer = setTimeout(() => {
-        setShowshortPopup(false);
-      }, 1000);
-    }
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
-  }, [showshortPopup,showmovePopup]);
-
-  return (
-    <div
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchStart={handleTouchStart}
-      style={{ width: '100%', height: '100%' }}
-    >
-      <Flex
-        justifyContent="center"
-        alignItems="center"
-        height="30px"
-        visibility={needSpeak && !isTransCription ? 'visible' : 'hidden'}
-      >
-        <p style={{ position: 'absolute', margin: 0, zIndex: 0 }}>按住说话</p>
-        <canvas
-          ref={canvasRef}
-          style={{
-            marginLeft: '10px',
-            height: '100%',
-            width: '80%',
-            zIndex: 1,
-            touchAction: 'none'
-          }}
-        />
-      </Flex>
-      {showmovePopup && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '0%',
-            left: '50%',
-            transform: 'translate(-50%, 50%)',
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '5px',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-            zIndex: 1000
-          }}
-        >
-          <h2>上滑取消</h2>
-        </div>
-      )}
-      {showshortPopup && (
-          <div
-              style={{
-                position: 'fixed',
-                top: '0%',
-                left: '50%',
-                transform: 'translate(-50%, 50%)',
-                backgroundColor: 'white',
-                padding: '20px',
-                borderRadius: '5px',
-                boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-                zIndex: 1000
-              }}
-          >
-            <h2>说话时间太短</h2>
-          </div>
-      )}
-    </div>
   );
 };
 
@@ -245,6 +91,14 @@ const ChatInput = ({
     refreshDeps: [fileList, outLinkAuthData, chatId]
   });
 
+  const [voiceState, setVoiceState] = useState({
+    isSpeaking: false,
+    needSpeak: false,
+    isTransCription: false,
+    onWhisperRecord: () => {},
+    prepareSpeak: () => {}
+  });
+
   /* on send */
   const handleSend = useCallback(
     async (val?: string) => {
@@ -260,121 +114,6 @@ const ChatInput = ({
     [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
 
-  /* whisper init */
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const {
-    isSpeaking,
-    isTransCription,
-    stopSpeak,
-    startSpeak,
-    prepareSpeak,
-    finishSpeak,
-    needSpeak,
-    speakingTimeString,
-    renderAudioGraph,
-    stream
-  } = useSpeech({ appId, ...outLinkAuthData });
-  const readyspeak = useCallback(() => {
-    const finishWhisperTranscription = (text: string) => {
-      if (!text) return;
-      if (whisperConfig?.autoSend) {
-        onSendMessage({
-          text,
-          files: fileList,
-          autoTTSResponse
-        });
-        replaceFiles([]);
-      } else {
-        resetInputVal({ text });
-      }
-    };
-    startSpeak(finishWhisperTranscription);
-  }, [
-    autoTTSResponse,
-    fileList,
-    isSpeaking,
-    onSendMessage,
-    replaceFiles,
-    resetInputVal,
-    startSpeak,
-    stopSpeak,
-    whisperConfig?.autoSend
-  ]);
-
-  const onWhisperRecord = useCallback(() => {
-    const finishWhisperTranscription = (text: string) => {
-      if (!text) return;
-      if (whisperConfig?.autoSend) {
-        onSendMessage({
-          text,
-          files: fileList,
-          autoTTSResponse
-        });
-        replaceFiles([]);
-      } else {
-        resetInputVal({ text });
-      }
-    };
-    if (isSpeaking) {
-      return stopSpeak();
-    }
-    startSpeak(finishWhisperTranscription);
-  }, [
-    autoTTSResponse,
-    fileList,
-    isSpeaking,
-    onSendMessage,
-    replaceFiles,
-    resetInputVal,
-    startSpeak,
-    stopSpeak,
-    whisperConfig?.autoSend
-  ]);
-  useEffect(() => {
-    if (!stream) {
-      return;
-    }
-    const audioContext = new AudioContext();
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 4096;
-    analyser.smoothingTimeConstant = 1;
-    const source = audioContext.createMediaStreamSource(stream);
-    source.connect(analyser);
-    let animationFrameId: number | null = null;
-    const renderCurve = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        // 获取 canvas 的 2D 上下文
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        if (!stream.active) {
-          // 当流不活动时，清除画布
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          if (animationFrameId) {
-            window.cancelAnimationFrame(animationFrameId);
-            animationFrameId = null;
-          }
-          return;
-        }
-      renderAudioGraph(analyser, canvas);
-      animationFrameId = window.requestAnimationFrame(renderCurve);
-    }
-
-
-    renderCurve();
-
-    return () => {
-      if (animationFrameId) {
-        window.cancelAnimationFrame(animationFrameId);
-      }
-      audioContext.close();
-      source.disconnect();
-      analyser.disconnect();
-    };
-  }, [stream, canvasRef, renderAudioGraph]);
-
   const RenderTranslateLoading = useMemo(
     () => (
       <Flex
@@ -388,13 +127,13 @@ const ChatInput = ({
         alignItems={'center'}
         bg={'white'}
         color={'primary.500'}
-        visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
+        visibility={isChatting ? 'visible' : 'hidden'}
       >
         <Spinner size={'sm'} mr={4} />
         {t('common:core.chat.Converting to text')}
       </Flex>
     ),
-    [isSpeaking, isTransCription, t]
+    [isChatting, t]
   );
 
   const RenderTextarea = useMemo(
@@ -409,7 +148,6 @@ const ChatInput = ({
             cursor={'pointer'}
             transform={'translateY(1px)'}
             onClick={() => {
-              if (isSpeaking) return;
               onOpenSelectFile();
             }}
           >
@@ -419,7 +157,6 @@ const ChatInput = ({
             <File onSelect={(files) => onSelectFile({ files })} />
           </Flex>
         )}
-
         {/* input area */}
         <Textarea
           ref={TextareaDom}
@@ -431,11 +168,7 @@ const ChatInput = ({
             border: 'none'
           }}
           placeholder={
-            isSpeaking
-              ? t('common:core.chat.Speaking')
-              : isPc
-                ? t('common:core.chat.Type a message')
-                : t('chat:input_placeholder_phone')
+            isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone')
           }
           resize={'none'}
           rows={1}
@@ -448,9 +181,8 @@ const ChatInput = ({
           wordBreak={'break-all'}
           boxShadow={'none !important'}
           color={'myGray.900'}
-          isDisabled={isSpeaking}
-          value={inputValue}
           fontSize={['md', 'sm']}
+          value={inputValue}
           onChange={(e) => {
             const textarea = e.target;
             textarea.style.height = textareaMinH;
@@ -501,202 +233,68 @@ const ChatInput = ({
             }
           }}
         />
-        {!isPc && needSpeak && (
-          <Flex
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="white"
-            borderRadius="md"
-            alignItems="center"
-            justifyContent="flex-end"
-            zIndex={0}
-          >
-            <Flex
-              alignItems="center"
-              justifyContent="flex-end"
-              flexGrow={1}
-              flexDirection="row" // 确保子元素水平排列
-            >
-              {/* 渲染 TouchListenComponent */}
-              {needSpeak && (
-                <TouchListenComponent
-                  isSpeaking={isSpeaking}
-                  needSpeak={needSpeak}
-                  isTransCription={isTransCription}
-                  readyspeak={readyspeak}
-                  stopSpeak={stopSpeak}
-                  canvasRef={canvasRef}
-                />
-              )}
-            </Flex>
-            <MyTooltip label={t('common:core.chat.Cancel Speak')}>
+        <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']}>
+          {/* 语音输入图标 */}
+          {!voiceState.isSpeaking && !voiceState.needSpeak && (
+            <MyTooltip label={t('common:core.chat.Record')}>
               <Flex
-                mr={3}
-                alignItems="center"
-                justifyContent="center"
+                alignItems={'center'}
+                justifyContent={'center'}
                 flexShrink={0}
-                h={['26px', '32px']}
-                w={['26px', '32px']}
-                borderRadius="md"
-                cursor="pointer"
+                h={['28px', '32px']}
+                w={['28px', '32px']}
+                borderRadius={'md'}
+                cursor={'pointer'}
                 _hover={{ bg: '#F5F5F8' }}
-                onClick={finishSpeak}
+                onClick={isPc ? voiceState.onWhisperRecord : voiceState.prepareSpeak}
               >
                 <MyIcon
-                  name={'core/chat/backText'}
-                  width={['22px', '24px']}
-                  height={['22px', '24px']}
-                  color="blue.600"
+                  name={'core/chat/recordFill'}
+                  width={['22px', '25px']}
+                  height={['22px', '25px']}
+                  color={'myGray.600'}
                 />
               </Flex>
             </MyTooltip>
-          </Flex>
-        )}
-        <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']}>
-          {/* voice-input */}
-          {whisperConfig?.open && !inputValue && !isChatting && (
-            <>
-              {isPc && (
-                <canvas
-                  ref={canvasRef}
-                  style={{
-                    height: '30px',
-                    width: isSpeaking && !isTransCription ? '100px' : 0,
-                    background: 'white',
-                    zIndex: 0
-                  }}
-                />
-              )}
-              {isSpeaking && !isTransCription && isPc && (
-                <MyTooltip label={t('common:core.chat.Cancel Speak')}>
-                  <Flex
-                    mr={2}
-                    alignItems={'center'}
-                    justifyContent={'center'}
-                    flexShrink={0}
-                    h={['26px', '32px']}
-                    w={['26px', '32px']}
-                    borderRadius={'md'}
-                    cursor={'pointer'}
-                    _hover={{ bg: '#F5F5F8' }}
-                    onClick={() => stopSpeak(true)}
-                  >
-                    <MyIcon
-                      name={'core/chat/cancelSpeak'}
-                      width={['20px', '22px']}
-                      height={['20px', '22px']}
-                    />
-                  </Flex>
-                </MyTooltip>
-              )}
-              {isPc ? (
-                <MyTooltip
-                  label={
-                    isSpeaking ? t('common:core.chat.Finish Speak') : t('common:core.chat.Record')
-                  }
-                >
-                  <Flex
-                    mr={2}
-                    alignItems={'center'}
-                    justifyContent={'center'}
-                    flexShrink={0}
-                    h={['26px', '32px']}
-                    w={['26px', '32px']}
-                    borderRadius={'md'}
-                    cursor={'pointer'}
-                    _hover={{ bg: '#F5F5F8' }}
-                    onClick={onWhisperRecord}
-                  >
-                    <MyIcon
-                      name={isSpeaking ? 'core/chat/finishSpeak' : 'core/chat/recordFill'}
-                      width={['20px', '22px']}
-                      height={['20px', '22px']}
-                      color={isSpeaking ? 'primary.500' : 'myGray.600'}
-                    />
-                  </Flex>
-                </MyTooltip>
-              ) : (
-                !needSpeak && (
-                  <MyTooltip label={t('common:core.chat.Record')}>
-                    <Flex
-                      mr={2}
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      flexShrink={0}
-                      h={['26px', '32px']}
-                      w={['26px', '32px']}
-                      borderRadius={'md'}
-                      cursor={'pointer'}
-                      _hover={{ bg: '#F5F5F8' }}
-                      onClick={prepareSpeak}
-                    >
-                      <MyIcon
-                        name={'core/chat/recordFill'}
-                        width={['20px', '22px']}
-                        height={['20px', '22px']}
-                        color={needSpeak ? 'primary.500' : 'myGray.600'}
-                      />
-                    </Flex>
-                  </MyTooltip>
-                )
-              )}
-            </>
           )}
           {/* send and stop icon */}
-          {isSpeaking || needSpeak ? (
-            isPc && (
-              <Box color={'#5A646E'} w={'36px'} textAlign={'right'} whiteSpace={'nowrap'}>
-                {speakingTimeString}
-              </Box>
-            )
-          ) : (
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              flexShrink={0}
-              h={['28px', '32px']}
-              w={['28px', '32px']}
-              borderRadius={'md'}
-              bg={
-                isSpeaking || isChatting
-                  ? ''
-                  : !havInput || hasFileUploading
-                    ? '#E5E5E5'
-                    : 'primary.500'
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            flexShrink={0}
+            h={['28px', '32px']}
+            w={['28px', '32px']}
+            borderRadius={'md'}
+            bg={isChatting ? '' : !havInput || hasFileUploading ? '#E5E5E5' : 'primary.500'}
+            cursor={havInput ? 'pointer' : 'not-allowed'}
+            lineHeight={1}
+            onClick={() => {
+              if (isChatting) {
+                return onStop();
               }
-              cursor={havInput ? 'pointer' : 'not-allowed'}
-              lineHeight={1}
-              onClick={() => {
-                if (isChatting) {
-                  return onStop();
-                }
-                return handleSend();
-              }}
-            >
-              {isChatting ? (
+              return handleSend();
+            }}
+          >
+            {isChatting ? (
+              <MyIcon
+                animation={'zoomStopIcon 0.4s infinite alternate'}
+                width={['22px', '25px']}
+                height={['22px', '25px']}
+                cursor={'pointer'}
+                name={'stop'}
+                color={'gray.500'}
+              />
+            ) : (
+              <MyTooltip label={t('common:core.chat.Send Message')}>
                 <MyIcon
-                  animation={'zoomStopIcon 0.4s infinite alternate'}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  cursor={'pointer'}
-                  name={'stop'}
-                  color={'gray.500'}
+                  name={'core/chat/sendFill'}
+                  width={['18px', '20px']}
+                  height={['18px', '20px']}
+                  color={'white'}
                 />
-              ) : (
-                <MyTooltip label={t('common:core.chat.Send Message')}>
-                  <MyIcon
-                    name={'core/chat/sendFill'}
-                    width={['18px', '20px']}
-                    height={['18px', '20px']}
-                    color={'white'}
-                  />
-                </MyTooltip>
-              )}
-            </Flex>
-          )}
+              </MyTooltip>
+            )}
+          </Flex>
         </Flex>
       </Flex>
     ),
@@ -710,22 +308,15 @@ const ChatInput = ({
       inputValue,
       isChatting,
       isPc,
-      isSpeaking,
-      needSpeak,
-      isTransCription,
       onOpenSelectFile,
       onSelectFile,
       onStop,
-      onWhisperRecord,
       selectFileIcon,
       selectFileLabel,
       setValue,
       showSelectFile,
       showSelectImg,
-      speakingTimeString,
-      stopSpeak,
-      t,
-      whisperConfig?.open
+      t
     ]
   );
 
@@ -764,7 +355,7 @@ const ChatInput = ({
         pt={fileList.length > 0 ? '0' : ['14px', '18px']}
         pb={['14px', '18px']}
         position={'relative'}
-        boxShadow={isSpeaking ? `0 0 10px rgba(54,111,255,0.4)` : `0 0 10px rgba(0,0,0,0.2)`}
+        boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
         borderRadius={['none', 'md']}
         bg={'white'}
         overflow={'display'}
@@ -791,10 +382,25 @@ const ChatInput = ({
             }}
           />
         )}
-
-        {/* translate loading */}
-        {RenderTranslateLoading}
-
+        <Box position="relative">
+          {/* voice input and loading container */}
+          <Box position="absolute" top={0} bottom={0} left={0} right={0}>
+            <VoiceInput
+              onSendMessage={onSendMessage}
+              resetInputVal={resetInputVal}
+              whisperConfig={whisperConfig}
+              autoTTSResponse={autoTTSResponse}
+              isChatting={isChatting}
+              appId={appId}
+              chatId={chatId}
+              fileSelectConfig={fileSelectConfig}
+              fileCtrl={fileCtrl}
+              outLinkAuthData={outLinkAuthData}
+              onStateChange={setVoiceState}
+            />
+            {RenderTranslateLoading}
+          </Box>
+        </Box>
         {/* file preview */}
         <Box px={[1, 3]}>
           <FilePreview fileList={fileList} removeFiles={removeFiles} />
