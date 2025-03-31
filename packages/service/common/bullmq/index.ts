@@ -1,50 +1,37 @@
 import { ConnectionOptions, Processor, Queue, QueueOptions, Worker, WorkerOptions } from 'bullmq';
 import { addLog } from '../system/log';
+import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
 
-const connection: ConnectionOptions = {
-  url: process.env.REDIS_URL ?? 'redis://localhost:6379'
-};
-
-const queueOpts: QueueOptions = {
-  connection,
-  defaultJobOptions: {
-    attempts: 3, // retry 3 times
-    backoff: {
-      type: 'exponential',
-      delay: 1000 // delay 1 second between retries
-    }
-  }
-};
-
-const workerOpts: WorkerOptions = {
-  connection,
+const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
   removeOnComplete: {
-    age: 3600, // Keep up to 1 hour
-    count: 1000 // Keep up to 1000 jobs
+    count: 0 // Delete jobs immediately on completion
   },
   removeOnFail: {
-    age: 24 * 3600, // Keep up to 24 hours
-    count: 8000 // Keep up to 8000 jobs
+    count: 0 // Delete jobs immediately on failure
   }
 };
 
 export const FinishedStates = ['completed', 'failed'] as const;
 
+export enum QueueNames {
+  websiteSync = 'websiteSync'
+}
+
 export const queues = (() => {
   if (!global.queues) {
-    global.queues = new Map<string, Queue>();
+    global.queues = new Map<QueueNames, Queue>();
   }
   return global.queues;
 })();
 export const workers = (() => {
   if (!global.workers) {
-    global.workers = new Map<string, Worker>();
+    global.workers = new Map<QueueNames, Worker>();
   }
   return global.workers;
 })();
 
 export function getQueue<DataType, ReturnType = any>(
-  name: string,
+  name: QueueNames,
   opts?: Omit<QueueOptions, 'connection'>
 ): Queue<DataType, ReturnType> {
   // check if global.queues has the queue
@@ -52,7 +39,10 @@ export function getQueue<DataType, ReturnType = any>(
   if (queue) {
     return queue as Queue<DataType, ReturnType>;
   }
-  const newQueue = new Queue<DataType, ReturnType>(name, { ...queueOpts, ...opts });
+  const newQueue = new Queue<DataType, ReturnType>(name.toString(), {
+    connection: newQueueRedisConnection(),
+    ...opts
+  });
   // default error handler, to avoid unhandled exceptions
   newQueue.on('error', (error) => {
     addLog.error(`MQ Queue [${name}]: ${error.message}`, error);
@@ -62,7 +52,7 @@ export function getQueue<DataType, ReturnType = any>(
 }
 
 export function getWorker<DataType, ReturnType = any>(
-  name: string,
+  name: QueueNames,
   processor: Processor<DataType, ReturnType>,
   opts?: Omit<WorkerOptions, 'connection'>
 ): Worker<DataType, ReturnType> {
@@ -70,7 +60,11 @@ export function getWorker<DataType, ReturnType = any>(
   if (worker) {
     return worker as Worker<DataType, ReturnType>;
   }
-  const newWorker = new Worker<DataType, ReturnType>(name, processor, { ...workerOpts, ...opts });
+  const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
+    connection: newWorkerRedisConnection(),
+    ...defaultWorkerOpts,
+    ...opts
+  });
   // default error handler, to avoid unhandled exceptions
   newWorker.on('error', (error) => {
     addLog.error(`MQ Worker [${name}]: ${error.message}`, error);

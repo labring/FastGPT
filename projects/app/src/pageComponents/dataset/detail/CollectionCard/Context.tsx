@@ -78,11 +78,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
 
   const syncWebsite = async () => {
     await checkTeamWebSyncLimit();
-    const billId = await postCreateTrainingUsage({
-      name: t('common:core.dataset.training.Website Sync'),
-      datasetId: datasetId
-    });
-    await postWebsiteSync({ datasetId: datasetId, billId });
+    await postWebsiteSync({ datasetId: datasetId });
     await loadDatasetDetail(datasetId);
   };
 

@@ -234,7 +234,29 @@ const updateSyncSchedule = async ({
   if (typeof autoSync !== 'boolean') return;
 
   // Update all collection nextSyncTime
-  if (dataset.type === DatasetTypeEnum.apiDataset) {
+  if (dataset.type === DatasetTypeEnum.websiteDataset) {
+    if (autoSync) {
+      // upsert Job Scheduler
+      upsertWebsiteSyncJobScheduler({ datasetId: dataset._id.toString() });
+    } else {
+      // remove Job Scheduler
+      removeWebsiteSyncJobScheduler(dataset._id.toString());
+
+      // Backward compatibility
+      await MongoDatasetCollection.updateMany(
+        {
+          teamId: dataset.teamId,
+          datasetId: dataset._id
+        },
+        {
+          $unset: {
+            nextSyncTime: 1
+          }
+        },
+        { session }
+      );
+    }
+  } else {
     if (autoSync) {
       await MongoDatasetCollection.updateMany(
         {
@@ -250,28 +272,6 @@ const updateSyncSchedule = async ({
         { session }
       );
     } else {
-      await MongoDatasetCollection.updateMany(
-        {
-          teamId: dataset.teamId,
-          datasetId: dataset._id
-        },
-        {
-          $unset: {
-            nextSyncTime: 1
-          }
-        },
-        { session }
-      );
-    }
-  } else if (dataset.type === DatasetTypeEnum.websiteDataset) {
-    if (autoSync) {
-      // upsert Job Scheduler
-      upsertWebsiteSyncJobScheduler({ dataset });
-    } else {
-      // remove Job Scheduler
-      removeWebsiteSyncJobScheduler(dataset._id.toString());
-
-      // Backward compatibility
       await MongoDatasetCollection.updateMany(
         {
           teamId: dataset.teamId,

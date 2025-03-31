@@ -40,7 +40,7 @@ export type DatasetSchemaType = {
     // Chunk settings
     autoIndexes?: boolean;
     imageIndex?: boolean;
-    trainingType: DatasetCollectionDataProcessModeEnum;
+    trainingType?: DatasetCollectionDataProcessModeEnum;
 
     chunkSettingMode?: ChunkSettingModeEnum;
     chunkSplitMode?: DataChunkSplitModeEnum;

@@ -31,16 +31,18 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
-  let status = DatasetStatusEnum.active;
-  const syncJob = await getCurrentWebsiteSyncJob(datasetId);
-  if (syncJob) {
-    const jobState = await syncJob.getState();
-    if (jobState == 'active') {
-      status = DatasetStatusEnum.syncing;
-    } else if (!(jobState in FinishedStates)) {
-      status = DatasetStatusEnum.waiting;
+  let status = await (async () => {
+    const syncJob = await getCurrentWebsiteSyncJob(datasetId);
+    if (syncJob) {
+      const jobState = await syncJob.getState();
+      if (jobState == 'active') {
+        return DatasetStatusEnum.syncing;
+      } else if (!(jobState in FinishedStates)) {
+        return DatasetStatusEnum.waiting;
+      }
     }
-  }
+    return DatasetStatusEnum.active;
+  })();
 
   return {
     ...dataset,

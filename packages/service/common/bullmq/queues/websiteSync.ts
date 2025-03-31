@@ -1,21 +1,43 @@
-import { getQueue } from '..';
+import { Processor } from 'bullmq';
+import { getQueue, getWorker, QueueNames } from '..';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 
-export const WebsiteSyncQueueName = 'websiteSync';
-
 export type WebsiteSyncJobData = {
-  dataset: DatasetSchemaType;
-  billId?: string;
+  datasetId: string;
 };
 export type WebsiteSyncJobReturn = void;
 
 export const websiteSyncQueue = getQueue<WebsiteSyncJobData, WebsiteSyncJobReturn>(
-  WebsiteSyncQueueName
+  QueueNames.websiteSync,
+  {
+    defaultJobOptions: {
+      attempts: 3, // retry 3 times
+      backoff: {
+        type: 'exponential',
+        delay: 1000 // delay 1 second between retries
+      }
+    }
+  }
 );
 
+export function getWebsiteSyncWorker(
+  processor: Processor<WebsiteSyncJobData, WebsiteSyncJobReturn>
+) {
+  return getWorker<WebsiteSyncJobData, WebsiteSyncJobReturn>(QueueNames.websiteSync, processor, {
+    removeOnComplete: {
+      age: 3600, // Keep up to 1 hour
+      count: 1000 // Keep up to 1000 jobs
+    },
+    removeOnFail: {
+      age: 24 * 3600, // Keep up to 24 hours
+      count: 8000 // Keep up to 8000 jobs
+    }
+  });
+}
+
 export async function addWebsiteSyncJob(data: WebsiteSyncJobData) {
-  const datasetId = data.dataset._id.toString();
-  return websiteSyncQueue.add(data.dataset.name, data, { deduplication: { id: datasetId } });
+  const datasetId = String(data.datasetId);
+  return websiteSyncQueue.add(datasetId, data, { deduplication: { id: datasetId } });
 }
 
 export async function getCurrentWebsiteSyncJob(datasetId: string) {
@@ -28,7 +50,7 @@ export async function getCurrentWebsiteSyncJob(datasetId: string) {
 
 const repeatDuration = 86400000; // every day
 export async function upsertWebsiteSyncJobScheduler(data: WebsiteSyncJobData) {
-  const datasetId = data.dataset._id.toString();
+  const datasetId = String(data.datasetId);
   return websiteSyncQueue.upsertJobScheduler(
     datasetId,
     {
@@ -36,7 +58,7 @@ export async function upsertWebsiteSyncJobScheduler(data: WebsiteSyncJobData) {
       startDate: new Date().getTime() + repeatDuration // start tomorrow
     },
     {
-      name: data.dataset.name,
+      name: datasetId,
       data
     }
   );

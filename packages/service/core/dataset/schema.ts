@@ -14,6 +14,28 @@ import type { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 
 export const DatasetCollectionName = 'datasets';
 
+export const ChunkSettings = {
+  imageIndex: Boolean,
+  autoIndexes: Boolean,
+  trainingType: {
+    type: String,
+    enum: Object.values(DatasetCollectionDataProcessModeEnum)
+  },
+  chunkSettingMode: {
+    type: String,
+    enum: Object.values(ChunkSettingModeEnum)
+  },
+  chunkSplitMode: {
+    type: String,
+    enum: Object.values(DataChunkSplitModeEnum)
+  },
+  chunkSize: Number,
+  chunkSplitter: String,
+
+  indexSize: Number,
+  qaPrompt: String
+};
+
 const DatasetSchema = new Schema({
   parentId: {
     type: Schema.Types.ObjectId,
@@ -79,25 +101,7 @@ const DatasetSchema = new Schema({
         default: 'body'
       },
       // Chunk settings
-      imageIndex: Boolean,
-      autoIndexes: Boolean,
-      trainingType: {
-        type: String,
-        enum: Object.values(DatasetCollectionDataProcessModeEnum)
-      },
-      chunkSettingMode: {
-        type: String,
-        enum: Object.values(ChunkSettingModeEnum)
-      },
-      chunkSplitMode: {
-        type: String,
-        enum: Object.values(DataChunkSplitModeEnum)
-      },
-      chunkSize: Number,
-      chunkSplitter: String,
-
-      indexSize: Number,
-      qaPrompt: String
+      ...ChunkSettings
     }
   },
   inheritPermission: {

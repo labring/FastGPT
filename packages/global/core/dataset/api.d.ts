@@ -140,7 +140,6 @@ export type PushDatasetDataChunkProps = {
 
 export type PostWebsiteSyncParams = {
   datasetId: string;
-  billId: string;
 };
 
 export type PushDatasetDataProps = {
