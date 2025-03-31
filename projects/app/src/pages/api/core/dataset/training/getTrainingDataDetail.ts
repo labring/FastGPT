@@ -8,6 +8,7 @@ export type getTrainingDataDetailQuery = {};
 
 export type getTrainingDataDetailBody = {
   datasetId: string;
+  collectionId: string;
   dataId: string;
 };
 
@@ -24,13 +25,12 @@ export type getTrainingDataDetailResponse =
 async function handler(
   req: ApiRequestProps<getTrainingDataDetailBody, getTrainingDataDetailQuery>
 ): Promise<getTrainingDataDetailResponse> {
-  const { datasetId, dataId } = req.body;
+  const { datasetId, collectionId, dataId } = req.body;
 
   const { teamId } = await authDatasetCollection({
     req,
     authToken: true,
-    authApiKey: true,
-    collectionId: dataId,
+    collectionId,
     per: ReadPermissionVal
   });
 

@@ -6,6 +6,7 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type deleteTrainingDataBody = {
   datasetId: string;
+  collectionId: string;
   dataId: string;
 };
 
@@ -16,13 +17,13 @@ export type deleteTrainingDataResponse = {};
 async function handler(
   req: ApiRequestProps<deleteTrainingDataBody, deleteTrainingDataQuery>
 ): Promise<deleteTrainingDataResponse> {
-  const { datasetId, dataId } = req.body;
+  const { datasetId, collectionId, dataId } = req.body;
 
   const { teamId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
-    collectionId: dataId,
+    collectionId,
     per: ManagePermissionVal
   });
 

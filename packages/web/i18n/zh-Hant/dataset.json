@@ -38,6 +38,7 @@
   "dataset.No_Error": "暫無異常信息",
   "dataset.Operation": "操作",
   "dataset.Training Process": "訓練狀態",
+  "dataset.Training_Count": "{{count}} 組訓練中",
   "dataset.Training_Errors": "異常",
   "dataset.Training_QA": "{{count}} 組問答對訓練中",
   "dataset.Training_Status": "訓練狀態",

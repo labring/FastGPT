@@ -38,6 +38,7 @@
   "dataset.No_Error": "No exception information yet",
   "dataset.Operation": "operate",
   "dataset.Training Process": "Training status",
+  "dataset.Training_Count": "{{count}} Group training",
   "dataset.Training_Errors": "Errors",
   "dataset.Training_QA": "{{count}} Group Q&A pair training",
   "dataset.Training_Status": "Training status",

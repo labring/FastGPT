@@ -3,7 +3,6 @@ import {
   Button,
   Flex,
   ModalBody,
-  Progress,
   Table,
   TableContainer,
   Tbody,
@@ -11,8 +10,7 @@ import {
   Th,
   Thead,
   Tr,
-  Spinner,
-  Center
+  Spinner
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -24,6 +22,7 @@ import {
   deleteTrainingData,
   getDatasetCollectionTrainingDetail,
   getTrainingDataDetail,
+  getTrainingError,
   updateTrainingData
 } from '@/web/core/dataset/api';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -33,66 +32,37 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getTrainingDataDetailResponse } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { TrainingProcess, TrainingStatus, TrainingText } from '@/web/core/dataset/constants';
-import {
-  DatasetCollectionTrainingDetailType,
-  TrainingErrorItem
-} from '@/pages/api/core/dataset/collection/trainingDetail';
-import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { useForm } from 'react-hook-form';
+import { getTrainingDetailResult } from '@/pages/api/core/dataset/collection/trainingDetail';
+import { TFunction } from 'i18next';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 const getTrainingStatus = ({
-  mode,
-  errorList,
-  trainingAmount,
-  trainedAmount
+  trainingCount,
+  errorCount
 }: {
-  mode: TrainingModeEnum;
-  errorList?: TrainingErrorItem;
-  trainingAmount: number;
-  trainedAmount: number;
+  trainingCount: number;
+  errorCount: number;
 }) => {
-  if (errorList?.data?.some((item) => item.mode === mode)) {
+  if (errorCount > 0) {
     return TrainingStatus.Error;
   }
-  if (trainingAmount === 0 && trainedAmount === 0 && mode !== TrainingModeEnum.qa) {
-    return TrainingStatus.NotStarted;
-  }
-  if (trainingAmount > 0) {
+  if (trainingCount > 0) {
     return TrainingStatus.InProgress;
   }
   return TrainingStatus.Normal;
 };
 
-const getProcessString = (trainingAmount: number, trainedAmount: number) => {
-  return `${trainedAmount} / ${trainingAmount + trainedAmount}`;
+const getProgress = (trainingAmount: number, t: TFunction) => {
+  return trainingAmount > 0
+    ? t('dataset:dataset.Training_Count', {
+        count: trainingAmount
+      })
+    : t('dataset:dataset.Completed');
 };
 
-const getProcessValue = (trainingAmount: number, trainedAmount: number) => {
-  return (trainedAmount / (trainingAmount + trainedAmount)) * 100;
-};
-
-const getTrainingCounts = (trainingDetail: any) => {
-  const getCount = (type: string, indexType?: string) => ({
-    training: trainingDetail?.trainingCounts?.[type] || 0,
-    trained: trainingDetail?.indexesCounts?.[indexType || type] || 0
-  });
-
-  return {
-    image: getCount('image'),
-    auto: getCount('auto'),
-    chunk: getCount('chunk', 'default'),
-    qa: getCount('qa')
-  };
-};
-
-const ProgressView = ({
-  trainingDetail
-}: {
-  trainingDetail: DatasetCollectionTrainingDetailType;
-}) => {
+const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailResult }) => {
   const { t } = useTranslation();
-
-  const counts = getTrainingCounts(trainingDetail);
 
   const tagStyle = {
     showDot: true,
@@ -109,31 +79,23 @@ const ProgressView = ({
   const statesArray = [
     {
       label: TrainingProcess.waiting.label,
-      progress: '100%',
-      progressValue: 100,
-      status: TrainingStatus.Normal
+      status: TrainingStatus.Normal,
+      progress: t('dataset:dataset.Completed')
     },
     {
       label: TrainingProcess.parsing.label,
-      progress: '100%',
-      progressValue: 100,
-      status: TrainingStatus.Normal
+      status: TrainingStatus.Normal,
+      progress: t('dataset:dataset.Completed')
     },
     ...(isQA
       ? [
           {
             mode: TrainingModeEnum.qa,
             label: TrainingProcess.getQA.label,
-            progress: counts.qa.training
-              ? t('dataset:dataset.Training_QA', {
-                  count: counts.qa.training
-                })
-              : t('dataset:dataset.Completed'),
+            progress: getProgress(trainingDetail.trainingCounts.qa, t),
             status: getTrainingStatus({
-              mode: TrainingModeEnum.qa,
-              errorList: trainingDetail?.errorList,
-              trainingAmount: counts.qa.training,
-              trainedAmount: 0
+              trainingCount: trainingDetail.trainingCounts.qa,
+              errorCount: trainingDetail.errorCounts.qa
             })
           }
         ]
@@ -143,13 +105,10 @@ const ProgressView = ({
           {
             mode: TrainingModeEnum.image,
             label: TrainingProcess.imageIndex.label,
-            progress: getProcessString(counts.image.training, counts.image.trained),
-            progressValue: getProcessValue(counts.image.training, counts.image.trained),
+            progress: getProgress(trainingDetail.trainingCounts.image, t),
             status: getTrainingStatus({
-              mode: TrainingModeEnum.image,
-              errorList: trainingDetail?.errorList,
-              trainingAmount: counts.image.training,
-              trainedAmount: counts.image.trained
+              trainingCount: trainingDetail.trainingCounts.image,
+              errorCount: trainingDetail.errorCounts.image
             })
           }
         ]
@@ -159,13 +118,10 @@ const ProgressView = ({
           {
             mode: TrainingModeEnum.auto,
             label: TrainingProcess.autoIndex.label,
-            progress: getProcessString(counts.auto.training, counts.auto.trained),
-            progressValue: getProcessValue(counts.auto.training, counts.auto.trained),
+            progress: getProgress(trainingDetail.trainingCounts.auto, t),
             status: getTrainingStatus({
-              mode: TrainingModeEnum.auto,
-              errorList: trainingDetail?.errorList,
-              trainingAmount: counts.auto.training,
-              trainedAmount: counts.auto.trained
+              trainingCount: trainingDetail.trainingCounts.auto,
+              errorCount: trainingDetail.errorCounts.auto
             })
           }
         ]
@@ -173,35 +129,27 @@ const ProgressView = ({
     {
       mode: TrainingModeEnum.chunk,
       label: TrainingProcess.vectorizing.label,
-      progress: getProcessString(
-        counts.chunk.training + counts.image.training + counts.auto.training,
-        counts.chunk.trained + counts.image.trained + counts.auto.trained
-      ),
-      progressValue: getProcessValue(
-        counts.chunk.training + counts.image.training + counts.auto.training,
-        counts.chunk.trained + counts.image.trained + counts.auto.trained
+      progress: getProgress(
+        trainingDetail.trainingCounts.chunk +
+          trainingDetail.trainingCounts.auto +
+          trainingDetail.trainingCounts.image,
+        t
       ),
       status: getTrainingStatus({
-        mode: TrainingModeEnum.chunk,
-        errorList: trainingDetail?.errorList,
-        trainingAmount: counts.chunk.training + counts.image.training + counts.auto.training,
-        trainedAmount: counts.chunk.trained + counts.image.trained + counts.auto.trained
+        trainingCount:
+          trainingDetail.trainingCounts.chunk +
+          trainingDetail.trainingCounts.auto +
+          trainingDetail.trainingCounts.image,
+        errorCount: trainingDetail.errorCounts.chunk
       })
     },
     {
-      label: TrainingProcess.isReady.label,
+      label: t('dataset:process.Is_Ready'),
       status: Object.values(trainingDetail?.trainingCounts || {}).every((count) => count === 0)
         ? TrainingStatus.Normal
-        : TrainingStatus.NotStarted,
-      progress: '',
-      progressValue: undefined
+        : TrainingStatus.NotStarted
     }
   ];
-
-  const firstIndex = statesArray.findIndex(
-    (item) => item.status === TrainingStatus.InProgress || item.status === TrainingStatus.Error
-  );
-  const highLightIndex = firstIndex === -1 ? statesArray.length - 1 : firstIndex;
 
   return (
     <Flex flexDirection={'column'} gap={6}>
@@ -213,15 +161,20 @@ const ProgressView = ({
             borderWidth={'2px'}
             borderRadius={'50%'}
             position={'relative'}
-            {...(index === highLightIndex
+            {...(item.status === TrainingStatus.InProgress || item.status === TrainingStatus.Error
               ? {
                   bg: 'primary.600',
                   borderColor: 'primary.600',
                   boxShadow: '0 0 0 4px var(--Royal-Blue-100, #E1EAFF)'
                 }
-              : {
-                  borderColor: 'myGray.250'
-                })}
+              : item.status === TrainingStatus.Normal
+                ? {
+                    bg: 'primary.600',
+                    borderColor: 'primary.600'
+                  }
+                : {
+                    borderColor: 'myGray.250'
+                  })}
             {...(index !== statesArray.length - 1 && {
               _after: {
                 content: '""',
@@ -233,10 +186,12 @@ const ProgressView = ({
                 left: '3px'
               }
             })}
-          ></Box>
+          >
+            {item.status === TrainingStatus.Normal && <MyIcon name="check" w={2} color={'white'} />}
+          </Box>
           <Flex
-            flexDirection={'column'}
-            justifyContent={'center'}
+            alignItems={'center'}
+            w={'full'}
             bg={
               item.status === TrainingStatus.InProgress
                 ? 'primary.50'
@@ -251,57 +206,45 @@ const ProgressView = ({
             flex={1}
             h={'53px'}
           >
-            <Flex alignItems={'center'} w={'full'}>
-              <Box
-                fontSize={'14px'}
-                fontWeight={'medium'}
-                color={item.status === TrainingStatus.NotStarted ? 'myGray.400' : 'myGray.900'}
-                mr={2}
-              >
-                {t(item.label)}
-              </Box>
-              {item.status === TrainingStatus.Normal && (
-                <MyTag {...tagStyle} colorSchema={'green'}>
-                  {t('dataset:training.Normal')}
-                </MyTag>
-              )}
-              {item.status === TrainingStatus.Error && (
-                <MyTag {...tagStyle} colorSchema={'red'}>
-                  {t('dataset:training.Error')}
-                </MyTag>
-              )}
-              {item.status === TrainingStatus.InProgress && item.mode && (
-                <Flex alignItems={'center'} gap={1}>
-                  <Spinner size={'xs'} color={'blue.500'} />
-                  {!!trainingDetail?.trainingWaitingCounts[item.mode] && (
-                    <Box fontSize={'12px'}>
-                      {t('dataset:dataset.Training_Waiting', {
-                        count: trainingDetail?.trainingWaitingCounts[item.mode]
-                      })}
-                    </Box>
-                  )}
-                </Flex>
-              )}
-              <Box flex={1} />
-              <Box
-                fontSize={'14px'}
-                color={item.status === TrainingStatus.NotStarted ? 'myGray.400' : 'myGray.900'}
-              >
-                {item.progress}
-              </Box>
-            </Flex>
-
-            {item.progressValue !== undefined && item.status !== TrainingStatus.NotStarted && (
-              <Progress
-                mt={2}
-                value={item.progressValue}
-                size={'xs'}
-                colorScheme={item.status === TrainingStatus.Error ? 'red' : 'blue'}
-                borderRadius={'md'}
-                isAnimated
-                hasStripe
-              />
+            <Box
+              fontSize={'14px'}
+              fontWeight={'medium'}
+              color={item.status === TrainingStatus.NotStarted ? 'myGray.400' : 'myGray.900'}
+              mr={2}
+            >
+              {t(item.label)}
+            </Box>
+            {item.status === TrainingStatus.Error && (
+              <MyTag {...tagStyle} colorSchema={'red'}>
+                {t('dataset:training.Error')}
+              </MyTag>
             )}
+            {item.status === TrainingStatus.InProgress && item.mode && (
+              <Flex alignItems={'center'} gap={1}>
+                <Spinner size={'xs'} color={'blue.500'} />
+                {!!trainingDetail?.waitingCounts[item.mode] && (
+                  <Box fontSize={'12px'}>
+                    {t('dataset:dataset.Training_Waiting', {
+                      count: trainingDetail?.waitingCounts[item.mode]
+                    })}
+                  </Box>
+                )}
+              </Flex>
+            )}
+            <Box flex={1} />
+            <Box
+              fontSize={'14px'}
+              fontWeight={item.status === TrainingStatus.Normal ? 'medium' : 'normal'}
+              color={
+                item.status === TrainingStatus.NotStarted
+                  ? 'myGray.400'
+                  : item.status === TrainingStatus.Normal
+                    ? 'green.500'
+                    : 'myGray.600'
+              }
+            >
+              {item.progress}
+            </Box>
           </Flex>
         </Flex>
       ))}
@@ -309,89 +252,141 @@ const ProgressView = ({
   );
 };
 
-const ErrorView = ({
-  errorList,
-  datasetId,
-  onRetrain,
-  onEdit,
-  onDelete
-}: {
-  errorList: DatasetTrainingSchemaType[];
-  datasetId: string;
-  onRetrain: (data: { datasetId: string; dataId: string }) => void;
-  onEdit: (data: { datasetId: string; dataId: string }) => void;
-  onDelete: (data: { datasetId: string; dataId: string }) => void;
-}) => {
+const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionId: string }) => {
   const { t } = useTranslation();
+  const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();
 
-  if (!errorList?.length) {
+  const {
+    data: errorList,
+    ScrollData,
+    isLoading,
+    refreshList
+  } = useScrollPagination(getTrainingError, {
+    pageSize: 15,
+    params: {
+      collectionId
+    }
+  });
+
+  const { runAsync: getData, loading: getDataLoading } = useRequest2(
+    (data: { datasetId: string; collectionId: string; dataId: string }) => {
+      return getTrainingDataDetail(data);
+    },
+    {
+      manual: true,
+      onSuccess: (data) => {
+        setEditChunk(data);
+      }
+    }
+  );
+  const { runAsync: deleteData, loading: deleteLoading } = useRequest2(
+    (data: { datasetId: string; collectionId: string; dataId: string }) => {
+      return deleteTrainingData(data);
+    },
+    {
+      manual: true,
+      onSuccess: () => {
+        refreshList();
+      }
+    }
+  );
+  const { runAsync: updateData, loading: updateLoading } = useRequest2(
+    (data: { datasetId: string; collectionId: string; dataId: string; q?: string; a?: string }) => {
+      return updateTrainingData(data);
+    },
+    {
+      manual: true,
+      onSuccess: () => {
+        refreshList();
+        setEditChunk(undefined);
+      }
+    }
+  );
+
+  if (editChunk) {
     return (
-      <Center textAlign="center" py={10} color="gray.500">
-        {t('dataset:dataset.No_Error')}
-      </Center>
+      <EditView
+        editChunk={editChunk}
+        onCancel={() => setEditChunk(undefined)}
+        onSave={(data) => {
+          updateData({
+            datasetId,
+            collectionId,
+            dataId: editChunk._id,
+            ...data
+          });
+        }}
+      />
     );
   }
 
   return (
-    <TableContainer overflowY={'auto'} fontSize={'12px'} maxH={'400px'}>
-      <Table variant={'simple'}>
-        <Thead>
-          <Tr>
-            <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
-            <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
-            <Th>{t('dataset:dataset.Error_Message')}</Th>
-            <Th>{t('dataset:dataset.Operation')}</Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {errorList.map((item, index) => (
-            <Tr key={index}>
-              <Td>{item.chunkIndex + 1}</Td>
-              <Td>{t(TrainingText[item.mode])}</Td>
-              <Td maxW={50}>
-                <MyTooltip label={item.errorMsg}>{item.errorMsg}</MyTooltip>
-              </Td>
-              <Td>
-                <Flex alignItems={'center'}>
-                  <Button
-                    variant={'ghost'}
-                    size={'sm'}
-                    color={'myGray.600'}
-                    leftIcon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
-                    fontSize={'mini'}
-                    onClick={() => onRetrain({ datasetId, dataId: item._id })}
-                  >
-                    {t('dataset:dataset.ReTrain')}
-                  </Button>
-                  <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
-                  <Button
-                    variant={'ghost'}
-                    size={'sm'}
-                    color={'myGray.600'}
-                    leftIcon={<MyIcon name={'edit'} w={4} />}
-                    fontSize={'mini'}
-                    onClick={() => onEdit({ datasetId, dataId: item._id })}
-                  >
-                    {t('dataset:dataset.Edit_Chunk')}
-                  </Button>
-                  <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
-                  <Button
-                    variant={'ghost'}
-                    size={'sm'}
-                    color={'myGray.600'}
-                    leftIcon={<MyIcon name={'delete'} w={4} />}
-                    fontSize={'mini'}
-                    onClick={() => onDelete({ datasetId, dataId: item._id })}
-                  >
-                    {t('dataset:dataset.Delete_Chunk')}
-                  </Button>
-                </Flex>
-              </Td>
+    <ScrollData
+      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
+      h={'400px'}
+    >
+      <TableContainer overflowY={'auto'} fontSize={'12px'}>
+        <Table variant={'simple'}>
+          <Thead>
+            <Tr>
+              <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
+              <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
+              <Th>{t('dataset:dataset.Error_Message')}</Th>
+              <Th>{t('dataset:dataset.Operation')}</Th>
             </Tr>
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+          </Thead>
+          <Tbody>
+            {errorList.map((item, index) => (
+              <Tr key={index}>
+                <Td>{item.chunkIndex + 1}</Td>
+                <Td>{t(TrainingText[item.mode])}</Td>
+                <Td maxW={50}>
+                  <MyTooltip label={item.errorMsg}>{item.errorMsg}</MyTooltip>
+                </Td>
+                <Td>
+                  <Flex alignItems={'center'}>
+                    <Button
+                      variant={'ghost'}
+                      size={'sm'}
+                      color={'myGray.600'}
+                      leftIcon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
+                      fontSize={'mini'}
+                      onClick={() => updateData({ datasetId, collectionId, dataId: item._id })}
+                    >
+                      {t('dataset:dataset.ReTrain')}
+                    </Button>
+                    <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
+                    <Button
+                      variant={'ghost'}
+                      size={'sm'}
+                      color={'myGray.600'}
+                      leftIcon={<MyIcon name={'edit'} w={4} />}
+                      fontSize={'mini'}
+                      onClick={() => getData({ datasetId, collectionId, dataId: item._id })}
+                    >
+                      {t('dataset:dataset.Edit_Chunk')}
+                    </Button>
+                    <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
+                    <Button
+                      variant={'ghost'}
+                      size={'sm'}
+                      color={'myGray.600'}
+                      leftIcon={<MyIcon name={'delete'} w={4} />}
+                      fontSize={'mini'}
+                      onClick={() => {
+                        deleteData({ datasetId, collectionId, dataId: item._id });
+                      }}
+                    >
+                      {t('dataset:dataset.Delete_Chunk')}
+                    </Button>
+                  </Flex>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+    </ScrollData>
   );
 };
 
@@ -449,7 +444,6 @@ const TrainingStates = ({
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
   const [pollingInterval, setPollingInterval] = useState(2000);
   const [isFirstLoading, setIsFirstLoading] = useState(true);
-  const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>(undefined);
 
   const { data: trainingDetail, loading } = useRequest2(
     () => getDatasetCollectionTrainingDetail(collectionId),
@@ -459,7 +453,6 @@ const TrainingStates = ({
       manual: false,
       onSuccess: (data) => {
         setIsFirstLoading(false);
-
         if (Object.values(data.trainingCounts).every((count) => count === 0)) {
           setPollingInterval(0);
         }
@@ -467,35 +460,9 @@ const TrainingStates = ({
     }
   );
 
-  const { runAsync: deleteData, loading: deleteLoading } = useRequest2(
-    (data: { datasetId: string; dataId: string }) => {
-      return deleteTrainingData(data);
-    },
-    {
-      manual: true
-    }
-  );
-
-  const { runAsync: updateData, loading: updateLoading } = useRequest2(
-    (data: { datasetId: string; dataId: string; q?: string; a?: string }) => {
-      return updateTrainingData(data);
-    },
-    {
-      manual: true
-    }
-  );
-
-  const { runAsync: getData, loading: getDataLoading } = useRequest2(
-    (data: { datasetId: string; dataId: string }) => {
-      setPollingInterval(0);
-      return getTrainingDataDetail(data);
-    },
-    {
-      manual: true,
-      onSuccess: (data) => {
-        setEditChunk(data);
-      }
-    }
+  const errorCounts = (Object.values(trainingDetail?.errorCounts || {}) as number[]).reduce(
+    (acc, count) => acc + count,
+    0
   );
 
   return (
@@ -505,51 +472,26 @@ const TrainingStates = ({
       iconSrc="common/running"
       title={t('dataset:dataset.Training Process')}
       minW={['90vw', '712px']}
-      isLoading={(isFirstLoading && loading) || deleteLoading || updateLoading || getDataLoading}
+      isLoading={isFirstLoading && loading}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
-        {editChunk ? (
-          <EditView
-            editChunk={editChunk}
-            onCancel={() => setEditChunk(undefined)}
-            onSave={(data) => {
-              updateData({
-                datasetId,
-                dataId: editChunk._id,
-                ...data
-              });
-              setEditChunk(undefined);
-            }}
-          />
-        ) : (
-          <>
-            <FillRowTabs
-              py={1}
-              mb={6}
-              value={tab}
-              onChange={(e) => setTab(e as 'states' | 'errors')}
-              list={[
-                { label: t('dataset:dataset.Training Process'), value: 'states' },
-                {
-                  label: t('dataset:dataset.Training_Errors', {
-                    count: trainingDetail?.errorList?.total || 0
-                  }),
-                  value: 'errors'
-                }
-              ]}
-            />
-            {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
-            {tab === 'errors' && trainingDetail?.errorList?.data && (
-              <ErrorView
-                errorList={trainingDetail.errorList.data}
-                datasetId={datasetId}
-                onRetrain={updateData}
-                onEdit={getData}
-                onDelete={deleteData}
-              />
-            )}
-          </>
-        )}
+        <FillRowTabs
+          py={1}
+          mb={6}
+          value={tab}
+          onChange={(e) => setTab(e as 'states' | 'errors')}
+          list={[
+            { label: t('dataset:dataset.Training Process'), value: 'states' },
+            {
+              label: t('dataset:dataset.Training_Errors', {
+                count: errorCounts
+              }),
+              value: 'errors'
+            }
+          ]}
+        />
+        {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
+        {tab === 'errors' && <ErrorView datasetId={datasetId} collectionId={collectionId} />}
       </ModalBody>
     </MyModal>
   );
