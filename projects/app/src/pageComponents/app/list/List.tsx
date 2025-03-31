@@ -50,7 +50,7 @@ const ListItem = () => {
     content: t('app:move.hint')
   });
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } = useContextSelector(
     AppListContext,
     (v) => v
   );
@@ -177,6 +177,7 @@ const ListItem = () => {
                 }}
                 onClick={() => {
                   if (AppFolderTypeList.includes(app.type)) {
+                    setSearchKey('');
                     router.push({
                       query: {
                         ...router.query,
