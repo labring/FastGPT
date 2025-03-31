@@ -57,7 +57,13 @@ const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTa
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const isSyncMember = feConfigs?.register_method?.includes('sync');
 
+  const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
+
+  // Member status selector
   const statusOptions = [
     {
       label: t('common:common.All'),
@@ -72,11 +78,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       value: 'inactive'
     }
   ];
-  const { userInfo } = useUserStore();
-  const { feConfigs } = useSystemStore();
-  const isSyncMember = feConfigs?.register_method?.includes('sync');
-
-  const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
   const [status, setStatus] = useState<string>();
 
   const {
