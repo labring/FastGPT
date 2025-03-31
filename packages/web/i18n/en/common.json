@@ -628,6 +628,7 @@
   "core.dataset.search.search mode": "Search Method",
   "core.dataset.status.active": "Ready",
   "core.dataset.status.syncing": "Syncing",
+  "core.dataset.status.waiting": "Waiting",
   "core.dataset.test.Batch test": "Batch Test",
   "core.dataset.test.Batch test Placeholder": "Select a CSV File",
   "core.dataset.test.Search Test": "Search Test",

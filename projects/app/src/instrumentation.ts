@@ -1,6 +1,6 @@
 import { exit } from 'process';
 
-/* 
+/*
   Init system
 */
 export async function register() {
@@ -16,7 +16,8 @@ export async function register() {
         { getSystemPluginCb },
         { startMongoWatch },
         { startCron },
-        { startTrainingQueue }
+        { startTrainingQueue },
+        { closeAllWorkers }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/system/tools'),
@@ -26,8 +27,18 @@ export async function register() {
         import('@/service/core/app/plugin'),
         import('@/service/common/system/volumnMongoWatch'),
         import('@/service/common/system/cron'),
-        import('@/service/core/dataset/training/utils')
+        import('@/service/core/dataset/training/utils'),
+        import('@fastgpt/service/common/bullmq/index')
       ]);
+
+      // Graceful shutdown
+      const gracefulShutdown = async (signal: NodeJS.Signals) => {
+        console.log(`Received ${signal}, closing server gracefully...`);
+        await closeAllWorkers();
+        process.exit(0);
+      };
+      process.on('SIGINT', gracefulShutdown);
+      process.on('SIGTERM', gracefulShutdown);
 
       // 执行初始化流程
       systemStartCb();

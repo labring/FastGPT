@@ -29,7 +29,6 @@ export type DatasetSchemaType = {
   name: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
-  status: `${DatasetStatusEnum}`;
 
   vectorModel: string;
   agentModel: string;
@@ -38,6 +37,18 @@ export type DatasetSchemaType = {
   websiteConfig?: {
     url: string;
     selector: string;
+    // Chunk settings
+    autoIndexes?: boolean;
+    imageIndex?: boolean;
+    trainingType: DatasetCollectionDataProcessModeEnum;
+
+    chunkSettingMode?: ChunkSettingModeEnum;
+    chunkSplitMode?: DataChunkSplitModeEnum;
+
+    chunkSize?: number;
+    indexSize?: number;
+    chunkSplitter?: string;
+    qaPrompt?: string;
   };
   inheritPermission: boolean;
   apiServer?: APIFileServer;
@@ -192,6 +203,7 @@ export type DatasetListItemType = {
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {
+  status: `${DatasetStatusEnum}`;
   vectorModel: EmbeddingModelItemType;
   agentModel: LLMModelItemType;
   vlmModel?: LLMModelItemType;

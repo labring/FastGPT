@@ -627,6 +627,7 @@
   "core.dataset.search.search mode": "搜索方式",
   "core.dataset.status.active": "已就緒",
   "core.dataset.status.syncing": "同步中",
+  "core.dataset.status.waiting": "排队中",
   "core.dataset.test.Batch test": "批次測試",
   "core.dataset.test.Batch test Placeholder": "選擇一個 CSV 檔案",
   "core.dataset.test.Search Test": "搜尋測試",

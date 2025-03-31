@@ -25,11 +25,9 @@ import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
-  TrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -57,8 +55,15 @@ const Header = ({}: {}) => {
   const { parentId = '' } = router.query as { parentId: string };
   const { isPc } = useSystem();
 
-  const { searchText, setSearchText, total, getData, pageNum, onOpenWebsiteModal } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const {
+    searchText,
+    setSearchText,
+    total,
+    getData,
+    pageNum,
+    onOpenWebsiteModal,
+    openWebSyncConfirm
+  } = useContextSelector(CollectionPageContext, (v) => v);
 
   const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
     getDatasetCollectionPathById(parentId)
@@ -274,7 +279,12 @@ const Header = ({}: {}) => {
               {datasetDetail?.websiteConfig?.url ? (
                 <Flex alignItems={'center'}>
                   {datasetDetail.status === DatasetStatusEnum.active && (
-                    <Button onClick={onOpenWebsiteModal}>{t('common:common.Config')}</Button>
+                    <Flex gap={2}>
+                      <Button onClick={onOpenWebsiteModal}>{t('common:common.Config')}</Button>
+                      <Button variant="outline" onClick={openWebSyncConfirm}>
+                        {t('common:core.dataset.website.Start Sync')}
+                      </Button>
+                    </Flex>
                   )}
                   {datasetDetail.status === DatasetStatusEnum.syncing && (
                     <Flex
@@ -295,6 +305,28 @@ const Header = ({}: {}) => {
                       ></Box>
                       <Box ml={2} color={'myGray.600'}>
                         {t('common:core.dataset.status.syncing')}
+                      </Box>
+                    </Flex>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.waiting && (
+                    <Flex
+                      ml={3}
+                      alignItems={'center'}
+                      px={3}
+                      py={1}
+                      borderRadius="md"
+                      border={theme.borders.base}
+                    >
+                      <Box
+                        animation={'zoomStopIcon 0.5s infinite alternate'}
+                        bg={'myGray.700'}
+                        w="8px"
+                        h="8px"
+                        borderRadius={'50%'}
+                        mt={'1px'}
+                      ></Box>
+                      <Box ml={2} color={'myGray.600'}>
+                        {t('common:core.dataset.status.waiting')}
                       </Box>
                     </Flex>
                   )}
