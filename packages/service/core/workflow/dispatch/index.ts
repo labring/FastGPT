@@ -627,7 +627,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       };
     })();
 
-    if (node.showStatus && !props.isToolCall && version === 'v2') {
+    if (!props.isToolCall && version === 'v2' && !props.runningAppInfo.isChildApp) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeResponse,
         data: {
