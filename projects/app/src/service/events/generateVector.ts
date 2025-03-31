@@ -49,7 +49,7 @@ export async function generateVector(): Promise<any> {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
           mode: TrainingModeEnum.chunk,
-          retryCount: { $gte: 0 },
+          retryCount: { $gt: 0 },
           lockTime: { $lte: addMinutes(new Date(), -3) }
         },
         {

@@ -51,7 +51,6 @@ async function handler(
     datasetId: collection.datasetId,
     collectionId: collection._id
   };
-
   const group = {
     _id: null,
     qa: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.qa] }, 1, 0] } },
@@ -60,44 +59,51 @@ async function handler(
     auto: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.auto] }, 1, 0] } }
   };
 
+  // Computed global queue
   const minId = await MongoDatasetTraining.findOne(
     {
       teamId: collection.teamId,
       datasetId: collection.datasetId,
       collectionId: collection._id
     },
-    { sort: { _id: 1 } },
+    { sort: { _id: 1 }, select: '_id' },
     readFromSecondary
-  );
+  ).lean();
 
-  const [trainingCountsResult, errorCountsResult, trainedCount, waitingCountsResult] =
-    await Promise.all([
-      // 获取训练计数
-      MongoDatasetTraining.aggregate([{ $match: match }, { $group: group }], readFromSecondary),
-      // 获取错误计数
-      MongoDatasetTraining.aggregate(
-        [
-          {
-            $match: {
-              ...match,
-              errorMsg: { $exists: true }
-            }
-          },
-          { $group: group }
-        ],
-        readFromSecondary
-      ),
-      // 获取训练完成计数
-      MongoDatasetData.countDocuments(match, readFromSecondary),
-      // 获取等待训练计数
-      MongoDatasetTraining.aggregate(
-        [{ $match: { _id: { $lt: minId?._id }, retryCount: { $gt: 0 } } }, { $group: group }],
-        readFromSecondary
-      )
-    ]);
+  const [trainingCountsResult, trainedCount, waitingCountsResult] = await Promise.all([
+    // 获取训练总数 & 错误总数
+    MongoDatasetTraining.aggregate(
+      [
+        { $match: match },
+        {
+          $facet: {
+            trainingCounts: [{ $count: 'total' }],
+            errorCounts: [{ $match: { errorMsg: { $exists: true } } }, { $count: 'total' }]
+          }
+        }
+      ],
+      readFromSecondary
+    ),
+    // 获取训练完成计数
+    MongoDatasetData.countDocuments(match, readFromSecondary),
+    // 获取等待训练计数
+    MongoDatasetTraining.aggregate(
+      [
+        {
+          $match: {
+            _id: { $lt: minId?._id },
+            retryCount: { $gt: 0 },
+            lockTime: { $lt: new Date('2050/1/1') }
+          }
+        },
+        { $group: group }
+      ],
+      readFromSecondary
+    )
+  ]);
 
-  const trainingCounts = trainingCountsResult[0] || defaultCounts;
-  const errorCounts = errorCountsResult[0] || defaultCounts;
+  const trainingCounts = trainingCountsResult?.[0]?.trainingCounts?.[0]?.total || defaultCounts;
+  const errorCounts = trainingCountsResult?.[0]?.errorCounts?.[0]?.total || defaultCounts;
   const waitingCounts = waitingCountsResult[0] || defaultCounts;
 
   return {
