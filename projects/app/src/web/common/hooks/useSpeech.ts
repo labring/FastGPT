@@ -16,9 +16,21 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   const intervalRef = useRef<any>();
   const startTimestamp = useRef(0);
   const cancelWhisperSignal = useRef(false);
-  const [needSpeak,setNeedspeak]=useState(false);
-  const [pendingStream, setPendingStream] = useState<MediaStream | null>(null); // 新增挂起流状态
+  const [needSpeak, setNeedspeak] = useState(false);
   const stopCalledRef = useRef(false);
+  const [canvasColor, setCanvasColor] = useState('#3370FF');
+  const [waveColor, setWaveColor] = useState({
+    primary: '#3370FF',
+    secondary: '#66A3FF'
+  });
+
+  const changeWaveColor = useCallback((isPrimary: boolean) => {
+    setWaveColor(
+      isPrimary
+        ? { primary: '#3370FF', secondary: '#66A3FF' }
+        : { primary: '#FF3333', secondary: '#FF6666' }
+    );
+  }, []);
 
   const speakingTimeString = useMemo(() => {
     const minutes: number = Math.floor(audioSecond / 60);
@@ -28,45 +40,73 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     return `${formattedMinutes}:${formattedSeconds}`;
   }, [audioSecond]);
 
-  const renderAudioGraph = useCallback((analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
-    const bufferLength = analyser.frequencyBinCount;
-    const backgroundColor = 'white';
-    const dataArray = new Uint8Array(bufferLength);
-    analyser.getByteTimeDomainData(dataArray);
-    const canvasCtx = canvas?.getContext('2d');
-    const width = 300;
-    const height = 200;
-    if (!canvasCtx) return;
-    canvasCtx.clearRect(0, 0, width, height);
-    canvasCtx.fillStyle = backgroundColor;
-    canvasCtx.fillRect(0, 0, width, height);
-    const barWidth = (width / bufferLength) * 2.5;
-    let x = 0;
+  const renderAudioGraph = useCallback(
+    (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
+      const bufferLength = analyser.frequencyBinCount;
+      const backgroundColor = 'white';
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteTimeDomainData(dataArray);
+      const canvasCtx = canvas?.getContext('2d');
 
-    canvasCtx.moveTo(x, height / 2);
-    for (let i = 0; i < bufferLength; i += 10) {
-      const barHeight = (dataArray[i] / 256) * height - height * 0.15;
-      canvasCtx.fillStyle = '#3370FF';
-      const adjustedBarHeight = Math.max(0, barHeight);
-      canvasCtx.fillRect(x, height - adjustedBarHeight, barWidth, adjustedBarHeight);
-      x += barWidth + 1;
-    }
-  }, []);
+      const width = canvas.width;
+      const height = canvas.height;
 
-  const prepareSpeak = () => {
+      if (!canvasCtx) return;
+      canvasCtx.clearRect(0, 0, width, height);
+      canvasCtx.fillStyle = backgroundColor;
+      canvasCtx.fillRect(0, 0, width, height);
+
+      const centerY = height / 2;
+      const barWidth = (width / bufferLength) * 1.5;
+      let x = width * 0.1;
+
+      let sum = 0;
+      let maxDiff = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        sum += dataArray[i];
+        maxDiff = Math.max(maxDiff, Math.abs(dataArray[i] - 128));
+      }
+      const average = sum / bufferLength;
+
+      canvasCtx.beginPath();
+      for (let i = 0; i < bufferLength; i += 2) {
+        const value = dataArray[i];
+        const normalizedValue = (value - average) / 128;
+        const amplification = 2.5;
+        const barHeight = normalizedValue * height * 0.4 * amplification;
+
+        // 使用动态颜色
+        const gradient = canvasCtx.createLinearGradient(
+          x,
+          centerY - barHeight,
+          x,
+          centerY + barHeight
+        );
+        gradient.addColorStop(0, waveColor.primary);
+        gradient.addColorStop(0.5, waveColor.secondary);
+        gradient.addColorStop(1, waveColor.primary);
+
+        canvasCtx.fillStyle = gradient;
+
+        canvasCtx.fillRect(x, centerY - Math.abs(barHeight), barWidth, Math.abs(barHeight));
+        canvasCtx.fillRect(x, centerY, barWidth, Math.abs(barHeight));
+
+        x += barWidth + 0.5;
+
+        if (x > width * 0.9) break;
+      }
+    },
+    [waveColor]
+  );
+
+  const prepareSpeak = useCallback(() => {
     setNeedspeak(true);
-    if (!navigator?.mediaDevices?.getUserMedia) {
-      return toast({
-        status: 'warning',
-        title: t('common:common.speech.not support')
-      });
-    }
     return {
-      needSpeak,
+      needSpeak
     };
-   }
+  }, [toast, t]);
 
-  const startSpeak = async (onFinish: (text: string) => void) => {
+  const startSpeak = useCallback(async (onFinish: (text: string) => void) => {
     if (!navigator?.mediaDevices?.getUserMedia) {
       return toast({
         status: 'warning',
@@ -74,17 +114,19 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       });
     }
     try {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       cancelWhisperSignal.current = false;
       stopCalledRef.current = false;
-      setPendingStream(null); // 重置挂起状态
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
 
       // 检查是否需要取消
       if (stopCalledRef.current) {
-        stream.getTracks().forEach(track => track.stop());
-        setPendingStream(null);
+        stream.getTracks().forEach((track) => track.stop());
         return;
       }
 
@@ -107,6 +149,10 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       };
 
       mediaRecorder.current.onstop = async () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         if (!cancelWhisperSignal.current) {
           const formData = new FormData();
           const { options, filename } = (() => {
@@ -170,6 +216,10 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       };
 
       mediaRecorder.current.onerror = (e) => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
         console.log('error', e);
         setIsSpeaking(false);
       };
@@ -182,30 +232,27 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       });
       console.log(error);
     }
-  };
+  }, [toast, t, props, POST]);
 
-  const stopSpeak = (cancel = false) => {
+  const stopSpeak = useCallback((cancel = false) => {
     cancelWhisperSignal.current = cancel;
     stopCalledRef.current = true;
-    // 立即停止挂起的流
-    if (pendingStream) {
-      pendingStream.getTracks().forEach(track => track.stop());
-      setPendingStream(null);
-    }
-    if (mediaRecorder.current) {
-      mediaRecorder.current?.stop();
+    if (intervalRef.current) {
       clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
-  };
+    if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
+      mediaRecorder.current.stop();
+    }
+  }, []);
 
-  const finishSpeak = () => {
-
+  const finishSpeak = useCallback(() => {
     setNeedspeak(false);
     stopSpeak(true);
     return {
-      needSpeak,
+      needSpeak
     };
-  };
+  }, [stopSpeak]);
 
   useEffect(() => {
     return () => {
@@ -224,7 +271,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     if (audioSecond >= 60) {
       stopSpeak();
     }
-  }, [audioSecond]);
+  }, [audioSecond, stopSpeak]);
 
   return {
     startSpeak,
@@ -236,6 +283,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     isTransCription,
     renderAudioGraph,
     stream: mediaStream,
-    speakingTimeString
+    speakingTimeString,
+    changeWaveColor
   };
 };
