@@ -364,10 +364,10 @@ const VoiceInput = ({
                 }}
               />
               {isSpeaking && !isTransCription && (
-                <Flex>
+                <Flex
+                ml={60}>
                   <MyTooltip label={t('common:core.chat.Cancel Speak')}>
                     <Flex
-                      ml={60}
                       alignItems={'center'}
                       justifyContent={'center'}
                       flexShrink={0}
@@ -385,7 +385,7 @@ const VoiceInput = ({
                       />
                     </Flex>
                   </MyTooltip>
-                  <MyTooltip label={'common:core.chat.Finish Speak'}>
+                  <MyTooltip label={t('common:core.chat.Finish Speak')}>
                     <Flex
                       alignItems={'center'}
                       justifyContent={'center'}
