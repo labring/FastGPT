@@ -2,13 +2,15 @@ import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/mo
 import {
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
-  DatasetTypeEnum
+  DatasetTypeEnum,
+  TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetCollectionItemType,
   DatasetItemType
 } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const defaultDatasetDetail: DatasetItemType = {
   _id: '',
@@ -73,4 +75,49 @@ export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
   [DatasetTypeEnum.feishu]: '/docs/guide/knowledge_base/lark_dataset/',
   [DatasetTypeEnum.yuque]: '/docs/guide/knowledge_base/yuque_dataset/',
   [DatasetTypeEnum.externalFile]: ''
+};
+
+export enum TrainingStatus {
+  Normal = 'Normal',
+  Error = 'Error',
+  InProgress = 'InProgress',
+  NotStarted = 'NotStarted'
+}
+
+export const TrainingText = {
+  [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
+  [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
+  [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
+  [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index')
+};
+
+export const TrainingProcess = {
+  waiting: {
+    label: i18nT('dataset:process.Waiting'),
+    value: 'waiting'
+  },
+  parsing: {
+    label: i18nT('dataset:process.Parsing'),
+    value: 'parsing'
+  },
+  getQA: {
+    label: i18nT('dataset:process.Get QA'),
+    value: 'getQA'
+  },
+  imageIndex: {
+    label: i18nT('dataset:process.Image_Index'),
+    value: 'imageIndex'
+  },
+  autoIndex: {
+    label: i18nT('dataset:process.Auto_Index'),
+    value: 'autoIndex'
+  },
+  vectorizing: {
+    label: i18nT('dataset:process.Vectorizing'),
+    value: 'vectorizing'
+  },
+  isReady: {
+    label: i18nT('dataset:process.Is_Ready'),
+    value: 'isReady'
+  }
 };

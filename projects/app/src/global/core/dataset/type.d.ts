@@ -29,6 +29,7 @@ export type DatasetCollectionsListItemType = {
 
   dataAmount: number;
   trainingAmount: number;
+  hasError?: boolean;
 };
 
 /* ================= data ===================== */
