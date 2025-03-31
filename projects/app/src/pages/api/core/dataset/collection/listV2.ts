@@ -130,7 +130,7 @@ async function handler(
           $group: {
             _id: '$collectionId',
             count: { $sum: 1 },
-            hasError: { $max: { $cond: [{ $ne: ['$errorMsg', ''] }, true, false] } }
+            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
           }
         }
       ],

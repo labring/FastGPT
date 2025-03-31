@@ -1,28 +1,29 @@
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type deleteTrainingDataBody = {
   datasetId: string;
   dataId: string;
 };
 
-async function handler(req: NextApiRequest) {
-  const { datasetId, dataId } = req.body as deleteTrainingDataBody;
+export type deleteTrainingDataQuery = {};
 
-  if (!datasetId || !dataId) {
-    return Promise.reject(CommonErrEnum.missingParams);
-  }
+export type deleteTrainingDataResponse = {};
+
+async function handler(
+  req: ApiRequestProps<deleteTrainingDataBody, deleteTrainingDataQuery>
+): Promise<deleteTrainingDataResponse> {
+  const { datasetId, dataId } = req.body;
 
   const { teamId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
     collectionId: dataId,
-    per: OwnerPermissionVal
+    per: ManagePermissionVal
   });
 
   await MongoDatasetTraining.deleteOne({

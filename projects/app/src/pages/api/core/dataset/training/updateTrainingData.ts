@@ -1,9 +1,9 @@
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { NextApiRequest } from 'next';
-import { addMinutes } from 'date-fns';
 import { NextAPI } from '@/service/middleware/entry';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { addMinutes } from 'date-fns';
 
 export type updateTrainingDataBody = {
   datasetId: string;
@@ -12,8 +12,14 @@ export type updateTrainingDataBody = {
   a?: string;
 };
 
-async function handler(req: NextApiRequest) {
-  const { datasetId, dataId, q, a } = req.body as updateTrainingDataBody;
+export type updateTrainingDataQuery = {};
+
+export type updateTrainingDataResponse = {};
+
+async function handler(
+  req: ApiRequestProps<updateTrainingDataBody, updateTrainingDataQuery>
+): Promise<updateTrainingDataResponse> {
+  const { datasetId, dataId, q, a } = req.body;
 
   const { teamId } = await authDataset({
     req,

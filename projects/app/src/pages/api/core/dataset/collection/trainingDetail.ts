@@ -85,9 +85,9 @@ async function handler(req: NextApiRequest) {
   });
 
   const match = {
-    collectionId: collection._id,
     teamId: collection.teamId,
-    datasetId: collection.dataset._id
+    datasetId: collection.datasetId,
+    collectionId: collection._id
   };
 
   // 获取最小过期时间
@@ -108,7 +108,6 @@ async function handler(req: NextApiRequest) {
 
   const minExpireAt = minExpireAtResult?.minExpireAt || new Date();
 
-  // 并行执行所有查询
   const [trainingCounts, errorItems, errorTotal, indexesCounts, trainingWaitingCounts] =
     await Promise.all([
       // 获取训练计数

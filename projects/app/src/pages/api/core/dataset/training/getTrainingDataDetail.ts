@@ -1,8 +1,10 @@
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+
+export type getTrainingDataDetailQuery = {};
 
 export type getTrainingDataDetailBody = {
   datasetId: string;
@@ -19,8 +21,10 @@ export type getTrainingDataDetailResponse =
     }
   | undefined;
 
-async function handler(req: NextApiRequest): Promise<getTrainingDataDetailResponse> {
-  const { datasetId, dataId } = req.body as getTrainingDataDetailBody;
+async function handler(
+  req: ApiRequestProps<getTrainingDataDetailBody, getTrainingDataDetailQuery>
+): Promise<getTrainingDataDetailResponse> {
+  const { datasetId, dataId } = req.body;
 
   const { teamId } = await authDatasetCollection({
     req,
