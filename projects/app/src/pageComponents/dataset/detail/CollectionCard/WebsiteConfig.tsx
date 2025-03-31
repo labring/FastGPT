@@ -20,7 +20,8 @@ import {
   Textarea,
   useDisclosure,
   Checkbox,
-  HStack
+  HStack,
+  Stack
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -194,21 +195,29 @@ const WebsiteConfigModal = ({
       iconSrc="core/dataset/websiteDataset"
       title={t('common:core.dataset.website.Config')}
       onClose={onClose}
-      maxW={'500px'}
+      w={'500px'}
     >
-      <ModalBody>
-        <MyStep />
+      <ModalBody w={'full'}>
+        <Stack w={'75%'} marginX={'auto'}>
+          <MyStep />
+        </Stack>
         <MyDivider />
         {activeStep == 0 && (
           <>
-            <Box fontSize={'sm'} color={'myGray.600'}>
+            <Box
+              fontSize={'sm'}
+              color={'myGray.900'}
+              bgColor={'blue.50'}
+              padding={'16px'}
+              borderRadius={'8px'}
+            >
               {t('common:core.dataset.website.Config Description')}
               {feConfigs?.docUrl && (
                 <Link
                   href={getDocPath('/docs/guide/knowledge_base/websync/')}
                   target="_blank"
                   textDecoration={'underline'}
-                  fontWeight={'bold'}
+                  color={'blue.700'}
                 >
                   {t('common:common.course.Read Course')}
                 </Link>

@@ -41,6 +41,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HeaderTagPopOver from './HeaderTagPopOver';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import Icon from '@fastgpt/web/components/common/Icon';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
@@ -176,7 +177,9 @@ const Header = ({}: {}) => {
         )}
 
         {/* Tag */}
-        {datasetDetail.permission.hasWritePer && feConfigs?.isPlus && <HeaderTagPopOver />}
+        {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+          datasetDetail.permission.hasWritePer &&
+          feConfigs?.isPlus && <HeaderTagPopOver />}
       </HStack>
 
       {/* diff collection button */}
@@ -280,9 +283,18 @@ const Header = ({}: {}) => {
                 <Flex alignItems={'center'}>
                   {datasetDetail.status === DatasetStatusEnum.active && (
                     <Flex gap={2}>
-                      <Button onClick={onOpenWebsiteModal}>{t('common:common.Config')}</Button>
-                      <Button variant="outline" onClick={openWebSyncConfirm}>
-                        {t('common:core.dataset.website.Start Sync')}
+                      <Button
+                        onClick={onOpenWebsiteModal}
+                        leftIcon={<Icon name="change" w={'18px'} />}
+                      >
+                        {t('dataset:params_config')}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={openWebSyncConfirm}
+                        leftIcon={<Icon name="common/confirm/restoreTip" w={'18px'} />}
+                      >
+                        {t('dataset:immediate_sync')}
                       </Button>
                     </Flex>
                   )}
@@ -291,19 +303,19 @@ const Header = ({}: {}) => {
                       ml={3}
                       alignItems={'center'}
                       px={3}
-                      py={1}
+                      py={1.5}
+                      background={'linear-gradient(90deg, #F0EEFF 0%, #E4E1FC 100%)'}
                       borderRadius="md"
-                      border={theme.borders.base}
                     >
                       <Box
                         animation={'zoomStopIcon 0.5s infinite alternate'}
-                        bg={'myGray.700'}
+                        bg={'purple.500'}
                         w="8px"
                         h="8px"
                         borderRadius={'50%'}
                         mt={'1px'}
                       ></Box>
-                      <Box ml={2} color={'myGray.600'}>
+                      <Box ml={2} color={'myGray.900'}>
                         {t('common:core.dataset.status.syncing')}
                       </Box>
                     </Flex>
@@ -313,26 +325,29 @@ const Header = ({}: {}) => {
                       ml={3}
                       alignItems={'center'}
                       px={3}
-                      py={1}
+                      py={1.5}
                       borderRadius="md"
-                      border={theme.borders.base}
+                      background={'linear-gradient(90deg, #F0F4FF 0%, #E1EAFF 100%)'}
                     >
                       <Box
                         animation={'zoomStopIcon 0.5s infinite alternate'}
-                        bg={'myGray.700'}
                         w="8px"
+                        bg={'blue.600'}
                         h="8px"
                         borderRadius={'50%'}
                         mt={'1px'}
                       ></Box>
-                      <Box ml={2} color={'myGray.600'}>
+                      <Box ml={2} color={'myGray.900'}>
                         {t('common:core.dataset.status.waiting')}
                       </Box>
                     </Flex>
                   )}
                 </Flex>
               ) : (
-                <Button onClick={onOpenWebsiteModal}>
+                <Button
+                  onClick={onOpenWebsiteModal}
+                  leftIcon={<Icon name="common/setting" w={'18px'} />}
+                >
                   {t('common:core.dataset.Set Website Config')}
                 </Button>
               )}
