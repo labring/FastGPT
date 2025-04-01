@@ -63,73 +63,58 @@ async function handler(
     readFromSecondary
   ).lean();
 
-  // 获取所有训练模式
-  const trainingModes = Object.values(TrainingModeEnum);
-
-  const [trainingCounts, errorCounts, trainedCount, waitingCounts] = await Promise.all([
-    // 获取训练计数
-    Promise.all(
-      trainingModes.map((mode) =>
-        MongoDatasetTraining.countDocuments(
-          {
-            ...match,
-            mode
-          },
-          readFromSecondary
-        )
-      )
-    ).then((counts) => {
-      const trainingCounts = {
-        ...defaultCounts,
-        ...Object.fromEntries(trainingModes.map((mode, i) => [mode, counts[i]]))
-      };
-      return trainingCounts;
-    }),
-
-    // 获取错误计数
-    Promise.all(
-      trainingModes.map((mode) =>
-        MongoDatasetTraining.countDocuments(
-          {
-            ...match,
-            mode,
-            errorMsg: { $exists: true }
-          },
-          readFromSecondary
-        )
-      )
-    ).then((counts) => {
-      const errorCounts = {
-        ...defaultCounts,
-        ...Object.fromEntries(trainingModes.map((mode, i) => [mode, counts[i]]))
-      };
-      return errorCounts;
-    }),
-
-    // 获取训练完成计数
-    MongoDatasetData.countDocuments(match, readFromSecondary),
-
-    // 获取等待训练计数
-    Promise.all(
-      trainingModes.map((mode) =>
-        MongoDatasetTraining.countDocuments(
-          {
-            _id: { $lt: minId?._id },
-            retryCount: { $gt: 0 },
-            lockTime: { $lt: new Date('2050/1/1') },
-            mode
-          },
-          readFromSecondary
-        )
-      )
-    ).then((counts) => {
-      const waitingCounts = {
-        ...defaultCounts,
-        ...Object.fromEntries(trainingModes.map((mode, i) => [mode, counts[i]]))
-      };
-      return waitingCounts;
-    })
+  const [result, trainedCount] = await Promise.all([
+    MongoDatasetTraining.aggregate(
+      [
+        { $match: match },
+        {
+          $facet: {
+            trainingCounts: [{ $group: { _id: '$mode', count: { $sum: 1 } } }],
+            errorCounts: [
+              { $match: { errorMsg: { $exists: true } } },
+              { $group: { _id: '$mode', count: { $sum: 1 } } }
+            ],
+            waitingCounts: [
+              {
+                $match: {
+                  _id: { $lt: minId?._id },
+                  retryCount: { $gt: 0 },
+                  lockTime: { $lt: new Date('2050/1/1') }
+                }
+              },
+              { $group: { _id: '$mode', count: { $sum: 1 } } }
+            ]
+          }
+        }
+      ],
+      readFromSecondary
+    ),
+    MongoDatasetData.countDocuments(match, readFromSecondary)
   ]);
+
+  const trainingCounts = result[0].trainingCounts.reduce(
+    (acc: Record<TrainingModeEnum, number>, item: { _id: TrainingModeEnum; count: number }) => {
+      acc[item._id] = item.count;
+      return acc;
+    },
+    defaultCounts
+  );
+
+  const errorCounts = result[0].errorCounts.reduce(
+    (acc: Record<TrainingModeEnum, number>, item: { _id: TrainingModeEnum; count: number }) => {
+      acc[item._id] = item.count;
+      return acc;
+    },
+    defaultCounts
+  );
+
+  const waitingCounts = result[0].waitingCounts.reduce(
+    (acc: Record<TrainingModeEnum, number>, item: { _id: TrainingModeEnum; count: number }) => {
+      acc[item._id] = item.count;
+      return acc;
+    },
+    defaultCounts
+  );
 
   return {
     trainingType: collection.trainingType,

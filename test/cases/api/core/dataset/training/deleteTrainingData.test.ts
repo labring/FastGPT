@@ -46,6 +46,13 @@ describe('delete training data test', () => {
       }
     });
 
+    const deletedTrainingData = await MongoDatasetTraining.findOne({
+      teamId: root.teamId,
+      datasetId: dataset._id,
+      _id: trainingData._id
+    });
+
     expect(res.code).toBe(200);
+    expect(deletedTrainingData).toBeNull();
   });
 });

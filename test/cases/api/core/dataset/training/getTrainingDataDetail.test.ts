@@ -34,7 +34,8 @@ describe('get training data detail test', () => {
       datasetId: dataset._id,
       collectionId: collection._id,
       mode: TrainingModeEnum.chunk,
-      model: 'test'
+      q: 'test',
+      a: 'test'
     });
 
     const res = await Call<getTrainingDataDetailBody, {}, getTrainingDataDetailResponse>(handler, {
@@ -48,5 +49,10 @@ describe('get training data detail test', () => {
 
     expect(res.code).toBe(200);
     expect(res.data).toBeDefined();
+    expect(res.data?._id).toBe(trainingData._id);
+    expect(res.data?.datasetId).toBe(dataset._id);
+    expect(res.data?.mode).toBe(TrainingModeEnum.chunk);
+    expect(res.data?.q).toBe('test');
+    expect(res.data?.a).toBe('test');
   });
 });
