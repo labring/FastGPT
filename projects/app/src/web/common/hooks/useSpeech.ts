@@ -4,6 +4,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
   const { t } = useTranslation();
@@ -17,18 +18,11 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   const startTimestamp = useRef(0);
   const cancelWhisperSignal = useRef(false);
   const stopCalledRef = useRef(false);
+  const { isPc } = useSystem();
   const [waveColor, setWaveColor] = useState({
     primary: '#3370FF',
     secondary: '#66A3FF'
   });
-  const [isPc, setIsPc] = useState(false);
-
-  useEffect(() => {
-    // check if it is pc
-    setIsPc(
-      !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
-    );
-  }, []);
 
   const changeWaveColor = useCallback((isPrimary: boolean) => {
     setWaveColor(
