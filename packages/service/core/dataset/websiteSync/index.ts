@@ -20,7 +20,8 @@ export const getWebsiteSyncWorker = (processor: Processor<WebsiteSyncJobData>) =
     removeOnFail: {
       age: 15 * 24 * 60 * 60, // Keep up to 15 days
       count: 1000 // Keep up to 1000 jobs
-    }
+    },
+    concurrency: 1 // Set worker to process only 1 job at a time
   });
 };
 
