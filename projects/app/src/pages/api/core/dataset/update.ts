@@ -35,6 +35,7 @@ import {
   removeWebsiteSyncJobScheduler,
   upsertWebsiteSyncJobScheduler
 } from '@fastgpt/service/core/dataset/websiteSync';
+import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -119,6 +120,11 @@ async function handler(
   });
 
   const onUpdate = async (session: ClientSession) => {
+    if (dataset.type === DatasetTypeEnum.websiteDataset && chunkSettings) {
+      // clean up dataset
+      await delDatasetRelevantData({ datasets: [dataset], session });
+    }
+
     await MongoDataset.findByIdAndUpdate(
       id,
       {
