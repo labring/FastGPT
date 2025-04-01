@@ -14,6 +14,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { WebsiteConfigFormType } from './WebsiteConfig';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
@@ -88,11 +89,25 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     onClose: onCloseWebsiteModal
   } = useDisclosure();
   const { mutate: onUpdateDatasetWebsiteConfig } = useRequest({
-    mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
+    mutationFn: async (websiteConfig: WebsiteConfigFormType) => {
       onCloseWebsiteModal();
       await updateDataset({
         id: datasetId,
-        websiteConfig
+        websiteConfig: {
+          url: websiteConfig.url,
+          selector: websiteConfig.selector || 'body'
+        },
+        chunkSettings: {
+          autoIndexes: websiteConfig.autoIndexes,
+          imageIndex: websiteConfig.imageIndex,
+          trainingType: websiteConfig.trainingType,
+          chunkSettingMode: websiteConfig.chunkSettingMode,
+          chunkSplitMode: websiteConfig.chunkSplitMode,
+          chunkSize: websiteConfig.chunkSize,
+          indexSize: websiteConfig.indexSize,
+          chunkSplitter: websiteConfig.chunkSplitter,
+          qaPrompt: websiteConfig.qaPrompt
+        }
       });
 
       await syncWebsite();

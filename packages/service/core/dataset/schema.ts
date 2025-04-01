@@ -99,10 +99,11 @@ const DatasetSchema = new Schema({
       selector: {
         type: String,
         default: 'body'
-      },
-      // Chunk settings
-      ...ChunkSettings
+      }
     }
+  },
+  chunkSettings: {
+    type: ChunkSettings
   },
   inheritPermission: {
     type: Boolean,

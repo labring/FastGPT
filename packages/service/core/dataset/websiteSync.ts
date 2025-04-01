@@ -1,6 +1,5 @@
 import { Processor } from 'bullmq';
-import { getQueue, getWorker, QueueNames } from '..';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { getQueue, getWorker, QueueNames } from '../../common/bullmq';
 
 export type WebsiteSyncJobData = {
   datasetId: string;
@@ -24,13 +23,9 @@ export function getWebsiteSyncWorker(
   processor: Processor<WebsiteSyncJobData, WebsiteSyncJobReturn>
 ) {
   return getWorker<WebsiteSyncJobData, WebsiteSyncJobReturn>(QueueNames.websiteSync, processor, {
-    removeOnComplete: {
-      age: 3600, // Keep up to 1 hour
-      count: 1000 // Keep up to 1000 jobs
-    },
     removeOnFail: {
-      age: 24 * 3600, // Keep up to 24 hours
-      count: 8000 // Keep up to 8000 jobs
+      age: 15 * 24 * 3600, // Keep up to 24 hours
+      count: 1000 // Keep up to 8000 jobs
     }
   });
 }

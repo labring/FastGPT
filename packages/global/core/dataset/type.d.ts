@@ -17,6 +17,20 @@ import { SourceMemberType } from 'support/user/type';
 import { DatasetDataIndexTypeEnum } from './data/constants';
 import { ChunkSettingModeEnum } from './constants';
 
+export type ChunkSettingsType = {
+  trainingType: DatasetCollectionDataProcessModeEnum;
+  autoIndexes?: boolean;
+  imageIndex?: boolean;
+
+  chunkSettingMode?: ChunkSettingModeEnum;
+  chunkSplitMode?: DataChunkSplitModeEnum;
+
+  chunkSize?: number;
+  indexSize?: number;
+  chunkSplitter?: string;
+  qaPrompt?: string;
+};
+
 export type DatasetSchemaType = {
   _id: string;
   parentId?: string;
@@ -37,19 +51,10 @@ export type DatasetSchemaType = {
   websiteConfig?: {
     url: string;
     selector: string;
-    // Chunk settings
-    autoIndexes?: boolean;
-    imageIndex?: boolean;
-    trainingType?: DatasetCollectionDataProcessModeEnum;
-
-    chunkSettingMode?: ChunkSettingModeEnum;
-    chunkSplitMode?: DataChunkSplitModeEnum;
-
-    chunkSize?: number;
-    indexSize?: number;
-    chunkSplitter?: string;
-    qaPrompt?: string;
   };
+
+  chunkSettings?: ChunkSettingsType;
+
   inheritPermission: boolean;
   apiServer?: APIFileServer;
   feishuServer?: FeishuServer;

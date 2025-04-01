@@ -5,7 +5,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getCurrentWebsiteSyncJob } from '@fastgpt/service/common/bullmq/queues/websiteSync';
+import { getCurrentWebsiteSyncJob } from '@fastgpt/service/core/dataset/websiteSync';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { FinishedStates } from '@fastgpt/service/common/bullmq';
 
@@ -31,7 +31,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
-  let status = await (async () => {
+  const status = await (async () => {
     const syncJob = await getCurrentWebsiteSyncJob(datasetId);
     if (syncJob) {
       const jobState = await syncJob.getState();

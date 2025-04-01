@@ -9,7 +9,7 @@ import { deleteDatasetDataVector } from '../../common/vectorStore/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
-import { removeWebsiteSyncJobScheduler } from '../../common/bullmq/queues/websiteSync';
+import { removeWebsiteSyncJobScheduler } from './websiteSync';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /* ============= dataset ========== */
@@ -94,7 +94,7 @@ export async function delDatasetRelevantData({
     await Promise.all(
       datasets.map((dataset) => {
         if (dataset.type === DatasetTypeEnum.websiteDataset)
-          return removeWebsiteSyncJobScheduler(dataset._id.toString());
+          return removeWebsiteSyncJobScheduler(String(dataset._id));
       })
     );
   };

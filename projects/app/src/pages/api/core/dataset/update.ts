@@ -34,7 +34,7 @@ import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   removeWebsiteSyncJobScheduler,
   upsertWebsiteSyncJobScheduler
-} from '@fastgpt/service/common/bullmq/queues/websiteSync';
+} from '@fastgpt/service/core/dataset/websiteSync';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -67,7 +67,8 @@ async function handler(
     apiServer,
     yuqueServer,
     feishuServer,
-    autoSync
+    autoSync,
+    chunkSettings
   } = req.body;
 
   if (!id) {
@@ -127,6 +128,7 @@ async function handler(
         ...(agentModel && { agentModel }),
         ...(vlmModel && { vlmModel }),
         ...(websiteConfig && { websiteConfig }),
+        ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),
@@ -237,10 +239,10 @@ const updateSyncSchedule = async ({
   if (dataset.type === DatasetTypeEnum.websiteDataset) {
     if (autoSync) {
       // upsert Job Scheduler
-      upsertWebsiteSyncJobScheduler({ datasetId: dataset._id.toString() });
+      upsertWebsiteSyncJobScheduler({ datasetId: String(dataset._id) });
     } else {
       // remove Job Scheduler
-      removeWebsiteSyncJobScheduler(dataset._id.toString());
+      removeWebsiteSyncJobScheduler(String(dataset._id));
 
       // Backward compatibility
       await MongoDatasetCollection.updateMany(

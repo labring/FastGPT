@@ -28,8 +28,7 @@ import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
-  DatasetCollectionDataProcessModeMap,
-  TrainingModeEnum
+  DatasetCollectionDataProcessModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -42,13 +41,12 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
   getIndexSizeSelectList,
-  getLLMDefaultChunkSize,
   getLLMMaxChunkSize,
   getMaxIndexSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
 
-type FormType = {
+export type WebsiteConfigFormType = {
   url: string;
   selector?: string | undefined;
   autoIndexes?: boolean;
@@ -67,7 +65,7 @@ const WebsiteConfigModal = ({
   onSuccess
 }: {
   onClose: () => void;
-  onSuccess: (data: FormType) => void;
+  onSuccess: (data: WebsiteConfigFormType) => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -83,6 +81,7 @@ const WebsiteConfigModal = ({
 
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const websiteConfig = datasetDetail.websiteConfig;
+  const chunkSettings = datasetDetail.chunkSettings;
 
   const {
     register: registerForm1,
@@ -118,15 +117,15 @@ const WebsiteConfigModal = ({
 
   const { setValue, register, watch, getValues, handleSubmit } = useForm({
     defaultValues: {
-      imageIndex: websiteConfig?.imageIndex || false,
-      autoIndexes: websiteConfig?.autoIndexes || false,
-      trainingType: websiteConfig?.trainingType || DatasetCollectionDataProcessModeEnum.chunk,
-      chunkSettingMode: websiteConfig?.chunkSettingMode || ChunkSettingModeEnum.auto,
-      chunkSplitMode: websiteConfig?.chunkSplitMode || DataChunkSplitModeEnum.size,
-      chunkSize: websiteConfig?.chunkSize || 2000,
-      indexSize: websiteConfig?.indexSize || vectorModel?.defaultToken || 512,
-      chunkSplitter: websiteConfig?.chunkSplitter || '',
-      qaPrompt: websiteConfig?.qaPrompt || Prompt_AgentQA.description
+      imageIndex: chunkSettings?.imageIndex || false,
+      autoIndexes: chunkSettings?.autoIndexes || false,
+      trainingType: chunkSettings?.trainingType || DatasetCollectionDataProcessModeEnum.chunk,
+      chunkSettingMode: chunkSettings?.chunkSettingMode || ChunkSettingModeEnum.auto,
+      chunkSplitMode: chunkSettings?.chunkSplitMode || DataChunkSplitModeEnum.size,
+      chunkSize: chunkSettings?.chunkSize || 2000,
+      indexSize: chunkSettings?.indexSize || vectorModel?.defaultToken || 512,
+      chunkSplitter: chunkSettings?.chunkSplitter || '',
+      qaPrompt: chunkSettings?.qaPrompt || Prompt_AgentQA.description
     }
   });
 

@@ -25,6 +25,7 @@ export type DatasetUpdateBody = {
   apiServer?: DatasetSchemaType['apiServer'];
   yuqueServer?: DatasetSchemaType['yuqueServer'];
   feishuServer?: DatasetSchemaType['feishuServer'];
+  chunkSettings?: DatasetSchemaType['chunkSettings'];
 
   // sync schedule
   autoSync?: boolean;

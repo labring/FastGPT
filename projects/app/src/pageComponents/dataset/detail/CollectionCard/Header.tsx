@@ -282,7 +282,7 @@ const Header = ({}: {}) => {
               {datasetDetail?.websiteConfig?.url ? (
                 <Flex alignItems={'center'}>
                   {datasetDetail.status === DatasetStatusEnum.active && (
-                    <Flex gap={2}>
+                    <HStack gap={2}>
                       <Button
                         onClick={onOpenWebsiteModal}
                         leftIcon={<Icon name="change" w={'18px'} />}
@@ -296,7 +296,7 @@ const Header = ({}: {}) => {
                       >
                         {t('dataset:immediate_sync')}
                       </Button>
-                    </Flex>
+                    </HStack>
                   )}
                   {datasetDetail.status === DatasetStatusEnum.syncing && (
                     <Flex
