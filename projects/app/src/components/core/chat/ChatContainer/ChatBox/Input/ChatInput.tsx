@@ -17,7 +17,7 @@ import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import VoiceInput from './VoiceInput';
+import VoiceInput, { VoiceInputComponentRef } from './VoiceInput';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -44,6 +44,7 @@ const ChatInput = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc } = useSystem();
+  const VoiceInputRef = useRef<VoiceInputComponentRef>(null);
 
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -91,14 +92,6 @@ const ChatInput = ({
     refreshDeps: [fileList, outLinkAuthData, chatId]
   });
 
-  const [voiceState, setVoiceState] = useState({
-    isSpeaking: false,
-    needSpeak: false,
-    isTransCription: false,
-    onWhisperRecord: () => {},
-    prepareSpeak: () => {}
-  });
-
   /* on send */
   const handleSend = useCallback(
     async (val?: string) => {
@@ -113,7 +106,6 @@ const ChatInput = ({
     },
     [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
-
 
   const RenderTextarea = useMemo(
     () => (
@@ -136,113 +128,114 @@ const ChatInput = ({
             <File onSelect={(files) => onSelectFile({ files })} />
           </Flex>
         )}
-          {/* input area */}
-          <Textarea
-            ref={TextareaDom}
-            py={0}
-            pl={2}
-            pr={['30px', '48px']}
-            border={'none'}
-            _focusVisible={{
-              border: 'none'
-            }}
-            placeholder={
-              isPc ? (voiceState.isSpeaking ? t('common:core.chat.Speaking') :  t('common:core.chat.Type a message') ): t('chat:input_placeholder_phone')
+        {/* input area */}
+        <Textarea
+          ref={TextareaDom}
+          py={0}
+          pl={2}
+          pr={['30px', '48px']}
+          border={'none'}
+          _focusVisible={{
+            border: 'none'
+          }}
+          placeholder={
+            isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone')
+          }
+          resize={'none'}
+          rows={1}
+          height={'22px'}
+          lineHeight={'22px'}
+          maxHeight={'50vh'}
+          maxLength={-1}
+          overflowY={'auto'}
+          whiteSpace={'pre-wrap'}
+          wordBreak={'break-all'}
+          boxShadow={'none !important'}
+          color={'myGray.900'}
+          fontSize={['md', 'sm']}
+          value={inputValue}
+          onChange={(e) => {
+            const textarea = e.target;
+            textarea.style.height = textareaMinH;
+            textarea.style.height = `${textarea.scrollHeight}px`;
+            setValue('input', textarea.value);
+          }}
+          onKeyDown={(e) => {
+            // enter send.(pc or iframe && enter and unPress shift)
+            const isEnter = e.keyCode === 13;
+            if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+              // Add a new line
+              const index = TextareaDom.current.selectionStart;
+              const val = TextareaDom.current.value;
+              TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
+              TextareaDom.current.selectionStart = index + 1;
+              TextareaDom.current.selectionEnd = index + 1;
+
+              TextareaDom.current.style.height = textareaMinH;
+              TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+
+              return;
             }
-            resize={'none'}
-            rows={1}
-            height={'22px'}
-            lineHeight={'22px'}
-            maxHeight={'50vh'}
-            maxLength={-1}
-            overflowY={'auto'}
-            whiteSpace={'pre-wrap'}
-            wordBreak={'break-all'}
-            boxShadow={'none !important'}
-            color={'myGray.900'}
-            fontSize={['md', 'sm']}
-            value={inputValue}
-            pointerEvents={voiceState.isSpeaking || voiceState.needSpeak ? 'none' : 'auto'}
-            onChange={(e) => {
-              const textarea = e.target;
-              textarea.style.height = textareaMinH;
-              textarea.style.height = `${textarea.scrollHeight}px`;
-              setValue('input', textarea.value);
-            }}
-            onKeyDown={(e) => {
-              // enter send.(pc or iframe && enter and unPress shift)
-              const isEnter = e.keyCode === 13;
-              if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
-                // Add a new line
-                const index = TextareaDom.current.selectionStart;
-                const val = TextareaDom.current.value;
-                TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
-                TextareaDom.current.selectionStart = index + 1;
-                TextareaDom.current.selectionEnd = index + 1;
 
-                TextareaDom.current.style.height = textareaMinH;
-                TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+            // 全选内容
+            // @ts-ignore
+            e.key === 'a' && e.ctrlKey && e.target?.select();
 
-                return;
-              }
+            if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
+              handleSend();
+              e.preventDefault();
+            }
+          }}
+          onPaste={(e) => {
+            const clipboardData = e.clipboardData;
+            if (clipboardData && (showSelectFile || showSelectImg)) {
+              const items = clipboardData.items;
+              const files = Array.from(items)
+                .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
+                .filter((file) => {
+                  return file && fileTypeFilter(file);
+                }) as File[];
+              onSelectFile({ files });
 
-              // 全选内容
-              // @ts-ignore
-              e.key === 'a' && e.ctrlKey && e.target?.select();
-
-              if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-                handleSend();
+              if (files.length > 0) {
                 e.preventDefault();
+                e.stopPropagation();
               }
-            }}
-            onPaste={(e) => {
-              const clipboardData = e.clipboardData;
-              if (clipboardData && (showSelectFile || showSelectImg)) {
-                const items = clipboardData.items;
-                const files = Array.from(items)
-                  .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
-                  .filter((file) => {
-                    return file && fileTypeFilter(file);
-                  }) as File[];
-                onSelectFile({ files });
-
-                if (files.length > 0) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }
-              }
-            }}
-          />
-        <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']} zIndex={3}>
+            }
+          }}
+        />
+        <Flex
+          alignItems={'center'}
+          position={'absolute'}
+          right={[2, 4]}
+          bottom={['10px', '12px']}
+          zIndex={3}
+        >
           {/* Voice input icon */}
-            <MyTooltip label={t('common:core.chat.Record')}>
-              <Flex
-                alignItems={'center'}
-                justifyContent={'center'}
-                flexShrink={0}
-                h={['28px', '32px']}
-                w={['28px', '32px']}
-                mr={2}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                _hover={{ bg: '#F5F5F8' }}
-                onClick={() => {
-                  if (isPc) {
-                    voiceState.onWhisperRecord();
-                  } else {
-                    voiceState.prepareSpeak();
-                  }
-                }}
-              >
-                <MyIcon
-                  name={'core/chat/recordFill'}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  color={'myGray.600'}
-                />
-              </Flex>
-            </MyTooltip>            
-          
+          <MyTooltip label={t('common:core.chat.Record')}>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'center'}
+              flexShrink={0}
+              h={['28px', '32px']}
+              w={['28px', '32px']}
+              mr={2}
+              borderRadius={'md'}
+              cursor={'pointer'}
+              _hover={{ bg: '#F5F5F8' }}
+              onClick={() => {
+                VoiceInputRef.current?.onSpeak();
+              }}
+            >
+              <MyIcon
+                name={'core/chat/recordFill'}
+                width={['22px', '25px']}
+                height={['22px', '25px']}
+                color={'myGray.600'}
+              />
+            </Flex>
+          </MyTooltip>
+
           {/* send and stop icon */}
           <Flex
             alignItems={'center'}
@@ -373,34 +366,20 @@ const ChatInput = ({
           <FilePreview fileList={fileList} removeFiles={removeFiles} />
         </Box>
         {/* voice input and loading container */}
-          <Box 
-            position="absolute" 
-            top={0} 
-            bottom={0} 
-            left={0} 
-            right={0} 
-            zIndex={voiceState.isSpeaking || voiceState.needSpeak ? 999 : -1}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="lg"
-            bg="white"
-          >
-            <VoiceInput
-              onSendMessage={onSendMessage}
-              resetInputVal={resetInputVal}
-              whisperConfig={whisperConfig}
-              autoTTSResponse={autoTTSResponse}
-              isChatting={isChatting}
-              appId={appId}
-              chatId={chatId}
-              fileSelectConfig={fileSelectConfig}
-              fileCtrl={fileCtrl}
-              outLinkAuthData={outLinkAuthData}
-              onStateChange={setVoiceState}
-            />
-          </Box>
-          {RenderTextarea}
+        <VoiceInput
+          ref={VoiceInputRef}
+          onSendMessage={onSendMessage}
+          resetInputVal={resetInputVal}
+          whisperConfig={whisperConfig}
+          autoTTSResponse={autoTTSResponse}
+          isChatting={isChatting}
+          appId={appId}
+          chatId={chatId}
+          fileSelectConfig={fileSelectConfig}
+          fileCtrl={fileCtrl}
+          outLinkAuthData={outLinkAuthData}
+        />
+        {RenderTextarea}
       </Box>
       <ComplianceTip type={'chat'} />
     </Box>
