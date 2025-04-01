@@ -23,6 +23,12 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     primary: '#3370FF',
     secondary: '#66A3FF'
   });
+  const [isPc, setIsPc] = useState(false);
+
+  useEffect(() => {
+    // 检测是否为PC端
+    setIsPc(!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  }, []);
 
   const changeWaveColor = useCallback((isPrimary: boolean) => {
     setWaveColor(
@@ -40,10 +46,33 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     return `${formattedMinutes}:${formattedSeconds}`;
   }, [audioSecond]);
 
-  const renderAudioGraph = useCallback(
-    (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
+  const renderAudioGraphPc = useCallback((analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
+    const bufferLength = analyser.frequencyBinCount;
+    const backgroundColor = 'white';
+    const dataArray = new Uint8Array(bufferLength);
+    analyser.getByteTimeDomainData(dataArray);
+    const canvasCtx = canvas?.getContext('2d');
+    const width = 300;
+    const height = 200;
+    if (!canvasCtx) return;
+    canvasCtx.clearRect(0, 0, width, height);
+    canvasCtx.fillStyle = backgroundColor;
+    canvasCtx.fillRect(0, 0, width, height);
+    const barWidth = (width / bufferLength) * 2.5;
+    let x = 0;
+
+    canvasCtx.moveTo(x, height / 2);
+    for (let i = 0; i < bufferLength; i += 10) {
+      const barHeight = (dataArray[i] / 256) * height - height * 0.15;
+      canvasCtx.fillStyle = '#3370FF';
+      const adjustedBarHeight = Math.max(0, barHeight);
+      canvasCtx.fillRect(x, height - adjustedBarHeight, barWidth, adjustedBarHeight);
+      x += barWidth + 1;
+    }
+  }, []);
+
+  const renderAudioGraphMobile = useCallback((analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
       const bufferLength = analyser.frequencyBinCount;
-      const backgroundColor = 'white';
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteTimeDomainData(dataArray);
       const canvasCtx = canvas?.getContext('2d');
@@ -53,11 +82,15 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
       if (!canvasCtx) return;
       canvasCtx.clearRect(0, 0, width, height);
-      canvasCtx.fillStyle = backgroundColor;
+
+      // 根据设备类型设置背景色
+
+      canvasCtx.fillStyle = waveColor.primary;
+      
       canvasCtx.fillRect(0, 0, width, height);
 
       const centerY = height / 2;
-      const barWidth = (width / bufferLength) * 1.5;
+      const barWidth = (width / bufferLength) * 20;
       let x = width * 0.1;
 
       let sum = 0;
@@ -68,35 +101,39 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       }
       const average = sum / bufferLength;
 
+      // 绘制初始矩形波形
       canvasCtx.beginPath();
-      for (let i = 0; i < bufferLength; i += 2) {
+      // 根据设备类型设置波形颜色
+
+      canvasCtx.fillStyle = '#FFFFFF';
+      
+      const initialHeight = height * 0.1;
+      for (let i = 0; i < width * 0.8; i += barWidth + 1) {
+        canvasCtx.fillRect(i + width * 0.1, centerY - initialHeight, barWidth, initialHeight);
+        canvasCtx.fillRect(i + width * 0.1, centerY, barWidth, initialHeight);
+      }
+
+      // 绘制动态波形
+      canvasCtx.beginPath();
+      for (let i = 0; i < bufferLength; i += 4) {
         const value = dataArray[i];
         const normalizedValue = (value - average) / 128;
         const amplification = 2.5;
         const barHeight = normalizedValue * height * 0.4 * amplification;
 
-        // 使用动态颜色
-        const gradient = canvasCtx.createLinearGradient(
-          x,
-          centerY - barHeight,
-          x,
-          centerY + barHeight
-        );
-        gradient.addColorStop(0, waveColor.primary);
-        gradient.addColorStop(0.5, waveColor.secondary);
-        gradient.addColorStop(1, waveColor.primary);
 
-        canvasCtx.fillStyle = gradient;
+        canvasCtx.fillStyle = '#FFFFFF';
+        
 
         canvasCtx.fillRect(x, centerY - Math.abs(barHeight), barWidth, Math.abs(barHeight));
         canvasCtx.fillRect(x, centerY, barWidth, Math.abs(barHeight));
 
-        x += barWidth + 0.5;
+        x += barWidth + 1;
 
         if (x > width * 0.9) break;
       }
     },
-    [waveColor]
+    [waveColor, isPc]
   );
 
   const prepareSpeak = useCallback(() => {
@@ -124,7 +161,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
 
-      // 检查是否需要取消
+      // Check if need to cancel
       if (stopCalledRef.current) {
         stream.getTracks().forEach((track) => track.stop());
         return;
@@ -281,7 +318,8 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     needSpeak,
     isSpeaking,
     isTransCription,
-    renderAudioGraph,
+    renderAudioGraphPc,
+    renderAudioGraphMobile,
     stream: mediaStream,
     speakingTimeString,
     changeWaveColor
