@@ -152,7 +152,6 @@ const TouchListenComponent = React.memo(({
             alignItems="center"
             height="100%"
             visibility={needSpeak && !isTransCription ? 'visible' : 'hidden'}
-            backgroundColor={moveRef.current ? 'red' : 'white'}
             position="absolute"
             left={0}
             right={0}
