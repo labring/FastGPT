@@ -370,14 +370,6 @@ const ChatInput = ({
           ref={VoiceInputRef}
           onSendMessage={onSendMessage}
           resetInputVal={resetInputVal}
-          whisperConfig={whisperConfig}
-          autoTTSResponse={autoTTSResponse}
-          isChatting={isChatting}
-          appId={appId}
-          chatId={chatId}
-          fileSelectConfig={fileSelectConfig}
-          fileCtrl={fileCtrl}
-          outLinkAuthData={outLinkAuthData}
         />
         {RenderTextarea}
       </Box>
