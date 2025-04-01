@@ -36,6 +36,7 @@ import {
   upsertWebsiteSyncJobScheduler
 } from '@fastgpt/service/core/dataset/websiteSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
+import { isEqual } from 'lodash';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -120,8 +121,36 @@ async function handler(
   });
 
   const onUpdate = async (session: ClientSession) => {
-    if (dataset.type === DatasetTypeEnum.websiteDataset && chunkSettings) {
-      // clean up dataset
+    // Website dataset update chunkSettings, need to clean up dataset
+    if (
+      dataset.type === DatasetTypeEnum.websiteDataset &&
+      chunkSettings &&
+      dataset.chunkSettings &&
+      !isEqual(
+        {
+          imageIndex: dataset.chunkSettings.imageIndex,
+          autoIndexes: dataset.chunkSettings.autoIndexes,
+          trainingType: dataset.chunkSettings.trainingType,
+          chunkSettingMode: dataset.chunkSettings.chunkSettingMode,
+          chunkSplitMode: dataset.chunkSettings.chunkSplitMode,
+          chunkSize: dataset.chunkSettings.chunkSize,
+          chunkSplitter: dataset.chunkSettings.chunkSplitter,
+          indexSize: dataset.chunkSettings.indexSize,
+          qaPrompt: dataset.chunkSettings.qaPrompt
+        },
+        {
+          imageIndex: chunkSettings.imageIndex,
+          autoIndexes: chunkSettings.autoIndexes,
+          trainingType: chunkSettings.trainingType,
+          chunkSettingMode: chunkSettings.chunkSettingMode,
+          chunkSplitMode: chunkSettings.chunkSplitMode,
+          chunkSize: chunkSettings.chunkSize,
+          chunkSplitter: chunkSettings.chunkSplitter,
+          indexSize: chunkSettings.indexSize,
+          qaPrompt: chunkSettings.qaPrompt
+        }
+      )
+    ) {
       await delDatasetRelevantData({ datasets: [dataset], session });
     }
 
