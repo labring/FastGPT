@@ -11,8 +11,6 @@ const defaultWorkerOpts: Omit<ConnectionOptions, 'connection'> = {
   }
 };
 
-export const FinishedStates = ['completed', 'failed'] as const;
-
 export enum QueueNames {
   websiteSync = 'websiteSync'
 }
@@ -30,7 +28,7 @@ export const workers = (() => {
   return global.workers;
 })();
 
-export function getQueue<DataType, ReturnType = any>(
+export function getQueue<DataType, ReturnType = void>(
   name: QueueNames,
   opts?: Omit<QueueOptions, 'connection'>
 ): Queue<DataType, ReturnType> {
@@ -43,6 +41,7 @@ export function getQueue<DataType, ReturnType = any>(
     connection: newQueueRedisConnection(),
     ...opts
   });
+
   // default error handler, to avoid unhandled exceptions
   newQueue.on('error', (error) => {
     addLog.error(`MQ Queue [${name}]: ${error.message}`, error);
@@ -51,7 +50,7 @@ export function getQueue<DataType, ReturnType = any>(
   return newQueue;
 }
 
-export function getWorker<DataType, ReturnType = any>(
+export function getWorker<DataType, ReturnType = void>(
   name: QueueNames,
   processor: Processor<DataType, ReturnType>,
   opts?: Omit<WorkerOptions, 'connection'>
@@ -60,6 +59,7 @@ export function getWorker<DataType, ReturnType = any>(
   if (worker) {
     return worker as Worker<DataType, ReturnType>;
   }
+
   const newWorker = new Worker<DataType, ReturnType>(name.toString(), processor, {
     connection: newWorkerRedisConnection(),
     ...defaultWorkerOpts,
@@ -71,16 +71,4 @@ export function getWorker<DataType, ReturnType = any>(
   });
   workers.set(name, newWorker);
   return newWorker;
-}
-
-export function getAllQueues() {
-  return [...queues.values()];
-}
-
-export function getAllWorkers() {
-  return [...workers.values()];
-}
-
-export async function closeAllWorkers() {
-  return Promise.all(workers.values().map((worker) => worker.close()));
 }

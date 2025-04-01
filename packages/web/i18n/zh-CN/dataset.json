@@ -7,6 +7,7 @@
   "auto_indexes_tips": "通过大模型进行额外索引生成，提高语义丰富度，提高检索的精度。",
   "auto_training_queue": "增强索引排队",
   "chunk_max_tokens": "分块上限",
+  "chunk_size": "分块大小",
   "close_auto_sync": "确认关闭自动同步功能？",
   "collection.Create update time": "创建/更新时间",
   "collection.Training type": "训练模式",
@@ -55,6 +56,7 @@
   "image_auto_parse": "图片自动索引",
   "image_auto_parse_tips": "调用 VLM 自动标注文档里的图片，并生成额外的检索索引",
   "image_training_queue": "图片处理排队",
+  "immediate_sync": "立即同步",
   "import.Auto mode Estimated Price Tips": "需调用文本理解模型，需要消耗较多AI 积分：{{price}} 积分/1K tokens",
   "import.Embedding Estimated Price Tips": "仅使用索引模型，消耗少量 AI 积分：{{price}} 积分/1K tokens",
   "import_confirm": "确认上传",
@@ -71,6 +73,7 @@
   "keep_image": "保留图片",
   "move.hint": "移动后，所选知识库/文件夹将继承新文件夹的权限设置，原先的权限设置失效。",
   "open_auto_sync": "开启定时同步后，系统将会每天不定时尝试同步集合，集合同步期间，会出现无法搜索到该集合数据现象。",
+  "params_config": "配置",
   "params_setting": "参数设置",
   "pdf_enhance_parse": "PDF增强解析",
   "pdf_enhance_parse_price": "{{price}}积分/页",
@@ -119,10 +122,8 @@
   "vllm_model": "图片理解模型",
   "website_dataset": "Web 站点同步",
   "website_dataset_desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
+  "website_info": "网站信息",
   "yuque_dataset": "语雀知识库",
   "yuque_dataset_config": "配置语雀知识库",
-  "yuque_dataset_desc": "可通过配置语雀文档权限，使用语雀文档构建知识库，文档不会进行二次存储",
-  "website_info": "网站信息",
-  "params_config": "参数配置",
-  "immediate_sync": "立即同步"
+  "yuque_dataset_desc": "可通过配置语雀文档权限，使用语雀文档构建知识库，文档不会进行二次存储"
 }

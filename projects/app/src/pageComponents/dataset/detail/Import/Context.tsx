@@ -25,6 +25,14 @@ import {
   getAutoIndexSize,
   getMaxIndexSize
 } from '@fastgpt/global/core/dataset/training/utils';
+import { CollectionChunkFormType } from '../Form/CollectionChunkForm';
+
+type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
+export type ImportFormType = {
+  customPdfParse: boolean;
+
+  webSelector: string;
+} & CollectionChunkFormType;
 
 type TrainingFiledType = {
   chunkOverlapRatio: number;
@@ -50,26 +58,6 @@ type DatasetImportContextType = {
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
 } & TrainingFiledType;
-
-type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
-export type ImportFormType = {
-  customPdfParse: boolean;
-
-  trainingType: DatasetCollectionDataProcessModeEnum;
-  imageIndex: boolean;
-  autoIndexes: boolean;
-
-  chunkSettingMode: ChunkSettingModeEnum;
-
-  chunkSplitMode: DataChunkSplitModeEnum;
-  embeddingChunkSize: number;
-  qaChunkSize: number;
-  chunkSplitter: string;
-  indexSize: number;
-
-  qaPrompt: string;
-  webSelector: string;
-};
 
 export const DatasetImportContext = createContext<DatasetImportContextType>({
   importSource: ImportDataSourceEnum.fileLocal,
@@ -314,14 +302,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
         chunkSplitter
       };
     }
-  }, [
-    chunkSettingMode,
-    TrainingModeMap.autoChunkSize,
-    TrainingModeMap.autoIndexSize,
-    TrainingModeMap.chunkSize,
-    TrainingModeMap.indexSize,
-    chunkSplitter
-  ]);
+  }, [chunkSettingMode, TrainingModeMap, chunkSplitter]);
 
   const contextValue = {
     ...TrainingModeMap,
