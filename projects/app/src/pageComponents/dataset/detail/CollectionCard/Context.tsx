@@ -1,13 +1,11 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { Dispatch, ReactNode, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, ReactNode, SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
-import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
 import { getDatasetCollections, postWebsiteSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -76,45 +74,31 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const { openConfirm: openWebSyncConfirm, ConfirmModal: ConfirmWebSyncModal } = useConfirm({
     content: t('dataset:start_sync_website_tip')
   });
-
   const syncWebsite = async () => {
     await checkTeamWebSyncLimit();
     await postWebsiteSync({ datasetId: datasetId });
     await loadDatasetDetail(datasetId);
   };
-
   const {
     isOpen: isOpenWebsiteModal,
     onOpen: onOpenWebsiteModal,
     onClose: onCloseWebsiteModal
   } = useDisclosure();
-  const { mutate: onUpdateDatasetWebsiteConfig } = useRequest({
-    mutationFn: async (websiteConfig: WebsiteConfigFormType) => {
-      onCloseWebsiteModal();
+  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
+    async (websiteConfig: WebsiteConfigFormType) => {
       await updateDataset({
         id: datasetId,
-        websiteConfig: {
-          url: websiteConfig.url,
-          selector: websiteConfig.selector || 'body'
-        },
-        chunkSettings: {
-          autoIndexes: websiteConfig.autoIndexes,
-          imageIndex: websiteConfig.imageIndex,
-          trainingType: websiteConfig.trainingType,
-          chunkSettingMode: websiteConfig.chunkSettingMode,
-          chunkSplitMode: websiteConfig.chunkSplitMode,
-          chunkSize: websiteConfig.chunkSize,
-          indexSize: websiteConfig.indexSize,
-          chunkSplitter: websiteConfig.chunkSplitter,
-          qaPrompt: websiteConfig.qaPrompt
-        }
+        websiteConfig: websiteConfig.websiteConfig,
+        chunkSettings: websiteConfig.chunkSettings
       });
-
       await syncWebsite();
-      return;
     },
-    errorToast: t('common:common.Update Failed')
-  });
+    {
+      onSuccess() {
+        onCloseWebsiteModal();
+      }
+    }
+  );
 
   // collection list
   const [searchText, setSearchText] = useState('');

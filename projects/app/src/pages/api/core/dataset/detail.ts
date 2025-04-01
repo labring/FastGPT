@@ -5,9 +5,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { getCurrentWebsiteSyncJob } from '@fastgpt/service/core/dataset/websiteSync';
-import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
-import { FinishedStates } from '@fastgpt/service/common/bullmq';
+import { getWebsiteSyncDatasetStatus } from '@fastgpt/service/core/dataset/websiteSync';
+import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type Query = {
   id: string;
@@ -32,15 +31,10 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
   });
 
   const status = await (async () => {
-    const syncJob = await getCurrentWebsiteSyncJob(datasetId);
-    if (syncJob) {
-      const jobState = await syncJob.getState();
-      if (jobState == 'active') {
-        return DatasetStatusEnum.syncing;
-      } else if (!(jobState in FinishedStates)) {
-        return DatasetStatusEnum.waiting;
-      }
+    if (dataset.type === DatasetTypeEnum.websiteDataset) {
+      return await getWebsiteSyncDatasetStatus(datasetId);
     }
+
     return DatasetStatusEnum.active;
   })();
 

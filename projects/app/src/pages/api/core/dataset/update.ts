@@ -243,22 +243,9 @@ const updateSyncSchedule = async ({
     } else {
       // remove Job Scheduler
       removeWebsiteSyncJobScheduler(String(dataset._id));
-
-      // Backward compatibility
-      await MongoDatasetCollection.updateMany(
-        {
-          teamId: dataset.teamId,
-          datasetId: dataset._id
-        },
-        {
-          $unset: {
-            nextSyncTime: 1
-          }
-        },
-        { session }
-      );
     }
   } else {
+    // Other dataset, update the collection sync
     if (autoSync) {
       await MongoDatasetCollection.updateMany(
         {

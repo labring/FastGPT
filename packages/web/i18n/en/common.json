@@ -528,7 +528,6 @@
   "core.dataset.collection.Website Empty Tip": "No Website Associated Yet",
   "core.dataset.collection.Website Link": "Website Address",
   "core.dataset.collection.id": "Collection ID",
-  "core.dataset.collection.metadata.Chunk Size": "Chunk Size",
   "core.dataset.collection.metadata.Createtime": "Creation Time",
   "core.dataset.collection.metadata.Raw text length": "Raw Text Length",
   "core.dataset.collection.metadata.Updatetime": "Update Time",
