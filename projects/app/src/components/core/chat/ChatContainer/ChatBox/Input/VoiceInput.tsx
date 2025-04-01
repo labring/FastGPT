@@ -1,5 +1,5 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
-import { Box, Flex, Spinner } from '@chakra-ui/react';
+import { Box, Flex, Spinner, Text, Heading } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -41,7 +41,7 @@ interface TouchListenComponentProps {
   changeWaveColor: (isPrimary: boolean) => void;
 }
 
-const TouchListenComponent = ({
+const TouchListenComponent = React.memo(({
   isSpeaking,
   isTransCription,
   onWhisperRecord,
@@ -50,13 +50,12 @@ const TouchListenComponent = ({
   needSpeak,
   changeWaveColor
 }: TouchListenComponentProps) => {
+  const { t } = useTranslation();
   const startTimeRef = useRef(0);
   const elapsedTimeRef = useRef(0);
   const startYRef = useRef(0);
   const isCancle = useRef(false);
   const isPressing = useRef(false);
-  const [showshortPopup, setShowshortPopup] = useState(false);
-  const [showmovePopup, setShowmovePopup] = useState(false);
   const moveRef = useRef(false);
 
   const handleTouchStart = useCallback(
@@ -78,7 +77,6 @@ const TouchListenComponent = ({
       const currentY = touch.pageY;
       const deltaY = startYRef.current - currentY;
 
-      setShowmovePopup(true);
       if (deltaY > 90 && !isCancle.current) {
         isCancle.current = true;
         changeWaveColor(false);
@@ -87,7 +85,7 @@ const TouchListenComponent = ({
         changeWaveColor(true);
       }
     },
-    [startYRef]
+    [startYRef, changeWaveColor]
   );
 
   const handleTouchEnd = useCallback(
@@ -99,102 +97,79 @@ const TouchListenComponent = ({
       startTimeRef.current = endTime;
       isPressing.current = false;
       moveRef.current = false;
-      setShowmovePopup(false);
-      setShowshortPopup(false);
       changeWaveColor(true);
       if (isCancle.current) {
         stopSpeak(true);
       } else {
         if (timeDifference < 200) {
           stopSpeak(true);
-          setShowshortPopup(true);
         } else {
           stopSpeak(false);
         }
       }
     },
-    [isCancle, stopSpeak]
+    [isCancle, stopSpeak, changeWaveColor]
   );
 
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout>;
-    if (showshortPopup || showmovePopup) {
-      timer = setTimeout(() => {
-        setShowshortPopup(false);
-      }, 1000);
-    }
-    return () => {
-      if (timer) {
-        clearTimeout(timer);
-      }
-    };
-  }, [showshortPopup, showmovePopup]);
 
   return (
-    <div
+    <Box
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchStart={handleTouchStart}
-      style={{ width: '100%', height: '100%' }}
+      w="100%"
+      h="100%"
+      position="relative"
+      justifyContent="center"
+      alignItems="center"
     >
       <Flex
         justifyContent="center"
         alignItems="center"
-        height="30px"
+        height="100%"
         visibility={needSpeak && !isTransCription ? 'visible' : 'hidden'}
         backgroundColor={moveRef.current ? 'red' : 'white'}
+        position="absolute"
+        left={0}
+        right={0}
+        top={0}
+        bottom={0}
       >
-        <p style={{ position: 'absolute', margin: 0, zIndex: 0 }}>按住说话</p>
-        <canvas
+        <Text position="absolute" margin={0} zIndex={100}>{t('common:core.chat.pressToSpeak')}</Text>
+        <Box
+          as="canvas"
           ref={canvasRef}
-          style={{
-            marginLeft: '10px',
-            height: '100%',
-            width: '80%',
-            zIndex: 1,
-            touchAction: 'none',
-            backgroundColor: moveRef.current ? 'red' : '',
-            transition: 'background-color 0.2s ease'
-          }}
+          h="100%"
+          w="100%"
+          zIndex={100}
+          bg={'white'}
+          visibility={isPressing.current ? 'visible' : 'hidden'}
         />
       </Flex>
-      {showmovePopup && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '77%',
-            left: '50%',
-            transform: 'translate(-50%, 50%)',
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '5px',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-            zIndex: 1000
-          }}
-        >
-          <h2>上滑取消</h2>
-        </div>
+      {isPressing.current && (
+          <Flex
+            justifyContent="center"
+            alignItems="center"
+            height="100%"
+            visibility={needSpeak && !isTransCription ? 'visible' : 'hidden'}
+            backgroundColor={moveRef.current ? 'red' : 'white'}
+            position="absolute"
+            left={0}
+            right={0}
+            top={-100}
+            bottom={0}
+          >
+            <Text fontSize="sm" fontWeight="medium" color="gray.700">
+            {isCancle.current ? t('common:core.chat.releaseToCancel') : t('common:core.chat.releaseToSend')}
+            </Text>
+          </Flex>
       )}
-      {showshortPopup && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '77%',
-            left: '50%',
-            transform: 'translate(-50%, 50%)',
-            backgroundColor: 'white',
-            padding: '20px',
-            borderRadius: '5px',
-            boxShadow: '0 0 10px rgba(0, 0, 0, 0.3)',
-            zIndex: 1000
-          }}
-        >
-          <h2>说话时间太短</h2>
-        </div>
-      )}
-    </div>
+
+    </Box>
   );
-};
+});
+
+TouchListenComponent.displayName = 'TouchListenComponent';
 
 const VoiceInput = ({
   onSendMessage,
@@ -230,10 +205,11 @@ const VoiceInput = ({
     finishSpeak,
     needSpeak,
     speakingTimeString,
-    renderAudioGraph,
+    renderAudioGraphPc,
+    renderAudioGraphMobile,
     stream,
     changeWaveColor
-  } = useSpeech({ appId, ...outLinkAuthData });
+  } = useSpeech({ appId, isPc, ...outLinkAuthData });
 
 
   const onWhisperRecord = useCallback(() => {
@@ -294,7 +270,11 @@ const VoiceInput = ({
         }
         return;
       }
-      renderAudioGraph(analyser, canvas);
+      if (isPc) {
+        renderAudioGraphPc(analyser, canvas);
+      } else {
+        renderAudioGraphMobile(analyser, canvas);
+      }
       animationFrameId = window.requestAnimationFrame(renderCurve);
     };
 
@@ -307,7 +287,7 @@ const VoiceInput = ({
       source.disconnect();
       analyser.disconnect();
     };
-  }, [stream, canvasRef, renderAudioGraph]);
+  }, [stream, canvasRef, renderAudioGraphPc, renderAudioGraphMobile, isPc]);
 
   useEffect(() => {
     onStateChange?.({
@@ -323,7 +303,7 @@ const VoiceInput = ({
 
   return (
     <>
-      {/* 语音输入覆盖层 */}
+      {/* Voice input overlay */}
       {(isSpeaking || needSpeak) && (
         <Box
           position="absolute"
@@ -333,114 +313,163 @@ const VoiceInput = ({
           bottom={0}
           bg="white"
           borderRadius="md"
-          zIndex={10}
+          zIndex={10000}
           display="flex"
           flexDirection="column"
-          backgroundColor={'white'}
+          height="100%"
+          width="100%"
         >
+          {isTransCription && (
+            <Flex
+              position={'absolute'}
+              top={0}
+              bottom={0}
+              left={0}
+              right={0}
+              zIndex={1000}
+              pl={5}
+              alignItems={'center'}
+              bg={'white'}
+              color={'primary.500'}
+            >
+              <Spinner size={'sm'} mr={4} />
+              {t('common:core.chat.Converting to text')}
+            </Flex>
+          )}
           {isPc ? (
             <Flex
               position="absolute"
-              top={-2}
+              top={0}
+              right={0}
+              bottom={0}
               left={0}
-              height={'40px'}
               justifyContent={'center'}
-              width={'100%'}
+              alignItems={"center"}
               px={4}
               backgroundColor={'white'}
+              zIndex={1000}
             >
-              {isSpeaking && (
-                <Box color={'#5A646E'} ml={2} whiteSpace={'nowrap'}>
-                  {speakingTimeString}
-                </Box>
-              )}
-              <canvas
-                ref={canvasRef}
-                style={{
-                  height: '40px',
-                  width: isSpeaking && !isTransCription ? '200px' : 0,
-                  background: 'white',
-                  zIndex: 0
-                }}
-              />
               {isSpeaking && !isTransCription && (
-                <Flex
-                ml={60}>
-                  <MyTooltip label={t('common:core.chat.Cancel Speak')}>
-                    <Flex
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      flexShrink={0}
-                      h={['26px', '32px']}
-                      w={['26px', '32px']}
-                      borderRadius={'md'}
-                      cursor={'pointer'}
-                      _hover={{ bg: '#F5F5F8' }}
-                      onClick={() => stopSpeak(true)}
-                    >
-                      <MyIcon
-                        name={'core/chat/cancelSpeak'}
-                        width={['20px', '22px']}
-                        height={['20px', '22px']}
-                      />
-                    </Flex>
-                  </MyTooltip>
-                  <MyTooltip label={t('common:core.chat.Finish Speak')}>
-                    <Flex
-                      alignItems={'center'}
-                      justifyContent={'center'}
-                      flexShrink={0}
-                      h={['26px', '32px']}
-                      w={['26px', '32px']}
-                      borderRadius={'full'}
-                      cursor={'pointer'}
-                      bg={isSpeaking ? 'primary.50' : 'gray.50'}
-                      _hover={{ bg: isSpeaking ? 'primary.100' : 'gray.100' }}
-                      onClick={onWhisperRecord}
-                    >
-                      <MyIcon
-                        name={'core/chat/finishSpeak'}
-                        width={['20x', '22px']}
-                        height={['20px', '22px']}
-                        color={isSpeaking ? 'primary.500' : 'myGray.600'}
-                      />
-                    </Flex>
-                  </MyTooltip>
+                <Flex 
+                  alignItems="center" 
+                  top={0} 
+                  bottom={0} 
+                  left={0} 
+                  right={0} 
+                  gap={2} 
+                  bg="white" 
+                  p={2} 
+                  borderRadius="md" 
+                  position="absolute"
+                  justifyContent="space-between"
+                >
+                  <Heading size={'sm'} ml={2}>{t('common:core.chat.Speaking')}</Heading>
+                  <Flex alignItems="center" gap={2}>
+                    <canvas
+                      ref={canvasRef}
+                      style={{
+                        height: '10px',
+                        width: isSpeaking && !isTransCription ? '200px' : 0,
+                        background: 'white',
+                        zIndex: 2
+                      }}
+                    />
+                    <Box color={'#5A646E'} whiteSpace={'nowrap'}>
+                      {speakingTimeString}
+                    </Box>
+                    <MyTooltip label={t('common:core.chat.Cancel Speak')}>
+                      <Flex
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        flexShrink={0}
+                        mr={2}
+                        h={['26px', '32px']}
+                        w={['26px', '32px']}
+                        borderRadius={'md'}
+                        cursor={'pointer'}
+                        _hover={{ bg: '#F5F5F8' }}
+                        onClick={() => stopSpeak(true)}
+                      >
+                        <MyIcon
+                          name={'core/chat/cancelSpeak'}
+                          width={['20px', '22px']}
+                          height={['20px', '22px']}
+                        />
+                      </Flex>
+                    </MyTooltip>
+                    <MyTooltip label={t('common:core.chat.Finish Speak')}>
+                      <Flex
+                        alignItems={'center'}
+                        justifyContent={'center'}
+                        flexShrink={0}
+                        mr={0}
+                        h={['26px', '32px']}
+                        w={['26px', '32px']}
+                        borderRadius={'full'}
+                        cursor={'pointer'}
+                        bg={isSpeaking ? 'primary.50' : 'gray.50'}
+                        _hover={{ bg: isSpeaking ? 'primary.100' : 'gray.100' }}
+                        onClick={onWhisperRecord}
+                      >
+                        <MyIcon
+                          name={'core/chat/finishSpeak'}
+                          width={['20x', '22px']}
+                          height={['20px', '22px']}
+                          color={isSpeaking ? 'primary.500' : 'myGray.600'}
+                        />
+                      </Flex>
+                    </MyTooltip>
+                  </Flex>
                 </Flex>
               )}
             </Flex>
           ) : (
             needSpeak && (
-              <Flex
-                position="absolute"
-                height={'32px'}
-                left={0}
-                right={0}
-                top={-1}
-                alignItems="center"
-                backgroundColor={'white'}
-              >
-                <TouchListenComponent
-                  isSpeaking={isSpeaking}
-                  needSpeak={needSpeak}
-                  isTransCription={isTransCription}
-                  onWhisperRecord={onWhisperRecord}
-                  stopSpeak={stopSpeak}
-                  canvasRef={canvasRef}
-                  changeWaveColor={changeWaveColor}
-                />
-                <Flex ml="auto">
-                  <MyTooltip label={t('common:core.chat.Back to Text')}>
+              <Flex>
+                  <Flex
+                    position="absolute"
+                    bottom={0}
+                    left={0}
+                    right={0}
+                    top={0}
+                    alignItems="center"
+                    justifyContent="center"
+                    backgroundColor={'white'}
+                    flexDirection={'row'}
+                    zIndex={10}
+                  >
+                    <TouchListenComponent
+                      isSpeaking={isSpeaking}
+                      needSpeak={needSpeak}
+                      isTransCription={isTransCription}
+                      onWhisperRecord={onWhisperRecord}
+                      stopSpeak={stopSpeak}
+                      canvasRef={canvasRef}
+                      changeWaveColor={changeWaveColor}
+                    />
+                  </Flex>
+                  <Flex 
+                    position="absolute" 
+                    right={0} 
+                    top={0}
+                    bottom={0} 
+                    mr={2}
+                    alignItems="center" 
+                    justifyContent="center"
+                    zIndex={10}
+                  >
+                  {!isSpeaking && (
+                    <MyTooltip label={t('common:core.chat.Back to Text')}>
                     <Flex
                       alignItems={'center'}
-                      mr={2}
                       justifyContent={'center'}
-                      h={['26px', '32px']}
-                      w={['26px', '32px']}
+                      h={['28px', '32px']}
+                      w={['28px', '32px']}
                       borderRadius={'md'}
                       cursor={'pointer'}
                       _hover={{ bg: '#F5F5F8' }}
                       onClick={finishSpeak}
+                      zIndex={10}
                     >
                       <MyIcon
                         name={'core/chat/backText'}
@@ -449,8 +478,9 @@ const VoiceInput = ({
                         color="blue.600"
                       />
                     </Flex>
-                  </MyTooltip>
-                </Flex>
+                  </MyTooltip>)
+                  }
+                  </Flex>                
               </Flex>
             )
           )}
