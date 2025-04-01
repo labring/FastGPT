@@ -115,27 +115,6 @@ const ChatInput = ({
     [TextareaDom, canSendMessage, fileList, onSendMessage, replaceFiles]
   );
 
-  const RenderTranslateLoading = useMemo(
-    () => (
-      <Flex
-        position={'absolute'}
-        top={0}
-        bottom={0}
-        left={0}
-        right={0}
-        zIndex={10}
-        pl={5}
-        alignItems={'center'}
-        bg={'white'}
-        color={'primary.500'}
-        visibility={isChatting ? 'visible' : 'hidden'}
-      >
-        <Spinner size={'sm'} mr={4} />
-        {t('common:core.chat.Converting to text')}
-      </Flex>
-    ),
-    [isChatting, t]
-  );
 
   const RenderTextarea = useMemo(
     () => (
@@ -407,6 +386,7 @@ const ChatInput = ({
             display="flex"
             alignItems="center"
             justifyContent="center"
+            borderRadius="lg"
             bg="white"
           >
             <VoiceInput
@@ -422,7 +402,6 @@ const ChatInput = ({
               outLinkAuthData={outLinkAuthData}
               onStateChange={setVoiceState}
             />
-            {RenderTranslateLoading}
           </Box>
           {RenderTextarea}
       </Box>
