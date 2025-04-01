@@ -26,7 +26,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   const [isPc, setIsPc] = useState(false);
 
   useEffect(() => {
-    // 检测是否为PC端
+    // check if it is pc
     setIsPc(!/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
   }, []);
 
@@ -83,7 +83,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       if (!canvasCtx) return;
       canvasCtx.clearRect(0, 0, width, height);
 
-      // 根据设备类型设置背景色
+      // set background color according to device type
 
       canvasCtx.fillStyle = waveColor.primary;
       
@@ -101,9 +101,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       }
       const average = sum / bufferLength;
 
-      // 绘制初始矩形波形
+      // draw initial rectangle waveform
       canvasCtx.beginPath();
-      // 根据设备类型设置波形颜色
+      // set waveform color according to device type
 
       canvasCtx.fillStyle = '#FFFFFF';
       
@@ -113,7 +113,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         canvasCtx.fillRect(i + width * 0.1, centerY, barWidth, initialHeight);
       }
 
-      // 绘制动态波形
+      // draw dynamic waveform
       canvasCtx.beginPath();
       for (let i = 0; i < bufferLength; i += 4) {
         const value = dataArray[i];
