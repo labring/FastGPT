@@ -40,7 +40,7 @@ type ResponseQueueItemType =
 class FatalError extends Error {}
 
 export const streamFetch = ({
-  url = '/api/v1/chat/completions',
+  url = '/api/v2/chat/completions',
   data,
   onMessage,
   abortCtrl
@@ -168,7 +168,17 @@ export const streamFetch = ({
             }
           }
         },
-        onmessage({ event, data }) {
+        onmessage(message) {
+          let event = '';
+          let data = '';
+          try {
+            const parsedMessage = JSON.parse(message.data);
+            event = parsedMessage.event;
+            data = parsedMessage.data;
+          } catch (error) {
+            console.error(getErrText(error));
+          }
+
           if (data === '[DONE]') {
             return;
           }
@@ -224,6 +234,11 @@ export const streamFetch = ({
             });
           } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
+          } else if (
+            event === SseResponseEventEnum.flowNodeResponse &&
+            Object.keys(parseJson).length > 0
+          ) {
+            responseData = [...responseData, parseJson];
           } else if (event === SseResponseEventEnum.updateVariables) {
             onMessage({
               event,

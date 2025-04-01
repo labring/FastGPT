@@ -386,13 +386,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         version: 'v2'
       });
 
-      if (detail) {
-        workflowResponseWrite({
-          event: SseResponseEventEnum.flowResponses,
-          data: feResponseData
-        });
-      }
-
       res.end();
     } else {
       const responseContent = (() => {

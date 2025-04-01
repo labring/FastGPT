@@ -150,7 +150,7 @@ export function responseWrite({
       event,
       data
     };
-    Write(`${JSON.stringify(dataJSON)}\n\n`);
+    Write(`data: ${JSON.stringify(dataJSON)}\n\n`);
   }
 }
 
