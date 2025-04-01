@@ -36,6 +36,7 @@ import { useForm } from 'react-hook-form';
 import { getTrainingDetailResult } from '@/pages/api/core/dataset/collection/trainingDetail';
 import { TFunction } from 'i18next';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const getTrainingStatus = ({
   trainingCount,
@@ -156,11 +157,14 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
       {statesArray.map((item, index) => (
         <Flex alignItems={'center'} pl={4} key={item.label}>
           <Box
-            w={'12px'}
-            h={'12px'}
+            w={'14px'}
+            h={'14px'}
             borderWidth={'2px'}
             borderRadius={'50%'}
             position={'relative'}
+            display={'flex'}
+            alignItems={'center'}
+            justifyContent={'center'}
             {...(item.status === TrainingStatus.InProgress || item.status === TrainingStatus.Error
               ? {
                   bg: 'primary.600',
@@ -178,16 +182,18 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             {...(index !== statesArray.length - 1 && {
               _after: {
                 content: '""',
-                height: '66px',
+                height: '59px',
                 width: '2px',
                 bgColor: 'myGray.250',
                 position: 'absolute',
-                top: '10px',
-                left: '3px'
+                top: '14px',
+                left: '4px'
               }
             })}
           >
-            {item.status === TrainingStatus.Normal && <MyIcon name="check" w={2} color={'white'} />}
+            {item.status === TrainingStatus.Normal && (
+              <MyIcon name="common/check" w={3} color={'white'} />
+            )}
           </Box>
           <Flex
             alignItems={'center'}
@@ -265,7 +271,8 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
     pageSize: 15,
     params: {
       collectionId
-    }
+    },
+    EmptyTip: <EmptyTip />
   });
 
   const { runAsync: getData, loading: getDataLoading } = useRequest2(
@@ -322,8 +329,8 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
 
   return (
     <ScrollData
-      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
       h={'400px'}
+      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
     >
       <TableContainer overflowY={'auto'} fontSize={'12px'}>
         <Table variant={'simple'}>
