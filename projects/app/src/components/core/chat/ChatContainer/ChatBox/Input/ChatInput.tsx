@@ -83,6 +83,7 @@ const ChatInput = ({
   });
   const havInput = !!inputValue || fileList.length > 0;
   const canSendMessage = havInput && !hasFileUploading;
+  const [isVoiceInput, setIsVoiceInput] = useState(false);
 
   // Upload files
   useRequest2(uploadFiles, {
@@ -157,85 +158,85 @@ const ChatInput = ({
             <File onSelect={(files) => onSelectFile({ files })} />
           </Flex>
         )}
-        {/* input area */}
-        <Textarea
-          ref={TextareaDom}
-          py={0}
-          pl={2}
-          pr={['30px', '48px']}
-          border={'none'}
-          _focusVisible={{
-            border: 'none'
-          }}
-          placeholder={
-            isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone')
-          }
-          resize={'none'}
-          rows={1}
-          height={'22px'}
-          lineHeight={'22px'}
-          maxHeight={'50vh'}
-          maxLength={-1}
-          overflowY={'auto'}
-          whiteSpace={'pre-wrap'}
-          wordBreak={'break-all'}
-          boxShadow={'none !important'}
-          color={'myGray.900'}
-          fontSize={['md', 'sm']}
-          value={inputValue}
-          onChange={(e) => {
-            const textarea = e.target;
-            textarea.style.height = textareaMinH;
-            textarea.style.height = `${textarea.scrollHeight}px`;
-            setValue('input', textarea.value);
-          }}
-          onKeyDown={(e) => {
-            // enter send.(pc or iframe && enter and unPress shift)
-            const isEnter = e.keyCode === 13;
-            if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
-              // Add a new line
-              const index = TextareaDom.current.selectionStart;
-              const val = TextareaDom.current.value;
-              TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
-              TextareaDom.current.selectionStart = index + 1;
-              TextareaDom.current.selectionEnd = index + 1;
-
-              TextareaDom.current.style.height = textareaMinH;
-              TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
-
-              return;
+          {/* input area */}
+          <Textarea
+            ref={TextareaDom}
+            py={0}
+            pl={2}
+            pr={['30px', '48px']}
+            border={'none'}
+            _focusVisible={{
+              border: 'none'
+            }}
+            placeholder={
+              isPc ? (voiceState.isSpeaking ? t('common:core.chat.Speaking') :  t('common:core.chat.Type a message') ): t('chat:input_placeholder_phone')
             }
+            resize={'none'}
+            rows={1}
+            height={'22px'}
+            lineHeight={'22px'}
+            maxHeight={'50vh'}
+            maxLength={-1}
+            overflowY={'auto'}
+            whiteSpace={'pre-wrap'}
+            wordBreak={'break-all'}
+            boxShadow={'none !important'}
+            color={'myGray.900'}
+            fontSize={['md', 'sm']}
+            value={inputValue}
+            pointerEvents={voiceState.isSpeaking || voiceState.needSpeak ? 'none' : 'auto'}
+            onChange={(e) => {
+              const textarea = e.target;
+              textarea.style.height = textareaMinH;
+              textarea.style.height = `${textarea.scrollHeight}px`;
+              setValue('input', textarea.value);
+            }}
+            onKeyDown={(e) => {
+              // enter send.(pc or iframe && enter and unPress shift)
+              const isEnter = e.keyCode === 13;
+              if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+                // Add a new line
+                const index = TextareaDom.current.selectionStart;
+                const val = TextareaDom.current.value;
+                TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
+                TextareaDom.current.selectionStart = index + 1;
+                TextareaDom.current.selectionEnd = index + 1;
 
-            // 全选内容
-            // @ts-ignore
-            e.key === 'a' && e.ctrlKey && e.target?.select();
+                TextareaDom.current.style.height = textareaMinH;
+                TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
 
-            if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-              handleSend();
-              e.preventDefault();
-            }
-          }}
-          onPaste={(e) => {
-            const clipboardData = e.clipboardData;
-            if (clipboardData && (showSelectFile || showSelectImg)) {
-              const items = clipboardData.items;
-              const files = Array.from(items)
-                .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
-                .filter((file) => {
-                  return file && fileTypeFilter(file);
-                }) as File[];
-              onSelectFile({ files });
-
-              if (files.length > 0) {
-                e.preventDefault();
-                e.stopPropagation();
+                return;
               }
-            }
-          }}
-        />
-        <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']}>
-          {/* 语音输入图标 */}
-          {!voiceState.isSpeaking && !voiceState.needSpeak && (
+
+              // 全选内容
+              // @ts-ignore
+              e.key === 'a' && e.ctrlKey && e.target?.select();
+
+              if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
+                handleSend();
+                e.preventDefault();
+              }
+            }}
+            onPaste={(e) => {
+              const clipboardData = e.clipboardData;
+              if (clipboardData && (showSelectFile || showSelectImg)) {
+                const items = clipboardData.items;
+                const files = Array.from(items)
+                  .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
+                  .filter((file) => {
+                    return file && fileTypeFilter(file);
+                  }) as File[];
+                onSelectFile({ files });
+
+                if (files.length > 0) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }
+              }
+            }}
+          />
+        <Flex alignItems={'center'} position={'absolute'} right={[2, 4]} bottom={['10px', '12px']} zIndex={3}>
+          {/* Voice input icon */}
             <MyTooltip label={t('common:core.chat.Record')}>
               <Flex
                 alignItems={'center'}
@@ -243,10 +244,18 @@ const ChatInput = ({
                 flexShrink={0}
                 h={['28px', '32px']}
                 w={['28px', '32px']}
+                mr={2}
                 borderRadius={'md'}
                 cursor={'pointer'}
                 _hover={{ bg: '#F5F5F8' }}
-                onClick={isPc ? voiceState.onWhisperRecord : voiceState.prepareSpeak}
+                onClick={() => {
+                  if (isPc) {
+                    voiceState.onWhisperRecord();
+                  } else {
+                    voiceState.prepareSpeak();
+                    setIsVoiceInput(true);
+                  }
+                }}
               >
                 <MyIcon
                   name={'core/chat/recordFill'}
@@ -256,7 +265,7 @@ const ChatInput = ({
                 />
               </Flex>
             </MyTooltip>
-          )}
+    
           {/* send and stop icon */}
           <Flex
             alignItems={'center'}
@@ -316,6 +325,7 @@ const ChatInput = ({
       setValue,
       showSelectFile,
       showSelectImg,
+      isVoiceInput,
       t
     ]
   );
@@ -382,9 +392,23 @@ const ChatInput = ({
             }}
           />
         )}
-        <Box position="relative">
-          {/* voice input and loading container */}
-          <Box position="absolute" top={0} bottom={0} left={0} right={0}>
+        {/* file preview */}
+        <Box px={[1, 3]}>
+          <FilePreview fileList={fileList} removeFiles={removeFiles} />
+        </Box>
+        {/* voice input and loading container */}
+          <Box 
+            position="absolute" 
+            top={0} 
+            bottom={0} 
+            left={0} 
+            right={0} 
+            zIndex={voiceState.isSpeaking || voiceState.needSpeak ? 999 : -1}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            bg="white"
+          >
             <VoiceInput
               onSendMessage={onSendMessage}
               resetInputVal={resetInputVal}
@@ -400,13 +424,7 @@ const ChatInput = ({
             />
             {RenderTranslateLoading}
           </Box>
-        </Box>
-        {/* file preview */}
-        <Box px={[1, 3]}>
-          <FilePreview fileList={fileList} removeFiles={removeFiles} />
-        </Box>
-
-        {RenderTextarea}
+          {RenderTextarea}
       </Box>
       <ComplianceTip type={'chat'} />
     </Box>
