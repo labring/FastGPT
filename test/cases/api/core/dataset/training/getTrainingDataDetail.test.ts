@@ -33,6 +33,7 @@ describe('get training data detail test', () => {
       tmbId: root.tmbId,
       datasetId: dataset._id,
       collectionId: collection._id,
+      model: 'test',
       mode: TrainingModeEnum.chunk,
       q: 'test',
       a: 'test'
