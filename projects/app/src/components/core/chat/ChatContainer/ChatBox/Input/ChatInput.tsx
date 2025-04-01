@@ -83,7 +83,6 @@ const ChatInput = ({
   });
   const havInput = !!inputValue || fileList.length > 0;
   const canSendMessage = havInput && !hasFileUploading;
-  const [isVoiceInput, setIsVoiceInput] = useState(false);
 
   // Upload files
   useRequest2(uploadFiles, {
@@ -232,7 +231,6 @@ const ChatInput = ({
                     voiceState.onWhisperRecord();
                   } else {
                     voiceState.prepareSpeak();
-                    setIsVoiceInput(true);
                   }
                 }}
               >
@@ -243,8 +241,8 @@ const ChatInput = ({
                   color={'myGray.600'}
                 />
               </Flex>
-            </MyTooltip>
-    
+            </MyTooltip>            
+          
           {/* send and stop icon */}
           <Flex
             alignItems={'center'}
@@ -304,7 +302,6 @@ const ChatInput = ({
       setValue,
       showSelectFile,
       showSelectImg,
-      isVoiceInput,
       t
     ]
   );
