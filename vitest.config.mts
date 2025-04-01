@@ -14,7 +14,7 @@ export default defineConfig({
     globalSetup: 'test/globalSetup.ts',
     fileParallelism: false,
     pool: 'threads',
-    include: ['test/test.ts', 'test/cases/**/*.test.ts'],
+    include: ['test/test.ts', 'test/cases/**/*.test.ts', 'projects/app/test/**/*.test.ts'],
     testTimeout: 5000,
     reporters: ['github-actions', 'default']
   },

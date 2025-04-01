@@ -90,6 +90,9 @@ beforeAll(async () => {
     global.systemEnv = {} as any;
     global.systemEnv.oneapiUrl = systemEnv['OPENAI_BASE_URL'];
     global.systemEnv.chatApiKey = systemEnv['CHAT_API_KEY'];
+    global.feConfigs = {
+      isPlus: false
+    } as any;
     await setupModels();
   }
 });
