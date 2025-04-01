@@ -90,15 +90,6 @@ export async function delDatasetRelevantData({
     '_id teamId datasetId fileId metadata'
   ).lean();
 
-  const removeJobScheduler = async () => {
-    await Promise.all(
-      datasets.map((dataset) => {
-        if (dataset.type === DatasetTypeEnum.websiteDataset)
-          return removeWebsiteSyncJobScheduler(String(dataset._id));
-      })
-    );
-  };
-
   await retryFn(async () => {
     await Promise.all([
       // delete training data
@@ -116,9 +107,7 @@ export async function delDatasetRelevantData({
       // Delete Image and file
       delCollectionRelatedSource({ collections }),
       // Delete vector data
-      deleteDatasetDataVector({ teamId, datasetIds }),
-      // Remove job scheduler
-      removeJobScheduler()
+      deleteDatasetDataVector({ teamId, datasetIds })
     ]);
   });
 
