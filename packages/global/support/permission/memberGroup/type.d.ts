@@ -17,23 +17,23 @@ type GroupMemberSchemaType = {
   role: `${GroupMemberRole}`;
 };
 
-type MemberGroupListItemType<T extends boolean | undefined> = MemberGroupSchemaType & {
-  members: T extends true
+type MemberGroupListItemType<WithMembers extends boolean | undefined> = MemberGroupSchemaType & {
+  members: WithMembers extends true
     ? {
         tmbId: string;
         name: string;
         avatar: string;
       }[]
     : undefined;
-  count: T extends true ? number : undefined;
-  owner?: T extends true
+  count: WithMembers extends true ? number : undefined;
+  owner?: WithMembers extends true
     ? {
         tmbId: string;
         name: string;
         avatar: string;
       }
     : undefined;
-  permission: T extends true ? Permission : undefined;
+  permission: WithMembers extends true ? Permission : undefined;
 };
 
 type GroupMemberItemType = {
