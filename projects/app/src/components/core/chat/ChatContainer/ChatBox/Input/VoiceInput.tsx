@@ -312,7 +312,7 @@ const VoiceInput = ({
           right={0}
           bottom={0}
           bg="white"
-          borderRadius="md"
+          borderRadius="lg"
           zIndex={10000}
           display="flex"
           flexDirection="column"
@@ -326,11 +326,12 @@ const VoiceInput = ({
               bottom={0}
               left={0}
               right={0}
-              zIndex={1000}
+              zIndex={10000}
               pl={5}
               alignItems={'center'}
               bg={'white'}
               color={'primary.500'}
+              borderRadius="lg"
             >
               <Spinner size={'sm'} mr={4} />
               {t('common:core.chat.Converting to text')}
@@ -346,6 +347,7 @@ const VoiceInput = ({
               justifyContent={'center'}
               alignItems={"center"}
               px={4}
+              borderRadius="lg"
               backgroundColor={'white'}
               zIndex={1000}
             >
@@ -437,6 +439,7 @@ const VoiceInput = ({
                     backgroundColor={'white'}
                     flexDirection={'row'}
                     zIndex={10}
+                    borderRadius="lg"
                   >
                     <TouchListenComponent
                       isSpeaking={isSpeaking}
