@@ -51,13 +51,6 @@ async function handler(
     datasetId: collection.datasetId,
     collectionId: collection._id
   };
-  const group = {
-    _id: null,
-    qa: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.qa] }, 1, 0] } },
-    chunk: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.chunk] }, 1, 0] } },
-    image: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.image] }, 1, 0] } },
-    auto: { $sum: { $cond: [{ $eq: ['$mode', TrainingModeEnum.auto] }, 1, 0] } }
-  };
 
   // Computed global queue
   const minId = await MongoDatasetTraining.findOne(
@@ -70,41 +63,73 @@ async function handler(
     readFromSecondary
   ).lean();
 
-  const [trainingCountsResult, trainedCount, waitingCountsResult] = await Promise.all([
-    // 获取训练总数 & 错误总数
-    MongoDatasetTraining.aggregate(
-      [
-        { $match: match },
-        {
-          $facet: {
-            trainingCounts: [{ $count: 'total' }],
-            errorCounts: [{ $match: { errorMsg: { $exists: true } } }, { $count: 'total' }]
-          }
-        }
-      ],
-      readFromSecondary
-    ),
+  // 获取所有训练模式
+  const trainingModes = Object.values(TrainingModeEnum);
+
+  const [trainingCounts, errorCounts, trainedCount, waitingCounts] = await Promise.all([
+    // 获取训练计数
+    Promise.all(
+      trainingModes.map((mode) =>
+        MongoDatasetTraining.countDocuments(
+          {
+            ...match,
+            mode
+          },
+          readFromSecondary
+        )
+      )
+    ).then((counts) => {
+      const trainingCounts = {
+        ...defaultCounts,
+        ...Object.fromEntries(trainingModes.map((mode, i) => [mode, counts[i]]))
+      };
+      return trainingCounts;
+    }),
+
+    // 获取错误计数
+    Promise.all(
+      trainingModes.map((mode) =>
+        MongoDatasetTraining.countDocuments(
+          {
+            ...match,
+            mode,
+            errorMsg: { $exists: true }
+          },
+          readFromSecondary
+        )
+      )
+    ).then((counts) => {
+      const errorCounts = {
+        ...defaultCounts,
+        ...Object.fromEntries(trainingModes.map((mode, i) => [mode, counts[i]]))
+      };
+      return errorCounts;
+    }),
+
     // 获取训练完成计数
     MongoDatasetData.countDocuments(match, readFromSecondary),
+
     // 获取等待训练计数
-    MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: {
+    Promise.all(
+      trainingModes.map((mode) =>
+        MongoDatasetTraining.countDocuments(
+          {
             _id: { $lt: minId?._id },
             retryCount: { $gt: 0 },
-            lockTime: { $lt: new Date('2050/1/1') }
-          }
-        },
-        { $group: group }
-      ],
-      readFromSecondary
-    )
+            lockTime: { $lt: new Date('2050/1/1') },
+            mode
+          },
+          readFromSecondary
+        )
+      )
+    ).then((counts) => {
+      const waitingCounts = {
+        ...defaultCounts,
+        ...Object.fromEntries(trainingModes.map((mode, i) => [mode, counts[i]]))
+      };
+      return waitingCounts;
+    })
   ]);
-
-  const trainingCounts = trainingCountsResult?.[0]?.trainingCounts?.[0]?.total || defaultCounts;
-  const errorCounts = trainingCountsResult?.[0]?.errorCounts?.[0]?.total || defaultCounts;
-  const waitingCounts = waitingCountsResult[0] || defaultCounts;
 
   return {
     trainingType: collection.trainingType,
