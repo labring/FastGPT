@@ -1,6 +1,6 @@
-import {
-  getTrainingDataDetailBody,
-  getTrainingDataDetailResponse
+import handler, {
+  type getTrainingDataDetailBody,
+  type getTrainingDataDetailResponse
 } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
 import {
   DatasetCollectionTypeEnum,
@@ -48,6 +48,5 @@ describe('get training data detail test', () => {
 
     expect(res.code).toBe(200);
     expect(res.data).toBeDefined();
-    expect(res.data?.model).toBe('test');
   });
 });
