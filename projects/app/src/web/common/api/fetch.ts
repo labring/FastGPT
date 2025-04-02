@@ -1,8 +1,6 @@
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
   EventStreamContentType,
@@ -21,7 +19,6 @@ type StreamFetchProps = {
 };
 export type StreamResponseType = {
   responseText: string;
-  [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
 };
 type ResponseQueueItemType =
   | {
@@ -40,7 +37,7 @@ type ResponseQueueItemType =
 class FatalError extends Error {}
 
 export const streamFetch = ({
-  url = '/api/v1/chat/completions',
+  url = '/api/v2/chat/completions',
   data,
   onMessage,
   abortCtrl
@@ -55,7 +52,6 @@ export const streamFetch = ({
     let responseText = '';
     let responseQueue: ResponseQueueItemType[] = [];
     let errMsg: string | undefined;
-    let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
 
     const finish = () => {
@@ -63,8 +59,7 @@ export const streamFetch = ({
         return failedFinish();
       }
       return resolve({
-        responseText,
-        responseData
+        responseText
       });
     };
     const failedFinish = (err?: any) => {
@@ -168,7 +163,7 @@ export const streamFetch = ({
             }
           }
         },
-        onmessage({ event, data }) {
+        onmessage: ({ event, data }) => {
           if (data === '[DONE]') {
             return;
           }
@@ -178,9 +173,12 @@ export const streamFetch = ({
             try {
               return JSON.parse(data);
             } catch (error) {
-              return {};
+              return;
             }
           })();
+
+          if (typeof parseJson !== 'object') return;
+
           // console.log(parseJson, event);
           if (event === SseResponseEventEnum.answer) {
             const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
@@ -222,8 +220,11 @@ export const streamFetch = ({
               event,
               ...parseJson
             });
-          } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
-            responseData = parseJson;
+          } else if (event === SseResponseEventEnum.flowNodeResponse) {
+            onMessage({
+              event,
+              nodeResponse: parseJson
+            });
           } else if (event === SseResponseEventEnum.updateVariables) {
             onMessage({
               event,

@@ -130,6 +130,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     timezone,
     externalProvider,
     stream = false,
+    version = 'v1',
     ...props
   } = data;
 
@@ -625,6 +626,21 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]
       };
     })();
+
+    // Response node response
+    if (
+      version === 'v2' &&
+      !props.isToolCall &&
+      !props.runningAppInfo.isChildApp &&
+      formatResponseData
+    ) {
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.flowNodeResponse,
+        data: {
+          ...formatResponseData
+        }
+      });
+    }
 
     // Add output default value
     node.outputs.forEach((item) => {
