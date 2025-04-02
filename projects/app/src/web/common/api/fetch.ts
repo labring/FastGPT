@@ -40,7 +40,7 @@ type ResponseQueueItemType =
 class FatalError extends Error {}
 
 export const streamFetch = ({
-  url = '/api/v1/chat/completions',
+  url = '/api/v2/chat/completions',
   data,
   onMessage,
   abortCtrl
@@ -168,79 +168,93 @@ export const streamFetch = ({
             }
           }
         },
-        onmessage({ event, data }) {
-          if (data === '[DONE]') {
-            return;
-          }
-
-          // parse text to json
-          const parseJson = (() => {
+        onmessage: (function () {
+          return function (message) {
+            let event = '';
+            let data = '';
             try {
-              return JSON.parse(data);
+              const parsedMessage = JSON.parse(message.data);
+              event = parsedMessage.event;
+              data = parsedMessage.data;
             } catch (error) {
-              return {};
+              console.error(getErrText(error));
             }
-          })();
-          // console.log(parseJson, event);
-          if (event === SseResponseEventEnum.answer) {
-            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
-            pushDataToQueue({
-              event,
-              reasoningText
-            });
 
-            const text = parseJson.choices?.[0]?.delta?.content || '';
-            for (const item of text) {
+            if (data === '[DONE]') {
+              return;
+            }
+
+            // parse text to json
+            const parseJson = (() => {
+              try {
+                return JSON.parse(data);
+              } catch (error) {
+                return {};
+              }
+            })();
+            // console.log(parseJson, event);
+            if (event === SseResponseEventEnum.answer) {
+              const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
               pushDataToQueue({
                 event,
-                text: item
+                reasoningText
               });
-            }
-          } else if (event === SseResponseEventEnum.fastAnswer) {
-            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
-            pushDataToQueue({
-              event,
-              reasoningText
-            });
 
-            const text = parseJson.choices?.[0]?.delta?.content || '';
-            pushDataToQueue({
-              event,
-              text
-            });
-          } else if (
-            event === SseResponseEventEnum.toolCall ||
-            event === SseResponseEventEnum.toolParams ||
-            event === SseResponseEventEnum.toolResponse
-          ) {
-            pushDataToQueue({
-              event,
-              ...parseJson
-            });
-          } else if (event === SseResponseEventEnum.flowNodeStatus) {
-            onMessage({
-              event,
-              ...parseJson
-            });
-          } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
-            responseData = parseJson;
-          } else if (event === SseResponseEventEnum.updateVariables) {
-            onMessage({
-              event,
-              variables: parseJson
-            });
-          } else if (event === SseResponseEventEnum.interactive) {
-            pushDataToQueue({
-              event,
-              ...parseJson
-            });
-          } else if (event === SseResponseEventEnum.error) {
-            if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
-              useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
+              const text = parseJson.choices?.[0]?.delta?.content || '';
+              for (const item of text) {
+                pushDataToQueue({
+                  event,
+                  text: item
+                });
+              }
+            } else if (event === SseResponseEventEnum.fastAnswer) {
+              const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+              pushDataToQueue({
+                event,
+                reasoningText
+              });
+
+              const text = parseJson.choices?.[0]?.delta?.content || '';
+              pushDataToQueue({
+                event,
+                text
+              });
+            } else if (
+              event === SseResponseEventEnum.toolCall ||
+              event === SseResponseEventEnum.toolParams ||
+              event === SseResponseEventEnum.toolResponse
+            ) {
+              pushDataToQueue({
+                event,
+                ...parseJson
+              });
+            } else if (event === SseResponseEventEnum.flowNodeStatus) {
+              onMessage({
+                event,
+                ...parseJson
+              });
+            } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
+              responseData = parseJson;
+            } else if (event === SseResponseEventEnum.flowNodeResponse) {
+              responseData = [...responseData, parseJson];
+            } else if (event === SseResponseEventEnum.updateVariables) {
+              onMessage({
+                event,
+                variables: parseJson
+              });
+            } else if (event === SseResponseEventEnum.interactive) {
+              pushDataToQueue({
+                event,
+                ...parseJson
+              });
+            } else if (event === SseResponseEventEnum.error) {
+              if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
+                useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
+              }
+              errMsg = getErrText(parseJson, '流响应错误');
             }
-            errMsg = getErrText(parseJson, '流响应错误');
-          }
-        },
+          };
+        })(),
         onclose() {
           finished = true;
         },

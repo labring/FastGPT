@@ -150,7 +150,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail: true,
       streamResponse: true,
       id: chatId,
-      showNodeStatus: true
+      showNodeStatus: true,
+      version: 'v2'
     });
 
     /* start process */
@@ -182,7 +183,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       histories: newHistories,
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      workflowStreamResponse: workflowResponseWrite
+      workflowStreamResponse: workflowResponseWrite,
+      version: 'v2'
     });
 
     workflowResponseWrite({
@@ -195,12 +197,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
-    responseWrite({
-      res,
-      event: SseResponseEventEnum.flowResponses,
-      data: JSON.stringify(flowResponses)
+      data: '[DONE]',
+      version: 'v2'
     });
 
     // save chat
