@@ -261,8 +261,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail,
       streamResponse: stream,
       id: chatId,
-      showNodeStatus,
-      version: 'v2'
+      showNodeStatus
     });
 
     /* start flow controller */
@@ -382,8 +381,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseWrite({
         res,
         event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]',
-        version: 'v2'
+        data: '[DONE]'
       });
 
       res.end();

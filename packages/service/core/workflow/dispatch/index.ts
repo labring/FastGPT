@@ -627,9 +627,10 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       };
     })();
 
+    // Response node response
     if (
-      !props.isToolCall &&
       version === 'v2' &&
+      !props.isToolCall &&
       !props.runningAppInfo.isChildApp &&
       formatResponseData
     ) {

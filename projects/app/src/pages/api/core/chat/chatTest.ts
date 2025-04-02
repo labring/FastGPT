@@ -150,8 +150,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail: true,
       streamResponse: true,
       id: chatId,
-      showNodeStatus: true,
-      version: 'v2'
+      showNodeStatus: true
     });
 
     /* start process */
@@ -197,8 +196,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     responseWrite({
       res,
       event: SseResponseEventEnum.answer,
-      data: '[DONE]',
-      version: 'v2'
+      data: '[DONE]'
     });
 
     // save chat

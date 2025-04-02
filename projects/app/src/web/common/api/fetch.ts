@@ -1,8 +1,6 @@
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
   EventStreamContentType,
@@ -21,7 +19,6 @@ type StreamFetchProps = {
 };
 export type StreamResponseType = {
   responseText: string;
-  [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
 };
 type ResponseQueueItemType =
   | {
@@ -55,7 +52,6 @@ export const streamFetch = ({
     let responseText = '';
     let responseQueue: ResponseQueueItemType[] = [];
     let errMsg: string | undefined;
-    let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
 
     const finish = () => {
@@ -63,8 +59,7 @@ export const streamFetch = ({
         return failedFinish();
       }
       return resolve({
-        responseText,
-        responseData
+        responseText
       });
     };
     const failedFinish = (err?: any) => {
@@ -168,93 +163,85 @@ export const streamFetch = ({
             }
           }
         },
-        onmessage: (function () {
-          return function (message) {
-            let event = '';
-            let data = '';
-            try {
-              const parsedMessage = JSON.parse(message.data);
-              event = parsedMessage.event;
-              data = parsedMessage.data;
-            } catch (error) {
-              console.error(getErrText(error));
-            }
+        onmessage: ({ event, data }) => {
+          if (data === '[DONE]') {
+            return;
+          }
 
-            if (data === '[DONE]') {
+          // parse text to json
+          const parseJson = (() => {
+            try {
+              return JSON.parse(data);
+            } catch (error) {
               return;
             }
+          })();
 
-            // parse text to json
-            const parseJson = (() => {
-              try {
-                return JSON.parse(data);
-              } catch (error) {
-                return {};
-              }
-            })();
-            // console.log(parseJson, event);
-            if (event === SseResponseEventEnum.answer) {
-              const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
-              pushDataToQueue({
-                event,
-                reasoningText
-              });
+          if (typeof parseJson !== 'object') return;
 
-              const text = parseJson.choices?.[0]?.delta?.content || '';
-              for (const item of text) {
-                pushDataToQueue({
-                  event,
-                  text: item
-                });
-              }
-            } else if (event === SseResponseEventEnum.fastAnswer) {
-              const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
-              pushDataToQueue({
-                event,
-                reasoningText
-              });
+          // console.log(parseJson, event);
+          if (event === SseResponseEventEnum.answer) {
+            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            pushDataToQueue({
+              event,
+              reasoningText
+            });
 
-              const text = parseJson.choices?.[0]?.delta?.content || '';
+            const text = parseJson.choices?.[0]?.delta?.content || '';
+            for (const item of text) {
               pushDataToQueue({
                 event,
-                text
+                text: item
               });
-            } else if (
-              event === SseResponseEventEnum.toolCall ||
-              event === SseResponseEventEnum.toolParams ||
-              event === SseResponseEventEnum.toolResponse
-            ) {
-              pushDataToQueue({
-                event,
-                ...parseJson
-              });
-            } else if (event === SseResponseEventEnum.flowNodeStatus) {
-              onMessage({
-                event,
-                ...parseJson
-              });
-            } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
-              responseData = parseJson;
-            } else if (event === SseResponseEventEnum.flowNodeResponse) {
-              responseData = [...responseData, parseJson];
-            } else if (event === SseResponseEventEnum.updateVariables) {
-              onMessage({
-                event,
-                variables: parseJson
-              });
-            } else if (event === SseResponseEventEnum.interactive) {
-              pushDataToQueue({
-                event,
-                ...parseJson
-              });
-            } else if (event === SseResponseEventEnum.error) {
-              if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
-                useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
-              }
-              errMsg = getErrText(parseJson, '流响应错误');
             }
-          };
-        })(),
+          } else if (event === SseResponseEventEnum.fastAnswer) {
+            const reasoningText = parseJson.choices?.[0]?.delta?.reasoning_content || '';
+            pushDataToQueue({
+              event,
+              reasoningText
+            });
+
+            const text = parseJson.choices?.[0]?.delta?.content || '';
+            pushDataToQueue({
+              event,
+              text
+            });
+          } else if (
+            event === SseResponseEventEnum.toolCall ||
+            event === SseResponseEventEnum.toolParams ||
+            event === SseResponseEventEnum.toolResponse
+          ) {
+            pushDataToQueue({
+              event,
+              ...parseJson
+            });
+          } else if (event === SseResponseEventEnum.flowNodeStatus) {
+            onMessage({
+              event,
+              ...parseJson
+            });
+          } else if (event === SseResponseEventEnum.flowNodeResponse) {
+            onMessage({
+              event,
+              nodeResponse: parseJson
+            });
+          } else if (event === SseResponseEventEnum.updateVariables) {
+            onMessage({
+              event,
+              variables: parseJson
+            });
+          } else if (event === SseResponseEventEnum.interactive) {
+            pushDataToQueue({
+              event,
+              ...parseJson
+            });
+          } else if (event === SseResponseEventEnum.error) {
+            if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
+              useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
+            }
+            errMsg = getErrText(parseJson, '流响应错误');
+          }
+        },
         onclose() {
           finished = true;
         },
