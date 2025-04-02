@@ -425,6 +425,11 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>((props, r
       } else {
         resetInputVal({ text });
       }
+      if (isPc) {
+        stopSpeak(true);
+      } else {
+        finishSpeak();
+      }
     };
     if (isPc) {
       if (isSpeaking) {
@@ -439,7 +444,9 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>((props, r
     resetInputVal,
     startSpeak,
     stopSpeak,
-    whisperConfig?.autoSend
+    whisperConfig?.autoSend,
+    isPc,
+    finishSpeak
   ]);
 
   useEffect(() => {
