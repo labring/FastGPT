@@ -1,6 +1,6 @@
 import { exit } from 'process';
 
-/* 
+/*
   Init system
 */
 export async function register() {

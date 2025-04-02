@@ -69,6 +69,19 @@ services:
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
 
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    # ports:
+    # - 6379:6379
+    networks:
+      - fastgpt
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    volumes:
+      - ./redis/data:/data
+
   # fastgpt
   sandbox:
     container_name: sandbox
@@ -114,6 +127,8 @@ services:
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       # pg 连接参数
       - PG_URL=postgresql://username:password@pg:5432/postgres
+      # Redis 连接参数
+      - REDIS_URL=redis://default:mypassword@redis:6379
       # sandbox 地址
       - SANDBOX_URL=http://sandbox:3000
       # 日志等级: debug, info, warn, error
