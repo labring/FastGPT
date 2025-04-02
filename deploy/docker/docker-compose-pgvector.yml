@@ -78,7 +78,7 @@ services:
       - fastgpt
     restart: always
     command: |
-      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 1gb --maxmemory-policy noeviction
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
     volumes:
       - ./redis/data:/data
 
@@ -128,7 +128,7 @@ services:
       # pg 连接参数
       - PG_URL=postgresql://username:password@pg:5432/postgres
       # Redis 连接参数
-      - REDIS_URL=redis://mypassword@redis:6379
+      - REDIS_URL=redis://default:mypassword@redis:6379
       # sandbox 地址
       - SANDBOX_URL=http://sandbox:3000
       # 日志等级: debug, info, warn, error

@@ -60,7 +60,7 @@ services:
       - fastgpt
     restart: always
     command: |
-      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 1gb --maxmemory-policy noeviction
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
     volumes:
       - ./redis/data:/data
 
@@ -106,7 +106,7 @@ services:
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       # Redis 连接参数
-      - REDIS_URI=redis://mypassword@redis:6379
+      - REDIS_URI=redis://default:mypassword@redis:6379
       # zilliz 连接参数
       - MILVUS_ADDRESS=zilliz_cloud_address
       - MILVUS_TOKEN=zilliz_cloud_token

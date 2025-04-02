@@ -120,6 +120,7 @@ const DatasetSchema = new Schema({
   },
 
   // abandoned
+  autoSync: Boolean,
   externalReadUrl: {
     type: String
   },

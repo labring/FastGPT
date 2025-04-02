@@ -55,13 +55,14 @@ export const getWebsiteSyncDatasetStatus = async (datasetId: string) => {
 
 // Scheduler setting
 const repeatDuration = 24 * 60 * 60 * 1000; // every day
-export const upsertWebsiteSyncJobScheduler = (data: WebsiteSyncJobData) => {
+export const upsertWebsiteSyncJobScheduler = (data: WebsiteSyncJobData, startDate?: number) => {
   const datasetId = String(data.datasetId);
+
   return websiteSyncQueue.upsertJobScheduler(
     datasetId,
     {
       every: repeatDuration,
-      startDate: new Date().getTime() + repeatDuration // First run tomorrow
+      startDate: startDate || new Date().getTime() + repeatDuration // First run tomorrow
     },
     {
       name: datasetId,

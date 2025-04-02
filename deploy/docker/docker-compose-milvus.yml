@@ -119,7 +119,7 @@ services:
       - fastgpt
     restart: always
     command: |
-      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 1gb --maxmemory-policy noeviction
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
     volumes:
       - ./redis/data:/data
 
@@ -170,7 +170,7 @@ services:
       - MILVUS_ADDRESS=http://milvusStandalone:19530
       - MILVUS_TOKEN=none
       # Redis 地址
-      - REDIS_URL=redis://mypassword@redis:6379
+      - REDIS_URL=redis://default:mypassword@redis:6379
       # sandbox 地址
       - SANDBOX_URL=http://sandbox:3000
       # 日志等级: debug, info, warn, error

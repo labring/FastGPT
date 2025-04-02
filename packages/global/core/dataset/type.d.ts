@@ -60,9 +60,8 @@ export type DatasetSchemaType = {
   feishuServer?: FeishuServer;
   yuqueServer?: YuqueServer;
 
-  autoSync?: boolean;
-
   // abandon
+  autoSync?: boolean;
   externalReadUrl?: string;
   defaultPermission?: number;
 };
