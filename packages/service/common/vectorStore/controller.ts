@@ -6,7 +6,7 @@ import { DelDatasetVectorCtrlProps, InsertVectorProps } from './controller.d';
 import { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
-import { getGlobalRedisCacheConnection, checkAndIncr } from '../redis';
+import { setRedisCache, getRedisCache, delRedisCache, CacheKeyEnum } from '../redis/cache';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
@@ -18,27 +18,27 @@ const getVectorObj = () => {
 
 const Vector = getVectorObj();
 
-const redis = getGlobalRedisCacheConnection();
-
 export const initVectorStore = Vector.init;
 export const recallFromVectorStore = Vector.embRecall;
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 export const getVectorCountByTeamId = async (teamId: string) => {
-  const countStr = await redis.getex(`countByTeamId:${teamId}`, 'EX', 1800);
-  if (!countStr) {
-    return await initCache(teamId);
+  const key = `${CacheKeyEnum.team_vector_count}:${teamId}`;
+
+  const countStr = await getRedisCache(key);
+  if (countStr) {
+    return Number(countStr);
   }
-  return parseInt(countStr);
+
+  const count = await Vector.getVectorCountByTeamId(teamId);
+
+  await setRedisCache(key, count, 30 * 60);
+
+  return count;
 };
+
 export const getVectorCountByDatasetId = Vector.getVectorCountByDatasetId;
 export const getVectorCountByCollectionId = Vector.getVectorCountByCollectionId;
-
-async function initCache(teamId: string) {
-  const count = await Vector.getVectorCountByTeamId(teamId);
-  await redis.setex(`countByTeamId:${teamId}`, 1800, count);
-  return count;
-}
 
 export const insertDatasetDataVector = async ({
   model,
@@ -58,7 +58,7 @@ export const insertDatasetDataVector = async ({
     vector: vectors[0]
   });
 
-  await checkAndIncr(redis, `countByTeamId:${props.teamId}`);
+  delRedisCache(`${CacheKeyEnum.team_vector_count}:${props.teamId}`);
 
   return {
     tokens,
@@ -68,6 +68,6 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
   const result = await Vector.delete(props);
-  await initCache(props.teamId);
+  delRedisCache(`${CacheKeyEnum.team_vector_count}:${props.teamId}`);
   return result;
 };
