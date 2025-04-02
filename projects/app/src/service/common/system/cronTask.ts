@@ -71,8 +71,10 @@ export async function checkInvalidDatasetFiles(start: Date, end: Date) {
 export const removeExpiredChatFiles = async () => {
   let deleteFileAmount = 0;
   const collection = getGFSCollection(BucketNameEnum.chat);
+
+  const expireTime = Number(process.env.CHAT_FILE_EXPIRE_TIME || 7);
   const where = {
-    uploadDate: { $lte: addDays(new Date(), -7) }
+    uploadDate: { $lte: addDays(new Date(), -expireTime) }
   };
 
   // get all file _id
