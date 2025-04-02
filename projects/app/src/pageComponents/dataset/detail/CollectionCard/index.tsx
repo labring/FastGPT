@@ -51,6 +51,7 @@ import {
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import TrainingStates from './TrainingStates';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -73,16 +74,25 @@ const CollectionCard = () => {
   });
 
   const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
+  const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
+    collectionId: string;
+  }>();
 
   const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
     useContextSelector(CollectionPageContext, (v) => v);
 
-  // Ad file status icon
+  // Add file status icon
   const formatCollections = useMemo(
     () =>
       collections.map((collection) => {
         const icon = getCollectionIcon(collection.type, collection.name);
         const status = (() => {
+          if (collection.hasError) {
+            return {
+              statusText: t('common:core.dataset.collection.status.error'),
+              colorSchema: 'red'
+            };
+          }
           if (collection.trainingAmount > 0) {
             return {
               statusText: t('common:dataset.collections.Collection Embedding', {
@@ -269,9 +279,22 @@ const CollectionCard = () => {
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTag showDot colorSchema={collection.colorSchema as any} type={'borderFill'}>
-                      {t(collection.statusText as any)}
-                    </MyTag>
+                    <MyTooltip label={t('common:Click_to_expand')}>
+                      <MyTag
+                        showDot
+                        colorSchema={collection.colorSchema as any}
+                        type={'fill'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTrainingStatesCollection({ collectionId: collection._id });
+                        }}
+                      >
+                        <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                          {t(collection.statusText as any)}
+                          <MyIcon name={'common/maximize'} w={'11px'} />
+                        </Flex>
+                      </MyTag>
+                    </MyTooltip>
                   </Td>
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
@@ -413,6 +436,14 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+
+        {!!trainingStatesCollection && (
+          <TrainingStates
+            datasetId={datasetDetail._id}
+            collectionId={trainingStatesCollection.collectionId}
+            onClose={() => setTrainingStatesCollection(undefined)}
+          />
+        )}
 
         {!!moveCollectionData && (
           <SelectCollections

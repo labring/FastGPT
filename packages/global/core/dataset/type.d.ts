@@ -163,6 +163,7 @@ export type DatasetTrainingSchemaType = {
   weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
   retryCount: number;
+  errorMsg?: string;
 };
 
 export type CollectionWithDatasetType = DatasetCollectionSchemaType & {
@@ -216,6 +217,7 @@ export type DatasetCollectionItemType = CollectionWithDatasetType & {
   file?: DatasetFileSchema;
   permission: DatasetPermission;
   indexAmount: number;
+  errorCount?: number;
 };
 
 /* ================= data ===================== */
