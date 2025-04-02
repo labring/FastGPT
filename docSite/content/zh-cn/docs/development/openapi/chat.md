@@ -18,7 +18,7 @@ weight: 852
 {{% alert icon="🤖 " context="success" %}}
 * 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
 
-* 对话现在有`v1`和`v2`两个接口，可以按需使用
+* 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护
 
 * 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
 {{% /alert %}}
@@ -35,6 +35,7 @@ weight: 852
 ### 请求
 
 #### v1
+
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="基础请求示例" >}}
 {{< markdownify >}}
@@ -126,6 +127,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 {{< /tabs >}}
 
 #### v2
+
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="基础请求示例" >}}
 {{< markdownify >}}
