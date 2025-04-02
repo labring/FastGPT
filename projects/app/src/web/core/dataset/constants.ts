@@ -77,20 +77,6 @@ export const datasetTypeCourseMap: Record<`${DatasetTypeEnum}`, string> = {
   [DatasetTypeEnum.externalFile]: ''
 };
 
-export enum TrainingStatus {
-  Normal = 'Normal',
-  Error = 'Error',
-  InProgress = 'InProgress',
-  NotStarted = 'NotStarted'
-}
-
-export const TrainingText = {
-  [TrainingModeEnum.chunk]: i18nT('dataset:process.Vectorizing'),
-  [TrainingModeEnum.qa]: i18nT('dataset:process.Get QA'),
-  [TrainingModeEnum.image]: i18nT('dataset:process.Image_Index'),
-  [TrainingModeEnum.auto]: i18nT('dataset:process.Auto_Index')
-};
-
 export const TrainingProcess = {
   waiting: {
     label: i18nT('dataset:process.Waiting'),

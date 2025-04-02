@@ -69,7 +69,7 @@ import type {
   getTrainingDataDetailResponse
 } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
 import type { deleteTrainingDataBody } from '@/pages/api/core/dataset/training/deleteTrainingData';
-import type { getTrainingDetailResult } from '@/pages/api/core/dataset/collection/trainingDetail';
+import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
 import type {
   getTrainingErrorBody,
   getTrainingErrorResponse
@@ -125,7 +125,7 @@ export const getDatasetCollectionPathById = (parentId: string) =>
 export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
 export const getDatasetCollectionTrainingDetail = (collectionId: string) =>
-  GET<getTrainingDetailResult>(`/core/dataset/collection/trainingDetail`, {
+  GET<getTrainingDetailResponse>(`/core/dataset/collection/trainingDetail`, {
     collectionId
   });
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>

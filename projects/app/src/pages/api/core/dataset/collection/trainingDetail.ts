@@ -14,14 +14,14 @@ type getTrainingDetailParams = {
   collectionId: string;
 };
 
-export type getTrainingDetailResult = {
+export type getTrainingDetailResponse = {
   trainingType: DatasetCollectionDataProcessModeEnum;
   advancedTraining: {
     customPdfParse: boolean;
     imageIndex: boolean;
     autoIndexes: boolean;
   };
-  waitingCounts: Record<TrainingModeEnum, number>;
+  queuedCounts: Record<TrainingModeEnum, number>;
   trainingCounts: Record<TrainingModeEnum, number>;
   errorCounts: Record<TrainingModeEnum, number>;
   trainedCount: number;
@@ -36,7 +36,7 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
 
 async function handler(
   req: ApiRequestProps<{}, getTrainingDetailParams>
-): Promise<getTrainingDetailResult> {
+): Promise<getTrainingDetailResponse> {
   const { collectionId } = req.query;
 
   const { collection } = await authDatasetCollection({
@@ -53,67 +53,103 @@ async function handler(
   };
 
   // Computed global queue
-  const minId = await MongoDatasetTraining.findOne(
-    {
-      teamId: collection.teamId,
-      datasetId: collection.datasetId,
-      collectionId: collection._id
-    },
-    { sort: { _id: 1 }, select: '_id' },
-    readFromSecondary
-  ).lean();
+  const minId = (
+    await MongoDatasetTraining.findOne(
+      {
+        teamId: collection.teamId,
+        datasetId: collection.datasetId,
+        collectionId: collection._id
+      },
+      { sort: { _id: 1 }, select: '_id' },
+      readFromSecondary
+    ).lean()
+  )?._id;
 
-  const [result, trainedCount] = await Promise.all([
+  const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
+    minId
+      ? MongoDatasetTraining.aggregate(
+          [
+            {
+              $match: {
+                _id: { $lt: minId },
+                retryCount: { $gt: 0 },
+                lockTime: { $lt: new Date('2050/1/1') }
+              }
+            },
+            {
+              $group: {
+                _id: '$mode',
+                count: { $sum: 1 }
+              }
+            }
+          ],
+          readFromSecondary
+        )
+      : Promise.resolve([]),
     MongoDatasetTraining.aggregate(
       [
-        { $match: match },
         {
-          $facet: {
-            trainingCounts: [{ $group: { _id: '$mode', count: { $sum: 1 } } }],
-            errorCounts: [
-              { $match: { errorMsg: { $exists: true } } },
-              { $group: { _id: '$mode', count: { $sum: 1 } } }
-            ],
-            waitingCounts: [
-              {
-                $match: {
-                  _id: { $lt: minId?._id },
-                  retryCount: { $gt: 0 },
-                  lockTime: { $lt: new Date('2050/1/1') }
-                }
-              },
-              { $group: { _id: '$mode', count: { $sum: 1 } } }
-            ]
+          $match: {
+            ...match,
+            retryCount: { $gt: 0 },
+            lockTime: { $lt: new Date('2050/1/1') }
+          }
+        },
+        {
+          $group: {
+            _id: '$mode',
+            count: { $sum: 1 }
+          }
+        }
+      ],
+      readFromSecondary
+    ),
+    MongoDatasetTraining.aggregate(
+      [
+        {
+          $match: {
+            ...match,
+            retryCount: { $lte: 0 },
+            errorMsg: { $exists: true }
+          }
+        },
+        {
+          $group: {
+            _id: '$mode',
+            count: { $sum: 1 }
           }
         }
       ],
       readFromSecondary
     ),
     MongoDatasetData.countDocuments(match, readFromSecondary)
-  ]);
+  ])) as [
+    { _id: TrainingModeEnum; count: number }[],
+    { _id: TrainingModeEnum; count: number }[],
+    { _id: TrainingModeEnum; count: number }[],
+    number
+  ];
 
-  const trainingCounts = result[0].trainingCounts.reduce(
-    (acc: Record<TrainingModeEnum, number>, item: { _id: TrainingModeEnum; count: number }) => {
+  const queuedCounts = ququedCountData.reduce(
+    (acc, item) => {
       acc[item._id] = item.count;
       return acc;
     },
-    defaultCounts
+    { ...defaultCounts }
   );
-
-  const errorCounts = result[0].errorCounts.reduce(
-    (acc: Record<TrainingModeEnum, number>, item: { _id: TrainingModeEnum; count: number }) => {
+  const trainingCounts = trainingCountData.reduce(
+    (acc, item) => {
       acc[item._id] = item.count;
       return acc;
     },
-    defaultCounts
+    { ...defaultCounts }
   );
-
-  const waitingCounts = result[0].waitingCounts.reduce(
-    (acc: Record<TrainingModeEnum, number>, item: { _id: TrainingModeEnum; count: number }) => {
+  const errorCounts = errorCountData.reduce(
+    (acc, item) => {
       acc[item._id] = item.count;
       return acc;
     },
-    defaultCounts
+    { ...defaultCounts }
   );
 
   return {
@@ -124,9 +160,8 @@ async function handler(
       autoIndexes: !!collection.autoIndexes
     },
 
-    waitingCounts,
+    queuedCounts,
     trainingCounts,
-
     errorCounts,
     trainedCount
   };

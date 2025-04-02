@@ -9,14 +9,13 @@ import {
   Td,
   Th,
   Thead,
-  Tr,
-  Spinner
+  Tr
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   deleteTrainingData,
@@ -31,131 +30,144 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { getTrainingDataDetailResponse } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
-import { TrainingProcess, TrainingStatus, TrainingText } from '@/web/core/dataset/constants';
+import { TrainingProcess } from '@/web/core/dataset/constants';
 import { useForm } from 'react-hook-form';
-import { getTrainingDetailResult } from '@/pages/api/core/dataset/collection/trainingDetail';
-import { TFunction } from 'i18next';
+import type { getTrainingDetailResponse } from '@/pages/api/core/dataset/collection/trainingDetail';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
-const getTrainingStatus = ({
-  trainingCount,
-  errorCount
-}: {
-  trainingCount: number;
-  errorCount: number;
-}) => {
-  if (errorCount > 0) {
-    return TrainingStatus.Error;
-  }
-  if (trainingCount > 0) {
-    return TrainingStatus.InProgress;
-  }
-  return TrainingStatus.Normal;
-};
+enum TrainingStatus {
+  NotStart = 'NotStart',
+  Queued = 'Queued', // wait count>0
+  Running = 'Running', // wait count=0; training count>0.
+  Ready = 'Ready',
+  Error = 'Error'
+}
 
-const getProgress = (trainingAmount: number, t: TFunction) => {
-  return trainingAmount > 0
-    ? t('dataset:dataset.Training_Count', {
-        count: trainingAmount
-      })
-    : t('dataset:dataset.Completed');
-};
-
-const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailResult }) => {
+const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailResponse }) => {
   const { t } = useTranslation();
-
-  const tagStyle = {
-    showDot: true,
-    type: 'fill' as const,
-    px: 1,
-    fontSize: 'mini',
-    fontWeight: 'medium',
-    rounded: 'full',
-    h: 5
-  };
 
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
 
-  const statesArray = [
-    {
-      label: TrainingProcess.waiting.label,
-      status: TrainingStatus.Normal,
-      progress: t('dataset:dataset.Completed')
-    },
-    {
-      label: TrainingProcess.parsing.label,
-      status: TrainingStatus.Normal,
-      progress: t('dataset:dataset.Completed')
-    },
-    ...(isQA
-      ? [
-          {
-            mode: TrainingModeEnum.qa,
-            label: TrainingProcess.getQA.label,
-            progress: getProgress(trainingDetail.trainingCounts.qa, t),
-            status: getTrainingStatus({
-              trainingCount: trainingDetail.trainingCounts.qa,
-              errorCount: trainingDetail.errorCounts.qa
+  /* 
+    状态计算
+    1. 暂时没有内容解析的状态
+    2. 完全没有训练数据时候，已就绪
+    3. 有训练数据，中间过程全部是进行中
+  */
+  const statesArray = useMemo(() => {
+    const isReady =
+      Object.values(trainingDetail.queuedCounts).every((count) => count === 0) &&
+      Object.values(trainingDetail.trainingCounts).every((count) => count === 0) &&
+      Object.values(trainingDetail.errorCounts).every((count) => count === 0);
+
+    const getTrainingStatus = ({ errorCount }: { errorCount: number }) => {
+      if (isReady) return TrainingStatus.Ready;
+      if (errorCount > 0) {
+        return TrainingStatus.Error;
+      }
+      return TrainingStatus.Running;
+    };
+
+    // 只显示排队和处理中的数量
+    const getStatusText = (mode: TrainingModeEnum) => {
+      if (isReady) return;
+      if (trainingDetail.errorCounts[mode] > 0) {
+        return;
+      }
+      if (trainingDetail.queuedCounts[mode] > 0) {
+        return t('dataset:dataset.Training_Waiting', {
+          count: trainingDetail.queuedCounts[mode]
+        });
+      }
+      if (trainingDetail.trainingCounts[mode] > 0) {
+        return t('dataset:dataset.Training_Count', {
+          count: trainingDetail.trainingCounts[mode]
+        });
+      }
+      return;
+    };
+
+    const states: {
+      label: string;
+      statusText?: string;
+      status: TrainingStatus;
+      errorCount: number;
+    }[] = [
+      // {
+      //   label: TrainingProcess.waiting.label,
+      //   status: TrainingStatus.Queued,
+      //   statusText: t('dataset:dataset.Completed')
+      // },
+      {
+        label: t(TrainingProcess.parsing.label),
+        status: TrainingStatus.Ready,
+        errorCount: 0
+      },
+      ...(isQA
+        ? [
+            {
+              errorCount: trainingDetail.errorCounts.qa,
+              label: t(TrainingProcess.getQA.label),
+              statusText: getStatusText(TrainingModeEnum.qa),
+              status: getTrainingStatus({
+                errorCount: trainingDetail.errorCounts.qa
+              })
+            }
+          ]
+        : []),
+      ...(trainingDetail?.advancedTraining.imageIndex && !isQA
+        ? [
+            {
+              errorCount: trainingDetail.errorCounts.image,
+              label: t(TrainingProcess.imageIndex.label),
+              statusText: getStatusText(TrainingModeEnum.image),
+              status: getTrainingStatus({
+                errorCount: trainingDetail.errorCounts.image
+              })
+            }
+          ]
+        : []),
+      ...(trainingDetail?.advancedTraining.autoIndexes && !isQA
+        ? [
+            {
+              errorCount: trainingDetail.errorCounts.auto,
+              label: t(TrainingProcess.autoIndex.label),
+              statusText: getStatusText(TrainingModeEnum.auto),
+              status: getTrainingStatus({
+                errorCount: trainingDetail.errorCounts.auto
+              })
+            }
+          ]
+        : []),
+      {
+        errorCount: trainingDetail.errorCounts.chunk,
+        label: t(TrainingProcess.vectorizing.label),
+        statusText: getStatusText(TrainingModeEnum.chunk),
+        status: getTrainingStatus({
+          errorCount: trainingDetail.errorCounts.chunk
+        })
+      },
+      {
+        errorCount: 0,
+        label: t('dataset:process.Is_Ready'),
+        status: isReady ? TrainingStatus.Ready : TrainingStatus.NotStart,
+        statusText: isReady
+          ? undefined
+          : t('dataset:training_ready', {
+              count: trainingDetail.trainedCount
             })
-          }
-        ]
-      : []),
-    ...(trainingDetail?.advancedTraining.imageIndex && !isQA
-      ? [
-          {
-            mode: TrainingModeEnum.image,
-            label: TrainingProcess.imageIndex.label,
-            progress: getProgress(trainingDetail.trainingCounts.image, t),
-            status: getTrainingStatus({
-              trainingCount: trainingDetail.trainingCounts.image,
-              errorCount: trainingDetail.errorCounts.image
-            })
-          }
-        ]
-      : []),
-    ...(trainingDetail?.advancedTraining.autoIndexes && !isQA
-      ? [
-          {
-            mode: TrainingModeEnum.auto,
-            label: TrainingProcess.autoIndex.label,
-            progress: getProgress(trainingDetail.trainingCounts.auto, t),
-            status: getTrainingStatus({
-              trainingCount: trainingDetail.trainingCounts.auto,
-              errorCount: trainingDetail.errorCounts.auto
-            })
-          }
-        ]
-      : []),
-    {
-      mode: TrainingModeEnum.chunk,
-      label: TrainingProcess.vectorizing.label,
-      progress: getProgress(
-        trainingDetail.trainingCounts.chunk +
-          trainingDetail.trainingCounts.auto +
-          trainingDetail.trainingCounts.image,
-        t
-      ),
-      status: getTrainingStatus({
-        trainingCount:
-          trainingDetail.trainingCounts.chunk +
-          trainingDetail.trainingCounts.auto +
-          trainingDetail.trainingCounts.image,
-        errorCount: trainingDetail.errorCounts.chunk
-      })
-    },
-    {
-      label: t('dataset:process.Is_Ready'),
-      status: Object.values(trainingDetail?.trainingCounts || {}).every((count) => count === 0)
-        ? TrainingStatus.Normal
-        : TrainingStatus.NotStarted
-    }
-  ];
+      }
+    ];
+
+    return states;
+  }, [trainingDetail, t, isQA]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>
       {statesArray.map((item, index) => (
-        <Flex alignItems={'center'} pl={4} key={item.label}>
+        <Flex alignItems={'center'} pl={4} key={index}>
+          {/* Status round */}
           <Box
             w={'14px'}
             h={'14px'}
@@ -165,20 +177,17 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             display={'flex'}
             alignItems={'center'}
             justifyContent={'center'}
-            {...(item.status === TrainingStatus.InProgress || item.status === TrainingStatus.Error
-              ? {
-                  bg: 'primary.600',
-                  borderColor: 'primary.600',
-                  boxShadow: '0 0 0 4px var(--Royal-Blue-100, #E1EAFF)'
-                }
-              : item.status === TrainingStatus.Normal
-                ? {
-                    bg: 'primary.600',
-                    borderColor: 'primary.600'
-                  }
-                : {
-                    borderColor: 'myGray.250'
-                  })}
+            {...((item.status === TrainingStatus.Running ||
+              item.status === TrainingStatus.Error) && {
+              bg: 'primary.600',
+              borderColor: 'primary.600',
+              boxShadow: '0 0 0 4px var(--Royal-Blue-100, #E1EAFF)'
+            })}
+            {...(item.status === TrainingStatus.Ready && {
+              bg: 'primary.600',
+              borderColor: 'primary.600'
+            })}
+            // Line
             {...(index !== statesArray.length - 1 && {
               _after: {
                 content: '""',
@@ -191,15 +200,16 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
               }
             })}
           >
-            {item.status === TrainingStatus.Normal && (
+            {item.status === TrainingStatus.Ready && (
               <MyIcon name="common/check" w={3} color={'white'} />
             )}
           </Box>
+          {/* Card */}
           <Flex
             alignItems={'center'}
             w={'full'}
             bg={
-              item.status === TrainingStatus.InProgress
+              item.status === TrainingStatus.Running
                 ? 'primary.50'
                 : item.status === TrainingStatus.Error
                   ? 'red.50'
@@ -215,42 +225,30 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
             <Box
               fontSize={'14px'}
               fontWeight={'medium'}
-              color={item.status === TrainingStatus.NotStarted ? 'myGray.400' : 'myGray.900'}
+              color={item.status === TrainingStatus.NotStart ? 'myGray.400' : 'myGray.900'}
               mr={2}
             >
-              {t(item.label)}
+              {t(item.label as any)}
             </Box>
             {item.status === TrainingStatus.Error && (
-              <MyTag {...tagStyle} colorSchema={'red'}>
-                {t('dataset:training.Error')}
+              <MyTag
+                showDot
+                type={'borderSolid'}
+                px={1}
+                fontSize={'mini'}
+                borderRadius={'md'}
+                h={5}
+                colorSchema={'red'}
+              >
+                {t('dataset:training.Error', { count: item.errorCount })}
               </MyTag>
             )}
-            {item.status === TrainingStatus.InProgress && item.mode && (
-              <Flex alignItems={'center'} gap={1}>
-                <Spinner size={'xs'} color={'blue.500'} />
-                {!!trainingDetail?.waitingCounts[item.mode] && (
-                  <Box fontSize={'12px'}>
-                    {t('dataset:dataset.Training_Waiting', {
-                      count: trainingDetail?.waitingCounts[item.mode]
-                    })}
-                  </Box>
-                )}
+            <Box flex={1} />
+            {!!item.statusText && (
+              <Flex fontSize={'sm'} alignItems={'center'}>
+                {item.statusText}
               </Flex>
             )}
-            <Box flex={1} />
-            <Box
-              fontSize={'14px'}
-              fontWeight={item.status === TrainingStatus.Normal ? 'medium' : 'normal'}
-              color={
-                item.status === TrainingStatus.NotStarted
-                  ? 'myGray.400'
-                  : item.status === TrainingStatus.Normal
-                    ? 'green.500'
-                    : 'myGray.600'
-              }
-            >
-              {item.progress}
-            </Box>
           </Flex>
         </Flex>
       ))}
@@ -260,6 +258,13 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
 
 const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionId: string }) => {
   const { t } = useTranslation();
+  const TrainingText = {
+    [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
+    [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
+    [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
+    [TrainingModeEnum.auto]: t('dataset:process.Auto_Index')
+  };
+
   const [editChunk, setEditChunk] = useState<getTrainingDataDetailResponse>();
 
   const {
@@ -346,7 +351,7 @@ const ErrorView = ({ datasetId, collectionId }: { datasetId: string; collectionI
             {errorList.map((item, index) => (
               <Tr key={index}>
                 <Td>{item.chunkIndex + 1}</Td>
-                <Td>{t(TrainingText[item.mode])}</Td>
+                <Td>{TrainingText[item.mode]}</Td>
                 <Td maxW={50}>
                   <MyTooltip label={item.errorMsg}>{item.errorMsg}</MyTooltip>
                 </Td>
@@ -449,21 +454,13 @@ const TrainingStates = ({
 }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState<typeof defaultTab>(defaultTab);
-  const [pollingInterval, setPollingInterval] = useState(2000);
-  const [isFirstLoading, setIsFirstLoading] = useState(true);
 
   const { data: trainingDetail, loading } = useRequest2(
     () => getDatasetCollectionTrainingDetail(collectionId),
     {
-      pollingInterval,
+      pollingInterval: 5000,
       pollingWhenHidden: false,
-      manual: false,
-      onSuccess: (data) => {
-        setIsFirstLoading(false);
-        if (Object.values(data.trainingCounts).every((count) => count === 0)) {
-          setPollingInterval(0);
-        }
-      }
+      manual: false
     }
   );
 
@@ -479,7 +476,7 @@ const TrainingStates = ({
       iconSrc="common/running"
       title={t('dataset:dataset.Training Process')}
       minW={['90vw', '712px']}
-      isLoading={isFirstLoading && loading}
+      isLoading={!trainingDetail && loading}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
         <FillRowTabs
