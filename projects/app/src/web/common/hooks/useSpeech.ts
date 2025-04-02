@@ -4,34 +4,25 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
   const { t } = useTranslation();
-  const mediaRecorder = useRef<MediaRecorder>();
-  const [mediaStream, setMediaStream] = useState<MediaStream>();
   const { toast } = useToast();
+
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isTransCription, setIsTransCription] = useState(false);
-  const [audioSecond, setAudioSecond] = useState(0);
-  const intervalRef = useRef<any>();
-  const startTimestamp = useRef(0);
+
+  const mediaRecorder = useRef<MediaRecorder>();
+  const [mediaStream, setMediaStream] = useState<MediaStream>();
+
+  const timeIntervalRef = useRef<any>();
   const cancelWhisperSignal = useRef(false);
   const stopCalledRef = useRef(false);
-  const { isPc } = useSystem();
-  const [waveColor, setWaveColor] = useState({
-    primary: '#3370FF',
-    secondary: '#66A3FF'
-  });
 
-  const changeWaveColor = useCallback((isPrimary: boolean) => {
-    setWaveColor(
-      isPrimary
-        ? { primary: '#3370FF', secondary: '#66A3FF' }
-        : { primary: '#FF3333', secondary: '#FF6666' }
-    );
-  }, []);
+  const startTimestamp = useRef(0);
 
+  const [audioSecond, setAudioSecond] = useState(0);
   const speakingTimeString = useMemo(() => {
     const minutes: number = Math.floor(audioSecond / 60);
     const remainingSeconds: number = Math.floor(audioSecond % 60);
@@ -63,7 +54,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       x += barWidth + 1;
     }
   }, []);
-
   const renderAudioGraphMobile = useCallback(
     (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
       const bufferLength = analyser.frequencyBinCount;
@@ -77,10 +67,8 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       if (!canvasCtx) return;
       canvasCtx.clearRect(0, 0, width, height);
 
-      // set background color according to device type
-
-      canvasCtx.fillStyle = waveColor.primary;
-
+      // Set white background
+      canvasCtx.fillStyle = '#FFFFFF';
       canvasCtx.fillRect(0, 0, width, height);
 
       const centerY = height / 2;
@@ -97,8 +85,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
 
       // draw initial rectangle waveform
       canvasCtx.beginPath();
-      // set waveform color according to device type
-
       canvasCtx.fillStyle = '#FFFFFF';
 
       const initialHeight = height * 0.1;
@@ -125,7 +111,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         if (x > width * 0.9) break;
       }
     },
-    [waveColor, isPc]
+    []
   );
 
   const startSpeak = useCallback(
@@ -136,46 +122,44 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           title: t('common:common.speech.not support')
         });
       }
-      try {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-          intervalRef.current = null;
-        }
-        cancelWhisperSignal.current = false;
-        stopCalledRef.current = false;
 
+      // Init status
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+      }
+      cancelWhisperSignal.current = false;
+      stopCalledRef.current = false;
+
+      setIsSpeaking(true);
+      setAudioSecond(0);
+
+      try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         setMediaStream(stream);
 
-        // Check if need to cancel
-        if (stopCalledRef.current) {
-          stream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-
         mediaRecorder.current = new MediaRecorder(stream);
         const chunks: Blob[] = [];
-        setIsSpeaking(true);
 
         mediaRecorder.current.onstart = () => {
           startTimestamp.current = Date.now();
-          setAudioSecond(0);
-          intervalRef.current = setInterval(() => {
+          timeIntervalRef.current = setInterval(() => {
             const currentTimestamp = Date.now();
             const duration = (currentTimestamp - startTimestamp.current) / 1000;
             setAudioSecond(duration);
           }, 1000);
         };
-
         mediaRecorder.current.ondataavailable = (e) => {
           chunks.push(e.data);
         };
-
         mediaRecorder.current.onstop = async () => {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
+          // close media stream
+          stream.getTracks().forEach((track) => track.stop());
+          setIsSpeaking(false);
+
+          if (timeIntervalRef.current) {
+            clearInterval(timeIntervalRef.current);
           }
+
           if (!cancelWhisperSignal.current) {
             const formData = new FormData();
             const { options, filename } = (() => {
@@ -214,40 +198,40 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
               })
             );
 
+            console.log('请求转化');
             setIsTransCription(true);
-            try {
-              const result = await POST<string>('/v1/audio/transcriptions', formData, {
-                timeout: 60000,
-                headers: {
-                  'Content-Type': 'multipart/form-data; charset=utf-8'
-                }
-              });
-              onFinish(result);
-            } catch (error) {
-              toast({
-                status: 'warning',
-                title: getErrText(error, t('common:common.speech.error tip'))
-              });
-            }
+            await delay(1000);
+            // try {
+            //   const result = await POST<string>('/v1/audio/transcriptions', formData, {
+            //     timeout: 60000,
+            //     headers: {
+            //       'Content-Type': 'multipart/form-data; charset=utf-8'
+            //     }
+            //   });
+            //   onFinish(result);
+            // } catch (error) {
+            //   toast({
+            //     status: 'warning',
+            //     title: getErrText(error, t('common:common.speech.error tip'))
+            //   });
+            // }
+            setIsTransCription(false);
           }
-
-          // close media stream
-          stream.getTracks().forEach((track) => track.stop());
-
-          setIsTransCription(false);
-          setIsSpeaking(false);
         };
-
         mediaRecorder.current.onerror = (e) => {
-          if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
+          if (timeIntervalRef.current) {
+            clearInterval(timeIntervalRef.current);
           }
           console.log('error', e);
           setIsSpeaking(false);
         };
 
-        mediaRecorder.current.start();
+        // If onclick stop, stop speak
+        if (stopCalledRef.current) {
+          mediaRecorder.current.stop();
+        } else {
+          mediaRecorder.current.start();
+        }
       } catch (error) {
         toast({
           status: 'warning',
@@ -256,24 +240,28 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         console.log(error);
       }
     },
-    [toast, t, props, POST]
+    [toast, t, props]
   );
 
   const stopSpeak = useCallback((cancel = false) => {
     cancelWhisperSignal.current = cancel;
     stopCalledRef.current = true;
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
+
+    if (timeIntervalRef.current) {
+      clearInterval(timeIntervalRef.current);
     }
+
+    console.log(mediaRecorder.current, 1111);
+
     if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
       mediaRecorder.current.stop();
     }
   }, []);
 
+  // Leave page, stop speak
   useEffect(() => {
     return () => {
-      clearInterval(intervalRef.current);
+      clearInterval(timeIntervalRef.current);
       if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
         mediaRecorder.current.stop();
       }
@@ -298,7 +286,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     renderAudioGraphPc,
     renderAudioGraphMobile,
     stream: mediaStream,
-    speakingTimeString,
-    changeWaveColor
+    speakingTimeString
   };
 };

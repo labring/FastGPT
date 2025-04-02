@@ -17,7 +17,7 @@ import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import VoiceInput, { VoiceInputComponentRef } from './VoiceInput';
+import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 
@@ -54,7 +54,6 @@ const ChatInput = ({
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
-  const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
 
@@ -212,29 +211,31 @@ const ChatInput = ({
           zIndex={3}
         >
           {/* Voice input icon */}
-          <MyTooltip label={t('common:core.chat.Record')}>
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              flexShrink={0}
-              h={['28px', '32px']}
-              w={['28px', '32px']}
-              mr={2}
-              borderRadius={'md'}
-              cursor={'pointer'}
-              _hover={{ bg: '#F5F5F8' }}
-              onClick={() => {
-                VoiceInputRef.current?.onSpeak();
-              }}
-            >
-              <MyIcon
-                name={'core/chat/recordFill'}
-                width={['22px', '25px']}
-                height={['22px', '25px']}
-                color={'myGray.600'}
-              />
-            </Flex>
-          </MyTooltip>
+          {whisperConfig?.open && !inputValue && (
+            <MyTooltip label={t('common:core.chat.Record')}>
+              <Flex
+                alignItems={'center'}
+                justifyContent={'center'}
+                flexShrink={0}
+                h={['28px', '32px']}
+                w={['28px', '32px']}
+                mr={2}
+                borderRadius={'md'}
+                cursor={'pointer'}
+                _hover={{ bg: '#F5F5F8' }}
+                onClick={() => {
+                  VoiceInputRef.current?.onSpeak?.();
+                }}
+              >
+                <MyIcon
+                  name={'core/chat/recordFill'}
+                  width={['22px', '25px']}
+                  height={['22px', '25px']}
+                  color={'myGray.600'}
+                />
+              </Flex>
+            </MyTooltip>
+          )}
 
           {/* send and stop icon */}
           <Flex
@@ -365,6 +366,7 @@ const ChatInput = ({
         <Box px={[1, 3]}>
           <FilePreview fileList={fileList} removeFiles={removeFiles} />
         </Box>
+
         {/* voice input and loading container */}
         <VoiceInput
           ref={VoiceInputRef}
