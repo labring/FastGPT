@@ -4,12 +4,20 @@ import type { RuntimeEdgeItemType } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
-
+export type InteractiveContext = {
+  parentAppId?: string;
+  workflowDepth: number;
+  nodeStates: {
+    nodeId: string;
+    outputs: any[];
+    memoryEdges: RuntimeEdgeItemType[];
+  }[];
+};
 type InteractiveBasicType = {
   entryNodeIds: string[];
   memoryEdges: RuntimeEdgeItemType[];
   nodeOutputs: NodeOutputItemType[];
-
+  context?: InteractiveContext; // 添加这一行
   toolParams?: {
     entryNodeIds: string[]; // 记录工具中，交互节点的 Id，而不是起始工作流的入口
     memoryMessages: ChatCompletionMessageParam[]; // 这轮工具中，产生的新的 messages
