@@ -6,11 +6,9 @@ import {
   getLLMModel,
   getEmbeddingModel,
   getDatasetModel,
-  getDefaultEmbeddingModel,
-  getVlmModel
+  getDefaultEmbeddingModel
 } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
@@ -18,6 +16,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type DatasetCreateQuery = {};
 export type DatasetCreateBody = CreateDatasetParams;
@@ -41,25 +40,20 @@ async function handler(
   } = req.body;
 
   // auth
-  const [{ teamId, tmbId, userId }] = await Promise.all([
-    authUserPer({
-      req,
-      authToken: true,
-      authApiKey: true,
-      per: WritePermissionVal
-    }),
-    ...(parentId
-      ? [
-          authDataset({
-            req,
-            datasetId: parentId,
-            authToken: true,
-            authApiKey: true,
-            per: WritePermissionVal
-          })
-        ]
-      : [])
-  ]);
+  const { teamId, tmbId, userId } = parentId
+    ? await authDataset({
+        req,
+        datasetId: parentId,
+        authToken: true,
+        authApiKey: true,
+        per: TeamDatasetCreatePermissionVal
+      })
+    : await authUserPer({
+        req,
+        authToken: true,
+        authApiKey: true,
+        per: TeamDatasetCreatePermissionVal
+      });
 
   // check model valid
   const vectorModelStore = getEmbeddingModel(vectorModel);

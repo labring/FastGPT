@@ -1,31 +1,40 @@
-import { existsSync, readFileSync } from 'fs';
-import mongoose from '@fastgpt/service/common/mongo';
-import { connectMongo } from '@fastgpt/service/common/mongo/init';
-import {
-  connectionMongo,
-  connectionLogMongo,
-  MONGO_URL,
-  MONGO_LOG_URL
-} from '@fastgpt/service/common/mongo';
-import { initGlobalVariables } from '@/service/common/system';
-import { afterAll, beforeAll, vi } from 'vitest';
-import { setup, teardown } from 'vitest-mongodb';
-import setupModels from './setupModels';
 import './mocks';
+import { existsSync, readFileSync } from 'fs';
+import { connectMongo } from '@fastgpt/service/common/mongo/init';
+import { initGlobalVariables } from '@/service/common/system';
+import { afterAll, afterEach, beforeAll, beforeEach, inject, vi } from 'vitest';
+import setupModels from './setupModels';
+import { clean } from './datas/users';
+import { connectionMongo } from '@fastgpt/service/common/mongo';
+import { randomUUID } from 'crypto';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 vi.stubEnv('NODE_ENV', 'test');
-vi.mock(import('@fastgpt/service/common/mongo'), async (importOriginal) => {
+// vi.mock(import('@fastgpt/service/common/mongo'), async (importOriginal) => {
+//   const mod = await importOriginal();
+//   return {
+//     ...mod,
+//     connectionMongo: await (async () => {
+//       if (!global.mongodb) {
+//         global.mongodb = mongoose;
+//         await global.mongodb.connect((globalThis as any).__MONGO_URI__ as string, {
+//           timeoutMS: 3000
+//         });
+//       }
+
+//       return global.mongodb;
+//     })()
+//   };
+// });
+
+vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any) => {
   const mod = await importOriginal();
+  const uri = inject('MONGODB_URI');
   return {
     ...mod,
-    connectionMongo: await (async () => {
-      if (!global.mongodb) {
-        global.mongodb = mongoose;
-        await global.mongodb.connect((globalThis as any).__MONGO_URI__ as string);
-      }
-
-      return global.mongodb;
-    })()
+    connectMongo: async () => {
+      (await connectionMongo.connect(uri)).connection.useDb(randomUUID());
+    }
   };
 });
 
@@ -59,18 +68,11 @@ vi.mock(import('@/service/common/system'), async (importOriginal) => {
 });
 
 beforeAll(async () => {
-  await setup({
-    type: 'replSet',
-    serverOptions: {
-      replSet: {
-        count: 1
-      }
-    }
-  });
-  vi.stubEnv('MONGODB_URI', (globalThis as any).__MONGO_URI__);
+  vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
+  await connectMongo();
+
   initGlobalVariables();
-  await connectMongo(connectionMongo, MONGO_URL);
-  await connectMongo(connectionLogMongo, MONGO_LOG_URL);
+  global.systemEnv = {} as any;
 
   // await getInitConfig();
   if (existsSync('projects/app/.env.local')) {
@@ -83,13 +85,23 @@ beforeAll(async () => {
         systemEnv[key] = value;
       }
     }
-    global.systemEnv = {} as any;
     global.systemEnv.oneapiUrl = systemEnv['OPENAI_BASE_URL'];
     global.systemEnv.chatApiKey = systemEnv['CHAT_API_KEY'];
-    await setupModels();
   }
+  global.feConfigs = {
+    isPlus: false
+  } as any;
+  await setupModels();
 });
 
 afterAll(async () => {
-  await teardown();
+  if (global?.mongodb?.connection) global.mongodb?.connection.close();
+});
+
+beforeEach(async () => {
+  await connectMongo();
+  return async () => {
+    clean();
+    await global.mongodb?.connection.db?.dropDatabase();
+  };
 });
