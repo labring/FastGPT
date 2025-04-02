@@ -152,7 +152,7 @@ const MobileVoiceInput = ({
             right={2}
             top={'50%'}
             transform={'translateY(-50%)'}
-            zIndex={4}
+            zIndex={5}
             name={'core/chat/backText'}
             h={'22px'}
             w={'22px'}
@@ -160,7 +160,6 @@ const MobileVoiceInput = ({
           />
         </MyTooltip>
       )}
-
       <Flex
         alignItems={'center'}
         justifyContent={'center'}
@@ -173,44 +172,46 @@ const MobileVoiceInput = ({
         onTouchCancel={() => {
           stopSpeak(true);
         }}
+        zIndex={4}
+        userSelect={'none'}
       >
-        {!isSpeaking && <Box>{t('chat:press_to_speak')}</Box>}
+        <Box visibility={isSpeaking ? 'hidden' : 'visible'}>{t('chat:press_to_speak')}</Box>
         <Box
           position="absolute"
           h={'100%'}
+          w={'100%'}
           as="canvas"
           ref={canvasRef}
           flex="0 0 80%"
           visibility={isSpeaking ? 'visible' : 'hidden'}
         />
-
-        {/* Mask */}
-        {/* {isSpeaking && (
-          <Flex
-            justifyContent="center"
-            alignItems="center"
-            height="100%"
-            position="absolute"
-            left={0}
-            right={0}
-            top={0}
-            bottom={0}
-            background="linear-gradient(to bottom, white 0%, rgba(255, 255, 255, 0.5) 100%)"
-            zIndex={4}
-          >
-            <Box
-              fontSize="sm"
-              fontWeight="medium"
-              color="gray.700"
-              position="relative"
-              zIndex={5}
-              bg="transparent"
-            >
-              {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
-            </Box>
-          </Flex>
-        )} */}
       </Flex>
+
+      {/* Mask */}
+      {isSpeaking && (
+        <Flex
+          justifyContent="center"
+          alignItems="center"
+          height="100%"
+          position="fixed"
+          left={0}
+          right={0}
+          bottom={'50px'}
+          h={'200px'}
+          bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
+          userSelect={'none'}
+        >
+          <Box
+            fontSize="sm"
+            fontWeight="medium"
+            color="gray.700"
+            position="absolute"
+            bottom={'10px'}
+          >
+            {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
+          </Box>
+        </Flex>
+      )}
     </Flex>
   );
 };
@@ -239,10 +240,9 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
 
     const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
 
-    const finishSpeak = useCallback(() => {
+    const CloseSpeak = useCallback(() => {
       setMobilePreSpeak(false);
-      stopSpeak(true);
-    }, [stopSpeak]);
+    }, []);
 
     // Canvas render
     useEffect(() => {
@@ -362,7 +362,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
             alignItems={'center'}
             bg={'white'}
             color={'primary.500'}
-            zIndex={5}
+            zIndex={6}
           >
             <Spinner size={'sm'} mr={4} />
             {t('common:core.chat.Converting to text')}
