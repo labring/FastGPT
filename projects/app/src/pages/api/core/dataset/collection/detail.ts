@@ -33,23 +33,22 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   });
 
   // get file
-  const [file, indexAmount] = await Promise.all([
+  const [file, indexAmount, errorCount] = await Promise.all([
     collection?.fileId
       ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
       : undefined,
-    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id)
+    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
+    MongoDatasetTraining.countDocuments(
+      {
+        teamId: collection.teamId,
+        datasetId: collection.datasetId,
+        collectionId: id,
+        errorMsg: { $exists: true },
+        retryCount: { $lte: 0 }
+      },
+      readFromSecondary
+    )
   ]);
-
-  const errorCount = await MongoDatasetTraining.countDocuments(
-    {
-      teamId: collection.teamId,
-      datasetId: collection.datasetId,
-      collectionId: id,
-      errorMsg: { $exists: true },
-      retryCount: { $lte: 0 }
-    },
-    readFromSecondary
-  );
 
   return {
     ...collection,

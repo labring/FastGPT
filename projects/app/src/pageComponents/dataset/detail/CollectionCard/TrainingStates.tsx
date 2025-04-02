@@ -72,9 +72,7 @@ const ProgressView = ({ trainingDetail }: { trainingDetail: getTrainingDetailRes
     // 只显示排队和处理中的数量
     const getStatusText = (mode: TrainingModeEnum) => {
       if (isReady) return;
-      if (trainingDetail.errorCounts[mode] > 0) {
-        return;
-      }
+
       if (trainingDetail.queuedCounts[mode] > 0) {
         return t('dataset:dataset.Training_Waiting', {
           count: trainingDetail.queuedCounts[mode]
