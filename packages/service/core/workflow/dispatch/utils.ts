@@ -53,7 +53,8 @@ export const getWorkflowResponseWrite = ({
       [SseResponseEventEnum.toolCall]: 1,
       [SseResponseEventEnum.toolParams]: 1,
       [SseResponseEventEnum.toolResponse]: 1,
-      [SseResponseEventEnum.updateVariables]: 1
+      [SseResponseEventEnum.updateVariables]: 1,
+      [SseResponseEventEnum.flowNodeResponse]: 1
     };
     if (!detail && detailEvent[event]) return;
 
