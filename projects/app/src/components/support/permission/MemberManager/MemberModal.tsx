@@ -1,17 +1,6 @@
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  Grid,
-  HStack,
-  ModalBody,
-  ModalFooter,
-  Tag,
-  Text
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -19,27 +8,26 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import PermissionSelect from './PermissionSelect';
-import PermissionTags from './PermissionTags';
 import {
   DEFAULT_ORG_AVATAR,
   DEFAULT_TEAM_AVATAR,
   DEFAULT_USER_AVATAR
 } from '@fastgpt/global/common/system/constants';
 import Path from '@/components/common/folder/Path';
-import { OrgListItemType, OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { getGroupList } from '@/web/support/user/team/group/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
-import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
-import _ from 'lodash';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
+import { ValueOf } from 'next/dist/shared/lib/constants';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -131,8 +119,8 @@ function MemberModal({
         members: selectedMemberList.map((item) => item.tmbId),
         groups: selectedGroupList.map((item) => item._id),
         orgs: selectedOrgList.map((item) => item._id),
-        permission: selectedPermission!
-      }),
+        permission: addOnly ? undefined : selectedPermission!
+      } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
     {
       successToast: t('common:common.Add Success'),
       onSuccess() {
@@ -285,6 +273,7 @@ function MemberModal({
                     const collaborator = collaboratorList?.find((v) => v.tmbId === member.tmbId);
                     return (
                       <MemberItemCard
+                        addOnly={addOnly}
                         avatar={member.avatar}
                         key={member.tmbId}
                         name={member.memberName}
@@ -321,49 +310,33 @@ function MemberModal({
                     };
                     const collaborator = collaboratorList?.find((v) => v.orgId === org._id);
                     return (
-                      <HStack
-                        justifyContent="space-between"
+                      <MemberItemCard
+                        avatar={org.avatar}
                         key={org._id}
-                        py="2"
-                        px="3"
-                        borderRadius="sm"
-                        alignItems="center"
-                        _hover={HoverBoxStyle}
-                        onClick={onChange}
-                      >
-                        <Checkbox
-                          isChecked={!!selectedOrgList.find((v) => v._id === org._id)}
-                          pointerEvents="none"
-                        />
-                        <MyAvatar src={org.avatar} w="1.5rem" borderRadius={'50%'} />
-                        <HStack w="full">
-                          <Text>{org.name}</Text>
-                          {org.total && (
-                            <>
-                              <Tag size="sm" my="auto">
-                                {org.total}
-                              </Tag>
-                            </>
-                          )}
-                        </HStack>
-                        <PermissionTags permission={collaborator?.permission.value} />
-                        {org.total && (
-                          <MyIcon
-                            name="core/chat/chevronRight"
-                            w="16px"
-                            p="4px"
-                            rounded={'6px'}
-                            _hover={{
-                              bgColor: 'myGray.200'
-                            }}
-                            onClick={(e) => {
-                              onClickOrg(org);
-                              // setPath(getOrgChildrenPath(org));
-                              e.stopPropagation();
-                            }}
-                          />
-                        )}
-                      </HStack>
+                        name={org.name}
+                        onChange={onChange}
+                        addOnly={addOnly}
+                        permission={collaborator?.permission.value}
+                        isChecked={!!selectedOrgList.find((v) => String(v._id) === String(org._id))}
+                        rightSlot={
+                          org.total && (
+                            <MyIcon
+                              name="core/chat/chevronRight"
+                              w="16px"
+                              p="4px"
+                              rounded={'6px'}
+                              _hover={{
+                                bgColor: 'myGray.200'
+                              }}
+                              onClick={(e) => {
+                                onClickOrg(org);
+                                // setPath(getOrgChildrenPath(org));
+                                e.stopPropagation();
+                              }}
+                            />
+                          )
+                        }
+                      />
                     );
                   });
                   return searchKey ? (
@@ -372,6 +345,9 @@ function MemberModal({
                     <OrgMemberScrollData>
                       {Orgs}
                       {orgMembers.map((member) => {
+                        const isChecked = !!selectedMemberList.find(
+                          (v) => v.tmbId === member.tmbId
+                        );
                         return (
                           <MemberItemCard
                             avatar={member.avatar}
@@ -385,7 +361,9 @@ function MemberModal({
                                 return [...state, member];
                               });
                             }}
-                            isChecked={!!selectedMemberList.find((v) => v.tmbId === member.tmbId)}
+                            isChecked={isChecked}
+                            permission={member.permission.value}
+                            addOnly={addOnly && !!member.permission.value}
                             orgs={member.orgs}
                           />
                         );
@@ -414,6 +392,7 @@ function MemberModal({
                       permission={collaborator?.permission.value}
                       onChange={onChange}
                       isChecked={!!selectedGroupList.find((v) => v._id === group._id)}
+                      addOnly={addOnly}
                     />
                   );
                 })}
