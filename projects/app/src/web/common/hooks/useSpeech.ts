@@ -68,7 +68,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       canvasCtx.clearRect(0, 0, width, height);
 
       // Set white background
-      canvasCtx.fillStyle = '#FFFFFF';
+      canvasCtx.fillStyle = 'rgba(255, 255, 255, 0)';
       canvasCtx.fillRect(0, 0, width, height);
 
       const centerY = height / 2;
@@ -201,20 +201,20 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
             console.log('请求转化');
             setIsTransCription(true);
             await delay(1000);
-            // try {
-            //   const result = await POST<string>('/v1/audio/transcriptions', formData, {
-            //     timeout: 60000,
-            //     headers: {
-            //       'Content-Type': 'multipart/form-data; charset=utf-8'
-            //     }
-            //   });
-            //   onFinish(result);
-            // } catch (error) {
-            //   toast({
-            //     status: 'warning',
-            //     title: getErrText(error, t('common:common.speech.error tip'))
-            //   });
-            // }
+            try {
+              const result = await POST<string>('/v1/audio/transcriptions', formData, {
+                timeout: 60000,
+                headers: {
+                  'Content-Type': 'multipart/form-data; charset=utf-8'
+                }
+              });
+              onFinish(result);
+            } catch (error) {
+              toast({
+                status: 'warning',
+                title: getErrText(error, t('common:common.speech.error tip'))
+              });
+            }
             setIsTransCription(false);
           }
         };

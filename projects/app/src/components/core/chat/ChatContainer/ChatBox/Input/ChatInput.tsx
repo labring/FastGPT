@@ -368,11 +368,14 @@ const ChatInput = ({
         </Box>
 
         {/* voice input and loading container */}
-        <VoiceInput
-          ref={VoiceInputRef}
-          onSendMessage={onSendMessage}
-          resetInputVal={resetInputVal}
-        />
+        {!inputValue && (
+          <VoiceInput
+            ref={VoiceInputRef}
+            onSendMessage={onSendMessage}
+            resetInputVal={resetInputVal}
+          />
+        )}
+
         {RenderTextarea}
       </Box>
       <ComplianceTip type={'chat'} />
