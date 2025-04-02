@@ -286,7 +286,7 @@ const updateSyncSchedule = async ({
         {
           teamId: dataset.teamId,
           datasetId: dataset._id,
-          type: { $in: [DatasetCollectionTypeEnum.apiFile] }
+          type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
         },
         {
           $set: {
