@@ -61,5 +61,11 @@
   "upload": "上传",
   "variable_invisable_in_share": "自定义变量在免登录链接中不可见",
   "view_citations": "查看引用",
-  "web_site_sync": "Web站点同步"
+  "web_site_sync": "Web站点同步",
+    "core.chat.Back to Text": "返回文本输入",
+  "core.chat.shortSpeak": "说话时间太短",
+  "core.chat.moveCancel": "上滑取消",
+  "core.chat.pressToSpeak": "按住说话",
+  "core.chat.releaseToCancel": "松开取消",
+  "core.chat.releaseToSend": "松开发送，上滑取消",
 }

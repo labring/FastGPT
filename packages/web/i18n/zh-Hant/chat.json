@@ -60,5 +60,11 @@
   "upload": "上傳",
   "variable_invisable_in_share": "自定義變量在免登錄鏈接中不可見",
   "view_citations": "檢視引用",
-  "web_site_sync": "網站同步"
+  "web_site_sync": "網站同步",
+    "Back to Text": "返回文字輸入",
+  "shortSpeak ": "說話時間太短",
+  "moveCancel": "上滑取消",
+  "pressToSpeak": "按住說話",
+  "releaseToCancel": "鬆開取消",
+  "releaseToSend": "鬆開發送，上滑取消"
 }
