@@ -234,10 +234,7 @@ export const streamFetch = ({
             });
           } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
-          } else if (
-            event === SseResponseEventEnum.flowNodeResponse &&
-            Object.keys(parseJson).length > 0
-          ) {
+          } else if (event === SseResponseEventEnum.flowNodeResponse) {
             responseData = [...responseData, parseJson];
           } else if (event === SseResponseEventEnum.updateVariables) {
             onMessage({
