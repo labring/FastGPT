@@ -34,7 +34,8 @@ const main = async ({
         port: parseInt(port, 10),
         database: databaseName,
         user,
-        password
+        password,
+        connectionTimeoutMillis: 30000
       });
 
       await client.connect();
@@ -47,7 +48,8 @@ const main = async ({
         port: parseInt(port, 10),
         database: databaseName,
         user,
-        password
+        password,
+        connectTimeout: 30000
       });
 
       const [rows] = await connection.execute(sql);
