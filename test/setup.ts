@@ -75,6 +75,7 @@ beforeAll(async () => {
   await connectMongo();
 
   initGlobalVariables();
+  global.systemEnv = {} as any;
 
   // await getInitConfig();
   if (existsSync('projects/app/.env.local')) {
@@ -87,14 +88,13 @@ beforeAll(async () => {
         systemEnv[key] = value;
       }
     }
-    global.systemEnv = {} as any;
     global.systemEnv.oneapiUrl = systemEnv['OPENAI_BASE_URL'];
     global.systemEnv.chatApiKey = systemEnv['CHAT_API_KEY'];
-    global.feConfigs = {
-      isPlus: false
-    } as any;
-    await setupModels();
   }
+  global.feConfigs = {
+    isPlus: false
+  } as any;
+  await setupModels();
 });
 
 afterAll(async () => {
