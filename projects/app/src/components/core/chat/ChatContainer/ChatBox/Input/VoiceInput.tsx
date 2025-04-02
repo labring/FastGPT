@@ -173,7 +173,6 @@ const MobileVoiceInput = ({
           stopSpeak(true);
         }}
         zIndex={4}
-        userSelect={'none'}
       >
         <Box visibility={isSpeaking ? 'hidden' : 'visible'}>{t('chat:press_to_speak')}</Box>
         <Box
@@ -199,15 +198,8 @@ const MobileVoiceInput = ({
           bottom={'50px'}
           h={'200px'}
           bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
-          userSelect={'none'}
         >
-          <Box
-            fontSize="sm"
-            fontWeight="medium"
-            color="gray.700"
-            position="absolute"
-            bottom={'10px'}
-          >
+          <Box fontSize="sm" color="myGray.500" position="absolute" bottom={'10px'}>
             {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
           </Box>
         </Flex>
@@ -239,10 +231,6 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
     } = useSpeech({ appId, ...outLinkAuthData });
 
     const [mobilePreSpeak, setMobilePreSpeak] = useState(false);
-
-    const CloseSpeak = useCallback(() => {
-      setMobilePreSpeak(false);
-    }, []);
 
     // Canvas render
     useEffect(() => {
@@ -327,6 +315,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       <Box
         position="absolute"
         overflow={'hidden'}
+        userSelect={'none'}
         top={0}
         left={0}
         right={0}
@@ -334,6 +323,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         bg="white"
         zIndex={5}
         borderRadius={isPc ? 'md' : ''}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {isPc ? (
           <PCVoiceInput

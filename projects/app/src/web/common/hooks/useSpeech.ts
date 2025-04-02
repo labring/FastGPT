@@ -4,7 +4,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { delay } from '@fastgpt/global/common/system/utils';
 
 export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
   const { t } = useTranslation();
@@ -56,27 +55,29 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   }, []);
   const renderAudioGraphMobile = useCallback(
     (analyser: AnalyserNode, canvas: HTMLCanvasElement) => {
+      const canvasCtx = canvas?.getContext('2d');
+      if (!canvasCtx) return;
+
       const bufferLength = analyser.frequencyBinCount;
       const dataArray = new Uint8Array(bufferLength);
       analyser.getByteTimeDomainData(dataArray);
-      const canvasCtx = canvas?.getContext('2d');
 
       const width = canvas.width;
       const height = canvas.height;
-
-      if (!canvasCtx) return;
       canvasCtx.clearRect(0, 0, width, height);
 
-      // Set white background
+      // Set transparent background
       canvasCtx.fillStyle = 'rgba(255, 255, 255, 0)';
       canvasCtx.fillRect(0, 0, width, height);
 
       const centerY = height / 2;
-      const barWidth = (width / bufferLength) * 20;
+      const barWidth = (width / bufferLength) * 15;
+      const gap = 2; // 添加间隙
       let x = width * 0.1;
 
       let sum = 0;
       let maxDiff = 0;
+
       for (let i = 0; i < bufferLength; i++) {
         sum += dataArray[i];
         maxDiff = Math.max(maxDiff, Math.abs(dataArray[i] - 128));
@@ -88,7 +89,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       canvasCtx.fillStyle = '#FFFFFF';
 
       const initialHeight = height * 0.1;
-      for (let i = 0; i < width * 0.8; i += barWidth + 1) {
+      for (let i = 0; i < width * 0.8; i += barWidth + gap) {
         canvasCtx.fillRect(i + width * 0.1, centerY - initialHeight, barWidth, initialHeight);
         canvasCtx.fillRect(i + width * 0.1, centerY, barWidth, initialHeight);
       }
@@ -106,7 +107,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
         canvasCtx.fillRect(x, centerY - Math.abs(barHeight), barWidth, Math.abs(barHeight));
         canvasCtx.fillRect(x, centerY, barWidth, Math.abs(barHeight));
 
-        x += barWidth + 1;
+        x += barWidth + gap; // 增加间隔
 
         if (x > width * 0.9) break;
       }
@@ -198,9 +199,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
               })
             );
 
-            console.log('请求转化');
             setIsTransCription(true);
-            await delay(1000);
             try {
               const result = await POST<string>('/v1/audio/transcriptions', formData, {
                 timeout: 60000,
@@ -250,8 +249,6 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
     if (timeIntervalRef.current) {
       clearInterval(timeIntervalRef.current);
     }
-
-    console.log(mediaRecorder.current, 1111);
 
     if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
       mediaRecorder.current.stop();
