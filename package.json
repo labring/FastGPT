@@ -18,15 +18,15 @@
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
-    "@vitest/coverage-v8": "^3.0.2",
+    "@vitest/coverage-v8": "^3.0.9",
     "husky": "^8.0.3",
     "i18next": "23.16.8",
     "lint-staged": "^13.3.0",
     "next-i18next": "15.4.2",
     "prettier": "3.2.4",
     "react-i18next": "14.1.2",
-    "vitest": "^3.0.2",
-    "vitest-mongodb": "^1.0.1",
+    "vitest": "^3.0.9",
+    "mongodb-memory-server": "^10.1.4",
     "zhlint": "^0.7.4"
   },
   "lint-staged": {

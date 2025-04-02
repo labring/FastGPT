@@ -20,7 +20,7 @@ import { ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -79,7 +79,7 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       await authUserPer({
         req,
         authToken: true,
-        per: TeamWritePermissionVal
+        per: TeamAppCreatePermissionVal
       });
     }
   } else {
