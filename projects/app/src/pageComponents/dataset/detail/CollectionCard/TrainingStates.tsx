@@ -474,7 +474,7 @@ const TrainingStates = ({
       iconSrc="common/running"
       title={t('dataset:dataset.Training Process')}
       minW={['90vw', '712px']}
-      isLoading={!trainingDetail && loading}
+      isLoading={!trainingDetail && loading && tab === 'states'}
     >
       <ModalBody px={9} minH={['90vh', '500px']}>
         <FillRowTabs
