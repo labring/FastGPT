@@ -15,6 +15,7 @@ const getVectorObj = () => {
 
   return new PgVectorCtrl();
 };
+const getChcheKey = (teamId: string) => `${CacheKeyEnum.team_vector_count}:${teamId}`;
 
 const Vector = getVectorObj();
 
@@ -23,7 +24,7 @@ export const recallFromVectorStore = Vector.embRecall;
 export const getVectorDataByTime = Vector.getVectorDataByTime;
 
 export const getVectorCountByTeamId = async (teamId: string) => {
-  const key = `${CacheKeyEnum.team_vector_count}:${teamId}`;
+  const key = getChcheKey(teamId);
 
   const countStr = await getRedisCache(key);
   if (countStr) {
@@ -58,7 +59,7 @@ export const insertDatasetDataVector = async ({
     vector: vectors[0]
   });
 
-  delRedisCache(`${CacheKeyEnum.team_vector_count}:${props.teamId}`);
+  delRedisCache(getChcheKey(props.teamId));
 
   return {
     tokens,
@@ -68,6 +69,6 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
   const result = await Vector.delete(props);
-  delRedisCache(`${CacheKeyEnum.team_vector_count}:${props.teamId}`);
+  delRedisCache(getChcheKey(props.teamId));
   return result;
 };
