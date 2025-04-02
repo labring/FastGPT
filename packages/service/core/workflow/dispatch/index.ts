@@ -132,6 +132,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     stream = false,
     ...props
   } = data;
+  let hasInteractiveNode = false;
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {
@@ -455,11 +456,31 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       if (props.mode === 'debug') {
         debugNextStepRunNodes = debugNextStepRunNodes.concat([nodeRunResult.node]);
       }
-
+      // 构建完整的上下文链
+      const context = {
+        interactiveAppNodeId: props.node?.nodeId,
+        interactiveAppId: props.runningAppInfo.id,
+        workflowDepth: props.workflowDispatchDeep,
+        // 保存当前节点状态
+        nodeStates: [
+          {
+            nodeId: nodeRunResult.node.nodeId,
+            outputs: nodeRunResult.node.outputs,
+            runtimeNodes,
+            runtimeEdges
+          }
+        ],
+        // 链接父级上下文
+        parentContext: props.parentContext
+      };
       nodeInteractiveResponse = {
         entryNodeIds: [nodeRunResult.node.nodeId],
-        interactiveResponse
+        interactiveResponse: {
+          ...interactiveResponse,
+          context
+        }
       };
+      hasInteractiveNode = true;
       return [];
     }
 

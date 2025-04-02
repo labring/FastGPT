@@ -1,17 +1,14 @@
 import type { NodeOutputItemType } from '../../../../chat/type';
 import type { FlowNodeOutputItemType } from '../../../type/io';
-import type { RuntimeEdgeItemType } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
 export type InteractiveContext = {
-  parentAppId?: string;
+  // 当前层级信息
+  interactiveAppNodeId?: string;
+  interactiveAppId?: string;
   workflowDepth: number;
-  nodeStates: {
-    nodeId: string;
-    outputs: any[];
-    memoryEdges: RuntimeEdgeItemType[];
-  }[];
+  parentContext?: InteractiveContext; // 递归定义，支持多级嵌套
 };
 type InteractiveBasicType = {
   entryNodeIds: string[];

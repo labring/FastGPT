@@ -4,6 +4,7 @@ import { dispatchWorkFlow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
+  getLastInteractiveValue,
   getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes,
@@ -41,6 +42,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     params,
     variables
   } = props;
+  // 添加恢复模式检查
+  const lastInteractive = getLastInteractiveValue(histories);
+  // 增加 context 的空值检查
+  const isRecovery = !!lastInteractive?.context?.workflowDepth;
 
   const {
     system_forbid_stream = false,
@@ -99,9 +104,31 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     histories: chatHistories,
     appId: String(appData._id)
   };
+  let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes));
+  let runtimeEdges = initWorkflowEdgeStatus(edges);
+
+  if (isRecovery && lastInteractive?.context) {
+    // 恢复父应用上下文
+    const context = lastInteractive.context;
+    // 如果是在这个 App 内的交互
+    if (context.interactiveAppId === String(appId)) {
+      props.workflowDispatchDeep = context.workflowDepth;
+
+      // 恢复节点状态
+      runtimeNodes = storeNodes2RuntimeNodes(nodes, lastInteractive.entryNodeIds);
+
+      // 恢复边的状态
+      runtimeEdges = initWorkflowEdgeStatus(edges, chatHistories);
+    }
+  }
 
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
+    parentContext: {
+      interactiveAppNodeId: props.node?.nodeId,
+      interactiveAppId: props.runningAppInfo.id,
+      workflowDepth: props.workflowDispatchDeep || 1
+    },
     // Rewrite stream mode
     ...(system_forbid_stream
       ? {
@@ -115,14 +142,16 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       tmbId: String(appData.tmbId),
       isChildApp: true
     },
-    runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-    runtimeEdges: initWorkflowEdgeStatus(edges),
+    runtimeNodes,
+    runtimeEdges,
     histories: chatHistories,
     variables: childrenRunVariables,
-    query: runtimePrompt2ChatsValue({
-      files: userInputFiles,
-      text: userChatInput
-    }),
+    query: isRecovery
+      ? query
+      : runtimePrompt2ChatsValue({
+          files: userInputFiles,
+          text: userChatInput
+        }),
     chatConfig
   });
 
@@ -138,6 +167,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   ]);
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
+  // 增加个判断指标看本次是否运行的是交互节点，看的是assistantResponses里的[0].interactive
+  const isInteractive = !!assistantResponses[0]?.interactive;
 
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 

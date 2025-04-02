@@ -22,6 +22,7 @@ import { UserSelectOptionType } from '../template/system/userSelect/type';
 import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
+import { InteractiveContext } from '../template/system/interactive/type';
 
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
@@ -30,6 +31,8 @@ export type ExternalProviderType = {
 
 /* workflow props */
 export type ChatDispatchProps = {
+  node?: StoreNodeItemType;
+  parentContext?: InteractiveContext;
   res?: NextApiResponse;
   requestOrigin?: string;
   mode: 'test' | 'chat' | 'debug';

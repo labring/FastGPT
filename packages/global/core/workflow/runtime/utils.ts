@@ -90,15 +90,27 @@ export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
   histories?: ChatItemType[]
 ) => {
-  // If there is a history, use the last interactive entry node
+  // 检查交互状态
   if (histories && histories.length > 0) {
-    const entryNodeIds = getLastInteractiveValue(histories)?.entryNodeIds;
+    const lastInteractive = getLastInteractiveValue(histories);
+    if (lastInteractive?.context) {
+      const { interactiveAppNodeId, workflowDepth } = lastInteractive.context;
 
-    if (Array.isArray(entryNodeIds) && entryNodeIds.length > 0) {
-      return entryNodeIds;
+      // 如果当前是顶层工作流
+      if (workflowDepth > 1) {
+        // 需要找到对应的 App 节点作为入口
+        const appNode = nodes.find((node) => node.nodeId === interactiveAppNodeId);
+        if (appNode) {
+          return [appNode.nodeId]; // 让 App 节点成为入口
+        }
+      }
+
+      // 如果已经在正确的嵌套层级了，才使用保存的 entryNodeIds
+      return lastInteractive.entryNodeIds;
     }
   }
 
+  // 默认入口节点逻辑
   const entryList = [
     FlowNodeTypeEnum.systemConfig,
     FlowNodeTypeEnum.workflowStart,
