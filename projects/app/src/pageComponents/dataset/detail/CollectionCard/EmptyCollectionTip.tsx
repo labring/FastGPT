@@ -25,6 +25,9 @@ const EmptyCollectionTip = () => {
               {datasetDetail.status === DatasetStatusEnum.syncing && (
                 <>{t('common:core.dataset.status.syncing')}</>
               )}
+              {datasetDetail.status === DatasetStatusEnum.waiting && (
+                <>{t('common:core.dataset.status.waiting')}</>
+              )}
               {datasetDetail.status === DatasetStatusEnum.active && (
                 <>
                   {!datasetDetail?.websiteConfig?.url ? (

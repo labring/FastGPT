@@ -51,6 +51,19 @@ services:
 
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    # ports:
+    # - 6379:6379
+    networks:
+      - fastgpt
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    volumes:
+      - ./redis/data:/data
+
   sandbox:
     container_name: sandbox
     image: ghcr.io/labring/fastgpt-sandbox:v4.9.3 # git
@@ -92,6 +105,8 @@ services:
       - FILE_TOKEN_KEY=filetoken
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      # Redis 连接参数
+      - REDIS_URI=redis://default:mypassword@redis:6379
       # zilliz 连接参数
       - MILVUS_ADDRESS=zilliz_cloud_address
       - MILVUS_TOKEN=zilliz_cloud_token
