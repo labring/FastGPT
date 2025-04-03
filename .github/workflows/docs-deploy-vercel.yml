@@ -20,6 +20,11 @@ jobs:
     # The type of runner that the job will run on
     runs-on: ubuntu-22.04
 
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+
     # Job outputs
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
@@ -71,7 +76,8 @@ jobs:
           working-directory: docSite/public
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/main'
         with:
-          github_token: ${{ secrets.GH_PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docSite/public
