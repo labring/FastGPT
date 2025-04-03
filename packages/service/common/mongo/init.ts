@@ -1,6 +1,6 @@
 import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../system/log';
-import { connectionMongo } from './index';
+import { connectionMongo, connectionMongoLog } from './index';
 import type { Mongoose } from 'mongoose';
 
 const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
@@ -41,8 +41,7 @@ export async function connectMongo(): Promise<Mongoose> {
         }
       } catch (error) {}
     });
-
-    await connectionMongo.connect(process.env.MONGODB_URI as string, {
+    const options = {
       bufferCommands: true,
       maxConnecting: maxConnecting,
       maxPoolSize: maxConnecting,
@@ -53,11 +52,17 @@ export async function connectMongo(): Promise<Mongoose> {
       maxIdleTimeMS: 300000,
       retryWrites: true,
       retryReads: true
-
       // readPreference: 'secondaryPreferred',
       // readConcern: { level: 'local' },
       // writeConcern: { w: 'majority', j: true }
-    });
+    };
+
+    await connectionMongo.connect(process.env.MONGODB_URI as string, options);
+
+    await connectionMongoLog.connect(
+      (process.env.MONGODB_URI_LOG ?? process.env.MONGODB_URI) as string,
+      options
+    );
 
     console.log('mongo connected');
     return connectionMongo;
