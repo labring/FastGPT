@@ -813,12 +813,14 @@ const ChatBox = ({
       showEmptyIntro &&
       chatRecords.length === 0 &&
       !variableList?.length &&
+      !externalVariableList?.length &&
       !welcomeText,
     [
       chatRecords.length,
       feConfigs?.show_emptyChat,
       showEmptyIntro,
       variableList?.length,
+      externalVariableList?.length,
       welcomeText
     ]
   );
