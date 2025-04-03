@@ -66,13 +66,6 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
-        label: t('common:navbar.Toolkit'),
-        icon: 'phoneTabbar/tool',
-        activeIcon: 'phoneTabbar/toolFill',
-        link: `/toolkit`,
-        activeLink: ['/toolkit']
-      },
-      {
         label: t('common:navbar.Account'),
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
@@ -194,8 +187,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       )}
 
       {feConfigs?.navbarItems
-        ?.filter((item) => item.isActive)
-        .map((item) => (
+        ?.filter((item: { isActive: boolean }) => item.isActive)
+        .map((item: { id: string; name: string; url: string; avatar: string }) => (
           <MyTooltip key={item.id} label={item.name} placement={'right-end'}>
             <Link
               as={NextLink}

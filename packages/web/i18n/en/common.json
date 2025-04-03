@@ -371,6 +371,7 @@
   "core.app.share.Is response quote": "Return Quote",
   "core.app.share.Not share link": "No Share Link Created",
   "core.app.share.Role check": "Identity Verification",
+  "core.app.switch_to_template_market": "Jump template market",
   "core.app.tip.Add a intro to app": "Give the app an introduction",
   "core.app.tip.chatNodeSystemPromptTip": "Enter a prompt here",
   "core.app.tip.systemPromptTip": "Fixed guide words for the model. By adjusting this content, you can guide the model's chat direction. This content will be fixed at the beginning of the context. You can use / to insert variables.\nIf a Dataset is associated, you can also guide the model when to call the Dataset search by appropriate description. For example:\nYou are an assistant for the movie 'Interstellar'. When users ask about content related to 'Interstellar', please search the Dataset and answer based on the search results.",
