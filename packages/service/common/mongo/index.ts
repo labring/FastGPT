@@ -11,7 +11,7 @@ export const connectionMongo = (() => {
   return global.mongodb;
 })();
 
-export const connectionMongoLog = (() => {
+export const connectionLogMongo = (() => {
   if (!global.mongodbLog) {
     global.mongodbLog = new Mongoose();
   }
@@ -78,11 +78,11 @@ export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
 };
 
 export const getMongoLogModel = <T>(name: string, schema: mongoose.Schema) => {
-  if (connectionMongoLog.models[name]) return connectionMongoLog.models[name] as Model<T>;
+  if (connectionLogMongo.models[name]) return connectionLogMongo.models[name] as Model<T>;
   console.log('Load model======', name);
   addCommonMiddleware(schema);
 
-  const model = connectionMongoLog.model<T>(name, schema);
+  const model = connectionLogMongo.model<T>(name, schema);
 
   // Sync index
   syncMongoIndex(model);

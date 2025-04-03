@@ -13,7 +13,7 @@ declare global {
       AIPROXY_API_TOKEN: string;
       MULTIPLE_DATA_TO_BASE64: string;
       MONGODB_URI: string;
-      MONGODB_URI_LOG?: string;
+      MONGODB_LOG_URI?: string;
       PG_URL: string;
       OCEANBASE_URL: string;
       MILVUS_ADDRESS: string;
