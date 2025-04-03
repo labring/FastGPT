@@ -1,6 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -27,7 +27,6 @@ async function handler(
   res: NextApiResponse<any>
 ) {
   try {
-    await connectToDatabase();
     const { messages } = req.body;
 
     const { tmbId, teamId } = await authChatCert({

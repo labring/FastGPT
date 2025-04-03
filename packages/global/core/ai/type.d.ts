@@ -73,6 +73,15 @@ export type ChatCompletionMessageFunctionCall =
 export type StreamChatType = Stream<openai.Chat.Completions.ChatCompletionChunk>;
 export type UnStreamChatType = openai.Chat.Completions.ChatCompletion;
 
+export type CompletionFinishReason =
+  | 'close'
+  | 'stop'
+  | 'length'
+  | 'tool_calls'
+  | 'content_filter'
+  | 'function_call'
+  | null;
+
 export default openai;
 export * from 'openai';
 

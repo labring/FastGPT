@@ -1,6 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+
 import { GetChatSpeechProps } from '@/global/core/chat/api.d';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
@@ -17,7 +17,6 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 */
 async function handler(req: ApiRequestProps<GetChatSpeechProps>, res: NextApiResponse) {
   try {
-    await connectToDatabase();
     const { ttsConfig, input } = req.body;
 
     if (!ttsConfig.model || !ttsConfig.voice) {

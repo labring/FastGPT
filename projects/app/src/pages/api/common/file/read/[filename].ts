@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { authFileToken } from '@fastgpt/service/support/permission/controller';
 import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -21,8 +20,6 @@ const previewableExtensions = [
 ];
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    await connectToDatabase();
-
     const { token, filename } = req.query as { token: string; filename: string };
 
     const { fileId, bucketName } = await authFileToken(token);

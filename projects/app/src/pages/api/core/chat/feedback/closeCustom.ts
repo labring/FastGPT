@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { CloseCustomFeedbackParams } from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -10,7 +10,6 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 /* remove custom feedback */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await connectToDatabase();
     const { appId, chatId, dataId, index } = req.body as CloseCustomFeedbackParams;
 
     if (!dataId || !appId || !chatId) {

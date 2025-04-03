@@ -1,4 +1,4 @@
-import { getMongoModel, Schema } from '../../../common/mongo';
+import { getMongoLogModel as getMongoModel, Schema } from '../../../common/mongo';
 import { SystemLogType } from './type';
 import { LogLevelEnum } from './constant';
 

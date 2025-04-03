@@ -99,7 +99,6 @@ const SettingLLMModel = ({
         <AISettingModal
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
-            console.log(e);
             onChange(e);
             onCloseAIChatSetting();
           }}

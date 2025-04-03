@@ -1,18 +1,8 @@
-import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-
-/**
- * This function is equivalent to the entry to the service
- * connect MongoDB and init data
- */
-export function connectToDatabase() {
-  return connectMongo();
-}
 
 export async function initRootUser(retry = 3): Promise<any> {
   try {
