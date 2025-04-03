@@ -22,6 +22,7 @@ import { UserSelectOptionType } from '../template/system/userSelect/type';
 import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
+import { CompletionFinishReason } from '../../ai/type';
 
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
@@ -130,6 +131,7 @@ export type DispatchNodeResponseType = {
     obj: `${ChatRoleEnum}`;
     value: string;
   }[]; // completion context array. history will slice
+  finishReason?: CompletionFinishReason;
 
   // dataset search
   similarity?: number;
