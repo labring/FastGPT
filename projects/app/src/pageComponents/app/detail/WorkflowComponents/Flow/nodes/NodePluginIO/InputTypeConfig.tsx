@@ -297,7 +297,7 @@ const InputTypeConfig = ({
             <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('common:core.module.Default Value')}
             </FormLabel>
-            <Flex alignItems={'center'} flex={1} h={10}>
+            <Flex flex={1} h={10}>
               {(inputType === FlowNodeInputTypeEnum.numberInput ||
                 (inputType === VariableInputEnum.custom &&
                   valueType === WorkflowIOValueTypeEnum.number)) && (
