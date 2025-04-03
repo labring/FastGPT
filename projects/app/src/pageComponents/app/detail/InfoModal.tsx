@@ -111,7 +111,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     members?: string[];
     groups?: string[];
     orgs?: string[];
-    permission: PermissionValueType;
+    permission?: PermissionValueType;
   }) =>
     postUpdateAppCollaborators({
       members,

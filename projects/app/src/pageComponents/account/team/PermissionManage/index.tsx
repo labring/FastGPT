@@ -47,6 +47,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 function PermissionManage({
   Tabs,
@@ -136,7 +137,7 @@ function PermissionManage({
     useRequest2(onDelOneCollaborator);
 
   const userManage = userInfo?.permission.hasManagePer;
-  const hasDeletePer = (per: TeamPermission) => {
+  const hasDeletePer = (per: Permission) => {
     if (userInfo?.permission.isOwner) return true;
     if (userManage && !per.hasManagePer) return true;
     return false;
@@ -150,7 +151,7 @@ function PermissionManage({
   }: {
     isDisabled: boolean;
     per: PermissionValueType;
-    clbPer: TeamPermission;
+    clbPer: Permission;
     id: string;
   }) {
     return (

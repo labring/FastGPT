@@ -110,5 +110,6 @@
   "team.manage_collaborators": "管理协作者",
   "team.no_collaborators": "暂无协作者",
   "team.org.org": "部门",
-  "team.write_role_member": "可写权限"
+  "team.write_role_member": "可写权限",
+  "team.collaborator.added": "已添加"
 }

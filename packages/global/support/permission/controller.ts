@@ -74,4 +74,8 @@ export class Permission {
     this.hasWritePer = this.checkPer(this._permissionList['write'].value);
     this.hasReadPer = this.checkPer(this._permissionList['read'].value);
   }
+
+  toBinary() {
+    return this.value.toString(2);
+  }
 }

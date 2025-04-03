@@ -17,7 +17,7 @@ export type UpdateClbPermissionProps = {
   members?: string[];
   groups?: string[];
   orgs?: string[];
-  permission: PermissionValueType;
+  permission?: PermissionValueType;
 };
 
 export type DeletePermissionQuery = RequireOnlyOne<{

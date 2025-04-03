@@ -31,6 +31,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import TemplateMarketModal from '@/pageComponents/app/list/TemplateMarketModal';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import JsonImportModal from '@/pageComponents/app/list/JsonImportModal';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 const CreateModal = dynamic(() => import('@/pageComponents/app/list/CreateModal'));
 const EditFolderModal = dynamic(
@@ -327,7 +328,7 @@ const MyApps = () => {
                 }: {
                   members?: string[];
                   groups?: string[];
-                  permission: number;
+                  permission?: PermissionValueType;
                 }) => {
                   return postUpdateAppCollaborators({
                     members,
