@@ -16,7 +16,8 @@
     "json5": "^2.2.3",
     "nodemailer": "^6.10.0",
     "pg": "^8.10.0",
-    "wikijs": "^6.4.1"
+    "wikijs": "^6.4.1",
+    "dmdb":"^1.0.0"
   },
   "devDependencies": {
     "@fastgpt/global": "workspace:*",

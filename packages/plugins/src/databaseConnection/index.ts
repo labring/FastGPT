@@ -1,7 +1,7 @@
 import { Client as PgClient } from 'pg'; // PostgreSQL 客户端
 import mysql from 'mysql2/promise'; // MySQL 客户端
 import mssql from 'mssql'; // SQL Server 客户端
-
+import dmdb from 'dmdb'; //达梦数据库
 type Props = {
   databaseType: string;
   host: string;
@@ -69,6 +69,17 @@ const main = async ({
 
       result = await pool.query(sql);
       await pool.close();
+    }else if ( databaseType === 'dmdb' ){
+      const connInfo = {
+        connectString: `${host}:${parseInt(port, 10)}`,
+        user: user,
+        password: password,
+        loginEncrypt: false,
+        ignoreCase: true
+      }
+      const connection = await dmdb.getConnection(connInfo)
+      result = await connection.execute(sql);
+      await connection.close();
     }
     return {
       result
