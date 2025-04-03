@@ -57,3 +57,8 @@ export enum AppTemplateTypeEnum {
 }
 
 export const defaultDatasetMaxTokens = 16000;
+
+export enum AppGroupEnum {
+  teamApp = 'teamApp',
+  templateMarket = 'templateMarket'
+}
