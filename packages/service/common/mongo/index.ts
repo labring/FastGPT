@@ -4,6 +4,9 @@ import mongoose, { Model, Mongoose } from 'mongoose';
 export default mongoose;
 export * from 'mongoose';
 
+export const MONGO_URL = process.env.MONGODB_URI as string;
+export const MONGO_LOG_URL = (process.env.MONGODB_LOG_URI ?? process.env.MONGODB_URI) as string;
+
 export const connectionMongo = (() => {
   if (!global.mongodb) {
     global.mongodb = new Mongoose();
