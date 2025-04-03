@@ -1,6 +1,6 @@
 name: Sync images
 on:
-  pull_request_target:
+  pull_request:
     branches:
       - main
     paths:
@@ -15,13 +15,6 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        if: ${{ (github.event_name == 'pull_request_target') }}
-        with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-
       - name: Checkout
         uses: actions/checkout@v3
 
