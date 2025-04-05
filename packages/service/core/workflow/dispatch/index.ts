@@ -64,7 +64,8 @@ import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchUserSelect } from './interactive/userSelect';
 import type {
   WorkflowInteractiveResponseType,
-  InteractiveNodeResponseType
+  InteractiveNodeResponseType,
+  InteractiveContext
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { dispatchRunAppNode } from './plugin/runApp';
 import { dispatchLoop } from './loop/runLoop';
@@ -132,7 +133,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     stream = false,
     ...props
   } = data;
-  let hasInteractiveNode = false;
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {
@@ -457,20 +457,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         debugNextStepRunNodes = debugNextStepRunNodes.concat([nodeRunResult.node]);
       }
       // 构建完整的上下文链
-      const context = {
-        interactiveAppNodeId: props.node?.nodeId,
-        interactiveAppId: props.runningAppInfo.id,
-        workflowDepth: props.workflowDispatchDeep,
-        // 保存当前节点状态
-        nodeStates: [
-          {
-            nodeId: nodeRunResult.node.nodeId,
-            outputs: nodeRunResult.node.outputs,
-            runtimeNodes,
-            runtimeEdges
-          }
-        ],
-        // 链接父级上下文
+      const context: InteractiveContext = {
         parentContext: props.parentContext
       };
       nodeInteractiveResponse = {
@@ -480,7 +467,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           context
         }
       };
-      hasInteractiveNode = true;
       return [];
     }
 
