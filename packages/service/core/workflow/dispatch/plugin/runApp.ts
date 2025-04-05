@@ -45,7 +45,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   // 添加恢复模式检查
   const lastInteractive = getLastInteractiveValue(histories);
   // 增加 context 的空值检查
-  const isRecovery = !!lastInteractive?.context?.workflowDepth;
+  const isRecovery = !!lastInteractive?.context?.parentContext;
 
   const {
     system_forbid_stream = false,
@@ -108,53 +108,49 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   let runtimeEdges = initWorkflowEdgeStatus(edges);
 
   if (isRecovery && lastInteractive?.context) {
-    // 恢复父应用上下文
-    const context = lastInteractive.context;
-    // 如果是在这个 App 内的交互
-    if (context.interactiveAppId === String(appId)) {
-      props.workflowDispatchDeep = context.workflowDepth;
-
-      // 恢复节点状态
-      runtimeNodes = storeNodes2RuntimeNodes(nodes, lastInteractive.entryNodeIds);
-
-      // 恢复边的状态
-      runtimeEdges = initWorkflowEdgeStatus(edges, chatHistories);
-    }
+    const entryNodeIds =
+      getWorkflowEntryNodeIds(nodes, chatHistories) || lastInteractive.entryNodeIds;
+    // 恢复子应用上下文
+    runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
+    // 恢复边的状态
+    runtimeEdges = initWorkflowEdgeStatus(edges, chatHistories);
   }
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
-    ...props,
-    parentContext: {
-      interactiveAppNodeId: props.node?.nodeId,
-      interactiveAppId: props.runningAppInfo.id,
-      workflowDepth: props.workflowDispatchDeep || 1
-    },
-    // Rewrite stream mode
-    ...(system_forbid_stream
-      ? {
-          stream: false,
-          workflowStreamResponse: undefined
-        }
-      : {}),
-    runningAppInfo: {
-      id: String(appData._id),
-      teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId),
-      isChildApp: true
-    },
-    runtimeNodes,
-    runtimeEdges,
-    histories: chatHistories,
-    variables: childrenRunVariables,
-    query: isRecovery
-      ? query
-      : runtimePrompt2ChatsValue({
-          files: userInputFiles,
-          text: userChatInput
-        }),
-    chatConfig
-  });
+  const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
+    await dispatchWorkFlow({
+      ...props,
+      parentContext: {
+        parentContext: props.parentContext || undefined,
+        interactiveAppNodeId: props.node?.nodeId,
+        interactiveAppId: appId
+      },
+      // Rewrite stream mode
+      ...(system_forbid_stream
+        ? {
+            stream: false,
+            workflowStreamResponse: undefined
+          }
+        : {}),
+      runningAppInfo: {
+        id: String(appData._id),
+        teamId: String(appData.teamId),
+        tmbId: String(appData.tmbId),
+        isChildApp: true
+      },
+      runtimeNodes,
+      runtimeEdges,
+      histories: chatHistories,
+      variables: childrenRunVariables,
+      query: isRecovery
+        ? query
+        : runtimePrompt2ChatsValue({
+            files: userInputFiles,
+            text: userChatInput
+          }),
+      chatConfig
+    });
 
+  console.log('workflowInteractiveResponse', workflowInteractiveResponse);
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
@@ -167,8 +163,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   ]);
 
   const { text } = chatValue2RuntimePrompt(assistantResponses);
-  // 增加个判断指标看本次是否运行的是交互节点，看的是assistantResponses里的[0].interactive
-  const isInteractive = !!assistantResponses[0]?.interactive;
 
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
