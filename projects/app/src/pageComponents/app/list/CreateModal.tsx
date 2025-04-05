@@ -22,7 +22,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppGroupEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -42,15 +42,7 @@ type FormType = {
 
 export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
 
-const CreateModal = ({
-  onClose,
-  type,
-  onOpenTemplateModal
-}: {
-  type: CreateAppType;
-  onClose: () => void;
-  onOpenTemplateModal: (type: AppTypeEnum) => void;
-}) => {
+const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => void }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
@@ -194,14 +186,22 @@ const CreateModal = ({
           <Box flex={1} />
           {isTemplateMode && (
             <Flex
-              onClick={() => onOpenTemplateModal(type)}
+              onClick={() => {
+                router.push({
+                  query: {
+                    group: AppGroupEnum.templateMarket,
+                    type: 'recommendation'
+                  }
+                });
+                onClose();
+              }}
               alignItems={'center'}
               cursor={'pointer'}
               color={'myGray.600'}
               fontSize={'xs'}
               _hover={{ color: 'blue.700' }}
             >
-              {t('common:core.app.more')}
+              {t('common:core.app.switch_to_template_market')}
               <ChevronRightIcon w={4} h={4} />
             </Flex>
           )}

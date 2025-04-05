@@ -19,7 +19,7 @@ const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
   parentId?: string | null;
-  appType: AppTypeEnum | 'ALL';
+  appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
   loadMyApps: () => Promise<AppListItemType[]>;
   isFetchingApps: boolean;
@@ -47,7 +47,7 @@ export const AppListContext = createContext<AppListContextType>({
   setMoveAppId: function (value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
   },
-  appType: 'ALL',
+  appType: 'all',
   refetchFolderDetail: async function (): Promise<AppDetailType | null> {
     throw new Error('Function not implemented.');
   },
@@ -60,7 +60,7 @@ export const AppListContext = createContext<AppListContextType>({
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId = null, type = 'ALL' } = router.query as {
+  const { parentId = null, type = 'all' } = router.query as {
     parentId?: string | null;
     type: AppTypeEnum;
   };
@@ -73,7 +73,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   } = useRequest2(
     () => {
       const formatType = (() => {
-        if (!type || type === 'ALL') return undefined;
+        if (!type || type === 'all') return undefined;
         if (type === AppTypeEnum.plugin)
           return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
 
