@@ -151,7 +151,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         data: {
           messages: histories,
           variables: {
@@ -192,7 +192,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChat.current };
     },
     [
       chatId,

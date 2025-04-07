@@ -115,7 +115,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }: StartChatFnProps) => {
       // Just send a user prompt
       const histories = messages.slice(-1);
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         data: {
           messages: histories,
           variables,
@@ -137,7 +137,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         title: newTitle
       }));
 
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChat.current };
     },
     [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
   );
