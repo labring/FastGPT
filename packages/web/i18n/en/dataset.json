@@ -124,6 +124,7 @@
   "split_sign_question": "question mark",
   "split_sign_semicolon": "semicolon",
   "start_sync_website_tip": "Confirm to start synchronizing data? \nThe old data will be deleted and retrieved again, please confirm!",
+  "status_error": "Running exception",
   "sync_collection_failed": "Synchronization collection error, please check whether the source file can be accessed normally",
   "sync_schedule": "Timing synchronization",
   "sync_schedule_tip": "Only existing collections will be synchronized. \nIncludes linked collections and all collections in the API knowledge base. \nThe system will poll for updates every day, and the specific update time cannot be determined.",

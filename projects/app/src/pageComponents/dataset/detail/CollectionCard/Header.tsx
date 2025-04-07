@@ -33,6 +33,7 @@ import HeaderTagPopOver from './HeaderTagPopOver';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
@@ -319,6 +320,14 @@ const Header = ({}: {}) => {
                       }}
                     >
                       {t('common:core.dataset.status.waiting')}
+                    </MyTag>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.error && (
+                    <MyTag colorSchema="red" showDot px={3} h={'36px'}>
+                      <HStack spacing={1}>
+                        <Box>{t('dataset:status_error')}</Box>
+                        <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
+                      </HStack>
                     </MyTag>
                   )}
                 </>

@@ -30,17 +30,21 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     per: ReadPermissionVal
   });
 
-  const status = await (async () => {
+  const { status, errorMsg } = await (async () => {
     if (dataset.type === DatasetTypeEnum.websiteDataset) {
       return await getWebsiteSyncDatasetStatus(datasetId);
     }
 
-    return DatasetStatusEnum.active;
+    return {
+      status: DatasetStatusEnum.active,
+      errorMsg: undefined
+    };
   })();
 
   return {
     ...dataset,
     status,
+    errorMsg,
     apiServer: dataset.apiServer
       ? {
           baseUrl: dataset.apiServer.baseUrl,
