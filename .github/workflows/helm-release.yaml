@@ -8,6 +8,11 @@ on:
 
 jobs:
   helm:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -20,7 +25,7 @@ jobs:
         run: echo "tag=$(git describe --tags)" >> $GITHUB_OUTPUT
       - name: Release Helm
         run: |
-          echo ${{ secrets.GH_PAT }} | helm registry login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+          echo ${{ secrets.GITHUB_TOKEN }} | helm registry login ghcr.io -u ${{ github.repository_owner }} --password-stdin
           export APP_VERSION=${{ steps.vars.outputs.tag }}
           export HELM_VERSION=${{ steps.vars.outputs.tag }}
           export HELM_REPO=ghcr.io/${{ github.repository_owner }}

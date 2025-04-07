@@ -9,6 +9,11 @@ on:
       - 'main'
 jobs:
   build-fastgpt-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-20.04
     if: github.repository != 'labring/FastGPT'
     steps:
@@ -32,7 +37,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set DOCKER_REPO_TAGGED based on branch or tag
         run: |
           echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt:latest" >> $GITHUB_ENV
