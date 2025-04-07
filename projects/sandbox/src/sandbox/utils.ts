@@ -1,6 +1,9 @@
 import { RunCodeDto, RunCodeResponse } from 'src/sandbox/dto/create-sandbox.dto';
 import IsolatedVM, { ExternalCopy, Isolate, Reference } from 'isolated-vm';
-
+import { mkdtemp, writeFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { rmSync } from 'fs';
 import { countToken } from './jsFn/tiktoken';
 import { timeDelay } from './jsFn/delay';
 import { strToBase64 } from './jsFn/str2Base64';
@@ -9,7 +12,7 @@ import { createHmac } from './jsFn/crypto';
 import { spawn } from 'child_process';
 import { pythonScript } from './constants';
 const CustomLogStr = 'CUSTOM_LOG';
-
+const PythonScriptFileName = 'main.py';
 export const runJsSandbox = async ({
   code,
   variables = {}
@@ -119,8 +122,8 @@ print(json.dumps(res))
 `;
 
   const fullCode = [pythonScript, mainCallCode].filter(Boolean).join('\n');
-
-  const pythonProcess = spawn('python3', ['-u', '-c', fullCode]);
+  const { path: tempFilePath, cleanup } = await createTempFile(fullCode);
+  const pythonProcess = spawn('python3', ['-u', tempFilePath]);
 
   const stdoutChunks: string[] = [];
   const stderrChunks: string[] = [];
@@ -137,7 +140,9 @@ print(json.dumps(res))
       }
     });
   });
-  const stdout = await stdoutPromise;
+  const stdout = await stdoutPromise.finally(() => {
+    cleanup();
+  });
 
   try {
     const parsedOutput = JSON.parse(stdout);
@@ -154,3 +159,25 @@ print(json.dumps(res))
     return Promise.reject(`Run failed: ${err}`);
   }
 };
+
+// write full code into a tmp file
+async function createTempFile(context: string) {
+  const tempFileDirPath = await mkdtemp(join(tmpdir(), 'python_script_tmp_'));
+  const tempFilePath = join(tempFileDirPath, PythonScriptFileName);
+
+  try {
+    await writeFile(tempFilePath, context);
+    return {
+      path: tempFilePath,
+      cleanup: () => {
+        rmSync(tempFilePath);
+        rmSync(tempFileDirPath, {
+          recursive: true,
+          force: true
+        });
+      }
+    };
+  } catch (err) {
+    return Promise.reject(`write file err: ${err}`);
+  }
+}
