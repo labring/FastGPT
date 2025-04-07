@@ -65,6 +65,12 @@ jobs:
       - name: Build
         run: cd docSite && hugo mod get -u github.com/colinwilson/lotusdocs@6d0568e && hugo -v --minify
 
+      # 添加此步骤 - 安装 pnpm
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 9 # 使用较新版本的 pnpm
+
       # Step 5 - Push our generated site to Cloudflare
       - name: Deploy to Cloudflare Pages
         id: deploy
