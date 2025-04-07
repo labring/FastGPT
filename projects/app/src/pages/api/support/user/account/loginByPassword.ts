@@ -9,6 +9,8 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
+import { operationLogTemplateCodeEnum } from '@fastgpt/global/support/operationLog/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password } = req.body as PostLoginProps;
@@ -63,6 +65,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   });
 
   setCookie(res, token);
+
+  await addOperationLog(
+    userDetail.team.tmbId,
+    userDetail.team.teamId,
+    operationLogTemplateCodeEnum.LOGIN,
+    {}
+  );
 
   return {
     user: userDetail,
