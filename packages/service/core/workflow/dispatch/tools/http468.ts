@@ -315,11 +315,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   // parse header
   const headers = await (() => {
     try {
-      const contentType = contentTypeMap[httpContentType];
-      if (contentType) {
-        httpHeader = [{ key: 'Content-Type', value: contentType, type: 'string' }, ...httpHeader];
-      }
-
       if (!httpHeader || httpHeader.length === 0) return {};
       // array
       return httpHeader.reduce((acc: Record<string, string>, item) => {
