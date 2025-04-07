@@ -69,6 +69,9 @@ export function getWorker<DataType, ReturnType = void>(
   newWorker.on('error', (error) => {
     addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
   });
+  newWorker.on('failed', (jobId, error) => {
+    addLog.error(`MQ Worker [${name}]: ${error.message}`, error);
+  });
   workers.set(name, newWorker);
   return newWorker;
 }
