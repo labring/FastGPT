@@ -46,9 +46,9 @@ const Sidebar = ({
     isDragging,
     handleMouseDown
   } = useResizable({
-    initialWidth: 300,
+    initialWidth: 240,
     minWidth: 200,
-    maxWidth: 400
+    maxWidth: 320
   });
 
   useEffect(() => {
