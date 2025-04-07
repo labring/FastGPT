@@ -112,11 +112,11 @@ def run_pythonCode(data:dict):
         output_code = output_code[:-2] + ")\\n"
     output_code = output_code + "    print(res)"
     code = imports + "\\n" + seccomp_prefix + "\\n" + var_def + "\\n" + code + "\\n" + output_code
-    file_path = os.path.join(os.getcwd(), "subProcess.py")
-    with open(file_path, "w", encoding="utf-8") as f:
+    tmp_file = os.path.join(data["tempDir"], "subProcess.py")
+    with open(tmp_file, "w", encoding="utf-8") as f:
         f.write(code)
     try:
-        result = subprocess.run(["python3", file_path], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(["python3", tmp_file], capture_output=True, text=True, timeout=10)
         if result.returncode == -31:
             return {"error": "Dangerous behavior detected."}
         if result.stderr != "":

@@ -115,14 +115,15 @@ export const runPythonSandbox = async ({
   code,
   variables = {}
 }: RunCodeDto): Promise<RunCodeResponse> => {
+  const tempDir = await mkdtemp(join(tmpdir(), 'python_script_tmp_'));
   const mainCallCode = `
-data = ${JSON.stringify({ code, variables })}
+data = ${JSON.stringify({ code, variables, tempDir })}
 res = run_pythonCode(data)
 print(json.dumps(res))
 `;
 
   const fullCode = [pythonScript, mainCallCode].filter(Boolean).join('\n');
-  const { path: tempFilePath, cleanup } = await createTempFile(fullCode);
+  const { path: tempFilePath, cleanup } = await createTempFile(tempDir, fullCode);
   const pythonProcess = spawn('python3', ['-u', tempFilePath]);
 
   const stdoutChunks: string[] = [];
@@ -161,8 +162,7 @@ print(json.dumps(res))
 };
 
 // write full code into a tmp file
-async function createTempFile(context: string) {
-  const tempFileDirPath = await mkdtemp(join(tmpdir(), 'python_script_tmp_'));
+async function createTempFile(tempFileDirPath: string, context: string) {
   const tempFilePath = join(tempFileDirPath, PythonScriptFileName);
 
   try {
