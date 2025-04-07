@@ -9,6 +9,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { navbarWidth } from '@/components/Layout';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { AppGroupEnum, AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type GroupType = 'teamApp' | 'templateMarket' | string;
 
@@ -54,22 +55,20 @@ const Sidebar = ({
     setSidebarWidth?.(sidebarWidth);
   }, [sidebarWidth, setSidebarWidth]);
 
-  // 点击标签时滚动到对应位置的辅助函数
   const handleTypeClick = (typeId: string, defaultAction: () => void) => {
-    // 如果是模板市场，且点击的不是contribute类型（它会打开外部链接）
-    if (selectedGroup === 'templateMarket' && typeId !== 'contribute') {
-      // 先执行默认操作（更新URL等）
+    if (
+      selectedGroup === AppGroupEnum.templateMarket &&
+      typeId !== AppTemplateTypeEnum.contribute
+    ) {
       defaultAction();
 
-      // 然后滚动到对应位置
       setTimeout(() => {
         const element = document.getElementById(typeId);
         if (element) {
           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 100); // 短暂延迟确保DOM已更新
+      }, 100);
     } else {
-      // 对于其他情况，只执行默认操作
       defaultAction();
     }
   };
@@ -166,7 +165,7 @@ const Sidebar = ({
                         })}
                     onClick={() => {
                       handleTypeClick(type.typeId, () => {
-                        if (type.typeId === 'contribute') {
+                        if (type.typeId === AppTemplateTypeEnum.contribute) {
                           window.open(feConfigs?.appTemplateCourse);
                         } else {
                           router.push({

@@ -187,8 +187,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       )}
 
       {feConfigs?.navbarItems
-        ?.filter((item: { isActive: boolean }) => item.isActive)
-        .map((item: { id: string; name: string; url: string; avatar: string }) => (
+        ?.filter((item) => item.isActive)
+        .map((item) => (
           <MyTooltip key={item.id} label={item.name} placement={'right-end'}>
             <Link
               as={NextLink}

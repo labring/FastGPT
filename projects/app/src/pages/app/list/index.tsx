@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -132,6 +132,7 @@ const MyApps = () => {
     [searchKey, setSearchKey, t]
   );
 
+  // plugins
   const { data: pluginGroups = [], loading: isLoadingPluginGroups } = useRequest2(getPluginGroups, {
     manual: false
   });
@@ -139,6 +140,8 @@ const MyApps = () => {
     manual: selectedGroup === AppGroupEnum.templateMarket || selectedGroup === AppGroupEnum.teamApp,
     refreshDeps: [selectedGroup]
   });
+
+  // templates
   const { data: templateTags = [], loading: isLoadingTags } = useRequest2(
     () => getTemplateTagList().then((res) => [recommendTag, ...res]),
     {
@@ -165,6 +168,7 @@ const MyApps = () => {
       .filter((item) => item.templates.length > 0);
   }, [templateList, templateTags]);
 
+  //
   const groupList = useMemo(() => {
     return [
       {
@@ -212,13 +216,14 @@ const MyApps = () => {
         ...(feConfigs?.appTemplateCourse
           ? [
               {
-                typeId: 'contribute',
+                typeId: AppTemplateTypeEnum.contribute,
                 typeName: t('common:contribute_app_template')
               }
             ]
           : [])
       ]
     };
+
     const pluginGroupItems = pluginGroups.reduce(
       (acc, group) => {
         acc[group.groupId] = [
@@ -242,7 +247,7 @@ const MyApps = () => {
       ...baseItems,
       ...pluginGroupItems
     };
-  }, [t, templateTags, pluginGroups]);
+  }, [t, filterTemplateTags, feConfigs?.appTemplateCourse, pluginGroups, plugins]);
 
   const currentGroup = useMemo(() => {
     return groupList.find((group) => group.groupId === selectedGroup);
@@ -258,7 +263,9 @@ const MyApps = () => {
           selectedType={selectedType as string}
           onCloseSidebar={onCloseSidebar}
           setSidebarWidth={setSidebarWidth}
-          isLoading={isLoadingPluginGroups || isLoadingTags}
+          isLoading={
+            isLoadingPluginGroups || isLoadingTags || isLoadingTemplates || isLoadingPlugins
+          }
         />
       )}
 
