@@ -72,3 +72,5 @@ export function getWorker<DataType, ReturnType = void>(
   workers.set(name, newWorker);
   return newWorker;
 }
+
+export * from 'bullmq';
