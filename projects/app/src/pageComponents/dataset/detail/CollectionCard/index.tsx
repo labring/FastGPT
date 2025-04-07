@@ -196,7 +196,7 @@ const CollectionCard = () => {
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
         {/* header */}
-        <Header />
+        <Header hasTrainingData={hasTrainingData} />
 
         {/* collection table */}
         <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'}>

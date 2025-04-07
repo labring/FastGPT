@@ -76,8 +76,9 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   });
   const syncWebsite = async () => {
     await checkTeamWebSyncLimit();
-    await postWebsiteSync({ datasetId: datasetId });
-    await loadDatasetDetail(datasetId);
+    postWebsiteSync({ datasetId: datasetId }).then(() => {
+      loadDatasetDetail(datasetId);
+    });
   };
   const {
     isOpen: isOpenWebsiteModal,
