@@ -18,6 +18,7 @@ const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTa
 const PermissionManage = dynamic(
   () => import('@/pageComponents/account/team/PermissionManage/index')
 );
+const OperationLogTable = dynamic(() => import('@/pageComponents/account/team/OperationLog/index'));
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
 const HandleInviteModal = dynamic(
@@ -28,7 +29,8 @@ export enum TeamTabEnum {
   member = 'member',
   org = 'org',
   group = 'group',
-  permission = 'permission'
+  permission = 'permission',
+  operationLog = 'operationLog'
 }
 
 const Team = () => {
@@ -57,7 +59,8 @@ const Team = () => {
           { label: t('account_team:member'), value: TeamTabEnum.member },
           { label: t('account_team:org'), value: TeamTabEnum.org },
           { label: t('account_team:group'), value: TeamTabEnum.group },
-          { label: t('account_team:permission'), value: TeamTabEnum.permission }
+          { label: t('account_team:permission'), value: TeamTabEnum.permission },
+          { label: t('account_team:operation_log'), value: TeamTabEnum.operationLog }
         ]}
         px={'1rem'}
         value={teamTab}
@@ -150,6 +153,7 @@ const Team = () => {
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.group && <GroupManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.permission && <PermissionManage Tabs={Tabs} />}
+          {teamTab === TeamTabEnum.operationLog && <OperationLogTable Tabs={Tabs} />}
         </Box>
       </Flex>
       {invitelinkid && <HandleInviteModal invitelinkid={invitelinkid} />}
