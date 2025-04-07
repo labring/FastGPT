@@ -51,7 +51,8 @@ export const DatasetTypeMap = {
 export enum DatasetStatusEnum {
   active = 'active',
   syncing = 'syncing',
-  waiting = 'waiting'
+  waiting = 'waiting',
+  error = 'error'
 }
 export const DatasetStatusMap = {
   [DatasetStatusEnum.active]: {
@@ -62,6 +63,9 @@ export const DatasetStatusMap = {
   },
   [DatasetStatusEnum.waiting]: {
     label: i18nT('common:core.dataset.status.waiting')
+  },
+  [DatasetStatusEnum.error]: {
+    label: i18nT('dataset:status_error')
   }
 };
 

@@ -124,6 +124,7 @@
   "split_sign_question": "問號",
   "split_sign_semicolon": "分號",
   "start_sync_website_tip": "確認開始同步資料？\n將會刪除舊資料後重新獲取，請確認！",
+  "status_error": "運行異常",
   "sync_collection_failed": "同步集合錯誤，請檢查是否能正常存取來源文件",
   "sync_schedule": "定時同步",
   "sync_schedule_tip": "只會同步已存在的集合。\n包括連結集合以及 API 知識庫裡所有集合。\n系統會每天進行輪詢更新，無法確定特定的更新時間。",

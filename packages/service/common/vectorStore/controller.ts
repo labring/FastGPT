@@ -7,6 +7,7 @@ import { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
 import { setRedisCache, getRedisCache, delRedisCache, CacheKeyEnum } from '../redis/cache';
+import { throttle } from 'lodash';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
@@ -15,7 +16,12 @@ const getVectorObj = () => {
 
   return new PgVectorCtrl();
 };
+
 const getChcheKey = (teamId: string) => `${CacheKeyEnum.team_vector_count}:${teamId}`;
+const onDelCache = throttle((teamId: string) => delRedisCache(getChcheKey(teamId)), 30000, {
+  leading: true,
+  trailing: true
+});
 
 const Vector = getVectorObj();
 
@@ -59,7 +65,7 @@ export const insertDatasetDataVector = async ({
     vector: vectors[0]
   });
 
-  delRedisCache(getChcheKey(props.teamId));
+  onDelCache(props.teamId);
 
   return {
     tokens,
@@ -69,6 +75,6 @@ export const insertDatasetDataVector = async ({
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
   const result = await Vector.delete(props);
-  delRedisCache(getChcheKey(props.teamId));
+  onDelCache(props.teamId);
   return result;
 };

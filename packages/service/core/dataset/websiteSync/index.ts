@@ -34,23 +34,44 @@ export const addWebsiteSyncJob = (data: WebsiteSyncJobData) => {
 export const getWebsiteSyncDatasetStatus = async (datasetId: string) => {
   const jobId = await websiteSyncQueue.getDeduplicationJobId(datasetId);
   if (!jobId) {
-    return DatasetStatusEnum.active;
+    return {
+      status: DatasetStatusEnum.active,
+      errorMsg: undefined
+    };
   }
   const job = await websiteSyncQueue.getJob(jobId);
   if (!job) {
-    return DatasetStatusEnum.active;
+    return {
+      status: DatasetStatusEnum.active,
+      errorMsg: undefined
+    };
   }
 
   const jobState = await job.getState();
 
+  if (jobState === 'failed' || jobState === 'unknown') {
+    return {
+      status: DatasetStatusEnum.error,
+      errorMsg: job.failedReason
+    };
+  }
   if (['waiting-children', 'waiting'].includes(jobState)) {
-    return DatasetStatusEnum.waiting;
+    return {
+      status: DatasetStatusEnum.waiting,
+      errorMsg: undefined
+    };
   }
   if (jobState === 'active') {
-    return DatasetStatusEnum.syncing;
+    return {
+      status: DatasetStatusEnum.syncing,
+      errorMsg: undefined
+    };
   }
 
-  return DatasetStatusEnum.active;
+  return {
+    status: DatasetStatusEnum.active,
+    errorMsg: undefined
+  };
 };
 
 // Scheduler setting
