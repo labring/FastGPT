@@ -37,7 +37,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
-const Header = ({}: {}) => {
+const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { isPc } = useSystem();
@@ -283,13 +283,15 @@ const Header = ({}: {}) => {
                       >
                         {t('dataset:params_config')}
                       </Button>
-                      <Button
-                        variant={'whitePrimary'}
-                        onClick={openWebSyncConfirm}
-                        leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
-                      >
-                        {t('dataset:immediate_sync')}
-                      </Button>
+                      {!hasTrainingData && (
+                        <Button
+                          variant={'whitePrimary'}
+                          onClick={openWebSyncConfirm}
+                          leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
+                        >
+                          {t('dataset:immediate_sync')}
+                        </Button>
+                      )}
                     </HStack>
                   )}
                   {datasetDetail.status === DatasetStatusEnum.syncing && (
