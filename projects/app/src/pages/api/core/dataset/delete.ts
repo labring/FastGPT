@@ -9,6 +9,8 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetCollectionTags } from '@fastgpt/service/core/dataset/tag/schema';
 import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { removeWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {
@@ -39,6 +41,13 @@ async function handler(req: NextApiRequest) {
     teamId,
     datasetId: { $in: datasetIds }
   });
+
+  await Promise.all(
+    datasets.map((dataset) => {
+      if (dataset.type === DatasetTypeEnum.websiteDataset)
+        return removeWebsiteSyncJobScheduler(String(dataset._id));
+    })
+  );
 
   // delete all dataset.data and pg data
   await mongoSessionRun(async (session) => {

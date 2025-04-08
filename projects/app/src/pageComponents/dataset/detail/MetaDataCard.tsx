@@ -85,8 +85,12 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
         value: t(DatasetCollectionDataProcessModeMap[collection.trainingType]?.label as any)
       },
       {
-        label: t('common:core.dataset.collection.metadata.Chunk Size'),
+        label: t('dataset:chunk_size'),
         value: collection.chunkSize || '-'
+      },
+      {
+        label: t('dataset:index_size'),
+        value: collection.indexSize || '-'
       },
       ...(webSelector
         ? [

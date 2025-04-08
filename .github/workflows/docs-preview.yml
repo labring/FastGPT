@@ -10,6 +10,12 @@ on:
 jobs:
   # This workflow contains jobs "deploy-production"
   deploy-preview:
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+      pull-requests: write
     # The environment this job references
     environment:
       name: Preview
@@ -32,6 +38,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           submodules: recursive # Fetch submodules
           fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # Step 2 Detect changes to Docs Content
       - name: Detect changes in doc content
@@ -58,36 +65,38 @@ jobs:
       - name: Build
         run: cd docSite && hugo mod get -u github.com/colinwilson/lotusdocs@6d0568e && hugo -v --minify
 
-      # Step 5 - Push our generated site to Vercel
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        id: vercel-action
+      - name: Test
+        run: ls ./docSite/public
+
+      # Step 5 - Push our generated site to Cloudflare
+      - name: Deploy to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }} # Required
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }} #Required
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }} #Required
-          github-comment: false
-          vercel-args: '--local-config ../vercel.json' # Optional
-          working-directory: docSite/public
-          alias-domains: | #Optional
-            fastgpt-staging.vercel.app
-  docsOutput:
-    permissions:
-      pull-requests: write
-    needs: [deploy-preview]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy ./docSite/public --project-name=fastgpt-doc
+          packageManager: npm
+
+      - name: Create deployment status comment
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          PREVIEW_URL: ${{ steps.deploy.outputs.deployment-url }}
+        uses: actions/github-script@v6
         with:
-          ref: ${{ github.event.pull_request.head.ref }}
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-      - uses: actions/github-script@v7
-        with:
-          github-token: ${{secrets.GITHUB_TOKEN}}
+          token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '[👀 Visit preview document](${{ needs.deploy-preview.outputs.url }})'
-            })
+            const success = process.env.JOB_STATUS === 'success';
+            const deploymentUrl = `${process.env.PREVIEW_URL}`;
+            const status = success ? '✅ Success' : '❌ Failed';
+            console.log(process.env.JOB_STATUS);
+
+            const commentBody = `**Deployment Status: ${status}**
+            ${success ? `🔗 Preview URL: ${deploymentUrl}` : ''}`;
+
+            await github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.payload.pull_request.number,
+              body: commentBody
+            });

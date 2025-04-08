@@ -1,6 +1,10 @@
 import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
-import { StreamChatType, ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import {
+  StreamChatType,
+  ChatCompletionMessageParam,
+  CompletionFinishReason
+} from '@fastgpt/global/core/ai/type';
 import { NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -252,9 +256,9 @@ export const runToolWithPromptCall = async (
     }
   });
 
-  const { answer, reasoning } = await (async () => {
+  const { answer, reasoning, finish_reason } = await (async () => {
     if (res && isStreamResponse) {
-      const { answer, reasoning } = await streamResponse({
+      const { answer, reasoning, finish_reason } = await streamResponse({
         res,
         toolNodes,
         stream: aiResponse,
@@ -262,8 +266,9 @@ export const runToolWithPromptCall = async (
         aiChatReasoning
       });
 
-      return { answer, reasoning };
+      return { answer, reasoning, finish_reason };
     } else {
+      const finish_reason = aiResponse.choices?.[0]?.finish_reason as CompletionFinishReason;
       const content = aiResponse.choices?.[0]?.message?.content || '';
       const reasoningContent: string = aiResponse.choices?.[0]?.message?.reasoning_content || '';
 
@@ -271,14 +276,16 @@ export const runToolWithPromptCall = async (
       if (reasoningContent || !aiChatReasoning) {
         return {
           answer: content,
-          reasoning: reasoningContent
+          reasoning: reasoningContent,
+          finish_reason
         };
       }
 
       const [think, answer] = parseReasoningContent(content);
       return {
         answer,
-        reasoning: think
+        reasoning: think,
+        finish_reason
       };
     }
   })();
@@ -525,7 +532,8 @@ ANSWER: `;
       toolNodeInputTokens,
       toolNodeOutputTokens,
       assistantResponses: toolNodeAssistants,
-      runTimes
+      runTimes,
+      finish_reason
     }
   );
 };
@@ -550,15 +558,18 @@ async function streamResponse({
   let startResponseWrite = false;
   let answer = '';
   let reasoning = '';
+  let finish_reason: CompletionFinishReason = null;
   const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
 
   for await (const part of stream) {
     if (res.closed) {
       stream.controller?.abort();
+      finish_reason = 'close';
       break;
     }
 
-    const [reasoningContent, content] = parsePart(part, aiChatReasoning);
+    const { reasoningContent, content, finishReason } = parsePart(part, aiChatReasoning);
+    finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;
 
@@ -618,7 +629,7 @@ async function streamResponse({
     }
   }
 
-  return { answer, reasoning };
+  return { answer, reasoning, finish_reason };
 }
 
 const parseAnswer = (
