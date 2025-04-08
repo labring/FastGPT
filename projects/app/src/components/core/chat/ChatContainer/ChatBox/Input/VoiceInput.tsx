@@ -37,7 +37,6 @@ const PCVoiceInput = ({
   canvasRef: React.RefObject<HTMLCanvasElement>;
 }) => {
   const { t } = useTranslation();
-
   return (
     <HStack h={'100%'} px={4}>
       <Box fontSize="sm" color="myGray.500" flex={'1 0 0'}>
@@ -96,7 +95,8 @@ const MobileVoiceInput = ({
   const startYRef = useRef(0);
 
   const [isCancel, setIsCancel] = useState(false);
-
+  const canvasPosition = canvasRef.current?.getBoundingClientRect();
+  const maskBottom = canvasPosition ? `${window.innerHeight - canvasPosition.top}px` : '50px';
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
       isPressing.current = true;
@@ -184,26 +184,26 @@ const MobileVoiceInput = ({
           flex="0 0 80%"
           visibility={isSpeaking ? 'visible' : 'hidden'}
         />
-      </Flex>
 
-      {/* Mask */}
-      {isSpeaking && (
-        <Flex
-          justifyContent="center"
-          alignItems="center"
-          height="100%"
-          position="fixed"
-          left={0}
-          right={0}
-          bottom={'50px'}
-          h={'200px'}
-          bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
-        >
-          <Box fontSize="sm" color="myGray.500" position="absolute" bottom={'10px'}>
-            {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
-          </Box>
-        </Flex>
-      )}
+        {/* Mask */}
+        {isSpeaking && (
+          <Flex
+            justifyContent="center"
+            alignItems="center"
+            height="100%"
+            position="fixed"
+            left={0}
+            right={0}
+            bottom={maskBottom}
+            h={'200px'}
+            bg="linear-gradient(to top, white, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0))"
+          >
+            <Box fontSize="sm" color="myGray.500" position="absolute" bottom={'10px'}>
+              {isCancel ? t('chat:release_cancel') : t('chat:release_send')}
+            </Box>
+          </Flex>
+        )}
+      </Flex>
     </Flex>
   );
 };
