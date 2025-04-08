@@ -104,13 +104,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     histories: chatHistories,
     appId: String(appData._id)
   };
-  let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes));
-  let runtimeEdges = initWorkflowEdgeStatus(edges);
-
-  if (isRecovery) {
-    runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive));
-    runtimeEdges = initWorkflowEdgeStatus(edges, Interactive);
-  }
+  const runtimeNodes = isRecovery
+      ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive))
+      : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+    runtimeEdges = isRecovery
+      ? initWorkflowEdgeStatus(edges, Interactive)
+      : initWorkflowEdgeStatus(edges);
 
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
