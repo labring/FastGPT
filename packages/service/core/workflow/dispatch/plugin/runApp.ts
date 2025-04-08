@@ -28,7 +28,6 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
-  [DispatchNodeResponseKeyEnum.stopForInteractive]?: boolean;
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -165,7 +164,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
   );
   return {
-    [DispatchNodeResponseKeyEnum.stopForInteractive]: hasInteractive ? true : undefined,
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {

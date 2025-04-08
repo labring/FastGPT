@@ -26,8 +26,7 @@ export enum DispatchNodeResponseKeyEnum {
 
   interactive = 'INTERACTIVE', // is interactive
   runTimes = 'runTimes', // run times
-  newVariables = 'newVariables', // new variables
-  stopForInteractive = 'STOP_FOR_INTERACTIVE' // stop nested app execution for interactive response
+  newVariables = 'newVariables' // new variables
 }
 
 export const needReplaceReferenceInputTypeList = [
