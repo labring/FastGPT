@@ -77,11 +77,59 @@ export const initWorkflowEdgeStatus = (
   // If there is a history, use the last interactive value
   if (lastInteractive) {
     const interactive = lastInteractive;
-
     const memoryEdges = interactive?.memoryEdges;
 
     if (memoryEdges && memoryEdges.length > 0) {
-      return memoryEdges;
+      // Check if all memoryEdges exist in current edges
+      const isSubset = memoryEdges.every((memoryEdge) =>
+        edges.some(
+          (edge) =>
+            edge.source === memoryEdge.source &&
+            edge.target === memoryEdge.target &&
+            edge.sourceHandle === memoryEdge.sourceHandle &&
+            edge.targetHandle === memoryEdge.targetHandle
+        )
+      );
+
+      if (isSubset) {
+        return memoryEdges;
+      }
+
+      // 如果不是子集，尝试递归查找交互应用节点及其相关边
+      if (interactive?.context) {
+        const findInteractiveAppEdges = (
+          context: InteractiveContext | undefined,
+          currentEdges: StoreEdgeItemType[]
+        ): RuntimeEdgeItemType[] | null => {
+          if (!context) return null;
+
+          // 检查是否有交互应用相关的边
+          if (context.interactiveAppNodeId && context.interactiveAppEdges) {
+            // 验证这些边是否存在于当前edges中
+            const validEdges = context.interactiveAppEdges.filter((interactiveEdge) =>
+              currentEdges.some(
+                (edge) =>
+                  edge.source === interactiveEdge.source &&
+                  edge.target === interactiveEdge.target &&
+                  edge.sourceHandle === interactiveEdge.sourceHandle &&
+                  edge.targetHandle === interactiveEdge.targetHandle
+              )
+            );
+
+            if (validEdges.length > 0) {
+              return validEdges;
+            }
+          }
+
+          // 如果当前上下文没找到，递归查找父上下文
+          return findInteractiveAppEdges(context.parentContext, currentEdges);
+        };
+
+        const foundEdges = findInteractiveAppEdges(interactive.context, edges);
+        if (foundEdges && foundEdges.length > 0) {
+          return foundEdges;
+        }
+      }
     }
   }
 
@@ -99,7 +147,6 @@ export const getWorkflowEntryNodeIds = (
 ) => {
   // 检查交互状态
   if (lastInteractive) {
-    // 优先使用传入的 lastInteractive，如果没有则从 histories 中获取
     const interactive = lastInteractive;
 
     if (interactive?.context) {

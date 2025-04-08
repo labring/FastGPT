@@ -1,7 +1,7 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { AIChatItemValueItemType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlow } from '../index';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getLastInteractiveValue,
@@ -28,6 +28,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
+  [DispatchNodeResponseKeyEnum.stopForInteractive]?: boolean;
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -43,7 +44,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     params,
     variables
   } = props;
-  // 增加 context 的空值检查
   const isRecovery = !!lastInteractive?.context?.parentContext;
 
   const {
@@ -108,44 +108,48 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   let runtimeEdges = initWorkflowEdgeStatus(edges);
 
   if (isRecovery) {
-    const entryNodeIds = getWorkflowEntryNodeIds(nodes, lastInteractive);
-    runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
+    runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive));
     runtimeEdges = initWorkflowEdgeStatus(edges, Interactive);
   }
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
-    await dispatchWorkFlow({
-      ...props,
-      parentContext: {
-        parentContext: props.parentContext || undefined,
-        interactiveAppNodeId: props.node?.nodeId,
-        interactiveAppId: appId
-      },
-      // Rewrite stream mode
-      ...(system_forbid_stream
-        ? {
-            stream: false,
-            workflowStreamResponse: undefined
-          }
-        : {}),
-      runningAppInfo: {
-        id: String(appData._id),
-        teamId: String(appData.teamId),
-        tmbId: String(appData.tmbId),
-        isChildApp: true
-      },
-      runtimeNodes,
-      runtimeEdges,
-      histories: chatHistories,
-      variables: childrenRunVariables,
-      query: isRecovery
-        ? query
-        : runtimePrompt2ChatsValue({
-            files: userInputFiles,
-            text: userChatInput
-          }),
-      chatConfig
-    });
+  const memoryEdges = props.runtimeEdges.map((edge) => ({
+    ...edge,
+    status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
+  }));
+
+  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
+    ...props,
+    parentContext: {
+      parentContext: props.parentContext || undefined,
+      interactiveAppNodeId: props.node?.nodeId,
+      interactiveAppId: appId,
+      interactiveAppEdges: memoryEdges
+    },
+    // Rewrite stream mode
+    ...(system_forbid_stream
+      ? {
+          stream: false,
+          workflowStreamResponse: undefined
+        }
+      : {}),
+    runningAppInfo: {
+      id: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
+      isChildApp: true
+    },
+    runtimeNodes,
+    runtimeEdges,
+    histories: chatHistories,
+    variables: childrenRunVariables,
+    query: isRecovery
+      ? query
+      : runtimePrompt2ChatsValue({
+          files: userInputFiles,
+          text: userChatInput
+        }),
+    chatConfig
+  });
 
   const completeMessages = chatHistories.concat([
     {
@@ -161,8 +165,11 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-
+  const hasInteractive = assistantResponses.some(
+    (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
+  );
   return {
+    [DispatchNodeResponseKeyEnum.stopForInteractive]: hasInteractive ? true : undefined,
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
