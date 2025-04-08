@@ -74,13 +74,12 @@ export const initWorkflowEdgeStatus = (
   edges: StoreEdgeItemType[],
   lastInteractive?: WorkflowInteractiveResponseType | null
 ): RuntimeEdgeItemType[] => {
-  // If there is a history, use the last interactive value
   if (lastInteractive) {
     const interactive = lastInteractive;
     const memoryEdges = interactive?.memoryEdges;
 
     if (memoryEdges && memoryEdges.length > 0) {
-      // Check if all memoryEdges exist in current edges
+      // 1. 检查 memoryEdges 是否是 edges 的子集
       const isSubset = memoryEdges.every((memoryEdge) =>
         edges.some(
           (edge) =>
@@ -95,7 +94,7 @@ export const initWorkflowEdgeStatus = (
         return memoryEdges;
       }
 
-      // 如果不是子集，尝试递归查找交互应用节点及其相关边
+      // 2. 如果不是子集，尝试递归查找交互应用节点及其相关边
       if (interactive?.context) {
         const findInteractiveAppEdges = (
           context: InteractiveContext | undefined,
@@ -103,9 +102,9 @@ export const initWorkflowEdgeStatus = (
         ): RuntimeEdgeItemType[] | null => {
           if (!context) return null;
 
-          // 检查是否有交互应用相关的边
+          // 3. 检查是否有交互应用相关的边
           if (context.interactiveAppNodeId && context.interactiveAppEdges) {
-            // 验证这些边是否存在于当前edges中
+            // 4. 验证这些边是否存在于当前edges中
             const validEdges = context.interactiveAppEdges.filter((interactiveEdge) =>
               currentEdges.some(
                 (edge) =>
@@ -121,7 +120,7 @@ export const initWorkflowEdgeStatus = (
             }
           }
 
-          // 如果当前上下文没找到，递归查找父上下文
+          // 5. 如果当前上下文没找到，递归查找父上下文
           return findInteractiveAppEdges(context.parentContext, currentEdges);
         };
 
