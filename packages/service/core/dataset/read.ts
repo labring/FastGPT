@@ -9,7 +9,6 @@ import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from './apiDataset/api';
-import { POST } from '../../common/api/plusRequest';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -168,10 +167,7 @@ export const readApiServerFileContent = async ({
   }
 
   if (feishuServer || yuqueServer) {
-    return POST<{
-      title?: string;
-      rawText: string;
-    }>(`/core/dataset/systemApiDataset`, {
+    return global.systemApiDatasetHandler({
       type: 'content',
       feishuServer,
       yuqueServer,
