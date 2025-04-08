@@ -57,6 +57,7 @@ export type ChatDispatchProps = {
   variables: Record<string, any>; // global variable
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchema['chatConfig'];
+  lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   maxRunTimes: number;
   isToolCall?: boolean;

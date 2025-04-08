@@ -72,11 +72,13 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
 
 export const initWorkflowEdgeStatus = (
   edges: StoreEdgeItemType[],
-  histories?: ChatItemType[]
+  lastInteractive?: WorkflowInteractiveResponseType | null
 ): RuntimeEdgeItemType[] => {
   // If there is a history, use the last interactive value
-  if (histories && histories.length > 0) {
-    const memoryEdges = getLastInteractiveValue(histories)?.memoryEdges;
+  if (lastInteractive) {
+    const interactive = lastInteractive;
+
+    const memoryEdges = interactive?.memoryEdges;
 
     if (memoryEdges && memoryEdges.length > 0) {
       return memoryEdges;

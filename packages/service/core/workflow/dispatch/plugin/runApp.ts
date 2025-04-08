@@ -37,13 +37,12 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runningAppInfo,
     histories,
     query,
+    lastInteractive,
     node: { pluginId: appId, version },
     workflowStreamResponse,
     params,
     variables
   } = props;
-  // 添加恢复模式检查
-  const lastInteractive = getLastInteractiveValue(histories);
   // 增加 context 的空值检查
   const isRecovery = !!lastInteractive?.context?.parentContext;
 
@@ -108,12 +107,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes));
   let runtimeEdges = initWorkflowEdgeStatus(edges);
 
-  if (isRecovery && lastInteractive?.context) {
-    const entryNodeIds = getWorkflowEntryNodeIds(nodes, Interactive);
-    // 恢复子应用上下文
+  if (isRecovery) {
+    const entryNodeIds = getWorkflowEntryNodeIds(nodes, lastInteractive);
     runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
-    // 恢复边的状态
-    runtimeEdges = initWorkflowEdgeStatus(edges, chatHistories);
+    runtimeEdges = initWorkflowEdgeStatus(edges, Interactive);
   }
 
   const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
