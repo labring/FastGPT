@@ -112,18 +112,15 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runtimeEdges = initWorkflowEdgeStatus(edges, Interactive);
   }
 
-  const memoryEdges = props.runtimeEdges.map((edge) => ({
-    ...edge,
-    status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
-  }));
-
   const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
     ...props,
     parentContext: {
       parentContext: props.parentContext || undefined,
       interactiveAppNodeId: props.node?.nodeId,
-      interactiveAppId: appId,
-      interactiveAppEdges: memoryEdges
+      interactiveAppEdges: props.runtimeEdges.map((edge) => ({
+        ...edge,
+        status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
+      }))
     },
     // Rewrite stream mode
     ...(system_forbid_stream

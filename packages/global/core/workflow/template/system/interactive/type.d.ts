@@ -6,7 +6,6 @@ import type { ChatCompletionMessageParam } from '../../../../ai/type';
 export type InteractiveContext = {
   // 当前层级信息
   interactiveAppNodeId?: string;
-  interactiveAppId?: string;
   interactiveAppEdges?: RuntimeEdgeItemType[];
   parentContext?: InteractiveContext; // 递归定义，支持多级嵌套
 };
