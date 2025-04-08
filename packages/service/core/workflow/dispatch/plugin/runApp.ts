@@ -95,6 +95,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   }
 
   const chatHistories = getHistories(history, histories);
+  const Interactive = getLastInteractiveValue(chatHistories);
 
   // Rewrite children app variables
   const systemVariables = filterSystemVariables(variables);
@@ -108,8 +109,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   let runtimeEdges = initWorkflowEdgeStatus(edges);
 
   if (isRecovery && lastInteractive?.context) {
-    const entryNodeIds =
-      getWorkflowEntryNodeIds(nodes, chatHistories) || lastInteractive.entryNodeIds;
+    const entryNodeIds = getWorkflowEntryNodeIds(nodes, Interactive);
     // 恢复子应用上下文
     runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
     // 恢复边的状态
@@ -150,7 +150,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       chatConfig
     });
 
-  console.log('workflowInteractiveResponse', workflowInteractiveResponse);
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,

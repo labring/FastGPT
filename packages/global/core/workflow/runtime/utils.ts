@@ -10,7 +10,11 @@ import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
-import { InteractiveContext } from '../template/system/interactive/type';
+import {
+  InteractiveContext,
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '../template/system/interactive/type';
 
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
@@ -89,16 +93,18 @@ export const initWorkflowEdgeStatus = (
 
 export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
-  histories?: ChatItemType[]
+  lastInteractive?: WorkflowInteractiveResponseType | null
 ) => {
   // 检查交互状态
-  if (histories && histories.length > 0) {
-    const lastInteractive = getLastInteractiveValue(histories);
-    if (lastInteractive?.context) {
+  if (lastInteractive) {
+    // 优先使用传入的 lastInteractive，如果没有则从 histories 中获取
+    const interactive = lastInteractive;
+
+    if (interactive?.context) {
       // 1. 首先检查保存的entryNodeIds是否在当前nodes中存在
-      if (lastInteractive.entryNodeIds?.length > 0) {
+      if (interactive.entryNodeIds?.length > 0) {
         // 验证这些entryNodeIds是否在当前节点列表中
-        const validEntryNodeIds = lastInteractive.entryNodeIds.filter((nodeId) =>
+        const validEntryNodeIds = interactive.entryNodeIds.filter((nodeId) =>
           nodes.some((node) => node.nodeId === nodeId)
         );
 
@@ -125,9 +131,9 @@ export const getWorkflowEntryNodeIds = (
       };
 
       // 先尝试从父上下文查找
-      if (lastInteractive.context.parentContext) {
+      if (interactive.context.parentContext) {
         const foundNodeIdsFromParent = findAppNodeInContext(
-          lastInteractive.context.parentContext,
+          interactive.context.parentContext,
           nodes
         );
         if (foundNodeIdsFromParent) {
@@ -136,7 +142,7 @@ export const getWorkflowEntryNodeIds = (
       }
 
       // 如果父上下文没找到，尝试从当前上下文查找
-      const foundNodeIds = findAppNodeInContext(lastInteractive.context, nodes);
+      const foundNodeIds = findAppNodeInContext(interactive.context, nodes);
       if (foundNodeIds) {
         return foundNodeIds;
       }
@@ -442,9 +448,10 @@ export const textAdaptGptResponse = ({
 /* Update runtimeNode's outputs with interactive data from history */
 export function rewriteNodeOutputByHistories(
   histories: ChatItemType[],
-  runtimeNodes: RuntimeNodeItemType[]
+  runtimeNodes: RuntimeNodeItemType[],
+  lastInteractive?: InteractiveNodeResponseType
 ) {
-  const interactive = getLastInteractiveValue(histories);
+  const interactive = lastInteractive || getLastInteractiveValue(histories);
   if (!interactive?.nodeOutputs) {
     return runtimeNodes;
   }
