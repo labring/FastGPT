@@ -4,7 +4,6 @@ import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
 export type InteractiveContext = {
-  // 当前层级信息
   interactiveAppNodeId?: string;
   interactiveAppEdges?: RuntimeEdgeItemType[];
   parentContext?: InteractiveContext; // 递归定义，支持多级嵌套
