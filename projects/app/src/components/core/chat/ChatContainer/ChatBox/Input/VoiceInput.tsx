@@ -98,7 +98,7 @@ const MobileVoiceInput = ({
   const [isCancel, setIsCancel] = useState(false);
   const canvasPosition = canvasRef.current?.getBoundingClientRect();
   const maskBottom = canvasPosition ? `${window.innerHeight - canvasPosition.top}px` : '50px';
-  
+
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
       isPressing.current = true;
@@ -297,7 +297,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         }
       };
       startSpeak(finishWhisperTranscription);
-    }, []);
+    }, [autoTTSResponse, onSendMessage, resetInputVal, startSpeak, whisperConfig?.autoSend]);
 
     const onSpeach = useCallback(() => {
       if (isPc) {
@@ -305,7 +305,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       } else {
         setMobilePreSpeak(true);
       }
-    }, []);
+    }, [isPc, onStartSpeak]);
     useImperativeHandle(ref, () => ({
       onSpeak: onSpeach
     }));
