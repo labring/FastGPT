@@ -1,5 +1,4 @@
-import { connectionMongo, getMongoModel, type Model } from '../../mongo';
-const { Schema } = connectionMongo;
+import { Schema, getMongoModel } from '../../mongo';
 
 const DatasetFileSchema = new Schema({});
 const ChatFileSchema = new Schema({});

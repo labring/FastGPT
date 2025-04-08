@@ -18,6 +18,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
+import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -46,10 +47,11 @@ const PluginRunContextProvider = ({
 
   const pluginInputs = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.pluginInputs);
   const setTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
+  const variablesForm = useContextSelector(ChatItemContext, (v) => v.variablesForm);
+  const chatConfig = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
+
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-
-  const chatConfig = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.chatConfig);
 
   const { instruction = '', fileSelectConfig = defaultAppSelectFileConfig } = useMemo(
     () => chatConfig || {},
@@ -65,7 +67,7 @@ const PluginRunContextProvider = ({
   }, []);
 
   const generatingMessage = useCallback(
-    ({ event, text = '', status, name, tool }: generatingMessageProps) => {
+    ({ event, text = '', status, name, tool, nodeResponse, variables }: generatingMessageProps) => {
       setChatRecords((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1 || item.obj !== ChatRoleEnum.AI) return item;
@@ -74,7 +76,14 @@ const PluginRunContextProvider = ({
             JSON.stringify(item.value[item.value.length - 1])
           );
 
-          if (event === SseResponseEventEnum.flowNodeStatus && status) {
+          if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
+            return {
+              ...item,
+              responseData: item.responseData
+                ? [...item.responseData, nodeResponse]
+                : [nodeResponse]
+            };
+          } else if (event === SseResponseEventEnum.flowNodeStatus && status) {
             return {
               ...item,
               status,
@@ -144,13 +153,15 @@ const PluginRunContextProvider = ({
                 return val;
               })
             };
+          } else if (event === SseResponseEventEnum.updateVariables && variables) {
+            variablesForm.setValue('variables', variables);
           }
 
           return item;
         })
       );
     },
-    [setChatRecords]
+    [setChatRecords, variablesForm]
   );
 
   const isChatting = useMemo(
@@ -226,7 +237,7 @@ const PluginRunContextProvider = ({
           }
         }
 
-        const { responseData } = await onStartChat({
+        await onStartChat({
           messages,
           controller: chatController.current,
           generatingMessage,
@@ -235,16 +246,20 @@ const PluginRunContextProvider = ({
             ...formatVariables
           }
         });
-        if (responseData?.[responseData.length - 1]?.error) {
-          toast({
-            title: responseData[responseData.length - 1].error?.message,
-            status: 'error'
-          });
-        }
 
         setChatRecords((state) =>
           state.map((item, index) => {
             if (index !== state.length - 1) return item;
+
+            // Check node response error
+            const responseData = mergeChatResponseData(item.responseData || []);
+            if (responseData[responseData.length - 1]?.error) {
+              toast({
+                title: t(responseData[responseData.length - 1].error?.message),
+                status: 'error'
+              });
+            }
+
             return {
               ...item,
               status: 'finish',

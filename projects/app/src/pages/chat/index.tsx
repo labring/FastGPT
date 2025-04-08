@@ -115,7 +115,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }: StartChatFnProps) => {
       // Just send a user prompt
       const histories = messages.slice(-1);
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         data: {
           messages: histories,
           variables,
@@ -137,7 +137,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         title: newTitle
       }));
 
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChat.current };
     },
     [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
   );
@@ -174,13 +174,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       )}
 
       {(!quoteData || isPc) && (
-        <PageContainer
-          isLoading={loading}
-          flex={'1 0 0'}
-          w={0}
-          p={[0, '16px']}
-          position={'relative'}
-        >
+        <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
           <Flex h={'100%'} flexDirection={['column', 'row']}>
             {/* pc always show history. */}
             {RenderHistorySlider}

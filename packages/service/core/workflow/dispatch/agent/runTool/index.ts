@@ -176,7 +176,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     toolNodeOutputTokens,
     completeMessages = [], // The actual message sent to AI(just save text)
     assistantResponses = [], // FastGPT system store assistant.value response
-    runTimes
+    runTimes,
+    finish_reason
   } = await (async () => {
     const adaptMessages = chats2GPTMessages({
       messages,
@@ -276,7 +277,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         useVision
       ),
       toolDetail: childToolResponse,
-      mergeSignId: nodeId
+      mergeSignId: nodeId,
+      finishReason: finish_reason
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       // 工具调用本身的积分消耗

@@ -2,6 +2,7 @@ import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
+  CompletionFinishReason,
   StreamChatType
 } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from './model';
@@ -142,26 +143,40 @@ export const parseReasoningStreamContent = () => {
           content?: string;
           reasoning_content?: string;
         };
+        finish_reason?: CompletionFinishReason;
       }[];
     },
     parseThinkTag = false
-  ): [string, string] => {
+  ): {
+    reasoningContent: string;
+    content: string;
+    finishReason: CompletionFinishReason;
+  } => {
     const content = part.choices?.[0]?.delta?.content || '';
+    const finishReason = part.choices?.[0]?.finish_reason || null;
 
     // @ts-ignore
     const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
     if (reasoningContent || !parseThinkTag) {
       isInThinkTag = false;
-      return [reasoningContent, content];
+      return { reasoningContent, content, finishReason };
     }
 
     if (!content) {
-      return ['', ''];
+      return {
+        reasoningContent: '',
+        content: '',
+        finishReason
+      };
     }
 
     // 如果不在 think 标签中，或者有 reasoningContent(接口已解析），则返回 reasoningContent 和 content
     if (isInThinkTag === false) {
-      return ['', content];
+      return {
+        reasoningContent: '',
+        content,
+        finishReason
+      };
     }
 
     // 检测是否为 think 标签开头的数据
@@ -170,17 +185,29 @@ export const parseReasoningStreamContent = () => {
       startTagBuffer += content;
       // 太少内容时候，暂时不解析
       if (startTagBuffer.length < startTag.length) {
-        return ['', ''];
+        return {
+          reasoningContent: '',
+          content: '',
+          finishReason
+        };
       }
 
       if (startTagBuffer.startsWith(startTag)) {
         isInThinkTag = true;
-        return [startTagBuffer.slice(startTag.length), ''];
+        return {
+          reasoningContent: startTagBuffer.slice(startTag.length),
+          content: '',
+          finishReason
+        };
       }
 
       // 如果未命中 think 标签，则认为不在 think 标签中，返回 buffer 内容作为 content
       isInThinkTag = false;
-      return ['', startTagBuffer];
+      return {
+        reasoningContent: '',
+        content: startTagBuffer,
+        finishReason
+      };
     }
 
     // 确认是 think 标签内容，开始返回 think 内容，并实时检测 </think>
@@ -201,19 +228,35 @@ export const parseReasoningStreamContent = () => {
       if (endTagBuffer.includes(endTag)) {
         isInThinkTag = false;
         const answer = endTagBuffer.slice(endTag.length);
-        return ['', answer];
+        return {
+          reasoningContent: '',
+          content: answer,
+          finishReason
+        };
       } else if (endTagBuffer.length >= endTag.length) {
         // 缓存内容超出尾标签长度，且仍未命中 </think>，则认为本次猜测 </think> 失败，仍处于 think 阶段。
         const tmp = endTagBuffer;
         endTagBuffer = '';
-        return [tmp, ''];
+        return {
+          reasoningContent: tmp,
+          content: '',
+          finishReason
+        };
       }
-      return ['', ''];
+      return {
+        reasoningContent: '',
+        content: '',
+        finishReason
+      };
     } else if (content.includes(endTag)) {
       // 返回内容，完整命中</think>，直接结束
       isInThinkTag = false;
       const [think, answer] = content.split(endTag);
-      return [think, answer];
+      return {
+        reasoningContent: think,
+        content: answer,
+        finishReason
+      };
     } else {
       // 无 buffer，且未命中 </think>，开始疑似 </think> 检测。
       for (let i = 1; i < endTag.length; i++) {
@@ -222,13 +265,21 @@ export const parseReasoningStreamContent = () => {
         if (content.endsWith(partialEndTag)) {
           const think = content.slice(0, -partialEndTag.length);
           endTagBuffer += partialEndTag;
-          return [think, ''];
+          return {
+            reasoningContent: think,
+            content: '',
+            finishReason
+          };
         }
       }
     }
 
     // 完全未命中尾标签，还是 think 阶段。
-    return [content, ''];
+    return {
+      reasoningContent: content,
+      content: '',
+      finishReason
+    };
   };
 
   const getStartTagBuffer = () => startTagBuffer;

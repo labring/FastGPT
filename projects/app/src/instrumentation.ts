@@ -1,6 +1,6 @@
 import { exit } from 'process';
 
-/* 
+/*
   Init system
 */
 export async function register() {
@@ -9,6 +9,7 @@ export async function register() {
       // 基础系统初始化
       const [
         { connectMongo },
+        { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
         { systemStartCb },
         { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
         { initVectorStore },
@@ -19,6 +20,7 @@ export async function register() {
         { startTrainingQueue }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
+        import('@fastgpt/service/common/mongo/index'),
         import('@fastgpt/service/common/system/tools'),
         import('@/service/common/system'),
         import('@fastgpt/service/common/vectorStore/controller'),
@@ -34,7 +36,8 @@ export async function register() {
       initGlobalVariables();
 
       // Connect to MongoDB
-      await connectMongo();
+      await connectMongo(connectionMongo, MONGO_URL);
+      connectMongo(connectionLogMongo, MONGO_LOG_URL);
 
       //init system config；init vector database；init root user
       await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
