@@ -98,6 +98,7 @@ const MobileVoiceInput = ({
   const [isCancel, setIsCancel] = useState(false);
   const canvasPosition = canvasRef.current?.getBoundingClientRect();
   const maskBottom = canvasPosition ? `${window.innerHeight - canvasPosition.top}px` : '50px';
+  
   const handleTouchStart = useCallback(
     (e: React.TouchEvent<HTMLDivElement>) => {
       isPressing.current = true;
