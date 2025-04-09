@@ -74,65 +74,44 @@ export const initWorkflowEdgeStatus = (
   edges: StoreEdgeItemType[],
   lastInteractive?: WorkflowInteractiveResponseType | null
 ): RuntimeEdgeItemType[] => {
-  if (lastInteractive) {
-    const interactive = lastInteractive;
-    const memoryEdges = interactive?.memoryEdges;
+  if (!lastInteractive) {
+    return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
+  }
 
-    if (memoryEdges && memoryEdges.length > 0) {
-      const isSubset = memoryEdges.every((memoryEdge) =>
-        edges.some(
-          (edge) =>
-            edge.source === memoryEdge.source &&
-            edge.target === memoryEdge.target &&
-            edge.sourceHandle === memoryEdge.sourceHandle &&
-            edge.targetHandle === memoryEdge.targetHandle
-        )
-      );
+  const isEdgeMatch = (edge1: any, edge2: any) =>
+    edge1.source === edge2.source &&
+    edge1.target === edge2.target &&
+    edge1.sourceHandle === edge2.sourceHandle &&
+    edge1.targetHandle === edge2.targetHandle;
 
-      if (isSubset) {
-        return memoryEdges;
-      }
+  const memoryEdges = lastInteractive.memoryEdges;
+  if (memoryEdges?.length > 0) {
+    const isSubset = memoryEdges.every((memoryEdge) =>
+      edges.some((edge) => isEdgeMatch(edge, memoryEdge))
+    );
 
-      if (interactive?.context) {
-        const findInteractiveAppEdges = (
-          context: InteractiveContext | undefined,
-          currentEdges: StoreEdgeItemType[]
-        ): RuntimeEdgeItemType[] | null => {
-          if (!context) return null;
+    if (isSubset) return memoryEdges;
 
-          if (context.interactiveAppNodeId && context.interactiveAppEdges) {
-            const validEdges = context.interactiveAppEdges.filter((interactiveEdge) =>
-              currentEdges.some(
-                (edge) =>
-                  edge.source === interactiveEdge.source &&
-                  edge.target === interactiveEdge.target &&
-                  edge.sourceHandle === interactiveEdge.sourceHandle &&
-                  edge.targetHandle === interactiveEdge.targetHandle
-              )
-            );
-
-            if (validEdges.length > 0) {
-              return validEdges;
-            }
-          }
-
-          return findInteractiveAppEdges(context.parentContext, currentEdges);
-        };
-
-        const foundEdges = findInteractiveAppEdges(interactive.context, edges);
-        if (foundEdges && foundEdges.length > 0) {
-          return foundEdges;
+    if (lastInteractive.context) {
+      const findInteractiveAppEdges = (
+        context: InteractiveContext | undefined
+      ): RuntimeEdgeItemType[] => {
+        if (!context) return [];
+        if (context.interactiveAppNodeId && context.interactiveAppEdges) {
+          const validEdges = context.interactiveAppEdges.filter((interactiveEdge) =>
+            edges.some((edge) => isEdgeMatch(edge, interactiveEdge))
+          );
+          if (validEdges.length > 0) return validEdges;
         }
-      }
+        return findInteractiveAppEdges(context.parentContext);
+      };
+
+      const foundEdges = findInteractiveAppEdges(lastInteractive.context);
+      if (foundEdges && foundEdges.length > 0) return foundEdges;
     }
   }
 
-  return (
-    edges?.map((edge) => ({
-      ...edge,
-      status: 'waiting'
-    })) || []
-  );
+  return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
 };
 
 export const getWorkflowEntryNodeIds = (
