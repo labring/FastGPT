@@ -450,10 +450,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     // In the current version, only one interactive node is allowed at the same time
     const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
-    const hasInteractive = nodeRunResult.result?.assistantResponses?.some(
-      (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
-    );
-    if (hasInteractive) {
+    if (
+      nodeRunResult.result?.assistantResponses?.some(
+        (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
+      )
+    ) {
       pushStore(nodeRunResult.node, nodeRunResult.result);
       return [];
     }

@@ -165,7 +165,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   return {
-    // [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse || undefined,
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
