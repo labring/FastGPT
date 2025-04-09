@@ -1,67 +1,21 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { MongoUsage } from './schema';
-import { ClientSession, Types } from '../../../common/mongo';
+import { ClientSession } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 import { i18nT } from '../../../../web/i18n/utils';
-import { pushConcatBillTask, pushReduceTeamAiPointsTask } from './utils';
-
-import { POST } from '../../../common/api/plusRequest';
-import { isFastGPTMainService } from '../../../common/system/constants';
 
 export async function createUsage(data: CreateUsageProps) {
   try {
-    // In FastGPT server
-    if (isFastGPTMainService) {
-      await POST('/support/wallet/usage/createUsage', data);
-    } else if (global.reduceAiPointsQueue) {
-      // In FastGPT pro server
-      await MongoUsage.create(data);
-      pushReduceTeamAiPointsTask({ teamId: data.teamId, totalPoints: data.totalPoints });
-
-      if (data.totalPoints === 0) {
-        addLog.info('0 totalPoints', data);
-      }
-    }
+    await global.createUsageHandler(data);
   } catch (error) {
     addLog.error('createUsage error', error);
   }
 }
 export async function concatUsage(data: ConcatUsageProps) {
   try {
-    // In FastGPT server
-    if (isFastGPTMainService) {
-      await POST('/support/wallet/usage/concatUsage', data);
-    } else if (global.reduceAiPointsQueue) {
-      const {
-        teamId,
-        billId,
-        totalPoints = 0,
-        listIndex,
-        inputTokens = 0,
-        outputTokens = 0
-      } = data;
-
-      // billId is required and valid
-      if (!billId || !Types.ObjectId.isValid(billId)) return;
-
-      // In FastGPT pro server
-      pushConcatBillTask([
-        {
-          billId,
-          listIndex,
-          inputTokens,
-          outputTokens,
-          totalPoints
-        }
-      ]);
-      pushReduceTeamAiPointsTask({ teamId, totalPoints });
-
-      if (data.totalPoints === 0) {
-        addLog.info('0 totalPoints', data);
-      }
-    }
+    await global.concatUsageHandler(data);
   } catch (error) {
     addLog.error('concatUsage error', error);
   }

@@ -97,7 +97,7 @@
   "permission.des.read": "可檢視資料集內容",
   "permission.des.write": "可新增和變更資料集內容",
   "preview_chunk": "分塊預覽",
-  "preview_chunk_empty": "無法讀取該文件內容",
+  "preview_chunk_empty": "文件內容為空",
   "preview_chunk_intro": "共 {{total}} 個分塊，最多展示 10 個",
   "preview_chunk_not_selected": "點擊左側文件後進行預覽",
   "process.Auto_Index": "自動索引生成",

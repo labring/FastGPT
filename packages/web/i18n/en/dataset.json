@@ -97,7 +97,7 @@
   "permission.des.read": "View knowledge base content",
   "permission.des.write": "Ability to add and change knowledge base content",
   "preview_chunk": "Preview chunks",
-  "preview_chunk_empty": "Unable to read the contents of the file",
+  "preview_chunk_empty": "File content is empty",
   "preview_chunk_intro": "A total of {{total}} blocks, up to 10",
   "preview_chunk_not_selected": "Click on the file on the left to preview",
   "process.Auto_Index": "Automatic index generation",
