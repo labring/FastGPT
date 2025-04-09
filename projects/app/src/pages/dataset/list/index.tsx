@@ -139,7 +139,7 @@ const Dataset = () => {
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer
-              : userInfo?.team?.permission.hasWritePer) && (
+              : userInfo?.team?.permission.hasDatasetCreatePer) && (
               <Box pl={[0, 4]}>
                 <MyMenu
                   size="md"

@@ -214,7 +214,7 @@ const MyApps = () => {
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
-              : userInfo?.team.permission.hasWritePer) && (
+              : userInfo?.team.permission.hasAppCreatePer) && (
               <MyMenu
                 size="md"
                 Button={

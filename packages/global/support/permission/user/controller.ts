@@ -6,6 +6,10 @@ import {
 } from './constant';
 
 export class TeamPermission extends Permission {
+  hasAppCreatePer: boolean = false;
+  hasDatasetCreatePer: boolean = false;
+  hasApikeyCreatePer: boolean = false;
+
   constructor(props?: PerConstructPros) {
     if (!props) {
       props = {
@@ -16,17 +20,11 @@ export class TeamPermission extends Permission {
     }
     props.permissionList = TeamPermissionList;
     super(props);
-  }
 
-  hasAppCreatePer() {
-    return this.checkPer(TeamAppCreatePermissionVal);
-  }
-
-  hasDatasetCreatePer() {
-    return this.checkPer(TeamAppCreatePermissionVal);
-  }
-
-  hasApikeyCreatePer() {
-    return this.checkPer(TeamAppCreatePermissionVal);
+    this.setUpdatePermissionCallback(() => {
+      this.hasAppCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+      this.hasDatasetCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+      this.hasApikeyCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+    });
   }
 }
