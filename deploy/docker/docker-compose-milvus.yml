@@ -184,6 +184,8 @@ services:
       - ALLOWED_ORIGINS=
       # 是否开启IP限制，默认不开启
       - USE_IP_LIMIT=false
+      # 对话文件过期天数
+      - CHAT_FILE_EXPIRE_TIME=7
     volumes:
       - ./config.json:/app/data/config.json
 
