@@ -11,6 +11,14 @@ import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/c
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
+import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
+import {
+  DeepRagSearchProps,
+  SearchDatasetDataResponse
+} from '@fastgpt/service/core/dataset/search/controller';
+import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
+import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -42,6 +50,58 @@ export function initGlobalVariables() {
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   initHttpAgent();
+  initPlusRequest();
+}
+
+function initPlusRequest() {
+  function systemApiDatasetHandler({
+    type,
+    feishuServer,
+    yuqueServer,
+    apiFileId
+  }: {
+    type: 'content';
+    feishuServer?: FeishuServer;
+    yuqueServer?: YuqueServer;
+    apiFileId: string;
+  }) {
+    return POST<{
+      title?: string;
+      rawText: string;
+    }>(`/core/dataset/systemApiDataset`, {
+      type,
+      feishuServer,
+      yuqueServer,
+      apiFileId
+    });
+  }
+
+  function textCensorHandler({ text }: { text: string }) {
+    return POST<{ code?: number; message: string }>('/common/censor/check', { text });
+  }
+
+  function deepRagHandler(data: DeepRagSearchProps) {
+    return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+  }
+
+  function authOpenApiHandler(data: AuthOpenApiLimitProps) {
+    return POST<AuthOpenApiLimitProps>('/support/openapi/auth', data);
+  }
+
+  function createUsageHandler(data: CreateUsageProps) {
+    return POST('/support/wallet/usage/createUsage', data);
+  }
+
+  function concatUsageHandler(data: ConcatUsageProps) {
+    return POST('/support/wallet/usage/concatUsage', data);
+  }
+
+  global.systemApiDatasetHandler = systemApiDatasetHandler;
+  global.textCensorHandler = textCensorHandler;
+  global.deepRagHandler = deepRagHandler;
+  global.authOpenApiHandler = authOpenApiHandler;
+  global.createUsageHandler = createUsageHandler;
+  global.concatUsageHandler = concatUsageHandler;
 }
 
 /* Init system data(Need to connected db). It only needs to run once */

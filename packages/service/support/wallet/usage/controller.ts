@@ -7,14 +7,13 @@ import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wall
 import { i18nT } from '../../../../web/i18n/utils';
 import { pushConcatBillTask, pushReduceTeamAiPointsTask } from './utils';
 
-import { POST } from '../../../common/api/plusRequest';
 import { isFastGPTMainService } from '../../../common/system/constants';
 
 export async function createUsage(data: CreateUsageProps) {
   try {
     // In FastGPT server
     if (isFastGPTMainService) {
-      await POST('/support/wallet/usage/createUsage', data);
+      await global.createUsageHandler(data);
     } else if (global.reduceAiPointsQueue) {
       // In FastGPT pro server
       await MongoUsage.create(data);
@@ -32,7 +31,7 @@ export async function concatUsage(data: ConcatUsageProps) {
   try {
     // In FastGPT server
     if (isFastGPTMainService) {
-      await POST('/support/wallet/usage/concatUsage', data);
+      await global.concatUsageHandler(data);
     } else if (global.reduceAiPointsQueue) {
       const {
         teamId,
