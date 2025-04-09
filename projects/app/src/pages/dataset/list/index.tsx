@@ -29,6 +29,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -138,7 +139,7 @@ const Dataset = () => {
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer
-              : userInfo?.team?.permission.hasWritePer) && (
+              : userInfo?.team?.permission.hasDatasetCreatePer) && (
               <Box pl={[0, 4]}>
                 <MyMenu
                   size="md"
@@ -248,7 +249,7 @@ const Dataset = () => {
                 }: {
                   members?: string[];
                   groups?: string[];
-                  permission: number;
+                  permission: PermissionValueType;
                 }) =>
                   postUpdateDatasetCollaborators({
                     members,

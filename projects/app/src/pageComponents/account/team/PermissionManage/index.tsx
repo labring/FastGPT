@@ -27,6 +27,9 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import {
+  TeamApikeyCreatePermissionVal,
+  TeamAppCreatePermissionVal,
+  TeamDatasetCreatePermissionVal,
   TeamManagePermissionVal,
   TeamPermissionList,
   TeamWritePermissionVal
@@ -42,6 +45,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 function PermissionManage({
   Tabs,
@@ -104,19 +110,18 @@ function PermissionManage({
   }, [collaboratorList, searchResult, searchKey]);
 
   const { runAsync: onUpdatePermission, loading: addLoading } = useRequest2(
-    async ({ id, type, per }: { id: string; type: 'add' | 'remove'; per: 'write' | 'manage' }) => {
+    async ({ id, type, per }: { id: string; type: 'add' | 'remove'; per: PermissionValueType }) => {
       const clb = collaboratorList.find(
         (clb) => clb.tmbId === id || clb.groupId === id || clb.orgId === id
       );
 
       if (!clb) return;
 
-      const updatePer = per === 'write' ? TeamWritePermissionVal : TeamManagePermissionVal;
       const permission = new TeamPermission({ per: clb.permission.value });
       if (type === 'add') {
-        permission.addPer(updatePer);
+        permission.addPer(per);
       } else {
-        permission.removePer(updatePer);
+        permission.removePer(per);
       }
 
       return onUpdateCollaborators({
@@ -132,11 +137,47 @@ function PermissionManage({
     useRequest2(onDelOneCollaborator);
 
   const userManage = userInfo?.permission.hasManagePer;
-  const hasDeletePer = (per: TeamPermission) => {
+  const hasDeletePer = (per: Permission) => {
     if (userInfo?.permission.isOwner) return true;
     if (userManage && !per.hasManagePer) return true;
     return false;
   };
+
+  function PermissionCheckBox({
+    isDisabled,
+    per,
+    clbPer,
+    id
+  }: {
+    isDisabled: boolean;
+    per: PermissionValueType;
+    clbPer: Permission;
+    id: string;
+  }) {
+    return (
+      <Td>
+        <Box mx="auto" w="fit-content">
+          <Checkbox
+            isDisabled={isDisabled}
+            isChecked={clbPer.checkPer(per)}
+            onChange={(e) =>
+              e.target.checked
+                ? onUpdatePermission({
+                    id,
+                    type: 'add',
+                    per
+                  })
+                : onUpdatePermission({
+                    id,
+                    type: 'remove',
+                    per
+                  })
+            }
+          />
+        </Box>
+      </Td>
+    );
+  }
 
   return (
     <>
@@ -174,13 +215,26 @@ function PermissionManage({
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
-                    {t('user:team.group.permission.write')}
+                    {t('account_team:permission_appCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_appCreate_tip')} />
                   </Box>
                 </Th>
                 <Th bg="myGray.100">
                   <Box mx="auto" w="fit-content">
-                    {t('user:team.group.permission.manage')}
-                    <QuestionTip ml="1" label={t('user:team.group.manage_tip')} />
+                    {t('account_team:permission_datasetCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_datasetCreate_Tip')} />
+                  </Box>
+                </Th>
+                <Th bg="myGray.100">
+                  <Box mx="auto" w="fit-content">
+                    {t('account_team:permission_apikeyCreate')}
+                    <QuestionTip ml="1" label={t('account_team:permission_apikeyCreate_Tip')} />
+                  </Box>
+                </Th>
+                <Th bg="myGray.100">
+                  <Box mx="auto" w="fit-content">
+                    {t('account_team:permission_manage')}
+                    <QuestionTip ml="1" label={t('account_team:permission_manage_tip')} />
                   </Box>
                 </Th>
                 <Th bg="myGray.100" borderRightRadius="md">
@@ -210,48 +264,30 @@ function PermissionManage({
                           <Box>{member.name}</Box>
                         </HStack>
                       </Td>
-                      <Td>
-                        <Box mx="auto" w="fit-content">
-                          <Checkbox
-                            isDisabled={member.permission.isOwner || !userManage}
-                            isChecked={member.permission.hasWritePer}
-                            onChange={(e) =>
-                              e.target.checked
-                                ? onUpdatePermission({
-                                    id: member.tmbId!,
-                                    type: 'add',
-                                    per: 'write'
-                                  })
-                                : onUpdatePermission({
-                                    id: member.tmbId!,
-                                    type: 'remove',
-                                    per: 'write'
-                                  })
-                            }
-                          />
-                        </Box>
-                      </Td>
-                      <Td>
-                        <Box mx="auto" w="fit-content">
-                          <Checkbox
-                            isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
-                            isChecked={member.permission.hasManagePer}
-                            onChange={(e) =>
-                              e.target.checked
-                                ? onUpdatePermission({
-                                    id: member.tmbId!,
-                                    type: 'add',
-                                    per: 'manage'
-                                  })
-                                : onUpdatePermission({
-                                    id: member.tmbId!,
-                                    type: 'remove',
-                                    per: 'manage'
-                                  })
-                            }
-                          />
-                        </Box>
-                      </Td>
+                      <PermissionCheckBox
+                        isDisabled={member.permission.isOwner || !userManage}
+                        per={TeamAppCreatePermissionVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={member.permission.isOwner || !userManage}
+                        per={TeamDatasetCreatePermissionVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={member.permission.isOwner || !userManage}
+                        per={TeamApikeyCreatePermissionVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={member.permission.isOwner || !userInfo?.permission.isOwner}
+                        per={TeamManagePermissionVal}
+                        clbPer={member.permission}
+                        id={member.tmbId!}
+                      />
                       <Td>
                         {hasDeletePer(member.permission) &&
                           userInfo?.team.tmbId !== member.tmbId && (
@@ -268,7 +304,6 @@ function PermissionManage({
                     </Tr>
                   ))}
               </>
-
               <>
                 <Tr borderBottom={'1px solid'} borderColor={'myGray.200'} />
                 <Tr userSelect={'none'}>
@@ -286,40 +321,30 @@ function PermissionManage({
                       <Td pl={10}>
                         <MemberTag name={org.name} avatar={org.avatar} />
                       </Td>
-                      <Td>
-                        <Box mx="auto" w="fit-content">
-                          <Checkbox
-                            isDisabled={!userManage}
-                            isChecked={org.permission.hasWritePer}
-                            onChange={(e) =>
-                              e.target.checked
-                                ? onUpdatePermission({ id: org.orgId!, type: 'add', per: 'write' })
-                                : onUpdatePermission({
-                                    id: org.orgId!,
-                                    type: 'remove',
-                                    per: 'write'
-                                  })
-                            }
-                          />
-                        </Box>
-                      </Td>
-                      <Td>
-                        <Box mx="auto" w="fit-content">
-                          <Checkbox
-                            isDisabled={!userInfo?.permission.isOwner}
-                            isChecked={org.permission.hasManagePer}
-                            onChange={(e) =>
-                              e.target.checked
-                                ? onUpdatePermission({ id: org.orgId!, type: 'add', per: 'manage' })
-                                : onUpdatePermission({
-                                    id: org.orgId!,
-                                    type: 'remove',
-                                    per: 'manage'
-                                  })
-                            }
-                          />
-                        </Box>
-                      </Td>
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userManage}
+                        per={TeamAppCreatePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userManage}
+                        per={TeamDatasetCreatePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userManage}
+                        per={TeamApikeyCreatePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={org.permission.isOwner || !userInfo?.permission.isOwner}
+                        per={TeamManagePermissionVal}
+                        clbPer={org.permission}
+                        id={org.orgId!}
+                      />
                       <Td>
                         {hasDeletePer(org.permission) && (
                           <Box mx="auto" w="fit-content">
@@ -358,48 +383,30 @@ function PermissionManage({
                           avatar={group.avatar}
                         />
                       </Td>
-                      <Td>
-                        <Box mx="auto" w="fit-content">
-                          <Checkbox
-                            isDisabled={!userManage}
-                            isChecked={group.permission.hasWritePer}
-                            onChange={(e) =>
-                              e.target.checked
-                                ? onUpdatePermission({
-                                    id: group.groupId!,
-                                    type: 'add',
-                                    per: 'write'
-                                  })
-                                : onUpdatePermission({
-                                    id: group.groupId!,
-                                    type: 'remove',
-                                    per: 'write'
-                                  })
-                            }
-                          />
-                        </Box>
-                      </Td>
-                      <Td>
-                        <Box mx="auto" w="fit-content">
-                          <Checkbox
-                            isDisabled={!userInfo?.permission.isOwner}
-                            isChecked={group.permission.hasManagePer}
-                            onChange={(e) =>
-                              e.target.checked
-                                ? onUpdatePermission({
-                                    id: group.groupId!,
-                                    type: 'add',
-                                    per: 'manage'
-                                  })
-                                : onUpdatePermission({
-                                    id: group.groupId!,
-                                    type: 'remove',
-                                    per: 'manage'
-                                  })
-                            }
-                          />
-                        </Box>
-                      </Td>
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userManage}
+                        per={TeamAppCreatePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userManage}
+                        per={TeamDatasetCreatePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userManage}
+                        per={TeamApikeyCreatePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
+                      <PermissionCheckBox
+                        isDisabled={group.permission.isOwner || !userInfo?.permission.isOwner}
+                        per={TeamManagePermissionVal}
+                        clbPer={group.permission}
+                        id={group.groupId!}
+                      />
                       <Td>
                         {hasDeletePer(group.permission) && (
                           <Box mx="auto" w="fit-content">

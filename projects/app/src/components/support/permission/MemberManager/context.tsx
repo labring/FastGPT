@@ -110,7 +110,15 @@ const CollaboratorContextProvider = ({
   } = useRequest2(
     async () => {
       if (feConfigs.isPlus) {
-        return onGetCollaboratorList();
+        const data = await onGetCollaboratorList();
+        return data.map((item) => {
+          return {
+            ...item,
+            permission: new Permission({
+              per: item.permission.value
+            })
+          };
+        });
       }
       return [];
     },
