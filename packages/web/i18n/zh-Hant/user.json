@@ -111,5 +111,6 @@
   "team.manage_collaborators": "管理協作者",
   "team.no_collaborators": "目前沒有協作者",
   "team.org.org": "組織",
-  "team.write_role_member": "可寫入權限"
+  "team.write_role_member": "可寫入權限",
+  "team.collaborator.added": "已添加"
 }
