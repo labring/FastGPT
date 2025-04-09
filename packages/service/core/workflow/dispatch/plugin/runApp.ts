@@ -112,42 +112,41 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? initWorkflowEdgeStatus(edges, Interactive)
       : initWorkflowEdgeStatus(edges);
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
-    await dispatchWorkFlow({
-      ...props,
-      parentContext: {
-        parentContext: props.parentContext || undefined,
-        interactiveAppNodeId: props.node?.nodeId,
-        interactiveAppEdges: props.runtimeEdges.map((edge) => ({
-          ...edge,
-          status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
-        }))
-      },
-      // Rewrite stream mode
-      ...(system_forbid_stream
-        ? {
-            stream: false,
-            workflowStreamResponse: undefined
-          }
-        : {}),
-      runningAppInfo: {
-        id: String(appData._id),
-        teamId: String(appData.teamId),
-        tmbId: String(appData.tmbId),
-        isChildApp: true
-      },
-      runtimeNodes,
-      runtimeEdges,
-      histories: chatHistories,
-      variables: childrenRunVariables,
-      query: isRecovery
-        ? query
-        : runtimePrompt2ChatsValue({
-            files: userInputFiles,
-            text: userChatInput
-          }),
-      chatConfig
-    });
+  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
+    ...props,
+    parentContext: {
+      parentContext: props.parentContext || undefined,
+      interactiveAppNodeId: props.node?.nodeId,
+      interactiveAppEdges: props.runtimeEdges.map((edge) => ({
+        ...edge,
+        status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
+      }))
+    },
+    // Rewrite stream mode
+    ...(system_forbid_stream
+      ? {
+          stream: false,
+          workflowStreamResponse: undefined
+        }
+      : {}),
+    runningAppInfo: {
+      id: String(appData._id),
+      teamId: String(appData.teamId),
+      tmbId: String(appData.tmbId),
+      isChildApp: true
+    },
+    runtimeNodes,
+    runtimeEdges,
+    histories: chatHistories,
+    variables: childrenRunVariables,
+    query: isRecovery
+      ? query
+      : runtimePrompt2ChatsValue({
+          files: userInputFiles,
+          text: userChatInput
+        }),
+    chatConfig
+  });
 
   const completeMessages = chatHistories.concat([
     {
