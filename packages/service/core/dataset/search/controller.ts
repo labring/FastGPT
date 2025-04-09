@@ -24,7 +24,6 @@ import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { POST } from '../../../common/api/plusRequest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -850,5 +849,4 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
-export const deepRagSearch = (data: DeepRagSearchProps) =>
-  POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);

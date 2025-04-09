@@ -34,6 +34,94 @@ weight: 852
 
 ### 请求
 
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="基础请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "my_chatId",
+    "stream": false,
+    "detail": false,
+    "responseChatItemId": "my_responseChatItemId",
+    "variables": {
+        "uid": "asdfadsfasfd2323",
+        "name": "张三"
+    },
+    "messages": [
+        {
+            "role": "user",
+            "content": "导演是谁"
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="图片/文件请求示例" >}}
+{{< markdownify >}}
+
+* 仅`messages`有部分区别，其他参数一致。
+* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "abcd",
+    "stream": false,
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "导演是谁"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "图片链接"
+                    }
+                },
+                {
+                    "type": "file_url",
+                    "name": "文件名",
+                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
+                }
+            ]
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert context="info" %}}
+- headers.Authorization: Bearer {{apikey}}
+- chatId: string | undefined 。
+  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
+  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
+- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
+- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
+- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
+- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
 <!-- #### v2
 
 v1,v2 接口请求参数一致，仅请求地址不一样。
@@ -128,93 +216,7 @@ curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
 
 #### v1
 
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="基础请求示例" >}}
-{{< markdownify >}}
 
-```bash
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "my_chatId",
-    "stream": false,
-    "detail": false,
-    "responseChatItemId": "my_responseChatItemId",
-    "variables": {
-        "uid": "asdfadsfasfd2323",
-        "name": "张三"
-    },
-    "messages": [
-        {
-            "role": "user",
-            "content": "导演是谁"
-        }
-    ]
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="图片/文件请求示例" >}}
-{{< markdownify >}}
-
-* 仅`messages`有部分区别，其他参数一致。
-* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "abcd",
-    "stream": false,
-    "messages": [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "导演是谁"
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": "图片链接"
-                    }
-                },
-                {
-                    "type": "file_url",
-                    "name": "文件名",
-                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
-                }
-            ]
-        }
-    ]
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert context="info" %}}
-- headers.Authorization: Bearer {{apikey}}
-- chatId: string | undefined 。
-  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
-- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
-- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
-- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
 
 ### 响应
 
@@ -745,8 +747,6 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 
 ### 请求示例
 
-#### v1
-
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 --header 'Authorization: Bearer test-xxxxx' \
@@ -760,24 +760,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 }'
 ```
 
-#### v2
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
---header 'Authorization: Bearer test-xxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "stream": false,
-    "chatId": "test",
-    "variables": {
-        "query":"你好"
-    }
-}'
-```
-
 ### 响应示例
-
-#### v1
 
 {{< tabs tabTotal="3" >}}
 
@@ -930,151 +913,6 @@ event取值：
 - toolResponse: 工具返回
 - flowNodeStatus: 运行到的节点状态
 - flowResponses: 节点完整响应
-- updateVariables: 更新变量
-- error: 报错
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
-
-
-#### v2
-
-{{< tabs tabTotal="3" >}}
-
-{{< tab tabName="detail=true,stream=false 响应" >}}
-{{< markdownify >}}
-
-* 插件的输出可以通过查找`responseData`中, `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
-* 流输出，仍可以通过`choices`进行获取。
-
-```json
-{
-    "responseData": [
-        {
-            "id": "bsH1ZdbYkz9iJwYa",
-            "nodeId": "pluginInput",
-            "moduleName": "workflow:template.plugin_start",
-            "moduleType": "pluginInput",
-            "runningTime": 0
-        },
-        {
-            "id": "zDgfqSPhbYZFHVIn",
-            "nodeId": "h4Gr4lJtFVQ6qI4c",
-            "moduleName": "AI 对话",
-            "moduleType": "chatNode",
-            "runningTime": 1.44,
-            "totalPoints": 0,
-            "model": "GPT-4o-mini",
-            "tokens": 34,
-            "inputTokens": 8,
-            "outputTokens": 26,
-            "query": "你好",
-            "reasoningText": "",
-            "historyPreview": [
-                {
-                    "obj": "Human",
-                    "value": "你好"
-                },
-                {
-                    "obj": "AI",
-                    "value": "你好！有什么我可以帮助你的吗？"
-                }
-            ],
-            "contextTotalLen": 2
-        },
-        {
-            "id": "uLLwKKRZvufXzgF4",
-            "nodeId": "pluginOutput",
-            "moduleName": "common:core.module.template.self_output",
-            "moduleType": "pluginOutput",
-            "runningTime": 0,
-            "totalPoints": 0,
-            "pluginOutput": {
-                "result": "你好！有什么我可以帮助你的吗？"
-            }
-        }
-    ],
-    "newVariables": {
-
-    },
-    "id": "test",
-    "model": "",
-    "usage": {
-        "prompt_tokens": 1,
-        "completion_tokens": 1,
-        "total_tokens": 1
-    },
-    "choices": [
-        {
-            "message": {
-                "role": "assistant",
-                "content": "你好！有什么我可以帮助你的吗？"
-            },
-            "finish_reason": "stop",
-            "index": 0
-        }
-    ]
-}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-
-{{< tab tabName="detail=true,stream=true 响应" >}}
-{{< markdownify >}}
-
-* 插件的输出可以通过获取`event=flowResponses`中的字符串，并将其反序列化后得到一个数组。同样的，查找 `moduleType=pluginOutput`的元素，其`pluginOutput`是插件的输出。
-* 流输出，仍和对话接口一样获取。
-
-```bash
-data: {"event":"flowNodeResponse","data":"{\"id\":\"q8ablUOqHGgqLIRM\",\"nodeId\":\"pluginInput\",\"moduleName\":\"workflow:template.plugin_start\",\"moduleType\":\"pluginInput\",\"runningTime\":0}"}
-
-data: {"event":"flowNodeStatus","data":"{\"status\":\"running\",\"name\":\"AI 对话\"}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"你好\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"！\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"有什么\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"我\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"可以\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"帮助\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"你\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"的吗\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":\"？\"},\"index\":0,\"finish_reason\":null}]}"}
-
-data: {"event":"flowNodeResponse","data":"{\"id\":\"rqlXLUap8QeiN7Kf\",\"nodeId\":\"h4Gr4lJtFVQ6qI4c\",\"moduleName\":\"AI 对话\",\"moduleType\":\"chatNode\",\"runningTime\":1.79,\"totalPoints\":0,\"model\":\"GPT-4o-mini\",\"tokens\":137,\"inputTokens\":111,\"outputTokens\":26,\"query\":\"你好\",\"reasoningText\":\"\",\"historyPreview\":[{\"obj\":\"Human\",\"value\":\"[{\\\"renderTypeList\\\":[\\\"reference\\\"],\\\"selectedTypeInde\\n\\n...[hide 174 chars]...\\n\\ncanSelectImg\\\":true,\\\"required\\\":false,\\\"value\\\":\\\"你好\\\"}]\"},{\"obj\":\"AI\",\"value\":\"你好！有什么我可以帮助你的吗？\"},{\"obj\":\"Human\",\"value\":\"你好\"},{\"obj\":\"AI\",\"value\":\"你好！有什么我可以帮助你的吗？\"}],\"contextTotalLen\":4}"}
-
-data: {"event":"flowNodeResponse","data":"{\"id\":\"lHCpHI0MrM00HQlX\",\"nodeId\":\"pluginOutput\",\"moduleName\":\"common:core.module.template.self_output\",\"moduleType\":\"pluginOutput\",\"runningTime\":0,\"totalPoints\":0,\"pluginOutput\":{\"result\":\"你好！有什么我可以帮助你的吗？\"}}"}
-
-data: {"event":"answer","data":"{\"id\":\"\",\"object\":\"\",\"created\":0,\"model\":\"\",\"choices\":[{\"delta\":{\"role\":\"assistant\",\"content\":null},\"index\":0,\"finish_reason\":\"stop\"}]}"}
-
-data: {"event":"answer","data":"[DONE]"}
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="输出获取" >}}
-{{< markdownify >}}
-
-event取值：
-
-- answer: 返回给客户端的文本（最终会算作回答）
-- fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
-- toolCall: 执行工具
-- toolParams: 工具参数
-- toolResponse: 工具返回
-- flowNodeStatus: 运行到的节点状态
-- flowNodeResponse: 单个节点详细响应
 - updateVariables: 更新变量
 - error: 报错
 

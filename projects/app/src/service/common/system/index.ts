@@ -11,6 +11,18 @@ import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/c
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
+import {
+  DeepRagSearchProps,
+  SearchDatasetDataResponse
+} from '@fastgpt/service/core/dataset/search/controller';
+import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
+import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import {
+  getProApiDatasetFileContentRequest,
+  getProApiDatasetFileListRequest,
+  getProApiDatasetFilePreviewUrlRequest
+} from '@/service/core/dataset/apiDataset/controller';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -36,12 +48,37 @@ export const readConfigData = async (name: string) => {
 
 /* Init global variables */
 export function initGlobalVariables() {
-  if (global.communityPlugins) return;
+  function initPlusRequest() {
+    global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
+      return POST<{ code: number; message?: string }>('/common/censor/check', { text });
+    };
+
+    global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
+      return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+    };
+
+    global.authOpenApiHandler = function authOpenApiHandler(data: AuthOpenApiLimitProps) {
+      return POST<AuthOpenApiLimitProps>('/support/openapi/authLimit', data);
+    };
+
+    global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
+      return POST('/support/wallet/usage/createUsage', data);
+    };
+
+    global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
+      return POST('/support/wallet/usage/concatUsage', data);
+    };
+
+    global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
+    global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
+    global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
+  }
 
   global.communityPlugins = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   initHttpAgent();
+  initPlusRequest();
 }
 
 /* Init system data(Need to connected db). It only needs to run once */

@@ -13,7 +13,6 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   ChatDispatchProps,
@@ -51,6 +50,7 @@ import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { postTextCensor } from '../../../chat/postTextCensor';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
