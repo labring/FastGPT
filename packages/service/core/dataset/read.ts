@@ -167,8 +167,7 @@ export const readApiServerFileContent = async ({
   }
 
   if (feishuServer || yuqueServer) {
-    return global.systemApiDatasetHandler({
-      type: 'content',
+    return global.getProApiDatasetFileContent({
       feishuServer,
       yuqueServer,
       apiFileId

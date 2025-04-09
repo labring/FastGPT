@@ -97,7 +97,7 @@
   "permission.des.read": "可查看知识库内容",
   "permission.des.write": "可增加和变更知识库内容",
   "preview_chunk": "分块预览",
-  "preview_chunk_empty": "无法读取该文件内容",
+  "preview_chunk_empty": "文件内容为空",
   "preview_chunk_intro": "共 {{total}} 个分块，最多展示 10 个",
   "preview_chunk_not_selected": "点击左侧文件后进行预览",
   "process.Auto_Index": "自动索引生成",

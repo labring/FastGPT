@@ -11,7 +11,6 @@ import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/c
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
   DeepRagSearchProps,
@@ -19,6 +18,11 @@ import {
 } from '@fastgpt/service/core/dataset/search/controller';
 import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
 import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import {
+  getProApiDatasetFileContentRequest,
+  getProApiDatasetFileListRequest,
+  getProApiDatasetFilePreviewUrlRequest
+} from '@/service/core/dataset/apiDataset/controller';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -45,30 +49,8 @@ export const readConfigData = async (name: string) => {
 /* Init global variables */
 export function initGlobalVariables() {
   function initPlusRequest() {
-    global.systemApiDatasetHandler = function systemApiDatasetHandler({
-      type,
-      feishuServer,
-      yuqueServer,
-      apiFileId
-    }: {
-      type: 'content';
-      feishuServer?: FeishuServer;
-      yuqueServer?: YuqueServer;
-      apiFileId: string;
-    }) {
-      return POST<{
-        title?: string;
-        rawText: string;
-      }>(`/core/dataset/systemApiDataset`, {
-        type,
-        feishuServer,
-        yuqueServer,
-        apiFileId
-      });
-    };
-
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
-      return POST<{ code?: number; message: string }>('/common/censor/check', { text });
+      return POST<{ code: number; message?: string }>('/common/censor/check', { text });
     };
 
     global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
@@ -86,6 +68,10 @@ export function initGlobalVariables() {
     global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
       return POST('/support/wallet/usage/concatUsage', data);
     };
+
+    global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
+    global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
+    global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
   }
 
   global.communityPlugins = [];

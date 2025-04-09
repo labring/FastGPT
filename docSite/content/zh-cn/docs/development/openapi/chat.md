@@ -34,6 +34,94 @@ weight: 852
 
 ### 请求
 
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="基础请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "my_chatId",
+    "stream": false,
+    "detail": false,
+    "responseChatItemId": "my_responseChatItemId",
+    "variables": {
+        "uid": "asdfadsfasfd2323",
+        "name": "张三"
+    },
+    "messages": [
+        {
+            "role": "user",
+            "content": "导演是谁"
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="图片/文件请求示例" >}}
+{{< markdownify >}}
+
+* 仅`messages`有部分区别，其他参数一致。
+* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "abcd",
+    "stream": false,
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "导演是谁"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "图片链接"
+                    }
+                },
+                {
+                    "type": "file_url",
+                    "name": "文件名",
+                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
+                }
+            ]
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert context="info" %}}
+- headers.Authorization: Bearer {{apikey}}
+- chatId: string | undefined 。
+  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
+  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
+- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
+- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
+- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
+- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
+{{% /alert %}}
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
 <!-- #### v2
 
 v1,v2 接口请求参数一致，仅请求地址不一样。
@@ -128,93 +216,7 @@ curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
 
 #### v1
 
-{{< tabs tabTotal="3" >}}
-{{< tab tabName="基础请求示例" >}}
-{{< markdownify >}}
 
-```bash
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "my_chatId",
-    "stream": false,
-    "detail": false,
-    "responseChatItemId": "my_responseChatItemId",
-    "variables": {
-        "uid": "asdfadsfasfd2323",
-        "name": "张三"
-    },
-    "messages": [
-        {
-            "role": "user",
-            "content": "导演是谁"
-        }
-    ]
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="图片/文件请求示例" >}}
-{{< markdownify >}}
-
-* 仅`messages`有部分区别，其他参数一致。
-* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
-
-```bash
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "abcd",
-    "stream": false,
-    "messages": [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "导演是谁"
-                },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": "图片链接"
-                    }
-                },
-                {
-                    "type": "file_url",
-                    "name": "文件名",
-                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
-                }
-            ]
-        }
-    ]
-}'
-```
-
-{{< /markdownify >}}
-{{< /tab >}}
-
-{{< tab tabName="参数说明" >}}
-{{< markdownify >}}
-
-{{% alert context="info" %}}
-- headers.Authorization: Bearer {{apikey}}
-- chatId: string | undefined 。
-  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
-  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
-- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
-- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
-- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
-{{% /alert %}}
-
-{{< /markdownify >}}
-{{< /tab >}}
-{{< /tabs >}}
 
 ### 响应
 
