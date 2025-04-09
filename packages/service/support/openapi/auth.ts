@@ -19,7 +19,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     if (global.feConfigs?.isPlus) {
       await global.authOpenApiHandler({
         openApi
-      } as AuthOpenApiLimitProps);
+      });
     }
 
     updateApiKeyUsedTime(openApi._id);
