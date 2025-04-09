@@ -2,38 +2,20 @@ import './mocks';
 import { existsSync, readFileSync } from 'fs';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
-import { afterAll, afterEach, beforeAll, beforeEach, inject, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, inject, vi } from 'vitest';
 import setupModels from './setupModels';
 import { clean } from './datas/users';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
+import { connectionLogMongo, connectionMongo, Mongoose } from '@fastgpt/service/common/mongo';
 import { randomUUID } from 'crypto';
-import { delay } from '@fastgpt/global/common/system/utils';
 
 vi.stubEnv('NODE_ENV', 'test');
-// vi.mock(import('@fastgpt/service/common/mongo'), async (importOriginal) => {
-//   const mod = await importOriginal();
-//   return {
-//     ...mod,
-//     connectionMongo: await (async () => {
-//       if (!global.mongodb) {
-//         global.mongodb = mongoose;
-//         await global.mongodb.connect((globalThis as any).__MONGO_URI__ as string, {
-//           timeoutMS: 3000
-//         });
-//       }
-
-//       return global.mongodb;
-//     })()
-//   };
-// });
 
 vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any) => {
   const mod = await importOriginal();
-  const uri = inject('MONGODB_URI');
   return {
     ...mod,
-    connectMongo: async () => {
-      (await connectionMongo.connect(uri)).connection.useDb(randomUUID());
+    connectMongo: async (db: Mongoose, url: string) => {
+      (await db.connect(url)).connection.useDb(randomUUID());
     }
   };
 });
@@ -69,7 +51,8 @@ vi.mock(import('@/service/common/system'), async (importOriginal) => {
 
 beforeAll(async () => {
   vi.stubEnv('MONGODB_URI', inject('MONGODB_URI'));
-  await connectMongo();
+  await connectMongo(connectionMongo, inject('MONGODB_URI'));
+  await connectMongo(connectionLogMongo, inject('MONGODB_URI'));
 
   initGlobalVariables();
   global.systemEnv = {} as any;
@@ -95,13 +78,17 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  if (global?.mongodb?.connection) global.mongodb?.connection.close();
+  if (connectionMongo?.connection) connectionMongo?.connection.close();
+  if (connectionLogMongo?.connection) connectionLogMongo?.connection.close();
 });
 
 beforeEach(async () => {
-  await connectMongo();
+  await connectMongo(connectionMongo, inject('MONGODB_URI'));
+  await connectMongo(connectionLogMongo, inject('MONGODB_URI'));
+
   return async () => {
     clean();
-    await global.mongodb?.connection.db?.dropDatabase();
+    await connectionMongo?.connection.db?.dropDatabase();
+    await connectionLogMongo?.connection.db?.dropDatabase();
   };
 });
