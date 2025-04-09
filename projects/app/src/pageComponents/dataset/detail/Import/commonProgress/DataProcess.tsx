@@ -20,17 +20,14 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { shadowLight } from '@fastgpt/web/styles/theme';
 import CollectionChunkForm from '../../Form/CollectionChunkForm';
-import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 function DataProcess() {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const { goToNext, processParamsForm, chunkSize } = useContextSelector(
-    DatasetImportContext,
-    (v) => v
-  );
-  const { register } = processParamsForm;
+  const { goToNext, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
+  const { register, watch } = processParamsForm;
+  const customPdfParseValue = watch('customPdfParse');
 
   const Title = useCallback(({ title }: { title: string }) => {
     return (
@@ -66,7 +63,7 @@ function DataProcess() {
                 >
                   {feConfigs.showCustomPdfParse && (
                     <HStack spacing={1}>
-                      <Checkbox {...register('customPdfParse')}>
+                      <Checkbox isChecked={customPdfParseValue} {...register('customPdfParse')}>
                         <FormLabel>{t('dataset:pdf_enhance_parse')}</FormLabel>
                       </Checkbox>
                       <QuestionTip label={t('dataset:pdf_enhance_parse_tips')} />

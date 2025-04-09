@@ -8,6 +8,7 @@ import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
 import { setRedisCache, getRedisCache, delRedisCache, CacheKeyEnum } from '../redis/cache';
 import { throttle } from 'lodash';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
@@ -55,22 +56,24 @@ export const insertDatasetDataVector = async ({
   query: string;
   model: EmbeddingModelItemType;
 }) => {
-  const { vectors, tokens } = await getVectorsByText({
-    model,
-    input: query,
-    type: 'db'
-  });
-  const { insertId } = await Vector.insert({
-    ...props,
-    vector: vectors[0]
-  });
+  return retryFn(async () => {
+    const { vectors, tokens } = await getVectorsByText({
+      model,
+      input: query,
+      type: 'db'
+    });
+    const { insertId } = await Vector.insert({
+      ...props,
+      vector: vectors[0]
+    });
 
-  onDelCache(props.teamId);
+    onDelCache(props.teamId);
 
-  return {
-    tokens,
-    insertId
-  };
+    return {
+      tokens,
+      insertId
+    };
+  });
 };
 
 export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps) => {
