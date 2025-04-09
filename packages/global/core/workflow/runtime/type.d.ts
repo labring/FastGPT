@@ -31,7 +31,6 @@ export type ExternalProviderType = {
 
 /* workflow props */
 export type ChatDispatchProps = {
-  node?: StoreNodeItemType;
   parentContext?: InteractiveContext;
   res?: NextApiResponse;
   requestOrigin?: string;
