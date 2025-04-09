@@ -79,7 +79,6 @@ export const initWorkflowEdgeStatus = (
     const memoryEdges = interactive?.memoryEdges;
 
     if (memoryEdges && memoryEdges.length > 0) {
-      // 1. 检查 memoryEdges 是否是 edges 的子集
       const isSubset = memoryEdges.every((memoryEdge) =>
         edges.some(
           (edge) =>
@@ -94,7 +93,6 @@ export const initWorkflowEdgeStatus = (
         return memoryEdges;
       }
 
-      // 2. 如果不是子集，尝试递归查找交互应用节点及其相关边
       if (interactive?.context) {
         const findInteractiveAppEdges = (
           context: InteractiveContext | undefined,
@@ -102,9 +100,7 @@ export const initWorkflowEdgeStatus = (
         ): RuntimeEdgeItemType[] | null => {
           if (!context) return null;
 
-          // 3. 检查是否有交互应用相关的边
           if (context.interactiveAppNodeId && context.interactiveAppEdges) {
-            // 4. 验证这些边是否存在于当前edges中
             const validEdges = context.interactiveAppEdges.filter((interactiveEdge) =>
               currentEdges.some(
                 (edge) =>
@@ -120,7 +116,6 @@ export const initWorkflowEdgeStatus = (
             }
           }
 
-          // 5. 如果当前上下文没找到，递归查找父上下文
           return findInteractiveAppEdges(context.parentContext, currentEdges);
         };
 
@@ -144,14 +139,11 @@ export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
   lastInteractive?: WorkflowInteractiveResponseType | null
 ) => {
-  // 检查交互状态
   if (lastInteractive) {
     const interactive = lastInteractive;
 
     if (interactive?.context) {
-      // 1. 首先检查保存的entryNodeIds是否在当前nodes中存在
       if (interactive.entryNodeIds?.length > 0) {
-        // 验证这些entryNodeIds是否在当前节点列表中
         const validEntryNodeIds = interactive.entryNodeIds.filter((nodeId) =>
           nodes.some((node) => node.nodeId === nodeId)
         );
@@ -161,24 +153,20 @@ export const getWorkflowEntryNodeIds = (
         }
       }
 
-      // 2. 如果entryNodeIds不可用，再递归查找App节点
       const findAppNodeInContext = (
         context: InteractiveContext | undefined,
         currentNodes: (StoreNodeItemType | RuntimeNodeItemType)[]
       ): string[] | null => {
         if (!context) return null;
 
-        // 尝试在当前节点列表中查找匹配的App节点
         const appNode = currentNodes.find((node) => node.nodeId === context.interactiveAppNodeId);
         if (appNode) {
           return [appNode.nodeId];
         }
 
-        // 如果当前层没找到，递归查找父上下文
         return findAppNodeInContext(context.parentContext, currentNodes);
       };
 
-      // 先尝试从父上下文查找
       if (interactive.context.parentContext) {
         const foundNodeIdsFromParent = findAppNodeInContext(
           interactive.context.parentContext,
@@ -189,7 +177,6 @@ export const getWorkflowEntryNodeIds = (
         }
       }
 
-      // 如果父上下文没找到，尝试从当前上下文查找
       const foundNodeIds = findAppNodeInContext(interactive.context, nodes);
       if (foundNodeIds) {
         return foundNodeIds;
@@ -197,7 +184,6 @@ export const getWorkflowEntryNodeIds = (
     }
   }
 
-  // 默认入口节点逻辑
   const entryList = [
     FlowNodeTypeEnum.systemConfig,
     FlowNodeTypeEnum.workflowStart,
