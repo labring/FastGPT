@@ -19,6 +19,7 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -28,6 +29,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
+  [DispatchNodeResponseKeyEnum.interactive]?: WorkflowInteractiveResponseType;
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -110,41 +112,42 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? initWorkflowEdgeStatus(edges, Interactive)
       : initWorkflowEdgeStatus(edges);
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
-    ...props,
-    parentContext: {
-      parentContext: props.parentContext || undefined,
-      interactiveAppNodeId: props.node?.nodeId,
-      interactiveAppEdges: props.runtimeEdges.map((edge) => ({
-        ...edge,
-        status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
-      }))
-    },
-    // Rewrite stream mode
-    ...(system_forbid_stream
-      ? {
-          stream: false,
-          workflowStreamResponse: undefined
-        }
-      : {}),
-    runningAppInfo: {
-      id: String(appData._id),
-      teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId),
-      isChildApp: true
-    },
-    runtimeNodes,
-    runtimeEdges,
-    histories: chatHistories,
-    variables: childrenRunVariables,
-    query: isRecovery
-      ? query
-      : runtimePrompt2ChatsValue({
-          files: userInputFiles,
-          text: userChatInput
-        }),
-    chatConfig
-  });
+  const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
+    await dispatchWorkFlow({
+      ...props,
+      parentContext: {
+        parentContext: props.parentContext || undefined,
+        interactiveAppNodeId: props.node?.nodeId,
+        interactiveAppEdges: props.runtimeEdges.map((edge) => ({
+          ...edge,
+          status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
+        }))
+      },
+      // Rewrite stream mode
+      ...(system_forbid_stream
+        ? {
+            stream: false,
+            workflowStreamResponse: undefined
+          }
+        : {}),
+      runningAppInfo: {
+        id: String(appData._id),
+        teamId: String(appData.teamId),
+        tmbId: String(appData.tmbId),
+        isChildApp: true
+      },
+      runtimeNodes,
+      runtimeEdges,
+      histories: chatHistories,
+      variables: childrenRunVariables,
+      query: isRecovery
+        ? query
+        : runtimePrompt2ChatsValue({
+            files: userInputFiles,
+            text: userChatInput
+          }),
+      chatConfig
+    });
 
   const completeMessages = chatHistories.concat([
     {
@@ -160,10 +163,9 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
-  const hasInteractive = assistantResponses.some(
-    (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
-  );
+
   return {
+    // [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse || undefined,
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
