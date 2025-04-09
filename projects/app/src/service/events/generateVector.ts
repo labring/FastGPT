@@ -200,19 +200,24 @@ const rebuildData = async ({
 
   // update vector, update dataset_data rebuilding status, delete data from training
   // 1. Insert new vector to dataset_data
-  const updateResult = await Promise.all(
-    mongoData.indexes.map(async (index, i) => {
-      const result = await insertDatasetDataVector({
-        query: index.text,
-        model: getEmbeddingModel(trainingData.model),
-        teamId: mongoData.teamId,
-        datasetId: mongoData.datasetId,
-        collectionId: mongoData.collectionId
-      });
-      mongoData.indexes[i].dataId = result.insertId;
-      return result;
-    })
-  );
+  const updateResult: {
+    tokens: number;
+    insertId: string;
+  }[] = [];
+  let i = 0;
+  for await (const index of mongoData.indexes) {
+    const result = await insertDatasetDataVector({
+      query: index.text,
+      model: getEmbeddingModel(trainingData.model),
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      collectionId: mongoData.collectionId
+    });
+    mongoData.indexes[i].dataId = result.insertId;
+    updateResult.push(result);
+    i++;
+  }
+
   const { tokens } = await mongoSessionRun(async (session) => {
     // 2. Ensure that the training data is deleted after the Mongo update is successful
     await mongoData.save({ session });

@@ -115,6 +115,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   const chunkSplitMode = watch('chunkSplitMode');
   const autoIndexes = watch('autoIndexes');
   const indexSize = watch('indexSize');
+  const imageIndex = watch('imageIndex');
 
   const trainingModeList = useMemo(() => {
     const list = Object.entries(DatasetCollectionDataProcessModeMap);
@@ -225,7 +226,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
           <HStack gap={[3, 7]}>
             <HStack flex={'1'} spacing={1}>
               <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                <Checkbox isDisabled={!feConfigs?.isPlus} {...register('autoIndexes')}>
+                <Checkbox
+                  isDisabled={!feConfigs?.isPlus}
+                  isChecked={autoIndexes}
+                  {...register('autoIndexes')}
+                >
                   <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
                 </Checkbox>
               </MyTooltip>
@@ -243,6 +248,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
               >
                 <Checkbox
                   isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
+                  isChecked={imageIndex}
                   {...register('imageIndex')}
                 >
                   <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
