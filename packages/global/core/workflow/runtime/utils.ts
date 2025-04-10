@@ -74,10 +74,8 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
 };
 
 export const initWorkflowEdgeStatus = (
-
   edges: StoreEdgeItemType[],
-  lastInteractive?: WorkflowInteractiveResponseType | null
-
+  lastInteractive?: WorkflowInteractiveResponseType
 ): RuntimeEdgeItemType[] => {
   if (!lastInteractive) {
     return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
@@ -125,7 +123,7 @@ export const initWorkflowEdgeStatus = (
 
 export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
-  lastInteractive?: WorkflowInteractiveResponseType | null
+  lastInteractive?: WorkflowInteractiveResponseType
 ) => {
   if (lastInteractive) {
     // 递归检查嵌套的 childrenResponse
