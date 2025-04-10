@@ -144,6 +144,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.selectMulti,
       VariableInputEnum.custom
     ];
 
@@ -157,7 +158,8 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select
+      FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.selectMulti
     ];
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
@@ -363,6 +365,34 @@ const InputTypeConfig = ({
                   w={'200px'}
                 />
               )}
+              {inputType === FlowNodeInputTypeEnum.selectMulti && (
+                <MultipleSelect<string>
+                  list={[...listValue]
+                    .filter((item) => item.label !== '')
+                    .map((item) => ({
+                      label: item.label,
+                      value: item.value
+                    }))}
+                  value={defaultValue || []}
+                  onSelect={(val) => {
+                    setValue('defaultValue', val as string[]);
+                  }}
+                  itemWrap={true}
+                  w={'200px'}
+                  setIsSelectAll={(all) => {
+                    if (all)
+                      setValue(
+                        'defaultValue',
+                        listValue.map((item: any) => item.value)
+                      );
+                  }}
+                  isSelectAll={
+                    defaultValue &&
+                    defaultValue.length ===
+                      listValue.filter((item: any) => item.label !== '').length
+                  }
+                />
+              )}
             </Flex>
           </Flex>
         )}
@@ -390,7 +420,8 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === FlowNodeInputTypeEnum.select && (
+        {(inputType === FlowNodeInputTypeEnum.select ||
+          inputType == FlowNodeInputTypeEnum.selectMulti) && (
           <>
             <DndDrag<{ id: string; value: string }>
               onDragEndCb={(list) => {
