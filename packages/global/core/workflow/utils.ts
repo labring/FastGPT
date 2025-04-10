@@ -51,6 +51,7 @@ import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 import { getPluginRunContent } from '../../core/app/plugin/utils';
+import { Output_Template_AddOutput } from './template/output';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -220,6 +221,11 @@ export const pluginData2FlowNodeIO = ({
       : [],
     outputs: pluginOutput
       ? [
+          {
+            ...Output_Template_AddOutput,
+            label: i18nT('workflow:http_extract_output'),
+            description: i18nT('workflow:http_extract_output_description')
+          },
           ...pluginOutput.inputs.map((item) => ({
             id: item.key,
             type: FlowNodeOutputTypeEnum.static,
