@@ -11,7 +11,6 @@ import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
 import {
-  InteractiveContext,
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';

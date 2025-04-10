@@ -64,8 +64,7 @@ import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchUserSelect } from './interactive/userSelect';
 import type {
   WorkflowInteractiveResponseType,
-  InteractiveNodeResponseType,
-  InteractiveContext
+  InteractiveNodeResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { dispatchRunAppNode } from './plugin/runApp';
 import { dispatchLoop } from './loop/runLoop';

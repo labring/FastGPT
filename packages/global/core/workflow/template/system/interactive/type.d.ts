@@ -3,12 +3,7 @@ import type { FlowNodeOutputItemType } from '../../../type/io';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
-export type InteractiveContext = {
-  interactiveAppNodeId?: string;
-  interactiveAppEdges?: RuntimeEdgeItemType[];
-  parentContext?: InteractiveContext; // 递归定义，支持多级嵌套
-  childrenContext?: InteractiveContext[]; // 递归定义，支持多级嵌套
-};
+
 type InteractiveBasicType = {
   entryNodeIds: string[];
   memoryEdges: RuntimeEdgeItemType[];
@@ -22,7 +17,6 @@ type InteractiveBasicType = {
 
 type InteractiveNodeType = {
   entryNodeIds?: string[];
-  context?: InteractiveContext; // 添加这一行
   memoryEdges?: RuntimeEdgeItemType[];
   nodeOutputs?: NodeOutputItemType[];
 };
