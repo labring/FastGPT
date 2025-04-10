@@ -136,7 +136,10 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
       onNextNodeDebug({
         ...workflowDebugData,
         // Rewrite runtimeEdges
-        runtimeEdges: initWorkflowEdgeStatus(workflowDebugData.runtimeEdges, lastInteractive),
+        runtimeEdges: initWorkflowEdgeStatus(
+          workflowDebugData.runtimeEdges,
+          lastInteractive || undefined
+        ),
         query: updatedQuery,
         history: mockHistory
       });
