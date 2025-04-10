@@ -16,8 +16,8 @@ export const connectPg = async (): Promise<Pool> => {
     keepAlive: true,
     idleTimeoutMillis: 600000,
     connectionTimeoutMillis: 20000,
-    query_timeout: 30000,
-    statement_timeout: 40000,
+    query_timeout: 1000000,
+    statement_timeout: 600000,
     idle_in_transaction_session_timeout: 60000
   });
 
@@ -169,13 +169,13 @@ class PgClass {
     const pg = await connectPg();
     return pg.query<{ id: string }>(sql);
   }
-  async query<T extends QueryResultRow = any>(sql: string) {
+  async query<T extends QueryResultRow = any>(sql: string, warning = true) {
     const pg = await connectPg();
     const start = Date.now();
     return pg.query<T>(sql).then((res) => {
       const time = Date.now() - start;
 
-      if (time > 300) {
+      if (warning && time > 300) {
         addLog.warn(`pg query time: ${time}ms, sql: ${sql}`);
       }
 
