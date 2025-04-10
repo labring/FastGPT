@@ -19,7 +19,7 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { ChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -29,7 +29,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
-  [DispatchNodeResponseKeyEnum.interactive]?: WorkflowInteractiveResponseType;
+  [DispatchNodeResponseKeyEnum.interactive]?: ChildrenInteractive;
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -45,7 +45,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     params,
     variables
   } = props;
-  const isRecovery = !!lastInteractive?.context?.parentContext;
+  const isRecovery = !!lastInteractive?.params?.childrenResponse;
 
   const {
     system_forbid_stream = false,
@@ -115,14 +115,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
     await dispatchWorkFlow({
       ...props,
-      parentContext: {
-        parentContext: props.parentContext || undefined,
-        interactiveAppNodeId: props.node?.nodeId,
-        interactiveAppEdges: props.runtimeEdges.map((edge) => ({
-          ...edge,
-          status: [props.node.nodeId].includes(edge.target) ? 'active' : edge.status
-        }))
-      },
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {
@@ -165,6 +157,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   return {
+    [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
+      ? {
+          type: 'childrenInteractive',
+          params: {
+            childrenResponse: workflowInteractiveResponse
+          }
+        }
+      : undefined,
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {

@@ -84,32 +84,36 @@ export const initWorkflowEdgeStatus = (
     edge1.sourceHandle === edge2.sourceHandle &&
     edge1.targetHandle === edge2.targetHandle;
 
-  const memoryEdges = lastInteractive.memoryEdges;
-  if (memoryEdges?.length > 0) {
-    const isSubset = memoryEdges.every((memoryEdge) =>
-      edges.some((edge) => isEdgeMatch(edge, memoryEdge))
-    );
+  // 递归检查嵌套的 childrenResponse
+  const findEdgesInNestedInteractive = (
+    interactive: WorkflowInteractiveResponseType | undefined
+  ): RuntimeEdgeItemType[] | null => {
+    if (!interactive) return null;
 
-    if (isSubset) return memoryEdges;
+    // 检查当前级别的 memoryEdges
+    const memoryEdges = interactive.memoryEdges;
+    if (memoryEdges?.length > 0) {
+      const isSubset = memoryEdges.every((memoryEdge) =>
+        edges.some((edge) => isEdgeMatch(edge, memoryEdge))
+      );
 
-    if (lastInteractive.context) {
-      const findInteractiveAppEdges = (
-        context: InteractiveContext | undefined
-      ): RuntimeEdgeItemType[] => {
-        if (!context) return [];
-        if (context.interactiveAppNodeId && context.interactiveAppEdges) {
-          const validEdges = context.interactiveAppEdges.filter((interactiveEdge) =>
-            edges.some((edge) => isEdgeMatch(edge, interactiveEdge))
-          );
-          if (validEdges.length > 0) return validEdges;
-        }
-        return findInteractiveAppEdges(context.parentContext);
-      };
-
-      const foundEdges = findInteractiveAppEdges(lastInteractive.context);
-      if (foundEdges && foundEdges.length > 0) return foundEdges;
+      if (isSubset) return memoryEdges;
     }
-  }
+
+    // 检查是否有嵌套的 childrenResponse
+    if (interactive.params.childrenResponse) {
+      const childResponse = interactive.params.childrenResponse as WorkflowInteractiveResponseType;
+      if (childResponse) {
+        const foundEdges = findEdgesInNestedInteractive(childResponse);
+        if (foundEdges && foundEdges.length > 0) return foundEdges;
+      }
+    }
+
+    return null;
+  };
+
+  const foundEdges = findEdgesInNestedInteractive(lastInteractive);
+  if (foundEdges && foundEdges.length > 0) return foundEdges;
 
   return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
 };
@@ -119,12 +123,17 @@ export const getWorkflowEntryNodeIds = (
   lastInteractive?: WorkflowInteractiveResponseType | null
 ) => {
   if (lastInteractive) {
-    const interactive = lastInteractive;
+    // 递归检查嵌套的 childrenResponse
+    const findEntryNodesInNestedInteractive = (
+      interactive: WorkflowInteractiveResponseType | undefined,
+      currentNodes: (StoreNodeItemType | RuntimeNodeItemType)[]
+    ): string[] | null => {
+      if (!interactive) return null;
 
-    if (interactive?.context) {
+      // 检查当前级别的 entryNodeIds
       if (interactive.entryNodeIds?.length > 0) {
         const validEntryNodeIds = interactive.entryNodeIds.filter((nodeId) =>
-          nodes.some((node) => node.nodeId === nodeId)
+          currentNodes.some((node) => node.nodeId === nodeId)
         );
 
         if (validEntryNodeIds.length > 0) {
@@ -132,34 +141,20 @@ export const getWorkflowEntryNodeIds = (
         }
       }
 
-      const findAppNodeInContext = (
-        context: InteractiveContext | undefined,
-        currentNodes: (StoreNodeItemType | RuntimeNodeItemType)[]
-      ): string[] | null => {
-        if (!context) return null;
-
-        const appNode = currentNodes.find((node) => node.nodeId === context.interactiveAppNodeId);
-        if (appNode) {
-          return [appNode.nodeId];
-        }
-
-        return findAppNodeInContext(context.parentContext, currentNodes);
-      };
-
-      if (interactive.context.parentContext) {
-        const foundNodeIdsFromParent = findAppNodeInContext(
-          interactive.context.parentContext,
-          nodes
-        );
-        if (foundNodeIdsFromParent) {
-          return foundNodeIdsFromParent;
-        }
+      // 检查是否有嵌套的 childrenResponse
+      if (interactive.params.childrenResponse) {
+        const childResponse = interactive.params
+          .childrenResponse as WorkflowInteractiveResponseType;
+        const foundNodeIds = findEntryNodesInNestedInteractive(childResponse, currentNodes);
+        if (foundNodeIds && foundNodeIds.length > 0) return foundNodeIds;
       }
 
-      const foundNodeIds = findAppNodeInContext(interactive.context, nodes);
-      if (foundNodeIds) {
-        return foundNodeIds;
-      }
+      return null;
+    };
+
+    const foundNodeIds = findEntryNodesInNestedInteractive(lastInteractive, nodes);
+    if (foundNodeIds && foundNodeIds.length > 0) {
+      return foundNodeIds;
     }
   }
 

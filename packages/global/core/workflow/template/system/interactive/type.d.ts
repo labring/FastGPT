@@ -7,6 +7,7 @@ export type InteractiveContext = {
   interactiveAppNodeId?: string;
   interactiveAppEdges?: RuntimeEdgeItemType[];
   parentContext?: InteractiveContext; // 递归定义，支持多级嵌套
+  childrenContext?: InteractiveContext[]; // 递归定义，支持多级嵌套
 };
 type InteractiveBasicType = {
   entryNodeIds: string[];
@@ -30,12 +31,21 @@ export type UserSelectOptionItemType = {
   key: string;
   value: string;
 };
+type UserSelectParamsType = {
+  childrenResponse?: WorkflowInteractiveResponseType;
+  description: string;
+  userSelectOptions: UserSelectOptionItemType[];
+  userSelectedVal?: string;
+};
 type UserSelectInteractive = InteractiveNodeType & {
   type: 'userSelect';
+  params: UserSelectParamsType;
+};
+
+type ChildrenInteractive = InteractiveNodeType & {
+  type: 'childrenInteractive';
   params: {
-    description: string;
-    userSelectOptions: UserSelectOptionItemType[];
-    userSelectedVal?: string;
+    childrenResponse?: WorkflowInteractiveResponseType;
   };
 };
 
@@ -57,13 +67,19 @@ export type UserInputFormItemType = {
   // select
   list?: { label: string; value: string }[];
 };
+type UserInputParamsType = {
+  childrenResponse?: WorkflowInteractiveResponseType;
+  description: string;
+  inputForm: UserInputFormItemType[];
+  submitted?: boolean;
+};
 type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
-  params: {
-    description: string;
-    inputForm: UserInputFormItemType[];
-    submitted?: boolean;
-  };
+  params: UserInputParamsType;
 };
-export type InteractiveNodeResponseType = UserSelectInteractive | UserInputInteractive;
+export type InteractiveNodeParamsType = UserSelectParamsType | UserInputParamsType;
+export type InteractiveNodeResponseType =
+  | UserSelectInteractive
+  | UserInputInteractive
+  | ChildrenInteractive;
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;

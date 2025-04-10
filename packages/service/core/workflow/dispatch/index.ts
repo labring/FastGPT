@@ -362,8 +362,44 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       });
     });
 
+    // 在非childApp情况下，递归提取最内层交互参数
+    let resultResponse = { ...interactiveResponse };
+    if (
+      !props.isToolCall &&
+      !props.runningAppInfo.isChildApp &&
+      interactiveResponse.type === 'childrenInteractive'
+    ) {
+      const extractInnerMostParams = (
+        response: InteractiveNodeResponseType
+      ): InteractiveNodeResponseType | null => {
+        if (response.type === 'childrenInteractive' && response.params?.childrenResponse) {
+          // 递归查找最内层交互
+          const innerResponse = extractInnerMostParams(response.params.childrenResponse);
+          if (innerResponse) {
+            return innerResponse;
+          } else if (response.params.childrenResponse.type !== 'childrenInteractive') {
+            return response.params.childrenResponse;
+          }
+        }
+        return null;
+      };
+
+      // 提取最内层交互参数
+      const innerMost = extractInnerMostParams(interactiveResponse);
+      if (innerMost) {
+        resultResponse = {
+          ...interactiveResponse,
+          type: innerMost.type,
+          params: {
+            ...interactiveResponse.params,
+            ...innerMost.params
+          }
+        } as InteractiveNodeResponseType;
+      }
+    }
+
     const interactiveResult: WorkflowInteractiveResponseType = {
-      ...interactiveResponse,
+      ...resultResponse,
       entryNodeIds,
       memoryEdges: runtimeEdges.map((edge) => ({
         ...edge,
@@ -373,7 +409,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
 
     // Tool call, not need interactive response
-    if (!props.isToolCall) {
+    if (!props.isToolCall && !props.runningAppInfo.isChildApp) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.interactive,
         data: { interactive: interactiveResult }
@@ -450,29 +486,25 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
     // In the current version, only one interactive node is allowed at the same time
     const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
-    if (
-      nodeRunResult.result?.assistantResponses?.some(
-        (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
-      )
-    ) {
-      pushStore(nodeRunResult.node, nodeRunResult.result);
-      return [];
-    }
+    // if (
+    //   nodeRunResult.result?.assistantResponses?.some(
+    //     (item: AIChatItemValueItemType) => item.type === ChatItemValueTypeEnum.interactive
+    //   )
+    // ) {
+    //   pushStore(nodeRunResult.node, nodeRunResult.result);
+    //   return [];
+    // }
     if (interactiveResponse) {
       pushStore(nodeRunResult.node, nodeRunResult.result);
 
       if (props.mode === 'debug') {
         debugNextStepRunNodes = debugNextStepRunNodes.concat([nodeRunResult.node]);
       }
-      // 构建完整的上下文链
-      const context: InteractiveContext = {
-        parentContext: props.parentContext
-      };
+
       nodeInteractiveResponse = {
         entryNodeIds: [nodeRunResult.node.nodeId],
         interactiveResponse: {
-          ...interactiveResponse,
-          context
+          ...interactiveResponse
         }
       };
       return [];
