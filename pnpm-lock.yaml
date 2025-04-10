@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  mdast-util-gfm-autolink-literal@2.0.1:
+    hash: f63d515781110436299ab612306211a9621c6dfaec1ce1a19e2f27454dc70251
+    path: patches/mdast-util-gfm-autolink-literal@2.0.1.patch
+
 importers:
 
   .:
