@@ -8,6 +8,10 @@ export type APIFileItem = {
   updateTime: Date;
   createTime: Date;
   hasChild?: boolean;
+  uuid?: string;
+  slug?: string;
+  parent_uuid?: string;
+  children?: APIFileItem[];
 };
 
 export type APIFileServer = {
@@ -35,4 +39,5 @@ export type FeishuServer = {
 export type YuqueServer = {
   userId: string;
   token: string;
+  baseUrl?: string;
 };
