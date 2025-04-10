@@ -35,7 +35,7 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
   const interactive = getLastInteractiveValue(histories);
 
   // Interactive node is not the entry node, return interactive result
-  if (!isEntry || interactive?.type !== 'userInput') {
+  if (!isEntry || !interactive?.type) {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',

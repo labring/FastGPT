@@ -84,29 +84,36 @@ export const setUserSelectResultToHistories = (
         !val.interactive
       )
         return val;
-
-      if (val.interactive.type === 'userSelect') {
+      // todo: 支持
+      const extractDeepestInteractive = (interactive: any): any => {
+        if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
+          return extractDeepestInteractive(interactive.params.childrenResponse);
+        }
+        return interactive;
+      };
+      const finalInteractive = extractDeepestInteractive(val.interactive);
+      if (finalInteractive.type === 'userSelect') {
         return {
           ...val,
           interactive: {
-            ...val.interactive,
+            ...finalInteractive,
             params: {
-              ...val.interactive.params,
-              userSelectedVal: val.interactive.params.userSelectOptions.find(
-                (item) => item.value === interactiveVal
+              ...finalInteractive.params,
+              userSelectedVal: finalInteractive.params.userSelectOptions.find(
+                (item: { value: string }) => item.value === interactiveVal
               )?.value
             }
           }
         };
       }
 
-      if (val.interactive.type === 'userInput') {
+      if (finalInteractive.type === 'userInput') {
         return {
           ...val,
           interactive: {
-            ...val.interactive,
+            ...finalInteractive,
             params: {
-              ...val.interactive.params,
+              ...finalInteractive.params,
               submitted: true
             }
           }

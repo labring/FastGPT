@@ -52,6 +52,10 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
       return null;
     }
 
+    if (lastValue.interactive.type === 'childrenInteractive') {
+      return lastValue.interactive;
+    }
+
     // Check is user select
     if (
       lastValue.interactive.type === 'userSelect' &&

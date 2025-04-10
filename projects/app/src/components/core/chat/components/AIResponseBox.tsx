@@ -245,11 +245,18 @@ const AIResponseBox = ({
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   }
   if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
-    if (value.interactive.type === 'userSelect') {
-      return <RenderUserSelectInteractive interactive={value.interactive} />;
+    const extractDeepestInteractive = (interactive: any): any => {
+      if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
+        return extractDeepestInteractive(interactive.params.childrenResponse);
+      }
+      return interactive;
+    };
+    const finalInteractive = extractDeepestInteractive(value.interactive);
+    if (finalInteractive.type === 'userSelect') {
+      return <RenderUserSelectInteractive interactive={finalInteractive} />;
     }
-    if (value.interactive?.type === 'userInput') {
-      return <RenderUserFormInteractive interactive={value.interactive} />;
+    if (finalInteractive.type === 'userInput') {
+      return <RenderUserFormInteractive interactive={finalInteractive} />;
     }
   }
   return null;
