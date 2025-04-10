@@ -4,12 +4,10 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  ManagePermissionVal,
-  WritePermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
+import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
   const { appId, name, limit } = req.body;
@@ -19,7 +17,7 @@ async function handler(req: ApiRequestProps<EditApiKeyProps>): Promise<string> {
       const { teamId, tmbId } = await authUserPer({
         req,
         authToken: true,
-        per: WritePermissionVal
+        per: TeamApikeyCreatePermissionVal
       });
       return { teamId, tmbId };
     } else {

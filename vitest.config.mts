@@ -5,13 +5,18 @@ export default defineConfig({
     coverage: {
       enabled: true,
       reporter: ['html', 'json-summary', 'json'],
-      all: false,
-      reportOnFailure: true
+      reportOnFailure: true,
+      include: ['projects/**/*.ts', 'packages/**/*.ts'],
+      cleanOnRerun: false
     },
     outputFile: 'test-results.json',
-    setupFiles: ['./test/setup.ts'],
-    include: ['./test/test.ts', './test/cases/**/*.test.ts'],
-    testTimeout: 5000
+    setupFiles: 'test/setup.ts',
+    globalSetup: 'test/globalSetup.ts',
+    fileParallelism: false,
+    pool: 'threads',
+    include: ['test/test.ts', 'test/cases/**/*.test.ts', 'projects/app/test/**/*.test.ts'],
+    testTimeout: 5000,
+    reporters: ['github-actions', 'default']
   },
   resolve: {
     alias: {

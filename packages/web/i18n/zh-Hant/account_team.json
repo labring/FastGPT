@@ -61,5 +61,13 @@
   "user_team_invite_member": "邀請成員",
   "user_team_leave_team": "離開團隊",
   "user_team_leave_team_failed": "離開團隊失敗",
-  "waiting": "待接受"
+  "waiting": "待接受",
+  "permission_appCreate": "建立應用",
+  "permission_datasetCreate": "建立知識庫",
+  "permission_apikeyCreate": "建立 API 密鑰",
+  "permission_appCreate_tip": "可以在根目錄建立應用，（資料夾下的建立權限由資料夾控制）",
+  "permission_datasetCreate_Tip": "可以在根目錄建立知識庫，（資料夾下的建立權限由資料夾控制）",
+  "permission_apikeyCreate_Tip": "可以建立全域的 APIKey",
+  "permission_manage": "管理員",
+  "permission_manage_tip": "可以管理成員、建立群組、管理所有群組、為群組和成員分配權限"
 }

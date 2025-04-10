@@ -100,7 +100,6 @@
   "team.group.manage_tip": "Can manage members, create groups, manage all groups, assign permissions to groups and members",
   "team.group.members": "member",
   "team.group.name": "Group name",
-  "team.group.permission.manage": "administrator",
   "team.group.permission.write": "Workbench/knowledge base creation",
   "team.group.permission_tip": "Members with individually configured permissions will follow the individual permission configuration and will no longer be affected by group permissions.\n\nIf a member is in multiple permission groups, the member's permissions are combined.",
   "team.group.role.admin": "administrator",
@@ -112,5 +111,6 @@
   "team.manage_collaborators": "Manage Collaborators",
   "team.no_collaborators": "No Collaborators",
   "team.org.org": "Organization",
-  "team.write_role_member": ""
+  "team.write_role_member": "Write Permission",
+  "team.collaborator.added": "Added"
 }

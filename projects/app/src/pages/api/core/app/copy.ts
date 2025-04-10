@@ -4,6 +4,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { onCreateApp } from './create';
+import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type copyAppQuery = {};
 
@@ -17,19 +18,16 @@ async function handler(
   req: ApiRequestProps<copyAppBody, copyAppQuery>,
   res: ApiResponseType<any>
 ): Promise<copyAppResponse> {
-  const [{ app, tmbId }] = await Promise.all([
-    authApp({
-      req,
-      authToken: true,
-      per: WritePermissionVal,
-      appId: req.body.appId
-    }),
-    authUserPer({
-      req,
-      authToken: true,
-      per: WritePermissionVal
-    })
-  ]);
+  const { app } = await authApp({
+    req,
+    authToken: true,
+    per: WritePermissionVal,
+    appId: req.body.appId
+  });
+
+  const { tmbId } = app.parentId
+    ? await authApp({ req, appId: app.parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   const appId = await onCreateApp({
     parentId: app.parentId,

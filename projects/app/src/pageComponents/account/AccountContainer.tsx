@@ -91,7 +91,7 @@ const AccountContainer = ({
           }
         ]
       : []),
-    ...(userInfo?.team?.permission.hasManagePer
+    ...(userInfo?.team?.permission.hasApikeyCreatePer
       ? [
           {
             icon: 'key',

@@ -1,21 +1,35 @@
 import { NextApiHandler } from '@fastgpt/service/common/middle/entry';
 import { MockReqType } from '../mocks/request';
+import { vi } from 'vitest';
 
 export async function Call<B = any, Q = any, R = any>(
   handler: NextApiHandler<R>,
   props?: MockReqType<B, Q>
 ) {
   const { body = {}, query = {}, ...rest } = props || {};
-  return (await handler(
+  let raw;
+  const res: any = {
+    setHeader: vi.fn(),
+    write: vi.fn((data: any) => {
+      raw = data;
+    }),
+    end: vi.fn()
+  };
+  const response = (await handler(
     {
-      body: body,
-      query: query,
+      body: JSON.parse(JSON.stringify(body)),
+      query: JSON.parse(JSON.stringify(query)),
       ...(rest as any)
     },
-    {} as any
-  )) as Promise<{
+    res
+  )) as any;
+  return {
+    ...response,
+    raw
+  } as {
     code: number;
     data: R;
     error?: any;
-  }>;
+    raw?: any;
+  };
 }
