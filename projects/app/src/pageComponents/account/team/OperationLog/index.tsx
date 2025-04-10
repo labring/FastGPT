@@ -30,10 +30,12 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
       const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
       const permission = new TeamPermission({ per: numValue });
 
-      const hasWritePer = `${t('user:team.group.permission.write')}${permission.hasWritePer ? '✔' : '✘'}`;
-      const hasManagePer = `${t('user:team.group.permission.manage')}${permission.hasManagePer ? '✔' : '✘'}`;
+      const hasAppCreatePer = `${t('account_team:permission_appCreate')}${permission.hasAppCreatePer ? '✔' : '✘'}`;
+      const hasDatasetCreatePer = `${t('account_team:permission_datasetCreate')}${permission.hasDatasetCreatePer ? '✔' : '✘'}`;
+      const hasApikeyCreatePer = `${t('account_team:permission_apikeyCreate')}${permission.hasApikeyCreatePer ? '✔' : '✘'}`;
+      const hasManagePer = `${t('account_team:permission_manage')}${permission.hasManagePer ? '✔' : '✘'}`;
 
-      return `[${hasWritePer}, ${hasManagePer}]`;
+      return `[${hasAppCreatePer}, ${hasDatasetCreatePer}, ${hasApikeyCreatePer}, ${hasManagePer}]`;
     } catch (e) {
       return String(value);
     }
