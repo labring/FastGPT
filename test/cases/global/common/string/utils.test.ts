@@ -21,6 +21,8 @@ describe('PasswordRule', () => {
     expect(checkPasswordRule('ABC123')).toBe(true); // uppercase + numbers
     expect(checkPasswordRule('123!@#')).toBe(true); // numbers + special chars
     expect(checkPasswordRule('!@123fa')).toBe(true); // numbers + special chars
+    expect(checkPasswordRule('+2222()222')).toBe(true); // special chars + numbers
+    expect(checkPasswordRule('_2222()-+=22')).toBe(true); // special chars + numbers
 
     // Test three types combination
     expect(checkPasswordRule('abcABC123')).toBe(true); // lower + upper + numbers
