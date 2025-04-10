@@ -77,6 +77,13 @@ export const getHistoryPreview = (
   });
 };
 
+export const filterModuleTypeList: any[] = [
+  FlowNodeTypeEnum.pluginModule,
+  FlowNodeTypeEnum.datasetSearchNode,
+  FlowNodeTypeEnum.tools,
+  FlowNodeTypeEnum.pluginOutput
+];
+
 export const filterPublicNodeResponseData = ({
   flowResponses = [],
   responseDetail = false
@@ -87,12 +94,6 @@ export const filterPublicNodeResponseData = ({
   const filedList = responseDetail
     ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
     : ['moduleType', 'pluginOutput', 'runningTime'];
-  const filterModuleTypeList: any[] = [
-    FlowNodeTypeEnum.pluginModule,
-    FlowNodeTypeEnum.datasetSearchNode,
-    FlowNodeTypeEnum.tools,
-    FlowNodeTypeEnum.pluginOutput
-  ];
 
   return flowResponses
     .filter((item) => filterModuleTypeList.includes(item.moduleType))

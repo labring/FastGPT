@@ -296,7 +296,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           stream,
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite,
-          version: 'v2'
+          version: 'v2',
+          responseDetail
         });
       }
       return Promise.reject('您的工作流版本过低，请重新发布一次');
