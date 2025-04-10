@@ -73,6 +73,7 @@ import { dispatchLoopStart } from './loop/runLoopStart';
 import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { filterModuleTypeList } from '@fastgpt/global/core/chat/utils';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -632,7 +633,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       version === 'v2' &&
       !props.isToolCall &&
       !props.runningAppInfo.isChildApp &&
-      formatResponseData
+      formatResponseData &&
+      !(!props.responseDetail && filterModuleTypeList.includes(formatResponseData.moduleType))
     ) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeResponse,
