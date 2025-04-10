@@ -9,6 +9,8 @@ import { onCreateApp, type CreateAppBody } from '../create';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 
 export type createHttpPluginQuery = {};
 
@@ -29,11 +31,9 @@ async function handler(
     return Promise.reject('缺少参数');
   }
 
-  const { teamId, tmbId, userId } = await authUserPer({
-    req,
-    authToken: true,
-    per: WritePermissionVal
-  });
+  const { teamId, tmbId, userId } = parentId
+    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   await mongoSessionRun(async (session) => {
     // create http plugin folder

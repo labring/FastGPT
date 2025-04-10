@@ -13,12 +13,15 @@ export type CollaboratorItemType = {
   orgId: string;
 }>;
 
-export type UpdateClbPermissionProps = {
+export type UpdateClbPermissionProps<addOnly = false> = {
   members?: string[];
   groups?: string[];
   orgs?: string[];
-  permission: PermissionValueType;
-};
+} & (addOnly extends true
+  ? {}
+  : {
+      permission: PermissionValueType;
+    });
 
 export type DeletePermissionQuery = RequireOnlyOne<{
   tmbId?: string;

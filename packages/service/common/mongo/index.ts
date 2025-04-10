@@ -69,7 +69,7 @@ const addCommonMiddleware = (schema: mongoose.Schema) => {
 
 export const getMongoModel = <T>(name: string, schema: mongoose.Schema) => {
   if (connectionMongo.models[name]) return connectionMongo.models[name] as Model<T>;
-  console.log('Load model======', name);
+  if (process.env.NODE_ENV !== 'test') console.log('Load model======', name);
   addCommonMiddleware(schema);
 
   const model = connectionMongo.model<T>(name, schema);
