@@ -5,15 +5,16 @@ export type PerConstructPros = {
   per?: PermissionValueType;
   isOwner?: boolean;
   permissionList?: PermissionListType;
+  childUpdatePermissionCallback?: () => void;
 };
 
 // the Permission helper class
 export class Permission {
   value: PermissionValueType;
-  isOwner: boolean;
-  hasManagePer: boolean;
-  hasWritePer: boolean;
-  hasReadPer: boolean;
+  isOwner: boolean = false;
+  hasManagePer: boolean = false;
+  hasWritePer: boolean = false;
+  hasReadPer: boolean = false;
   _permissionList: PermissionListType;
 
   constructor(props?: PerConstructPros) {
@@ -24,11 +25,8 @@ export class Permission {
       this.value = per;
     }
 
-    this.isOwner = isOwner;
     this._permissionList = permissionList;
-    this.hasManagePer = this.checkPer(this._permissionList['manage'].value);
-    this.hasWritePer = this.checkPer(this._permissionList['write'].value);
-    this.hasReadPer = this.checkPer(this._permissionList['read'].value);
+    this.updatePermissions();
   }
 
   // add permission(s)
@@ -68,10 +66,21 @@ export class Permission {
     return (this.value & perm) === perm;
   }
 
+  private updatePermissionCallback?: () => void;
+  setUpdatePermissionCallback(callback: () => void) {
+    callback();
+    this.updatePermissionCallback = callback;
+  }
+
   private updatePermissions() {
     this.isOwner = this.value === OwnerPermissionVal;
     this.hasManagePer = this.checkPer(this._permissionList['manage'].value);
     this.hasWritePer = this.checkPer(this._permissionList['write'].value);
     this.hasReadPer = this.checkPer(this._permissionList['read'].value);
+    this.updatePermissionCallback?.();
+  }
+
+  toBinary() {
+    return this.value.toString(2);
   }
 }

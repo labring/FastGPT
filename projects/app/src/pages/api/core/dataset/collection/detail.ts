@@ -12,6 +12,9 @@ import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collection/utils';
 import { getVectorCountByCollectionId } from '@fastgpt/service/common/vectorStore/controller';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { Types } from 'mongoose';
+import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 
 async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
@@ -30,11 +33,21 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
   });
 
   // get file
-  const [file, indexAmount] = await Promise.all([
+  const [file, indexAmount, errorCount] = await Promise.all([
     collection?.fileId
       ? await getFileById({ bucketName: BucketNameEnum.dataset, fileId: collection.fileId })
       : undefined,
-    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id)
+    getVectorCountByCollectionId(collection.teamId, collection.datasetId, collection._id),
+    MongoDatasetTraining.countDocuments(
+      {
+        teamId: collection.teamId,
+        datasetId: collection.datasetId,
+        collectionId: id,
+        errorMsg: { $exists: true },
+        retryCount: { $lte: 0 }
+      },
+      readFromSecondary
+    )
   ]);
 
   return {
@@ -46,7 +59,8 @@ async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> 
       tags: collection.tags
     }),
     permission,
-    file
+    file,
+    errorCount
   };
 }
 

@@ -9,6 +9,11 @@ on:
       - 'v*'
 jobs:
   build-fastgpt-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-20.04
     steps:
       # install env
@@ -39,7 +44,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Ali Hub
         uses: docker/login-action@v2
         with:
@@ -91,6 +96,11 @@ jobs:
           -t ${Docker_Hub_Latest} \
           .
   build-fastgpt-images-sub-route:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-20.04
     steps:
       # install env
@@ -121,7 +131,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Ali Hub
         uses: docker/login-action@v2
         with:
@@ -174,6 +184,11 @@ jobs:
           -t ${Docker_Hub_Latest} \
           .
   build-fastgpt-images-sub-route-gchat:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
     runs-on: ubuntu-20.04
     steps:
       # install env
@@ -204,7 +219,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_PAT }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Login to Ali Hub
         uses: docker/login-action@v2
         with:

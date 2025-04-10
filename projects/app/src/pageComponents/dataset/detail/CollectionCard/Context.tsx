@@ -1,19 +1,18 @@
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { Dispatch, ReactNode, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, ReactNode, SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useDisclosure } from '@chakra-ui/react';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
-import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
 import { getDatasetCollections, postWebsiteSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { useRouter } from 'next/router';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { WebsiteConfigFormType } from './WebsiteConfig';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
@@ -66,7 +65,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
 
-  const { datasetDetail, datasetId, updateDataset } = useContextSelector(
+  const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
     DatasetPageContext,
     (v) => v
   );
@@ -75,30 +74,32 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   const { openConfirm: openWebSyncConfirm, ConfirmModal: ConfirmWebSyncModal } = useConfirm({
     content: t('dataset:start_sync_website_tip')
   });
+  const syncWebsite = async () => {
+    await checkTeamWebSyncLimit();
+    postWebsiteSync({ datasetId: datasetId }).then(() => {
+      loadDatasetDetail(datasetId);
+    });
+  };
   const {
     isOpen: isOpenWebsiteModal,
     onOpen: onOpenWebsiteModal,
     onClose: onCloseWebsiteModal
   } = useDisclosure();
-  const { mutate: onUpdateDatasetWebsiteConfig } = useRequest({
-    mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
-      onCloseWebsiteModal();
-      await checkTeamWebSyncLimit();
+  const { runAsync: onUpdateDatasetWebsiteConfig } = useRequest2(
+    async (websiteConfig: WebsiteConfigFormType) => {
       await updateDataset({
         id: datasetId,
-        websiteConfig,
-        status: DatasetStatusEnum.syncing
+        websiteConfig: websiteConfig.websiteConfig,
+        chunkSettings: websiteConfig.chunkSettings
       });
-      const billId = await postCreateTrainingUsage({
-        name: t('common:core.dataset.training.Website Sync'),
-        datasetId: datasetId
-      });
-      await postWebsiteSync({ datasetId: datasetId, billId });
-
-      return;
+      await syncWebsite();
     },
-    errorToast: t('common:common.Update Failed')
-  });
+    {
+      onSuccess() {
+        onCloseWebsiteModal();
+      }
+    }
+  );
 
   // collection list
   const [searchText, setSearchText] = useState('');
@@ -124,7 +125,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
   });
 
   const contextValue: CollectionPageContextType = {
-    openWebSyncConfirm: openWebSyncConfirm(onUpdateDatasetWebsiteConfig),
+    openWebSyncConfirm: openWebSyncConfirm(syncWebsite),
     onOpenWebsiteModal,
 
     searchText,
@@ -149,10 +150,6 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
             <WebSiteConfigModal
               onClose={onCloseWebsiteModal}
               onSuccess={onUpdateDatasetWebsiteConfig}
-              defaultValue={{
-                url: datasetDetail?.websiteConfig?.url,
-                selector: datasetDetail?.websiteConfig?.selector
-              }}
             />
           )}
           <ConfirmWebSyncModal />

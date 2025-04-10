@@ -1,6 +1,10 @@
 import { StreamResponseType } from '@/web/common/api/fetch';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { ChatSiteItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
+import {
+  ChatHistoryItemResType,
+  ChatSiteItemType,
+  ToolModuleResponseItemType
+} from '@fastgpt/global/core/chat/type';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 export type generatingMessageProps = {
@@ -12,6 +16,7 @@ export type generatingMessageProps = {
   tool?: ToolModuleResponseItemType;
   interactive?: WorkflowInteractiveResponseType;
   variables?: Record<string, any>;
+  nodeResponse?: ChatHistoryItemResType;
 };
 
 export type StartChatFnProps = {

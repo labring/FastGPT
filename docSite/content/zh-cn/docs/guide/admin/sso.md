@@ -61,11 +61,12 @@ FastGPT-SSO-Service 是为了聚合不同来源的 SSO 和成员同步接口，�
 
 #### 1. 配置环境变量
 
-环境变量中的 `EXTERNAL_USER_SERVICE_BASE_URL` 为内网地址，例如上述例子中的配置，环境变量应该设置为
+环境变量中的 `EXTERNAL_USER_SYSTEM_BASE_URL` 为内网地址，例如上述例子中的配置，环境变量应该设置为
 
 ```yaml
-EXTERNAL_USER_SERVICE_BASE_URL=http://fastgpt-sso:3000
-EXTERNAL_USER_SERVICE_AUTH_TOKEN=xxxxx
+env:
+   - EXTERNAL_USER_SYSTEM_BASE_URL=http://fastgpt-sso:3000
+   - EXTERNAL_USER_SYSTEM_AUTH_TOKEN=xxxxx
 ```
 
 #### 2. 在商业版后台配置按钮文字，图标等。
@@ -89,7 +90,8 @@ EXTERNAL_USER_SERVICE_AUTH_TOKEN=xxxxx
 设置 fastgpt-pro 环境变量则可开启自动成员同步
 
 ```bash
-SYNC_MEMBER_CRON="0 0 * * *" # Cron 表达式，每天 0 点执行
+env:
+   - "SYNC_MEMBER_CRON=0 0 * * *" # Cron 表达式，每天 0 点执行
 ```
 
 ## 内置的通用协议/IM 配置示例

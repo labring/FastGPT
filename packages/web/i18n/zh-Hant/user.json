@@ -100,7 +100,6 @@
   "team.group.manage_tip": "可以管理成員、創建群組、管理所有群組、為群組和成員分配權限",
   "team.group.members": "成員",
   "team.group.name": "群組名稱",
-  "team.group.permission.manage": "管理員",
   "team.group.permission.write": "工作臺/知識庫建立",
   "team.group.permission_tip": "單獨設定權限的成員，將依照個人權限設定，不再受群組權限影響。\n若成員屬於多個權限群組，該成員的權限將會合併。",
   "team.group.role.admin": "管理員",
@@ -112,5 +111,6 @@
   "team.manage_collaborators": "管理協作者",
   "team.no_collaborators": "目前沒有協作者",
   "team.org.org": "組織",
-  "team.write_role_member": "可寫入權限"
+  "team.write_role_member": "可寫入權限",
+  "team.collaborator.added": "已添加"
 }

@@ -1,7 +1,15 @@
 import { PerConstructPros, Permission } from '../controller';
-import { TeamDefaultPermissionVal, TeamPermissionList } from './constant';
+import {
+  TeamAppCreatePermissionVal,
+  TeamDefaultPermissionVal,
+  TeamPermissionList
+} from './constant';
 
 export class TeamPermission extends Permission {
+  hasAppCreatePer: boolean = false;
+  hasDatasetCreatePer: boolean = false;
+  hasApikeyCreatePer: boolean = false;
+
   constructor(props?: PerConstructPros) {
     if (!props) {
       props = {
@@ -12,5 +20,11 @@ export class TeamPermission extends Permission {
     }
     props.permissionList = TeamPermissionList;
     super(props);
+
+    this.setUpdatePermissionCallback(() => {
+      this.hasAppCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+      this.hasDatasetCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+      this.hasApikeyCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+    });
   }
 }

@@ -1,4 +1,4 @@
-name: Deploy doc image to vercel
+name: Deploy doc image to cf
 
 on:
   workflow_dispatch:
@@ -19,6 +19,11 @@ jobs:
 
     # The type of runner that the job will run on
     runs-on: ubuntu-22.04
+
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
 
     # Job outputs
     outputs:
@@ -58,20 +63,9 @@ jobs:
       - name: Build
         run: cd docSite && hugo mod get -u github.com/colinwilson/lotusdocs@6d0568e && hugo -v --minify
 
-      # Step 5 - Push our generated site to Vercel
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        id: vercel-action
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }} # Required
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }} #Required
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }} #Required
-          github-comment: false
-          vercel-args: '--prod --local-config ../vercel.json' # Optional
-          working-directory: docSite/public
-
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/main'
         with:
-          github_token: ${{ secrets.GH_PAT }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: docSite/public

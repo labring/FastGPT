@@ -6,6 +6,7 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: {
     findById: vi.fn()
   },
+  ChunkSettings: {},
   DatasetCollectionName: 'datasets'
 }));
 

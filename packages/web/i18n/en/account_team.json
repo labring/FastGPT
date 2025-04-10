@@ -61,5 +61,13 @@
   "user_team_invite_member": "Invite members",
   "user_team_leave_team": "Leave the team",
   "user_team_leave_team_failed": "Failure to leave the team",
-  "waiting": "To be accepted"
+  "waiting": "To be accepted",
+  "permission_appCreate": "Create Application",
+  "permission_datasetCreate": "Create Knowledge Base",
+  "permission_apikeyCreate": "Create API Key",
+  "permission_appCreate_tip": "Can create applications in the root directory (creation permissions in folders are controlled by the folder)",
+  "permission_datasetCreate_Tip": "Can create knowledge bases in the root directory (creation permissions in folders are controlled by the folder)",
+  "permission_apikeyCreate_Tip": "Can create global APIKeys",
+  "permission_manage": "Admin",
+  "permission_manage_tip": "Can manage members, create groups, manage all groups, and assign permissions to groups and members"
 }

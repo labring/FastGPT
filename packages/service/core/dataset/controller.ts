@@ -9,6 +9,8 @@ import { deleteDatasetDataVector } from '../../common/vectorStore/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { removeWebsiteSyncJobScheduler } from './websiteSync';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */

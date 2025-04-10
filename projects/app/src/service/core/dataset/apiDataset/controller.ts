@@ -1,14 +1,35 @@
-import { GetApiDatasetFileListResponse } from '@/pages/api/core/dataset/apiDataset/list';
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { APIFileItem, ApiFileReadContentResponse } from '@fastgpt/global/core/dataset/apiDataset';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
+import {
+  GetProApiDatasetFileContentParams,
+  GetProApiDatasetFileListParams,
+  GetProApiDatasetFilePreviewUrlParams,
+  ProApiDatasetOperationTypeEnum
+} from '@fastgpt/service/core/dataset/apiDataset/proApi';
 
-export const getFeishuAndYuqueDatasetFileList = async (data: {
-  feishuServer?: FeishuServer;
-  yuqueServer?: YuqueServer;
-  parentId?: string;
-}) => {
-  const res = await POST<GetApiDatasetFileListResponse>('/core/dataset/systemApiDataset', {
-    type: 'list',
+export const getProApiDatasetFileListRequest = async (data: GetProApiDatasetFileListParams) => {
+  const res = await POST<APIFileItem[]>('/core/dataset/systemApiDataset', {
+    type: ProApiDatasetOperationTypeEnum.LIST,
+    ...data
+  });
+  return res;
+};
+
+export const getProApiDatasetFileContentRequest = async (
+  data: GetProApiDatasetFileContentParams
+) => {
+  const res = await POST<ApiFileReadContentResponse>('/core/dataset/systemApiDataset', {
+    type: ProApiDatasetOperationTypeEnum.CONTENT,
+    ...data
+  });
+  return res;
+};
+
+export const getProApiDatasetFilePreviewUrlRequest = async (
+  data: GetProApiDatasetFilePreviewUrlParams
+) => {
+  const res = await POST<string>('/core/dataset/systemApiDataset', {
+    type: ProApiDatasetOperationTypeEnum.READ,
     ...data
   });
   return res;

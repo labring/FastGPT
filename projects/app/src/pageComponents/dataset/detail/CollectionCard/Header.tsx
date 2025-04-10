@@ -1,35 +1,23 @@
 import React from 'react';
-import {
-  Box,
-  Flex,
-  MenuButton,
-  Button,
-  Link,
-  useTheme,
-  useDisclosure,
-  HStack
-} from '@chakra-ui/react';
+import { Box, Flex, MenuButton, Button, Link, useDisclosure, HStack } from '@chakra-ui/react';
 import {
   getDatasetCollectionPathById,
   postDatasetCollection,
   putDatasetCollectionById
 } from '@/web/core/dataset/api';
-import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import {
   DatasetCollectionTypeEnum,
-  TrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum,
-  DatasetCollectionDataProcessModeEnum
+  DatasetStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import EditFolderModal, { useEditFolder } from '../../EditFolderModal';
 import { TabEnum } from '../../../../pages/dataset/detail/index';
@@ -43,26 +31,36 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HeaderTagPopOver from './HeaderTagPopOver';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import Icon from '@fastgpt/web/components/common/Icon';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
-const Header = ({}: {}) => {
+const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
   const { t } = useTranslation();
-  const theme = useTheme();
-
   const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
+
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
-  const { isPc } = useSystem();
 
-  const { searchText, setSearchText, total, getData, pageNum, onOpenWebsiteModal } =
-    useContextSelector(CollectionPageContext, (v) => v);
+  const {
+    searchText,
+    setSearchText,
+    total,
+    getData,
+    pageNum,
+    onOpenWebsiteModal,
+    openWebSyncConfirm
+  } = useContextSelector(CollectionPageContext, (v) => v);
 
-  const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
-    getDatasetCollectionPathById(parentId)
-  );
+  const { data: paths = [] } = useRequest2(() => getDatasetCollectionPathById(parentId), {
+    refreshDeps: [parentId],
+    manual: false
+  });
 
   const { editFolderData, setEditFolderData } = useEditFolder();
   const { onOpenModal: onOpenCreateVirtualFileModal, EditModal: EditCreateVirtualFileModal } =
@@ -72,13 +70,14 @@ const Header = ({}: {}) => {
       canEmpty: false
     });
 
+  // Import collection
   const {
     isOpen: isOpenFileSourceSelector,
     onOpen: onOpenFileSourceSelector,
     onClose: onCloseFileSourceSelector
   } = useDisclosure();
 
-  const { runAsync: onCreateCollection, loading: onCreating } = useRequest2(
+  const { runAsync: onCreateCollection } = useRequest2(
     async ({ name, type }: { name: string; type: DatasetCollectionTypeEnum }) => {
       const id = await postDatasetCollection({
         parentId,
@@ -100,7 +99,7 @@ const Header = ({}: {}) => {
   const isWebSite = datasetDetail?.type === DatasetTypeEnum.websiteDataset;
 
   return (
-    <MyBox isLoading={onCreating} display={['block', 'flex']} alignItems={'center'} gap={2}>
+    <MyBox display={['block', 'flex']} alignItems={'center'} gap={2}>
       <HStack flex={1}>
         <Box flex={1} fontWeight={'500'} color={'myGray.900'} whiteSpace={'nowrap'}>
           <ParentPath
@@ -121,13 +120,15 @@ const Header = ({}: {}) => {
                   {!isWebSite && <MyIcon name="common/list" mr={2} w={'20px'} color={'black'} />}
                   {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel as any)}({total})
                 </Flex>
+                {/* Website sync */}
                 {datasetDetail?.websiteConfig?.url && (
                   <Flex fontSize={'mini'}>
-                    {t('common:core.dataset.website.Base Url')}:
+                    <Box>{t('common:core.dataset.website.Base Url')}:</Box>
                     <Link
+                      className="textEllipsis"
+                      maxW={'300px'}
                       href={datasetDetail.websiteConfig.url}
                       target="_blank"
-                      mr={2}
                       color={'blue.700'}
                     >
                       {datasetDetail.websiteConfig.url}
@@ -171,12 +172,14 @@ const Header = ({}: {}) => {
         )}
 
         {/* Tag */}
-        {datasetDetail.permission.hasWritePer && feConfigs?.isPlus && <HeaderTagPopOver />}
+        {datasetDetail.type !== DatasetTypeEnum.websiteDataset &&
+          datasetDetail.permission.hasWritePer &&
+          feConfigs?.isPlus && <HeaderTagPopOver />}
       </HStack>
 
       {/* diff collection button */}
       {datasetDetail.permission.hasWritePer && (
-        <Box textAlign={'end'} mt={[3, 0]}>
+        <Box mt={[3, 0]}>
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu
               offset={[0, 5]}
@@ -233,9 +236,8 @@ const Header = ({}: {}) => {
                       onClick: () => {
                         onOpenCreateVirtualFileModal({
                           defaultVal: '',
-                          onSuccess: (name) => {
-                            onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual });
-                          }
+                          onSuccess: (name) =>
+                            onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual })
                         });
                       }
                     },
@@ -272,35 +274,70 @@ const Header = ({}: {}) => {
           {datasetDetail?.type === DatasetTypeEnum.websiteDataset && (
             <>
               {datasetDetail?.websiteConfig?.url ? (
-                <Flex alignItems={'center'}>
+                <>
                   {datasetDetail.status === DatasetStatusEnum.active && (
-                    <Button onClick={onOpenWebsiteModal}>{t('common:common.Config')}</Button>
+                    <HStack gap={2}>
+                      <Button
+                        onClick={onOpenWebsiteModal}
+                        leftIcon={<Icon name="change" w={'1rem'} />}
+                      >
+                        {t('dataset:params_config')}
+                      </Button>
+                      {!hasTrainingData && (
+                        <Button
+                          variant={'whitePrimary'}
+                          onClick={openWebSyncConfirm}
+                          leftIcon={<Icon name="common/confirm/restoreTip" w={'1rem'} />}
+                        >
+                          {t('dataset:immediate_sync')}
+                        </Button>
+                      )}
+                    </HStack>
                   )}
                   {datasetDetail.status === DatasetStatusEnum.syncing && (
-                    <Flex
-                      ml={3}
-                      alignItems={'center'}
+                    <MyTag
+                      colorSchema="purple"
+                      showDot
                       px={3}
-                      py={1}
-                      borderRadius="md"
-                      border={theme.borders.base}
+                      h={'36px'}
+                      DotStyles={{
+                        w: '8px',
+                        h: '8px',
+                        animation: 'zoomStopIcon 0.5s infinite alternate'
+                      }}
                     >
-                      <Box
-                        animation={'zoomStopIcon 0.5s infinite alternate'}
-                        bg={'myGray.700'}
-                        w="8px"
-                        h="8px"
-                        borderRadius={'50%'}
-                        mt={'1px'}
-                      ></Box>
-                      <Box ml={2} color={'myGray.600'}>
-                        {t('common:core.dataset.status.syncing')}
-                      </Box>
-                    </Flex>
+                      {t('common:core.dataset.status.syncing')}
+                    </MyTag>
                   )}
-                </Flex>
+                  {datasetDetail.status === DatasetStatusEnum.waiting && (
+                    <MyTag
+                      colorSchema="gray"
+                      showDot
+                      px={3}
+                      h={'36px'}
+                      DotStyles={{
+                        w: '8px',
+                        h: '8px',
+                        animation: 'zoomStopIcon 0.5s infinite alternate'
+                      }}
+                    >
+                      {t('common:core.dataset.status.waiting')}
+                    </MyTag>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.error && (
+                    <MyTag colorSchema="red" showDot px={3} h={'36px'}>
+                      <HStack spacing={1}>
+                        <Box>{t('dataset:status_error')}</Box>
+                        <QuestionTip color={'red.500'} label={datasetDetail.errorMsg} />
+                      </HStack>
+                    </MyTag>
+                  )}
+                </>
               ) : (
-                <Button onClick={onOpenWebsiteModal}>
+                <Button
+                  onClick={onOpenWebsiteModal}
+                  leftIcon={<Icon name="common/setting" w={'18px'} />}
+                >
                   {t('common:core.dataset.Set Website Config')}
                 </Button>
               )}

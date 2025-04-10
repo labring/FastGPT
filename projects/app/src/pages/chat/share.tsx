@@ -17,7 +17,7 @@ import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { connectToDatabase } from '@/service/mongo';
+
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -151,7 +151,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         data: {
           messages: histories,
           variables: {
@@ -192,7 +192,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChat.current };
     },
     [
       chatId,
@@ -251,7 +251,7 @@ const OutLink = (props: Props) => {
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
         {(!quoteData || isPc) && (
-          <PageContainer flex={'1 0 0'} w={0} isLoading={loading} p={'0 !important'}>
+          <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
 
@@ -391,7 +391,6 @@ export async function getServerSideProps(context: any) {
 
   const app = await (async () => {
     try {
-      await connectToDatabase();
       return MongoOutLink.findOne(
         {
           shareId

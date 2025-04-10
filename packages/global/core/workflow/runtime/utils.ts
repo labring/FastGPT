@@ -74,8 +74,10 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
 };
 
 export const initWorkflowEdgeStatus = (
+
   edges: StoreEdgeItemType[],
   lastInteractive?: WorkflowInteractiveResponseType | null
+
 ): RuntimeEdgeItemType[] => {
   if (!lastInteractive) {
     return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];

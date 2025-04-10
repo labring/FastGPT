@@ -29,9 +29,9 @@ import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/templ
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { postTextCensor } from '../../../../../common/api/requestPlusApi';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
+import { postTextCensor } from '../../../../chat/postTextCensor';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -176,7 +176,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     toolNodeOutputTokens,
     completeMessages = [], // The actual message sent to AI(just save text)
     assistantResponses = [], // FastGPT system store assistant.value response
-    runTimes
+    runTimes,
+    finish_reason
   } = await (async () => {
     const adaptMessages = chats2GPTMessages({
       messages,
@@ -276,7 +277,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         useVision
       ),
       toolDetail: childToolResponse,
-      mergeSignId: nodeId
+      mergeSignId: nodeId,
+      finishReason: finish_reason
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       // 工具调用本身的积分消耗

@@ -23,13 +23,20 @@ import {
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { TeamWritePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { TeamDatasetCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { addDays } from 'date-fns';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import {
+  removeWebsiteSyncJobScheduler,
+  upsertWebsiteSyncJobScheduler
+} from '@fastgpt/service/core/dataset/websiteSync';
+import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
+import { isEqual } from 'lodash';
 
 export type DatasetUpdateQuery = {};
 export type DatasetUpdateResponse = any;
@@ -62,8 +69,8 @@ async function handler(
     apiServer,
     yuqueServer,
     feishuServer,
-    status,
-    autoSync
+    autoSync,
+    chunkSettings
   } = req.body;
 
   if (!id) {
@@ -97,7 +104,7 @@ async function handler(
       await authUserPer({
         req,
         authToken: true,
-        per: TeamWritePermissionVal
+        per: TeamDatasetCreatePermissionVal
       });
     }
   } else {
@@ -114,6 +121,39 @@ async function handler(
   });
 
   const onUpdate = async (session: ClientSession) => {
+    // Website dataset update chunkSettings, need to clean up dataset
+    if (
+      dataset.type === DatasetTypeEnum.websiteDataset &&
+      chunkSettings &&
+      dataset.chunkSettings &&
+      !isEqual(
+        {
+          imageIndex: dataset.chunkSettings.imageIndex,
+          autoIndexes: dataset.chunkSettings.autoIndexes,
+          trainingType: dataset.chunkSettings.trainingType,
+          chunkSettingMode: dataset.chunkSettings.chunkSettingMode,
+          chunkSplitMode: dataset.chunkSettings.chunkSplitMode,
+          chunkSize: dataset.chunkSettings.chunkSize,
+          chunkSplitter: dataset.chunkSettings.chunkSplitter,
+          indexSize: dataset.chunkSettings.indexSize,
+          qaPrompt: dataset.chunkSettings.qaPrompt
+        },
+        {
+          imageIndex: chunkSettings.imageIndex,
+          autoIndexes: chunkSettings.autoIndexes,
+          trainingType: chunkSettings.trainingType,
+          chunkSettingMode: chunkSettings.chunkSettingMode,
+          chunkSplitMode: chunkSettings.chunkSplitMode,
+          chunkSize: chunkSettings.chunkSize,
+          chunkSplitter: chunkSettings.chunkSplitter,
+          indexSize: chunkSettings.indexSize,
+          qaPrompt: chunkSettings.qaPrompt
+        }
+      )
+    ) {
+      await delDatasetRelevantData({ datasets: [dataset], session });
+    }
+
     await MongoDataset.findByIdAndUpdate(
       id,
       {
@@ -123,7 +163,7 @@ async function handler(
         ...(agentModel && { agentModel }),
         ...(vlmModel && { vlmModel }),
         ...(websiteConfig && { websiteConfig }),
-        ...(status && { status }),
+        ...(chunkSettings && { chunkSettings }),
         ...(intro !== undefined && { intro }),
         ...(externalReadUrl !== undefined && { externalReadUrl }),
         ...(!!apiServer?.baseUrl && { 'apiServer.baseUrl': apiServer.baseUrl }),
@@ -143,8 +183,7 @@ async function handler(
       { session }
     );
     await updateSyncSchedule({
-      teamId: dataset.teamId,
-      datasetId: dataset._id,
+      dataset,
       autoSync,
       session
     });
@@ -221,45 +260,54 @@ const updateTraining = async ({
 };
 
 const updateSyncSchedule = async ({
-  teamId,
-  datasetId,
+  dataset,
   autoSync,
   session
 }: {
-  teamId: string;
-  datasetId: string;
+  dataset: DatasetSchemaType;
   autoSync?: boolean;
   session: ClientSession;
 }) => {
   if (typeof autoSync !== 'boolean') return;
 
   // Update all collection nextSyncTime
-  if (autoSync) {
-    await MongoDatasetCollection.updateMany(
-      {
-        teamId,
-        datasetId,
-        type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
-      },
-      {
-        $set: {
-          nextSyncTime: addDays(new Date(), 1)
-        }
-      },
-      { session }
-    );
+  if (dataset.type === DatasetTypeEnum.websiteDataset) {
+    if (autoSync) {
+      // upsert Job Scheduler
+      upsertWebsiteSyncJobScheduler({ datasetId: String(dataset._id) });
+    } else {
+      // remove Job Scheduler
+      removeWebsiteSyncJobScheduler(String(dataset._id));
+    }
   } else {
-    await MongoDatasetCollection.updateMany(
-      {
-        teamId,
-        datasetId
-      },
-      {
-        $unset: {
-          nextSyncTime: 1
-        }
-      },
-      { session }
-    );
+    // Other dataset, update the collection sync
+    if (autoSync) {
+      await MongoDatasetCollection.updateMany(
+        {
+          teamId: dataset.teamId,
+          datasetId: dataset._id,
+          type: { $in: [DatasetCollectionTypeEnum.apiFile, DatasetCollectionTypeEnum.link] }
+        },
+        {
+          $set: {
+            nextSyncTime: addDays(new Date(), 1)
+          }
+        },
+        { session }
+      );
+    } else {
+      await MongoDatasetCollection.updateMany(
+        {
+          teamId: dataset.teamId,
+          datasetId: dataset._id
+        },
+        {
+          $unset: {
+            nextSyncTime: 1
+          }
+        },
+        { session }
+      );
+    }
   }
 };

@@ -28,10 +28,11 @@ const setClearTmpUploadFilesCron = () => {
 };
 
 const clearInvalidDataCron = () => {
+  // Clear files
   setCron('0 */1 * * *', async () => {
     if (
       await checkTimerLock({
-        timerId: TimerIdEnum.checkInValidDatasetFiles,
+        timerId: TimerIdEnum.checkExpiredFiles,
         lockMinuted: 59
       })
     ) {
