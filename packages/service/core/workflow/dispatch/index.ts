@@ -634,6 +634,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       !props.isToolCall &&
       !props.runningAppInfo.isChildApp &&
       formatResponseData &&
+      // skip modules in filter list
       !(!props.responseAllData && filterModuleTypeList.includes(formatResponseData.moduleType))
     ) {
       props.workflowStreamResponse?.({
