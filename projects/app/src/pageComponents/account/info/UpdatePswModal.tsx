@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updatePasswordByOld } from '@/web/support/user/api';
-import { PasswordRule } from '@/web/support/user/login/constants';
+import { checkPasswordRule } from '@/web/support/user/login/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type FormType = {
@@ -70,9 +70,11 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
             placeholder={t('account_info:password_tip')}
             {...register('newPsw', {
               required: true,
-              pattern: {
-                value: PasswordRule,
-                message: t('account_info:password_tip')
+              validate: (val) => {
+                if (!checkPasswordRule(val)) {
+                  return t('login:password_tip');
+                }
+                return true;
               }
             })}
           ></Input>
