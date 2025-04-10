@@ -21,25 +21,24 @@ type InteractiveNodeType = {
   nodeOutputs?: NodeOutputItemType[];
 };
 
-export type UserSelectOptionItemType = {
-  key: string;
-  value: string;
-};
-type UserSelectParamsType = {
-  childrenResponse?: WorkflowInteractiveResponseType;
-  description: string;
-  userSelectOptions: UserSelectOptionItemType[];
-  userSelectedVal?: string;
-};
-type UserSelectInteractive = InteractiveNodeType & {
-  type: 'userSelect';
-  params: UserSelectParamsType;
-};
-
 type ChildrenInteractive = InteractiveNodeType & {
   type: 'childrenInteractive';
   params: {
     childrenResponse?: WorkflowInteractiveResponseType;
+  };
+};
+
+export type UserSelectOptionItemType = {
+  key: string;
+  value: string;
+};
+type UserSelectInteractive = InteractiveNodeType & {
+  type: 'userSelect';
+  params: {
+    childrenResponse?: WorkflowInteractiveResponseType;
+    description: string;
+    userSelectOptions: UserSelectOptionItemType[];
+    userSelectedVal?: string;
   };
 };
 
@@ -61,17 +60,16 @@ export type UserInputFormItemType = {
   // select
   list?: { label: string; value: string }[];
 };
-type UserInputParamsType = {
-  childrenResponse?: WorkflowInteractiveResponseType;
-  description: string;
-  inputForm: UserInputFormItemType[];
-  submitted?: boolean;
-};
 type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
-  params: UserInputParamsType;
+  params: {
+    childrenResponse?: WorkflowInteractiveResponseType;
+    description: string;
+    inputForm: UserInputFormItemType[];
+    submitted?: boolean;
+  };
 };
-export type InteractiveNodeParamsType = UserSelectParamsType | UserInputParamsType;
+
 export type InteractiveNodeResponseType =
   | UserSelectInteractive
   | UserInputInteractive
