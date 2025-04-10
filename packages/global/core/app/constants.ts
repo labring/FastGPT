@@ -53,7 +53,15 @@ export enum AppTemplateTypeEnum {
   imageGeneration = 'image-generation',
   webSearch = 'web-search',
   roleplay = 'roleplay',
-  officeServices = 'office-services'
+  officeServices = 'office-services',
+
+  // special type
+  contribute = 'contribute'
 }
 
 export const defaultDatasetMaxTokens = 16000;
+
+export enum AppGroupEnum {
+  teamApp = 'teamApp',
+  templateMarket = 'templateMarket'
+}
