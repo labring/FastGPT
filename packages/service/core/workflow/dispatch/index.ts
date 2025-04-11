@@ -459,9 +459,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
       nodeInteractiveResponse = {
         entryNodeIds: [nodeRunResult.node.nodeId],
-        interactiveResponse: {
-          ...interactiveResponse
-        }
+        interactiveResponse
       };
       return [];
     }
