@@ -21,17 +21,15 @@ export type TemplateAppType = AppTypeEnum | 'all';
 
 const TemplateList = ({
   templateList,
-  templateTags,
-  searchKey
+  templateTags
 }: {
   templateList: AppTemplateSchemaType[];
   templateTags: TemplateTypeSchemaType[];
-  searchKey: string;
 }) => {
   const { feConfigs } = useSystemStore();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const { parentId } = useContextSelector(AppListContext, (v) => v);
+  const { parentId, searchKey } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
   const { t } = useTranslation();
 

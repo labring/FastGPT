@@ -1,9 +1,14 @@
-import React, { ReactNode, useCallback, useEffect, useState } from 'react';
+import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
-import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type';
+import {
+  AppDetailType,
+  AppListItemType,
+  AppTemplateSchemaType,
+  TemplateTypeSchemaType
+} from '@fastgpt/global/core/app/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
   GetResourceFolderListProps,
@@ -12,17 +17,29 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppGroupEnum, AppTemplateTypeEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { getPluginGroups, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
+import { i18nT } from '@fastgpt/web/i18n/utils';
+import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
+import { TemplateAppType } from './TemplateList';
+
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
+
+const recommendTag: TemplateTypeSchemaType = {
+  typeId: AppTemplateTypeEnum.recommendation,
+  typeName: i18nT('app:templateMarket.templateTags.Recommendation'),
+  typeOrder: 0
+};
 
 type AppListContextType = {
   parentId?: string | null;
   appType: AppTypeEnum | 'all';
   myApps: AppListItemType[];
   loadMyApps: () => Promise<AppListItemType[]>;
-  isFetchingApps: boolean;
   folderDetail: AppDetailType | undefined | null;
   paths: ParentTreePathItemType[];
   onUpdateApp: (id: string, data: AppUpdateParams) => Promise<any>;
@@ -30,6 +47,15 @@ type AppListContextType = {
   refetchFolderDetail: () => Promise<AppDetailType | null>;
   searchKey: string;
   setSearchKey: React.Dispatch<React.SetStateAction<string>>;
+  sidebarWidth: number;
+  setSidebarWidth: React.Dispatch<React.SetStateAction<number>>;
+  pluginGroups: PluginGroupSchemaType[];
+  plugins: NodeTemplateListItemType[];
+  templateTags: TemplateTypeSchemaType[];
+  templateList: AppTemplateSchemaType[];
+  currentAppType: TemplateAppType;
+  setCurrentAppType: React.Dispatch<React.SetStateAction<TemplateAppType>>;
+  isLoading: boolean;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -38,7 +64,6 @@ export const AppListContext = createContext<AppListContextType>({
   loadMyApps: async function (): Promise<AppListItemType[]> {
     throw new Error('Function not implemented.');
   },
-  isFetchingApps: false,
   folderDetail: undefined,
   paths: [],
   onUpdateApp: function (id: string, data: AppUpdateParams): Promise<any> {
@@ -54,40 +79,94 @@ export const AppListContext = createContext<AppListContextType>({
   searchKey: '',
   setSearchKey: function (value: React.SetStateAction<string>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  sidebarWidth: 0,
+  setSidebarWidth: function (value: React.SetStateAction<number>): void {
+    throw new Error('Function not implemented.');
+  },
+  pluginGroups: [],
+  plugins: [],
+  templateTags: [],
+  templateList: [],
+  currentAppType: 'all',
+  setCurrentAppType: function (value: React.SetStateAction<TemplateAppType>): void {
+    throw new Error('Function not implemented.');
+  },
+  isLoading: false
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId = null, type = 'all' } = router.query as {
-    parentId?: string | null;
-    type: AppTypeEnum;
-  };
+
   const [searchKey, setSearchKey] = useState('');
+  const [sidebarWidth, setSidebarWidth] = useState(240);
+  const [currentAppType, setCurrentAppType] = useState<TemplateAppType>('all');
 
   const {
-    data = [],
+    selectedGroup,
+    selectedType = 'all',
+    parentId
+  } = useMemo(() => {
+    return {
+      selectedGroup: router.pathname.split('/').pop(),
+      selectedType: router.query.type as AppTypeEnum,
+      parentId: router.query.parentId as string | null
+    };
+  }, [router.pathname, router.query.type, router.query.parentId]);
+
+  const {
+    data: myApps = [],
     runAsync: loadMyApps,
     loading: isFetchingApps
   } = useRequest2(
     () => {
       const formatType = (() => {
-        if (!type || type === 'all') return undefined;
-        if (type === AppTypeEnum.plugin)
+        if (!selectedType || selectedType === 'all') return undefined;
+        if (selectedType === AppTypeEnum.plugin)
           return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
 
-        return [AppTypeEnum.folder, type];
+        return [AppTypeEnum.folder, selectedType];
       })();
       return getMyApps({ parentId, type: formatType, searchKey });
     },
     {
-      manual: false,
-      refreshDeps: [searchKey, parentId, type],
-      throttleWait: 500,
-      refreshOnWindowFocus: true
+      manual: selectedGroup !== AppGroupEnum.teamApps,
+      refreshDeps: [searchKey, parentId, selectedType],
+      throttleWait: 500
     }
   );
+
+  const { data: pluginGroups = [], loading: isLoadingPluginGroups } = useRequest2(getPluginGroups, {
+    manual: false
+  });
+  const { data: plugins = [], loading: isLoadingPlugins } = useRequest2(getSystemPlugTemplates, {
+    manual:
+      selectedGroup === AppGroupEnum.templateMarket || selectedGroup === AppGroupEnum.teamApps,
+    refreshDeps: [selectedGroup]
+  });
+
+  const { data: templateTags = [], loading: isLoadingTags } = useRequest2(
+    () => getTemplateTagList().then((res) => [recommendTag, ...res]),
+    {
+      manual: selectedGroup !== AppGroupEnum.templateMarket,
+      refreshDeps: [selectedGroup]
+    }
+  );
+  const { data: templateList = [], loading: isLoadingTemplates } = useRequest2(
+    () => getTemplateMarketItemList({ type: currentAppType }),
+    {
+      manual: selectedGroup !== AppGroupEnum.templateMarket,
+      refreshDeps: [selectedType, selectedGroup, currentAppType]
+    }
+  );
+
+  const isLoading =
+    isLoadingPluginGroups ||
+    isLoadingPlugins ||
+    isLoadingTags ||
+    isLoadingTemplates ||
+    isFetchingApps;
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
     () => getAppFolderPath({ sourceId: parentId, type: 'current' }),
@@ -140,22 +219,30 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { setLastAppListRouteType } = useSystemStore();
   useEffect(() => {
-    setLastAppListRouteType(type);
-  }, [setLastAppListRouteType, type]);
+    setLastAppListRouteType(selectedType);
+  }, [setLastAppListRouteType, selectedType]);
 
   const contextValue: AppListContextType = {
     parentId,
-    appType: type,
-    myApps: data,
+    appType: selectedType,
+    myApps,
     loadMyApps,
     refetchFolderDetail,
-    isFetchingApps,
     folderDetail,
     paths,
     onUpdateApp,
     setMoveAppId,
     searchKey,
-    setSearchKey
+    setSearchKey,
+    sidebarWidth,
+    setSidebarWidth,
+    pluginGroups,
+    plugins,
+    templateTags,
+    templateList,
+    isLoading,
+    currentAppType,
+    setCurrentAppType
   };
   return (
     <AppListContext.Provider value={contextValue}>

@@ -1,24 +1,32 @@
 import PluginCard from '@/pageComponents/toolkit/PluginCard';
-import { getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import { Grid } from '@chakra-ui/react';
+import { AppGroupEnum } from '@fastgpt/global/core/app/constants';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
-import { useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
+import { useMemo } from 'react';
+import { useContextSelector } from 'use-context-selector';
+import { AppListContext } from './context';
 
 const PluginList = ({
   plugins,
-  pluginGroups,
-  selectedGroup,
-  selectedType,
-  searchKey
+  pluginGroups
 }: {
   plugins: NodeTemplateListItemType[];
   pluginGroups: PluginGroupSchemaType[];
-  selectedGroup: string;
-  selectedType: string;
-  searchKey: string;
 }) => {
+  const { searchKey } = useContextSelector(AppListContext, (v) => v);
+  const router = useRouter();
+
+  const selectedGroup = useMemo(() => {
+    return router.pathname.split('/').pop() as AppGroupEnum;
+  }, [router.pathname]);
+
+  const selectedType = useMemo(() => {
+    return router.query.type as string;
+  }, [router.query.type]);
+
   const pluginGroupTypes = useMemo(() => {
     const allTypes = [
       {

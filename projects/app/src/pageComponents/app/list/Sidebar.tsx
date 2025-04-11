@@ -11,7 +11,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { AppGroupEnum, AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 
-export type GroupType = 'teamApp' | 'templateMarket' | string;
+export type GroupType = 'list' | 'templateMarket' | string;
 
 interface SidebarProps {
   groupList: {
@@ -20,8 +20,6 @@ interface SidebarProps {
     groupName: any;
   }[];
   groupItems: Record<GroupType, { typeId: string; typeName: string }[]>;
-  selectedGroup?: string;
-  selectedType?: string;
   onCloseSidebar: () => void;
   setSidebarWidth?: (width: number) => void;
   isLoading?: boolean;
@@ -30,8 +28,6 @@ interface SidebarProps {
 const Sidebar = ({
   groupList,
   groupItems,
-  selectedGroup = 'teamApp',
-  selectedType = 'all',
   onCloseSidebar,
   setSidebarWidth,
   isLoading
@@ -40,6 +36,14 @@ const Sidebar = ({
   const router = useRouter();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
+
+  const selectedGroup = useMemo(() => {
+    return router.pathname.split('/').pop() as AppGroupEnum;
+  }, [router.pathname]);
+
+  const selectedType = useMemo(() => {
+    return router.query.type as string;
+  }, [router.query.type]);
 
   const {
     width: sidebarWidth,
@@ -119,10 +123,13 @@ const Sidebar = ({
                 bg: 'primary.50'
               }}
               onClick={() => {
-                router.push({
+                router.replace({
+                  pathname: '/app/' + group.groupId,
                   query: {
-                    group: group.groupId,
-                    type: groupItems[group.groupId as GroupType]?.[0]?.typeId
+                    type:
+                      group.groupId === AppGroupEnum.templateMarket
+                        ? AppTemplateTypeEnum.recommendation
+                        : groupItems[group.groupId as GroupType]?.[0]?.typeId
                   }
                 });
                 onCloseSidebar();
@@ -169,7 +176,7 @@ const Sidebar = ({
                           window.open(feConfigs?.appTemplateCourse);
                         } else {
                           router.push({
-                            query: { group: selectedGroup, type: type.typeId }
+                            query: { type: type.typeId }
                           });
                           onCloseSidebar();
                         }
