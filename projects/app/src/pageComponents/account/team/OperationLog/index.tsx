@@ -43,13 +43,6 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     <>
       <Flex justify={'space-between'} align={'center'} pb={'1rem'}>
         {Tabs}
-        <Box w="200px">
-          <SearchInput
-            placeholder={t('account_team:search_log')}
-            value={searchKey}
-            onChange={(e) => setSearchKey(e.target.value)}
-          />
-        </Box>
       </Flex>
 
       <MyBox isLoading={isLoading} flex={'1 0 0'} overflow={'auto'}>
