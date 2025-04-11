@@ -139,7 +139,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Computed start hook params
     const startHookText = (() => {
       // Chat
-      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType | undefined;
+      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType;
       if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
 
       // plugin
@@ -245,16 +245,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
-
+    const interactive = getLastInteractiveValue(newHistories) || undefined;
     // Get runtimeNodes
-    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
       // Plugin runtime does not need global variables(It has been injected into the pluginInputNode)
       variables = {};
     }
-    runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
+    runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
@@ -288,9 +288,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges: initWorkflowEdgeStatus(edges, newHistories),
+          runtimeEdges: initWorkflowEdgeStatus(edges, interactive),
           variables,
           query: removeEmptyUserInput(userQuestion.value),
+          lastInteractive: interactive,
           chatConfig,
           histories: newHistories,
           stream,

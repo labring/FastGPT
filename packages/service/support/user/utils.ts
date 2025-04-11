@@ -104,8 +104,11 @@ export async function addSourceMember<T extends { tmbId: string }>({
       const tmb = tmbList.find((tmb) => String(tmb._id) === String(item.tmbId));
       if (!tmb) return;
 
+      // @ts-ignore
+      const formatItem = typeof item.toObject === 'function' ? item.toObject() : item;
+
       return {
-        ...item,
+        ...formatItem,
         sourceMember: { name: tmb.name, avatar: tmb.avatar, status: tmb.status }
       };
     })

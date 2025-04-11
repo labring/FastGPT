@@ -16,6 +16,7 @@ import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = {
   chatId: string;
@@ -209,34 +210,24 @@ export const updateInteractiveChat = async ({
     }
   })();
 
-  if (interactiveValue.interactive.type === 'userSelect') {
-    interactiveValue.interactive = {
-      ...interactiveValue.interactive,
-      params: {
-        ...interactiveValue.interactive.params,
-        userSelectedVal: userInteractiveVal
-      }
-    };
+  let finalInteractive = extractDeepestInteractive(interactiveValue.interactive);
+
+  if (finalInteractive.type === 'userSelect') {
+    finalInteractive.params.userSelectedVal = userInteractiveVal;
   } else if (
-    interactiveValue.interactive.type === 'userInput' &&
+    finalInteractive.type === 'userInput' &&
     typeof parsedUserInteractiveVal === 'object'
   ) {
-    interactiveValue.interactive = {
-      ...interactiveValue.interactive,
-      params: {
-        ...interactiveValue.interactive.params,
-        inputForm: interactiveValue.interactive.params.inputForm.map((item) => {
-          const itemValue = parsedUserInteractiveVal[item.label];
-          return itemValue !== undefined
-            ? {
-                ...item,
-                value: itemValue
-              }
-            : item;
-        }),
-        submitted: true
-      }
-    };
+    finalInteractive.params.inputForm = finalInteractive.params.inputForm.map((item) => {
+      const itemValue = parsedUserInteractiveVal[item.label];
+      return itemValue !== undefined
+        ? {
+            ...item,
+            value: itemValue
+          }
+        : item;
+    });
+    finalInteractive.params.submitted = true;
   }
 
   if (aiResponse.customFeedbacks) {

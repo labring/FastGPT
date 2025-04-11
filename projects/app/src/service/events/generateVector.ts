@@ -35,6 +35,8 @@ const reduceQueueAndReturn = (delay = 0) => {
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
+  addLog.debug(`[Vector Queue] Queue size: ${global.vectorQueueLen}`);
+
   if (global.vectorQueueLen >= max) return;
   global.vectorQueueLen++;
   const start = Date.now();
