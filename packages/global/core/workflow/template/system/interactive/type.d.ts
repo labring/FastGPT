@@ -35,7 +35,6 @@ export type UserSelectOptionItemType = {
 type UserSelectInteractive = InteractiveNodeType & {
   type: 'userSelect';
   params: {
-    childrenResponse?: WorkflowInteractiveResponseType;
     description: string;
     userSelectOptions: UserSelectOptionItemType[];
     userSelectedVal?: string;
@@ -63,7 +62,6 @@ export type UserInputFormItemType = {
 type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
   params: {
-    childrenResponse?: WorkflowInteractiveResponseType;
     description: string;
     inputForm: UserInputFormItemType[];
     submitted?: boolean;

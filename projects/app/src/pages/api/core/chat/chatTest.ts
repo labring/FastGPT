@@ -98,7 +98,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const isPlugin = app.type === AppTypeEnum.plugin;
 
-    const userQuestion: UserChatItemType = (() => {
+    const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
         return getPluginRunUserQuery({
           pluginInputs: getPluginInputsFromStoreNodes(app.modules),
@@ -107,9 +107,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
 
-      const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
+      const latestHumanChat = chatMessages.pop() as UserChatItemType;
       if (!latestHumanChat) {
-        throw new Error('User question is empty');
+        return Promise.reject('User question is empty');
       }
       return latestHumanChat;
     })();

@@ -46,7 +46,9 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   1. Get the interactive data
   2. Check that the workflow starts at the interaction node
 */
-export const getLastInteractiveValue = (histories: ChatItemType[]) => {
+export const getLastInteractiveValue = (
+  histories: ChatItemType[]
+): WorkflowInteractiveResponseType | undefined => {
   const lastAIMessage = [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI);
 
   if (lastAIMessage) {
@@ -57,7 +59,7 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
       lastValue.type !== ChatItemValueTypeEnum.interactive ||
       !lastValue.interactive
     ) {
-      return null;
+      return;
     }
 
     if (lastValue.interactive.type === 'childrenInteractive') {
@@ -78,7 +80,7 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
     }
   }
 
-  return null;
+  return;
 };
 
 export const initWorkflowEdgeStatus = (

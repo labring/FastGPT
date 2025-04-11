@@ -132,7 +132,8 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
           ]
         }
       ];
-      const lastInteractive = getLastInteractiveValue(mockHistory) || undefined;
+
+      const lastInteractive = getLastInteractiveValue(mockHistory);
       onNextNodeDebug({
         ...workflowDebugData,
         // Rewrite runtimeEdges

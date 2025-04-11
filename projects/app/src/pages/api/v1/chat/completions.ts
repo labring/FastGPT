@@ -139,7 +139,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Computed start hook params
     const startHookText = (() => {
       // Chat
-      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType | undefined;
+      const userQuestion = chatMessages[chatMessages.length - 1] as UserChatItemType;
       if (userQuestion) return chatValue2RuntimePrompt(userQuestion.value).text;
 
       // plugin

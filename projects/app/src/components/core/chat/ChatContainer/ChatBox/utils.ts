@@ -83,8 +83,10 @@ export const setUserSelectResultToHistories = (
         i !== item.value.length - 1 ||
         val.type !== ChatItemValueTypeEnum.interactive ||
         !val.interactive
-      )
+      ) {
         return val;
+      }
+
       const finalInteractive = extractDeepestInteractive(val.interactive);
       if (finalInteractive.type === 'userSelect') {
         return {
@@ -94,7 +96,7 @@ export const setUserSelectResultToHistories = (
             params: {
               ...finalInteractive.params,
               userSelectedVal: finalInteractive.params.userSelectOptions.find(
-                (item: { value: string }) => item.value === interactiveVal
+                (item) => item.value === interactiveVal
               )?.value
             }
           }
