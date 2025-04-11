@@ -815,6 +815,7 @@
   "core.workflow.inputType.input": "Single Line Input Box",
   "core.workflow.inputType.number input": "Number Input Box",
   "core.workflow.inputType.select": "Single Select Box",
+  "core.workflow.inputType.selectMulti": "Multi Select Box",
   "core.workflow.inputType.selectApp": "App Select",
   "core.workflow.inputType.selectDataset": "Dataset Select",
   "core.workflow.inputType.selectLLMModel": "Chat Model Select",
