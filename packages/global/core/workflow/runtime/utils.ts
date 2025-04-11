@@ -101,7 +101,7 @@ export const getWorkflowEntryNodeIds = (
 ) => {
   if (lastInteractive) {
     const entryNodeIds = lastInteractive.entryNodeIds || [];
-    if (entryNodeIds && entryNodeIds.length > 0) {
+    if (Array.isArray(entryNodeIds) && entryNodeIds.length > 0) {
       return entryNodeIds;
     }
   }
