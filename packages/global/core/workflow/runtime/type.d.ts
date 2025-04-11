@@ -23,7 +23,7 @@ import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
 import { CompletionFinishReason } from '../../ai/type';
-
+import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;

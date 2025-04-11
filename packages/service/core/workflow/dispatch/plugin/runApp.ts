@@ -44,7 +44,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     params,
     variables
   } = props;
-  const isRecovery = !!lastInteractive?.params?.childrenResponse;
 
   const {
     system_forbid_stream = false,
@@ -103,16 +102,30 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     histories: chatHistories,
     appId: String(appData._id)
   };
-  const runtimeNodes = isRecovery
-      ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive))
-      : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-    runtimeEdges = isRecovery
-      ? initWorkflowEdgeStatus(edges, lastInteractive)
-      : initWorkflowEdgeStatus(edges);
+  const { isRecovery, runtimeNodes, runtimeEdges, theQuery } = (() => {
+    const isRecovery = lastInteractive?.params?.childrenResponse;
+
+    return {
+      isRecovery,
+      runtimeNodes: isRecovery
+        ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive))
+        : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+      runtimeEdges: isRecovery
+        ? initWorkflowEdgeStatus(edges, lastInteractive)
+        : initWorkflowEdgeStatus(edges),
+      theQuery: isRecovery
+        ? query
+        : runtimePrompt2ChatsValue({
+            files: userInputFiles,
+            text: userChatInput
+          })
+    };
+  })();
 
   const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
     await dispatchWorkFlow({
       ...props,
+      lastInteractive: isRecovery,
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {
@@ -130,12 +143,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       runtimeEdges,
       histories: chatHistories,
       variables: childrenRunVariables,
-      query: isRecovery
-        ? query
-        : runtimePrompt2ChatsValue({
-            files: userInputFiles,
-            text: userChatInput
-          }),
+      query: theQuery,
       chatConfig
     });
 
