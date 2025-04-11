@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { YuqueServer, APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
-import { getFeishuAndYuqueDatasetFileList } from '@/service/core/dataset/apiDataset/controller';
+import { getProApiDatasetFileListRequest } from '@/service/core/dataset/apiDataset/controller';
 import { NextApiRequest } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -12,7 +12,7 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
 
   try {
     console.log('yuqueServer', yuqueServer);
-    const allRepos = await getFeishuAndYuqueDatasetFileList({
+    const allRepos = await getProApiDatasetFileListRequest({
       yuqueServer: {
         userId: yuqueServer.userId,
         token: yuqueServer.token,
@@ -35,7 +35,7 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
         return false;
       }
 
-      const folderFiles = await getFeishuAndYuqueDatasetFileList({
+      const folderFiles = await getProApiDatasetFileListRequest({
         yuqueServer: {
           userId: yuqueServer.userId,
           token: yuqueServer.token,
@@ -74,7 +74,7 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
     };
 
     for (const repo of allRepos) {
-      filesByFolder[repo.id] = await getFeishuAndYuqueDatasetFileList({
+      filesByFolder[repo.id] = await getProApiDatasetFileListRequest({
         yuqueServer: {
           userId: yuqueServer.userId,
           token: yuqueServer.token,

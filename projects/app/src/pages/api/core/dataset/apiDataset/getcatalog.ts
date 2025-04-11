@@ -1,4 +1,4 @@
-import { getFeishuAndYuqueDatasetFileList } from '@/service/core/dataset/apiDataset/controller';
+import { getProApiDatasetFileListRequest } from '@/service/core/dataset/apiDataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -33,7 +33,7 @@ async function handler(req: NextApiRequest) {
     }
     if (feishuServer || yuqueServer) {
       console.log('1111', yuqueServer);
-      return getFeishuAndYuqueDatasetFileList({
+      return getProApiDatasetFileListRequest({
         feishuServer,
         yuqueServer,
         parentId
