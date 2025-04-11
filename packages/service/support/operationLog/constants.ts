@@ -1,58 +1,55 @@
-import {
-  loginTemplate,
-  createInvitationLinkTemplate,
-  joinTeamTemplate,
-  changeMemberNameTemplate,
-  kickOutTeamTemplate,
-  createDepartmentTemplate,
-  changeDepartmentNameTemplate,
-  deleteDepartmentTemplate,
-  relocateDepartmentTemplate,
-  createGroupTemplate,
-  deleteGroupTemplate,
-  assignPermissionTemplate
-} from './templates/operationLogTemplates';
-
 import { operationLogTemplateCodeEnum } from '@fastgpt/global/support/operationLog/constants';
 
-const OperationLogTemplateMap = {
+export const operationLogI18nMap = {
   [operationLogTemplateCodeEnum.LOGIN]: {
-    getTemplate: loginTemplate
+    content: 'account_team:log_login',
+    type: 'account_team:login'
   },
   [operationLogTemplateCodeEnum.CREATE_INVITATION_LINK]: {
-    getTemplate: createInvitationLinkTemplate
+    content: 'account_team:log_create_invitation_link',
+    type: 'account_team:create_invitation_link'
   },
   [operationLogTemplateCodeEnum.JOIN_TEAM]: {
-    getTemplate: joinTeamTemplate
+    content: 'account_team:log_join_team',
+    type: 'account_team:join_team'
   },
   [operationLogTemplateCodeEnum.CHANGE_MEMBER_NAME]: {
-    getTemplate: changeMemberNameTemplate
+    content: 'account_team:log_change_member_name',
+    type: 'account_team:change_member_name'
   },
   [operationLogTemplateCodeEnum.KICK_OUT_TEAM]: {
-    getTemplate: kickOutTeamTemplate
+    content: 'account_team:log_kick_out_team',
+    type: 'account_team:kick_out_team'
   },
   [operationLogTemplateCodeEnum.CREATE_DEPARTMENT]: {
-    getTemplate: createDepartmentTemplate
+    content: 'account_team:log_create_department',
+    type: 'account_team:create_department'
   },
   [operationLogTemplateCodeEnum.CHANGE_DEPARTMENT]: {
-    getTemplate: changeDepartmentNameTemplate
+    content: 'account_team:log_change_department',
+    type: 'account_team:change_department_name'
   },
   [operationLogTemplateCodeEnum.DELETE_DEPARTMENT]: {
-    getTemplate: deleteDepartmentTemplate
+    content: 'account_team:log_delete_department',
+    type: 'account_team:delete_department'
   },
   [operationLogTemplateCodeEnum.RELOCATE_DEPARTMENT]: {
-    getTemplate: relocateDepartmentTemplate
+    content: 'account_team:log_relocate_department',
+    type: 'account_team:relocate_department'
   },
   [operationLogTemplateCodeEnum.CREATE_GROUP]: {
-    getTemplate: createGroupTemplate
+    content: 'account_team:log_create_group',
+    type: 'account_team:create_group'
   },
   [operationLogTemplateCodeEnum.DELETE_GROUP]: {
-    getTemplate: deleteGroupTemplate
+    content: 'account_team:log_delete_group',
+    type: 'account_team:delete_group'
   },
   [operationLogTemplateCodeEnum.ASSIGN_PERMISSION]: {
-    getTemplate: assignPermissionTemplate
+    content: 'account_team:log_assign_permission',
+    type: 'account_team:assign_permission'
   }
-};
+} as const;
 
 export type TemplateParamsMap = {
   [operationLogTemplateCodeEnum.LOGIN]: { name?: string };
@@ -85,12 +82,3 @@ export type TemplateParamsMap = {
     permission: string;
   };
 };
-
-export function getoperationLogTemplate<T extends operationLogTemplateCodeEnum>(
-  code: T,
-  params: TemplateParamsMap[T]
-): { operationLog: string } {
-  const template = OperationLogTemplateMap[code].getTemplate;
-
-  return template(params as any);
-}

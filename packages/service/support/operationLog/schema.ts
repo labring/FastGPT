@@ -1,6 +1,6 @@
 import { connectionLogMongo, getMongoModel } from '../../common/mongo';
 const { Schema, model, models } = connectionLogMongo;
-import type { operationLogSchema } from '@fastgpt/global/support/operationLog/type';
+import type { OperationLogSchema } from '@fastgpt/global/support/operationLog/type';
 import { operationLogTemplateCodeEnum } from '@fastgpt/global/support/operationLog/constants';
 import {
   TeamCollectionName,
@@ -35,7 +35,7 @@ const OperationLogSchema = new Schema({
   }
 });
 
-export const MongoOperationLog = getMongoModel<operationLogSchema>(
+export const MongoOperationLog = getMongoModel<OperationLogSchema>(
   OperationLogCollectionName,
   OperationLogSchema
 );

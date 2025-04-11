@@ -19,70 +19,25 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
-import { operationLogType } from '@fastgpt/global/support/operationLog/type';
+import { OperationLogType } from '@fastgpt/global/support/operationLog/type';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
+import { operationLogI18nMap } from '@fastgpt/service/support/operationLog/constants';
+import { operationLogTemplateCodeEnum } from '@fastgpt/global/support/operationLog/constants';
 
 function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
-
-  const parsePermissionValueToText = (value: string | number) => {
-    try {
-      const numValue = typeof value === 'string' ? parseInt(value, 10) : value;
-      const permission = new TeamPermission({ per: numValue });
-
-      const hasAppCreatePer = `${t('account_team:permission_appCreate')}${permission.hasAppCreatePer ? '✔' : '✘'}`;
-      const hasDatasetCreatePer = `${t('account_team:permission_datasetCreate')}${permission.hasDatasetCreatePer ? '✔' : '✘'}`;
-      const hasApikeyCreatePer = `${t('account_team:permission_apikeyCreate')}${permission.hasApikeyCreatePer ? '✔' : '✘'}`;
-      const hasManagePer = `${t('account_team:permission_manage')}${permission.hasManagePer ? '✔' : '✘'}`;
-
-      return `[${hasAppCreatePer}, ${hasDatasetCreatePer}, ${hasApikeyCreatePer}, ${hasManagePer}]`;
-    } catch (e) {
-      return String(value);
-    }
-  };
-
-  const renderLogContent = (text: string) => {
-    return text.split(/(\*\*\d+\*\*)/g).map((part, index) => {
-      const isPermissionValue = /^\*\*\d+\*\*$/.test(part);
-
-      if (isPermissionValue) {
-        const rawValue = part.slice(2, -2);
-        return (
-          <Box as="span" key={index} fontWeight="bold">
-            {parsePermissionValueToText(rawValue)}
-          </Box>
-        );
-      }
-      return part;
-    });
-  };
 
   const [searchKey, setSearchKey] = useState<string>('');
   const {
     data: operationLogs = [],
     isLoading: loadingLogs,
     ScrollData: LogScrollData
-  } = useScrollPagination<any, PaginationResponse<operationLogType>>(getOperationLogs, {
+  } = useScrollPagination<any, PaginationResponse<OperationLogType>>(getOperationLogs, {
     pageSize: 20,
-    refreshDeps: [searchKey, status],
+    refreshDeps: [searchKey],
     throttleWait: 500,
     debounceWait: 200
   });
-
-  const operationLogEventMap: Record<string, string> = {
-    LOGIN: t('account_team:login'),
-    CREATE_INVITATION_LINK: t('account_team:create_invitation_link'),
-    JOIN_TEAM: t('account_team:join_team'),
-    CHANGE_MEMBER_NAME: t('account_team:change_member_name'),
-    KICK_OUT_TEAM: t('account_team:kick_out_team'),
-    CREATE_DEPARTMENT: t('account_team:create_department'),
-    CHANGE_DEPARTMENT: t('account_team:change_department_name'),
-    DELETE_DEPARTMENT: t('account_team:delete_department'),
-    RELOCATE_DEPARTMENT: t('account_team:relocate_department'),
-    CREATE_GROUP: t('account_team:create_group'),
-    DELETE_GROUP: t('account_team:delete_group'),
-    ASSIGN_PERMISSION: t('account_team:assign_permission')
-  };
 
   const isLoading = loadingLogs;
 
@@ -114,18 +69,29 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
                 </Tr>
               </Thead>
               <Tbody>
-                {operationLogs?.map((log) => (
-                  <Tr key={log._id} overflow={'unset'}>
-                    <Td>{log.name}</Td>
-                    <Td>{new Date(log.timestamp).toLocaleString()}</Td>
-                    <Td>{operationLogEventMap[log.event] || log.event}</Td>
-                    <Td>
-                      {log.event === 'ASSIGN_PERMISSION'
-                        ? renderLogContent(log.operationLog)
-                        : log.operationLog}
-                    </Td>
-                  </Tr>
-                ))}
+                {operationLogs?.map((log) => {
+                  const i18nData = operationLogI18nMap[log.event];
+                  const metadata = { ...log.metadata };
+
+                  if (log.event === operationLogTemplateCodeEnum.ASSIGN_PERMISSION) {
+                    const permissionValue = parseInt(metadata.permission, 10);
+
+                    const permission = new TeamPermission({ per: permissionValue });
+                    metadata.appCreate = permission.hasAppCreatePer ? '✔' : '✘';
+                    metadata.datasetCreate = permission.hasDatasetCreatePer ? '✔' : '✘';
+                    metadata.apiKeyCreate = permission.hasApikeyCreatePer ? '✔' : '✘';
+                    metadata.manage = permission.hasManagePer ? '✔' : '✘';
+                  }
+
+                  return (
+                    <Tr key={log._id} overflow={'unset'}>
+                      <Td>{log.name}</Td>
+                      <Td>{new Date(log.timestamp).toLocaleString()}</Td>
+                      <Td>{t(i18nData.type)}</Td>
+                      <Td>{t(i18nData.content, metadata as any) as string}</Td>
+                    </Tr>
+                  );
+                })}
               </Tbody>
             </Table>
           </TableContainer>

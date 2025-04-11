@@ -85,5 +85,17 @@
   "permission_datasetCreate_Tip": "Can create knowledge bases in the root directory (creation permissions in folders are controlled by the folder)",
   "permission_apikeyCreate_Tip": "Can create global APIKeys",
   "permission_manage": "Admin",
-  "permission_manage_tip": "Can manage members, create groups, manage all groups, and assign permissions to groups and members"
+  "permission_manage_tip": "Can manage members, create groups, manage all groups, and assign permissions to groups and members",
+  "log_login": "{{name}} logged in",
+  "log_create_invitation_link": "{{name}} created invitation link: {{link}}",
+  "log_join_team": "{{name}} joined the team via invitation link {{link}}",
+  "log_change_member_name": "{{name}} renamed member from {{memberName}} to {{newName}}",
+  "log_kick_out_team": "{{name}} removed member {{memberName}}",
+  "log_create_department": "{{name}} created department {{departmentName}}",
+  "log_change_department": "{{name}} updated department {{departmentName}}",
+  "log_delete_department": "{{name}} deleted department {{departmentName}}",
+  "log_relocate_department": "{{name}} moved department {{departmentName}}",
+  "log_create_group": "{{name}} created group {{groupName}}",
+  "log_delete_group": "{{name}} deleted group {{groupName}}",
+  "log_assign_permission": "{{name}} updated permissions for {{objectName}}: [App Create: {{appCreate}}, Dataset Create: {{datasetCreate}}, API Key: {{apiKeyCreate}}, Management: {{manage}}]"
 }
