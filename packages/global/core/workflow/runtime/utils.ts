@@ -403,11 +403,10 @@ export const textAdaptGptResponse = ({
 
 /* Update runtimeNode's outputs with interactive data from history */
 export function rewriteNodeOutputByHistories(
-  histories: ChatItemType[],
   runtimeNodes: RuntimeNodeItemType[],
   lastInteractive?: InteractiveNodeResponseType
 ) {
-  const interactive = lastInteractive || getLastInteractiveValue(histories);
+  const interactive = lastInteractive;
   if (!interactive?.nodeOutputs) {
     return runtimeNodes;
   }

@@ -143,7 +143,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
       variables = {};
     }
-    runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
+    runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,

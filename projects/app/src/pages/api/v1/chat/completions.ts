@@ -255,7 +255,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       // Plugin runtime does not need global variables(It has been injected into the pluginInputNode)
       variables = {};
     }
-    runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
+    runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
