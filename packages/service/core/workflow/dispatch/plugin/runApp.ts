@@ -103,7 +103,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     appId: String(appData._id)
   };
 
-  const childrenInteractive = lastInteractive?.params?.childrenResponse;
+  const childrenInteractive =
+    lastInteractive?.type === 'childrenInteractive'
+      ? lastInteractive.params.childrenResponse
+      : undefined;
   const entryNodeIds = getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined);
   const runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
   const runtimeEdges = initWorkflowEdgeStatus(edges, childrenInteractive);
