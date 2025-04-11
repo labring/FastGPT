@@ -1,4 +1,5 @@
 name: Build FastGPT images
+
 on:
   workflow_dispatch:
   push:
@@ -7,6 +8,7 @@ on:
       - "packages/**"
     tags:
       - "v*"
+
 jobs:
   build-fastgpt-images:
     permissions:
@@ -24,14 +26,11 @@ jobs:
     steps:
       # install env
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Install Dependencies
-        run: |
-          sudo apt update && sudo apt install -y nodejs npm
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
       - name: Cache Docker layers
@@ -71,7 +70,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt image
-          outputs: type=image,name=ghcr.io/${{ github.repository_owner }},push-by-digest=true,push=true
+          outputs: type=image,name="ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -124,7 +123,7 @@ jobs:
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Set image name and tag
         run: |
@@ -166,14 +165,11 @@ jobs:
     steps:
       # install env
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Install Dependencies
-        run: |
-          sudo apt update && sudo apt install -y nodejs npm
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
       - name: Cache Docker layers
@@ -215,7 +211,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt image
-          outputs: type=image,name=ghcr.io/${{ github.repository_owner }},push-by-digest=true,push=true
+          outputs: type=image,name="ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -268,7 +264,7 @@ jobs:
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Set image name and tag
         run: |
@@ -310,14 +306,11 @@ jobs:
     steps:
       # install env
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 1
-      - name: Install Dependencies
-        run: |
-          sudo apt update && sudo apt install -y nodejs npm
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
         with:
           driver-opts: network=host
       - name: Cache Docker layers
@@ -359,7 +352,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt-sub-route-gchat image
-          outputs: type=image,name=ghcr.io/${{ github.repository_owner }},push-by-digest=true,push=true
+          outputs: type=image,name="ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -412,7 +405,7 @@ jobs:
           merge-multiple: true
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Set image name and tag
         run: |
