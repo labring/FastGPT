@@ -33,6 +33,16 @@ const reduceQueue = () => {
 
   return global.qaQueueLen === 0;
 };
+const reduceQueueAndReturn = (delay = 0) => {
+  reduceQueue();
+  if (delay) {
+    setTimeout(() => {
+      generateQA();
+    }, delay);
+  } else {
+    generateQA();
+  }
+};
 
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
@@ -100,14 +110,12 @@ export async function generateQA(): Promise<any> {
     return;
   }
   if (error) {
-    reduceQueue();
-    return generateQA();
+    return reduceQueueAndReturn();
   }
 
   // auth balance
   if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-    reduceQueue();
-    return generateQA();
+    return reduceQueueAndReturn();
   }
   addLog.info(`[QA Queue] Start`);
 
@@ -170,8 +178,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       usage: chatResponse.usage
     });
 
-    reduceQueue();
-    generateQA();
+    return reduceQueueAndReturn();
   } catch (err: any) {
     addLog.error(`[QA Queue] Error`, err);
     await MongoDatasetTraining.updateOne(
@@ -185,9 +192,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       }
     );
 
-    setTimeout(() => {
-      generateQA();
-    }, 1000);
+    return reduceQueueAndReturn(1000);
   }
 }
 
