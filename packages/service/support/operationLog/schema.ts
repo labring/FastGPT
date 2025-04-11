@@ -1,7 +1,6 @@
-import { connectionLogMongo, getMongoModel } from '../../common/mongo';
-const { Schema, model, models } = connectionLogMongo;
+import { Schema, getMongoLogModel } from '../../common/mongo';
 import type { OperationLogSchema } from '@fastgpt/global/support/operationLog/type';
-import { operationLogTemplateCodeEnum } from '@fastgpt/global/support/operationLog/constants';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -26,7 +25,7 @@ const OperationLogSchema = new Schema({
   },
   event: {
     type: String,
-    enum: Object.keys(operationLogTemplateCodeEnum),
+    enum: Object.values(OperationLogEventEnum),
     required: true
   },
   metadata: {
@@ -35,7 +34,7 @@ const OperationLogSchema = new Schema({
   }
 });
 
-export const MongoOperationLog = getMongoModel<OperationLogSchema>(
+export const MongoOperationLog = getMongoLogModel<OperationLogSchema>(
   OperationLogCollectionName,
   OperationLogSchema
 );

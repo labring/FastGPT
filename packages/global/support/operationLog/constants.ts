@@ -1,4 +1,4 @@
-export enum operationLogTemplateCodeEnum {
+export enum OperationLogEventEnum {
   LOGIN = 'LOGIN',
   CREATE_INVITATION_LINK = 'CREATE_INVITATION_LINK',
   JOIN_TEAM = 'JOIN_TEAM',

@@ -1,4 +1,3 @@
-import AvatarGroup from '@fastgpt/web/components/common/Avatar/AvatarGroup';
 import {
   Box,
   Button,
@@ -9,20 +8,19 @@ import {
   Td,
   Th,
   Thead,
-  Tr,
-  useDisclosure
+  Tr
 } from '@chakra-ui/react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
-import { OperationLogType } from '@fastgpt/global/support/operationLog/type';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { operationLogI18nMap } from '@fastgpt/service/support/operationLog/constants';
-import { operationLogTemplateCodeEnum } from '@fastgpt/global/support/operationLog/constants';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+import UserBox from '@fastgpt/web/components/common/UserBox';
 
 function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
@@ -32,7 +30,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     data: operationLogs = [],
     isLoading: loadingLogs,
     ScrollData: LogScrollData
-  } = useScrollPagination<any, PaginationResponse<OperationLogType>>(getOperationLogs, {
+  } = useScrollPagination(getOperationLogs, {
     pageSize: 20,
     refreshDeps: [searchKey],
     throttleWait: 500,
@@ -73,7 +71,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
                   const i18nData = operationLogI18nMap[log.event];
                   const metadata = { ...log.metadata };
 
-                  if (log.event === operationLogTemplateCodeEnum.ASSIGN_PERMISSION) {
+                  if (log.event === OperationLogEventEnum.ASSIGN_PERMISSION) {
                     const permissionValue = parseInt(metadata.permission, 10);
 
                     const permission = new TeamPermission({ per: permissionValue });
@@ -83,14 +81,21 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
                     metadata.manage = permission.hasManagePer ? '✔' : '✘';
                   }
 
-                  return (
+                  return i18nData ? (
                     <Tr key={log._id} overflow={'unset'}>
-                      <Td>{log.name}</Td>
-                      <Td>{new Date(log.timestamp).toLocaleString()}</Td>
+                      <Td>
+                        <UserBox
+                          sourceMember={log.sourceMember}
+                          fontSize="sm"
+                          avatarSize="1rem"
+                          spacing={0.5}
+                        />
+                      </Td>
+                      <Td>{formatTime2YMDHMS(log.timestamp)}</Td>
                       <Td>{t(i18nData.typeLabel)}</Td>
                       <Td>{t(i18nData.content, metadata as any) as string}</Td>
                     </Tr>
-                  );
+                  ) : null;
                 })}
               </Tbody>
             </Table>

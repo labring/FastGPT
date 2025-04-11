@@ -1,19 +1,19 @@
-import { operationLogTemplateCodeEnum } from './constants';
+import { SourceMemberType } from '../user/type';
+import { OperationLogEventEnum } from './constants';
 
 export type OperationLogSchema = {
   _id: string;
   tmbId: string;
   teamId: string;
   timestamp: Date;
-  event: `${operationLogTemplateCodeEnum}`;
+  event: `${OperationLogEventEnum}`;
   metadata?: Record<string, string>;
 };
 
-export type OperationLogType = {
+export type OperationListItemType = {
   _id: string;
-  name: string;
-  operationLog: string;
+  sourceMember: SourceMemberType;
+  event: `${OperationLogEventEnum}`;
   timestamp: Date;
-  event: `${operationLogTemplateCodeEnum}`;
   metadata: Record<string, string>;
 };
