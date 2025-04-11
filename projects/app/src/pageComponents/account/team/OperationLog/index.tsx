@@ -87,7 +87,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
                     <Tr key={log._id} overflow={'unset'}>
                       <Td>{log.name}</Td>
                       <Td>{new Date(log.timestamp).toLocaleString()}</Td>
-                      <Td>{t(i18nData.type)}</Td>
+                      <Td>{t(i18nData.typeLabel)}</Td>
                       <Td>{t(i18nData.content, metadata as any) as string}</Td>
                     </Tr>
                   );
