@@ -6,6 +6,7 @@ import {
 import { ChatBoxInputType, UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 
 export const formatChatValue2InputType = (value?: ChatItemValueItemType[]): ChatBoxInputType => {
   if (!value) {
@@ -84,13 +85,6 @@ export const setUserSelectResultToHistories = (
         !val.interactive
       )
         return val;
-      // todo: 支持
-      const extractDeepestInteractive = (interactive: any): any => {
-        if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
-          return extractDeepestInteractive(interactive.params.childrenResponse);
-        }
-        return interactive;
-      };
       const finalInteractive = extractDeepestInteractive(val.interactive);
       if (finalInteractive.type === 'userSelect') {
         return {

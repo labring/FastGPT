@@ -15,6 +15,14 @@ import {
   WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
 
+export const extractDeepestInteractive = (
+  interactive: WorkflowInteractiveResponseType
+): WorkflowInteractiveResponseType => {
+  if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
+    return extractDeepestInteractive(interactive.params.childrenResponse);
+  }
+  return interactive;
+};
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
   nodes.forEach((node) => {

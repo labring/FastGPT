@@ -28,6 +28,7 @@ import { isEqual } from 'lodash';
 import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
+import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -245,12 +246,6 @@ const AIResponseBox = ({
     return <RenderTool showAnimation={isChatting} tools={value.tools} />;
   }
   if (value.type === ChatItemValueTypeEnum.interactive && value.interactive) {
-    const extractDeepestInteractive = (interactive: any): any => {
-      if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
-        return extractDeepestInteractive(interactive.params.childrenResponse);
-      }
-      return interactive;
-    };
     const finalInteractive = extractDeepestInteractive(value.interactive);
     if (finalInteractive.type === 'userSelect') {
       return <RenderUserSelectInteractive interactive={finalInteractive} />;
