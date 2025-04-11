@@ -12,7 +12,6 @@ export type GetApiDatasetFileListProps = {
   searchKey?: string;
   parentId?: ParentIdType;
   datasetId: string;
-  needbottomfile?: boolean;
 };
 
 export type GetApiDatasetFileListResponse = APIFileItem[];
@@ -39,8 +38,7 @@ async function handler(req: NextApiRequest) {
     return getFeishuAndYuqueDatasetFileList({
       feishuServer,
       yuqueServer,
-      parentId,
-      needbottomfile
+      parentId
     });
   }
 
