@@ -102,18 +102,18 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     histories: chatHistories,
     appId: String(appData._id)
   };
-  const { isRecovery, runtimeNodes, runtimeEdges, theQuery } = (() => {
-    const isRecovery = lastInteractive?.params?.childrenResponse;
+  const { childrenInteractive, runtimeNodes, runtimeEdges, theQuery } = (() => {
+    const childrenInteractive = lastInteractive?.params?.childrenResponse;
 
     return {
-      isRecovery,
-      runtimeNodes: isRecovery
-        ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, isRecovery))
+      childrenInteractive,
+      runtimeNodes: childrenInteractive
+        ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, childrenInteractive))
         : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      runtimeEdges: isRecovery
-        ? initWorkflowEdgeStatus(edges, isRecovery)
+      runtimeEdges: childrenInteractive
+        ? initWorkflowEdgeStatus(edges, childrenInteractive)
         : initWorkflowEdgeStatus(edges),
-      theQuery: isRecovery
+      theQuery: childrenInteractive
         ? query
         : runtimePrompt2ChatsValue({
             files: userInputFiles,
@@ -125,7 +125,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
     await dispatchWorkFlow({
       ...props,
-      lastInteractive: isRecovery,
+      lastInteractive: childrenInteractive,
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {
