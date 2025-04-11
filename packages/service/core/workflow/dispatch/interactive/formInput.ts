@@ -29,13 +29,13 @@ export const dispatchFormInput = async (props: Props): Promise<FormInputResponse
     histories,
     node,
     params: { description, userInputForms },
-    query
+    query,
+    lastInteractive
   } = props;
   const { isEntry } = node;
-  const interactive = getLastInteractiveValue(histories);
 
   // Interactive node is not the entry node, return interactive result
-  if (!isEntry || !interactive?.type) {
+  if (!isEntry || !lastInteractive?.type) {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userInput',

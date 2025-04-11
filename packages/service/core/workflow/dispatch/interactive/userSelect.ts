@@ -27,13 +27,13 @@ export const dispatchUserSelect = async (props: Props): Promise<UserSelectRespon
     histories,
     node,
     params: { description, userSelectOptions },
-    query
+    query,
+    lastInteractive
   } = props;
   const { nodeId, isEntry } = node;
-  const interactive = getLastInteractiveValue(histories);
 
   // Interactive node is not the entry node, return interactive result
-  if (!isEntry || !interactive?.type) {
+  if (!isEntry || !lastInteractive?.type) {
     return {
       [DispatchNodeResponseKeyEnum.interactive]: {
         type: 'userSelect',
