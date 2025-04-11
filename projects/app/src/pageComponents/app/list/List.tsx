@@ -37,6 +37,7 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { StudioContext } from '../context';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -51,8 +52,11 @@ const ListItem = () => {
     content: t('app:move.hint')
   });
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } =
-    useContextSelector(AppListContext, (v) => v);
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
+    AppListContext,
+    (v) => v
+  );
+  const { setSearchKey } = useContextSelector(StudioContext, (v) => v);
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();

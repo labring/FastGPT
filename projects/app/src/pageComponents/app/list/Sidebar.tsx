@@ -13,15 +13,13 @@ import { AppGroupEnum, AppTemplateTypeEnum } from '@fastgpt/global/core/app/cons
 import { useContextSelector } from 'use-context-selector';
 import { StudioContext } from '../context';
 
-export type GroupType = 'list' | 'templateMarket' | string;
-
 interface SidebarProps {
   groupList: {
     groupId: string;
     groupAvatar: string;
     groupName: any;
   }[];
-  groupItems: Record<GroupType, { typeId: string; typeName: string }[]>;
+  groupItems: Record<AppGroupEnum, { typeId: string; typeName: string }[]>;
   onCloseSidebar: () => void;
   setSidebarWidth?: (width: number) => void;
   isLoading?: boolean;
@@ -84,6 +82,31 @@ const Sidebar = ({
     }
   };
 
+  const handleGroupClick = (group: (typeof groupList)[0]) => {
+    const isPluginGroup = pluginGroups.find((item) => item.groupId === group.groupId);
+    const pathname = isPluginGroup ? '/app/systemPlugin' : `/app/${group.groupId}`;
+    const defaultType =
+      group.groupId === AppGroupEnum.templateMarket
+        ? AppTemplateTypeEnum.recommendation
+        : groupItems[group.groupId as AppGroupEnum]?.[0]?.typeId;
+
+    const query: Record<string, string> = {
+      type: defaultType
+    };
+
+    // Add groupId only for non-system plugin groups
+    if (isPluginGroup && group.groupId !== AppGroupEnum.systemPlugin) {
+      query.groupId = group.groupId;
+    }
+
+    router.replace({
+      pathname,
+      query
+    });
+
+    onCloseSidebar();
+  };
+
   return (
     <MyBox
       isLoading={isLoading}
@@ -130,30 +153,7 @@ const Sidebar = ({
               _hover={{
                 bg: 'primary.50'
               }}
-              onClick={() => {
-                if (pluginGroups.find((item) => item.groupId === group.groupId)) {
-                  router.replace({
-                    pathname: '/app/systemPlugin',
-                    query: {
-                      ...(group.groupId !== AppGroupEnum.systemPlugin && {
-                        groupId: group.groupId
-                      }),
-                      type: groupItems[group.groupId as GroupType]?.[0]?.typeId
-                    }
-                  });
-                } else {
-                  router.replace({
-                    pathname: '/app/' + group.groupId,
-                    query: {
-                      type:
-                        group.groupId === AppGroupEnum.templateMarket
-                          ? AppTemplateTypeEnum.recommendation
-                          : groupItems[group.groupId as GroupType]?.[0]?.typeId
-                    }
-                  });
-                }
-                onCloseSidebar();
-              }}
+              onClick={() => handleGroupClick(group)}
             >
               <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} color={'myGray.500'} />
               <Box color={'myGray.600'} fontWeight={'medium'}>
@@ -167,7 +167,7 @@ const Sidebar = ({
               />
             </Flex>
             {selected &&
-              groupItems[pluginGroupId ? pluginGroupId : (selectedGroup as GroupType)].map(
+              groupItems[(pluginGroupId ? pluginGroupId : selectedGroup) as AppGroupEnum].map(
                 (type) => {
                   const isActive = type.typeId === selectedType;
 

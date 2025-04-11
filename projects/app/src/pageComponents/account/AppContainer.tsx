@@ -1,6 +1,6 @@
 import { Box, Flex, Input, InputGroup, useDisclosure } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import Sidebar, { GroupType } from '@/pageComponents/app/list/Sidebar';
+import Sidebar from '@/pageComponents/app/list/Sidebar';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from '../app/list/context';
 import { useTranslation } from 'react-i18next';
@@ -24,11 +24,12 @@ const AppContainer = ({
   rightContent?: React.ReactNode;
   renderFolderDetail?: React.ReactNode;
 }) => {
-  const { isPc } = useSystem();
-  const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
-  const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
   const router = useRouter();
+  const { t } = useTranslation();
+  const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
+
+  const { isOpen: isOpenSidebar, onOpen: onOpenSidebar, onClose: onCloseSidebar } = useDisclosure();
 
   const selectedGroup = useMemo(() => {
     return router.pathname.split('/').pop() as AppGroupEnum;
@@ -101,7 +102,7 @@ const AppContainer = ({
     ];
   }, [t, pluginGroups]);
 
-  const groupItems: Record<GroupType, { typeId: string; typeName: string }[]> = useMemo(() => {
+  const groupItems = useMemo(() => {
     const baseItems = {
       [AppGroupEnum.teamApps]: [
         {
@@ -159,7 +160,7 @@ const AppContainer = ({
     return {
       ...baseItems,
       ...pluginGroupItems
-    };
+    } as unknown as Record<AppGroupEnum, { typeId: string; typeName: string }[]>;
   }, [t, filterTemplateTags, feConfigs?.appTemplateCourse, pluginGroups, plugins]);
 
   const currentGroup = useMemo(() => {
