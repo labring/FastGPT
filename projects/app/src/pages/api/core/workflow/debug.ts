@@ -45,7 +45,8 @@ async function handler(
 
   // auth balance
   const { timezone, externalProvider } = await getUserChatInfoAndAuthTeamPoints(tmbId);
-  const lastInteractive = getLastInteractiveValue(history) || undefined;
+  const lastInteractive = getLastInteractiveValue(history);
+
   /* start process */
   const { flowUsages, flowResponses, debugResponse, newVariables, workflowInteractiveResponse } =
     await dispatchWorkFlow({
