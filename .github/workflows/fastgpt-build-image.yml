@@ -70,7 +70,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt image
-          outputs: type=image,name="ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -211,7 +211,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt image
-          outputs: type=image,name="ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -352,7 +352,7 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
             org.opencontainers.image.description=fastgpt-sub-route-gchat image
-          outputs: type=image,name="ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
