@@ -4,17 +4,27 @@ import { getFeishuAndYuqueDatasetFileList } from '@/service/core/dataset/apiData
 import { NextApiRequest } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 export const getPathApi = async (yuqueServer: YuqueServer) => {
   if (!yuqueServer.baseUrl) {
-    return '/root';
+    return '/根目录';
   }
 
   try {
+    console.log('yuqueServer', yuqueServer);
     const allRepos = await getFeishuAndYuqueDatasetFileList({
-      yuqueServer,
-      needbottomfile: true
+      yuqueServer: {
+        userId: yuqueServer.userId,
+        token: yuqueServer.token,
+        baseUrl: ''
+      }
     });
+    for (const repo of allRepos) {
+      if (repo.id === yuqueServer.baseUrl) {
+        const path = '/根目录/' + repo.name;
+        return path;
+      }
+    }
 
     const filesByFolder: Record<string, APIFileItem[]> = {};
     let targetFile: APIFileItem | null = null;
@@ -26,9 +36,12 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
       }
 
       const folderFiles = await getFeishuAndYuqueDatasetFileList({
-        yuqueServer,
-        parentId: folderId,
-        needbottomfile: true
+        yuqueServer: {
+          userId: yuqueServer.userId,
+          token: yuqueServer.token,
+          baseUrl: ''
+        },
+        parentId: folderId
       });
 
       filesByFolder[folderId] = folderFiles;
@@ -42,6 +55,7 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
       );
 
       if (found) {
+        console.log(found);
         targetFile = found;
         targetRepoId = repoId;
         return true;
@@ -61,9 +75,12 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
 
     for (const repo of allRepos) {
       filesByFolder[repo.id] = await getFeishuAndYuqueDatasetFileList({
-        yuqueServer,
-        parentId: repo.id,
-        needbottomfile: true
+        yuqueServer: {
+          userId: yuqueServer.userId,
+          token: yuqueServer.token,
+          baseUrl: ''
+        },
+        parentId: repo.id
       });
 
       const found = filesByFolder[repo.id].find(
@@ -92,7 +109,7 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
     }
 
     if (!targetFile || !targetRepoId) {
-      return '/root';
+      return '/根目录';
     }
 
     const buildPath = () => {
@@ -124,7 +141,7 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
       if (targetRepo) {
         pathSegments.unshift(targetRepo.name);
       }
-      pathSegments.unshift('/root');
+      pathSegments.unshift('/根目录');
 
       return pathSegments.join('/');
     };
@@ -134,12 +151,13 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
     return finalPath;
   } catch (error) {
     console.error('Failed to get the path:', error);
-    return '/root';
+    return '/根目录';
   }
 };
 
 async function handler(req: NextApiRequest) {
   try {
+    const { userId } = await authCert({ req, authToken: true });
     const { yuqueServer, datasetId } = req.body;
 
     if (yuqueServer?.token) {
@@ -157,20 +175,20 @@ async function handler(req: NextApiRequest) {
         });
 
         if (!dataset.yuqueServer?.baseUrl) {
-          return '/root';
+          return '/根目录';
         }
 
         return await getPathApi(dataset.yuqueServer);
       } catch (authError) {
         console.error('Dataset authorization or query failure:', authError);
-        return '/root';
+        return '/根目录';
       }
     }
 
-    return '/root';
+    return '/根目录';
   } catch (error) {
     console.error('Failed to process the request:', error);
-    return '/root';
+    return '/根目录';
   }
 }
 
