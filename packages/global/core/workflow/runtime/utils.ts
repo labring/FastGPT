@@ -85,46 +85,12 @@ export const initWorkflowEdgeStatus = (
   edges: StoreEdgeItemType[],
   lastInteractive?: WorkflowInteractiveResponseType
 ): RuntimeEdgeItemType[] => {
-  if (!lastInteractive) {
-    return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
+  if (lastInteractive) {
+    const memoryEdges = lastInteractive.memoryEdges || [];
+    if (memoryEdges && memoryEdges.length > 0) {
+      return memoryEdges;
+    }
   }
-
-  const isEdgeMatch = (edge1: any, edge2: any) =>
-    edge1.source === edge2.source &&
-    edge1.target === edge2.target &&
-    edge1.sourceHandle === edge2.sourceHandle &&
-    edge1.targetHandle === edge2.targetHandle;
-
-  // 递归检查嵌套的 childrenResponse
-  const findEdgesInNestedInteractive = (
-    interactive: WorkflowInteractiveResponseType | undefined
-  ): RuntimeEdgeItemType[] | null => {
-    if (!interactive) return null;
-
-    // 检查当前级别的 memoryEdges
-    const memoryEdges = interactive.memoryEdges;
-    if (memoryEdges?.length > 0) {
-      const isSubset = memoryEdges.every((memoryEdge) =>
-        edges.some((edge) => isEdgeMatch(edge, memoryEdge))
-      );
-
-      if (isSubset) return memoryEdges;
-    }
-
-    // 检查是否有嵌套的 childrenResponse
-    if (interactive.params.childrenResponse) {
-      const childResponse = interactive.params.childrenResponse as WorkflowInteractiveResponseType;
-      if (childResponse) {
-        const foundEdges = findEdgesInNestedInteractive(childResponse);
-        if (foundEdges && foundEdges.length > 0) return foundEdges;
-      }
-    }
-
-    return null;
-  };
-
-  const foundEdges = findEdgesInNestedInteractive(lastInteractive);
-  if (foundEdges && foundEdges.length > 0) return foundEdges;
 
   return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
 };
@@ -134,38 +100,9 @@ export const getWorkflowEntryNodeIds = (
   lastInteractive?: WorkflowInteractiveResponseType
 ) => {
   if (lastInteractive) {
-    // 递归检查嵌套的 childrenResponse
-    const findEntryNodesInNestedInteractive = (
-      interactive: WorkflowInteractiveResponseType | undefined,
-      currentNodes: (StoreNodeItemType | RuntimeNodeItemType)[]
-    ): string[] | null => {
-      if (!interactive) return null;
-
-      // 检查当前级别的 entryNodeIds
-      if (interactive.entryNodeIds?.length > 0) {
-        const validEntryNodeIds = interactive.entryNodeIds.filter((nodeId) =>
-          currentNodes.some((node) => node.nodeId === nodeId)
-        );
-
-        if (validEntryNodeIds.length > 0) {
-          return validEntryNodeIds;
-        }
-      }
-
-      // 检查是否有嵌套的 childrenResponse
-      if (interactive.params.childrenResponse) {
-        const childResponse = interactive.params
-          .childrenResponse as WorkflowInteractiveResponseType;
-        const foundNodeIds = findEntryNodesInNestedInteractive(childResponse, currentNodes);
-        if (foundNodeIds && foundNodeIds.length > 0) return foundNodeIds;
-      }
-
-      return null;
-    };
-
-    const foundNodeIds = findEntryNodesInNestedInteractive(lastInteractive, nodes);
-    if (foundNodeIds && foundNodeIds.length > 0) {
-      return foundNodeIds;
+    const entryNodeIds = lastInteractive.entryNodeIds || [];
+    if (entryNodeIds && entryNodeIds.length > 0) {
+      return entryNodeIds;
     }
   }
 

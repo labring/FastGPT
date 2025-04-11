@@ -108,10 +108,10 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     return {
       isRecovery,
       runtimeNodes: isRecovery
-        ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive))
+        ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, isRecovery))
         : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
       runtimeEdges: isRecovery
-        ? initWorkflowEdgeStatus(edges, lastInteractive)
+        ? initWorkflowEdgeStatus(edges, isRecovery)
         : initWorkflowEdgeStatus(edges),
       theQuery: isRecovery
         ? query
