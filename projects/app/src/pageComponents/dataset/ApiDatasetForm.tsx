@@ -34,7 +34,6 @@ const ApiDatasetForm = ({
   const yuqueBaseUrl = watch('yuqueServer.baseUrl');
   const [currentPath, setCurrentPath] = useState(t('dataset:loading'));
   const router = useRouter();
-  const [isPathLoading, setIsPathLoading] = useState(false);
   const datasetId = router.query.datasetId as string;
 
   const fetchCurrentPath = async () => {
@@ -68,20 +67,11 @@ const ApiDatasetForm = ({
     if (type === DatasetTypeEnum.yuque && yuqueUserId && yuqueToken) {
       fetchCurrentPath();
     }
-  }, [yuqueUserId, yuqueToken, yuqueBaseUrl, type, currentPath]);
-
-  useEffect(() => {
-    const baseUrl = form.getValues('yuqueServer.baseUrl');
-    console.log('baseUrl', baseUrl);
-    if (!baseUrl) {
-      setCurrentPath(t('dataset:rootdirectory')); // 更新路径为根目录
-    }
-  }, [form.getValues('yuqueServer.baseUrl')]);
+  }, [yuqueBaseUrl, type, currentPath]);
 
   const handleSelectDirectory = (id: string) => {
     if (id === 'root') {
       setValue('yuqueServer.baseUrl', undefined);
-      console.log('yuqueServer.baseUrl', form.getValues('yuqueServer.baseUrl'));
     } else {
       setValue('yuqueServer.baseUrl', id);
     }
