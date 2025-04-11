@@ -188,8 +188,9 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
             <Flex
               onClick={() => {
                 router.push({
+                  pathname: '/app/templateMarket',
                   query: {
-                    group: AppGroupEnum.templateMarket,
+                    appType: type,
                     type: 'recommendation'
                   }
                 });

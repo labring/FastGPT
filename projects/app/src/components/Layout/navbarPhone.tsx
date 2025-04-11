@@ -25,7 +25,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail'],
+        activeLink: ['/app/list', '/app/detail', '/app/templateMarket', '/app/systemPlugin'],
         unread: 0
       },
       {
