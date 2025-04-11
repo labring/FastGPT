@@ -2,6 +2,3 @@ packages:
   - packages/*
   - projects/*
   - scripts/icon
-
-patchedDependencies:
-  mdast-util-gfm-autolink-literal@2.0.1: patches/mdast-util-gfm-autolink-literal@2.0.1.patch
