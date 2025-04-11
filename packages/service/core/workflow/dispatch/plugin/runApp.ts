@@ -1,10 +1,9 @@
-import type { AIChatItemValueItemType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlow } from '../index';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
-  getLastInteractiveValue,
   getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes,
@@ -95,7 +94,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   }
 
   const chatHistories = getHistories(history, histories);
-  const Interactive = getLastInteractiveValue(chatHistories);
 
   // Rewrite children app variables
   const systemVariables = filterSystemVariables(variables);
@@ -109,7 +107,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, lastInteractive))
       : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
     runtimeEdges = isRecovery
-      ? initWorkflowEdgeStatus(edges, Interactive || undefined)
+      ? initWorkflowEdgeStatus(edges, lastInteractive)
       : initWorkflowEdgeStatus(edges);
 
   const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
