@@ -8,7 +8,7 @@
   "login_success": "登入成功",
   "no_remind": "不再提醒",
   "password_condition": "密碼最多 60 個字元",
-  "password_tip": "密碼至少 6 位，且至少包含兩種組合：數字、字母或特殊字符",
+  "password_tip": "密碼至少 6 位，且至少包含兩種組合：數字、字母或特殊字元",
   "policy_tip": "使用即代表您同意我們的",
   "privacy": "隱私權政策",
   "privacy_policy": "隱私權政策",
