@@ -245,12 +245,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
-    const interactive = getLastInteractiveValue(newHistories);
+    const interactive = getLastInteractiveValue(newHistories) || undefined;
     // Get runtimeNodes
-    let runtimeNodes = storeNodes2RuntimeNodes(
-      nodes,
-      getWorkflowEntryNodeIds(nodes, interactive || undefined)
-    );
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
       // Assign values to runtimeNodes using variables
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
@@ -291,7 +288,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges: initWorkflowEdgeStatus(edges, interactive || undefined),
+          runtimeEdges: initWorkflowEdgeStatus(edges, interactive),
           variables,
           query: removeEmptyUserInput(userQuestion.value),
           chatConfig,

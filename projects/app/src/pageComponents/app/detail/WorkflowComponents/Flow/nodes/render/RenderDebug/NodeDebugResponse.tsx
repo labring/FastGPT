@@ -132,14 +132,11 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
           ]
         }
       ];
-      const lastInteractive = getLastInteractiveValue(mockHistory);
+      const lastInteractive = getLastInteractiveValue(mockHistory) || undefined;
       onNextNodeDebug({
         ...workflowDebugData,
         // Rewrite runtimeEdges
-        runtimeEdges: initWorkflowEdgeStatus(
-          workflowDebugData.runtimeEdges,
-          lastInteractive || undefined
-        ),
+        runtimeEdges: initWorkflowEdgeStatus(workflowDebugData.runtimeEdges, lastInteractive),
         query: updatedQuery,
         history: mockHistory
       });
