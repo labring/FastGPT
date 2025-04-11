@@ -73,7 +73,6 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
         });
         return data;
       } catch (error) {
-        console.log(yuqueServer);
         console.error(t('dataset:getDirectoryFailed'), error);
         return [];
       } finally {
@@ -224,7 +223,6 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
   const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
     () => {
       if (selectedId) {
-        console.log(selectedId);
         const findSelectedFile = (folders: FolderItemType[]): FolderItemType | undefined => {
           for (const folder of folders) {
             if (folder.id === selectedId) {
@@ -239,7 +237,6 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
         };
 
         const selectedFile = findSelectedFile(folderList);
-        console.log('selectedFile', selectedFile);
         if (selectedFile) {
           const idToSelect = selectedFile.id;
           if (idToSelect) {

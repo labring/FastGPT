@@ -11,7 +11,6 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
   }
 
   try {
-    console.log('yuqueServer', yuqueServer);
     const allRepos = await getProApiDatasetFileListRequest({
       yuqueServer: {
         userId: yuqueServer.userId,
@@ -55,7 +54,6 @@ export const getPathApi = async (yuqueServer: YuqueServer) => {
       );
 
       if (found) {
-        console.log(found);
         targetFile = found;
         targetRepoId = repoId;
         return true;
