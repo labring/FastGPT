@@ -1,19 +1,22 @@
 import AppContainer from '@/pageComponents/account/AppContainer';
-import AppListContextProvider, { AppListContext } from '@/pageComponents/app/list/context';
+import StudioContextProvider from '@/pageComponents/app/context';
 import TemplateList, { TemplateAppType } from '@/pageComponents/app/list/TemplateList';
+import TemplateMarketContextProvider, {
+  TemplateMarketContext
+} from '@/pageComponents/app/templateMarket/context';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRouter } from 'next/router';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 
 const TemplateMarket = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { templateTags, templateList } = useContextSelector(AppListContext, (v) => v);
-  const { currentAppType, type } = useMemo(() => {
+  const { templateTags, templateList } = useContextSelector(TemplateMarketContext, (v) => v);
+  const { currentAppType = 'all', type } = useMemo(() => {
     return {
       currentAppType: router.query.appType as AppTypeEnum,
       type: router.query.type as string
@@ -64,9 +67,11 @@ const TemplateMarket = () => {
 
 function ContextRender() {
   return (
-    <AppListContextProvider>
-      <TemplateMarket />
-    </AppListContextProvider>
+    <StudioContextProvider>
+      <TemplateMarketContextProvider>
+        <TemplateMarket />
+      </TemplateMarketContextProvider>
+    </StudioContextProvider>
   );
 }
 

@@ -11,7 +11,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { AppGroupEnum, AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useContextSelector } from 'use-context-selector';
-import { AppListContext } from './context';
+import { StudioContext } from '../context';
 
 export type GroupType = 'list' | 'templateMarket' | string;
 
@@ -38,7 +38,7 @@ const Sidebar = ({
   const router = useRouter();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
-  const { pluginGroups } = useContextSelector(AppListContext, (v) => v);
+  const { pluginGroups } = useContextSelector(StudioContext, (v) => v);
 
   const {
     selectedGroup,

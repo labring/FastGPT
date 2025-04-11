@@ -11,6 +11,9 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { TemplateMarketContext } from '../app/templateMarket/context';
+import { StudioContext } from '../app/context';
+import { SystemPluginContext } from '../app/systemPlugin/context';
 
 const AppContainer = ({
   children,
@@ -31,19 +34,14 @@ const AppContainer = ({
     return router.pathname.split('/').pop() as AppGroupEnum;
   }, [router.pathname]);
 
-  const {
-    paths,
-    folderDetail,
-    sidebarWidth,
-    setSidebarWidth,
-    pluginGroups,
-    plugins,
-    templateTags,
-    templateList,
-    searchKey,
-    setSearchKey,
-    isLoading: isLoadingAppList
-  } = useContextSelector(AppListContext, (v) => v);
+  const { sidebarWidth, setSidebarWidth, searchKey, setSearchKey, pluginGroups } =
+    useContextSelector(StudioContext, (v) => v);
+  const { templateTags, templateList, isTemplatesLoading } = useContextSelector(
+    TemplateMarketContext,
+    (v) => v
+  );
+  const { plugins, isLoadingSystemPlugin } = useContextSelector(SystemPluginContext, (v) => v);
+  const { paths, folderDetail, isFetchingApps } = useContextSelector(AppListContext, (v) => v);
 
   const RenderSearchInput = useMemo(
     () => (
@@ -176,7 +174,7 @@ const AppContainer = ({
           groupItems={groupItems}
           onCloseSidebar={onCloseSidebar}
           setSidebarWidth={setSidebarWidth}
-          isLoading={isLoadingAppList}
+          isLoading={isFetchingApps || isLoadingSystemPlugin || isTemplatesLoading}
         />
       )}
 
@@ -225,7 +223,10 @@ const AppContainer = ({
 
           {!isPc && <Box mt={2}>{RenderSearchInput}</Box>}
 
-          <MyBox flex={'1 0 0'} isLoading={isLoadingAppList}>
+          <MyBox
+            flex={'1 0 0'}
+            isLoading={isFetchingApps || isLoadingSystemPlugin || isTemplatesLoading}
+          >
             {children}
           </MyBox>
         </Flex>

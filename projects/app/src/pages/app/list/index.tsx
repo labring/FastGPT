@@ -1,5 +1,6 @@
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import AppContainer from '@/pageComponents/account/AppContainer';
+import AppContextProvider from '@/pageComponents/app/context';
 import AppListContextProvider, { AppListContext } from '@/pageComponents/app/list/context';
 import { CreateAppType } from '@/pageComponents/app/list/CreateModal';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -232,9 +233,11 @@ const TeamApps = () => {
 
 function ContextRender() {
   return (
-    <AppListContextProvider>
-      <TeamApps />
-    </AppListContextProvider>
+    <AppContextProvider>
+      <AppListContextProvider>
+        <TeamApps />
+      </AppListContextProvider>
+    </AppContextProvider>
   );
 }
 
