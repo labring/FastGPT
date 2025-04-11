@@ -4,16 +4,21 @@ import TemplateList, { TemplateAppType } from '@/pageComponents/app/list/Templat
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useRouter } from 'next/router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 
 const TemplateMarket = () => {
   const { t } = useTranslation();
-  const { templateTags, templateList, currentAppType, setCurrentAppType } = useContextSelector(
-    AppListContext,
-    (v) => v
-  );
+  const router = useRouter();
+  const { templateTags, templateList } = useContextSelector(AppListContext, (v) => v);
+  const { currentAppType, type } = useMemo(() => {
+    return {
+      currentAppType: router.query.appType as AppTypeEnum,
+      type: router.query.type as string
+    };
+  }, [router.query.appType, router.query.type]);
 
   const filterTemplateTags = useMemo(() => {
     return templateTags
@@ -34,7 +39,12 @@ const TemplateMarket = () => {
           h={'8'}
           value={currentAppType}
           onChange={(value) => {
-            setCurrentAppType(value);
+            router.push({
+              query: {
+                appType: value,
+                type
+              }
+            });
           }}
           minW={'7rem'}
           borderRadius={'sm'}

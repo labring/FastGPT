@@ -39,7 +39,6 @@ const Sidebar = ({
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
   const { pluginGroups } = useContextSelector(AppListContext, (v) => v);
-  console.log('pluginGroups', pluginGroups);
 
   const {
     selectedGroup,
