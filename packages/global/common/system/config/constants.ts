@@ -1,7 +1,8 @@
 export enum SystemConfigsTypeEnum {
   fastgpt = 'fastgpt',
   fastgptPro = 'fastgptPro',
-  systemMsgModal = 'systemMsgModal'
+  systemMsgModal = 'systemMsgModal',
+  metadata = 'metadata'
 }
 
 export const SystemConfigsTypeMap = {
@@ -13,5 +14,8 @@ export const SystemConfigsTypeMap = {
   },
   [SystemConfigsTypeEnum.systemMsgModal]: {
     label: 'systemMsgModal'
+  },
+  [SystemConfigsTypeEnum.metadata]: {
+    label: 'metadata'
   }
 };

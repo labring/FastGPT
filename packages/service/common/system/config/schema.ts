@@ -2,7 +2,7 @@ import { SystemConfigsType } from '@fastgpt/global/common/system/config/type';
 import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 import { SystemConfigsTypeMap } from '@fastgpt/global/common/system/config/constants';
 
-const { Schema, model, models } = connectionMongo;
+const { Schema } = connectionMongo;
 
 const collectionName = 'systemConfigs';
 const systemConfigSchema = new Schema({
