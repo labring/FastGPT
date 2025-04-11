@@ -19,13 +19,12 @@ const PluginList = ({
   const { searchKey } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
 
-  const selectedGroup = useMemo(() => {
-    return router.pathname.split('/').pop() as AppGroupEnum;
-  }, [router.pathname]);
-
-  const selectedType = useMemo(() => {
-    return router.query.type as string;
-  }, [router.query.type]);
+  const { selectedGroup = AppGroupEnum.systemPlugin, selectedType } = useMemo(() => {
+    return {
+      selectedGroup: router.query.groupId as string,
+      selectedType: router.query.type as string
+    };
+  }, [router.query.groupId, router.query.type]);
 
   const pluginGroupTypes = useMemo(() => {
     const allTypes = [

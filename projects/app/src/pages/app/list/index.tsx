@@ -20,7 +20,6 @@ import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { useState } from 'react';
@@ -40,7 +39,6 @@ const TeamApps = () => {
   const { userInfo } = useUserStore();
   const [createAppType, setCreateAppType] = useState<CreateAppType>();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
-  const { isPc } = useSystem();
   const router = useRouter();
 
   const { loadMyApps, parentId, onUpdateApp, refetchFolderDetail, setMoveAppId } =

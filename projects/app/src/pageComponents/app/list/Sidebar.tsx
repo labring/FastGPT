@@ -10,6 +10,8 @@ import { navbarWidth } from '@/components/Layout';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { AppGroupEnum, AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useContextSelector } from 'use-context-selector';
+import { AppListContext } from './context';
 
 export type GroupType = 'list' | 'templateMarket' | string;
 
@@ -36,14 +38,20 @@ const Sidebar = ({
   const router = useRouter();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
+  const { pluginGroups } = useContextSelector(AppListContext, (v) => v);
+  console.log('pluginGroups', pluginGroups);
 
-  const selectedGroup = useMemo(() => {
-    return router.pathname.split('/').pop() as AppGroupEnum;
-  }, [router.pathname]);
-
-  const selectedType = useMemo(() => {
-    return router.query.type as string;
-  }, [router.query.type]);
+  const {
+    selectedGroup,
+    pluginGroupId,
+    selectedType = 'all'
+  } = useMemo(() => {
+    return {
+      selectedGroup: router.pathname.split('/').pop() as AppGroupEnum,
+      pluginGroupId: router.query.groupId,
+      selectedType: router.query.type
+    };
+  }, [router.pathname, router.query.groupId, router.query.type]);
 
   const {
     width: sidebarWidth,
@@ -109,7 +117,8 @@ const Sidebar = ({
         zIndex={101}
       />
       {groupList.map((group) => {
-        const selected = group.groupId === selectedGroup;
+        const selected =
+          (group.groupId === selectedGroup && !pluginGroupId) || pluginGroupId === group.groupId;
         return (
           <Box key={group.groupId}>
             <Flex
@@ -123,15 +132,27 @@ const Sidebar = ({
                 bg: 'primary.50'
               }}
               onClick={() => {
-                router.replace({
-                  pathname: '/app/' + group.groupId,
-                  query: {
-                    type:
-                      group.groupId === AppGroupEnum.templateMarket
-                        ? AppTemplateTypeEnum.recommendation
-                        : groupItems[group.groupId as GroupType]?.[0]?.typeId
-                  }
-                });
+                if (pluginGroups.find((item) => item.groupId === group.groupId)) {
+                  router.replace({
+                    pathname: '/app/systemPlugin',
+                    query: {
+                      ...(group.groupId !== AppGroupEnum.systemPlugin && {
+                        groupId: group.groupId
+                      }),
+                      type: groupItems[group.groupId as GroupType]?.[0]?.typeId
+                    }
+                  });
+                } else {
+                  router.replace({
+                    pathname: '/app/' + group.groupId,
+                    query: {
+                      type:
+                        group.groupId === AppGroupEnum.templateMarket
+                          ? AppTemplateTypeEnum.recommendation
+                          : groupItems[group.groupId as GroupType]?.[0]?.typeId
+                    }
+                  });
+                }
                 onCloseSidebar();
               }}
             >
@@ -147,46 +168,51 @@ const Sidebar = ({
               />
             </Flex>
             {selected &&
-              groupItems[selectedGroup as GroupType].map((type) => {
-                const isActive = type.typeId === selectedType;
+              groupItems[pluginGroupId ? pluginGroupId : (selectedGroup as GroupType)].map(
+                (type) => {
+                  const isActive = type.typeId === selectedType;
 
-                return (
-                  <Flex
-                    key={type.typeId}
-                    fontSize={'14px'}
-                    fontWeight={500}
-                    rounded={'md'}
-                    py={2}
-                    pl={'30px'}
-                    cursor={'pointer'}
-                    mb={0.5}
-                    _hover={{ bg: 'primary.50' }}
-                    {...(isActive
-                      ? {
-                          bg: 'primary.50',
-                          color: 'primary.600'
-                        }
-                      : {
-                          bg: 'transparent',
-                          color: 'myGray.500'
-                        })}
-                    onClick={() => {
-                      handleTypeClick(type.typeId, () => {
-                        if (type.typeId === AppTemplateTypeEnum.contribute) {
-                          window.open(feConfigs?.appTemplateCourse);
-                        } else {
-                          router.push({
-                            query: { type: type.typeId }
-                          });
-                          onCloseSidebar();
-                        }
-                      });
-                    }}
-                  >
-                    {t(type.typeName as any)}
-                  </Flex>
-                );
-              })}
+                  return (
+                    <Flex
+                      key={type.typeId}
+                      fontSize={'14px'}
+                      fontWeight={500}
+                      rounded={'md'}
+                      py={2}
+                      pl={'30px'}
+                      cursor={'pointer'}
+                      mb={0.5}
+                      _hover={{ bg: 'primary.50' }}
+                      {...(isActive
+                        ? {
+                            bg: 'primary.50',
+                            color: 'primary.600'
+                          }
+                        : {
+                            bg: 'transparent',
+                            color: 'myGray.500'
+                          })}
+                      onClick={() => {
+                        handleTypeClick(type.typeId, () => {
+                          if (type.typeId === AppTemplateTypeEnum.contribute) {
+                            window.open(feConfigs?.appTemplateCourse);
+                          } else {
+                            router.push({
+                              query: {
+                                ...(pluginGroupId && { groupId: pluginGroupId }),
+                                type: type.typeId
+                              }
+                            });
+                            onCloseSidebar();
+                          }
+                        });
+                      }}
+                    >
+                      {t(type.typeName as any)}
+                    </Flex>
+                  );
+                }
+              )}
           </Box>
         );
       })}
