@@ -98,7 +98,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const isPlugin = app.type === AppTypeEnum.plugin;
 
-    const userQuestion: UserChatItemType = (() => {
+    const userQuestion: UserChatItemType = await (async () => {
       if (isPlugin) {
         return getPluginRunUserQuery({
           pluginInputs: getPluginInputsFromStoreNodes(app.modules),
@@ -107,9 +107,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         });
       }
 
-      const latestHumanChat = chatMessages.pop() as UserChatItemType | undefined;
+      const latestHumanChat = chatMessages.pop() as UserChatItemType;
       if (!latestHumanChat) {
-        throw new Error('User question is empty');
+        return Promise.reject('User question is empty');
       }
       return latestHumanChat;
     })();
@@ -136,14 +136,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
 
     const newHistories = concatHistories(histories, chatMessages);
-
+    const interactive = getLastInteractiveValue(newHistories) || undefined;
     // Get runtimeNodes
-    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, newHistories));
+    let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
     if (isPlugin) {
       runtimeNodes = updatePluginInputByVariables(runtimeNodes, variables);
       variables = {};
     }
-    runtimeNodes = rewriteNodeOutputByHistories(newHistories, runtimeNodes);
+    runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
@@ -175,9 +175,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId,
       responseChatItemId,
       runtimeNodes,
-      runtimeEdges: initWorkflowEdgeStatus(edges, newHistories),
+      runtimeEdges: initWorkflowEdgeStatus(edges, interactive),
       variables,
       query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
       chatConfig,
       histories: newHistories,
       stream: true,

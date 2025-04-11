@@ -374,7 +374,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
 
     // Tool call, not need interactive response
-    if (!props.isToolCall) {
+    if (!props.isToolCall && !props.runningAppInfo.isChildApp) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.interactive,
         data: { interactive: interactiveResult }
@@ -721,7 +721,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           entryNodeIds: nodeInteractiveResponse.entryNodeIds,
           interactiveResponse: nodeInteractiveResponse.interactiveResponse
         });
-        chatAssistantResponse.push(interactiveAssistant);
+        if (!props.runningAppInfo.isChildApp) {
+          chatAssistantResponse.push(interactiveAssistant);
+        }
         return interactiveAssistant.interactive;
       }
     })();
