@@ -3,10 +3,10 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'projects/app/**'
-      - 'packages/**'
+      - "projects/app/**"
+      - "packages/**"
     tags:
-      - 'v*'
+      - "v*"
 jobs:
   build-fastgpt-images:
     permissions:
@@ -14,7 +14,13 @@ jobs:
       contents: read
       attestations: write
       id-token: write
-    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
     steps:
       # install env
       - name: Checkout
@@ -57,7 +63,71 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_NAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      # Set tag
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: projects/app/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=fastgpt image
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }},push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-fastgpt-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-images:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    needs: build-fastgpt-images
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-fastgpt-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
@@ -76,32 +146,25 @@ jobs:
             echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt:latest" >> $GITHUB_ENV
           fi
 
-      - name: Build and publish image for main branch or tag push event
-        env:
-          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx build \
-          -f projects/app/Dockerfile \
-          --platform linux/amd64,linux/arm64 \
-          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt image" \
-          --push \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${Git_Tag} \
-          -t ${Git_Latest} \
-          -t ${Ali_Tag} \
-          -t ${Ali_Latest} \
-          -t ${Docker_Hub_Tag} \
-          -t ${Docker_Hub_Latest} \
-          .
+          docker buildx imagetools create -t ${Git_Tag} -t ${Git_Latest} -t ${Ali_Tag} -t ${Ali_Latest} -t ${Docker_Hub_Tag} -t ${Docker_Hub_Latest} \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt@sha256:%s ' *)
+
   build-fastgpt-images-sub-route:
     permissions:
       packages: write
       contents: read
       attestations: write
       id-token: write
-    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
     steps:
       # install env
       - name: Checkout
@@ -144,7 +207,73 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_NAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      # Set tag
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: projects/app/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          build-args: |
+            base_url=/fastai
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=fastgpt image
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }},push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-fastgpt-sub-route-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-images-sub-route:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    needs: build-fastgpt-images-sub-route
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-fastgpt-sub-route-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
@@ -163,33 +292,25 @@ jobs:
             echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sub-route:latest" >> $GITHUB_ENV
           fi
 
-      - name: Build and publish image for main branch or tag push event
-        env:
-          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx build \
-          -f projects/app/Dockerfile \
-          --platform linux/amd64,linux/arm64 \
-          --build-arg base_url=/fastai \
-          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt image" \
-          --push \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${Git_Tag} \
-          -t ${Git_Latest} \
-          -t ${Ali_Tag} \
-          -t ${Ali_Latest} \
-          -t ${Docker_Hub_Tag} \
-          -t ${Docker_Hub_Latest} \
-          .
+          docker buildx imagetools create -t ${Git_Tag} -t ${Git_Latest} -t ${Ali_Tag} -t ${Ali_Latest} -t ${Docker_Hub_Tag} -t ${Docker_Hub_Latest} \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route@sha256:%s ' *)
+
   build-fastgpt-images-sub-route-gchat:
     permissions:
       packages: write
       contents: read
       attestations: write
       id-token: write
-    runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
     steps:
       # install env
       - name: Checkout
@@ -232,7 +353,73 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_NAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
-      # Set tag
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: projects/app/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          build-args: |
+            base_url=/gchat
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.description=fastgpt-sub-route-gchat image
+          outputs: type=image,name=ghcr.io/${{ github.repository_owner }},push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-fastgpt-sub-route-gchat-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-images-sub-route-gchat:
+    permissions:
+      packages: write
+      contents: read
+      attestations: write
+      id-token: write
+    needs: build-fastgpt-images-sub-route-gchat
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-fastgpt-sub-route-gchat-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
@@ -251,23 +438,8 @@ jobs:
             echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sub-route-gchat:latest" >> $GITHUB_ENV
           fi
 
-      - name: Build and publish image for main branch or tag push event
-        env:
-          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx build \
-          -f projects/app/Dockerfile \
-          --platform linux/amd64,linux/arm64 \
-          --build-arg base_url=/gchat \
-          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt-sub-route-gchat image" \
-          --push \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${Git_Tag} \
-          -t ${Git_Latest} \
-          -t ${Ali_Tag} \
-          -t ${Ali_Latest} \
-          -t ${Docker_Hub_Tag} \
-          -t ${Docker_Hub_Latest} \
-          .
+          docker buildx imagetools create -t ${Git_Tag} -t ${Git_Latest} -t ${Ali_Tag} -t ${Ali_Latest} -t ${Docker_Hub_Tag} -t ${Docker_Hub_Latest} \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route-gchat@sha256:%s ' *)
