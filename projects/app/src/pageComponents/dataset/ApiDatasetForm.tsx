@@ -32,7 +32,7 @@ const ApiDatasetForm = ({
   const yuqueUserId = watch('yuqueServer.userId');
   const yuqueToken = watch('yuqueServer.token');
   const yuqueBaseUrl = watch('yuqueServer.baseUrl');
-  const [currentPath, setCurrentPath] = useState(t('dataset:rootdirectory'));
+  const [currentPath, setCurrentPath] = useState(t('dataset:loading'));
   const router = useRouter();
   const [isPathLoading, setIsPathLoading] = useState(false);
   const datasetId = router.query.datasetId as string;
@@ -41,23 +41,6 @@ const ApiDatasetForm = ({
     if (type !== DatasetTypeEnum.yuque) return;
 
     if (datasetId || (yuqueUserId && yuqueToken && yuqueBaseUrl)) {
-      try {
-        const path = await getYuquePathApi({
-          yuqueServer: {
-            userId: yuqueUserId || '',
-            token: yuqueToken || '',
-            baseUrl: yuqueBaseUrl || ''
-          },
-          datasetId: datasetId as string
-        });
-        setCurrentPath(path);
-        return;
-      } catch (error) {
-        setCurrentPath(t('dataset:rootdirectory'));
-      }
-    }
-
-    if (yuqueUserId && yuqueToken && yuqueBaseUrl) {
       try {
         const path = await getYuquePathApi({
           yuqueServer: {
@@ -82,13 +65,26 @@ const ApiDatasetForm = ({
   }, [datasetId, type]);
 
   useEffect(() => {
-    if (type === DatasetTypeEnum.yuque && yuqueUserId && yuqueToken && yuqueBaseUrl) {
+    if (type === DatasetTypeEnum.yuque && yuqueUserId && yuqueToken) {
       fetchCurrentPath();
     }
   }, [yuqueUserId, yuqueToken, yuqueBaseUrl, type, currentPath]);
 
+  useEffect(() => {
+    const baseUrl = form.getValues('yuqueServer.baseUrl');
+    console.log('baseUrl', baseUrl);
+    if (!baseUrl) {
+      setCurrentPath(t('dataset:rootdirectory')); // 更新路径为根目录
+    }
+  }, [form.getValues('yuqueServer.baseUrl')]);
+
   const handleSelectDirectory = (id: string) => {
-    setValue('yuqueServer.baseUrl', id);
+    if (id === 'root') {
+      setValue('yuqueServer.baseUrl', undefined);
+      console.log('yuqueServer.baseUrl', form.getValues('yuqueServer.baseUrl'));
+    } else {
+      setValue('yuqueServer.baseUrl', id);
+    }
     setIsDirectoryModalOpen(false);
   };
 
@@ -242,23 +238,21 @@ const ApiDatasetForm = ({
             >
               Base URL
             </Flex>
-            {yuqueBaseUrl && (
-              <Box
-                px={2}
-                py={1}
-                borderRadius="md"
-                fontSize="sm"
-                overflow="auto"
-                width="220px"
-                display="flex"
-                alignItems="center"
-                style={{ whiteSpace: 'nowrap' }}
-              >
-                <Text fontSize={'sm'} fontWeight={500}>
-                  {`${currentPath}`}
-                </Text>
-              </Box>
-            )}
+            <Box
+              px={2}
+              py={1}
+              borderRadius="md"
+              fontSize="sm"
+              overflow="auto"
+              width="220px"
+              display="flex"
+              alignItems="center"
+              style={{ whiteSpace: 'nowrap' }}
+            >
+              <Text fontSize={'sm'} fontWeight={500}>
+                {`${currentPath}`}
+              </Text>
+            </Box>
 
             <Button ml={2} onClick={openDirectorySelector} isDisabled={!yuqueUserId || !yuqueToken}>
               {t('dataset:selectDirectory')}

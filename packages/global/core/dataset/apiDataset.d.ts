@@ -39,5 +39,5 @@ export type FeishuServer = {
 export type YuqueServer = {
   userId: string;
   token: string;
-  baseUrl?: string;
+  baseUrl: string | undefined;
 };

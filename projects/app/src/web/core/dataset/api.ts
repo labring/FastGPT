@@ -57,6 +57,10 @@ import type {
   GetApiDatasetFileListResponse
 } from '@/pages/api/core/dataset/apiDataset/list';
 import type {
+  GetApiDatasetCataLogResponse,
+  GetApiDatasetCataLogProps
+} from '@/pages/api/core/dataset/apiDataset/getcatalog';
+import type {
   listExistIdQuery,
   listExistIdResponse
 } from '@/pages/api/core/dataset/apiDataset/listExistId';
@@ -234,6 +238,8 @@ export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
   POST<GetApiDatasetFileListResponse>('/core/dataset/apiDataset/list', data);
 export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
   GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
+export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
+  POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getcatalog', data);
 
 export const getYuquePathApi = (data: { yuqueServer: YuqueServer; datasetId: string }) =>
   POST<string>('/core/dataset/apiDataset/getpath', data);

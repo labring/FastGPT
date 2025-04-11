@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import { YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { useMemoizedFn, useMount } from 'ahooks';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { getApiDatasetFileList } from '@/web/core/dataset/api';
+import { getApiDatasetCatalog } from '@/web/core/dataset/api';
 
 interface BaseUrlSelectorProps {
   onSelect: (uuid: string) => void;
@@ -62,14 +62,18 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
     async (parentId: string | null) => {
       try {
         setRequestingIdList((prev) => [...prev, parentId || 'root']);
-        const data = await getApiDatasetFileList({
-          datasetId: datasetDetail._id,
-          parentId: parentId,
+        const data = await getApiDatasetCatalog({
+          parentId: parentId || undefined,
           searchKey: '',
-          needbottomfile: true
+          yuqueServer: {
+            userId: yuqueServer.userId,
+            token: yuqueServer.token,
+            baseUrl: ''
+          }
         });
         return data;
       } catch (error) {
+        console.log(yuqueServer);
         console.error(t('dataset:getDirectoryFailed'), error);
         return [];
       } finally {
@@ -106,7 +110,7 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
                       }
                     })}
               >
-                {((index !== 0 && item.hasChild) || (item.type === 'folder' && item.hasChild)) && (
+                {item.id !== rootId && (
                   <Flex
                     alignItems={'center'}
                     justifyContent={'center'}
@@ -155,6 +159,7 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
                           ? 'common/loading'
                           : 'common/rightArrowFill'
                       }
+                      visibility={item.hasChild ? 'visible' : 'hidden'}
                       w={'1.25rem'}
                       color={'myGray.500'}
                       transform={item.open ? 'rotate(90deg)' : 'none'}
@@ -234,20 +239,14 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
         };
 
         const selectedFile = findSelectedFile(folderList);
-        console.log(selectedFile);
+        console.log('selectedFile', selectedFile);
         if (selectedFile) {
-          const idToSelect = selectedFile.uuid ? selectedFile.uuid : selectedFile.slug;
+          const idToSelect = selectedFile.id;
           if (idToSelect) {
             yuqueServer.baseUrl = idToSelect;
             onSelect(idToSelect);
           } else {
-            if (selectedFile.id === rootId) {
-              yuqueServer.baseUrl = undefined;
-              onSelect('');
-            } else {
-              console.log(idToSelect);
-              console.warn(t('dataset:noValidId'));
-            }
+            console.warn(t('dataset:noValidId'));
           }
         } else {
           console.warn(t('dataset:noSelectedFolder'));
