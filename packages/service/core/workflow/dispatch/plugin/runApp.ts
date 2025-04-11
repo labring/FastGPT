@@ -102,25 +102,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     histories: chatHistories,
     appId: String(appData._id)
   };
-  const { childrenInteractive, runtimeNodes, runtimeEdges, theQuery } = (() => {
-    const childrenInteractive = lastInteractive?.params?.childrenResponse;
 
-    return {
-      childrenInteractive,
-      runtimeNodes: childrenInteractive
-        ? storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, childrenInteractive))
-        : storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-      runtimeEdges: childrenInteractive
-        ? initWorkflowEdgeStatus(edges, childrenInteractive)
-        : initWorkflowEdgeStatus(edges),
-      theQuery: childrenInteractive
-        ? query
-        : runtimePrompt2ChatsValue({
-            files: userInputFiles,
-            text: userChatInput
-          })
-    };
-  })();
+  const childrenInteractive = lastInteractive?.params?.childrenResponse;
+  const entryNodeIds = getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined);
+  const runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
+  const runtimeEdges = initWorkflowEdgeStatus(edges, childrenInteractive);
+  const theQuery = childrenInteractive
+    ? query
+    : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });
 
   const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
     await dispatchWorkFlow({
