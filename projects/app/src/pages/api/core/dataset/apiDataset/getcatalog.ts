@@ -19,7 +19,6 @@ export type GetApiDatasetCataLogResponse = APIFileItem[];
 
 async function handler(req: NextApiRequest) {
   let { searchKey = '', parentId = null, yuqueServer, feishuServer, apiServer } = req.body;
-  console.log('req.body', req.body);
 
   const { userId } = await authCert({ req, authToken: true });
 
@@ -32,7 +31,6 @@ async function handler(req: NextApiRequest) {
       return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
     }
     if (feishuServer || yuqueServer) {
-      console.log('1111', yuqueServer);
       return getProApiDatasetFileListRequest({
         feishuServer,
         yuqueServer,
