@@ -10,7 +10,19 @@ import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
+import {
+  InteractiveNodeResponseType,
+  WorkflowInteractiveResponseType
+} from '../template/system/interactive/type';
 
+export const extractDeepestInteractive = (
+  interactive: WorkflowInteractiveResponseType
+): WorkflowInteractiveResponseType => {
+  if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
+    return extractDeepestInteractive(interactive.params.childrenResponse);
+  }
+  return interactive;
+};
 export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
   let limit = 10;
   nodes.forEach((node) => {
@@ -48,6 +60,10 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
       return null;
     }
 
+    if (lastValue.interactive.type === 'childrenInteractive') {
+      return lastValue.interactive;
+    }
+
     // Check is user select
     if (
       lastValue.interactive.type === 'userSelect' &&
@@ -66,34 +82,25 @@ export const getLastInteractiveValue = (histories: ChatItemType[]) => {
 };
 
 export const initWorkflowEdgeStatus = (
-  edges: StoreEdgeItemType[] | RuntimeEdgeItemType[],
-  histories?: ChatItemType[]
+  edges: StoreEdgeItemType[],
+  lastInteractive?: WorkflowInteractiveResponseType
 ): RuntimeEdgeItemType[] => {
-  // If there is a history, use the last interactive value
-  if (histories && histories.length > 0) {
-    const memoryEdges = getLastInteractiveValue(histories)?.memoryEdges;
-
+  if (lastInteractive) {
+    const memoryEdges = lastInteractive.memoryEdges || [];
     if (memoryEdges && memoryEdges.length > 0) {
       return memoryEdges;
     }
   }
 
-  return (
-    edges?.map((edge) => ({
-      ...edge,
-      status: 'waiting'
-    })) || []
-  );
+  return edges?.map((edge) => ({ ...edge, status: 'waiting' })) || [];
 };
 
 export const getWorkflowEntryNodeIds = (
   nodes: (StoreNodeItemType | RuntimeNodeItemType)[],
-  histories?: ChatItemType[]
+  lastInteractive?: WorkflowInteractiveResponseType
 ) => {
-  // If there is a history, use the last interactive entry node
-  if (histories && histories.length > 0) {
-    const entryNodeIds = getLastInteractiveValue(histories)?.entryNodeIds;
-
+  if (lastInteractive) {
+    const entryNodeIds = lastInteractive.entryNodeIds || [];
     if (Array.isArray(entryNodeIds) && entryNodeIds.length > 0) {
       return entryNodeIds;
     }
@@ -396,10 +403,10 @@ export const textAdaptGptResponse = ({
 
 /* Update runtimeNode's outputs with interactive data from history */
 export function rewriteNodeOutputByHistories(
-  histories: ChatItemType[],
-  runtimeNodes: RuntimeNodeItemType[]
+  runtimeNodes: RuntimeNodeItemType[],
+  lastInteractive?: InteractiveNodeResponseType
 ) {
-  const interactive = getLastInteractiveValue(histories);
+  const interactive = lastInteractive;
   if (!interactive?.nodeOutputs) {
     return runtimeNodes;
   }

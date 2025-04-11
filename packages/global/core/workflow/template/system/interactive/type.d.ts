@@ -1,6 +1,5 @@
 import type { NodeOutputItemType } from '../../../../chat/type';
 import type { FlowNodeOutputItemType } from '../../../type/io';
-import type { RuntimeEdgeItemType } from '../../../runtime/type';
 import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from 'core/workflow/constants';
 import type { ChatCompletionMessageParam } from '../../../../ai/type';
@@ -9,7 +8,6 @@ type InteractiveBasicType = {
   entryNodeIds: string[];
   memoryEdges: RuntimeEdgeItemType[];
   nodeOutputs: NodeOutputItemType[];
-
   toolParams?: {
     entryNodeIds: string[]; // 记录工具中，交互节点的 Id，而不是起始工作流的入口
     memoryMessages: ChatCompletionMessageParam[]; // 这轮工具中，产生的新的 messages
@@ -23,6 +21,13 @@ type InteractiveNodeType = {
   nodeOutputs?: NodeOutputItemType[];
 };
 
+type ChildrenInteractive = InteractiveNodeType & {
+  type: 'childrenInteractive';
+  params: {
+    childrenResponse?: WorkflowInteractiveResponseType;
+  };
+};
+
 export type UserSelectOptionItemType = {
   key: string;
   value: string;
@@ -30,6 +35,7 @@ export type UserSelectOptionItemType = {
 type UserSelectInteractive = InteractiveNodeType & {
   type: 'userSelect';
   params: {
+    childrenResponse?: WorkflowInteractiveResponseType;
     description: string;
     userSelectOptions: UserSelectOptionItemType[];
     userSelectedVal?: string;
@@ -57,10 +63,15 @@ export type UserInputFormItemType = {
 type UserInputInteractive = InteractiveNodeType & {
   type: 'userInput';
   params: {
+    childrenResponse?: WorkflowInteractiveResponseType;
     description: string;
     inputForm: UserInputFormItemType[];
     submitted?: boolean;
   };
 };
-export type InteractiveNodeResponseType = UserSelectInteractive | UserInputInteractive;
+
+export type InteractiveNodeResponseType =
+  | UserSelectInteractive
+  | UserInputInteractive
+  | ChildrenInteractive;
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;
