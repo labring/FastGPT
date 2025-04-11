@@ -36,6 +36,8 @@ const reduceQueue = () => {
 
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
+  addLog.debug(`[QA Queue] Queue size: ${global.qaQueueLen}`);
+
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
 
