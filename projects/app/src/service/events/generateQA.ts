@@ -33,9 +33,21 @@ const reduceQueue = () => {
 
   return global.qaQueueLen === 0;
 };
+const reduceQueueAndReturn = (delay = 0) => {
+  reduceQueue();
+  if (delay) {
+    setTimeout(() => {
+      generateQA();
+    }, delay);
+  } else {
+    generateQA();
+  }
+};
 
 export async function generateQA(): Promise<any> {
   const max = global.systemEnv?.qaMaxProcess || 10;
+  addLog.debug(`[QA Queue] Queue size: ${global.qaQueueLen}`);
+
   if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
 
@@ -98,14 +110,12 @@ export async function generateQA(): Promise<any> {
     return;
   }
   if (error) {
-    reduceQueue();
-    return generateQA();
+    return reduceQueueAndReturn();
   }
 
   // auth balance
   if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-    reduceQueue();
-    return generateQA();
+    return reduceQueueAndReturn();
   }
   addLog.info(`[QA Queue] Start`);
 
@@ -137,14 +147,8 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     const qaArr = formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
-    addLog.info(`[QA Queue] Finish`, {
-      time: Date.now() - startTime,
-      splitLength: qaArr.length,
-      usage: chatResponse.usage
-    });
-
     // get vector and insert
-    const { insertLen } = await pushDataListToTrainingQueueByCollectionId({
+    await pushDataListToTrainingQueueByCollectionId({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
@@ -160,21 +164,21 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     await MongoDatasetTraining.findByIdAndDelete(data._id);
 
     // add bill
-    if (insertLen > 0) {
-      pushQAUsage({
-        teamId: data.teamId,
-        tmbId: data.tmbId,
-        inputTokens: await countGptMessagesTokens(messages),
-        outputTokens: await countPromptTokens(answer),
-        billId: data.billId,
-        model: modelData.model
-      });
-    } else {
-      addLog.info(`QA result 0:`, { answer });
-    }
+    pushQAUsage({
+      teamId: data.teamId,
+      tmbId: data.tmbId,
+      inputTokens: await countGptMessagesTokens(messages),
+      outputTokens: await countPromptTokens(answer),
+      billId: data.billId,
+      model: modelData.model
+    });
+    addLog.info(`[QA Queue] Finish`, {
+      time: Date.now() - startTime,
+      splitLength: qaArr.length,
+      usage: chatResponse.usage
+    });
 
-    reduceQueue();
-    generateQA();
+    return reduceQueueAndReturn();
   } catch (err: any) {
     addLog.error(`[QA Queue] Error`, err);
     await MongoDatasetTraining.updateOne(
@@ -188,9 +192,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       }
     );
 
-    setTimeout(() => {
-      generateQA();
-    }, 1000);
+    return reduceQueueAndReturn(1000);
   }
 }
 

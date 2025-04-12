@@ -141,6 +141,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   } else {
     props.workflowDispatchDeep += 1;
   }
+  const isRootRuntime = props.workflowDispatchDeep === 1;
 
   if (props.workflowDispatchDeep > 20) {
     return {
@@ -161,25 +162,28 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   let workflowRunTimes = 0;
 
   // set sse response headers
-  if (stream && res) {
-    res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
+  if (isRootRuntime) {
+    res?.setHeader('Connection', 'keep-alive'); // Set keepalive for long connection
+    if (stream && res) {
+      res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
 
-    // 10s sends a message to prevent the browser from thinking that the connection is disconnected
-    const sendStreamTimerSign = () => {
-      setTimeout(() => {
-        props?.workflowStreamResponse?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: ''
-          })
-        });
-        sendStreamTimerSign();
-      }, 10000);
-    };
-    sendStreamTimerSign();
+      // 10s sends a message to prevent the browser from thinking that the connection is disconnected
+      const sendStreamTimerSign = () => {
+        setTimeout(() => {
+          props?.workflowStreamResponse?.({
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: ''
+            })
+          });
+          sendStreamTimerSign();
+        }, 10000);
+      };
+      sendStreamTimerSign();
+    }
   }
 
   variables = {
@@ -325,10 +329,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     });
 
     if (props.mode === 'debug') {
-      debugNextStepRunNodes = debugNextStepRunNodes.concat([
-        ...nextStepActiveNodes,
-        ...nextStepSkipNodes
-      ]);
+      debugNextStepRunNodes = debugNextStepRunNodes.concat(
+        props.lastInteractive ? nextStepActiveNodes : [...nextStepActiveNodes, ...nextStepSkipNodes]
+      );
       return {
         nextStepActiveNodes: [],
         nextStepSkipNodes: []
@@ -374,7 +377,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     };
 
     // Tool call, not need interactive response
-    if (!props.isToolCall) {
+    if (!props.isToolCall && isRootRuntime) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.interactive,
         data: { interactive: interactiveResult }
@@ -428,14 +431,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     })();
 
     if (!nodeRunResult) return [];
-    if (res?.closed) {
-      addLog.warn('Request is closed', {
-        appId: props.runningAppInfo.id,
-        nodeId: node.nodeId,
-        nodeName: node.name
-      });
-      return [];
-    }
 
     /* 
       特殊情况：
@@ -491,6 +486,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const nextStepSkipNodesResults = (
       await Promise.all(nextStepSkipNodes.map((node) => checkNodeCanRun(node, skippedNodeIdList)))
     ).flat();
+
+    if (res?.closed) {
+      addLog.warn('Request is closed', {
+        appId: props.runningAppInfo.id,
+        nodeId: node.nodeId,
+        nodeName: node.name
+      });
+      return [];
+    }
 
     return [
       ...nextStepActiveNodes,
@@ -632,7 +636,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     if (
       version === 'v2' &&
       !props.isToolCall &&
-      !props.runningAppInfo.isChildApp &&
+      isRootRuntime &&
       formatResponseData &&
       !(!props.responseDetail && filterModuleTypeList.includes(formatResponseData.moduleType))
     ) {
@@ -721,7 +725,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
           entryNodeIds: nodeInteractiveResponse.entryNodeIds,
           interactiveResponse: nodeInteractiveResponse.interactiveResponse
         });
-        chatAssistantResponse.push(interactiveAssistant);
+        if (isRootRuntime) {
+          chatAssistantResponse.push(interactiveAssistant);
+        }
         return interactiveAssistant.interactive;
       }
     })();
