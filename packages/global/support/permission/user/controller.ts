@@ -1,6 +1,8 @@
 import { PerConstructPros, Permission } from '../controller';
 import {
+  TeamApikeyCreatePermissionVal,
   TeamAppCreatePermissionVal,
+  TeamDatasetCreatePermissionVal,
   TeamDefaultPermissionVal,
   TeamPermissionList
 } from './constant';
@@ -23,8 +25,8 @@ export class TeamPermission extends Permission {
 
     this.setUpdatePermissionCallback(() => {
       this.hasAppCreatePer = this.checkPer(TeamAppCreatePermissionVal);
-      this.hasDatasetCreatePer = this.checkPer(TeamAppCreatePermissionVal);
-      this.hasApikeyCreatePer = this.checkPer(TeamAppCreatePermissionVal);
+      this.hasDatasetCreatePer = this.checkPer(TeamDatasetCreatePermissionVal);
+      this.hasApikeyCreatePer = this.checkPer(TeamApikeyCreatePermissionVal);
     });
   }
 }
