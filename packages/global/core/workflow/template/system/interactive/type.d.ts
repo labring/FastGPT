@@ -28,6 +28,12 @@ type ChildrenInteractive = InteractiveNodeType & {
   };
 };
 
+type LoopInteractive = InteractiveNodeType & {
+  type: 'loopInteractive';
+  params: {
+    // TODO: 暂时没想好，先放在这
+  };
+};
 export type UserSelectOptionItemType = {
   key: string;
   value: string;
