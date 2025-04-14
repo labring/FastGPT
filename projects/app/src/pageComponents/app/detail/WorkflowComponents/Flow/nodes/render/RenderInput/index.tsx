@@ -25,6 +25,9 @@ const RenderList: Record<
   [FlowNodeInputTypeEnum.select]: {
     Component: dynamic(() => import('./templates/Select'))
   },
+  [FlowNodeInputTypeEnum.multipleSelect]: {
+    Component: dynamic(() => import('./templates/SelectMulti'))
+  },
   [FlowNodeInputTypeEnum.numberInput]: {
     Component: dynamic(() => import('./templates/NumberInput'))
   },
