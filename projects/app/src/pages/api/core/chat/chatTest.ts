@@ -184,7 +184,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: workflowResponseWrite,
-      version: 'v2'
+      version: 'v2',
+      responseDetail: true
     });
 
     workflowResponseWrite({
