@@ -132,6 +132,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     externalProvider,
     stream = false,
     version = 'v1',
+    responseDetail = true,
     ...props
   } = data;
 
@@ -638,7 +639,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       !props.isToolCall &&
       isRootRuntime &&
       formatResponseData &&
-      !(!props.responseDetail && filterModuleTypeList.includes(formatResponseData.moduleType))
+      !(responseDetail === false && filterModuleTypeList.includes(formatResponseData.moduleType))
     ) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeResponse,

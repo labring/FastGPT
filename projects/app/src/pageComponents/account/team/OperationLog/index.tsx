@@ -64,8 +64,6 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     ScrollData: LogScrollData
   } = useScrollPagination(getOperationLogs, {
     pageSize: 20,
-    throttleWait: 500,
-    debounceWait: 200,
     refreshDeps: [searchParams],
     params: searchParams
   });
@@ -92,10 +90,8 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
 
   useEffect(() => {
     setSearchParams({
-      ...(isSelectAllTmb ? {} : { tmbIds: selectedTmbIds.length > 0 ? selectedTmbIds : undefined }),
-      ...(isSelectAllEvent
-        ? {}
-        : { events: selectedEvents.length > 0 ? selectedEvents : undefined })
+      ...(isSelectAllTmb ? {} : { tmbIds: selectedTmbIds }),
+      ...(isSelectAllEvent ? {} : { events: selectedEvents })
     });
   }, [selectedTmbIds, selectedEvents, isSelectAllTmb, isSelectAllEvent]);
 
