@@ -62,7 +62,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: projects/app/Dockerfile
+          file: projects/sandbox/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/fastgpt-sandbox
@@ -84,7 +84,6 @@ jobs:
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
-
 
   release-fastgpt-sandbox-images:
     permissions:
