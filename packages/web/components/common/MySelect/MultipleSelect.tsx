@@ -33,6 +33,7 @@ export type SelectProps<T = any> = {
   itemWrap?: boolean;
   onSelect: (val: T[]) => void;
   closeable?: boolean;
+  isDisabled?: boolean;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
 } & Omit<ButtonProps, 'onSelect'>;
 
@@ -47,6 +48,7 @@ const MultipleSelect = <T = any,>({
   ScrollData,
   isSelectAll,
   setIsSelectAll,
+  isDisabled = false,
   ...props
 }: SelectProps<T>) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -129,8 +131,8 @@ const MultipleSelect = <T = any,>({
     <Box>
       <Menu
         autoSelect={false}
-        isOpen={isOpen}
-        onOpen={onOpen}
+        isOpen={isOpen && !isDisabled}
+        onOpen={isDisabled ? undefined : onOpen}
         onClose={onClose}
         strategy={'fixed'}
         matchWidth
@@ -144,15 +146,16 @@ const MultipleSelect = <T = any,>({
           borderRadius={'md'}
           border={'base'}
           userSelect={'none'}
-          cursor={'pointer'}
+          cursor={isDisabled ? 'not-allowed' : 'pointer'}
           _active={{
             transform: 'none'
           }}
           _hover={{
-            borderColor: 'primary.300'
+            borderColor: isDisabled ? 'myGray.200' : 'primary.300'
           }}
+          opacity={isDisabled ? 0.6 : 1}
           {...props}
-          {...(isOpen
+          {...(isOpen && !isDisabled
             ? {
                 boxShadow: '0px 0px 4px #A8DBFF',
                 borderColor: 'primary.500',
