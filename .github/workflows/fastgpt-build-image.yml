@@ -68,7 +68,7 @@ jobs:
           file: projects/app/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/fastgpt
             org.opencontainers.image.description=fastgpt image
           outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt,${{ secrets.ALI_IMAGE_NAME }}/fastgpt,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -213,7 +213,7 @@ jobs:
           build-args: |
             base_url=/fastai
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/fastgpt-sub-route
             org.opencontainers.image.description=fastgpt-sub-route image
           outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route,${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sub-route,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sub-route",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -358,7 +358,7 @@ jobs:
           build-args: |
             base_url=/gchat
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT
+            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/fastgpt-sub-route-gchat
             org.opencontainers.image.description=fastgpt-sub-route-gchat image
           outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route-gchat,${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sub-route-gchat,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sub-route-gchat",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
