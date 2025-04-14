@@ -34,20 +34,6 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     events?: OperationLogEventEnum[];
   }>({});
 
-  const {
-    value: selectedTmbIds,
-    setValue: setSelectedTmbIds,
-    isSelectAll: isSelectAllTmb,
-    setIsSelectAll: setIsSelectAllTmb
-  } = useMultipleSelect<string>();
-
-  const {
-    value: selectedEvents,
-    setValue: setSelectedEvents,
-    isSelectAll: isSelectAllEvent,
-    setIsSelectAll: setIsSelectAllEvent
-  } = useMultipleSelect<OperationLogEventEnum>();
-
   const { data: members, ScrollData } = useScrollPagination(getTeamMembers, {});
   const tmbList = useMemo(
     () =>
@@ -84,10 +70,32 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
     params: searchParams
   });
 
+  const {
+    value: selectedTmbIds,
+    setValue: setSelectedTmbIds,
+    isSelectAll: isSelectAllTmb,
+    setIsSelectAll: setIsSelectAllTmb
+  } = useMultipleSelect<string>(
+    tmbList.map((item) => item.value),
+    true
+  );
+
+  const {
+    value: selectedEvents,
+    setValue: setSelectedEvents,
+    isSelectAll: isSelectAllEvent,
+    setIsSelectAll: setIsSelectAllEvent
+  } = useMultipleSelect<OperationLogEventEnum>(
+    eventOptions.map((item) => item.value),
+    true
+  );
+
   useEffect(() => {
     setSearchParams({
-      tmbIds: selectedTmbIds.length > 0 && !isSelectAllTmb ? selectedTmbIds : undefined,
-      events: selectedEvents.length > 0 && !isSelectAllEvent ? selectedEvents : undefined
+      ...(isSelectAllTmb ? {} : { tmbIds: selectedTmbIds.length > 0 ? selectedTmbIds : undefined }),
+      ...(isSelectAllEvent
+        ? {}
+        : { events: selectedEvents.length > 0 ? selectedEvents : undefined })
     });
   }, [selectedTmbIds, selectedEvents, isSelectAllTmb, isSelectAllEvent]);
 
