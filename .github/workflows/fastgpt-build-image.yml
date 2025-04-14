@@ -146,7 +146,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e '${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}')"
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
               $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt@sha256:%s ' *)
@@ -291,7 +291,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e '${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}')"
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
               $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route@sha256:%s ' *)
@@ -436,7 +436,7 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          TAGS="$(echo -e '${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}')"
+          TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}")"
           for TAG in $TAGS; do
             docker buildx imagetools create -t $TAG \
               $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route-gchat@sha256:%s ' *)
