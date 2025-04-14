@@ -146,8 +146,12 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create -t ${Git_Tag} -t ${Git_Latest} -t ${Ali_Tag} -t ${Ali_Latest} -t ${Docker_Hub_Tag} -t ${Docker_Hub_Latest} \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt@sha256:%s ' *)
+          TAGS="$(echo -e '${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}')"
+          for TAG in $TAGS; do
+            docker buildx imagetools create -t $TAG \
+              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt@sha256:%s ' *)
+            sleep 5
+          done
 
   build-fastgpt-images-sub-route:
     permissions:
@@ -287,8 +291,12 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create -t ${Git_Tag} -t ${Git_Latest} -t ${Ali_Tag} -t ${Ali_Latest} -t ${Docker_Hub_Tag} -t ${Docker_Hub_Latest} \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route@sha256:%s ' *)
+          TAGS="$(echo -e '${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}')"
+          for TAG in $TAGS; do
+            docker buildx imagetools create -t $TAG \
+              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route@sha256:%s ' *)
+            sleep 5
+          done
 
   build-fastgpt-images-sub-route-gchat:
     permissions:
@@ -428,5 +436,9 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create -t ${Git_Tag} -t ${Git_Latest} -t ${Ali_Tag} -t ${Ali_Latest} -t ${Docker_Hub_Tag} -t ${Docker_Hub_Latest} \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route-gchat@sha256:%s ' *)
+          TAGS="$(echo -e '${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}\n${Docker_Hub_Tag}\n${Docker_Hub_Latest}')"
+          for TAG in $TAGS; do
+            docker buildx imagetools create -t $TAG \
+              $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-sub-route-gchat@sha256:%s ' *)
+            sleep 5
+          done
