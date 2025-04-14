@@ -144,7 +144,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
-      FlowNodeInputTypeEnum.selectMulti,
+      FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.custom
     ];
 
@@ -159,7 +159,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
-      FlowNodeInputTypeEnum.selectMulti
+      FlowNodeInputTypeEnum.multipleSelect
     ];
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
@@ -365,27 +365,20 @@ const InputTypeConfig = ({
                   w={'200px'}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.selectMulti && (
+              {inputType === FlowNodeInputTypeEnum.multipleSelect && (
                 <MultipleSelect<string>
-                  list={[...listValue]
-                    .filter((item) => item.label !== '')
-                    .map((item) => ({
+                  flex={'1 0 0'}
+                  itemWrap={true}
+                  bg={'myGray.50'}
+                  list={listValue
+                    .filter((item: any) => item.label !== '')
+                    .map((item: any) => ({
                       label: item.label,
                       value: item.value
                     }))}
+                  placeholder={t('workflow:select_default_option')}
                   value={defaultValue || []}
-                  onSelect={(val) => {
-                    setValue('defaultValue', val as string[]);
-                  }}
-                  itemWrap={true}
-                  w={'200px'}
-                  setIsSelectAll={(all) => {
-                    if (all)
-                      setValue(
-                        'defaultValue',
-                        listValue.map((item: any) => item.value)
-                      );
-                  }}
+                  onSelect={(val) => setValue('defaultValue', val)}
                   isSelectAll={
                     defaultValue &&
                     defaultValue.length ===
@@ -421,7 +414,7 @@ const InputTypeConfig = ({
         )}
 
         {(inputType === FlowNodeInputTypeEnum.select ||
-          inputType == FlowNodeInputTypeEnum.selectMulti) && (
+          inputType == FlowNodeInputTypeEnum.multipleSelect) && (
           <>
             <DndDrag<{ id: string; value: string }>
               onDragEndCb={(list) => {

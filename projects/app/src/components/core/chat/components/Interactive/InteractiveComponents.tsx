@@ -174,7 +174,7 @@ export const FormInputComponent = React.memo(function FormInputComponent({
               }}
             />
           );
-        case FlowNodeInputTypeEnum.selectMulti:
+        case FlowNodeInputTypeEnum.multipleSelect:
           return (
             <Controller
               key={label}
@@ -186,19 +186,13 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                 return (
                   <MultipleSelect<string>
                     width={'100%'}
+                    bg={'white'}
+                    py={2}
                     list={list}
                     value={value}
                     isDisabled={submitted}
                     onSelect={(e) => setValue(label, e)}
                     isSelectAll={value.length === list.length}
-                    setIsSelectAll={(e) => {
-                      if (e) {
-                        setValue(
-                          label,
-                          list.map((item) => item.value)
-                        );
-                      }
-                    }}
                   />
                 );
               }}

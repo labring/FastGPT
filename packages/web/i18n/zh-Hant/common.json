@@ -814,7 +814,6 @@
   "core.workflow.inputType.input": "單行輸入框",
   "core.workflow.inputType.number input": "數字輸入框",
   "core.workflow.inputType.select": "單選框",
-  "core.workflow.inputType.selectMulti": "多選框",
   "core.workflow.inputType.selectApp": "應用程式選擇",
   "core.workflow.inputType.selectDataset": "知識庫選擇",
   "core.workflow.inputType.selectLLMModel": "對話模型選擇",

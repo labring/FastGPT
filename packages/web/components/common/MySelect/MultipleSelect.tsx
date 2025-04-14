@@ -1,5 +1,6 @@
 import {
   Box,
+  Button,
   ButtonProps,
   Checkbox,
   Flex,
@@ -26,7 +27,7 @@ export type SelectProps<T = any> = {
   }[];
   value: T[];
   isSelectAll: boolean;
-  setIsSelectAll: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsSelectAll?: React.Dispatch<React.SetStateAction<boolean>>;
 
   placeholder?: string;
   maxH?: number;
@@ -72,7 +73,7 @@ const MultipleSelect = <T = any,>({
       // 全选状态下，value 实际上上空。
       if (isSelectAll) {
         onSelect(list.map((item) => item.value).filter((i) => i !== val));
-        setIsSelectAll(false);
+        setIsSelectAll?.(false);
         return;
       }
 
@@ -89,7 +90,7 @@ const MultipleSelect = <T = any,>({
     const hasSelected = isSelectAll || value.length > 0;
     onSelect(hasSelected ? [] : list.map((item) => item.value));
 
-    setIsSelectAll((state) => !state);
+    setIsSelectAll?.((state) => !state);
   }, [value, list, setIsSelectAll, onSelect]);
 
   const ListRender = useMemo(() => {
@@ -128,7 +129,7 @@ const MultipleSelect = <T = any,>({
   }, [value, list, isSelectAll]);
 
   return (
-    <Box>
+    <Box h={'100%'} w={'100%'}>
       <Menu
         autoSelect={false}
         isOpen={isOpen && !isDisabled}
@@ -140,6 +141,7 @@ const MultipleSelect = <T = any,>({
       >
         <MenuButton
           as={Flex}
+          h={'100%'}
           alignItems={'center'}
           ref={ref}
           px={3}

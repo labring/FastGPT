@@ -67,8 +67,8 @@ const InputFormEditModal = ({
     },
     {
       icon: 'core/workflow/inputType/option',
-      label: t('common:core.workflow.inputType.selectMulti'),
-      value: FlowNodeInputTypeEnum.selectMulti,
+      label: t('workflow:input_type_multiple_select'),
+      value: FlowNodeInputTypeEnum.multipleSelect,
       defaultValueType: WorkflowIOValueTypeEnum.arrayString
     }
   ];

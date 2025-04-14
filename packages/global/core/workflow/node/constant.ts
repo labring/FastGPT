@@ -7,7 +7,7 @@ export enum FlowNodeInputTypeEnum { // render ui
   numberInput = 'numberInput',
   switch = 'switch', // true/false
   select = 'select',
-  selectMulti = 'selectMulti',
+  multipleSelect = 'multipleSelect',
 
   // editor
   JSONEditor = 'JSONEditor',
@@ -47,7 +47,7 @@ export const FlowNodeInputMap: Record<
   [FlowNodeInputTypeEnum.select]: {
     icon: 'core/workflow/inputType/option'
   },
-  [FlowNodeInputTypeEnum.selectMulti]: {
+  [FlowNodeInputTypeEnum.multipleSelect]: {
     icon: 'core/workflow/inputType/option'
   },
   [FlowNodeInputTypeEnum.switch]: {
