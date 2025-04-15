@@ -217,6 +217,8 @@ export type DispatchNodeResponseType = {
   // tool params
   toolParamsResult?: Record<string, any>;
 
+  toolRes?: any;
+
   // abandon
   extensionModel?: string;
   extensionResult?: string;

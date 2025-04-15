@@ -125,7 +125,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       return {
         ...appPerQuery,
         teamId,
-        ...searchMatch
+        ...searchMatch,
+        type: { $nin: [AppTypeEnum.tool] }
       };
     }
 
@@ -133,7 +134,8 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
       ...appPerQuery,
       teamId,
       ...(type && (Array.isArray(type) ? { type: { $in: type } } : { type })),
-      ...parseParentIdInMongo(parentId)
+      ...parseParentIdInMongo(parentId),
+      type: { $nin: [AppTypeEnum.tool] }
     };
   })();
   const limit = (() => {

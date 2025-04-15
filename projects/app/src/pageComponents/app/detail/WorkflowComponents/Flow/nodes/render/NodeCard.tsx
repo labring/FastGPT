@@ -105,7 +105,8 @@ const NodeCard = (props: Props) => {
 
       if (
         node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-        node?.flowNodeType === FlowNodeTypeEnum.appModule
+        node?.flowNodeType === FlowNodeTypeEnum.appModule ||
+        node?.flowNodeType === FlowNodeTypeEnum.tool
       ) {
         return { ...node, ...node.pluginData };
       } else {

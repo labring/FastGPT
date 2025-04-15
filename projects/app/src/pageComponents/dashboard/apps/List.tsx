@@ -348,7 +348,9 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
-                            ...(AppFolderTypeList.includes(app.type)
+                            ...(app.type === AppTypeEnum.toolSet ||
+                            app.type === AppTypeEnum.folder ||
+                            app.type === AppTypeEnum.httpPlugin
                               ? []
                               : [
                                   {

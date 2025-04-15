@@ -1,6 +1,10 @@
 import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
-import { appData2FlowNodeIO, pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
+import {
+  appData2FlowNodeIO,
+  pluginData2FlowNodeIO,
+  toolData2FlowNodeIO
+} from '@fastgpt/global/core/workflow/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
@@ -128,11 +132,19 @@ export async function getChildAppPreviewNode({
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
 
+  const isTool =
+    !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
+    app.workflow.nodes.length === 1;
+
   return {
     id: getNanoid(),
     pluginId: app.id,
     templateType: app.templateType,
-    flowNodeType: isPlugin ? FlowNodeTypeEnum.pluginModule : FlowNodeTypeEnum.appModule,
+    flowNodeType: isTool
+      ? FlowNodeTypeEnum.tool
+      : isPlugin
+        ? FlowNodeTypeEnum.pluginModule
+        : FlowNodeTypeEnum.appModule,
     avatar: app.avatar,
     name: app.name,
     intro: app.intro,
@@ -143,9 +155,11 @@ export async function getChildAppPreviewNode({
     version: app.version,
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),
-    ...(isPlugin
-      ? pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
-      : appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig }))
+    ...(isTool
+      ? toolData2FlowNodeIO({ nodes: app.workflow.nodes })
+      : isPlugin
+        ? pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+        : appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig }))
   };
 }
 

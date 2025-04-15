@@ -614,11 +614,9 @@ const RenderList = React.memo(function RenderList({
                 }
               })}
             >
-              <Flex>
-                <Box fontSize={'sm'} my={2} fontWeight={'500'} flex={1} color={'myGray.900'}>
-                  {t(item.label as any)}
-                </Box>
-              </Flex>
+              <Box fontSize={'sm'} my={2} fontWeight={'500'} flex={1} color={'myGray.900'}>
+                {t(item.label as any)}
+              </Box>
               <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2}>
                 {item.list.map((template) => {
                   return (
