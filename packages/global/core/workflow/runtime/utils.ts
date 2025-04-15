@@ -18,7 +18,10 @@ import {
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
 ): WorkflowInteractiveResponseType => {
-  if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
+  if (
+    (interactive?.type === 'childrenInteractive' || interactive?.type === 'loopInteractive') &&
+    interactive.params?.childrenResponse
+  ) {
     return extractDeepestInteractive(interactive.params.childrenResponse);
   }
   return interactive;
@@ -62,7 +65,10 @@ export const getLastInteractiveValue = (
       return;
     }
 
-    if (lastValue.interactive.type === 'childrenInteractive') {
+    if (
+      lastValue.interactive.type === 'childrenInteractive' ||
+      lastValue.interactive.type === 'loopInteractive'
+    ) {
       return lastValue.interactive;
     }
 
