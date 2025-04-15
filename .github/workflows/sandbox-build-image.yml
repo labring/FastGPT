@@ -65,7 +65,7 @@ jobs:
           file: projects/sandbox/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/fastgpt-sandbox
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=fastgpt-sandbox image
           outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox,${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox,${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache

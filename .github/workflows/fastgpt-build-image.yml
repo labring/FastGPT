@@ -79,7 +79,7 @@ jobs:
           build-args: |
             ${{ matrix.sub_routes.base_url && format('base_url={0}', matrix.sub_routes.base_url) || '' }}
           labels: |
-            org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.description=${{ matrix.sub_routes.repo }} image
           outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }},${{ secrets.ALI_IMAGE_NAME }}/${{ matrix.sub_routes.repo }},${{ secrets.DOCKER_IMAGE_NAME }}/${{ matrix.sub_routes.repo }}",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
