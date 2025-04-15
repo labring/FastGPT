@@ -101,7 +101,7 @@ const updateMCPChildrenTool = async ({
         tmbId,
         type: AppTypeEnum.tool,
         intro: tool.description,
-        modules: getMCPToolNodes({ tool, url: toolSetData.url, avatar: parentApp.avatar }),
+        modules: getMCPToolNodes({ tool, url: toolSetData.url }),
         session
       });
     }
@@ -113,7 +113,7 @@ const updateMCPChildrenTool = async ({
       await MongoApp.findByIdAndUpdate(
         dbTool._id,
         {
-          modules: getMCPToolNodes({ tool, url: toolSetData.url, avatar: parentApp.avatar })
+          modules: getMCPToolNodes({ tool, url: toolSetData.url })
         },
         { session }
       );

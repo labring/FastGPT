@@ -52,7 +52,7 @@ async function handler(
         tmbId,
         type: AppTypeEnum.tool,
         intro: tool.description,
-        modules: getMCPToolNodes({ tool, url, avatar }),
+        modules: getMCPToolNodes({ tool, url }),
         session
       });
     }

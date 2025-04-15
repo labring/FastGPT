@@ -41,20 +41,12 @@ export const getMCPToolSetNodes = ({
   ];
 };
 
-export const getMCPToolNodes = ({
-  tool,
-  url,
-  avatar
-}: {
-  tool: ToolType;
-  url: string;
-  avatar?: string;
-}) => {
+export const getMCPToolNodes = ({ tool, url }: { tool: ToolType; url: string }) => {
   return [
     {
       nodeId: nanoid(16),
       flowNodeType: FlowNodeTypeEnum.tool,
-      avatar,
+      avatar: 'core/app/type/mcpToolsFill',
       intro: tool.description,
       inputs: [
         {
@@ -69,7 +61,7 @@ export const getMCPToolNodes = ({
           label: key,
           valueType: value.type as WorkflowIOValueTypeEnum,
           description: value.description,
-          toolDescription: value.description,
+          toolDescription: value.description || key,
           required: tool.inputSchema.required?.includes(key),
           renderTypeList: [
             value.type === 'string'

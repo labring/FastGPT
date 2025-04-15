@@ -46,7 +46,7 @@ const EditForm = ({
 
   return (
     <>
-      <Box p={6} maxW={'full'}>
+      <Box p={6}>
         <Flex alignItems={'center'}>
           <MyIcon name={'common/linkBlue'} w={'20px'} />
           <FormLabel ml={2} flex={1}>
@@ -103,7 +103,14 @@ const EditForm = ({
                   <Box w={'20px'} fontSize={'14px'} color={'myGray.500'} fontWeight={'medium'}>
                     {index + 1 < 10 ? `0${index + 1}` : index + 1}
                   </Box>
-                  <Box maxW={'268px'} ml={2}>
+                  <Box
+                    ml={2}
+                    maxW={'full'}
+                    pr={6}
+                    _groupHover={{
+                      pr: 28
+                    }}
+                  >
                     <Box fontSize={'14px'} color={'myGray.900'}>
                       {tool.name}
                     </Box>
