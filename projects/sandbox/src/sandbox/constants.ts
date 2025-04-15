@@ -50,7 +50,7 @@ for item in allowed_syscalls_tmp:
     item = item.strip()
     parts = item.split(".")[1][4:].lower()
     L.append(parts)
-f = SyscallFilter(defaction=ERRNO(errno.EPERM))
+f = SyscallFilter(defaction=KILL)
 for item in L:
     f.add_rule(ALLOW, item)
 f.add_rule(ALLOW, "write", Arg(0, EQ, sys.stdout.fileno()))
