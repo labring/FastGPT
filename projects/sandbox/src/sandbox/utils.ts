@@ -152,7 +152,10 @@ print(json.dumps(res))
     }
     return { codeReturn: parsedOutput, log: '' };
   } catch (err) {
-    if (stdout.includes('malformed node or string on line 1')) {
+    if (
+      stdout.includes('malformed node or string on line 1') ||
+      stdout.includes('invalid syntax (<unknown>, line 1)')
+    ) {
       return Promise.reject(`The result should be a parsable variable, such as a list.  ${stdout}`);
     } else if (stdout.includes('Unexpected end of JSON input')) {
       return Promise.reject(`Not allowed print or ${stdout}`);
