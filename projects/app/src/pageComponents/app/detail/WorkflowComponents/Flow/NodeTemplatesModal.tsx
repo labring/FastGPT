@@ -364,7 +364,7 @@ const RenderHeader = React.memo(function RenderHeader({
                 color: 'primary.600'
               }}
               fontSize={'sm'}
-              onClick={() => router.push('/app/list')}
+              onClick={() => router.push('/dashboard/apps')}
               gap={1}
             >
               <Box>{t('common:create')}</Box>

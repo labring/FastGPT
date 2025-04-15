@@ -11,7 +11,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import { useContextSelector } from 'use-context-selector';
-import AppListContextProvider, { AppListContext } from '@/pageComponents/app/list/context';
+import AppListContextProvider, { AppListContext } from '@/pageComponents/dashboard/apps/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
@@ -22,25 +22,24 @@ import {
   getCollaboratorList,
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
-import type { CreateAppType } from '@/pageComponents/app/list/CreateModal';
+import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import TemplateMarketModal from '@/pageComponents/app/list/TemplateMarketModal';
-import MyImage from '@fastgpt/web/components/common/Image/MyImage';
-import JsonImportModal from '@/pageComponents/app/list/JsonImportModal';
+import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import DashboardContainer from '@/pageComponents/dashboard/Container';
+import List from '@/pageComponents/dashboard/apps/List';
 
-const CreateModal = dynamic(() => import('@/pageComponents/app/list/CreateModal'));
+const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
 );
-const HttpEditModal = dynamic(() => import('@/pageComponents/app/list/HttpPluginEditModal'));
-const List = dynamic(() => import('@/pageComponents/app/list/List'));
+const HttpEditModal = dynamic(() => import('@/pageComponents/dashboard/apps/HttpPluginEditModal'));
 
-const MyApps = () => {
+const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystem();
@@ -72,7 +71,6 @@ const MyApps = () => {
     onClose: onCloseJsonImportModal
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
-  const [templateModalType, setTemplateModalType] = useState<AppTypeEnum | 'all'>();
 
   const { runAsync: onCreateFolder } = useRequest2(postCreateAppFolder, {
     onSuccess() {
@@ -91,6 +89,17 @@ const MyApps = () => {
     errorToast: 'Error'
   });
 
+  const appTypeName = useMemo(() => {
+    const map: Record<AppTypeEnum | 'all', string> = {
+      all: t('common:core.module.template.Team app'),
+      [AppTypeEnum.simple]: t('app:type.Simple bot'),
+      [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
+      [AppTypeEnum.plugin]: t('app:type.Plugin'),
+      [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
+      [AppTypeEnum.folder]: t('common:Folder')
+    };
+    return map[appType] || map['all'];
+  }, [appType, t]);
   const RenderSearchInput = useMemo(
     () => (
       <InputGroup maxW={['auto', '250px']} position={'relative'}>
@@ -120,7 +129,7 @@ const MyApps = () => {
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       {paths.length > 0 && (
-        <Box pt={[4, 6]} pl={3}>
+        <Box pt={[4, 6]} pl={5}>
           <FolderPath
             paths={paths}
             hoverStyle={{ bg: 'myGray.200' }}
@@ -140,77 +149,22 @@ const MyApps = () => {
           flex={'1 0 0'}
           flexDirection={'column'}
           h={'100%'}
-          pr={folderDetail ? [3, 2] : [3, 8]}
-          pl={3}
+          pr={folderDetail ? [3, 2] : [3, 6]}
+          pl={6}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
           <Flex pt={paths.length > 0 ? 3 : [4, 6]} alignItems={'center'} gap={3}>
-            <LightRowTabs
-              list={[
-                {
-                  label: t('app:type.All'),
-                  value: 'ALL'
-                },
-                {
-                  label: t('app:type.Simple bot'),
-                  value: AppTypeEnum.simple
-                },
-                {
-                  label: t('app:type.Workflow bot'),
-                  value: AppTypeEnum.workflow
-                },
-                {
-                  label: t('app:type.Plugin'),
-                  value: AppTypeEnum.plugin
-                }
-              ]}
-              value={appType}
-              inlineStyles={{ px: 0.5 }}
-              gap={5}
-              display={'flex'}
-              alignItems={'center'}
-              fontSize={['sm', 'md']}
-              flexShrink={0}
-              onChange={(e) => {
-                router.push({
-                  query: {
-                    ...router.query,
-                    type: e
-                  }
-                });
-              }}
-            />
+            {isPc ? (
+              <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
+                {appTypeName}
+              </Box>
+            ) : (
+              MenuIcon
+            )}
             <Box flex={1} />
 
             {isPc && RenderSearchInput}
-
-            {isPc && (
-              <Flex
-                alignItems={'center'}
-                gap={1.5}
-                border={'1px solid'}
-                borderColor={'myGray.250'}
-                h={9}
-                px={4}
-                fontSize={'14px'}
-                fontWeight={'medium'}
-                bg={'white'}
-                rounded={'sm'}
-                cursor={'pointer'}
-                boxShadow={
-                  '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                }
-                _hover={{
-                  bg: 'primary.50',
-                  color: 'primary.600'
-                }}
-                onClick={() => setTemplateModalType('all')}
-              >
-                <MyImage src={'/imgs/app/templateFill.svg'} w={'18px'} />
-                {t('app:template_market')}
-              </Flex>
-            )}
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
@@ -261,20 +215,6 @@ const MyApps = () => {
                       }
                     ]
                   },
-                  ...(isPc
-                    ? []
-                    : [
-                        {
-                          children: [
-                            {
-                              icon: '/imgs/app/templateFill.svg',
-                              label: t('app:template_market'),
-                              description: t('app:template_market_description'),
-                              onClick: () => setTemplateModalType('all')
-                            }
-                          ]
-                        }
-                      ]),
                   {
                     children: [
                       {
@@ -379,19 +319,9 @@ const MyApps = () => {
         />
       )}
       {!!createAppType && (
-        <CreateModal
-          type={createAppType}
-          onClose={() => setCreateAppType(undefined)}
-          onOpenTemplateModal={setTemplateModalType}
-        />
+        <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
-      {!!templateModalType && (
-        <TemplateMarketModal
-          onClose={() => setTemplateModalType(undefined)}
-          defaultType={templateModalType}
-        />
-      )}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
   );
@@ -399,9 +329,13 @@ const MyApps = () => {
 
 function ContextRender() {
   return (
-    <AppListContextProvider>
-      <MyApps />
-    </AppListContextProvider>
+    <DashboardContainer>
+      {({ MenuIcon }) => (
+        <AppListContextProvider>
+          <MyApps MenuIcon={MenuIcon} />
+        </AppListContextProvider>
+      )}
+    </DashboardContainer>
   );
 }
 
