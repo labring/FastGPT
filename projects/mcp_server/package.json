@@ -1,0 +1,28 @@
+{
+  "name": "fastgpt-mcp-server",
+  "version": "0.1",
+  "keywords": [],
+  "author": "fastgpt",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "scripts": {
+    "build": "tsc && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "dev": "nodemon --watch src --ext ts,json --exec \"npm run dev:run\"",
+    "dev:run": "tsc && node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.9.0",
+    "axios": "^1.8.2",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "nodemon": "^3.1.9",
+    "shx": "^0.3.4",
+    "typescript": "^5.6.2"
+  }
+}

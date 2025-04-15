@@ -23,6 +23,8 @@
     "@fastgpt/templates": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
+    "@modelcontextprotocol/sdk": "^1.9.0",
+    "@node-rs/jieba": "2.0.1",
     "@tanstack/react-query": "^4.24.10",
     "ahooks": "^3.7.11",
     "axios": "^1.8.2",
@@ -64,7 +66,7 @@
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
     "use-context-selector": "^1.4.4",
-    "@node-rs/jieba": "2.0.1"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
