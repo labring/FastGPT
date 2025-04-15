@@ -1,5 +1,5 @@
-import React, { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { createContext, useContextSelector } from 'use-context-selector';
+import React, { ReactNode, useCallback, useEffect, useState } from 'react';
+import { createContext } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
@@ -12,11 +12,9 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
-import { AppGroupEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { StudioContext } from '../context';
-
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -30,6 +28,8 @@ type AppListContextType = {
   onUpdateApp: (id: string, data: AppUpdateParams) => Promise<any>;
   setMoveAppId: React.Dispatch<React.SetStateAction<string | undefined>>;
   refetchFolderDetail: () => Promise<AppDetailType | null>;
+  searchKey: string;
+  setSearchKey: React.Dispatch<React.SetStateAction<string>>;
 };
 
 export const AppListContext = createContext<AppListContextType>({
@@ -50,45 +50,42 @@ export const AppListContext = createContext<AppListContextType>({
   appType: 'all',
   refetchFolderDetail: async function (): Promise<AppDetailType | null> {
     throw new Error('Function not implemented.');
+  },
+  searchKey: '',
+  setSearchKey: function (value: React.SetStateAction<string>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { searchKey } = useContextSelector(StudioContext, (v) => v);
+  const { parentId = null, type = 'all' } = router.query as {
+    parentId?: string | null;
+    type: AppTypeEnum;
+  };
+  const [searchKey, setSearchKey] = useState('');
 
   const {
-    selectedGroup,
-    selectedType = 'all',
-    parentId
-  } = useMemo(() => {
-    return {
-      selectedGroup: router.pathname.split('/').pop(),
-      selectedType: router.query.type as AppTypeEnum,
-      parentId: router.query.parentId as string | null
-    };
-  }, [router.pathname, router.query.type, router.query.parentId]);
-
-  const {
-    data: myApps = [],
+    data = [],
     runAsync: loadMyApps,
     loading: isFetchingApps
   } = useRequest2(
     () => {
       const formatType = (() => {
-        if (!selectedType || selectedType === 'all') return undefined;
-        if (selectedType === AppTypeEnum.plugin)
+        if (!type || type === 'all') return undefined;
+        if (type === AppTypeEnum.plugin)
           return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
 
-        return [AppTypeEnum.folder, selectedType];
+        return [AppTypeEnum.folder, type];
       })();
       return getMyApps({ parentId, type: formatType, searchKey });
     },
     {
-      manual: selectedGroup !== AppGroupEnum.teamApps,
-      refreshDeps: [searchKey, parentId, selectedType],
-      throttleWait: 500
+      manual: false,
+      refreshDeps: [searchKey, parentId, type],
+      throttleWait: 500,
+      refreshOnWindowFocus: true
     }
   );
 
@@ -143,20 +140,22 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
 
   const { setLastAppListRouteType } = useSystemStore();
   useEffect(() => {
-    setLastAppListRouteType(selectedType);
-  }, [setLastAppListRouteType, selectedType]);
+    setLastAppListRouteType(type);
+  }, [setLastAppListRouteType, type]);
 
   const contextValue: AppListContextType = {
     parentId,
-    appType: selectedType,
-    myApps,
+    appType: type,
+    myApps: data,
     loadMyApps,
     refetchFolderDetail,
+    isFetchingApps,
     folderDetail,
     paths,
     onUpdateApp,
     setMoveAppId,
-    isFetchingApps
+    searchKey,
+    setSearchKey
   };
   return (
     <AppListContext.Provider value={contextValue}>

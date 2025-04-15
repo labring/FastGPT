@@ -37,7 +37,6 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { StudioContext } from '../context';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -56,7 +55,6 @@ const ListItem = () => {
     AppListContext,
     (v) => v
   );
-  const { setSearchKey } = useContextSelector(StudioContext, (v) => v);
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
@@ -136,7 +134,7 @@ const ListItem = () => {
         gridTemplateColumns={
           folderDetail
             ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-            : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
         }
         gridGap={5}
         alignItems={'stretch'}
@@ -180,7 +178,6 @@ const ListItem = () => {
                 }}
                 onClick={() => {
                   if (AppFolderTypeList.includes(app.type)) {
-                    setSearchKey('');
                     router.push({
                       query: {
                         ...router.query,

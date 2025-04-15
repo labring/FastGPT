@@ -24,8 +24,13 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
-        link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail', '/app/templateMarket', '/app/systemPlugin'],
+        link: `/dashboard/apps`,
+        activeLink: [
+          '/dashboard/apps',
+          '/app/detail',
+          '/dashboard/templateMarket',
+          '/dashboard/[pluginGroupId]'
+        ],
         unread: 0
       },
       {

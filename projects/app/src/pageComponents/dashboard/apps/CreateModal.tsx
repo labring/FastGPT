@@ -22,7 +22,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { AppGroupEnum, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -188,10 +188,9 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
             <Flex
               onClick={() => {
                 router.push({
-                  pathname: '/app/templateMarket',
+                  pathname: '/dashboard/templateMarket',
                   query: {
-                    appType: type,
-                    type: 'recommendation'
+                    appType: type
                   }
                 });
                 onClose();

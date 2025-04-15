@@ -299,7 +299,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
           alignItems={'center'}
           cursor={'pointer'}
           p={3}
-          onClick={() => router.push('/app/list')}
+          onClick={() => router.push('/dashboard/apps')}
         >
           <IconButton
             mr={3}
