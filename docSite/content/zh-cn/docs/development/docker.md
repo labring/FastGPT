@@ -135,6 +135,9 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 
 # pgvector 版本(测试推荐，简单快捷)
 curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-pgvector.yml
+# oceanbase 版本（需要将init.sql和docker-compose.yml放在同一个文件夹，方便挂载）
+# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-oceanbase/docker-compose.yml
+# curl -o init.sql https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-oceanbase/init.sql
 # milvus 版本
 # curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/deploy/docker/docker-compose-milvus.yml
 # zilliz 版本
@@ -147,6 +150,13 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="PgVector版本" >}}
+{{< markdownify >}}
+
+无需操作
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< tab tabName="Oceanbase版本" >}}
 {{< markdownify >}}
 
 无需操作

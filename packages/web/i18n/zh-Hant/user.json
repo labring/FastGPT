@@ -55,7 +55,7 @@
   "permission.only_collaborators": "僅協作者可存取",
   "permission.team_read": "團隊可存取",
   "permission.team_write": "團隊可編輯",
-  "permission_add_tip": "添加後，您可為其勾選權限。",
+  "permission_add_tip": "新增後，您可為其勾選權限。",
   "permission_des.manage": "可建立資源、邀請及刪除成員",
   "permission_des.read": "成員僅能閱讀相關資源，無法建立新資源",
   "permission_des.write": "除了可讀取資源外，還可以建立新的資源",
@@ -75,7 +75,7 @@
   "synchronization.title": "填寫標籤同步連結，點選同步按鈕即可同步",
   "team.Add manager": "新增管理員",
   "team.Confirm Invite": "確認邀請",
-  "team.Create Team": "創建新團隊",
+  "team.Create Team": "建立新團隊",
   "team.Invite Member Failed Tip": "邀請成員出現異常",
   "team.Invite Member Result Tip": "邀請結果提示",
   "team.Invite Member Success Tip": "邀請成員完成\n\n成功：{{success}} 人\n\n使用者名稱無效：{{inValid}}\n\n已在團隊中：{{inTeam}}",
@@ -97,7 +97,7 @@
   "team.group.group": "群組",
   "team.group.keep_admin": "保留管理員權限",
   "team.group.manage_member": "管理成員",
-  "team.group.manage_tip": "可以管理成員、創建群組、管理所有群組、為群組和成員分配權限",
+  "team.group.manage_tip": "可以管理成員、建立群組、管理所有群組、為群組和成員分配權限",
   "team.group.members": "成員",
   "team.group.name": "群組名稱",
   "team.group.permission.write": "工作臺/知識庫建立",
@@ -112,5 +112,5 @@
   "team.no_collaborators": "目前沒有協作者",
   "team.org.org": "組織",
   "team.write_role_member": "可寫入權限",
-  "team.collaborator.added": "已添加"
+  "team.collaborator.added": "已新增"
 }

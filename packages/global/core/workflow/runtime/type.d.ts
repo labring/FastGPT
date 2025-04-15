@@ -23,7 +23,7 @@ import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch
 import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
 import { CompletionFinishReason } from '../../ai/type';
-
+import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -55,12 +55,14 @@ export type ChatDispatchProps = {
   variables: Record<string, any>; // global variable
   query: UserChatItemValueItemType[]; // trigger query
   chatConfig: AppSchema['chatConfig'];
+  lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
   maxRunTimes: number;
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;
   workflowDispatchDeep?: number;
   version?: 'v1' | 'v2';
+  responseDetail?: boolean;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {

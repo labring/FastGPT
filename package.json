@@ -32,6 +32,9 @@
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",
     "./docSite/**/**/*.md": "npm run format-doc"
   },
+  "resolutions": {
+    "mdast-util-gfm-autolink-literal": "2.0.0"
+  },
   "engines": {
     "node": ">=18.16.0",
     "pnpm": ">=9.0.0"
