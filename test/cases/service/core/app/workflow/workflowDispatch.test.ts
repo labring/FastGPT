@@ -7,6 +7,7 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+
 vi.mock(import('@fastgpt/service/common/string/tiktoken'), async (importOriginal) => {
   const mod = await importOriginal();
   return {
