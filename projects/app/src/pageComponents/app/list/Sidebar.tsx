@@ -10,8 +10,8 @@ import { navbarWidth } from '@/components/Layout';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { AppGroupEnum, AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
-
-export type GroupType = 'teamApp' | 'templateMarket' | string;
+import { useContextSelector } from 'use-context-selector';
+import { StudioContext } from '../context';
 
 interface SidebarProps {
   groupList: {
@@ -19,9 +19,7 @@ interface SidebarProps {
     groupAvatar: string;
     groupName: any;
   }[];
-  groupItems: Record<GroupType, { typeId: string; typeName: string }[]>;
-  selectedGroup?: string;
-  selectedType?: string;
+  groupItems: Record<AppGroupEnum, { typeId: string; typeName: string }[]>;
   onCloseSidebar: () => void;
   setSidebarWidth?: (width: number) => void;
   isLoading?: boolean;
@@ -30,8 +28,6 @@ interface SidebarProps {
 const Sidebar = ({
   groupList,
   groupItems,
-  selectedGroup = 'teamApp',
-  selectedType = 'all',
   onCloseSidebar,
   setSidebarWidth,
   isLoading
@@ -40,6 +36,19 @@ const Sidebar = ({
   const router = useRouter();
   const { isPc } = useSystem();
   const { feConfigs } = useSystemStore();
+  const { pluginGroups } = useContextSelector(StudioContext, (v) => v);
+
+  const {
+    selectedGroup,
+    pluginGroupId,
+    selectedType = 'all'
+  } = useMemo(() => {
+    return {
+      selectedGroup: router.pathname.split('/').pop() as AppGroupEnum,
+      pluginGroupId: router.query.groupId,
+      selectedType: router.query.type
+    };
+  }, [router.pathname, router.query.groupId, router.query.type]);
 
   const {
     width: sidebarWidth,
@@ -71,6 +80,31 @@ const Sidebar = ({
     } else {
       defaultAction();
     }
+  };
+
+  const handleGroupClick = (group: (typeof groupList)[0]) => {
+    const isPluginGroup = pluginGroups.find((item) => item.groupId === group.groupId);
+    const pathname = isPluginGroup ? '/app/systemPlugin' : `/app/${group.groupId}`;
+    const defaultType =
+      group.groupId === AppGroupEnum.templateMarket
+        ? AppTemplateTypeEnum.recommendation
+        : groupItems[group.groupId as AppGroupEnum]?.[0]?.typeId;
+
+    const query: Record<string, string> = {
+      type: defaultType
+    };
+
+    // Add groupId only for non-system plugin groups
+    if (isPluginGroup && group.groupId !== AppGroupEnum.systemPlugin) {
+      query.groupId = group.groupId;
+    }
+
+    router.replace({
+      pathname,
+      query
+    });
+
+    onCloseSidebar();
   };
 
   return (
@@ -105,7 +139,8 @@ const Sidebar = ({
         zIndex={101}
       />
       {groupList.map((group) => {
-        const selected = group.groupId === selectedGroup;
+        const selected =
+          (group.groupId === selectedGroup && !pluginGroupId) || pluginGroupId === group.groupId;
         return (
           <Box key={group.groupId}>
             <Flex
@@ -118,15 +153,7 @@ const Sidebar = ({
               _hover={{
                 bg: 'primary.50'
               }}
-              onClick={() => {
-                router.push({
-                  query: {
-                    group: group.groupId,
-                    type: groupItems[group.groupId as GroupType]?.[0]?.typeId
-                  }
-                });
-                onCloseSidebar();
-              }}
+              onClick={() => handleGroupClick(group)}
             >
               <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} color={'myGray.500'} />
               <Box color={'myGray.600'} fontWeight={'medium'}>
@@ -140,46 +167,51 @@ const Sidebar = ({
               />
             </Flex>
             {selected &&
-              groupItems[selectedGroup as GroupType].map((type) => {
-                const isActive = type.typeId === selectedType;
+              groupItems[(pluginGroupId ? pluginGroupId : selectedGroup) as AppGroupEnum].map(
+                (type) => {
+                  const isActive = type.typeId === selectedType;
 
-                return (
-                  <Flex
-                    key={type.typeId}
-                    fontSize={'14px'}
-                    fontWeight={500}
-                    rounded={'md'}
-                    py={2}
-                    pl={'30px'}
-                    cursor={'pointer'}
-                    mb={0.5}
-                    _hover={{ bg: 'primary.50' }}
-                    {...(isActive
-                      ? {
-                          bg: 'primary.50',
-                          color: 'primary.600'
-                        }
-                      : {
-                          bg: 'transparent',
-                          color: 'myGray.500'
-                        })}
-                    onClick={() => {
-                      handleTypeClick(type.typeId, () => {
-                        if (type.typeId === AppTemplateTypeEnum.contribute) {
-                          window.open(feConfigs?.appTemplateCourse);
-                        } else {
-                          router.push({
-                            query: { group: selectedGroup, type: type.typeId }
-                          });
-                          onCloseSidebar();
-                        }
-                      });
-                    }}
-                  >
-                    {t(type.typeName as any)}
-                  </Flex>
-                );
-              })}
+                  return (
+                    <Flex
+                      key={type.typeId}
+                      fontSize={'14px'}
+                      fontWeight={500}
+                      rounded={'md'}
+                      py={2}
+                      pl={'30px'}
+                      cursor={'pointer'}
+                      mb={0.5}
+                      _hover={{ bg: 'primary.50' }}
+                      {...(isActive
+                        ? {
+                            bg: 'primary.50',
+                            color: 'primary.600'
+                          }
+                        : {
+                            bg: 'transparent',
+                            color: 'myGray.500'
+                          })}
+                      onClick={() => {
+                        handleTypeClick(type.typeId, () => {
+                          if (type.typeId === AppTemplateTypeEnum.contribute) {
+                            window.open(feConfigs?.appTemplateCourse);
+                          } else {
+                            router.push({
+                              query: {
+                                ...(pluginGroupId && { groupId: pluginGroupId }),
+                                type: type.typeId
+                              }
+                            });
+                            onCloseSidebar();
+                          }
+                        });
+                      }}
+                    >
+                      {t(type.typeName as any)}
+                    </Flex>
+                  );
+                }
+              )}
           </Box>
         );
       })}

@@ -16,22 +16,23 @@ import { useContextSelector } from 'use-context-selector';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { StudioContext } from '../context';
 
 export type TemplateAppType = AppTypeEnum | 'all';
 
 const TemplateList = ({
   templateList,
-  templateTags,
-  searchKey
+  templateTags
 }: {
   templateList: AppTemplateSchemaType[];
   templateTags: TemplateTypeSchemaType[];
-  searchKey: string;
 }) => {
   const { feConfigs } = useSystemStore();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { parentId } = useContextSelector(AppListContext, (v) => v);
+  const { searchKey } = useContextSelector(StudioContext, (v) => v);
+
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -251,5 +252,4 @@ const TemplateList = ({
   );
 };
 
-export { TemplateList };
 export default TemplateList;
