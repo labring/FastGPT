@@ -44,21 +44,20 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const outputValueArr = [];
+  let outputValueArr = [];
   const loopDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
 
-  const childrenInteractive =
-    lastInteractive?.type === 'loopInteractive'
-      ? lastInteractive.params.childrenResponse
-      : undefined;
-
-  const currentIndex =
-    lastInteractive?.type === 'loopInteractive' ? lastInteractive.params?.currentIndex : undefined;
+  const { params: loopParams } = lastInteractive?.type === 'loopInteractive' ? lastInteractive : {};
+  const childrenInteractive = loopParams?.childrenResponse;
+  const currentIndex = loopParams?.currentIndex;
   let index = 0;
+  if (childrenInteractive) {
+    outputValueArr = loopParams.loopResult || [];
+  }
 
   const entryNodeIds = childrenInteractive?.entryNodeIds;
 
@@ -74,10 +73,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
           node.flowNodeType === FlowNodeTypeEnum.loopStart) ||
         (rightNowIndex && entryNodeIds?.includes(node.nodeId))
       ) {
-        node.isEntry = true;
-        if (rightNowIndex && node.flowNodeType === FlowNodeTypeEnum.loopStart) {
-          node.isEntry = false;
-        }
+        node.isEntry = !(rightNowIndex && node.flowNodeType === FlowNodeTypeEnum.loopStart);
         node.inputs.forEach((input) => {
           if (input.key === NodeInputKeyEnum.loopStartInput) {
             input.value = item;
@@ -117,6 +113,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     // handle interactive response
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
+      outputValueArr.pop();
       break;
     }
   }
