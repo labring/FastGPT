@@ -146,14 +146,12 @@ export async function getFakeUsers(num: number = 10) {
 export async function getFakeGroups(num: number = 5) {
   // create 5 groups
   const teamId = (await getFakeUser('Owner')).teamId;
-  return MongoMemberGroupModel.create([
-    ...Array(num)
-      .keys()
-      .map((i) => ({
-        name: `group${i + 1}`,
-        teamId
-      }))
-  ]) as Promise<MemberGroupSchemaType[]>;
+  return MongoMemberGroupModel.create(
+    [...Array(num).keys()].map((i) => ({
+      name: `group${i + 1}`,
+      teamId
+    }))
+  ) as Promise<MemberGroupSchemaType[]>;
 }
 
 export async function getFakeOrgs() {
