@@ -1,9 +1,9 @@
-import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from 'core/workflow/constants';
+import { NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from 'core/workflow/node/constant';
+} from '../../workflow/node/constant';
 import { nanoid } from 'nanoid';
 import { ToolType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
