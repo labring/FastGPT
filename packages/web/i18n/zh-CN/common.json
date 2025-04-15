@@ -374,6 +374,7 @@
   "core.app.share.Is response quote": "返回引用",
   "core.app.share.Not share link": "没有创建分享链接",
   "core.app.share.Role check": "身份校验",
+  "core.app.switch_to_template_market": "跳转模板市场",
   "core.app.tip.Add a intro to app": "快来给应用一个介绍~",
   "core.app.tip.chatNodeSystemPromptTip": "在此输入提示词",
   "core.app.tip.systemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可通过输入 / 插入选择变量\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
