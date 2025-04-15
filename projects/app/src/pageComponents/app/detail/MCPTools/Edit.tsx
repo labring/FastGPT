@@ -25,39 +25,6 @@ const Edit = ({
   setCurrentTool: (tool: ToolType) => void;
 }) => {
   const { isPc } = useSystem();
-  // const { t } = useTranslation();
-  // const [currentToolId, setCurrentToolId] = useState<string | null>(null);
-  // const [currentTool, setCurrentTool] = useState<AppDetailType | null>(null);
-  // const { data: tools = [], loading: isFetchingApps } = useRequest2(
-  //   () => {
-  //     return getMyApps({ parentId: appDetail._id });
-  //   },
-  //   {
-  //     manual: false,
-  //     refreshDeps: [appDetail._id],
-  //     throttleWait: 500,
-  //     onSuccess: (res) => {
-  //       setCurrentToolId(res[0]?._id || null);
-  //     }
-  //   }
-  // );
-
-  // const { loading: loadingApp, runAsync: reloadApp } = useRequest2(
-  //   () => {
-  //     if (currentToolId) {
-  //       return getAppDetailById(currentToolId);
-  //     }
-  //     return Promise.resolve(defaultApp);
-  //   },
-  //   {
-  //     manual: false,
-  //     refreshDeps: [currentToolId],
-  //     errorToast: t('common:core.app.error.Get app failed'),
-  //     onSuccess: (res) => {
-  //       setCurrentTool(res);
-  //     }
-  //   }
-  // );
 
   return (
     <MyBox

@@ -5,7 +5,6 @@ import { AppContext } from '../context';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import { useTranslation } from 'react-i18next';
 import { ToolType } from '@fastgpt/global/core/app/type';
@@ -21,116 +20,6 @@ import { postRunMCPTools } from '@/web/core/app/api/plugin';
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
 const ChatTest = ({ currentTool, url }: { currentTool: ToolType | null; url: string }) => {
-  // const { setChatId, chatId, appId } = useChatStore();
-
-  // const {
-  //   data: toolDetail,
-  //   loading: loadingApp,
-  //   runAsync: reloadApp
-  // } = useRequest2(
-  //   () => {
-  //     if (currentTool?._id) {
-  //       return getAppDetailById(currentTool?._id);
-  //     }
-  //     return Promise.resolve(defaultApp);
-  //   },
-  //   {
-  //     manual: false,
-  //     refreshDeps: [currentTool?._id],
-  //     errorToast: t('common:core.app.error.Get app failed')
-  //   }
-  // );
-  // const toolData: ToolType & {
-  //   url: string;
-  // } = useMemo(() => {
-  //   const toolNode = toolDetail?.modules.find(
-  //     (node) => node.flowNodeType === FlowNodeTypeEnum.tool
-  //   );
-  //   return toolNode?.inputs.find((input) => input.key === 'toolData')?.value;
-  // }, [toolDetail]);
-
-  // const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  // const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-
-  // const startChat = useMemoizedFn(
-  //   async ({
-  //     responseChatItemId,
-  //     controller,
-  //     generatingMessage,
-  //     variables
-  //   }: Omit<StartChatFnProps, 'messages'>) => {
-  //     const nodesWithValue = toolDetail?.modules.map((node) => {
-  //       return {
-  //         ...node,
-  //         inputs: node.inputs.map((input) => {
-  //           if (variables[input.key]) {
-  //             return {
-  //               ...input,
-  //               value: variables[input.key]
-  //             };
-  //           }
-  //           return input;
-  //         })
-  //       };
-  //     });
-
-  //     await streamFetch({
-  //       url: '/api/core/chat/chatTest',
-  //       data: {
-  //         messages: [],
-  //         nodes: nodesWithValue,
-  //         edges: [],
-  //         variables,
-  //         responseChatItemId,
-  //         appId: toolDetail?._id,
-  //         appName: t('chat:chat_test_app', { name: toolDetail?.name }),
-  //         chatId,
-  //         chatConfig: {}
-  //       },
-  //       onMessage: generatingMessage,
-  //       abortCtrl: controller
-  //     });
-  //   }
-  // );
-
-  // const { runAsync: runTool, loading: isRunning } = useRequest2(
-  //   async (data: Record<string, any>) => {
-  //     return await startChat({
-  //       variables: data,
-  //       controller: chatController.current,
-  //       generatingMessage: ({ event, nodeResponse }) => {
-  //         if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
-  //           setChatRecords([
-  //             {
-  //               dataId: nodeResponse.id,
-  //               status: ChatStatusEnum.finish,
-  //               obj: ChatRoleEnum.AI,
-  //               responseData: [nodeResponse],
-  //               value: [
-  //                 {
-  //                   type: ChatItemValueTypeEnum.text,
-  //                   text: {
-  //                     content: nodeResponse.textOutput || ''
-  //                   }
-  //                 }
-  //               ]
-  //             }
-  //           ]);
-  //         }
-  //       }
-  //     });
-  //   },
-  //   {
-  //     onSuccess: (res) => {
-  //       try {
-  //         const resStr = JSON.stringify(chatRecords?.[0]?.responseData?.[0]?.toolRes, null, 2);
-  //         setOutput(resStr);
-  //       } catch (error) {
-  //         console.error(error);
-  //       }
-  //     }
-  //   }
-  // );
   const { t } = useTranslation();
 
   const [output, setOutput] = useState<string>('');
