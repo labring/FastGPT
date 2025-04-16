@@ -162,6 +162,7 @@ const CustomAPIFileInput = () => {
       <Flex flexDirection={'column'} h="full">
         <Flex justifyContent={'space-between'}>
           <FolderPath
+            forbidLastClick
             paths={paths}
             onClick={(parentId) => {
               const index = paths.findIndex((item) => item.parentId === parentId);

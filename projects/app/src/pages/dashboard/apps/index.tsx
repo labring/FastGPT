@@ -133,6 +133,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           <FolderPath
             paths={paths}
             hoverStyle={{ bg: 'myGray.200' }}
+            forbidLastClick
             onClick={(parentId) => {
               router.push({
                 query: {
