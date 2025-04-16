@@ -1,192 +1,105 @@
+import { getProApiDatasetFileDetailRequest } from '@/service/core/dataset/apiDataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
-import { YuqueServer, APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
-import { getProApiDatasetFileListRequest } from '@/service/core/dataset/apiDataset/controller';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { APIFileServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 import { NextApiRequest } from 'next';
-import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { YuqueServer, FeishuServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-export const getPathApi = async (yuqueServer: YuqueServer) => {
-  if (!yuqueServer.baseUrl) {
-    return '/根目录';
-  }
 
-  try {
-    const allRepos = await getProApiDatasetFileListRequest({
-      yuqueServer: {
-        userId: yuqueServer.userId,
-        token: yuqueServer.token,
-        baseUrl: ''
-      }
-    });
-    for (const repo of allRepos) {
-      if (repo.id === yuqueServer.baseUrl) {
-        const path = '/根目录/' + repo.name;
-        return path;
-      }
-    }
-
-    const filesByFolder: Record<string, APIFileItem[]> = {};
-    let targetFile: APIFileItem | null = null;
-    let targetRepoId: string | null = null;
-
-    const fetchFolderContents = async (folderId: string, repoId: string): Promise<boolean> => {
-      if (filesByFolder[folderId]) {
-        return false;
-      }
-
-      const folderFiles = await getProApiDatasetFileListRequest({
-        yuqueServer: {
-          userId: yuqueServer.userId,
-          token: yuqueServer.token,
-          baseUrl: ''
-        },
-        parentId: folderId
-      });
-
-      filesByFolder[folderId] = folderFiles;
-
-      const found = folderFiles.find(
-        (file) =>
-          file.slug === yuqueServer.baseUrl ||
-          file.uuid === yuqueServer.baseUrl ||
-          file.id === yuqueServer.baseUrl ||
-          `${file.id}` === yuqueServer.baseUrl
-      );
-
-      if (found) {
-        targetFile = found;
-        targetRepoId = repoId;
-        return true;
-      }
-
-      for (const file of folderFiles) {
-        if (file.type === 'folder' || file.hasChild) {
-          const foundInSubfolder = await fetchFolderContents(file.id, repoId);
-          if (foundInSubfolder) {
-            return true;
-          }
-        }
-      }
-
-      return false;
-    };
-
-    for (const repo of allRepos) {
-      filesByFolder[repo.id] = await getProApiDatasetFileListRequest({
-        yuqueServer: {
-          userId: yuqueServer.userId,
-          token: yuqueServer.token,
-          baseUrl: ''
-        },
-        parentId: repo.id
-      });
-
-      const found = filesByFolder[repo.id].find(
-        (file) =>
-          file.slug === yuqueServer.baseUrl ||
-          file.uuid === yuqueServer.baseUrl ||
-          file.id === yuqueServer.baseUrl ||
-          `${file.id}` === yuqueServer.baseUrl
-      );
-
-      if (found) {
-        targetFile = found;
-        targetRepoId = repo.id;
-        break;
-      }
-
-      let foundInRepo = false;
-      for (const file of filesByFolder[repo.id]) {
-        if (file.type === 'folder' || file.hasChild) {
-          foundInRepo = await fetchFolderContents(file.id, repo.id);
-          if (foundInRepo) break;
-        }
-      }
-
-      if (foundInRepo) break;
-    }
-
-    if (!targetFile || !targetRepoId) {
-      return '/根目录';
-    }
-
-    const buildPath = () => {
-      const pathSegments = [targetFile!.name];
-      let currentId = targetFile!.parentId;
-
-      while (currentId) {
-        let parentFound = false;
-
-        for (const folderId in filesByFolder) {
-          const parentFile = filesByFolder[folderId].find(
-            (file) => file.id === currentId || file.uuid === currentId || `${file.id}` === currentId
-          );
-
-          if (parentFile) {
-            pathSegments.unshift(parentFile.name);
-            currentId = parentFile.parentId;
-            parentFound = true;
-            break;
-          }
-        }
-
-        if (!parentFound) {
-          break;
-        }
-      }
-
-      const targetRepo = allRepos.find((repo) => repo.id === targetRepoId);
-      if (targetRepo) {
-        pathSegments.unshift(targetRepo.name);
-      }
-      pathSegments.unshift('/根目录');
-
-      return pathSegments.join('/');
-    };
-
-    const finalPath = buildPath();
-
-    return finalPath;
-  } catch (error) {
-    console.error('Failed to get the path:', error);
-    return '/根目录';
-  }
+export type GetApiDatasetFilePathProps = {
+  parentId?: ParentIdType;
+  yuqueServer?: YuqueServer;
+  feishuServer?: FeishuServer;
+  apiServer?: APIFileServer;
 };
 
-async function handler(req: NextApiRequest) {
-  try {
-    const { userId } = await authCert({ req, authToken: true });
-    const { yuqueServer, datasetId } = req.body;
+export type GetApiDatasetFilePathResponse = string;
 
-    if (yuqueServer?.token) {
-      return await getPathApi(yuqueServer);
+async function handler(req: NextApiRequest) {
+  const { parentId, yuqueServer, feishuServer, apiServer } = req.body as GetApiDatasetFilePathProps;
+
+  await authCert({ req, authToken: true });
+
+  try {
+    // API type path processing
+    if (apiServer) {
+      if (!parentId) return '';
+
+      // Recursively get the full path of the API type
+      const getApiFullPath = async (currentId: string): Promise<string> => {
+        try {
+          const fileList = await useApiDatasetRequest({ apiServer }).listFiles({
+            parentId: currentId
+          });
+          if (!Array.isArray(fileList)) {
+            console.error('文件列表格式错误:', fileList);
+            return '';
+          }
+
+          const currentFile = fileList.find((file) => file.id === currentId);
+          if (!currentFile) return '';
+
+          if (currentFile.parentId) {
+            const parentPath = await getApiFullPath(currentFile.parentId);
+            return `${parentPath}${parentPath.endsWith('/') ? '' : '/'}${currentFile.name}`;
+          }
+
+          return `/${currentFile.name}`;
+        } catch (error) {
+          console.error('获取 API 文件列表失败:', error);
+          return '';
+        }
+      };
+
+      return await getApiFullPath(parentId);
     }
 
-    if (datasetId) {
-      try {
-        const { dataset } = await authDataset({
-          req,
-          datasetId,
-          authToken: true,
-          authApiKey: true,
-          per: ReadPermissionVal
-        });
-
-        if (!dataset.yuqueServer?.baseUrl) {
-          return '/根目录';
+    // Feishu or Yuque type path processing
+    if (feishuServer || yuqueServer) {
+      const getFullPath = async (currentId?: string): Promise<string> => {
+        if (!currentId) {
+          return '';
         }
 
-        return await getPathApi(dataset.yuqueServer);
-      } catch (authError) {
-        console.error('Dataset authorization or query failure:', authError);
-        return '/根目录';
-      }
+        try {
+          const response = await getProApiDatasetFileDetailRequest({
+            feishuServer,
+            yuqueServer,
+            apiFileId: currentId
+          });
+
+          // Check the format of the response data
+          if (!response || typeof response !== 'object') {
+            console.error('文件详情响应格式错误:', response);
+            return '';
+          }
+
+          // If there is a parent, continue recursively
+          if (response.parentId) {
+            const parentPath = await getFullPath(response.parentId);
+            return `${parentPath}${parentPath.endsWith('/') ? '' : '/'}${response.name}`;
+          }
+
+          // No parent, means it's the root directory
+          return `/${response.name}`;
+        } catch (error) {
+          console.error('获取文件详情失败:', error);
+          if (error && typeof error === 'object' && 'message' in error) {
+            console.error('错误详情:', error.message);
+          }
+          return '';
+        }
+      };
+
+      return await getFullPath(parentId === null ? undefined : parentId);
     }
 
-    return '/根目录';
+    throw new Error(DatasetErrEnum.noApiServer);
   } catch (error) {
-    console.error('Failed to process the request:', error);
-    return '/根目录';
+    console.error('获取路径失败:', error);
+    return '';
   }
 }
 

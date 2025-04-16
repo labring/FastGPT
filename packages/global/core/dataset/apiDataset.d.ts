@@ -8,10 +8,6 @@ export type APIFileItem = {
   updateTime: Date;
   createTime: Date;
   hasChild?: boolean;
-  uuid?: string;
-  slug?: string;
-  parent_uuid?: string;
-  children?: APIFileItem[];
 };
 
 export type APIFileServer = {
@@ -30,10 +26,17 @@ export type APIFileReadResponse = {
   url: string;
 };
 
+export type ApiDatasetDetailResponse = {
+  id: string;
+  name: string;
+  parentId: string | null;
+};
+
 export type FeishuServer = {
   appId: string;
   appSecret: string;
   folderToken: string;
+  // baseUrl: string | undefined;
 };
 
 export type YuqueServer = {

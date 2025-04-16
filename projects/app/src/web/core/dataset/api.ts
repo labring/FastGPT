@@ -72,11 +72,14 @@ import type {
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
 import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
-import type { YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import type {
   GetApiDatasetCataLogResponse,
   GetApiDatasetCataLogProps
 } from '@/pages/api/core/dataset/apiDataset/getcatalog';
+import type {
+  GetApiDatasetFilePathProps,
+  GetApiDatasetFilePathResponse
+} from '@/pages/api/core/dataset/apiDataset/getpath';
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
   POST<DatasetListItemType[]>(`/core/dataset/list`, data);
@@ -263,5 +266,5 @@ export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
 export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
   POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getcatalog', data);
 
-export const getYuquePathApi = (data: { yuqueServer: YuqueServer; datasetId: string }) =>
-  POST<string>('/core/dataset/apiDataset/getpath', data);
+export const getApiDatasetPaths = (data: GetApiDatasetFilePathProps) =>
+  POST<GetApiDatasetFilePathResponse>('/core/dataset/apiDataset/getpath', data);
