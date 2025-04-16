@@ -90,9 +90,20 @@ const EditForm = ({
                 role="group"
                 position="relative"
                 border={'1px solid'}
-                borderRadius={currentTool?.name === tool.name ? '8px' : 'none'}
-                borderColor={currentTool?.name === tool.name ? 'primary.600' : 'transparent'}
-                borderBottomColor={currentTool?.name === tool.name ? 'primary.600' : 'myGray.150'}
+                {...(currentTool?.name === tool.name
+                  ? {
+                      borderRadius: '8px',
+                      borderColor: 'primary.600',
+                      borderBottomColor: 'primary.600',
+                      boxShadow:
+                        '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+                    }
+                  : {
+                      borderRadius: 'none',
+                      borderColor: 'transparent',
+                      borderBottomColor: 'myGray.150',
+                      boxShadow: 'none'
+                    })}
                 _hover={{
                   borderRadius: '8px',
                   boxShadow:
