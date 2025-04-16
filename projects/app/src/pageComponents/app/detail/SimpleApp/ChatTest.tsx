@@ -56,7 +56,6 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
       <MyBox
         flex={'1 0 0'}
         w={0}
-        isLoading={loading}
         display={'flex'}
         position={'relative'}
         flexDirection={'column'}
