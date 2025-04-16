@@ -25,6 +25,7 @@
     "prettier": "3.2.4",
     "react-i18next": "14.1.2",
     "vitest": "^3.0.9",
+    "js-yaml": "^4.1.0",
     "mongodb-memory-server": "^10.1.4",
     "zhlint": "^0.7.4"
   },
@@ -38,5 +39,10 @@
   "engines": {
     "node": ">=18.16.0",
     "pnpm": ">=9.0.0"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "node docSite/static/js/doc-generate-llms.js"
+    }
   }
 }
