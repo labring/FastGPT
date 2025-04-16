@@ -141,25 +141,33 @@ export async function getChildAppPreviewNode({
     !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
     app.workflow.nodes.length === 1;
 
-  const getFlowNodeType = () => {
-    if (isToolSet) return FlowNodeTypeEnum.toolSet;
-    if (isTool) return FlowNodeTypeEnum.tool;
-    if (isPlugin) return FlowNodeTypeEnum.pluginModule;
-    return FlowNodeTypeEnum.appModule;
-  };
-
-  const getNodeIO = () => {
-    if (isToolSet) return toolSetData2FlowNodeIO({ nodes: app.workflow.nodes });
-    if (isTool) return toolData2FlowNodeIO({ nodes: app.workflow.nodes });
-    if (isPlugin) return pluginData2FlowNodeIO({ nodes: app.workflow.nodes });
-    return appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig });
-  };
+  const { flowNodeType, nodeIOConfig } = (() => {
+    if (isToolSet)
+      return {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    if (isTool)
+      return {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        nodeIOConfig: toolData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    if (isPlugin)
+      return {
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    return {
+      flowNodeType: FlowNodeTypeEnum.appModule,
+      nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
+    };
+  })();
 
   return {
     id: getNanoid(),
     pluginId: app.id,
     templateType: app.templateType,
-    flowNodeType: getFlowNodeType(),
+    flowNodeType,
     avatar: app.avatar,
     name: app.name,
     intro: app.intro,
@@ -174,7 +182,7 @@ export async function getChildAppPreviewNode({
     targetHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
       : getHandleConfig(true, true, true, true),
-    ...getNodeIO()
+    ...nodeIOConfig
   };
 }
 

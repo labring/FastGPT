@@ -13,7 +13,7 @@ export const RunToolSetNode: FlowNodeTemplateType = {
   name: '',
   showStatus: false,
   isTool: true,
-  version: '496',
+  version: '4.9.6',
   inputs: [],
   outputs: []
 };
