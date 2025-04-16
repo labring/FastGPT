@@ -292,6 +292,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           runtimeEdges: initWorkflowEdgeStatus(edges, interactive),
           variables,
           query: removeEmptyUserInput(userQuestion.value),
+          lastInteractive: interactive,
           chatConfig,
           histories: newHistories,
           stream,
