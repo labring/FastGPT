@@ -4,7 +4,6 @@ import { AppDetailType, ToolType } from '@fastgpt/global/core/app/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { MCPToolSetData } from '@/pageComponents/app/list/MCPToolsEditModal';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isEqual } from 'lodash';
 import { ClientSession } from 'mongoose';
@@ -14,6 +13,7 @@ import { onCreateApp } from '../create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 import { getMCPToolNodes, getMCPToolSetNodes } from '@fastgpt/global/core/app/mcpTools/utils';
+import { MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 
 export type updateMCPToolsQuery = {};
 
