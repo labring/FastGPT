@@ -56,11 +56,11 @@ jobs:
             echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
-            echo "DOCKERFILE=projects/app/sandbox.Dockerfile" >> $GITHUB_OUTPUT
+            echo "DOCKERFILE=projects/sandbox/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_sandbox_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           elif [[ "${{ matrix.image }}" == "mcp-server" ]]; then
-            echo "DOCKERFILE=projects/app/mcp-server.Dockerfile" >> $GITHUB_OUTPUT
+            echo "DOCKERFILE=projects/mcp-server/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-mcp-server-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_mcp_server_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           fi
