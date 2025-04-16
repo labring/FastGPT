@@ -24,8 +24,14 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
-        link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail'],
+        link: `/dashboard/apps`,
+        activeLink: [
+          '/dashboard/apps',
+          '/app/detail',
+          '/dashboard/templateMarket',
+          '/dashboard/[pluginGroupId]',
+          '/dashboard/mcpServer'
+        ],
         unread: 0
       },
       {
@@ -34,14 +40,6 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail'],
-        unread: 0
-      },
-      {
-        label: t('common:navbar.Toolkit'),
-        icon: 'phoneTabbar/tool',
-        activeIcon: 'phoneTabbar/toolFill',
-        link: `/toolkit`,
-        activeLink: ['/toolkit'],
         unread: 0
       },
       {

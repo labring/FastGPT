@@ -86,3 +86,19 @@ export async function findAppAndAllChildren({
 
   return [app, ...childDatasets];
 }
+
+export const getAppBasicInfoByIds = async ({ teamId, ids }: { teamId: string; ids: string[] }) => {
+  const apps = await MongoApp.find(
+    {
+      teamId,
+      _id: { $in: ids }
+    },
+    '_id name avatar'
+  ).lean();
+
+  return apps.map((item) => ({
+    id: item._id,
+    name: item.name,
+    avatar: item.avatar
+  }));
+};

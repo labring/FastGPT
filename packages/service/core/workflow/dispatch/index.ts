@@ -37,7 +37,8 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { formatHttpError, removeSystemVariable, valueTypeFormat } from './utils';
+import { formatHttpError, removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus,
@@ -74,6 +75,7 @@ import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { filterModuleTypeList } from '@fastgpt/global/core/chat/utils';
+import { dispatchRunTool } from './plugin/runTool';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -104,6 +106,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
   [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
   [FlowNodeTypeEnum.formInput]: dispatchFormInput,
+  [FlowNodeTypeEnum.tool]: dispatchRunTool,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -111,6 +114,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
   [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.toolSet]: () => Promise.resolve(),
 
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest // abandoned
 };
@@ -135,6 +139,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     responseDetail = true,
     ...props
   } = data;
+
+  rewriteRuntimeWorkFlow(runtimeNodes, runtimeEdges);
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {
@@ -643,9 +649,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeResponse,
-        data: {
-          ...formatResponseData
-        }
+        data: formatResponseData
       });
     }
 

@@ -471,6 +471,31 @@ const RenderList = React.memo(function RenderList({
                           >
                             {t('common:common.Remove')}
                           </Button>
+                        ) : template.flowNodeType === 'toolSet' ? (
+                          <Flex gap={2}>
+                            <Button
+                              size={'sm'}
+                              variant={'whiteBase'}
+                              isLoading={isLoading}
+                              leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
+                              onClick={() => setParentId(template.id)}
+                              px={2}
+                              fontSize={'mini'}
+                            >
+                              {t('common:common.Open')}
+                            </Button>
+                            <Button
+                              size={'sm'}
+                              variant={'primaryOutline'}
+                              leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
+                              isLoading={isLoading}
+                              onClick={() => onClickAdd(template)}
+                              px={2}
+                              fontSize={'mini'}
+                            >
+                              {t('common:common.Add')}
+                            </Button>
+                          </Flex>
                         ) : template.isFolder ? (
                           <Button
                             size={'sm'}

@@ -34,6 +34,8 @@ import { LoopStartNode } from './system/loop/loopStart';
 import { LoopEndNode } from './system/loop/loopEnd';
 import { FormInputNode } from './system/interactive/formInput';
 import { ToolParamsNode } from './system/toolParams';
+import { RunToolNode } from './system/runTool';
+import { RunToolSetNode } from './system/runToolSet';
 
 const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
@@ -84,5 +86,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunAppNode,
   RunAppModule,
   LoopStartNode,
-  LoopEndNode
+  LoopEndNode,
+  RunToolNode,
+  RunToolSetNode
 ];

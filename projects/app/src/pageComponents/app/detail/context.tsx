@@ -137,7 +137,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       refreshDeps: [appId],
       errorToast: t('common:core.app.error.Get app failed'),
       onError(err: any) {
-        router.replace('/app/list');
+        router.replace('/dashboard/apps');
       },
       onSuccess(res) {
         setAppDetail(res);
@@ -189,7 +189,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     },
     {
       onSuccess() {
-        router.replace(`/app/list`);
+        router.replace(`/dashboard/apps`);
       },
       successToast: t('common:common.Delete Success'),
       errorToast: t('common:common.Delete Failed')

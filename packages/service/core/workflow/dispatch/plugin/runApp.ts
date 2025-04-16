@@ -5,7 +5,8 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
+  rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -107,9 +108,15 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     lastInteractive?.type === 'childrenInteractive'
       ? lastInteractive.params.childrenResponse
       : undefined;
-  const entryNodeIds = getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined);
-  const runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
-  const runtimeEdges = initWorkflowEdgeStatus(edges, childrenInteractive);
+  const runtimeNodes = rewriteNodeOutputByHistories(
+    storeNodes2RuntimeNodes(
+      nodes,
+      getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined)
+    ),
+    childrenInteractive
+  );
+
+  const runtimeEdges = storeEdges2RuntimeEdges(edges, childrenInteractive);
   const theQuery = childrenInteractive
     ? query
     : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });
@@ -170,7 +177,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       totalPoints: usagePoints,
       query: userChatInput,
       textOutput: text,
-      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined
+      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
+      mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
