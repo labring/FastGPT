@@ -103,15 +103,14 @@ const EditForm = ({
                   <Box w={'20px'} fontSize={'14px'} color={'myGray.500'} fontWeight={'medium'}>
                     {index + 1 < 10 ? `0${index + 1}` : index + 1}
                   </Box>
-                  <Box
-                    ml={2}
-                    maxW={'full'}
-                    pr={6}
-                    _groupHover={{
-                      pr: 28
-                    }}
-                  >
-                    <Box fontSize={'14px'} color={'myGray.900'}>
+                  <Box maxW={'full'} pl={2} position="relative" width="calc(100% - 30px)">
+                    <Box
+                      fontSize={'14px'}
+                      color={'myGray.900'}
+                      whiteSpace="nowrap"
+                      overflow="hidden"
+                      textOverflow="ellipsis"
+                    >
                       {tool.name}
                     </Box>
                     <Box
@@ -135,6 +134,8 @@ const EditForm = ({
                   gap={2}
                   display="none"
                   _groupHover={{ display: 'flex' }}
+                  background="linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 15%, rgba(255,255,255,1) 100%)"
+                  paddingLeft="20px"
                 >
                   <MyIconButton
                     size={'16px'}

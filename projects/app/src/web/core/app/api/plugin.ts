@@ -40,7 +40,9 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       flowNodeType:
         app.type === AppTypeEnum.workflow
           ? FlowNodeTypeEnum.appModule
-          : FlowNodeTypeEnum.pluginModule,
+          : app.type === AppTypeEnum.toolSet
+            ? FlowNodeTypeEnum.toolSet
+            : FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,
       name: app.name,
       intro: app.intro,

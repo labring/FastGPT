@@ -3,7 +3,8 @@ import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workf
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
-  toolData2FlowNodeIO
+  toolData2FlowNodeIO,
+  toolSetData2FlowNodeIO
 } from '@fastgpt/global/core/workflow/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -136,15 +137,29 @@ export async function getChildAppPreviewNode({
     !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
     app.workflow.nodes.length === 1;
 
+  const isToolSet =
+    !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
+    app.workflow.nodes.length === 1;
+
+  const getFlowNodeType = () => {
+    if (isToolSet) return FlowNodeTypeEnum.toolSet;
+    if (isTool) return FlowNodeTypeEnum.tool;
+    if (isPlugin) return FlowNodeTypeEnum.pluginModule;
+    return FlowNodeTypeEnum.appModule;
+  };
+
+  const getNodeIO = () => {
+    if (isToolSet) return toolSetData2FlowNodeIO({ nodes: app.workflow.nodes });
+    if (isTool) return toolData2FlowNodeIO({ nodes: app.workflow.nodes });
+    if (isPlugin) return pluginData2FlowNodeIO({ nodes: app.workflow.nodes });
+    return appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig });
+  };
+
   return {
     id: getNanoid(),
     pluginId: app.id,
     templateType: app.templateType,
-    flowNodeType: isTool
-      ? FlowNodeTypeEnum.tool
-      : isPlugin
-        ? FlowNodeTypeEnum.pluginModule
-        : FlowNodeTypeEnum.appModule,
+    flowNodeType: getFlowNodeType(),
     avatar: app.avatar,
     name: app.name,
     intro: app.intro,
@@ -153,13 +168,13 @@ export async function getChildAppPreviewNode({
     showStatus: app.showStatus,
     isTool: true,
     version: app.version,
-    sourceHandle: getHandleConfig(true, true, true, true),
-    targetHandle: getHandleConfig(true, true, true, true),
-    ...(isTool
-      ? toolData2FlowNodeIO({ nodes: app.workflow.nodes })
-      : isPlugin
-        ? pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
-        : appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig }))
+    sourceHandle: isToolSet
+      ? getHandleConfig(false, false, false, false)
+      : getHandleConfig(true, true, true, true),
+    targetHandle: isToolSet
+      ? getHandleConfig(false, false, false, false)
+      : getHandleConfig(true, true, true, true),
+    ...getNodeIO()
   };
 }
 
