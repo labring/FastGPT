@@ -2,11 +2,12 @@ import './mocks';
 import { existsSync, readFileSync } from 'fs';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { initGlobalVariables } from '@/service/common/system';
-import { afterAll, beforeAll, beforeEach, inject, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vitest';
 import setupModels from './setupModels';
 import { clean } from './datas/users';
 import { connectionLogMongo, connectionMongo, Mongoose } from '@fastgpt/service/common/mongo';
 import { randomUUID } from 'crypto';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 vi.stubEnv('NODE_ENV', 'test');
 
@@ -15,7 +16,8 @@ vi.mock(import('@fastgpt/service/common/mongo/init'), async (importOriginal: any
   return {
     ...mod,
     connectMongo: async (db: Mongoose, url: string) => {
-      (await db.connect(url)).connection.useDb(randomUUID());
+      await db.connect(url, { dbName: randomUUID() });
+      await db.connection.db?.dropDatabase();
     }
   };
 });
@@ -86,9 +88,12 @@ beforeEach(async () => {
   await connectMongo(connectionMongo, inject('MONGODB_URI'));
   await connectMongo(connectionLogMongo, inject('MONGODB_URI'));
 
-  return async () => {
+  onTestFinished(async () => {
     clean();
-    await connectionMongo?.connection.db?.dropDatabase();
-    await connectionLogMongo?.connection.db?.dropDatabase();
-  };
+    await delay(200); // wait for asynchronous operations to complete
+    await Promise.all([
+      connectionMongo?.connection.db?.dropDatabase(),
+      connectionLogMongo?.connection.db?.dropDatabase()
+    ]);
+  });
 });
