@@ -179,6 +179,7 @@
   "common.Other": "Other",
   "common.Output": "Output",
   "common.Params": "Parameters",
+  "common.Parse": "Analysis",
   "common.Password inconsistency": "Passwords Do Not Match",
   "common.Permission": "Permission",
   "common.Permission_tip": "Individual permissions are greater than group permissions",

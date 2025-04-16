@@ -438,6 +438,9 @@ export const WholeResponseContent = ({
         label={t('workflow:tool_params.tool_params_result')}
         value={activeModule?.toolParamsResult}
       />
+
+      {/* tool */}
+      <Row label={t('workflow:tool.tool_result')} value={activeModule?.toolRes} />
     </Box>
   ) : null;
 };

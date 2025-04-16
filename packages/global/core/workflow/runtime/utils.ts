@@ -227,7 +227,12 @@ export const getWorkflowEntryNodeIds = (
     FlowNodeTypeEnum.pluginInput
   ];
   return nodes
-    .filter((node) => entryList.includes(node.flowNodeType as any))
+    .filter(
+      (node) =>
+        entryList.includes(node.flowNodeType as any) ||
+        (!nodes.some((item) => entryList.includes(item.flowNodeType as any)) &&
+          node.flowNodeType === FlowNodeTypeEnum.tool)
+    )
     .map((item) => item.nodeId);
 };
 

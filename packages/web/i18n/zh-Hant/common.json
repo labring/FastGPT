@@ -178,6 +178,7 @@
   "common.Other": "其他",
   "common.Output": "輸出",
   "common.Params": "參數",
+  "common.Parse": "解析",
   "common.Password inconsistency": "兩次密碼不一致",
   "common.Permission": "權限",
   "common.Permission_tip": "個人權限大於群組權限",

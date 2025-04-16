@@ -186,6 +186,7 @@
   "tool_params.params_name": "參數名稱",
   "tool_params.params_name_placeholder": "name/age/sql",
   "tool_params.tool_params_result": "參數設定結果",
+  "tool_raw_response_description": "工具的原始響應",
   "trigger_after_application_completion": "將會在應用程式完全結束後觸發",
   "unFoldAll": "全部展開",
   "update_link_error": "更新連結發生錯誤",

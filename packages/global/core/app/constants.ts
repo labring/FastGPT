@@ -11,7 +11,9 @@ export enum AppTypeEnum {
   simple = 'simple',
   workflow = 'advanced',
   plugin = 'plugin',
-  httpPlugin = 'httpPlugin'
+  httpPlugin = 'httpPlugin',
+  toolSet = 'toolSet',
+  tool = 'tool'
 }
 
 export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];

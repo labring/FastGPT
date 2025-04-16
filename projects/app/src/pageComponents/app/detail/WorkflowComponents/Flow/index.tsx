@@ -47,6 +47,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowNodeItemType>) => (
     <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
   ),
+  [FlowNodeTypeEnum.tool]: dynamic(() => import('./nodes/NodeTool')),
+  [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),
   [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),
   [FlowNodeTypeEnum.ifElseNode]: dynamic(() => import('./nodes/NodeIfElse')),

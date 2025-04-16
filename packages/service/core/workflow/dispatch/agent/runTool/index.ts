@@ -22,9 +22,9 @@ import { formatModelChars2Points } from '../../../../../support/wallet/usage/uti
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { runToolWithFunctionCall } from './functionCall';
 import { runToolWithPromptCall } from './promptCall';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
-import { filterToolResponseToPreview } from './utils';
+import { filterToolResponseToPreview, formatRuntimeWorkFlow } from './utils';
 import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
@@ -32,6 +32,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { getDocumentQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { postTextCensor } from '../../../../chat/postTextCensor';
+import { ToolType } from '@fastgpt/global/core/app/type';
+import { getMCPToolNodes } from '@fastgpt/global/core/app/mcpTools/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -41,8 +43,8 @@ type Response = DispatchNodeResultType<{
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
     node: { nodeId, name, isEntry, version },
-    runtimeNodes,
-    runtimeEdges,
+    runtimeNodes: originRuntimeNodes,
+    runtimeEdges: originRuntimeEdges,
     histories,
     query,
     requestOrigin,
@@ -66,6 +68,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   props.params.aiChatVision = aiChatVision && toolModel.vision;
   props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
+
+  const { runtimeNodes, runtimeEdges } = formatRuntimeWorkFlow(
+    originRuntimeNodes,
+    originRuntimeEdges
+  );
 
   const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
 
@@ -188,6 +195,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
+        runtimeNodes,
+        runtimeEdges,
         toolNodes,
         toolModel,
         maxRunToolTimes: 30,
@@ -198,6 +207,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.functionCall) {
       return runToolWithFunctionCall({
         ...props,
+        runtimeNodes,
+        runtimeEdges,
         toolNodes,
         toolModel,
         messages: adaptMessages,
@@ -226,6 +237,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     return runToolWithPromptCall({
       ...props,
+      runtimeNodes,
+      runtimeEdges,
       toolNodes,
       toolModel,
       messages: adaptMessages,

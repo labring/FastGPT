@@ -140,7 +140,9 @@ export enum FlowNodeTypeEnum {
   loopStart = 'loopStart',
   loopEnd = 'loopEnd',
   formInput = 'formInput',
-  comment = 'comment'
+  comment = 'comment',
+  tool = 'tool',
+  toolSet = 'toolSet'
 }
 
 // node IO value type

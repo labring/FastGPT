@@ -32,6 +32,7 @@ import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
+import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -66,6 +67,11 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     onClose: onCloseCreateHttpPlugin
   } = useDisclosure();
   const {
+    isOpen: isOpenCreateMCPTools,
+    onOpen: onOpenCreateMCPTools,
+    onClose: onCloseCreateMCPTools
+  } = useDisclosure();
+  const {
     isOpen: isOpenJsonImportModal,
     onOpen: onOpenJsonImportModal,
     onClose: onCloseJsonImportModal
@@ -96,7 +102,9 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
-      [AppTypeEnum.folder]: t('common:Folder')
+      [AppTypeEnum.folder]: t('common:Folder'),
+      [AppTypeEnum.toolSet]: t('app:type.MCP tools'),
+      [AppTypeEnum.tool]: t('app:type.MCP tools')
     };
     return map[appType] || map['all'];
   }, [appType, t]);
@@ -203,6 +211,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         label: t('app:type.Http plugin'),
                         description: t('app:type.Create http plugin tip'),
                         onClick: onOpenCreateHttpPlugin
+                      },
+                      {
+                        icon: 'core/app/type/mcpToolsFill',
+                        label: t('app:type.MCP tools'),
+                        description: t('app:type.Create mcp tools tip'),
+                        onClick: onOpenCreateMCPTools
                       }
                     ]
                   },
@@ -323,6 +337,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
         <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
+      {isOpenCreateMCPTools && <MCPToolsEditModal onClose={onCloseCreateMCPTools} />}
       {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
   );

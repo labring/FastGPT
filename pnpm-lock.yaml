@@ -160,6 +160,9 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.9.0
+        version: 1.9.0
       '@node-rs/jieba':
         specifier: 2.0.1
         version: 2.0.1

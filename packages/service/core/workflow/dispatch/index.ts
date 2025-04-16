@@ -75,6 +75,7 @@ import { dispatchFormInput } from './interactive/formInput';
 import { dispatchToolParams } from './agent/runTool/toolParams';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { filterModuleTypeList } from '@fastgpt/global/core/chat/utils';
+import { dispatchRunTool } from './plugin/runTool';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -105,6 +106,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.loopStart]: dispatchLoopStart,
   [FlowNodeTypeEnum.loopEnd]: dispatchLoopEnd,
   [FlowNodeTypeEnum.formInput]: dispatchFormInput,
+  [FlowNodeTypeEnum.tool]: dispatchRunTool,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -112,6 +114,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.emptyNode]: () => Promise.resolve(),
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve(),
   [FlowNodeTypeEnum.comment]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.toolSet]: () => Promise.resolve(),
 
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest // abandoned
 };
