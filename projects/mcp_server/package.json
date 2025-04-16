@@ -9,13 +9,15 @@
   "type": "module",
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
-    "prepare": "npm run build",
     "dev": "nodemon --watch src --ext ts,json --exec \"npm run dev:run\"",
-    "dev:run": "tsc && node dist/index.js"
+    "dev:run": "tsc && node dist/index.js",
+    "mcp_test": "npx @modelcontextprotocol/inspector"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.9.0",
     "axios": "^1.8.2",
+    "chalk": "^5.3.0",
+    "dayjs": "^1.11.7",
     "dotenv": "^16.5.0",
     "express": "^4.21.2"
   },

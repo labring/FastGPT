@@ -1,5 +1,5 @@
 # --------- Install -----------
-FROM node:22-alpine AS install
+FROM node:20.14.0-alpine AS install
 WORKDIR /app
 
 RUN npm install -g pnpm@9.4.0
@@ -16,11 +16,8 @@ RUN apk add --no-cache\
 RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
 RUN pnpm i
 
-# 构建
-RUN bun build src/index.ts --outdir=dist --target=node
-
 # --------- builder -----------
-FROM node:22-alpine AS builder
+FROM node:20.14.0-alpine AS builder
 WORKDIR /app
 
 COPY package.json pnpm-workspace.yaml /app/
@@ -29,7 +26,7 @@ COPY ./projects/mcp_server /app/projects/mcp_server
 COPY --from=install /app/projects/mcp_server /app/projects/mcp_server
 
 RUN npm install -g pnpm@9.4.0
-RUN pnpm --filter=sandbox build
+RUN pnpm --filter=mcp_server build
 
 # runner
 FROM node:20.14.0-alpine AS runner

@@ -10,6 +10,8 @@ import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 
 import { callTool, getTools } from './api/fastgpt.js';
+import { addLog } from './utils/log.js';
+import { getErrText } from './utils/error.js';
 
 const app = express();
 
@@ -21,11 +23,11 @@ app.get('/:key/sse', async (req, res) => {
   const transport = new SSEServerTransport(`/${key}/messages`, res);
 
   transport.onclose = () => {
-    console.log(`Transport ${transport.sessionId} closed`);
+    addLog.info(`Transport ${transport.sessionId} closed`);
     delete transportMap[transport.sessionId];
   };
   transport.onerror = (err) => {
-    console.log(`Transport ${transport.sessionId} error`, err);
+    addLog.error(`Transport ${transport.sessionId} error`, err);
   };
 
   transportMap[transport.sessionId] = transport;
@@ -52,7 +54,7 @@ app.get('/:key/sse', async (req, res) => {
     args: Record<string, any>
   ): Promise<CallToolResult> => {
     try {
-      console.log(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
+      addLog.info(`Call tool: ${name} with args: ${JSON.stringify(args)}`);
       const result = await callTool({ key, toolName: name, inputs: args });
 
       return {
@@ -66,12 +68,8 @@ app.get('/:key/sse', async (req, res) => {
       };
     } catch (error) {
       return {
-        content: [
-          {
-            type: 'text',
-            text: 'error'
-          }
-        ],
+        message: getErrText(error),
+        content: [],
         isError: true
       };
     }
@@ -81,7 +79,7 @@ app.get('/:key/sse', async (req, res) => {
   );
 
   await server.connect(transport);
-  console.log(`Server connected: ${transport.sessionId}`);
+  addLog.info(`Server connected: ${transport.sessionId}`);
 });
 
 app.post('/:key/messages', (req, res) => {
@@ -93,11 +91,11 @@ app.post('/:key/messages', (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 3005;
+const PORT = process.env.PORT || 3000;
 app
   .listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    addLog.info(`Server is running on port ${PORT}`);
   })
   .on('error', (err) => {
-    console.log(err);
+    addLog.error(`Server error`, err);
   });
