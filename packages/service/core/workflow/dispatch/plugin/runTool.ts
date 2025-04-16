@@ -29,14 +29,22 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     version: '1.0.0'
   });
 
-  const transport = new SSEClientTransport(new URL(url));
-  await client.connect(transport);
-  const result = await client.callTool({
-    name: toolName,
-    arguments: restParams
-  });
+  let result = null;
 
-  await client.close();
+  try {
+    const transport = new SSEClientTransport(new URL(url));
+    await client.connect(transport);
+
+    result = await client.callTool({
+      name: toolName,
+      arguments: restParams
+    });
+  } catch (error) {
+    console.error('Error running MCP tool:', error);
+    throw error;
+  } finally {
+    await client.close();
+  }
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {

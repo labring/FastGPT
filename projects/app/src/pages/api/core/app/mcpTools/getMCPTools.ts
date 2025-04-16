@@ -16,20 +16,22 @@ async function handler(
 ): Promise<getMCPToolsResponse> {
   const { url } = req.body;
 
+  let tools: any[] = [];
   const client = new Client({
     name: 'FastGPT-MCP-client',
     version: '1.0.0'
   });
 
-  const transport = new SSEClientTransport(new URL(url));
-  await client.connect(transport);
-
-  const { tools } = await client.listTools();
-
-  await client.close();
-
-  if (!tools) {
-    return [];
+  try {
+    const transport = new SSEClientTransport(new URL(url));
+    await client.connect(transport);
+    const response = await client.listTools();
+    tools = response.tools || [];
+  } catch (error) {
+    console.error('Error fetching MCP tools:', error);
+    throw error;
+  } finally {
+    await client.close();
   }
 
   return tools as ToolType[];
