@@ -18,7 +18,7 @@ jobs:
       url: ${{ steps.vercel-action.outputs.preview-url }}
 
     # The type of runner that the job will run on
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: write
