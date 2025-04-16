@@ -27,7 +27,7 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
         <Box>
           <FormLabel>{t('dashboard_mcp:mcp_endpoints')}</FormLabel>
           <HStack mt={0.5} bg={'myGray.50'} px={2} py={1} borderRadius={'md'} fontSize={'sm'}>
-            <Box userSelect={'all'} flex={'1 0 0'}>
+            <Box userSelect={'all'} flex={'1 0 0'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
               {sseUrl}
             </Box>
             <CopyBox value={sseUrl}>

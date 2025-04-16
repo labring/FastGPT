@@ -199,7 +199,7 @@ const DashboardContainer = ({
 
   const MenuIcon = useMemo(
     () => (
-      <Box>
+      <Flex alignItems={'center'}>
         {isOpenSidebar && (
           <Box
             position="fixed"
@@ -212,8 +212,8 @@ const DashboardContainer = ({
             zIndex={99}
           />
         )}
-        <MyIcon name="menu" w={'20px'} mr={1.5} onClick={onOpenSidebar} />
-      </Box>
+        <MyIcon name="menu" w={'1.25rem'} mr={1.5} onClick={onOpenSidebar} />
+      </Flex>
     ),
     [isOpenSidebar, onCloseSidebar, onOpenSidebar]
   );
@@ -250,7 +250,7 @@ const DashboardContainer = ({
                   p={2}
                   fontSize={'sm'}
                   rounded={'md'}
-                  color={'myGray.900'}
+                  color={'myGray.700'}
                   cursor={'pointer'}
                   _hover={{
                     bg: 'primary.50'
@@ -263,14 +263,11 @@ const DashboardContainer = ({
                   {...(group.children.length === 0 &&
                     selected && { bg: 'primary.100', color: 'primary.600' })}
                 >
-                  <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} color={'myGray.500'} />
-                  <Box color={'myGray.600'} fontWeight={'medium'}>
-                    {group.groupName}
-                  </Box>
+                  <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} />
+                  <Box fontWeight={'medium'}>{group.groupName}</Box>
                   <Box flex={1} />
                   {group.children.length > 0 && (
                     <MyIcon
-                      color={'myGray.600'}
                       name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
                       w={'1rem'}
                     />

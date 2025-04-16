@@ -25,6 +25,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import dynamic from 'next/dynamic';
 import { McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const UsageWay = dynamic(() => import('@/pageComponents/dashboard/mcp/usageWay'), {
   ssr: false
@@ -32,7 +33,7 @@ const UsageWay = dynamic(() => import('@/pageComponents/dashboard/mcp/usageWay')
 
 const McpServer = () => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { isPc } = useSystem();
 
   const {
     data: mcpServerList = [],
@@ -61,21 +62,40 @@ const McpServer = () => {
   return (
     <>
       <DashboardContainer>
-        {() => (
+        {({ MenuIcon }) => (
           <MyBox isLoading={isLoading} h={'100%'} p={6}>
-            <Flex alignItems={'flex-end'} justifyContent={'space-between'}>
-              <Box>
-                <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
-                  {t('dashboard_mcp:mcp_server')}
+            {isPc ? (
+              <Flex alignItems={'flex-end'} justifyContent={'space-between'}>
+                <Box>
+                  <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
+                    {t('dashboard_mcp:mcp_server')}
+                  </Box>
+                  <Box fontSize={'xs'} color={'myGray.500'}>
+                    {t('dashboard_mcp:mcp_server_description')}
+                  </Box>
                 </Box>
+                <Button onClick={() => setEditMcp(defaultForm)}>
+                  {t('dashboard_mcp:create_mcp_server')}
+                </Button>
+              </Flex>
+            ) : (
+              <>
+                <HStack>
+                  <Box>{MenuIcon}</Box>
+                  <Box fontSize={'lg'} color={'myGray.900'} fontWeight={500}>
+                    {t('dashboard_mcp:mcp_server')}
+                  </Box>
+                </HStack>
                 <Box fontSize={'xs'} color={'myGray.500'}>
                   {t('dashboard_mcp:mcp_server_description')}
                 </Box>
-              </Box>
-              <Button onClick={() => setEditMcp(defaultForm)}>
-                {t('dashboard_mcp:create_mcp_server')}
-              </Button>
-            </Flex>
+                <Flex mt={2} justifyContent={'flex-end'}>
+                  <Button onClick={() => setEditMcp(defaultForm)}>
+                    {t('dashboard_mcp:create_mcp_server')}
+                  </Button>
+                </Flex>
+              </>
+            )}
 
             {/* table */}
             <TableContainer mt={4} bg={'white'} borderRadius={'md'}>
