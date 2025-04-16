@@ -11,7 +11,7 @@ import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '../../../web/i18n/utils';
 import { addLog } from '../../common/system/log';
-import { getImageBase64 } from '../../common/file/image/utils';
+import { addEndpointToImageUrl, getImageBase64 } from '../../common/file/image/utils';
 
 export const filterGPTMessageByMaxContext = async ({
   messages = [],
@@ -87,26 +87,17 @@ export const loadRequestMessages = async ({
   useVision?: boolean;
   origin?: string;
 }) => {
-  const replaceLinkUrl = (text: string) => {
-    const baseURL = process.env.FE_DOMAIN;
-    if (!baseURL) return text;
-    // 匹配 /api/system/img/xxx.xx 的图片链接，并追加 baseURL
-    return text.replace(
-      /(?<!https?:\/\/[^\s]*)(?:\/api\/system\/img\/[^\s.]*\.[^\s]*)/g,
-      (match) => `${baseURL}${match}`
-    );
-  };
   const parseSystemMessage = (
     content: string | ChatCompletionContentPartText[]
   ): string | ChatCompletionContentPartText[] | undefined => {
     if (typeof content === 'string') {
       if (!content) return;
-      return replaceLinkUrl(content);
+      return addEndpointToImageUrl(content);
     }
 
     const arrayContent = content
       .filter((item) => item.text)
-      .map((item) => ({ ...item, text: replaceLinkUrl(item.text) }));
+      .map((item) => ({ ...item, text: addEndpointToImageUrl(item.text) }));
     if (arrayContent.length === 0) return;
     return arrayContent;
   };

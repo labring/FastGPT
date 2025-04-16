@@ -17,6 +17,7 @@ import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { addEndpointToImageUrl } from '../../../../common/file/image/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -246,7 +247,7 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.toolResponses]: searchRes.map((item) => ({
       sourceName: item.sourceName,
       updateTime: item.updateTime,
-      content: `${item.q}\n${item.a}`.trim()
+      content: addEndpointToImageUrl(`${item.q}\n${item.a}`.trim())
     }))
   };
 }

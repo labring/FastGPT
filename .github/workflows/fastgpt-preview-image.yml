@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        image: [fastgpt, sandbox, mcp-server]
+        image: [fastgpt, sandbox, mcp_server]
       fail-fast: false # 即使一个镜像构建失败，也继续构建其他镜像
 
     steps:
@@ -59,9 +59,9 @@ jobs:
             echo "DOCKERFILE=projects/sandbox/Dockerfile" >> $GITHUB_OUTPUT
             echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_sandbox_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ matrix.image }}" == "mcp-server" ]]; then
-            echo "DOCKERFILE=projects/mcp-server/Dockerfile" >> $GITHUB_OUTPUT
-            echo "DESCRIPTION=fastgpt-mcp-server-pr image" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
+            echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_mcp_server_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
           fi
 
