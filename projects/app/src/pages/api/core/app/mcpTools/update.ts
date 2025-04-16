@@ -17,6 +17,7 @@ import {
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/mcpTools/utils';
 import { MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
 export type updateMCPToolsQuery = {};
 
@@ -59,6 +60,18 @@ async function handler(
       appId,
       {
         modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })]
+      },
+      { session }
+    );
+
+    await MongoAppVersion.updateOne(
+      {
+        appId
+      },
+      {
+        $set: {
+          nodes: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })]
+        }
       },
       { session }
     );

@@ -7,7 +7,7 @@ import {
 import { nanoid } from 'nanoid';
 import { ToolType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
-import { RuntimeNodeItemType } from 'core/workflow/runtime/type';
+import { RuntimeNodeItemType } from '../../workflow/runtime/type';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
