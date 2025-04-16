@@ -82,7 +82,6 @@ const ApiDatasetForm = ({
       }
 
       const path = await getApiDatasetPaths(params);
-      console.log(params, path);
       setCurrentPath(t('dataset:rootdirectory') + path);
     } catch (error) {
       setCurrentPath(t('dataset:rootdirectory'));
