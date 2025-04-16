@@ -74,6 +74,7 @@ const PopoverConfirm = ({
       isLazy
       lazyBehavior="keepMounted"
       arrowSize={10}
+      strategy={'fixed'}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
       <PopoverContent p={4}>
