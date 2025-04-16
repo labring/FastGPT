@@ -31,7 +31,7 @@ import {
   getLastInteractiveValue,
   getMaxHistoryLimitFromNodes,
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
@@ -191,7 +191,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatId,
       responseChatItemId,
       runtimeNodes,
-      runtimeEdges: initWorkflowEdgeStatus(edges, interactive),
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
       variables,
       query: removeEmptyUserInput(userQuestion.value),
       lastInteractive: interactive,

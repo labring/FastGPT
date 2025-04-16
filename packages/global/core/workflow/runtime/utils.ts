@@ -197,7 +197,7 @@ export const getLastInteractiveValue = (
   return;
 };
 
-export const initWorkflowEdgeStatus = (
+export const storeEdges2RuntimeEdges = (
   edges: StoreEdgeItemType[],
   lastInteractive?: WorkflowInteractiveResponseType
 ): RuntimeEdgeItemType[] => {

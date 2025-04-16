@@ -12,7 +12,7 @@ import {
   LoopInteractive,
   WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { initWorkflowEdgeStatus } from '@fastgpt/global/core/workflow/runtime/utils';
+import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopInputArray]: Array<any>;
@@ -100,7 +100,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       variables: newVariables,
       runtimeNodes,
       runtimeEdges: cloneDeep(
-        initWorkflowEdgeStatus(runtimeEdges, interactiveData?.childrenResponse)
+        storeEdges2RuntimeEdges(runtimeEdges, interactiveData?.childrenResponse)
       )
     });
 

@@ -5,7 +5,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -101,7 +101,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     }).value,
     chatConfig: {},
     runtimeNodes,
-    runtimeEdges: initWorkflowEdgeStatus(plugin.edges)
+    runtimeEdges: storeEdges2RuntimeEdges(plugin.edges)
   });
   const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
   if (output) {

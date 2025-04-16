@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   RuntimeEdgeItemType,
+  RuntimeNodeItemType,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
@@ -14,7 +15,8 @@ import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import json5 from 'json5';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -155,4 +157,54 @@ export const formatHttpError = (error: any) => {
     code: error?.code,
     status: error?.status
   };
+};
+
+export const rewriteRuntimeWorkFlow = (
+  nodes: RuntimeNodeItemType[],
+  edges: RuntimeEdgeItemType[]
+) => {
+  const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+
+  if (toolSetNodes.length === 0) {
+    return;
+  }
+
+  const nodeIdsToRemove = new Set<string>();
+
+  for (const toolSetNode of toolSetNodes) {
+    nodeIdsToRemove.add(toolSetNode.nodeId);
+    const toolList =
+      toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
+    const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
+
+    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+
+    for (const tool of toolList) {
+      const newToolNode = getMCPToolRuntimeNode({ tool, url });
+
+      nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
+
+      for (const inEdge of incomingEdges) {
+        edges.push({
+          source: inEdge.source,
+          target: newToolNode.nodeId,
+          sourceHandle: inEdge.sourceHandle,
+          targetHandle: 'selectedTools',
+          status: inEdge.status
+        });
+      }
+    }
+  }
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(nodes[i].nodeId)) {
+      nodes.splice(i, 1);
+    }
+  }
+
+  for (let i = edges.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(edges[i].target)) {
+      edges.splice(i, 1);
+    }
+  }
 };

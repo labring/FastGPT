@@ -94,7 +94,8 @@ const ToolSelect = ({
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
                       ) ||
                     hasError ||
-                    item.flowNodeType === FlowNodeTypeEnum.tool
+                    item.flowNodeType === FlowNodeTypeEnum.tool ||
+                    item.flowNodeType === FlowNodeTypeEnum.toolSet
                   ) {
                     return;
                   }
