@@ -37,7 +37,8 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { formatHttpError, removeSystemVariable, valueTypeFormat } from './utils';
+import { formatHttpError, removeSystemVariable } from './utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus,
