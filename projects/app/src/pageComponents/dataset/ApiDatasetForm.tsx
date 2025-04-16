@@ -10,7 +10,9 @@ import type {
   YuqueServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import BaseUrlSelector from '@/pageComponents/dataset/detail/Import/diffSource/baseUrl';
-import { getYuquePathApi } from '@/web/core/dataset/api';
+import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
+import { GetResourceFolderListProps, ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+
 const ApiDatasetForm = ({
   type,
   form
@@ -32,60 +34,186 @@ const ApiDatasetForm = ({
   const yuqueUserId = watch('yuqueServer.userId');
   const yuqueToken = watch('yuqueServer.token');
   const yuqueBaseUrl = watch('yuqueServer.baseUrl');
+
+  const feishuAppId = watch('feishuServer.appId');
+  const feishuAppSecret = watch('feishuServer.appSecret');
+  const feishuFolderToken = watch('feishuServer.folderToken');
+
+  const apiBaseUrl = watch('apiServer.baseUrl');
+
   const [currentPath, setCurrentPath] = useState(t('dataset:loading'));
   const router = useRouter();
   const datasetId = router.query.datasetId as string;
+  const parentId = yuqueBaseUrl || feishuFolderToken || apiBaseUrl;
 
+  // Unified function to get the current path
   const fetchCurrentPath = async () => {
-    if (type !== DatasetTypeEnum.yuque) return;
-
-    if (datasetId || (yuqueUserId && yuqueToken && yuqueBaseUrl)) {
-      try {
-        const path = await getYuquePathApi({
-          yuqueServer: {
-            userId: yuqueUserId || '',
-            token: yuqueToken || '',
-            baseUrl: yuqueBaseUrl || ''
-          },
-          datasetId: datasetId as string
-        });
-        setCurrentPath(path);
-        return;
-      } catch (error) {
-        setCurrentPath(t('dataset:rootdirectory'));
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (type === DatasetTypeEnum.yuque) {
-      fetchCurrentPath();
-    }
-  }, [datasetId, type]);
-
-  useEffect(() => {
-    if (type === DatasetTypeEnum.yuque && yuqueUserId && yuqueToken) {
-      fetchCurrentPath();
-    }
-  }, [yuqueBaseUrl, type, currentPath]);
-
-  const handleSelectDirectory = (id: string) => {
-    if (id === 'root') {
-      setValue('yuqueServer.baseUrl', undefined);
-    } else {
-      setValue('yuqueServer.baseUrl', id);
-    }
-    setIsDirectoryModalOpen(false);
-  };
-
-  const openDirectorySelector = () => {
-    if (!yuqueUserId || !yuqueToken) {
-      alert(t('dataset:pleaseFillUserIdAndToken'));
+    if (!parentId) {
+      setCurrentPath(t('dataset:rootdirectory'));
       return;
     }
 
+    try {
+      const params: any = { parentId };
+
+      switch (type) {
+        case DatasetTypeEnum.yuque:
+          if (!yuqueUserId || !yuqueToken) return;
+          params.yuqueServer = {
+            userId: yuqueUserId,
+            token: yuqueToken,
+            baseUrl: yuqueBaseUrl || ''
+          };
+          break;
+        case DatasetTypeEnum.feishu:
+          if (!feishuAppId || !feishuAppSecret) return;
+          params.feishuServer = {
+            appId: feishuAppId,
+            appSecret: feishuAppSecret,
+            folderToken: feishuFolderToken || ''
+          };
+          break;
+        case DatasetTypeEnum.apiDataset:
+          if (!apiBaseUrl) return;
+          params.apiServer = {
+            baseUrl: apiBaseUrl
+          };
+          break;
+      }
+
+      const path = await getApiDatasetPaths(params);
+      console.log(params, path);
+      setCurrentPath(t('dataset:rootdirectory') + path);
+    } catch (error) {
+      setCurrentPath(t('dataset:rootdirectory'));
+    }
+  };
+
+  // Get the path when initialized
+  useEffect(() => {
+    if (datasetId) {
+      fetchCurrentPath();
+    }
+  }, [datasetId]);
+
+  useEffect(() => {
+    if (type === DatasetTypeEnum.yuque) {
+      // Update the path when all the required fields are complete, or when the baseUrl changes
+      if (
+        (yuqueUserId && yuqueToken) ||
+        yuqueBaseUrl !== undefined ||
+        (feishuAppId && feishuAppSecret) ||
+        feishuFolderToken !== undefined ||
+        apiBaseUrl
+      ) {
+        fetchCurrentPath();
+      }
+    }
+  }, [
+    yuqueUserId,
+    yuqueToken,
+    yuqueBaseUrl,
+    feishuAppId,
+    feishuAppSecret,
+    feishuFolderToken,
+    apiBaseUrl,
+    type
+  ]);
+
+  // Unified handling of directory selection
+  const handleSelectDirectory = async (id: ParentIdType) => {
+    const value = id === 'root' || id === null || id === undefined ? '' : String(id);
+    switch (type) {
+      case DatasetTypeEnum.yuque:
+        setValue('yuqueServer.baseUrl', value);
+        break;
+      case DatasetTypeEnum.feishu:
+        setValue('feishuServer.folderToken', value);
+        break;
+      case DatasetTypeEnum.apiDataset:
+        setValue('apiServer.baseUrl', value);
+        break;
+    }
+
+    setIsDirectoryModalOpen(false);
+    await fetchCurrentPath();
+  };
+
+  const openDirectorySelector = () => {
     setIsDirectoryModalOpen(true);
   };
+
+  const renderBaseUrlSelector = () => (
+    <Flex mt={6}>
+      <Flex
+        alignItems={'center'}
+        flex={['', '0 0 110px']}
+        color={'myGray.900'}
+        fontWeight={500}
+        fontSize={'sm'}
+      >
+        Base URL
+      </Flex>
+      <Box
+        px={2}
+        py={1}
+        borderRadius="md"
+        fontSize="sm"
+        overflow="auto"
+        width="220px"
+        display="flex"
+        alignItems="center"
+        style={{ whiteSpace: 'nowrap' }}
+      >
+        <Text fontSize={'sm'} fontWeight={500}>
+          {currentPath}
+        </Text>
+      </Box>
+
+      <Button
+        ml={2}
+        onClick={openDirectorySelector}
+        isDisabled={
+          (type === DatasetTypeEnum.yuque && (!yuqueUserId || !yuqueToken)) ||
+          (type === DatasetTypeEnum.feishu && (!feishuAppId || !feishuAppSecret)) ||
+          (type === DatasetTypeEnum.apiDataset && !apiBaseUrl)
+        }
+      >
+        {t('dataset:selectDirectory')}
+      </Button>
+    </Flex>
+  );
+
+  // Render the directory selection modal
+  const renderDirectoryModal = () =>
+    isDirectoryModalOpen && (
+      <BaseUrlSelector
+        selectId={type === DatasetTypeEnum.yuque ? yuqueBaseUrl || 'root' : 'root'}
+        server={async (e: GetResourceFolderListProps) => {
+          const params: any = { parentId: e.parentId };
+
+          switch (type) {
+            case DatasetTypeEnum.yuque:
+              params.yuqueServer = {
+                userId: yuqueUserId,
+                token: yuqueToken,
+                baseUrl: ''
+              };
+              break;
+            case DatasetTypeEnum.feishu:
+              params.feishuServer = watch('feishuServer');
+              break;
+            case DatasetTypeEnum.apiDataset:
+              params.apiServer = watch('apiServer');
+              break;
+          }
+
+          return getApiDatasetCatalog(params);
+        }}
+        onConfirm={handleSelectDirectory}
+        onClose={() => setIsDirectoryModalOpen(false)}
+      />
+    );
 
   return (
     <>
@@ -125,6 +253,8 @@ const ApiDatasetForm = ({
               {...register('apiServer.authorization')}
             />
           </Flex>
+          {/* {renderBaseUrlSelector()}
+          {renderDirectoryModal()} */}
         </>
       )}
       {type === DatasetTypeEnum.feishu && (
@@ -180,6 +310,8 @@ const ApiDatasetForm = ({
               {...register('feishuServer.folderToken', { required: true })}
             />
           </Flex>
+          {/* {renderBaseUrlSelector()}
+          {renderDirectoryModal()} */}
         </>
       )}
       {type === DatasetTypeEnum.yuque && (
@@ -218,48 +350,8 @@ const ApiDatasetForm = ({
               {...register('yuqueServer.token', { required: true })}
             />
           </Flex>
-          <Flex mt={6}>
-            <Flex
-              alignItems={'center'}
-              flex={['', '0 0 110px']}
-              color={'myGray.900'}
-              fontWeight={500}
-              fontSize={'sm'}
-            >
-              Base URL
-            </Flex>
-            <Box
-              px={2}
-              py={1}
-              borderRadius="md"
-              fontSize="sm"
-              overflow="auto"
-              width="220px"
-              display="flex"
-              alignItems="center"
-              style={{ whiteSpace: 'nowrap' }}
-            >
-              <Text fontSize={'sm'} fontWeight={500}>
-                {`${currentPath}`}
-              </Text>
-            </Box>
-
-            <Button ml={2} onClick={openDirectorySelector} isDisabled={!yuqueUserId || !yuqueToken}>
-              {t('dataset:selectDirectory')}
-            </Button>
-          </Flex>
-
-          {isDirectoryModalOpen && (
-            <BaseUrlSelector
-              onSelect={handleSelectDirectory}
-              yuqueServer={{
-                userId: form.getValues('yuqueServer.userId') || '',
-                token: form.getValues('yuqueServer.token') || '',
-                baseUrl: form.getValues('yuqueServer.baseUrl') || ''
-              }}
-              onClose={() => setIsDirectoryModalOpen(false)}
-            />
-          )}
+          {renderBaseUrlSelector()}
+          {renderDirectoryModal()}
         </>
       )}
     </>
