@@ -159,7 +159,6 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
 export const mergeChatResponseData = (
   responseDataList: ChatHistoryItemResType[]
 ): ChatHistoryItemResType[] => {
-  // 首先，递归处理每个响应的pluginDetail
   const responseWithMergedPlugins = responseDataList.map((item) => {
     if (item.pluginDetail && item.pluginDetail.length > 1) {
       return {
@@ -170,7 +169,6 @@ export const mergeChatResponseData = (
     return item;
   });
 
-  // 然后合并顶层响应
   let lastResponse: ChatHistoryItemResType | undefined = undefined;
   let hasMerged = false;
 
@@ -181,7 +179,6 @@ export const mergeChatResponseData = (
         lastResponse.mergeSignId &&
         curr.mergeSignId === lastResponse.mergeSignId
       ) {
-        // 替换 lastResponse
         const concatResponse: ChatHistoryItemResType = {
           ...curr,
           runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
@@ -202,7 +199,6 @@ export const mergeChatResponseData = (
     []
   );
 
-  // 如果有合并发生，递归调用以检查是否还有再可合并的项
   if (hasMerged && firstPassResult.length > 1) {
     return mergeChatResponseData(firstPassResult);
   }
