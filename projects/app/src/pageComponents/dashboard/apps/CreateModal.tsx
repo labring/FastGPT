@@ -190,7 +190,8 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
                 router.push({
                   pathname: '/dashboard/templateMarket',
                   query: {
-                    appType: type
+                    appType: type,
+                    parentId
                   }
                 });
                 onClose();
