@@ -26,7 +26,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
+import { getChatTitleFromChatMessage, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -116,6 +116,7 @@ const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
     value: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
   };
+  const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
   await saveChat({
     chatId,
     appId: app._id,
@@ -125,7 +126,7 @@ const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
     appChatConfig: chatConfig,
     variables: newVariables,
     isUpdateUseTime: false, // owner update use time
-    newTitle: 'MCP call',
+    newTitle,
     source: ChatSourceEnum.mcp,
     content: [userQuestion, aiResponse]
   });
