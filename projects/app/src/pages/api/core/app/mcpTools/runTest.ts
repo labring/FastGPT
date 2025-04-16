@@ -22,22 +22,22 @@ async function handler(
     version: '1.0.0'
   });
 
-  let result = null;
+  const result = await (async () => {
+    try {
+      const transport = new SSEClientTransport(new URL(url));
+      await client.connect(transport);
 
-  try {
-    const transport = new SSEClientTransport(new URL(url));
-    await client.connect(transport);
-
-    result = await client.callTool({
-      name: toolName,
-      arguments: params
-    });
-  } catch (error) {
-    console.error('Error running MCP tool test:', error);
-    throw error;
-  } finally {
-    await client.close();
-  }
+      return await client.callTool({
+        name: toolName,
+        arguments: params
+      });
+    } catch (error) {
+      console.error('Error running MCP tool test:', error);
+      return Promise.reject(error);
+    } finally {
+      await client.close();
+    }
+  })();
 
   return result;
 }

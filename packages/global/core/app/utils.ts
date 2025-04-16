@@ -141,7 +141,8 @@ export const appWorkflow2Form = ({
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
       node.flowNodeType === FlowNodeTypeEnum.appModule ||
-      node.flowNodeType === FlowNodeTypeEnum.tool
+      node.flowNodeType === FlowNodeTypeEnum.tool ||
+      node.flowNodeType === FlowNodeTypeEnum.toolSet
     ) {
       if (!node.pluginId) return;
 
