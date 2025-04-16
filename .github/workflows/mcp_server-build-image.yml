@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'projects/sandbox/**'
+      - 'projects/mcp_server/**'
     tags:
       - 'v*'
 jobs:
