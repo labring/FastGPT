@@ -1,23 +1,23 @@
+import { NextAPI } from '@/service/middleware/entry';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import {
   OwnerPermissionVal,
   PerResourceTypeEnum,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
-import { NextAPI } from '@/service/middleware/entry';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
-import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
+import { syncCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
@@ -34,7 +34,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
 
   // 凭证校验
   const { teamId, tmbId } = parentId
-    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   // Create app
