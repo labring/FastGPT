@@ -144,6 +144,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.custom
     ];
 
@@ -157,7 +158,8 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select
+      FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect
     ];
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
@@ -363,6 +365,27 @@ const InputTypeConfig = ({
                   w={'200px'}
                 />
               )}
+              {inputType === FlowNodeInputTypeEnum.multipleSelect && (
+                <MultipleSelect<string>
+                  flex={'1 0 0'}
+                  itemWrap={true}
+                  bg={'myGray.50'}
+                  list={listValue
+                    .filter((item: any) => item.label !== '')
+                    .map((item: any) => ({
+                      label: item.label,
+                      value: item.value
+                    }))}
+                  placeholder={t('workflow:select_default_option')}
+                  value={defaultValue || []}
+                  onSelect={(val) => setValue('defaultValue', val)}
+                  isSelectAll={
+                    defaultValue &&
+                    defaultValue.length ===
+                      listValue.filter((item: any) => item.label !== '').length
+                  }
+                />
+              )}
             </Flex>
           </Flex>
         )}
@@ -390,7 +413,8 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === FlowNodeInputTypeEnum.select && (
+        {(inputType === FlowNodeInputTypeEnum.select ||
+          inputType == FlowNodeInputTypeEnum.multipleSelect) && (
           <>
             <DndDrag<{ id: string; value: string }>
               onDragEndCb={(list) => {

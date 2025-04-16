@@ -14,6 +14,7 @@ import {
   UserSelectInteractive,
   UserSelectOptionItemType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 
 const DescriptionBox = React.memo(function DescriptionBox({
   description
@@ -168,6 +169,30 @@ export const FormInputComponent = React.memo(function FormInputComponent({
                     value={value}
                     isDisabled={submitted}
                     onChange={(e) => setValue(label, e)}
+                  />
+                );
+              }}
+            />
+          );
+        case FlowNodeInputTypeEnum.multipleSelect:
+          return (
+            <Controller
+              key={label}
+              control={control}
+              name={label}
+              rules={{ required: required }}
+              render={({ field: { ref, value } }) => {
+                if (!list) return <></>;
+                return (
+                  <MultipleSelect<string>
+                    width={'100%'}
+                    bg={'white'}
+                    py={2}
+                    list={list}
+                    value={value}
+                    isDisabled={submitted}
+                    onSelect={(e) => setValue(label, e)}
+                    isSelectAll={value.length === list.length}
                   />
                 );
               }}

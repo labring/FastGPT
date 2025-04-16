@@ -1,4 +1,5 @@
 export const pythonScript = `
+import os
 import subprocess
 import json
 import ast
@@ -20,6 +21,7 @@ def extract_imports(code):
 seccomp_prefix = """
 from seccomp import *
 import sys
+import errno
 allowed_syscalls = [
     "syscall.SYS_ARCH_PRCTL", "syscall.SYS_BRK", "syscall.SYS_CLONE",
     "syscall.SYS_CLOSE", "syscall.SYS_EPOLL_CREATE1", "syscall.SYS_EXECVE",
@@ -99,22 +101,22 @@ def run_pythonCode(data:dict):
     variables = data["variables"]
     imports = "\\n".join(extract_imports(code))
     var_def = ""
-    output_code = "res = main("
+    output_code = "if __name__ == '__main__':\\n    res = main("
     for k, v in variables.items():
-        if isinstance(v, str):
-            one_var = k + " = \\"" + v + "\\"\\n"
-        else:
-            one_var = k + " = " + str(v) + "\\n"
+        one_var = f"{k} = {json.dumps(v)}\\n"
         var_def = var_def + one_var
         output_code = output_code + k + ", "
     if output_code[-1] == "(":
         output_code = output_code + ")\\n"
     else:
         output_code = output_code[:-2] + ")\\n"
-    output_code = output_code + "print(res)"
+    output_code = output_code + "    print(res)"
     code = imports + "\\n" + seccomp_prefix + "\\n" + var_def + "\\n" + code + "\\n" + output_code
+    tmp_file = os.path.join(data["tempDir"], "subProcess.py")
+    with open(tmp_file, "w", encoding="utf-8") as f:
+        f.write(code)
     try:
-        result = subprocess.run(["python3", "-c", code], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(["python3", tmp_file], capture_output=True, text=True, timeout=10)
         if result.returncode == -31:
             return {"error": "Dangerous behavior detected."}
         if result.stderr != "":

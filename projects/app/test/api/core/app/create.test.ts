@@ -1,5 +1,6 @@
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -17,6 +18,7 @@ describe('create api', () => {
       tmbId: users.members[0].tmbId,
       permission: TeamAppCreatePermissionVal
     });
+    await delay(100);
     const res = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
       auth: users.members[0],
       body: {
@@ -38,6 +40,7 @@ describe('create api', () => {
         parentId: String(folderId)
       }
     });
+    await delay(500);
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     expect(res2.data).toBeDefined();
