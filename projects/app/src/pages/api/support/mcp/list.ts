@@ -23,9 +23,9 @@ async function handler(
 
   const list = await (async () => {
     if (permission.hasManagePer) {
-      return await MongoMcpKey.find({ teamId }).lean();
+      return await MongoMcpKey.find({ teamId }).lean().sort({ _id: -1 });
     }
-    return await MongoMcpKey.find({ teamId, tmbId }).lean();
+    return await MongoMcpKey.find({ teamId, tmbId }).lean().sort({ _id: -1 });
   })();
 
   return list;

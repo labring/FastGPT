@@ -118,6 +118,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   };
 
   // 1. any值，忽略格式化
+  if (value === undefined || value === null) return value;
   if (!type || type === WorkflowIOValueTypeEnum.any) return value;
 
   // 2. 如果值已经符合目标类型，直接返回
@@ -133,19 +134,6 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     (type === WorkflowIOValueTypeEnum.selectApp && typeof value === 'object')
   ) {
     return value;
-  }
-
-  // 3. 空值处理
-  if (value === undefined || value === null) {
-    if (type === WorkflowIOValueTypeEnum.string) return '';
-    if (type === WorkflowIOValueTypeEnum.number) return 0;
-    if (type === WorkflowIOValueTypeEnum.boolean) return false;
-    if (type.startsWith('array')) return [];
-    if (type === WorkflowIOValueTypeEnum.object) return {};
-    if (type === WorkflowIOValueTypeEnum.chatHistory) return [];
-    if (type === WorkflowIOValueTypeEnum.datasetQuote) return [];
-    if (type === WorkflowIOValueTypeEnum.selectDataset) return [];
-    if (type === WorkflowIOValueTypeEnum.selectApp) return {};
   }
 
   // 4. 按目标类型，进行格式转化

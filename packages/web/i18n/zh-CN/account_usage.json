@@ -22,6 +22,7 @@
   "generation_time": "生成时间",
   "image_parse": "图片标注",
   "input_token_length": "输入 tokens",
+  "mcp": "MCP 调用",
   "member": "成员",
   "member_name": "成员名",
   "module_name": "模块名",

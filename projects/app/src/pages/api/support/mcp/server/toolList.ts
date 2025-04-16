@@ -24,7 +24,8 @@ const pluginNodes2InputSchema = (nodes: StoreNodeItemType[]) => {
 
   const schema: Tool['inputSchema'] = {
     type: 'object',
-    properties: {}
+    properties: {},
+    required: []
   };
 
   pluginInput?.inputs.forEach((input) => {
@@ -37,6 +38,11 @@ const pluginNodes2InputSchema = (nodes: StoreNodeItemType[]) => {
       description: input.description,
       enum: input.enum?.split('\n').filter(Boolean) || undefined
     };
+
+    if (input.required) {
+      // @ts-ignore
+      schema.required.push(input.key);
+    }
   });
 
   return schema;
@@ -51,14 +57,17 @@ const workflow2InputSchema = (chatConfig?: AppChatConfigType) => {
       },
       ...(chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg
         ? {
-            type: 'array',
-            items: {
-              type: 'string'
-            },
-            description: 'File linkage'
+            fileUrlList: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'File linkage'
+            }
           }
         : {})
-    }
+    },
+    required: ['question']
   };
 
   chatConfig?.variables?.forEach((item) => {
@@ -71,6 +80,11 @@ const workflow2InputSchema = (chatConfig?: AppChatConfigType) => {
       description: item.description,
       enum: item.enums?.map((enumItem) => enumItem.value) || undefined
     };
+
+    if (item.required) {
+      // @ts-ignore
+      schema.required!.push(item.key);
+    }
   });
 
   return schema;
@@ -91,7 +105,7 @@ async function handler(
   // Get app list
   const appList = await MongoApp.find(
     {
-      _id: { $in: mcp.apps.map((app) => app.id) },
+      _id: { $in: mcp.apps.map((app) => app.appId) },
       type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
     },
     { name: 1, intro: 1 }
@@ -117,15 +131,15 @@ async function handler(
   // Compute mcp tools
   const tools = versionList.map<Tool>((version, index) => {
     const app = permissionAppList[index];
-    const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.id) === String(app._id));
+    const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
 
     const isPlugin = !!version.nodes.find(
       (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
     );
 
     return {
-      name: mcpApp?.name || app.name,
-      description: mcpApp?.intro || app.intro,
+      name: mcpApp.toolName,
+      description: mcpApp.description,
       inputSchema: isPlugin
         ? pluginNodes2InputSchema(version.nodes)
         : workflow2InputSchema(version.chatConfig)

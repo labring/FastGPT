@@ -17,7 +17,8 @@ import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 
 export enum TabEnum {
   apps = 'apps',
-  app_templates = 'templateMarket'
+  app_templates = 'templateMarket',
+  mcp_server = 'mcpServer'
 }
 type TabEnumType = `${keyof typeof TabEnum}` | string;
 
@@ -152,7 +153,7 @@ const DashboardContainer = ({
       {
         groupId: TabEnum.app_templates,
         groupAvatar: 'common/templateMarket',
-        groupName: t('app:template_market'),
+        groupName: t('common:template_market'),
         children: [
           ...templateTags
             .map((tag) => {
@@ -182,7 +183,17 @@ const DashboardContainer = ({
               ]
             : [])
         ]
-      }
+      },
+      ...(feConfigs?.mcpServerProxyEndpoint
+        ? [
+            {
+              groupId: TabEnum.mcp_server,
+              groupAvatar: 'key',
+              groupName: t('common:mcp_server'),
+              children: []
+            }
+          ]
+        : [])
     ];
   }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
 
@@ -249,17 +260,21 @@ const DashboardContainer = ({
                     router.push(`/dashboard/${group.groupId}`);
                     onCloseSidebar();
                   }}
+                  {...(group.children.length === 0 &&
+                    selected && { bg: 'primary.100', color: 'primary.600' })}
                 >
                   <Avatar src={group.groupAvatar} w={'1rem'} mr={1.5} color={'myGray.500'} />
                   <Box color={'myGray.600'} fontWeight={'medium'}>
                     {group.groupName}
                   </Box>
                   <Box flex={1} />
-                  <MyIcon
-                    color={'myGray.600'}
-                    name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
-                    w={'1rem'}
-                  />
+                  {group.children.length > 0 && (
+                    <MyIcon
+                      color={'myGray.600'}
+                      name={selected ? 'core/chat/chevronDown' : 'core/chat/chevronUp'}
+                      w={'1rem'}
+                    />
+                  )}
                 </Flex>
                 {selected && (
                   <Box>

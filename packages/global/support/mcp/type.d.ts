@@ -4,10 +4,11 @@ export type McpKeyType = {
   teamId: string;
   tmbId: string;
   apps: McpAppType[];
+  name: string;
 };
 
 export type McpAppType = {
-  id: string;
-  name?: string;
-  intro?: string;
+  appId: string;
+  toolName: string;
+  description: string;
 };

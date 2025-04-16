@@ -93,9 +93,10 @@ app.post('/:key/messages', (req, res) => {
   }
 });
 
+const PORT = process.env.PORT || 3005;
 app
-  .listen(3005, () => {
-    console.log('Server is running on port 3005');
+  .listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
   })
   .on('error', (err) => {
     console.log(err);

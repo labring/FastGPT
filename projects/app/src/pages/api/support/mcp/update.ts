@@ -10,6 +10,7 @@ export type updateQuery = {};
 
 export type updateBody = {
   id: string;
+  name: string;
   apps: McpAppType[];
 };
 
@@ -19,7 +20,7 @@ async function handler(
   req: ApiRequestProps<updateBody, updateQuery>,
   res: ApiResponseType<any>
 ): Promise<updateResponse> {
-  let { id: mcpId, apps } = req.body;
+  let { id: mcpId, name, apps } = req.body;
   const { tmbId } = await authMcp({
     req,
     authToken: true,
@@ -31,10 +32,10 @@ async function handler(
   // 对 apps 中的 id 进行去重，确保每个应用只出现一次
   const uniqueAppIds = new Set();
   apps = apps.filter((app) => {
-    if (uniqueAppIds.has(app.id)) {
+    if (uniqueAppIds.has(app.appId)) {
       return false; // 过滤掉重复的 app id
     }
-    uniqueAppIds.add(app.id);
+    uniqueAppIds.add(app.appId);
     return true;
   });
 
@@ -43,13 +44,21 @@ async function handler(
     apps.map((app) =>
       authAppByTmbId({
         tmbId,
-        appId: app.id,
+        appId: app.appId,
         per: ReadPermissionVal
       })
     )
   );
 
-  await MongoMcpKey.updateOne({ _id: mcpId }, { $set: { apps } });
+  await MongoMcpKey.updateOne(
+    { _id: mcpId },
+    {
+      $set: {
+        ...(name && { name }),
+        apps
+      }
+    }
+  );
 
   return {};
 }

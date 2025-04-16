@@ -8,13 +8,17 @@ import { AppSchema } from '@fastgpt/global/core/app/type';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getPluginRunUserQuery,
   updatePluginInputByVariables
 } from '@fastgpt/global/core/workflow/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
@@ -23,6 +27,11 @@ import {
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
+import { saveChat } from '@fastgpt/service/core/chat/saveChat';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export type toolCallQuery = {};
 
@@ -70,11 +79,13 @@ const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
     variables = {};
   } else {
     delete variables.question;
+    variables.system_fileUrlList = variables.fileUrlList;
+    delete variables.fileUrlList;
   }
 
   const chatId = getNanoid();
 
-  const { flowUsages, assistantResponses, flowResponses } = await dispatchWorkFlow({
+  const { flowUsages, assistantResponses, newVariables, flowResponses } = await dispatchWorkFlow({
     chatId,
     timezone,
     externalProvider,
@@ -89,9 +100,9 @@ const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
       tmbId: String(app.tmbId)
     },
     uid: String(app.tmbId),
-    runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+    runtimeNodes,
     runtimeEdges: initWorkflowEdgeStatus(edges),
-    variables: {},
+    variables,
     query: removeEmptyUserInput(userQuestion.value),
     chatConfig,
     histories: [],
@@ -99,9 +110,47 @@ const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
     maxRunTimes: WORKFLOW_MAX_RUN_TIMES
   });
 
+  // Save chat
+  const aiResponse: AIChatItemType & { dataId?: string } = {
+    obj: ChatRoleEnum.AI,
+    value: assistantResponses,
+    [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
+  };
+  await saveChat({
+    chatId,
+    appId: app._id,
+    teamId: app.teamId,
+    tmbId: app.tmbId,
+    nodes,
+    appChatConfig: chatConfig,
+    variables: newVariables,
+    isUpdateUseTime: false, // owner update use time
+    newTitle: 'MCP call',
+    source: ChatSourceEnum.mcp,
+    content: [userQuestion, aiResponse]
+  });
+
+  // Push usage
+  createChatUsage({
+    appName: app.name,
+    appId: app._id,
+    teamId: app.teamId,
+    tmbId: app.tmbId,
+    source: UsageSourceEnum.mcp,
+    flowUsages
+  });
+
+  // Get MCP response type
   const responseContent = (() => {
     if (isPlugin) {
-      return assistantResponses;
+      const output = flowResponses.find(
+        (item) => item.moduleType === FlowNodeTypeEnum.pluginOutput
+      );
+      if (output) {
+        return JSON.stringify(output.pluginOutput);
+      } else {
+        return 'Can not get response from plugin';
+      }
     }
 
     return assistantResponses
@@ -127,14 +176,14 @@ async function handler(
 
   // Get app list
   const appList = await MongoApp.find({
-    _id: { $in: mcp.apps.map((app) => app.id) },
+    _id: { $in: mcp.apps.map((app) => app.appId) },
     type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
   }).lean();
 
   const app = appList.find((app) => {
-    const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.id) === String(app._id));
+    const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
 
-    return toolName === app?.name || toolName === mcpApp?.name;
+    return toolName === mcpApp.toolName;
   });
 
   if (!app) {

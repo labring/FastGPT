@@ -11,6 +11,7 @@ import { McpAppType } from '@fastgpt/global/support/mcp/type';
 export type createQuery = {};
 
 export type createBody = {
+  name: string;
   apps: McpAppType[];
 };
 
@@ -30,19 +31,25 @@ async function handler(
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
-  let { apps } = req.body;
+  let { name, apps } = req.body;
 
   if (!apps.length) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
+  // Count mcp length
+  const totalMcp = await MongoMcpKey.countDocuments({ teamId });
+  if (totalMcp >= 100) {
+    return Promise.reject('暂时只支持100个MCP服务');
+  }
+
   // 对 apps 中的 id 进行去重，确保每个应用只出现一次
   const uniqueAppIds = new Set();
   apps = apps.filter((app) => {
-    if (uniqueAppIds.has(app.id)) {
+    if (uniqueAppIds.has(app.appId)) {
       return false; // 过滤掉重复的 app id
     }
-    uniqueAppIds.add(app.id);
+    uniqueAppIds.add(app.appId);
     return true;
   });
 
@@ -51,7 +58,7 @@ async function handler(
     apps.map((app) =>
       authAppByTmbId({
         tmbId,
-        appId: app.id,
+        appId: app.appId,
         per: ReadPermissionVal
       })
     )
@@ -60,6 +67,7 @@ async function handler(
   await MongoMcpKey.create({
     teamId,
     tmbId,
+    name,
     apps
   });
 
