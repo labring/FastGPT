@@ -31,10 +31,8 @@ type ChildrenInteractive = InteractiveNodeType & {
 type LoopInteractive = InteractiveNodeType & {
   type: 'loopInteractive';
   params: {
-    loopInput?: any[];
-    loopResult?: any[];
-    loopDetail?: ChatHistoryItemResType[];
-    childrenResponse?: WorkflowInteractiveResponseType;
+    loopResult: any[];
+    childrenResponse: WorkflowInteractiveResponseType;
     currentIndex: number;
   };
 };

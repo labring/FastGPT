@@ -27,7 +27,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const {
     params,
     runtimeEdges,
-    query,
     lastInteractive,
     runtimeNodes,
     node: { name }
@@ -37,6 +36,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   if (!Array.isArray(loopInputArray)) {
     return Promise.reject('Input value is not an array');
   }
+
+  // Max loop times
   const maxLength = process.env.WORKFLOW_MAX_LOOP_TIMES
     ? Number(process.env.WORKFLOW_MAX_LOOP_TIMES)
     : 50;
@@ -44,54 +45,62 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  let outputValueArr = [];
-  const loopDetail: ChatHistoryItemResType[] = [];
+  const interactiveData =
+    lastInteractive?.type === 'loopInteractive' ? lastInteractive?.params : undefined;
+  const lastIndex = interactiveData?.currentIndex;
+
+  const outputValueArr = interactiveData ? interactiveData.loopResult : [];
+  const loopResponseDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
-
-  const { params: loopParams } = lastInteractive?.type === 'loopInteractive' ? lastInteractive : {};
-  const childrenInteractive = loopParams?.childrenResponse;
-  const currentIndex = loopParams?.currentIndex;
   let index = 0;
-  if (childrenInteractive) {
-    outputValueArr = loopParams.loopResult || [];
-  }
-
-  const entryNodeIds = childrenInteractive?.entryNodeIds;
 
   for await (const item of loopInputArray.filter(Boolean)) {
-    if (currentIndex && index < currentIndex) {
+    // Skip already looped
+    if (lastIndex && index < lastIndex) {
       index++;
       continue;
     }
-    const rightNowIndex = index === currentIndex;
-    runtimeNodes.forEach((node) => {
-      if (
-        (childrenNodeIdList.includes(node.nodeId) &&
-          node.flowNodeType === FlowNodeTypeEnum.loopStart) ||
-        (rightNowIndex && entryNodeIds?.includes(node.nodeId))
-      ) {
-        node.isEntry = !(rightNowIndex && node.flowNodeType === FlowNodeTypeEnum.loopStart);
-        node.inputs.forEach((input) => {
-          if (input.key === NodeInputKeyEnum.loopStartInput) {
-            input.value = item;
-          } else if (input.key === NodeInputKeyEnum.loopStartIndex) {
-            input.value = index++;
-          }
-        });
-      }
-    });
+
+    // It takes effect only once in current loop
+    const isInteractiveResponseIndex = !!interactiveData && index === interactiveData?.currentIndex;
+
+    // Init entry
+    if (isInteractiveResponseIndex) {
+      runtimeNodes.forEach((node) => {
+        if (interactiveData?.childrenResponse?.entryNodeIds.includes(node.nodeId)) {
+          node.isEntry = true;
+        }
+      });
+    } else {
+      runtimeNodes.forEach((node) => {
+        if (!childrenNodeIdList.includes(node.nodeId)) return;
+
+        // Init interactive response
+        if (node.flowNodeType === FlowNodeTypeEnum.loopStart) {
+          node.isEntry = true;
+          node.inputs.forEach((input) => {
+            if (input.key === NodeInputKeyEnum.loopStartInput) {
+              input.value = item;
+            } else if (input.key === NodeInputKeyEnum.loopStartIndex) {
+              input.value = index + 1;
+            }
+          });
+        }
+      });
+    }
+
+    index++;
 
     const response = await dispatchWorkFlow({
       ...props,
-      query,
-      lastInteractive: childrenInteractive,
+      lastInteractive: interactiveData?.childrenResponse,
       variables: newVariables,
       runtimeNodes,
       runtimeEdges: cloneDeep(
-        rightNowIndex ? initWorkflowEdgeStatus(runtimeEdges, childrenInteractive) : runtimeEdges
+        initWorkflowEdgeStatus(runtimeEdges, interactiveData?.childrenResponse)
       )
     });
 
@@ -100,8 +109,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     )?.loopOutputValue;
 
     // Concat runtime response
-    outputValueArr.push(loopOutputValue);
-    loopDetail.push(...response.flowResponses);
+    if (!response.workflowInteractiveResponse) {
+      outputValueArr.push(loopOutputValue);
+    }
+    loopResponseDetail.push(...response.flowResponses);
     assistantResponses.push(...response.assistantResponses);
     totalPoints += response.flowUsages.reduce((acc, usage) => acc + usage.totalPoints, 0);
 
@@ -110,10 +121,10 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       ...newVariables,
       ...response.newVariables
     };
+
     // handle interactive response
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
-      outputValueArr.pop();
       break;
     }
   }
@@ -125,8 +136,6 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
           params: {
             currentIndex: index - 1,
             childrenResponse: interactiveResponse,
-            loopDetail: loopDetail,
-            loopInput: loopInputArray,
             loopResult: outputValueArr
           }
         }
@@ -136,7 +145,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       totalPoints,
       loopInput: loopInputArray,
       loopResult: outputValueArr,
-      loopDetail: loopDetail,
+      loopDetail: loopResponseDetail,
       mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [

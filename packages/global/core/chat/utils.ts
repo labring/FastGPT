@@ -159,6 +159,7 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
 export const mergeChatResponseData = (
   responseDataList: ChatHistoryItemResType[]
 ): ChatHistoryItemResType[] => {
+  // Merge children reponse data(Children has interactive response)
   const responseWithMergedPlugins = responseDataList.map((item) => {
     if (item.pluginDetail && item.pluginDetail.length > 1) {
       return {
