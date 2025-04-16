@@ -12,7 +12,10 @@ import { onDelOneApp } from '../del';
 import { onCreateApp } from '../create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
-import { getMCPToolNodes, getMCPToolSetNodes } from '@fastgpt/global/core/app/mcpTools/utils';
+import {
+  getMCPToolRuntimeNode,
+  getMCPToolSetRuntimeNode
+} from '@fastgpt/global/core/app/mcpTools/utils';
 import { MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 
 export type updateMCPToolsQuery = {};
@@ -55,7 +58,7 @@ async function handler(
     await MongoApp.findByIdAndUpdate(
       appId,
       {
-        modules: getMCPToolSetNodes({ url, toolList, name: app.name, avatar: app.avatar })
+        modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })]
       },
       { session }
     );
@@ -101,7 +104,7 @@ const updateMCPChildrenTool = async ({
         tmbId,
         type: AppTypeEnum.tool,
         intro: tool.description,
-        modules: getMCPToolNodes({ tool, url: toolSetData.url }),
+        modules: [getMCPToolRuntimeNode({ tool, url: toolSetData.url })],
         session
       });
     }
@@ -113,7 +116,7 @@ const updateMCPChildrenTool = async ({
       await MongoApp.findByIdAndUpdate(
         dbTool._id,
         {
-          modules: getMCPToolNodes({ tool, url: toolSetData.url })
+          modules: [getMCPToolRuntimeNode({ tool, url: toolSetData.url })]
         },
         { session }
       );

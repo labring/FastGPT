@@ -7,7 +7,10 @@ import { CreateAppBody, onCreateApp } from '../create';
 import { ToolType } from '@fastgpt/global/core/app/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getMCPToolNodes, getMCPToolSetNodes } from '@fastgpt/global/core/app/mcpTools/utils';
+import {
+  getMCPToolRuntimeNode,
+  getMCPToolSetRuntimeNode
+} from '@fastgpt/global/core/app/mcpTools/utils';
 
 export type createMCPToolsQuery = {};
 
@@ -39,7 +42,7 @@ async function handler(
       teamId,
       tmbId,
       type: AppTypeEnum.toolSet,
-      modules: getMCPToolSetNodes({ url, toolList, name, avatar }),
+      modules: [getMCPToolSetRuntimeNode({ url, toolList, name, avatar })],
       session
     });
 
@@ -52,7 +55,7 @@ async function handler(
         tmbId,
         type: AppTypeEnum.tool,
         intro: tool.description,
-        modules: getMCPToolNodes({ tool, url }),
+        modules: [getMCPToolRuntimeNode({ tool, url })],
         session
       });
     }

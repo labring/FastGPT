@@ -5,7 +5,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
@@ -116,7 +116,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     childrenInteractive
   );
 
-  const runtimeEdges = initWorkflowEdgeStatus(edges, childrenInteractive);
+  const runtimeEdges = storeEdges2RuntimeEdges(edges, childrenInteractive);
   const theQuery = childrenInteractive
     ? query
     : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });

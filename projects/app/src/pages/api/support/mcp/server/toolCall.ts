@@ -21,7 +21,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
@@ -101,7 +101,7 @@ const dispatchApp = async (app: AppSchema, variables: Record<string, any>) => {
     },
     uid: String(app.tmbId),
     runtimeNodes,
-    runtimeEdges: initWorkflowEdgeStatus(edges),
+    runtimeEdges: storeEdges2RuntimeEdges(edges),
     variables,
     query: removeEmptyUserInput(userQuestion.value),
     chatConfig,

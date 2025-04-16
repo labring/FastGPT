@@ -37,7 +37,7 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { formatHttpError, removeSystemVariable } from './utils';
+import { formatHttpError, removeSystemVariable, rewriteRuntimeWorkFlow } from './utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   filterWorkflowEdges,
@@ -139,6 +139,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     responseDetail = true,
     ...props
   } = data;
+
+  rewriteRuntimeWorkFlow(runtimeNodes, runtimeEdges);
 
   // 初始化深度和自动增加深度，避免无限嵌套
   if (!props.workflowDispatchDeep) {

@@ -4,8 +4,6 @@ import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getMCPToolNodes } from '@fastgpt/global/core/app/mcpTools/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const updateToolInputValue = ({
   params,
@@ -69,50 +67,4 @@ export const initToolNodes = (
       }
     }
   });
-};
-
-export const formatRuntimeWorkFlow = (
-  nodes: RuntimeNodeItemType[],
-  edges: RuntimeEdgeItemType[]
-) => {
-  const newNodes = [...nodes];
-  const newEdges = [...edges];
-
-  const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
-
-  if (toolSetNodes.length === 0) {
-    return { runtimeNodes: nodes, runtimeEdges: edges };
-  }
-
-  const nodeIdsToRemove = new Set<string>();
-
-  for (const toolSetNode of toolSetNodes) {
-    nodeIdsToRemove.add(toolSetNode.nodeId);
-    const toolList =
-      toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
-    const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
-
-    const incomingEdges = newEdges.filter((edge) => edge.target === toolSetNode.nodeId);
-
-    for (const tool of toolList) {
-      const newToolNodes = getMCPToolNodes({ tool, url });
-
-      newNodes.push({ ...newToolNodes[0], name: `${toolSetNode.name} / ${tool.name}` });
-
-      for (const inEdge of incomingEdges) {
-        newEdges.push({
-          source: inEdge.source,
-          target: newToolNodes[0].nodeId,
-          sourceHandle: inEdge.sourceHandle,
-          targetHandle: 'selectedTools',
-          status: inEdge.status
-        });
-      }
-    }
-  }
-
-  const filteredNodes = newNodes.filter((node) => !nodeIdsToRemove.has(node.nodeId));
-  const filteredEdges = newEdges.filter((edge) => !nodeIdsToRemove.has(edge.target));
-
-  return { runtimeNodes: filteredNodes, runtimeEdges: filteredEdges };
 };
