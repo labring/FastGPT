@@ -172,9 +172,9 @@ async function handler(
         }),
         ...(!!yuqueServer?.userId && { 'yuqueServer.userId': yuqueServer.userId }),
         ...(!!yuqueServer?.token && { 'yuqueServer.token': yuqueServer.token }),
-        ...(!!yuqueServer?.baseUrl
-          ? { 'yuqueServer.baseUrl': yuqueServer.baseUrl }
-          : { 'yuqueServer.baseUrl': '' }),
+        ...(!!yuqueServer?.baseUrl !== undefined && {
+          'yuqueServer.baseUrl': yuqueServer?.baseUrl
+        }),
         ...(!!feishuServer?.appId && { 'feishuServer.appId': feishuServer.appId }),
         ...(!!feishuServer?.appSecret && { 'feishuServer.appSecret': feishuServer.appSecret }),
         ...(!!feishuServer?.folderToken && {

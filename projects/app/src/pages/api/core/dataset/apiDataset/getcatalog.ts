@@ -7,6 +7,7 @@ import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/a
 import { NextApiRequest } from 'next';
 import { YuqueServer, FeishuServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
+
 export type GetApiDatasetCataLogProps = {
   searchKey?: string;
   parentId?: ParentIdType;
@@ -22,10 +23,6 @@ async function handler(req: NextApiRequest) {
 
   const { userId } = await authCert({ req, authToken: true });
 
-  feishuServer = feishuServer;
-  yuqueServer = yuqueServer;
-  apiServer = apiServer;
-
   const data = await (async () => {
     if (apiServer) {
       return useApiDatasetRequest({ apiServer }).listFiles({ searchKey, parentId });
@@ -39,6 +36,7 @@ async function handler(req: NextApiRequest) {
     }
     return Promise.reject(DatasetErrEnum.noApiServer);
   })();
+
   return data.filter((item: APIFileItem) => item.hasChild === true);
 }
 

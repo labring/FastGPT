@@ -1,86 +1,63 @@
-import { useContextSelector } from 'use-context-selector';
-import React, { useCallback, useState } from 'react';
-import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
-import { YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
-import { useMemoizedFn, useMount } from 'ahooks';
+import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { getApiDatasetCatalog } from '@/web/core/dataset/api';
-
-interface BaseUrlSelectorProps {
-  onSelect: (uuid: string) => void;
-  yuqueServer: YuqueServer;
-  onClose: () => void;
-}
+import { useTranslation } from 'next-i18next';
+import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
+import {
+  GetResourceFolderListProps,
+  GetResourceFolderListItemResponse,
+  ParentIdType
+} from '@fastgpt/global/common/parentFolder/type';
+import { useMemoizedFn, useMount } from 'ahooks';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type FolderItemType = {
   id: string;
   name: string;
   open: boolean;
-  hasChild?: boolean;
   children?: FolderItemType[];
-  uuid?: string;
-  slug?: string;
-  parent_uuid?: string;
-  type?: string;
 };
 
 const rootId = 'root';
 
-const buildFolderItem = (item: any): FolderItemType => {
-  const result: FolderItemType = {
-    id: item.id || '',
-    name: item.name || '',
-    open: false,
-    hasChild: item.hasChild || false,
-    uuid: item.uuid || '',
-    parent_uuid: item.parentId || undefined,
-    type: item.type || 'file',
-    slug: item.slug || '',
-    children: []
-  };
-
-  if (item.children && item.children.length > 0) {
-    result.children = item.children.map((child: any) => buildFolderItem(child));
-  }
-
-  return result;
+type Props = {
+  selectId: string;
+  server: (e: GetResourceFolderListProps) => Promise<GetResourceFolderListItemResponse[]>;
+  onConfirm: (id: ParentIdType) => Promise<any>;
+  onClose: () => void;
 };
 
-const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProps) => {
+const BaseUrlSelector = ({ selectId, server, onConfirm, onClose }: Props) => {
   const { t } = useTranslation();
-  const [selectedId, setSelectedId] = useState<string>();
-  const [requestingIdList, setRequestingIdList] = useState<string[]>([]);
+  const [selectedId, setSelectedId] = React.useState<string>(selectId);
+  const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
   const [folderList, setFolderList] = useState<FolderItemType[]>([]);
-  const [loading, setLoading] = useState(false);
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
-  const requestServer = useCallback(
-    async (parentId: string | null) => {
-      try {
-        setRequestingIdList((prev) => [...prev, parentId || 'root']);
-        const data = await getApiDatasetCatalog({
-          parentId: parentId || undefined,
-          searchKey: '',
-          yuqueServer: {
-            userId: yuqueServer.userId,
-            token: yuqueServer.token,
-            baseUrl: ''
-          }
-        });
-        return data;
-      } catch (error) {
-        console.error(t('dataset:getDirectoryFailed'), error);
-        return [];
-      } finally {
-        setRequestingIdList((prev) => prev.filter((id) => id !== (parentId || 'root')));
+  const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
+    if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
+
+    setRequestingIdList((state) => [...state, e.parentId]);
+    return server(e).finally(() =>
+      setRequestingIdList((state) => state.filter((id) => id !== e.parentId))
+    );
+  }, {});
+
+  useMount(async () => {
+    const data = await requestServer({ parentId: null });
+    setFolderList([
+      {
+        id: rootId,
+        name: t('common:common.folder.Root Path'),
+        open: true,
+        children: data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          open: false
+        }))
       }
-    },
-    [datasetDetail._id, yuqueServer]
-  );
+    ]);
+  });
 
   const RenderList = useMemoizedFn(
     ({ list, index = 0 }: { list: FolderItemType[]; index?: number }) => {
@@ -92,7 +69,7 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
                 alignItems={'center'}
                 cursor={'pointer'}
                 py={1}
-                pl={`${1.75 * index + 0.5}rem`}
+                pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
                 pr={2}
                 borderRadius={'md'}
                 _hover={{
@@ -101,19 +78,17 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
                 {...(item.id === selectedId
                   ? {
                       bg: 'primary.50 !important',
-                      onClick: () => setSelectedId(undefined)
+                      onClick: () => setSelectedId('')
                     }
                   : {
-                      onClick: () => {
-                        setSelectedId(item.id);
-                      }
+                      onClick: () => setSelectedId(item.id)
                     })}
               >
-                {item.id !== rootId && (
+                {index !== 0 && (
                   <Flex
                     alignItems={'center'}
                     justifyContent={'center'}
-                    visibility={'visible'}
+                    visibility={!item.children || item.children.length > 0 ? 'visible' : 'hidden'}
                     w={'1.25rem'}
                     h={'1.25rem'}
                     cursor={'pointer'}
@@ -125,31 +100,16 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
                       e.stopPropagation();
                       if (requestingIdList.includes(item.id)) return;
 
-                      if (item.children && item.children.length > 0) {
-                        item.open = !item.open;
-                        setFolderList([...folderList]);
-                        return;
+                      if (!item.children) {
+                        const data = await requestServer({ parentId: item.id });
+                        item.children = data.map((item) => ({
+                          id: item.id,
+                          name: item.name,
+                          open: false
+                        }));
                       }
-
-                      try {
-                        const data = await requestServer(item.id);
-
-                        if (data && Array.isArray(data) && data.length > 0) {
-                          item.children = data.map((child) => buildFolderItem(child));
-                          item.hasChild = true;
-                        } else {
-                          item.children = [];
-                          item.hasChild = false;
-                        }
-
-                        item.open = item.hasChild ? !item.open : false;
-
-                        setFolderList([...folderList]);
-                      } catch (error) {
-                        console.error(t('dataset:failedToLoadSubDirectories'), error);
-                        item.open = false;
-                        setFolderList([...folderList]);
-                      }
+                      item.open = !item.open;
+                      setFolderList([...folderList]);
                     }}
                   >
                     <MyIcon
@@ -158,19 +118,18 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
                           ? 'common/loading'
                           : 'common/rightArrowFill'
                       }
-                      visibility={item.hasChild ? 'visible' : 'hidden'}
                       w={'1.25rem'}
                       color={'myGray.500'}
                       transform={item.open ? 'rotate(90deg)' : 'none'}
                     />
                   </Flex>
                 )}
-                <MyIcon ml={index !== 0 ? '0.5rem' : 0} name={'common/folderFill'} w={'1.25rem'} />
+                <MyIcon ml={index !== 0 ? '0.5rem' : 0} name={FolderIcon} w={'1.25rem'} />
                 <Box fontSize={'sm'} ml={2}>
                   {item.name}
                 </Box>
               </Flex>
-              {item.open && item.children && item.children.length > 0 && (
+              {item.children && item.open && (
                 <Box mt={0.5}>
                   <RenderList list={item.children} index={index + 1} />
                 </Box>
@@ -182,76 +141,12 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
     }
   );
 
-  useMount(async () => {
-    setLoading(true);
-    try {
-      const data = await requestServer(null);
-
-      if (!data || !Array.isArray(data)) {
-        console.error(t('dataset:rootDirectoryFormatError'), data);
-        return;
-      }
-
-      setFolderList([
-        {
-          id: rootId,
-          name: t('common:common.folder.Root Path'),
-          open: true,
-          hasChild: data.length > 0,
-          type: 'folder',
-          children: data.map((item: any) => {
-            return {
-              id: item.id || '',
-              name: item.name || '',
-              open: false,
-              hasChild: item.hasChild || false,
-              uuid: item.uuid || '',
-              parent_uuid: item.parentId || undefined,
-              type: item.type || 'file',
-              slug: item.slug || '',
-              children: []
-            };
-          })
-        }
-      ]);
-    } catch (error) {
-      console.error(t('dataset:failedToLoadRootDirectories'), error);
-    } finally {
-      setLoading(false);
-    }
-  });
   const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
     () => {
       if (selectedId) {
-        const findSelectedFile = (folders: FolderItemType[]): FolderItemType | undefined => {
-          for (const folder of folders) {
-            if (folder.id === selectedId) {
-              return folder;
-            }
-            if (folder.children && folder.children.length > 0) {
-              const found = findSelectedFile(folder.children);
-              if (found) return found;
-            }
-          }
-          return undefined;
-        };
-
-        const selectedFile = findSelectedFile(folderList);
-        if (selectedFile) {
-          const idToSelect = selectedFile.id;
-          if (idToSelect) {
-            yuqueServer.baseUrl = idToSelect;
-            onSelect(idToSelect);
-          } else {
-            console.warn(t('dataset:noValidId'));
-          }
-        } else {
-          console.warn(t('dataset:noSelectedFolder'));
-        }
-      } else {
-        console.warn(t('dataset:noSelectedId'));
+        return onConfirm(selectedId === rootId ? null : selectedId);
       }
-      return Promise.resolve();
+      return Promise.reject('');
     },
     {
       onSuccess: () => {
@@ -262,7 +157,7 @@ const BaseUrlSelector = ({ onSelect, yuqueServer, onClose }: BaseUrlSelectorProp
 
   return (
     <MyModal
-      isLoading={loading}
+      isLoading={folderList.length === 0}
       iconSrc="/imgs/modal/move.svg"
       isOpen
       w={'30rem'}
