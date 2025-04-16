@@ -214,7 +214,7 @@ describe('valueTypeFormat', () => {
     });
   });
 
-  //   value 为 array
+  // value 为 array
   const arrayTestList = [
     {
       value: [1, 2, 3],
@@ -244,6 +244,30 @@ describe('valueTypeFormat', () => {
   ];
   arrayTestList.forEach((item, index) => {
     it(`Array test ${index}`, () => {
+      expect(valueTypeFormat(item.value, item.type)).toEqual(item.result);
+    });
+  });
+
+  // value 为 chatHistory
+  const chatHistoryTestList = [
+    {
+      value: [1, 2, 3],
+      type: WorkflowIOValueTypeEnum.chatHistory,
+      result: [1, 2, 3]
+    },
+    {
+      value: 1,
+      type: WorkflowIOValueTypeEnum.chatHistory,
+      result: 1
+    },
+    {
+      value: '1',
+      type: WorkflowIOValueTypeEnum.chatHistory,
+      result: 0
+    }
+  ];
+  chatHistoryTestList.forEach((item, index) => {
+    it(`ChatHistory test ${index}`, () => {
       expect(valueTypeFormat(item.value, item.type)).toEqual(item.result);
     });
   });

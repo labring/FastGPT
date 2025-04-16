@@ -68,8 +68,8 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     (type === WorkflowIOValueTypeEnum.boolean && typeof value === 'boolean') ||
     (type.startsWith('array') && Array.isArray(value)) ||
     (type === WorkflowIOValueTypeEnum.object && typeof value === 'object') ||
-    (type === WorkflowIOValueTypeEnum.chatHistory && Array.isArray(value)) ||
-    typeof value === 'number' ||
+    (type === WorkflowIOValueTypeEnum.chatHistory &&
+      (Array.isArray(value) || typeof value === 'number')) ||
     (type === WorkflowIOValueTypeEnum.datasetQuote && Array.isArray(value)) ||
     (type === WorkflowIOValueTypeEnum.selectDataset && Array.isArray(value)) ||
     (type === WorkflowIOValueTypeEnum.selectApp && typeof value === 'object')
