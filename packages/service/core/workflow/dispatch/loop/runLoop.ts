@@ -136,7 +136,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       totalPoints,
       loopInput: loopInputArray,
       loopResult: outputValueArr,
-      loopDetail: loopDetail
+      loopDetail: loopDetail,
+      mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {

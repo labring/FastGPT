@@ -170,7 +170,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       totalPoints: usagePoints,
       query: userChatInput,
       textOutput: text,
-      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined
+      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
+      mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
