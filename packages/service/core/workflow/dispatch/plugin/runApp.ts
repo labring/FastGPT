@@ -6,6 +6,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import {
   getWorkflowEntryNodeIds,
   initWorkflowEdgeStatus,
+  rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -107,8 +108,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     lastInteractive?.type === 'childrenInteractive'
       ? lastInteractive.params.childrenResponse
       : undefined;
-  const entryNodeIds = getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined);
-  const runtimeNodes = storeNodes2RuntimeNodes(nodes, entryNodeIds);
+  const runtimeNodes = rewriteNodeOutputByHistories(
+    storeNodes2RuntimeNodes(
+      nodes,
+      getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined)
+    ),
+    childrenInteractive
+  );
+
   const runtimeEdges = initWorkflowEdgeStatus(edges, childrenInteractive);
   const theQuery = childrenInteractive
     ? query
