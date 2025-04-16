@@ -29,7 +29,7 @@ const Header = ({ url, toolList }: { url: string; toolList: ToolType[] }) => {
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({
-        pathname: '/app/list',
+        pathname: '/dashboard/apps',
         query: {
           parentId,
           type: lastAppListRouteType
