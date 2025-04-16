@@ -180,7 +180,7 @@ export const rewriteRuntimeWorkFlow = (
     const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
 
     for (const tool of toolList) {
-      const newToolNode = getMCPToolRuntimeNode({ tool, url });
+      const newToolNode = getMCPToolRuntimeNode({ avatar: toolSetNode.avatar, tool, url });
 
       nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
 

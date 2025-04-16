@@ -42,15 +42,17 @@ export const getMCPToolSetRuntimeNode = ({
 
 export const getMCPToolRuntimeNode = ({
   tool,
-  url
+  url,
+  avatar = 'core/app/type/mcpToolsFill'
 }: {
   tool: ToolType;
   url: string;
+  avatar?: string;
 }): RuntimeNodeItemType => {
   return {
     nodeId: nanoid(16),
     flowNodeType: FlowNodeTypeEnum.tool,
-    avatar: 'core/app/type/mcpToolsFill',
+    avatar,
     intro: tool.description,
     inputs: [
       {
