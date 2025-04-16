@@ -45,11 +45,11 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
               borderTopRightRadius={'md'}
             >
               <Box flex={1}>{t('dashboard_mcp:mcp_json_config')}</Box>
-              <CopyBox value={sseUrl}>
+              <CopyBox value={jsonConfig}>
                 <MyIconButton icon="copy" />
               </CopyBox>
             </Flex>
-            <Box whiteSpace={'pre'} p={3} overflowX={'auto'}>
+            <Box whiteSpace={'pre-wrap'} wordBreak={'break-all'} p={3} overflowX={'auto'}>
               {jsonConfig}
             </Box>
           </Box>

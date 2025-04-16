@@ -60,7 +60,8 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/dashboard/apps',
           '/app/detail',
           '/dashboard/templateMarket',
-          '/dashboard/[pluginGroupId]'
+          '/dashboard/[pluginGroupId]',
+          '/dashboard/mcpServer'
         ]
       },
       {

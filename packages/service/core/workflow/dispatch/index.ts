@@ -647,9 +647,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     ) {
       props.workflowStreamResponse?.({
         event: SseResponseEventEnum.flowNodeResponse,
-        data: {
-          ...formatResponseData
-        }
+        data: formatResponseData
       });
     }
 

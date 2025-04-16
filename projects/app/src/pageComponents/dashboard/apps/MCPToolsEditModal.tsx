@@ -79,7 +79,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
-    async (data: getMCPToolsBody) => await getMCPTools(data),
+    (data: getMCPToolsBody) => getMCPTools(data),
     {
       onSuccess: (res) => {
         setValue('mcpData.toolList', res);
@@ -229,7 +229,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
             {t('common:common.Close')}
           </Button>
           <Button
-            disabled={mcpData.toolList.length === 0}
+            isDisabled={mcpData.toolList.length === 0}
             isLoading={isCreating}
             onClick={handleSubmit(onCreate)}
           >

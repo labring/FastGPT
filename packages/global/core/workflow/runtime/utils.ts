@@ -69,6 +69,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     (type.startsWith('array') && Array.isArray(value)) ||
     (type === WorkflowIOValueTypeEnum.object && typeof value === 'object') ||
     (type === WorkflowIOValueTypeEnum.chatHistory && Array.isArray(value)) ||
+    typeof value === 'number' ||
     (type === WorkflowIOValueTypeEnum.datasetQuote && Array.isArray(value)) ||
     (type === WorkflowIOValueTypeEnum.selectDataset && Array.isArray(value)) ||
     (type === WorkflowIOValueTypeEnum.selectApp && typeof value === 'object')
@@ -117,11 +118,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 
   // 4.5 特殊类型处理
   if (
-    [
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.selectDataset
-    ].includes(type)
+    [WorkflowIOValueTypeEnum.datasetQuote, WorkflowIOValueTypeEnum.selectDataset].includes(type)
   ) {
     if (isObjectString(value)) {
       try {
@@ -144,6 +141,10 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
       }
     }
     return {};
+  }
+  // Invalid history type
+  if (type === WorkflowIOValueTypeEnum.chatHistory) {
+    return 0;
   }
 
   // 5. 默认返回原值
@@ -430,7 +431,6 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
   if (
     [
       WorkflowIOValueTypeEnum.object,
-      WorkflowIOValueTypeEnum.chatHistory,
       WorkflowIOValueTypeEnum.datasetQuote,
       WorkflowIOValueTypeEnum.selectApp,
       WorkflowIOValueTypeEnum.selectDataset
