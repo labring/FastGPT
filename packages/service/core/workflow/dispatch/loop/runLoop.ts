@@ -8,12 +8,18 @@ import { dispatchWorkFlow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { AIChatItemValueItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { cloneDeep } from 'lodash';
+import {
+  LoopInteractive,
+  WorkflowInteractiveResponseType
+} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { initWorkflowEdgeStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopInputArray]: Array<any>;
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
 }>;
 type Response = DispatchNodeResultType<{
+  [DispatchNodeResponseKeyEnum.interactive]?: LoopInteractive;
   [NodeOutputKeyEnum.loopArray]: Array<any>;
 }>;
 
@@ -21,6 +27,8 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
   const {
     params,
     runtimeEdges,
+    query,
+    lastInteractive,
     runtimeNodes,
     node: { name }
   } = props;
@@ -36,20 +44,36 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     return Promise.reject(`Input array length cannot be greater than ${maxLength}`);
   }
 
-  const outputValueArr = [];
+  let outputValueArr = [];
   const loopDetail: ChatHistoryItemResType[] = [];
   let assistantResponses: AIChatItemValueItemType[] = [];
   let totalPoints = 0;
   let newVariables: Record<string, any> = props.variables;
+  let interactiveResponse: WorkflowInteractiveResponseType | undefined = undefined;
 
+  const { params: loopParams } = lastInteractive?.type === 'loopInteractive' ? lastInteractive : {};
+  const childrenInteractive = loopParams?.childrenResponse;
+  const currentIndex = loopParams?.currentIndex;
   let index = 0;
+  if (childrenInteractive) {
+    outputValueArr = loopParams.loopResult || [];
+  }
+
+  const entryNodeIds = childrenInteractive?.entryNodeIds;
+
   for await (const item of loopInputArray.filter(Boolean)) {
+    if (currentIndex && index < currentIndex) {
+      index++;
+      continue;
+    }
+    const rightNowIndex = index === currentIndex;
     runtimeNodes.forEach((node) => {
       if (
-        childrenNodeIdList.includes(node.nodeId) &&
-        node.flowNodeType === FlowNodeTypeEnum.loopStart
+        (childrenNodeIdList.includes(node.nodeId) &&
+          node.flowNodeType === FlowNodeTypeEnum.loopStart) ||
+        (rightNowIndex && entryNodeIds?.includes(node.nodeId))
       ) {
-        node.isEntry = true;
+        node.isEntry = !(rightNowIndex && node.flowNodeType === FlowNodeTypeEnum.loopStart);
         node.inputs.forEach((input) => {
           if (input.key === NodeInputKeyEnum.loopStartInput) {
             input.value = item;
@@ -62,8 +86,13 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
 
     const response = await dispatchWorkFlow({
       ...props,
+      query,
+      lastInteractive: childrenInteractive,
       variables: newVariables,
-      runtimeEdges: cloneDeep(runtimeEdges)
+      runtimeNodes,
+      runtimeEdges: cloneDeep(
+        rightNowIndex ? initWorkflowEdgeStatus(runtimeEdges, childrenInteractive) : runtimeEdges
+      )
     });
 
     const loopOutputValue = response.flowResponses.find(
@@ -81,15 +110,34 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
       ...newVariables,
       ...response.newVariables
     };
+    // handle interactive response
+    if (response.workflowInteractiveResponse) {
+      interactiveResponse = response.workflowInteractiveResponse;
+      outputValueArr.pop();
+      break;
+    }
   }
 
   return {
+    [DispatchNodeResponseKeyEnum.interactive]: interactiveResponse
+      ? {
+          type: 'loopInteractive',
+          params: {
+            currentIndex: index - 1,
+            childrenResponse: interactiveResponse,
+            loopDetail: loopDetail,
+            loopInput: loopInputArray,
+            loopResult: outputValueArr
+          }
+        }
+      : undefined,
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       loopInput: loopInputArray,
       loopResult: outputValueArr,
-      loopDetail: loopDetail
+      loopDetail: loopDetail,
+      mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
