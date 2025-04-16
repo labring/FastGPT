@@ -60,13 +60,6 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onCreate, loading: isCreating } = useRequest2(
     async (data: EditMCPToolsProps) => {
-      if (data.mcpData.toolList.length === 0) {
-        toast({
-          title: t('app:MCP_tools_list_is_empty'),
-          status: 'error'
-        });
-        return;
-      }
       return postCreateMCPTools({
         name: data.name,
         avatar: data.avatar,
@@ -235,7 +228,11 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
           <Button variant={'whitePrimary'} onClick={onClose}>
             {t('common:common.Close')}
           </Button>
-          <Button isLoading={isCreating} onClick={handleSubmit(onCreate)}>
+          <Button
+            disabled={mcpData.toolList.length === 0}
+            isLoading={isCreating}
+            onClick={handleSubmit(onCreate)}
+          >
             {t('common:common.Confirm Create')}
           </Button>
         </ModalFooter>

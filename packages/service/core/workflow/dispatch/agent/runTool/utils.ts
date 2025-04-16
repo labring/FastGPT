@@ -97,7 +97,7 @@ export const formatRuntimeWorkFlow = (
     for (const tool of toolList) {
       const newToolNodes = getMCPToolNodes({ tool, url });
 
-      newNodes.push({ ...newToolNodes[0], name: `${toolSetNode.name} - ${tool.name}` });
+      newNodes.push({ ...newToolNodes[0], name: `${toolSetNode.name} / ${tool.name}` });
 
       for (const inEdge of incomingEdges) {
         newEdges.push({

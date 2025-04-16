@@ -223,7 +223,7 @@ const RenderToolInput = ({
 
   return (
     <Box _notLast={{ mb: 4 }}>
-      <Flex alignItems="center">
+      <Flex alignItems="center" mb={1}>
         {toolData?.inputSchema.required?.includes(paramName) && (
           <Box mr={1} color="red.500">
             *

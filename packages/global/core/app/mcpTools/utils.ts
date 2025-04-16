@@ -56,13 +56,13 @@ export const getMCPToolNodes = ({ tool, url }: { tool: ToolType; url: string }) 
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           value: { ...tool, url }
         },
-        ...Object.entries(tool.inputSchema.properties).map(([key, value]) => ({
+        ...Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => ({
           key,
           label: key,
           valueType: value.type as WorkflowIOValueTypeEnum,
           description: value.description,
           toolDescription: value.description || key,
-          required: tool.inputSchema.required?.includes(key),
+          required: tool.inputSchema?.required?.includes(key) || false,
           renderTypeList: [
             value.type === 'string'
               ? FlowNodeInputTypeEnum.input
