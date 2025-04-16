@@ -5,6 +5,7 @@ import { ErrType } from '../errorCode';
 const startCode = 507000;
 export enum CommonErrEnum {
   invalidParams = 'invalidParams',
+  invalidResource = 'invalidResource',
   fileNotFound = 'fileNotFound',
   unAuthFile = 'unAuthFile',
   missingParams = 'missingParams',
@@ -14,6 +15,10 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.fileNotFound,
     message: i18nT('common:error.invalid_params')
+  },
+  {
+    statusText: CommonErrEnum.invalidResource,
+    message: i18nT('common:error_invalid_resource')
   },
   {
     statusText: CommonErrEnum.fileNotFound,

@@ -55,7 +55,7 @@ export const useChatBox = () => {
 `;
                   } else if (item.type === ChatItemValueTypeEnum.tool) {
                     return `
-\`\`\`Toll
+\`\`\`Tool
 ${JSON.stringify(item.tools, null, 2)}
 \`\`\`
 `;

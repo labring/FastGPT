@@ -51,8 +51,10 @@ const ListItem = () => {
     content: t('app:move.hint')
   });
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, setSearchKey } =
-    useContextSelector(AppListContext, (v) => v);
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
+    AppListContext,
+    (v) => v
+  );
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
@@ -132,7 +134,7 @@ const ListItem = () => {
         gridTemplateColumns={
           folderDetail
             ? ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']
-            : ['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
+            : ['1fr', 'repeat(2,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']
         }
         gridGap={5}
         alignItems={'stretch'}
@@ -176,7 +178,6 @@ const ListItem = () => {
                 }}
                 onClick={() => {
                   if (AppFolderTypeList.includes(app.type)) {
-                    setSearchKey('');
                     router.push({
                       query: {
                         ...router.query,
@@ -347,7 +348,9 @@ const ListItem = () => {
                                   }
                                 ]
                               : []),
-                            ...(AppFolderTypeList.includes(app.type)
+                            ...(app.type === AppTypeEnum.toolSet ||
+                            app.type === AppTypeEnum.folder ||
+                            app.type === AppTypeEnum.httpPlugin
                               ? []
                               : [
                                   {

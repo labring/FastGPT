@@ -21,6 +21,10 @@ const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
+const MCPTools = dynamic(() => import('@/pageComponents/app/detail/MCPTools'), {
+  ssr: false,
+  loading: () => <Loading fixed={false} />
+});
 
 const AppDetail = () => {
   const { setAppId, setSource } = useChatStore();
@@ -42,6 +46,7 @@ const AppDetail = () => {
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
+            {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
           </>
         )}
       </Box>

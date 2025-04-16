@@ -6,6 +6,7 @@ import type { CreateAppBody } from '@/pages/api/core/app/create';
 import type { ListAppBody } from '@/pages/api/core/app/list';
 import type { AppLogsListItemType } from '@/types/app';
 import type { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { getBasicInfoResponse } from '@/pages/api/core/app/getBasicInfo';
 
 /**
  * 获取应用列表
@@ -36,6 +37,12 @@ export const getAppDetailById = (id: string) => GET<AppDetailType>(`/core/app/de
  */
 export const putAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/update?appId=${id}`, data);
+
+/**
+ * Get app basic info by ids
+ */
+export const getAppBasicInfoByIds = (ids: string[]) =>
+  POST<getBasicInfoResponse>(`/core/app/getBasicInfo`, { ids });
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) =>

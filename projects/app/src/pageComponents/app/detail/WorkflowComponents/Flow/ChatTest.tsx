@@ -65,7 +65,6 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         }}
       />
       <MyBox
-        isLoading={isPlugin && loading}
         zIndex={300}
         display={'flex'}
         flexDirection={'column'}

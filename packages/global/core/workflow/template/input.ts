@@ -8,7 +8,7 @@ import { i18nT } from '../../../../web/i18n/utils';
 export const Input_Template_History: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.history,
   renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-  valueType: WorkflowIOValueTypeEnum.chatHistory,
+  valueType: WorkflowIOValueTypeEnum.chatHistory, // Array / Number
   label: i18nT('common:core.module.input.label.chat history'),
   description: i18nT('workflow:max_dialog_rounds'),
 

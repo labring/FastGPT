@@ -16,6 +16,16 @@ import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import { SourceMemberType } from '../../support/user/type';
 
+export type ToolType = {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: string;
+    properties?: Record<string, { type: string; description?: string }>;
+    required?: string[];
+  };
+};
+
 export type AppSchema = {
   _id: string;
   parentId?: ParentIdType;

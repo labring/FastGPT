@@ -20,6 +20,7 @@
   "generation_time": "生成時間",
   "image_parse": "圖片標註",
   "input_token_length": "輸入 tokens",
+  "mcp": "MCP 調用",
   "member": "成員",
   "member_name": "成員名",
   "module_name": "模組名",

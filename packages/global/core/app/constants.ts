@@ -11,7 +11,9 @@ export enum AppTypeEnum {
   simple = 'simple',
   workflow = 'advanced',
   plugin = 'plugin',
-  httpPlugin = 'httpPlugin'
+  httpPlugin = 'httpPlugin',
+  toolSet = 'toolSet',
+  tool = 'tool'
 }
 
 export const AppFolderTypeList = [AppTypeEnum.folder, AppTypeEnum.httpPlugin];
@@ -53,7 +55,10 @@ export enum AppTemplateTypeEnum {
   imageGeneration = 'image-generation',
   webSearch = 'web-search',
   roleplay = 'roleplay',
-  officeServices = 'office-services'
+  officeServices = 'office-services',
+
+  // special type
+  contribute = 'contribute'
 }
 
 export const defaultDatasetMaxTokens = 16000;

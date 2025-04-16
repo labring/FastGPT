@@ -22,7 +22,7 @@ import { formatModelChars2Points } from '../../../../../support/wallet/usage/uti
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { runToolWithFunctionCall } from './functionCall';
 import { runToolWithPromptCall } from './promptCall';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 import { filterToolResponseToPreview } from './utils';
 import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -188,6 +188,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
+        runtimeNodes,
+        runtimeEdges,
         toolNodes,
         toolModel,
         maxRunToolTimes: 30,
@@ -198,6 +200,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.functionCall) {
       return runToolWithFunctionCall({
         ...props,
+        runtimeNodes,
+        runtimeEdges,
         toolNodes,
         toolModel,
         messages: adaptMessages,
@@ -226,6 +230,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     return runToolWithPromptCall({
       ...props,
+      runtimeNodes,
+      runtimeEdges,
       toolNodes,
       toolModel,
       messages: adaptMessages,

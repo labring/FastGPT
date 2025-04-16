@@ -49,6 +49,7 @@ export type FastGPTFeConfigsType = {
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
   googleClientVerKey?: string;
+  mcpServerProxyEndpoint?: string;
 
   show_emptyChat?: boolean;
   show_appStore?: boolean;

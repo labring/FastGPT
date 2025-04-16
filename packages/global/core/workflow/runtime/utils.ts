@@ -10,6 +10,7 @@ import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
 import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
+import json5 from 'json5';
 import {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -18,7 +19,10 @@ import {
 export const extractDeepestInteractive = (
   interactive: WorkflowInteractiveResponseType
 ): WorkflowInteractiveResponseType => {
-  if (interactive?.type === 'childrenInteractive' && interactive.params?.childrenResponse) {
+  if (
+    (interactive?.type === 'childrenInteractive' || interactive?.type === 'loopInteractive') &&
+    interactive.params?.childrenResponse
+  ) {
     return extractDeepestInteractive(interactive.params.childrenResponse);
   }
   return interactive;
@@ -38,6 +42,113 @@ export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number 
   });
 
   return limit * 2;
+};
+
+/* value type format */
+export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
+  const isObjectString = (value: any) => {
+    if (typeof value === 'string' && value !== 'false' && value !== 'true') {
+      const trimmedValue = value.trim();
+      const isJsonString =
+        (trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) ||
+        (trimmedValue.startsWith('[') && trimmedValue.endsWith(']'));
+      return isJsonString;
+    }
+    return false;
+  };
+
+  // 1. any值，忽略格式化
+  if (value === undefined || value === null) return value;
+  if (!type || type === WorkflowIOValueTypeEnum.any) return value;
+
+  // 2. 如果值已经符合目标类型，直接返回
+  if (
+    (type === WorkflowIOValueTypeEnum.string && typeof value === 'string') ||
+    (type === WorkflowIOValueTypeEnum.number && typeof value === 'number') ||
+    (type === WorkflowIOValueTypeEnum.boolean && typeof value === 'boolean') ||
+    (type.startsWith('array') && Array.isArray(value)) ||
+    (type === WorkflowIOValueTypeEnum.object && typeof value === 'object') ||
+    (type === WorkflowIOValueTypeEnum.chatHistory &&
+      (Array.isArray(value) || typeof value === 'number')) ||
+    (type === WorkflowIOValueTypeEnum.datasetQuote && Array.isArray(value)) ||
+    (type === WorkflowIOValueTypeEnum.selectDataset && Array.isArray(value)) ||
+    (type === WorkflowIOValueTypeEnum.selectApp && typeof value === 'object')
+  ) {
+    return value;
+  }
+
+  // 4. 按目标类型，进行格式转化
+  // 4.1 基本类型转换
+  if (type === WorkflowIOValueTypeEnum.string) {
+    return typeof value === 'object' ? JSON.stringify(value) : String(value);
+  }
+  if (type === WorkflowIOValueTypeEnum.number) {
+    return Number(value);
+  }
+  if (type === WorkflowIOValueTypeEnum.boolean) {
+    if (typeof value === 'string') {
+      return value.toLowerCase() === 'true';
+    }
+    return Boolean(value);
+  }
+
+  // 4.3 字符串转对象
+  if (
+    (type === WorkflowIOValueTypeEnum.object || type.startsWith('array')) &&
+    typeof value === 'string' &&
+    value.trim()
+  ) {
+    const trimmedValue = value.trim();
+    const isJsonString = isObjectString(trimmedValue);
+
+    if (isJsonString) {
+      try {
+        const parsed = json5.parse(trimmedValue);
+        // 检测解析结果与目标类型是否一致
+        if (type.startsWith('array') && Array.isArray(parsed)) return parsed;
+        if (type === WorkflowIOValueTypeEnum.object && typeof parsed === 'object') return parsed;
+      } catch (error) {}
+    }
+  }
+
+  // 4.4 数组类型(这里 value 不是数组类型)（TODO: 嵌套数据类型转化）
+  if (type.startsWith('array')) {
+    return [value];
+  }
+
+  // 4.5 特殊类型处理
+  if (
+    [WorkflowIOValueTypeEnum.datasetQuote, WorkflowIOValueTypeEnum.selectDataset].includes(type)
+  ) {
+    if (isObjectString(value)) {
+      try {
+        return json5.parse(value);
+      } catch (error) {
+        return [];
+      }
+    }
+    return [];
+  }
+  if (
+    [WorkflowIOValueTypeEnum.selectApp, WorkflowIOValueTypeEnum.object].includes(type) &&
+    typeof value === 'string'
+  ) {
+    if (isObjectString(value)) {
+      try {
+        return json5.parse(value);
+      } catch (error) {
+        return {};
+      }
+    }
+    return {};
+  }
+  // Invalid history type
+  if (type === WorkflowIOValueTypeEnum.chatHistory) {
+    return 0;
+  }
+
+  // 5. 默认返回原值
+  return value;
 };
 
 /* 
@@ -62,7 +173,10 @@ export const getLastInteractiveValue = (
       return;
     }
 
-    if (lastValue.interactive.type === 'childrenInteractive') {
+    if (
+      lastValue.interactive.type === 'childrenInteractive' ||
+      lastValue.interactive.type === 'loopInteractive'
+    ) {
       return lastValue.interactive;
     }
 
@@ -83,7 +197,7 @@ export const getLastInteractiveValue = (
   return;
 };
 
-export const initWorkflowEdgeStatus = (
+export const storeEdges2RuntimeEdges = (
   edges: StoreEdgeItemType[],
   lastInteractive?: WorkflowInteractiveResponseType
 ): RuntimeEdgeItemType[] => {
@@ -114,7 +228,12 @@ export const getWorkflowEntryNodeIds = (
     FlowNodeTypeEnum.pluginInput
   ];
   return nodes
-    .filter((node) => entryList.includes(node.flowNodeType as any))
+    .filter(
+      (node) =>
+        entryList.includes(node.flowNodeType as any) ||
+        (!nodes.some((item) => entryList.includes(item.flowNodeType as any)) &&
+          node.flowNodeType === FlowNodeTypeEnum.tool)
+    )
     .map((item) => item.nodeId);
 };
 
@@ -312,7 +431,6 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
   if (
     [
       WorkflowIOValueTypeEnum.object,
-      WorkflowIOValueTypeEnum.chatHistory,
       WorkflowIOValueTypeEnum.datasetQuote,
       WorkflowIOValueTypeEnum.selectApp,
       WorkflowIOValueTypeEnum.selectDataset
