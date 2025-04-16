@@ -22,14 +22,6 @@ app.get('/:key/sse', async (req, res) => {
 
   const transport = new SSEServerTransport(`/${key}/messages`, res);
 
-  transport.onclose = () => {
-    addLog.info(`Transport ${transport.sessionId} closed`);
-    delete transportMap[transport.sessionId];
-  };
-  transport.onerror = (err) => {
-    addLog.error(`Transport ${transport.sessionId} error`, err);
-  };
-
   transportMap[transport.sessionId] = transport;
 
   // Create server
@@ -44,6 +36,21 @@ app.get('/:key/sse', async (req, res) => {
       }
     }
   );
+
+  transport.onclose = () => {
+    addLog.info(`Transport ${transport.sessionId} closed`);
+    delete transportMap[transport.sessionId];
+  };
+  transport.onerror = (err) => {
+    addLog.error(`Transport ${transport.sessionId} error`, err);
+  };
+  server.onclose = () => {
+    addLog.info(`Server ${transport.sessionId} closed`);
+    delete transportMap[transport.sessionId];
+  };
+  server.onerror = (err) => {
+    addLog.error(`Server ${transport.sessionId} error`, err);
+  };
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
     tools: await getTools(key)
