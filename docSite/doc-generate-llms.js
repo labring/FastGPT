@@ -21,7 +21,7 @@ function getMdInfo(filePath) {
         // 找到前置元数据的起始和结束位置
         const startIndex = content.indexOf('---');
         const endIndex = content.indexOf('---', startIndex + 3);
-        if (startIndex!== -1 && endIndex!== -1) {
+        if (startIndex !== -1 && endIndex !== -1) {
             const frontMatterStr = content.slice(startIndex + 3, endIndex).trim();
             // 使用 yaml 解析前置元数据
             const frontMatter = yaml.load(frontMatterStr);
@@ -84,7 +84,7 @@ function collectMdContent(dir) {
             // 找到前置元数据的起始和结束位置
             const startIndex = content.indexOf('---');
             const endIndex = content.indexOf('---', startIndex + 3);
-            if (startIndex!== -1 && endIndex!== -1) {
+            if (startIndex !== -1 && endIndex !== -1) {
                 const frontMatterStr = content.slice(startIndex + 3, endIndex).trim();
                 // 使用 yaml 解析前置元数据
                 const frontMatter = yaml.load(frontMatterStr);
@@ -92,7 +92,7 @@ function collectMdContent(dir) {
                 const description = frontMatter.description || '';
                 // 提取标题和描述后，删除首部元数据
                 const newContent = content.slice(endIndex + 3).trim();
-                llmsFullTxtContent += `# ${title}\n## ${description}\n\n${newContent}\n\n`;
+                llmsFullTxtContent += `# ${title}\n## 简介\n\n${description}\n\n${newContent}\n\n`;
             } else {
                 llmsFullTxtContent += content + '\n\n';
             }
@@ -105,4 +105,3 @@ collectMdContent(docsDir);
 // 保存 llms - full.txt
 const llmsFullTxtSavePath = path.join(saveDir, 'llms-full.txt');
 fs.writeFileSync(llmsFullTxtSavePath, llmsFullTxtContent, 'utf8');
-    

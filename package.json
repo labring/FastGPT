@@ -42,7 +42,7 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "node docSite/static/js/doc-generate-llms.js"
+      "pre-commit": "node docSite/doc-generate-llms.js"
     }
   }
 }
