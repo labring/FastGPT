@@ -43,12 +43,12 @@ weight: 236
 
 ### **怎么用**
 
-<div style="display: flex; gap: 10px;">
-    <img src="/imgs/flow-tool3.png" alt="工具调用模块示例 3" width="40%" />
-    <img src="/imgs/flow-tool4.png" alt="工具调用模块示例 4" width="60%" />
+
+| | |
+| --- | --- |
+| ![](/imgs/flow-tool3.png) | ![](/imgs/flow-tool4.png) |
 </div>
 
-<!-- ![](/imgs/flow-tool3.png)!![](/imgs/flow-tool4.png) -->
 
 高级编排中，拖动工具调用的连接点，可用的工具头部会出现一个菱形，可以将它与工具调用模块底部的菱形相连接。
 

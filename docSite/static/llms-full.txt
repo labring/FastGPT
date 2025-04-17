@@ -9817,7 +9817,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 2. 支持以 MCP SSE 协议创建工具。
 3. 批量执行节点支持交互节点，可实现每一轮循环都人工参与。
 4. 增加工作台二级菜单，合并工具箱。
-5. 增加 grok3、GPT4.1、Gemini2.5 模型系统配置。
+5. 增加 grok3、GPT4.1、o系列、Gemini2.5 模型系统配置。
 
 ## ⚙️ 优化
 
@@ -9832,6 +9832,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 
 1. 修复子工作流包含交互节点时，未成功恢复子工作流所有数据。
 2. completion v1 接口，未接受 interactive 参数，导致 API 调用失败。
+3. 连续工具调用，上下文截断异常
 
 # 升级说明
 ## FastGPT 升级说明
@@ -11764,11 +11765,9 @@ docker-compose up -d
 # 文档解析
 ## FastGPT 文档解析模块介绍
 
-<div style="display: flex; gap: 10px;">
-    <img src="/imgs/document_analysis1.png" alt="文档解析示例 1" width="35%" />
-    <img src="/imgs/document_analysis2.png" alt="文档解析示例 2" width="65%" />
-</div>
-
+| | |
+| --- | --- |
+| ![](/imgs/document_analysis1.png) | ![](/imgs/document_analysis2.png) |
 
 开启文件上传后，可使用文档解析组件。
 
@@ -12737,12 +12736,12 @@ function main({secret}){
 
 ### **怎么用**
 
-<div style="display: flex; gap: 10px;">
-    <img src="/imgs/flow-tool3.png" alt="工具调用模块示例 3" width="40%" />
-    <img src="/imgs/flow-tool4.png" alt="工具调用模块示例 4" width="60%" />
+
+| | |
+| --- | --- |
+| ![](/imgs/flow-tool3.png) | ![](/imgs/flow-tool4.png) |
 </div>
 
-<!-- ![](/imgs/flow-tool3.png)!![](/imgs/flow-tool4.png) -->
 
 高级编排中，拖动工具调用的连接点，可用的工具头部会出现一个菱形，可以将它与工具调用模块底部的菱形相连接。
 
