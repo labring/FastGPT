@@ -40,10 +40,5 @@
   "engines": {
     "node": ">=18.16.0",
     "pnpm": ">=9.0.0"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "node docSite/static/js/doc-generate-llms.js"
-    }
   }
 }
