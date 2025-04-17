@@ -77,6 +77,7 @@ const formatIndexes = async ({
 
   // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
   const defaultIndexes = getDefaultIndex({ q, a, indexSize });
+
   const concatDefaultIndexes = defaultIndexes.map((item) => {
     const oldIndex = indexes!.find((index) => index.text === item.text);
     if (oldIndex) {
