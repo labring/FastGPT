@@ -31,8 +31,12 @@ services:
       - ./ob/config:/root/.obd/cluster
       - ./init.sql:/root/boot/init.d/init.sql
     healthcheck:
-    # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
-      test: ["CMD-SHELL", "obclient -h$OB_SERVER_IP -P2881 -uroot@$OB_TENANT_NAME -p$OB_TENANT_PASSWORD -e \"SELECT 1;\""]
+      # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
+      test:
+        [
+          'CMD-SHELL',
+          'obclient -h$OB_SERVER_IP -P2881 -uroot@$OB_TENANT_NAME -p$OB_TENANT_PASSWORD -e "SELECT 1;"'
+        ]
       interval: 30s
       timeout: 10s
       retries: 1000
@@ -118,10 +122,10 @@ services:
       # # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
       # - AIPROXY_API_TOKEN=aiproxy
       # 模型中转地址（如果用了 AI Proxy，下面 2 个就不需要了，旧版 OneAPI 用户，使用下面的变量）
-      - # openai 基本地址，可用作中转。
-      - OPENAI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
-      - # OpenAI API Key
-      - CHAT_API_KEY=sk-8990fa15a34b464a805237cfe9561f11
+      # openai 基本地址，可用作中转。
+      # - OPENAI_BASE_URL=https://example.com
+      # OpenAI API Key
+      # - CHAT_API_KEY=sk-example
       # 数据库最大连接数
       - DB_MAX_LINK=30
       # 登录凭证密钥
