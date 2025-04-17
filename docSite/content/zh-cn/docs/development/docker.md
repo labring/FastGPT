@@ -187,7 +187,11 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 {{< /tab >}}
 {{< /tabs >}}
 
-### 3. 启动容器
+### 3. 修改 config.json 配置文件
+
+修改`config.json`文件中的`mcpServerProxyEndpoint`值，设置成`mcp server`的公网可访问地址，yml 文件中默认给出了映射到 3005 端口，如通过 IP 访问，则可能是：`120.172.2.10:3005`。
+
+### 4. 启动容器
 
 在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
 
@@ -196,7 +200,7 @@ curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/mai
 docker-compose up -d
 ```
 
-### 4. 访问 FastGPT
+### 5. 访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意开放防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
@@ -204,7 +208,7 @@ docker-compose up -d
 
 首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志可能会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
 
-### 5. 配置模型
+### 6. 配置模型
 
 - 首次登录FastGPT后，系统会提示未配置`语言模型`和`索引模型`，并自动跳转模型配置页面。系统必须至少有这两类模型才能正常使用。
 - 如果系统未正常跳转，可以在`账号-模型提供商`页面，进行模型配置。[点击查看相关教程](/docs/development/modelconfig/ai-proxy)
