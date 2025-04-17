@@ -36,36 +36,44 @@ export const filterGPTMessageByMaxContext = async ({
   const systemPrompts: ChatCompletionMessageParam[] = messages.slice(0, chatStartIndex);
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 
+  if (chatPrompts.length === 0) {
+    return systemPrompts;
+  }
+
   // reduce token of systemPrompt
   maxContext -= await countGptMessagesTokens(systemPrompts);
 
+  /* 截取时候保证一轮内容的完整性
+    1. user - assistant - user
+    2. user - assistant - tool
+    3. user - assistant - tool - tool - tool
+    3. user - assistant - tool - assistant - tool
+    4. user - assistant - assistant - tool - tool
+  */
   // Save the last chat prompt(question)
-  const question = chatPrompts.pop();
-  if (!question) {
-    return systemPrompts;
-  }
-  const chats: ChatCompletionMessageParam[] = [question];
+  let chats: ChatCompletionMessageParam[] = [];
+  let tmpChats: ChatCompletionMessageParam[] = [];
 
-  // 从后往前截取对话内容, 每次需要截取2个
-  while (1) {
-    const assistant = chatPrompts.pop();
-    const user = chatPrompts.pop();
-    if (!assistant || !user) {
+  // 从后往前截取对话内容, 每次到 user 则认为是一组完整信息
+  while (chatPrompts.length > 0) {
+    const lastMessage = chatPrompts.pop();
+    if (!lastMessage) {
       break;
     }
 
-    const tokens = await countGptMessagesTokens([assistant, user]);
-    maxContext -= tokens;
-    /* 整体 tokens 超出范围，截断  */
-    if (maxContext < 0) {
-      break;
-    }
+    // 遇到 user，说明到了一轮完整信息，可以开始判断是否需要保留
+    if (lastMessage.role === ChatCompletionRequestMessageRoleEnum.User) {
+      const tokens = await countGptMessagesTokens([lastMessage, ...tmpChats]);
+      maxContext -= tokens;
+      // 该轮信息整体 tokens 超出范围，这段数据不要了
+      if (maxContext < 0) {
+        break;
+      }
 
-    chats.unshift(assistant);
-    chats.unshift(user);
-
-    if (chatPrompts.length === 0) {
-      break;
+      chats = [lastMessage, ...tmpChats].concat(chats);
+      tmpChats = [];
+    } else {
+      tmpChats.unshift(lastMessage);
     }
   }
 
