@@ -31,6 +31,7 @@ import { TabEnum } from './NavBar';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
+import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -327,7 +328,7 @@ const DataCard = () => {
                       w={'14px'}
                       mr={1}
                     />
-                    {item.q.length + (item.a?.length || 0)}
+                    {getTextValidLength(item.q + item.a || '')}
                   </Flex>
                   {canWrite && (
                     <IconButton
