@@ -88,13 +88,11 @@ function collectMdContent(dir) {
                 const frontMatterStr = content.slice(startIndex + 3, endIndex).trim();
                 // 使用 yaml 解析前置元数据
                 const frontMatter = yaml.load(frontMatterStr);
-                const newFrontMatter = {
-                    title: frontMatter.title || '',
-                    description: frontMatter.description || ''
-                };
-                const newFrontMatterStr = yaml.dump(newFrontMatter);
-                const newContent = `---\n${newFrontMatterStr}---\n${content.slice(endIndex + 3)}`;
-                llmsFullTxtContent += newContent + '\n\n';
+                const title = frontMatter.title || '';
+                const description = frontMatter.description || '';
+                // 提取标题和描述后，删除首部元数据
+                const newContent = content.slice(endIndex + 3).trim();
+                llmsFullTxtContent += `title: ${title}\ndescription: ${description}\n\n${newContent}\n\n`;
             } else {
                 llmsFullTxtContent += content + '\n\n';
             }
