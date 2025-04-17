@@ -92,7 +92,7 @@ function collectMdContent(dir) {
                 const description = frontMatter.description || '';
                 // 提取标题和描述后，删除首部元数据
                 const newContent = content.slice(endIndex + 3).trim();
-                llmsFullTxtContent += `title: ${title}\ndescription: ${description}\n\n${newContent}\n\n`;
+                llmsFullTxtContent += `# ${title}\n## ${description}\n\n${newContent}\n\n`;
             } else {
                 llmsFullTxtContent += content + '\n\n';
             }
