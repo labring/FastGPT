@@ -141,7 +141,7 @@ export const checkNode = async ({
   node: StoreNodeItemType;
   ownerTmbId: string;
 }) => {
-  const { pluginId } = node;
+  const pluginId = node.pluginId;
   if (!pluginId) return node;
 
   try {
