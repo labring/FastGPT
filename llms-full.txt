@@ -1,5 +1,21 @@
+# 文档
+## 简介
+
+FastGPT 官方文档
+
+
+
+# 协议
+## 简介
+
+社区相关内容
+
+
+
 # 开源协议
-##  FastGPT 开源许可证
+## 简介
+
+ FastGPT 开源许可证
 
 FastGPT 项目在 Apache License 2.0 许可下开源，但包含以下附加条件：
 
@@ -18,7 +34,9 @@ FastGPT 项目在 Apache License 2.0 许可下开源，但包含以下附加条�
 除此之外，所有其他权利和限制均遵循 Apache License 2.0。如果你需要更多详细信息，可以参考 Apache License 2.0 的完整版本。本产品的交互设计受到外观专利保护。© 2023 Sealos.
 
 # 隐私政策
-##  FastGPT 隐私政策
+## 简介
+
+ FastGPT 隐私政策
 
 最后更新时间：2024年3月3日
 
@@ -79,7 +97,9 @@ FastGPT 项目在 Apache License 2.0 许可下开源，但包含以下附加条�
 2. 我们将尽快回复并解决您提出的问题。
 
 # 服务协议
-##  FastGPT 服务协议
+## 简介
+
+ FastGPT 服务协议
 
 最后更新时间：2024年3月3日
 
@@ -149,7 +169,9 @@ FastGPT 服务协议是您与珠海环界云计算有限公司（以下简称“
 2. 本公司保留对本协议及隐私政策的最终解释权。如您对本协议或隐私政策有任何疑问，请联系我们：yujinlong@sealos.io。
 
 # 加入社区
-##  加入 FastGPT 开发者社区和我们一起成长
+## 简介
+
+ 加入 FastGPT 开发者社区和我们一起成长
 
 FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试以下方式寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
 
@@ -159,8 +181,17 @@ FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对
 
 + 🐞 请将任何 FastGPT 的 Bug、问题和需求提交到 [GitHub Issue](https://github.com/labring/fastgpt/issues/new/choose)。
 
+# 开发与部署指南
+## 简介
+
+本地开发 FastGPT 必看
+
+<!-- 700 ~ 1100 -->
+
 # 配置文件介绍
-## FastGPT 配置参数介绍
+## 简介
+
+FastGPT 配置参数介绍
 
 由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/development/docker/) 来挂载配置文件。
 
@@ -230,8 +261,17 @@ FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对
 
 [点击查看 Marker 接入教程](/docs/development/custom-models/marker)
 
+# 本地模型使用
+## 简介
+
+FastGPT 对接本地模型
+
+<!-- 900~950 -->
+
 # 接入 bge-rerank 重排模型
-## 接入 bge-rerank 重排模型
+## 简介
+
+接入 bge-rerank 重排模型
 
 ## 不同模型推荐配置
 
@@ -370,7 +410,9 @@ services:
 ```
 
 # 接入 ChatGLM2-m3e 模型
-##  将 FastGPT 接入私有化模型 ChatGLM2和m3e-large
+## 简介
+
+ 将 FastGPT 接入私有化模型 ChatGLM2和m3e-large
 
 ## 前言
 
@@ -482,7 +524,9 @@ chatglm2 模型的使用方法如下：
 模型选择 chatglm2 即可
 
 # 接入 ChatGLM2-6B
-##  将 FastGPT 接入私有化模型 ChatGLM2-6B
+## 简介
+
+ 将 FastGPT 接入私有化模型 ChatGLM2-6B
 
 ## 前言
 
@@ -601,7 +645,9 @@ chatglm2 模型的使用方法如下：
 模型选择 chatglm2 即可
 
 # 接入 M3E 向量模型
-##  将 FastGPT 接入私有化模型 M3E
+## 简介
+
+ 将 FastGPT 接入私有化模型 M3E
 
 ## 前言
 
@@ -685,7 +731,9 @@ Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型�
       ![](/imgs/model-m3e4.png)
 
 # 接入 Marker  PDF 文档解析
-## 使用 Marker 解析 PDF 文档，可实现图片提取和布局识别
+## 简介
+
+使用 Marker 解析 PDF 文档，可实现图片提取和布局识别
 
 ## 背景
 
@@ -783,7 +831,9 @@ CUSTOM_READ_FILE_EXTENSION=pdf
 * CUSTOM_READ_FILE_EXTENSION - 支持的文件后缀，多个文件类型，可用逗号隔开。
 
 # 使用 Ollama 接入本地模型 
-##  采用 Ollama 部署自己的模型
+## 简介
+
+ 采用 Ollama 部署自己的模型
 
 [Ollama](https://ollama.com/) 是一个开源的AI大模型部署工具，专注于简化大语言模型的部署和使用，支持一键下载和运行各种大模型。
 
@@ -962,7 +1012,9 @@ docker run -it --network < FastGPT 网络 > --name 容器名 intel/oneapi-hpckit
 上述接入 Ollama 的代理地址中，主机安装 Ollama 的地址为“http://<主机IP>:<端口>”，容器部署 Ollama 地址为“http://<容器名>:<端口>”
 
 # 使用 Xinference 接入本地模型
-## 一站式本地 LLM 私有化部署
+## 简介
+
+一站式本地 LLM 私有化部署
 
 [Xinference](https://github.com/xorbitsai/inference) 是一款开源模型推理平台，除了支持 LLM，它还可以部署 Embedding 和 ReRank 模型，这在企业级 RAG 构建中非常关键。同时，Xinference 还提供 Function Calling 等高级功能。还支持分布式部署，也就是说，随着未来应用调用量的增长，它可以进行水平扩展。
 
@@ -1120,8 +1172,17 @@ curl --location --request POST 'https://<oneapi_url>/v1/chat/completions' \
 
 + 参考：[FastGPT + Xinference：一站式本地 LLM 私有化部署和应用开发](https://xorbits.cn/blogs/fastgpt-weather-chat)
 
+# 设计方案
+## 简介
+
+FastGPT 部分设计方案
+
+<!-- 960~1050 -->
+
 # 数据集
-## FastGPT 数据集中文件与数据的设计方案
+## 简介
+
+FastGPT 数据集中文件与数据的设计方案
 
 ## 文件与数据的关系
 
@@ -1141,7 +1202,9 @@ curl --location --request POST 'https://<oneapi_url>/v1/chat/completions' \
 5. 由训练线程从 mongo 中取数据，并在获取向量后插入到 pg。
 
 # Docker Compose 快速部署
-## 使用 Docker Compose 快速部署 FastGPT
+## 简介
+
+使用 Docker Compose 快速部署 FastGPT
 
 ## 前置知识
 
@@ -1524,7 +1587,9 @@ mongo连接失败，查看mongo的运行状态**对应日志**。
 修改`docker-compose.yml`文件中`DEFAULT_ROOT_PSW`并重启即可，密码会自动更新。
 
 # 私有部署常见问题
-## FastGPT 私有部署常见问题
+## 简介
+
+FastGPT 私有部署常见问题
 
 ## 一、错误排查方式
 
@@ -1946,7 +2011,9 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 由于模型没有归一化导致的。目前仅支持归一化的模型。
 
 # 快速开始本地开发
-## 对 FastGPT 进行开发调试
+## 简介
+
+对 FastGPT 进行开发调试
 
 本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://tryfastgpt.ai)，。
 
@@ -2149,8 +2216,17 @@ common - 基础功能（日志管理，文件读写等）
 
 {{% /details %}}
 
+# 迁移&备份
+## 简介
+
+FastGPT 迁移&备份
+
+<!-- 960~970 -->
+
 # Docker 数据库迁移(无脑操作)
-## FastGPT Docker 数据库备份和迁移
+## 简介
+
+FastGPT Docker 数据库备份和迁移
 
 ## 1. 停止服务
 
@@ -2169,7 +2245,9 @@ Docker 部署数据库都会通过 volume 挂载本地的目录进入容器，�
 直接把pg 和 mongo目录全部复制走即可。
 
 # Docker Mongo迁移(dump模式)
-## FastGPT Docker Mongo迁移
+## 简介
+
+FastGPT Docker Mongo迁移
 
 ## 作者
 
@@ -2350,8 +2428,17 @@ docker logs -f mongo  **强烈建议先检查mongo运行情况，在去做登录
 6. 启动fastgpt容器服务后，登录新fastgpt web，能看到原来的数据库内容完整显示，说明已经导入系统了。
 <img width="1728" alt="iShot_2024-05-09_19 23 51" src="https://github.com/labring/FastGPT/assets/103937568/846b6157-6b6a-4468-a1d9-c44d681ebf7c">
 
+# 模型配置方案
+## 简介
+
+本模型配置方案
+
+
+
 # 通过 AI Proxy 接入模型
-## 通过 AI Proxy 接入模型
+## 简介
+
+通过 AI Proxy 接入模型
 
 从 `FastGPT 4.8.23` 版本开始，引入 AI Proxy 来进一步方便模型的配置。
 
@@ -2475,7 +2562,9 @@ curl --location --request POST '{{host}}/api/channels/import/oneapi' \
 脚本目前不是完全准，仅是简单的做数据映射，主要是迁移`代理地址`、`模型`和`API 密钥`，建议迁移后再进行手动检查。
 
 # FastGPT 模型配置说明
-## FastGPT 模型配置说明
+## 简介
+
+FastGPT 模型配置说明
 
 在 4.8.20 版本以前，FastGPT 模型配置在 `config.json` 文件中声明，你可以在 https://github.com/labring/FastGPT/blob/main/projects/app/data/model.json 中找到旧版的配置文件示例。
 
@@ -2936,7 +3025,9 @@ OneAPI 的语言识别接口，无法正确的识别其他模型（会始终识�
 ```
 
 # 通过 OneAPI 接入模型
-## 通过 OneAPI 接入模型
+## 简介
+
+通过 OneAPI 接入模型
 
 FastGPT 目前采用模型分离的部署方案，FastGPT 中只兼容 OpenAI 的模型规范（OpenAI 不存在的模型采用一个较为通用的规范），并通过 [One API](https://github.com/songquanpeng/one-api) 来实现对不同模型接口的统一。
 
@@ -3061,7 +3152,9 @@ CHAT_API_KEY=sk-xxxxxx
 | ![alt text](/imgs/image-65.png) | ![alt text](/imgs/image-66.png)| ![alt text](/imgs/image-67.png) |
 
 # 通过 PPIO LLM API 接入模型
-## 通过 PPIO LLM API 接入模型
+## 简介
+
+通过 PPIO LLM API 接入模型
 
 FastGPT 还可以通过 PPIO LLM API 接入模型。
 {{% alert context="warning" %}}
@@ -3156,7 +3249,9 @@ OPENAI_BASE_URL= http://OneAPI-IP:OneAPI-PORT/v1
 🎁 新手专享：立即使用邀请码【VOJL20】完成注册，50 元代金券奖励即刻到账！
 
 # 通过 SiliconCloud 体验开源模型
-## 通过 SiliconCloud 体验开源模型
+## 简介
+
+通过 SiliconCloud 体验开源模型
 
 [SiliconCloud(硅基流动)](https://cloud.siliconflow.cn/i/TR9Ym0c4) 是一个以提供开源模型调用为主的平台，并拥有自己的加速引擎。帮助用户低成本、快速的进行开源模型的测试和使用。实际体验下来，他们家模型的速度和稳定性都非常不错，并且种类丰富，覆盖语言、向量、重排、TTS、STT、绘图、视频生成模型，可以满足 FastGPT 中所有模型需求。
 
@@ -3244,8 +3339,17 @@ CHAT_API_KEY=sk-xxxxxx
 
 如果你决定未来私有化部署模型和 FastGPT，前期可通过 SiliconCloud 进行测试验证，后期再进行硬件采购，减少 POC 时间和成本。
 
+# OpenAPI 接口文档
+## 简介
+
+FastGPT OpenAPI 文档
+
+<!-- 850~900 -->
+
 # 对话接口
-## FastGPT OpenAPI 对话接口
+## 简介
+
+FastGPT OpenAPI 对话接口
 
 # 如何获取 AppId
 
@@ -4963,7 +5067,9 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 {{< /tabs >}}
 
 # 知识库接口
-## FastGPT OpenAPI 知识库接口
+## 简介
+
+FastGPT OpenAPI 知识库接口
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
 | --------------------- | --------------------- |
@@ -6445,7 +6551,9 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 {{< /tabs >}}
 
 # OpenAPI 介绍
-## FastGPT OpenAPI 介绍
+## 简介
+
+FastGPT OpenAPI 介绍
 
 ## 使用说明
 
@@ -6523,7 +6631,9 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 在历史记录中，该条记录的使用者会显示为 `xxxxxx`。
 
 # 分享链接身份鉴权
-## FastGPT 分享链接身份鉴权
+## 简介
+
+FastGPT 分享链接身份鉴权
 
 ## 介绍
 
@@ -6921,8 +7031,17 @@ export default async function (ctx: FunctionContext) {
 
 除了对接已有系统的用户外，你还可以对接`余额`功能，通过`结果上报`接口扣除用户余额，通过`对话前校验`接口检查用户的余额。
 
+# 代理方案
+## 简介
+
+FastGPT 私有化部署代理方案
+
+<!-- 950~960 -->
+
 # Cloudflare Worker 中转
-## 使用 Cloudflare Worker 实现中转
+## 简介
+
+使用 Cloudflare Worker 实现中转
 
 [参考 "不做了睡觉" 的教程](https://gravel-twister-d32.notion.site/FastGPT-API-ba7bb261d5fd4fd9bbb2f0607dacdc9e)
 
@@ -6971,7 +7090,9 @@ OPENAI_BASE_URL_AUTH=auth_code
 ```
 
 # HTTP 代理中转
-## 使用 HTTP 代理实现中转
+## 简介
+
+使用 HTTP 代理实现中转
 
 如果你有代理工具（例如 [Clash](https://github.com/Dreamacro/clash) 或者 [sing-box](https://github.com/SagerNet/sing-box)），也可以使用 HTTP 代理来访问 OpenAI。只需要添加以下两个环境变量即可：
 
@@ -7012,7 +7133,9 @@ AXIOS_PROXY_PORT=7890
 ```
 
 # Nginx 中转
-## 使用 Sealos 部署 Nginx 实现中转
+## 简介
+
+使用 Sealos 部署 Nginx 实现中转
 
 ## 登录 Sealos
 
@@ -7112,7 +7235,9 @@ AXIOS_PROXY_PORT=7890
 **Done!**
 
 # Sealos 一键部署
-## 使用 Sealos 一键部署 FastGPT
+## 简介
+
+使用 Sealos 一键部署 FastGPT
 
 ## 部署架构图
 
@@ -7276,7 +7401,9 @@ SYSTEM_FAVICON 可以是一个网络地址
 [参考 OneAPI 使用步骤](/docs/development/modelconfig/one-api/)
 
 # 升级到 V4.0
-## FastGPT 从旧版本升级到 V4.0 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.0 操作指南
 
 如果您是**从旧版本升级到 V4**，由于新版 MongoDB 表变更比较大，需要按照本文档的说明执行一些初始化脚本。
 
@@ -7337,7 +7464,9 @@ db.outlinks.find({shareId: {$exists: false}}).forEach(function(item){
 1 和 2 有可能会因为内存不足挂掉，可以重复执行。
 
 # 升级到 V4.1
-## FastGPT 从旧版本升级到 V4.1 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.1 操作指南
 
 如果您是**从旧版本升级到 V4.1**，由于新版重新设置了对话存储结构，需要初始化原来的存储内容。
 
@@ -7361,7 +7490,9 @@ V4.1 优化了 PostgreSQL 和 MongoDB 的连接变量，只需要填 1 个 URL �
 - https://xxxxx/api/admin/initChatItem
 
 # 升级到 V4.2
-## FastGPT 从旧版本升级到 V4.2 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.2 操作指南
 
 99.9%用户不影响，升级 4.2 主要是修改了配置文件中 QAModel 的格式。从原先的数组改成对象：
 
@@ -7377,7 +7508,9 @@ V4.1 优化了 PostgreSQL 和 MongoDB 的连接变量，只需要填 1 个 URL �
 改动目的是，我们认为不需要留有选择余地，选择一个最合适的模型去进行任务即可。
 
 # 升级到 V4.2.1
-## FastGPT 从旧版本升级到 V4.2.1 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.2.1 操作指南
 
 私有部署，如果添加了配置文件，需要在配置文件中修改 `VectorModels` 字段。增加 defaultToken 和 maxToken，分别对应直接分段时的默认 token 数量和该模型支持的 token 上限 (通常不建议超过 3000)
 
@@ -7396,7 +7529,9 @@ V4.1 优化了 PostgreSQL 和 MongoDB 的连接变量，只需要填 1 个 URL �
 改动目的是，我们认为不需要留有选择余地，选择一个最合适的模型去进行任务即可。
 
 # 升级到 V4.3(包含升级脚本)
-## FastGPT 从旧版本升级到 V4.3 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.3 操作指南
 
 ## 执行初始化 API
 
@@ -7421,7 +7556,9 @@ FILE_TOKEN_KEY=filetokenkey
 ```
 
 # 升级到 V4.4(包含升级脚本)
-## FastGPT 从旧版本升级到 V4.4 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.4 操作指南
 
 ## 执行初始化 API
 
@@ -7438,7 +7575,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv44' \
 会给初始化 Mongo 的部分字段。
 
 # 升级到 V4.4.1(包含升级脚本)
-## FastGPT 从旧版本升级到 V4.4.1 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.4.1 操作指南
 
 ## 执行初始化 API
 
@@ -7455,7 +7594,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv441' \
 会给初始化 Mongo 的 dataset.files，将所有数据设置为可用。
 
 # 升级到 V4.4.2(包含升级脚本)
-## FastGPT 从旧版本升级到 V4.4.2 操作指南
+## 简介
+
+FastGPT 从旧版本升级到 V4.4.2 操作指南
 
 ## 执行初始化 API
 
@@ -7472,7 +7613,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv442' \
 会给初始化 Mongo 的 Bill 表的索引，之前过期时间有误。
 
 # V4.4.5(包含升级脚本)
-## FastGPT V4.4.5 更新
+## 简介
+
+FastGPT V4.4.5 更新
 
 ## 执行初始化 API
 
@@ -7498,7 +7641,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv445' \
 4. 优化 - 全局变量与开场白合并成同一模块。
 
 # V4.4.6
-## FastGPT V4.4.6 更新
+## 简介
+
+FastGPT V4.4.6 更新
 
 ## 功能介绍
 
@@ -7507,7 +7652,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv445' \
 3. 修复 - 下一步指引在免登录中身份问题。
 
 # V4.4.7（需执行升级脚本）
-## FastGPT V4.4.7 更新（需执行升级脚本）
+## 简介
+
+FastGPT V4.4.7 更新（需执行升级脚本）
 
 ## 执行初始化 API
 
@@ -7533,7 +7680,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv447' \
 4. 升级 openai sdk。
 
 # V4.5(需进行较为复杂更新)
-## FastGPT V4.5 更新
+## 简介
+
+FastGPT V4.5 更新
 
 FastGPT V4.5 引入 PgVector0.5 版本的 HNSW 索引，极大的提高了知识库检索的速度，比起`IVFFlat`索引大致有3~10倍的性能提升，可轻松实现百万数据毫秒级搜索。缺点在于构建索引的速度非常慢，4c16g 500w 组数据使用`并行构建`大约花了 48 小时。具体参数配置可参考 [PgVector官方](https://github.com/pgvector/pgvector)
 
@@ -7621,7 +7770,9 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 最新配置可参考: [V45版本最新 config.json](/docs/development/configuration)
 
 # V4.5.1(需进行初始化)
-## FastGPT V4.5.1 更新
+## 简介
+
+FastGPT V4.5.1 更新
 
 ## 执行初始化 API
 
@@ -7651,7 +7802,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv451' \
 3. 修复部分模块无法触发完成事件
 
 # V4.5.2
-## FastGPT V4.5.2 更新
+## 简介
+
+FastGPT V4.5.2 更新
 
 ## 功能介绍
 
@@ -7661,7 +7814,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv451' \
 2. 优化 - 知识库引用提示。
 
 # V4.6(包含升级脚本)
-## FastGPT V4.6 更新
+## 简介
+
+FastGPT V4.6 更新
 
 **V4.6 版本加入了简单的团队功能，可以邀请其他用户进来管理资源。该版本升级后无法执行旧的升级脚本，且无法回退。**
 
@@ -7723,7 +7878,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv46-fix' \
 ```
 
 # V4.6.1
-## FastGPT V4.6 .1
+## 简介
+
+FastGPT V4.6 .1
 
 ## V4.6.1 功能介绍
 
@@ -7733,7 +7890,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv46-fix' \
 4. 优化 - TTS 缓存
 
 # V4.6.2(包含升级脚本)
-## FastGPT V4.6.2
+## 简介
+
+FastGPT V4.6.2
 
 ## 1。执行初始化 API
 
@@ -7759,7 +7918,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv462' \
 5. 修复和优化 TextSplitter 函数
 
 # V4.6.3(包含升级脚本)
-## FastGPT V4.6.3
+## 简介
+
+FastGPT V4.6.3
 
 ## 1。执行初始化 API
 
@@ -7787,7 +7948,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv463' \
 7. 修复 - 图片压缩失败报错，防止文件读取过程卡死。
 
 # V4.6.4(包含升级脚本)
-## FastGPT V4.6.4
+## 简介
+
+FastGPT V4.6.4
 
 ## 1。执行初始化 API
 
@@ -7823,7 +7986,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv464' \
 13. 优化 docker file
 
 # V4.6.5（需要改配置文件）
-## FastGPT V4.6.5
+## 简介
+
+FastGPT V4.6.5
 
 ## 配置文件变更
 
@@ -7850,7 +8015,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv464' \
 9. 修复 - 高级编排提示词提取描述
 
 # V4.6.6（需要改配置文件）
-## FastGPT V4.6.6
+## 简介
+
+FastGPT V4.6.6
 
 ## 配置文件变更
 
@@ -7878,7 +8045,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv464' \
 8. 修复 - 链接读取的数据集，未保存选择器，导致同步时不使用选择器。
 
 # V4.6.7（需要初始化）
-## FastGPT V4.6.7
+## 简介
+
+FastGPT V4.6.7
 
 ## 1。执行初始化 API
 
@@ -7908,7 +8077,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv467' \
 7. 修复 - Iframe 嵌入网页可能导致的 window.onLoad 冲突。
 
 # V4.6.8（需要初始化）
-## FastGPT V4.6.8更新说明
+## 简介
+
+FastGPT V4.6.8更新说明
 
 ## docker 部署 - 手动更新 Mongo
 
@@ -8001,7 +8172,9 @@ curl --location --request POST 'https://{{host}}/api/init/v468' \
 7. 修复 - 对话框重新生成无法使用。
 
 # V4.6.9(包含升级脚本)
-## FastGPT V4.6.9更新说明
+## 简介
+
+FastGPT V4.6.9更新说明
 
 ## 修改商业版环境变量
 
@@ -8045,7 +8218,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv469' \
 12. 修复 - 问题分类连线类型错误
 
 # V4.7（需要初始化）
-## FastGPT V4.7更新说明
+## 简介
+
+FastGPT V4.7更新说明
 
 ## 1. 修改配置文件
 
@@ -8110,7 +8285,9 @@ cohere的重排模型对中文不是很好，感觉不如 bge 的好用，接入
 19. 修复 - 自定义分割规则可输入正则特殊字符（之前输入的话，会导致前端崩溃）
 
 # V4.7.1(包含升级脚本)
-## FastGPT V4.7.1 更新说明
+## 简介
+
+FastGPT V4.7.1 更新说明
 
 ## 初始化脚本
 
@@ -8146,7 +8323,9 @@ curl --location --request POST 'https://{{host}}/api/admin/clearInvalidData' \
 12. 修复 - 分享页面特殊情况下加载缓慢问题（由于ssr时候数据库不会触发连接）
 
 # V4.8
-## FastGPT V4.8 更新说明
+## 简介
+
+FastGPT V4.8 更新说明
 
 ## 新工作流
 
@@ -8196,7 +8375,9 @@ gmail: smtp.gmail.com
 23. 修复 - HTTP 模块url光标问题 https://github.com/labring/FastGPT/issues/1334 @maquannene
 
 # V4.8.1(包含升级脚本)
-## FastGPT V4.8.1 更新说明
+## 简介
+
+FastGPT V4.8.1 更新说明
 
 ## 初始化脚本
 
@@ -8230,7 +8411,9 @@ curl --location --request POST 'https://{{host}}/api/admin/clearInvalidData' \
 [点击查看升级说明](https://github.com/labring/FastGPT/releases/tag/v4.8.1)
 
 # V4.8.10(包含升级脚本)
-## FastGPT V4.8.10 更新说明
+## 简介
+
+FastGPT V4.8.10 更新说明
 
 ## 更新指南
 
@@ -8329,7 +8512,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 55. 文档 - update baseURL。
 
 # V4.8.11（商业版初始化）
-## FastGPT V4.8.11 更新说明
+## 简介
+
+FastGPT V4.8.11 更新说明
 
 ## 更新指南
 
@@ -8463,7 +8648,9 @@ curl --location --request POST 'https://{{host}}/api/admin/init/4811' \
 49. 修复 - 全局变量在工具调用中未持久传递。
 
 # V4.8.12(包含升级脚本)
-## FastGPT V4.8.12 更新说明
+## 简介
+
+FastGPT V4.8.12 更新说明
 
 ## 更新指南
 
@@ -8526,7 +8713,9 @@ curl --location --request POST 'https://{{host}}/api/admin/resetMilvus' \
 22. 修复 - 数据分块策略，同时将每个 Markdown 独立分块。
 
 # V4.8.13
-## FastGPT V4.8.13 更新说明
+## 简介
+
+FastGPT V4.8.13 更新说明
 
 ## 更新指南
 
@@ -8572,7 +8761,9 @@ curl --location --request POST 'https://{{host}}/api/admin/resetMilvus' \
 22. 修复 - 分享链接首次加载时，标题显示不正确。
 
 # V4.8.14
-## FastGPT V4.8.14 更新说明
+## 简介
+
+FastGPT V4.8.14 更新说明
 
 ## 更新指南
 
@@ -8621,7 +8812,9 @@ milvus版本使用：v4.8.14-milvus-fix 镜像。
 20. 修复 - API 无法使用 base64 图片。
 
 # V4.8.15(包含升级脚本)
-## FastGPT V4.8.15 更新说明
+## 简介
+
+FastGPT V4.8.15 更新说明
 
 ## 新功能预览
 
@@ -8692,7 +8885,9 @@ curl --location --request POST 'https://{{host}}/api/admin/init/refreshFreeUser'
 19. 修复 - 工作流特殊变量替换问题。（$开头的字符串无法替换）
 
 # V4.8.16(更新配置文件)
-## FastGPT V4.8.16 更新说明
+## 简介
+
+FastGPT V4.8.16 更新说明
 
 ## 更新指南
 
@@ -8760,7 +8955,9 @@ curl --location --request POST 'https://{{host}}/api/admin/init/refreshFreeUser'
 21. 修复 - 设置NEXT_PUBLIC_BASE_URL时，图片文件读取URL不正确
 
 # V4.8.17(包含升级脚本)
-## FastGPT V4.8.17 更新说明
+## 简介
+
+FastGPT V4.8.17 更新说明
 
 ## 更新指南
 
@@ -8807,7 +9004,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4817' \
 15. 修复 - 豆包模型无法工具调用。
 
 # V4.8.18(包含升级脚本)
-## FastGPT V4.8.18 更新说明
+## 简介
+
+FastGPT V4.8.18 更新说明
 
 ## 更新指南
 
@@ -8849,7 +9048,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4818' \
 15. 修复 - 插件计费错误。
 
 # V4.8.19(包含升级脚本)
-## FastGPT V4.8.19 更新说明
+## 简介
+
+FastGPT V4.8.19 更新说明
 
 ## 更新指南
 
@@ -8890,7 +9091,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4819' \
 15. 修复 - 部分模型提供商 logo 无法正常显示。
 
 # V4.8.2
-## FastGPT V4.8.2 更新说明
+## 简介
+
+FastGPT V4.8.2 更新说明
 
 ## Sealos 升级说明
 
@@ -8919,7 +9122,9 @@ SANDBOX_URL=内网地址
 4. 修复 - 定时任务无法输入内容
 
 # V4.8.20(包含升级脚本)
-## FastGPT V4.8.20 更新说明
+## 简介
+
+FastGPT V4.8.20 更新说明
 
 ## 更新指南
 
@@ -8964,7 +9169,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4820' \
 13. 修复 - 工作流递归执行，部分条件下无法正常运行。
 
 # V4.8.21
-## FastGPT V4.8.21 更新说明
+## 简介
+
+FastGPT V4.8.21 更新说明
 
 ## 更新指南
 
@@ -8998,7 +9205,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4820' \
 17. 修复 - 分享链接鉴权报错后无限循环。
 
 # V4.8.22(包含升级脚本)
-## FastGPT V4.8.22 更新说明
+## 简介
+
+FastGPT V4.8.22 更新说明
 
 ## 🌟更新指南
 
@@ -9054,7 +9263,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4822' \
 12. 对话记录保存时，source 未正常记录。
 
 # V4.8.23
-## FastGPT V4.8.23 更新说明
+## 简介
+
+FastGPT V4.8.23 更新说明
 
 ## 更新指南
 
@@ -9103,7 +9314,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4823' \
 6. 修复 Mongo Dataset text 索引在查询数据时未生效。
 
 # V4.8.3
-## FastGPT V4.8.3 更新说明
+## 简介
+
+FastGPT V4.8.3 更新说明
 
 ## 升级指南
 
@@ -9120,7 +9333,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4823' \
 5. 修复 - 变量更新在 Debug 模式下出错。
 
 # V4.8.4(包含升级脚本)
-## FastGPT V4.8.4 更新说明
+## 简介
+
+FastGPT V4.8.4 更新说明
 
 ## 升级指南
 
@@ -9153,7 +9368,9 @@ curl --location --request POST 'https://{{host}}/api/admin/init/484' \
 9. 调整组件库全局theme。
 
 # V4.8.5(包含升级脚本)
-## FastGPT V4.8.5 更新说明
+## 简介
+
+FastGPT V4.8.5 更新说明
 
 ## 升级指南
 
@@ -9209,7 +9426,9 @@ curl --location --request POST 'https://{{host}}/api/admin/init/485' \
 15. 修复 - 自定义输入选择知识库引用时页面崩溃
 
 # V4.8.6(包含升级脚本)
-## FastGPT V4.8.6 更新说明
+## 简介
+
+FastGPT V4.8.6 更新说明
 
 ## 升级指南
 
@@ -9255,7 +9474,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv486' \
 16. 修复 - 文档描述
 
 # V4.8.7
-## FastGPT V4.8.7 更新说明
+## 简介
+
+FastGPT V4.8.7 更新说明
 
 ## 升级指南
 
@@ -9279,7 +9500,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv486' \
 7. 修复 - gpt4o 无法同时使用工具和图片
 
 # V4.8.8(包含升级脚本)
-## FastGPT V4.8.8 更新说明
+## 简介
+
+FastGPT V4.8.8 更新说明
 
 ## 升级指南
 
@@ -9325,7 +9548,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv488' \
 15. 修复 - 插件独立运行时，会将插件输入的值进行变量替换，可能导致后续节点变量异常。
 
 # V4.8.9（需要初始化）
-## FastGPT V4.8.9 更新说明
+## 简介
+
+FastGPT V4.8.9 更新说明
 
 ## 升级指南
 
@@ -9375,7 +9600,9 @@ curl --location --request POST 'https://{{host}}/api/admin/init/489' \
 20. 修复 - 分享链接，新对话无法反馈。
 
 # V4.9.0(包含升级脚本)
-## FastGPT V4.9.0 更新说明
+## 简介
+
+FastGPT V4.9.0 更新说明
 
 ## 更新指南
 
@@ -9559,7 +9786,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv490' \
 2. 批量运行时，全局变量未进一步传递到下一次运行中，导致最终变量更新错误。
 
 # V4.9.1
-## FastGPT V4.9.1 更新说明
+## 简介
+
+FastGPT V4.9.1 更新说明
 
 ## 更新指南
 
@@ -9619,7 +9848,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 11. 计算 parentPath 时，存在鉴权失败清空。
 
 # V4.9.2
-## FastGPT V4.9.2 更新说明
+## 简介
+
+FastGPT V4.9.2 更新说明
 
 ## 更新指南
 
@@ -9690,7 +9921,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 5. 移除 TTS 自定义请求地址时，必须需要填 requestAuth 字段。
 
 # V4.9.3
-## FastGPT V4.9.3 更新说明
+## 简介
+
+FastGPT V4.9.3 更新说明
 
 ## 更新指南
 
@@ -9714,7 +9947,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 1. 工作流格式转化异常。
 
 # V4.9.4
-## FastGPT V4.9.4 更新说明
+## 简介
+
+FastGPT V4.9.4 更新说明
 
 ## 升级指南
 
@@ -9775,7 +10010,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 3. package/service 部分请求在多 app 中不一致。
 
 # V4.9.5
-## FastGPT V4.9.5 更新说明
+## 简介
+
+FastGPT V4.9.5 更新说明
 
 ## 升级指南
 ### 1. 做好数据备份
@@ -9809,7 +10046,9 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 5. Debug 模式交互节点下一步可能造成死循环。
 
 # V4.9.6(进行中)
-## FastGPT V4.9.6 更新说明
+## 简介
+
+FastGPT V4.9.6 更新说明
 
 ## 🚀 新增内容
 
@@ -9833,8 +10072,17 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 1. 修复子工作流包含交互节点时，未成功恢复子工作流所有数据。
 2. completion v1 接口，未接受 interactive 参数，导致 API 调用失败。
 
+# 版本更新/升级操作
+## 简介
+
+FastGPT 版本更新介绍及升级操作
+
+<!-- 750~850 -->
+
 # 升级说明
-## FastGPT 升级说明
+## 简介
+
+FastGPT 升级说明
 
 FastGPT 升级包括两个步骤：
 
@@ -9921,8 +10169,19 @@ sealos 中可以从上图左侧的环境变量中获取。
 
 逐一升级
 
+# FAQ
+## 简介
+
+常见问题的解答
+
+<!-- 900 ~ 1000 -->
+
+FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试[加入社区](community)寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
+
 # 应用使用问题
-## FastGPT 常见应用使用问题，包括简易应用、工作流和插件
+## 简介
+
+FastGPT 常见应用使用问题，包括简易应用、工作流和插件
 
 ## 多轮对话中如何使连续问题被问题分类节点正确的归类
 
@@ -9999,7 +10258,9 @@ Latex block: $$e=mc^2$$
 ```
 
 # 聊天框问题
-## FastGPT 常见聊天框问题
+## 简介
+
+FastGPT 常见聊天框问题
 
 ## 我修改了工作台的应用，为什么在“聊天”时没有更新配置？
 
@@ -10012,7 +10273,9 @@ Latex block: $$e=mc^2$$
 3. 需有 SSL 证书的站点才可以使用麦克风。
 
 # 知识库使用问题
-## 常见知识库使用问题
+## 简介
+
+常见知识库使用问题
 
 ## 上传的文件内容出现中文乱码
 
@@ -10090,12 +10353,16 @@ FastGPT回复长度计算公式:
 另外，私有化部署的时候，后台配模型参数，可以在配置最大上文时，预留一些空间，比如 128000 的模型，可以只配置 120000, 剩余的空间后续会被安排给输出。
 
 # Docker 部署问题
-## FastGPT Docker 部署问题
+## 简介
+
+FastGPT Docker 部署问题
 
 
 
 # 报错
-## 
+## 简介
+
+
 
 1. ### 当前分组上游负载已饱和，请稍后再试(request id:202407100753411462086782835521)
 
@@ -10106,7 +10373,9 @@ FastGPT回复长度计算公式:
 大概率是api-key填写了openapi，然后部署的服务器在国内，不能访问海外的api，可以使用中转或者反代的手段解决访问不到的问题
 
 # 接入外部渠道
-## 如何通过外部渠道与 FastGPT 集成，实现对多种平台的支持
+## 简介
+
+如何通过外部渠道与 FastGPT 集成，实现对多种平台的支持
 
 1. ### 接入cow，图文对话无法直接显示图片
 
@@ -10119,7 +10388,9 @@ FastGPT回复长度计算公式:
 ![](/imgs/integration1.png)
 
 # 其他问题
-## 
+## 简介
+
+
 
 ## oneapi 官网是哪个
 
@@ -10130,7 +10401,9 @@ FastGPT回复长度计算公式:
 开源版未支持多用户，仅商业版支持。
 
 # 积分消耗
-## 了解 FastGPT 中的积分消耗机制和使用场景
+## 简介
+
+了解 FastGPT 中的积分消耗机制和使用场景
 
 1. ### 接入oneapi后，为什么还会消耗fastgpt的积分
 
@@ -10139,12 +10412,23 @@ FastGPT回复长度计算公式:
 ![](/imgs/points1.png)
 
 # 私有部署常见问题
-## FastGPT 私有部署常见问题
+## 简介
+
+FastGPT 私有部署常见问题
 
 
+
+# 对话框
+## 简介
+
+对话框组件，支持多种交互方式，提升用户在应用中的交互体验。
+
+<!-- 470 ~ 500 -->
 
 # 对话框与HTML渲染
-## 如何在FastGPT中通过Markdown嵌入HTML代码块，并提供全屏、源代码切换等交互功能
+## 简介
+
+如何在FastGPT中通过Markdown嵌入HTML代码块，并提供全屏、源代码切换等交互功能
 
 | 源码模式 | 预览模式 | 全屏模式 |
 | --- | --- | --- |
@@ -10196,7 +10480,9 @@ FastGPT回复长度计算公式:
 ```
 
 # 知识库引用分块阅读器
-## FastGPT 分块阅读器功能介绍
+## 简介
+
+FastGPT 分块阅读器功能介绍
 
 在企业 AI 应用落地过程中，文档知识引用的精确性和透明度一直是用户关注的焦点。FastGPT 4.9.1 版本带来的知识库分块阅读器，巧妙解决了这一痛点，让 AI 引用不再是"黑盒"。
 
@@ -10278,8 +10564,24 @@ FastGPT提供灵活的引用可见度设置，让知识共享既开放又安全�
 
 这一技术优化使FastGPT能够轻松应对企业级的大规模知识库场景，让即使是包含海量信息的专业文档也能高效展示和查阅。
 
+# 功能介绍
+## 简介
+
+FastGPT 的功能和使用指南
+
+<!-- 100 ~ 500 -->
+
+# 商业版后台
+## 简介
+
+商业版后台使用教程
+
+<!-- 470 ~ 500 -->
+
 # SSO & 外部成员同步
-## FastGPT 外部成员系统接入设计与配置
+## 简介
+
+FastGPT 外部成员系统接入设计与配置
 
 如果你不需要用到 SSO/成员同步功能，或者是只需要用 Github、google、microsoft、公众号的快速登录，可以跳过本章节。本章适合需要接入自己的成员系统或主流 办公IM 的用户。
 
@@ -10855,7 +11157,9 @@ curl示例
    b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。
 
 # 团队模式说明文档
-## FastGPT 团队模式说明文档
+## 简介
+
+FastGPT 团队模式说明文档
 
 ## 介绍
 
@@ -10930,8 +11234,17 @@ curl示例
 
 ![](/imgs/teammode.png)
 
+# 基础教程
+## 简介
+
+FastGPT 基础教程
+
+<!-- 100 ~ 200 -->
+
 # AI 相关参数配置说明
-## FastGPT AI 相关参数配置说明
+## 简介
+
+FastGPT AI 相关参数配置说明
 
 在 FastGPT 的 AI 对话模块中，有一个 AI 高级配置，里面包含了 AI 模型的参数配置，本文详细介绍这些配置的含义。
 
@@ -11093,7 +11406,9 @@ Tips: 建议根据不同的场景，每种知识库仅选择1类数据类型，�
 5. 标点符号正确且完整。
 
 # 对话问题引导
-## FastGPT 对话问题引导
+## 简介
+
+FastGPT 对话问题引导
 
 ![](/imgs/questionGuide.png)
 
@@ -11142,7 +11457,9 @@ data是一个数组，包含了搜索到的问题，最多只需要返回5个问
 - searchKey - 搜索关键字
 
 # 知识库集合标签
-## FastGPT 知识库集合标签使用说明
+## 简介
+
+FastGPT 知识库集合标签使用说明
 
 知识库集合标签是 FastGPT 商业版特有功能。它允许你对知识库中的数据集合添加标签进行分类，更高效地管理知识库数据。
 
@@ -11187,7 +11504,9 @@ data是一个数组，包含了搜索到的问题，最多只需要返回5个问
 - 标签过滤有 `$and` 和 `$or` 两种条件类型，在同时设置了 `$and` 和 `$or` 的情况下，只有 `$and` 会生效
 
 # 文件输入功能介绍
-## FastGPT 文件输入功能介绍
+## 简介
+
+FastGPT 文件输入功能介绍
 
 从 4.8.9 版本起，FastGPT 支持在`简易模式`和`工作流`中，配置用户上传文件、图片功能。下面先简单介绍下如何使用文件输入功能，最后是介绍下文件解析的工作原理。
 
@@ -11295,7 +11614,9 @@ ${content}
 7. **工作流调用工作流：不再自动传递工作流上传的文件到子工作流，可以手动选择需要传递的文件链接。**
 
 # 快速上手
-## 快速体验 FastGPT 基础功能
+## 简介
+
+快速体验 FastGPT 基础功能
 
 更多使用技巧，[查看视频教程](https://www.bilibili.com/video/BV1sH4y1T7s9)
 
@@ -11343,13 +11664,24 @@ ${content}
 
 ![](/imgs/create-app4.png)
 
+# 工作台
+## 简介
+
+FastGPT 工作台及工作流节点的使用说明
+
+<!-- 200 ~ 300 -->
+
 # 简易模式
-## 快速了解 FastGPT 工作台的简易模式
+## 简介
+
+快速了解 FastGPT 工作台的简易模式
 
 
 
 # 使用 Gapier 快速导入Agent工具
-## FastGPT 使用 Gapier 快速导入Agent工具
+## 简介
+
+FastGPT 使用 Gapier 快速导入Agent工具
 
 FastGPT V4.7版本加入了工具调用，可以兼容 GPTs 的 Actions。这意味着，你可以直接导入兼容 GPTs 的 Agent 工具。
 
@@ -11404,7 +11736,9 @@ Gapier 是一个在线 GPTs Actions工具，提供了50多种现成工具，并�
 ![](/imgs/gapierTool17.webp)
 
 # 工作流&插件
-## 快速了解 FastGPT 工作流和插件的使用
+## 简介
+
+快速了解 FastGPT 工作流和插件的使用
 
 FastGPT 从 V4.0 版本开始采用新的交互方式来构建 AI 应用。使用了 Flow 节点编排（工作流）的方式来实现复杂工作流，提高可玩性和扩展性。但同时也提高了上手的门槛，有一定开发背景的用户使用起来会比较容易。
 
@@ -11490,7 +11824,9 @@ FastGPT工作流中的线有以下几种状态：
 3. 其他结果，无法直接合并，可以考虑传入到`HTTP`节点中进行合并，使用`[Laf](https://laf.run/)`可以快速实现一个无服务器HTTP接口。
 
 # MCP 服务
-## 快速了解 FastGPT MCP server
+## 简介
+
+快速了解 FastGPT MCP server
 
 ## MCP server 介绍
 
@@ -11587,8 +11923,17 @@ docker-compose down
 docker-compose up -d
 ```
 
+# 工作流节点
+## 简介
+
+FastGPT 工作流节点设置和使用指南
+
+<!-- 200 ~ 300 -->
+
 # AI 对话
-## FastGPT AI 对话模块介绍
+## 简介
+
+FastGPT AI 对话模块介绍
 
 ## 特点
 
@@ -11617,7 +11962,9 @@ docker-compose up -d
 {{% /alert %}}
 
 # 文本内容提取
-## FastGPT 内容提取模块介绍
+## 简介
+
+FastGPT 内容提取模块介绍
 
 ## 特点
 
@@ -11669,7 +12016,9 @@ docker-compose up -d
 - **目标字段提取结果**：类型均为字符串。
 
 # 问题优化
-## 问题优化模块介绍和使用
+## 简介
+
+问题优化模块介绍和使用
 
 ## 特点
 
@@ -11703,7 +12052,9 @@ docker-compose up -d
 - [接入谷歌搜索](/docs/use-cases/app-cases/google_search/)
 
 # 自定义反馈
-## 自定义反馈模块介绍
+## 简介
+
+自定义反馈模块介绍
 
 该模块为临时模块，后续会针对该模块进行更全面的设计。
 
@@ -11733,7 +12084,9 @@ docker-compose up -d
 自定义反馈模块的功能类似于程序开发的`埋点`，便于你观测的对话中的数据。
 
 # 知识库搜索
-## FastGPT AI 知识库搜索模块介绍
+## 简介
+
+FastGPT AI 知识库搜索模块介绍
 
 知识库搜索具体参数说明，以及内部逻辑请移步：[FastGPT知识库搜索方案](/docs/guide/knowledge_base/rag/)
 
@@ -11762,7 +12115,9 @@ docker-compose up -d
 以数组格式输出引用，长度可以为 0。意味着，即使没有搜索到内容，这个输出链路也会走通。
 
 # 文档解析
-## FastGPT 文档解析模块介绍
+## 简介
+
+FastGPT 文档解析模块介绍
 
 <div style="display: flex; gap: 10px;">
     <img src="/imgs/document_analysis1.png" alt="文档解析示例 1" width="35%" />
@@ -11777,7 +12132,9 @@ docker-compose up -d
 ## 作用
 
 # 表单输入
-## FastGPT 表单输入模块介绍
+## 简介
+
+FastGPT 表单输入模块介绍
 
 ## 特点 
 
@@ -11804,7 +12161,9 @@ docker-compose up -d
 能够精准收集需要的用户信息，再根据用户信息进行后续操作
 
 # HTTP 请求
-## FastGPT HTTP 模块介绍
+## 简介
+
+FastGPT HTTP 模块介绍
 
 ## 特点
 
@@ -12054,7 +12413,9 @@ export default async function (ctx: FunctionContext) {
 - [实验室预约（操作数据库）](/docs/use-cases/app-cases/lab_appointment/)
 
 # 知识库搜索引用合并
-## FastGPT 知识库搜索引用合并模块介绍
+## 简介
+
+FastGPT 知识库搜索引用合并模块介绍
 
 ![](/imgs/knowledge_merge1.png)
 
@@ -12077,7 +12438,9 @@ AI对话只能接收一个知识库引用内容。因此，如果调用了多个
 1. 经过问题分类后对不同知识库进行检索，然后统一给一个 AI 进行回答，此时可以用到合并，不需要每个分支都添加一个 AI 对话。
 
 # Laf 函数调用
-## FastGPT Laf 函数调用模块介绍
+## 简介
+
+FastGPT Laf 函数调用模块介绍
 
 ![](/imgs/laf1.webp)
 
@@ -12169,7 +12532,9 @@ export default async function (ctx: FunctionContext): Promise<IResponse> {
 先在 laf 中调试函数，看是否正常调用。可以通过 console.log，打印入参，将入参放在 Laf 测试页面的 Body 中进行测试。
 
 # 批量运行
-## FastGPT 批量运行节点介绍和使用
+## 简介
+
+FastGPT 批量运行节点介绍和使用
 
 ## 节点概述
 
@@ -12458,7 +12823,9 @@ export default async function (ctx: FunctionContext): Promise<IResponse> {
    - 循环体结束节点选择输出变量为【取出翻译文本】的输出变量 `result`。
 
 # 问题分类
-## FastGPT 问题分类模块介绍
+## 简介
+
+FastGPT 问题分类模块介绍
 
 ## 特点
 
@@ -12531,7 +12898,9 @@ const agentFunction = {
 上面的 Function 必然会返回 `type = abc，vvv，aaa` 其中一个值，从而实现分类判断。
 
 # 指定回复
-## FastGPT 指定回复模块介绍
+## 简介
+
+FastGPT 指定回复模块介绍
 
 ## 特点
 
@@ -12552,7 +12921,9 @@ const agentFunction = {
     >}}
 
 # 代码运行
-## FastGPT 代码运行节点介绍
+## 简介
+
+FastGPT 代码运行节点介绍
 
 ![alt text](/imgs/image.png)
 
@@ -12648,7 +13019,9 @@ function main({secret}){
 ```
 
 # 文本拼接
-## FastGPT 文本加工模块介绍
+## 简介
+
+FastGPT 文本加工模块介绍
 
 ## 特点
 
@@ -12675,7 +13048,9 @@ function main({secret}){
 - [接入谷歌搜索](/docs/use-cases/app-cases/google_search/)
 
 # 判断器
-## FastGPT 判断器模块介绍
+## 简介
+
+FastGPT 判断器模块介绍
 
 ## 特点
 
@@ -12700,7 +13075,9 @@ function main({secret}){
 适用场景有：让大模型做判断后输出固定内容，根据大模型回复内容判断是否触发后续模块。
 
 # 工具调用&终止
-## FastGPT 工具调用模块介绍
+## 简介
+
+FastGPT 工具调用模块介绍
 
 ![](/imgs/flow-tool1.png)
 
@@ -12780,7 +13157,9 @@ function main({secret}){
 - [发送飞书webhook](https://doc.fastgpt.in/docs/use-cases/app-cases/feishu_webhook/)
 
 # 用户选择
-## FastGPT 用户选择模块的使用说明
+## 简介
+
+FastGPT 用户选择模块的使用说明
 
 ## 特点 
 
@@ -12807,7 +13186,9 @@ function main({secret}){
 基础的用法为提出需要用户做抉择的问题，然后根据用户的反馈设计不同的工作流流程
 
 # 变量更新
-## FastGPT 变量更新模块介绍
+## 简介
+
+FastGPT 变量更新模块介绍
 
 ## 特点 
 
@@ -12840,7 +13221,9 @@ function main({secret}){
 - 更新「变量更新」节点前的工作流节点输出，在后续使用中，使用的节点输出值为新的输出
 
 # 知识库基础原理介绍
-## 本节详细介绍RAG模型的核心机制、应用场景及其在生成任务中的优势与局限性。
+## 简介
+
+本节详细介绍RAG模型的核心机制、应用场景及其在生成任务中的优势与局限性。
 
 [RAG文档](https://huggingface.co/docs/transformers/model_doc/rag)
 
@@ -13165,8 +13548,17 @@ RAG还可以应用于多模态生成场景，如图像、音频和3D内容生成
 
 RAG在智能问答、信息检索与文本生成等领域展现了出色的应用潜力，并在不断发展的技术支持下进一步拓展至多模态生成和企业决策支持等场景。通过引入混合检索技术、知识图谱以及动态反馈机制，RAG能够更加灵活地应对复杂的用户需求，生成具有事实支撑和逻辑连贯性的回答。未来，RAG将通过增强模型透明性与可控性，进一步提升在专业领域中的可信度和实用性，为智能信息检索与内容生成提供更广泛的应用空间。
 
+# 知识库
+## 简介
+
+知识库的基础原理、搜索方案、Web站点同步和外部文件知识库的使用方法。
+
+<!-- 400 ~ 450 -->
+
 # API 文件库
-## FastGPT API 文件库功能介绍和使用方式
+## 简介
+
+FastGPT API 文件库功能介绍和使用方式
 
 | | |
 | --- | --- |
@@ -13346,7 +13738,9 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 {{< /tabs >}}
 
 # 知识库搜索方案和参数
-## 本节会详细介绍 FastGPT 知识库结构设计，理解其 QA 的存储格式和多向量映射，以便更好的构建知识库。同时会介绍每个搜索参数的功能。这篇介绍主要以使用为主，详细原理不多介绍。
+## 简介
+
+本节会详细介绍 FastGPT 知识库结构设计，理解其 QA 的存储格式和多向量映射，以便更好的构建知识库。同时会介绍每个搜索参数的功能。这篇介绍主要以使用为主，详细原理不多介绍。
 
 ## 理解向量
 
@@ -13477,7 +13871,9 @@ FastGPT 会使用 `RRF` 对重排结果、向量搜索结果、全文检索结�
 在进行`数据检索`前，会先让模型进行`指代消除`与`问题扩展`，一方面可以可以解决指代对象不明确问题，同时可以扩展问题的语义丰富度。你可以通过每次对话后的对话详情，查看补全的结果。
 
 # 外部文件知识库
-## FastGPT 外部文件知识库功能介绍和使用方式
+## 简介
+
+FastGPT 外部文件知识库功能介绍和使用方式
 
 外部文件库是 FastGPT 商业版特有功能。它允许接入你现在的文件系统，无需将文件再导入一份到 FastGPT 中。
 
@@ -13510,7 +13906,9 @@ FastGPT 会使用 `RRF` 对重排结果、向量搜索结果、全文检索结�
 这样就能轻松地使用 API 文件库替代原有的外部文件知识库，更多详细的内容见 API 文件库的文档
 
 # 飞书知识库
-## FastGPT 飞书知识库功能介绍和使用方式
+## 简介
+
+FastGPT 飞书知识库功能介绍和使用方式
 
 | | |
 | --- | --- |
@@ -13565,7 +13963,9 @@ FastGPT v4.8.16 版本开始，商业版用户支持飞书知识库导入，用�
 ![alt text](/imgs/image-39.png)
 
 # Web 站点同步
-## FastGPT Web 站点同步功能介绍和使用方式
+## 简介
+
+FastGPT Web 站点同步功能介绍和使用方式
 
 ![](/imgs/webSync1.jpg)
 
@@ -13640,7 +14040,9 @@ curl https://doc.tryfastgpt.ai/docs/intro/
 把两组选择器用逗号隔开即可：`.docs-content .mb-0.d-flex, .docs-content div[data-prismjs-copy]`
 
 # 语雀文件库
-## FastGPT 语雀文件库功能介绍和使用方式
+## 简介
+
+FastGPT 语雀文件库功能介绍和使用方式
 
 | | |
 | --- | --- |
@@ -13676,8 +14078,17 @@ FastGPT v4.8.16 版本开始，商业版用户支持语雀文件库导入，用�
 
 ![alt text](/imgs/image-38.png)
 
+# 系统插件
+## 简介
+
+介绍如何使用和提交系统插件，以及各插件的填写说明
+
+<!-- 300 ~ 400 -->
+
 # Bing 搜索插件填写说明
-## FastGPT Bing 搜索插件配置步骤详解
+## 简介
+
+FastGPT Bing 搜索插件配置步骤详解
 
 1. # 打开微软Azure官网，登陆账号
 
@@ -13704,7 +14115,9 @@ https://portal.azure.com/#create/Microsoft.BingSearch
 ![](/imgs/bing_search_plugin5.png)
 
 # Doc2x 插件填写说明
-## 如何配置和使用 Doc2x 插件
+## 简介
+
+如何配置和使用 Doc2x 插件
 
 1. # 打开docx官网，创建账号，并复制 apikey
 
@@ -13725,7 +14138,9 @@ https://doc2x.noedgeai.com/
 ![](/imgs/doc2x_plugin4.png)
 
 # Google 搜索插件填写说明
-## FastGPT Google 搜索插件配置指南
+## 简介
+
+FastGPT Google 搜索插件配置指南
 
 1. # 创建Google Custom Search Engine
 
@@ -13752,7 +14167,9 @@ https://developers.google.com/custom-search/v1/overview?hl=zh-cn
 ![](/imgs/google_search_plugin4.png)
 
 # 如何提交系统插件
-## FastGPT 系统插件提交指南
+## 简介
+
+FastGPT 系统插件提交指南
 
 > 如何向 FastGPT 社区提交系统插件
 
@@ -13865,7 +14282,9 @@ FastGPT 系统插件和用户工作台的插件效果是一致的，所以你需
 由于目前插件会默认插件输出均作为“工具调用”的结果，无法单独指定某些字段作为工具输出，所以，请避免插件的自定义输出携带大量说明字段。
 
 # SearXNG 搜索插件配置与使用说明
-## FastGPT SearXNG 搜索插件配置指南
+## 简介
+
+FastGPT SearXNG 搜索插件配置指南
 
 [SearXNG](https://github.com/searxng/searxng)是一款免费的互联网元搜索引擎，它汇总了来自各种搜索服务和数据库的结果。它不会跟踪或分析用户。用户可以自行部署它进行使用。本文介绍 Searxng 的部署以及接入 FastGPT 插件。
 
@@ -14049,8 +14468,17 @@ default_doi_resolver: 'oadoi.org'
 1. 先直接打开外网地址，测试是否可以正常搜索。
 2. 检查是否有超时的搜索引擎，通过 API 调用时不会返回结果。
 
+# 团队与权限
+## 简介
+
+团队管理、成员组与权限设置，确保团队协作中的数据安全和权限分配合理。
+
+<!-- 450 ~ 500 -->
+
 # 邀请链接说明文档
-## 如何使用邀请链接来邀请团队成员
+## 简介
+
+如何使用邀请链接来邀请团队成员
 
 v4.9.1 团队邀请成员将开始使用「邀请链接」的模式，弃用之前输入用户名进行添加的形式。
 
@@ -14111,7 +14539,9 @@ v4.9.1 团队邀请成员将开始使用「邀请链接」的模式，弃用之�
 失效的链接将在 30 天后自动清理。
 
 # 团队&成员组&权限
-## 如何管理 FastGPT 团队、成员组及权限设置
+## 简介
+
+如何管理 FastGPT 团队、成员组及权限设置
 
 # 团队 & 成员组 & 权限
 
@@ -14317,7 +14747,9 @@ export const ResourcePermissionSchema = new Schema({
 ```
 
 # 快速了解 FastGPT
-## FastGPT 的能力与优势
+## 简介
+
+FastGPT 的能力与优势
 
 FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，将智能对话与可视化编排完美结合，让 AI 应用开发变得简单自然。无论您是开发者还是业务人员，都能轻松打造专属的 AI 应用。
 
@@ -14381,8 +14813,17 @@ FastGPT 完全对齐 OpenAI 官方接口，支持一键接入企业微信、公�
 
 ![](/imgs/intro/image8.png)
 
+# 收费说明
+## 简介
+
+FastGPT 收费说明
+
+<!-- 1100 ~ 1200 -->
+
 # 商业版
-## FastGPT 商业版相关说明
+## 简介
+
+FastGPT 商业版相关说明
 
 ## 简介
 
@@ -14490,15 +14931,33 @@ Sealos 云服务属于按量计费，下面是它的价格表：
 | ![alt text](/imgs/image-55.png) | ![alt text](/imgs/image-56.png) | ![alt text](/imgs/image-57.png) |
 
 # 线上版定价
-## FastGPT 线上版定价
+## 简介
+
+FastGPT 线上版定价
 
 线上版价格按套餐订阅模式，具体价格和计费请查看（请正确选择版本，账号不互通）：
 
 - [海外版](https://cloud.tryfastgpt.ai/price)
 - [国内版](https://cloud.fastgpt.cn/price)
 
+# 使用案例
+## 简介
+
+有关 FastGPT 其他实践案例的更多信息
+
+<!-- 500 ~ 700 -->
+
+# 应用搭建案例
+## 简介
+
+FastGPT 应用场景及功能实现的搭建案例
+
+<!-- 600 ~ 700 -->
+
 # Dalle3 绘图
-## 使用 HTTP 模块绘制图片
+## 简介
+
+使用 HTTP 模块绘制图片
 
 |                       |                       |
 | --------------------- | --------------------- |
@@ -14964,7 +15423,9 @@ Response:
 {{% /details %}}
 
 # 英语作文纠错机器人
-## 使用 FastGPT 创建一个用于英语作文纠错的机器人，帮助用户检测并纠正语言错误
+## 简介
+
+使用 FastGPT 创建一个用于英语作文纠错的机器人，帮助用户检测并纠正语言错误
 
 FastGPT 提供了一种基于 LLM Model 搭建应用的简便方式。
 
@@ -15056,7 +15517,9 @@ FastGPT 的指定回复组件可以将 Markdown 解析为 Html 返回。
 > [点我使用](https://share.fastgpt.in/chat/share?shareId=b4r173wkcjae7wpnexcvmyc3)
 
 # 发送飞书webhook通知
-## 利用工具调用模块，发送一个飞书webhook通知
+## 简介
+
+利用工具调用模块，发送一个飞书webhook通知
 
 该文章展示如何发送一个简单的飞书webhook通知，以此类推，发送其他类型的通知也可以这么操作。
 
@@ -15462,7 +15925,9 @@ FastGPT 的指定回复组件可以将 Markdown 解析为 Html 返回。
 4. HTTP模块输出再连上一个指定回复，直接回复一个发送成功，用于替代AI的回答。
 
 # 固定开头和结尾内容
-## 利用指定回复，创建固定的开头和结尾
+## 简介
+
+利用指定回复，创建固定的开头和结尾
 
 ![](/imgs/demo-fix-evidence1.jpg)
 
@@ -15888,7 +16353,9 @@ FastGPT 的指定回复组件可以将 Markdown 解析为 Html 返回。
 {{% /details %}}
 
 # 接入谷歌搜索
-## 将 FastGPT 接入谷歌搜索
+## 简介
+
+将 FastGPT 接入谷歌搜索
 
 |                     |                       |
 | --------------------- | --------------------- |
@@ -17167,7 +17634,9 @@ export default async function (ctx: FunctionContext) {
 4. 将新的问题发给【AI对话】模块，回答搜索结果。
 
 # 实验室预约
-## 展示高级编排操作数据库的能力
+## 简介
+
+展示高级编排操作数据库的能力
 
 |                       |                       |
 | --------------------- | --------------------- |
@@ -18015,7 +18484,9 @@ async function createRecord({ name, time, labname }: RequestType) {
 {{% /details %}}
 
 # 多轮翻译机器人
-## 如何使用 FastGPT 构建一个多轮翻译机器人，实现连续的对话翻译功能
+## 简介
+
+如何使用 FastGPT 构建一个多轮翻译机器人，实现连续的对话翻译功能
 
 吴恩达老师提出了一种反思翻译的大语言模型(LLM)翻译工作流程——[GitHub - andrewyng/translation-agent](https://github.com/andrewyng/translation-agent)，具体工作流程如下：
 
@@ -18325,7 +18796,9 @@ Fastgpt 提供了工作流线路可以返回去执行的功能，所以我们可
 而对于一些超出 LLM 理解的术语等，也可以利用 Fastgpt 的知识库功能进行相应扩展，进一步完善翻译机器人的功能
 
 # 如何提交应用模板
-## 指南：如何向 FastGPT 提交应用模板
+## 简介
+
+指南：如何向 FastGPT 提交应用模板
 
 ## 什么模板可以合并
 
@@ -18405,7 +18878,9 @@ Fastgpt 提供了工作流线路可以返回去执行的功能，所以我们可
 - 模板参数填写说明，需要在 PR 中写清楚。例如，有些模板需要去某个提供商申请 key，需要附上对应的地址和教程，后续我们会加入到文档中。
 
 # 长字幕翻译
-## 利用 AI 自我反思提升翻译质量，同时循环迭代执行 AI 工作流来突破 LLM tokens 限制，实现一个高效的长字幕翻译机器人。
+## 简介
+
+利用 AI 自我反思提升翻译质量，同时循环迭代执行 AI 工作流来突破 LLM tokens 限制，实现一个高效的长字幕翻译机器人。
 
 直接使用 LLM 来翻译长字幕会遇到很多难点，这些难点也正是直接使用 AI 无法有效处理的问题：
 
@@ -20616,8 +21091,17 @@ Fastgpt 提供了工作流线路可以返回去执行的功能，所以我们可
 
 {{% /details %}}
 
+# 外部调用 FastGPT
+## 简介
+
+外部应用通过多种方式调用 FastGPT 功能的教程
+
+<!-- 500 ~ 600 -->
+
 # 接入钉钉机器人教程
-## FastGPT 接入钉钉机器人教程
+## 简介
+
+FastGPT 接入钉钉机器人教程
 
 从 4.8.16 版本起，FastGPT 商业版支持直接接入钉钉机器人，无需额外的 API。
 
@@ -20669,7 +21153,9 @@ Fastgpt 提供了工作流线路可以返回去执行的功能，所以我们可
 ![图片8](/imgs/dingtalk-bot-8.png)
 
 # 接入飞书机器人教程
-## FastGPT 接入飞书机器人教程
+## 简介
+
+FastGPT 接入飞书机器人教程
 
 从 4.8.10 版本起，FastGPT 商业版支持直接接入飞书机器人，无需额外的 API。
 
@@ -20761,12 +21247,16 @@ Verification Token 默认生成的这个 Token 用于校验来源。但我们使
 4. 如果没记录，则可能是应用运行报错了，可以先试试最简单的机器人。（飞书机器人无法输入全局变量、文件、图片内容）
 
 # iframe 接入
-## 通过 iframe 嵌入 FastGPT 内容到其他网页或应用
+## 简介
+
+通过 iframe 嵌入 FastGPT 内容到其他网页或应用
 
 
 
 # 接入微信公众号教程
-## FastGPT 接入微信公众号教程
+## 简介
+
+FastGPT 接入微信公众号教程
 
 从 4.8.10 版本起，FastGPT 商业版支持直接接入微信公众号，无需额外的 API。
 
@@ -20885,7 +21375,9 @@ Verification Token 默认生成的这个 Token 用于校验来源。但我们使
 现在用户向公众号发消息，消息则会被转发到 FastGPT，通过公众号返回对话结果。
 
 # 对接 chatgpt-on-wechat
-## FastGPT 对接 chatgpt-on-wechat
+## 简介
+
+FastGPT 对接 chatgpt-on-wechat
 
 # 1 分钟对接 chatgpt-on-wechat
 
@@ -20953,7 +21445,9 @@ docker-compose up -d
 * 随便找个账号，私信发送: bot问题  会将 问题 传到 FastGPT 进行回答。
 
 # 通过 API 访问应用
-## 通过 API 访问 FastGPT 应用
+## 简介
+
+通过 API 访问 FastGPT 应用
 
 在 FastGPT 中，你可以为每一个应用创建多个 API 密钥，用于访问应用的 API 接口。每个密钥仅能访问一个应用。完整的接口可以[查看应用对话接口](/docs/development/openapi/chat)。
 
@@ -20988,7 +21482,9 @@ OPENAI_API_KEY = 上一步获取到的密钥
 ![](/imgs/chatgptweb.png)
 
 # 接入微信和企业微信 
-## FastGPT 接入微信和企业微信 
+## 简介
+
+FastGPT 接入微信和企业微信 
 
 # FastGPT 三分钟接入微信/企业微信
 私人微信和企业微信接入的方式基本一样，不同的地方会刻意指出。   

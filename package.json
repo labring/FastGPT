@@ -6,6 +6,7 @@
     "prepare": "husky install",
     "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
     "format-doc": "zhlint --dir ./docSite *.md --fix",
+    "gen:llms": "node ./docSite/doc-generate-llms.js",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "postinstall": "pnpm gen:theme-typings",
     "initIcon": "node ./scripts/icon/init.js",
@@ -31,7 +32,7 @@
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",
-    "./docSite/**/**/*.md": "npm run format-doc"
+    "./docSite/**/**/*.md": "npm run format-doc && npm run gen:llms"
   },
   "resolutions": {
     "mdast-util-gfm-autolink-literal": "2.0.0"
@@ -39,10 +40,5 @@
   "engines": {
     "node": ">=18.16.0",
     "pnpm": ">=9.0.0"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "node docSite/static/js/doc-generate-llms.js"
-    }
   }
 }

@@ -7,7 +7,7 @@ const projectName = "FastGPT";
 const projectDescription = "FastGPT 文档";
 
 // 文档目录，使用相对路径
-const docsDir = path.join(__dirname, '../../content/zh-cn/docs');
+const docsDir = path.join(__dirname, './content/zh-cn/docs');
 // 基础 URL
 const baseUrl = "https://doc.fastgpt.cn/docs/";
 
@@ -21,7 +21,7 @@ function getMdInfo(filePath) {
         // 找到前置元数据的起始和结束位置
         const startIndex = content.indexOf('---');
         const endIndex = content.indexOf('---', startIndex + 3);
-        if (startIndex!== -1 && endIndex!== -1) {
+        if (startIndex !== -1 && endIndex !== -1) {
             const frontMatterStr = content.slice(startIndex + 3, endIndex).trim();
             // 使用 yaml 解析前置元数据
             const frontMatter = yaml.load(frontMatterStr);
@@ -47,6 +47,10 @@ function walkDir(dir) {
         if (entry.isDirectory()) {
             walkDir(entryPath);
         } else if (entry.name.endsWith('.md')) {
+            if (entry.name === "_index.md") {
+                continue;
+            }
+
             const relativePath = path.relative(docsDir, entryPath);
             const sectionName = path.dirname(relativePath) || 'Home';
             if (!llmsTxtContent.includes(`## ${sectionName}`)) {
@@ -64,7 +68,7 @@ function walkDir(dir) {
 walkDir(docsDir);
 
 // 保存 llms.txt
-const saveDir = path.join(__dirname, '../');
+const saveDir = path.join(__dirname, './static');
 if (!fs.existsSync(saveDir)) {
     fs.mkdirSync(saveDir, { recursive: true });
 }
@@ -80,11 +84,15 @@ function collectMdContent(dir) {
         if (entry.isDirectory()) {
             collectMdContent(entryPath);
         } else if (entry.name.endsWith('.md')) {
+            if (entry.name === "_index.md") {
+                continue;
+            }
+
             const content = fs.readFileSync(entryPath, 'utf8');
             // 找到前置元数据的起始和结束位置
             const startIndex = content.indexOf('---');
             const endIndex = content.indexOf('---', startIndex + 3);
-            if (startIndex!== -1 && endIndex!== -1) {
+            if (startIndex !== -1 && endIndex !== -1) {
                 const frontMatterStr = content.slice(startIndex + 3, endIndex).trim();
                 // 使用 yaml 解析前置元数据
                 const frontMatter = yaml.load(frontMatterStr);
@@ -105,4 +113,3 @@ collectMdContent(docsDir);
 // 保存 llms - full.txt
 const llmsFullTxtSavePath = path.join(saveDir, 'llms-full.txt');
 fs.writeFileSync(llmsFullTxtSavePath, llmsFullTxtContent, 'utf8');
-    
