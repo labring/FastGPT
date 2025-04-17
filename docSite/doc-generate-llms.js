@@ -73,7 +73,9 @@ if (!fs.existsSync(saveDir)) {
     fs.mkdirSync(saveDir, { recursive: true });
 }
 const llmsTxtSavePath = path.join(saveDir, 'llms.txt');
-fs.writeFileSync(llmsTxtSavePath, llmsTxtContent, 'utf8');
+fs.writeFileSync(llmsTxtSavePath, llmsTxtContent, {
+    encoding: 'utf-8'
+});
 
 // 生成 llms - full.txt
 let llmsFullTxtContent = '';
@@ -112,4 +114,6 @@ collectMdContent(docsDir);
 
 // 保存 llms - full.txt
 const llmsFullTxtSavePath = path.join(saveDir, 'llms-full.txt');
-fs.writeFileSync(llmsFullTxtSavePath, llmsFullTxtContent, 'utf8');
+fs.writeFileSync(llmsFullTxtSavePath, llmsFullTxtContent, {
+    encoding: 'utf-8'
+});
