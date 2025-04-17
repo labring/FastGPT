@@ -5,7 +5,7 @@ WORKDIR /app
 RUN npm install -g pnpm@9.4.0
 
 # 复制package.json
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY projects/mcp_server/package.json ./projects/mcp_server/package.json
 
 RUN apk add --no-cache\
