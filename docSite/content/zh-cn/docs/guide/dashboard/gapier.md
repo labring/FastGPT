@@ -4,7 +4,7 @@ description: "FastGPT 使用 Gapier 快速导入Agent工具"
 icon: "build"
 draft: false
 toc: true
-weight: 300
+weight: 280
 ---
 
 FastGPT V4.7版本加入了工具调用，可以兼容 GPTs 的 Actions。这意味着，你可以直接导入兼容 GPTs 的 Agent 工具。
