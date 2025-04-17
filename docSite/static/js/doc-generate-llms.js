@@ -81,7 +81,23 @@ function collectMdContent(dir) {
             collectMdContent(entryPath);
         } else if (entry.name.endsWith('.md')) {
             const content = fs.readFileSync(entryPath, 'utf8');
-            llmsFullTxtContent += content + '\n\n';
+            // 找到前置元数据的起始和结束位置
+            const startIndex = content.indexOf('---');
+            const endIndex = content.indexOf('---', startIndex + 3);
+            if (startIndex!== -1 && endIndex!== -1) {
+                const frontMatterStr = content.slice(startIndex + 3, endIndex).trim();
+                // 使用 yaml 解析前置元数据
+                const frontMatter = yaml.load(frontMatterStr);
+                const newFrontMatter = {
+                    title: frontMatter.title || '',
+                    description: frontMatter.description || ''
+                };
+                const newFrontMatterStr = yaml.dump(newFrontMatter);
+                const newContent = `---\n${newFrontMatterStr}---\n${content.slice(endIndex + 3)}`;
+                llmsFullTxtContent += newContent + '\n\n';
+            } else {
+                llmsFullTxtContent += content + '\n\n';
+            }
         }
     }
 }

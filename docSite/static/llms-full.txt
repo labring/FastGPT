@@ -1,11 +1,8 @@
 ---
-title: '开源协议'
+title: 开源协议
 description: ' FastGPT 开源许可证'
-icon: 'verified_user'
-draft: false
-toc: true
-weight: 1210
 ---
+
 
 FastGPT 项目在 Apache License 2.0 许可下开源，但包含以下附加条件：
 
@@ -24,13 +21,10 @@ FastGPT 项目在 Apache License 2.0 许可下开源，但包含以下附加条�
 除此之外，所有其他权利和限制均遵循 Apache License 2.0。如果你需要更多详细信息，可以参考 Apache License 2.0 的完整版本。本产品的交互设计受到外观专利保护。© 2023 Sealos.
 
 ---
-title: '隐私政策'
+title: 隐私政策
 description: ' FastGPT 隐私政策'
-icon: 'gavel'
-draft: false
-toc: true
-weight: 1221
 ---
+
 
 最后更新时间：2024年3月3日
 
@@ -91,13 +85,10 @@ weight: 1221
 2. 我们将尽快回复并解决您提出的问题。
 
 ---
-title: '服务协议'
+title: 服务协议
 description: ' FastGPT 服务协议'
-icon: 'gavel'
-draft: false
-toc: true
-weight: 1220
 ---
+
 
 最后更新时间：2024年3月3日
 
@@ -167,22 +158,16 @@ FastGPT 服务协议是您与珠海环界云计算有限公司（以下简称“
 2. 本公司保留对本协议及隐私政策的最终解释权。如您对本协议或隐私政策有任何疑问，请联系我们：yujinlong@sealos.io。
 
 ---
-weight: 1200
-title: '协议'
-description: '社区相关内容'
-icon: 'handshake'
-draft: false
-images: []
+title: 协议
+description: 社区相关内容
 ---
 
+
 ---
-title: '加入社区'
+title: 加入社区
 description: ' 加入 FastGPT 开发者社区和我们一起成长'
-icon: 'forum'
-draft: false
-toc: true
-weight: 1300
 ---
+
 
 FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试以下方式寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
 
@@ -193,13 +178,10 @@ FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对
 + 🐞 请将任何 FastGPT 的 Bug、问题和需求提交到 [GitHub Issue](https://github.com/labring/fastgpt/issues/new/choose)。
 
 ---
-title: '配置文件介绍'
-description: 'FastGPT 配置参数介绍'
-icon: 'settings'
-draft: false
-toc: true
-weight: 707
+title: 配置文件介绍
+description: FastGPT 配置参数介绍
 ---
+
 
 由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/development/docker/) 来挂载配置文件。
 
@@ -270,13 +252,10 @@ weight: 707
 [点击查看 Marker 接入教程](/docs/development/custom-models/marker)
 
 ---
-title: '接入 bge-rerank 重排模型'
-description: '接入 bge-rerank 重排模型'
-icon: 'sort'
-draft: false
-toc: true
-weight: 920
+title: 接入 bge-rerank 重排模型
+description: 接入 bge-rerank 重排模型
 ---
+
 
 ## 不同模型推荐配置
 
@@ -416,13 +395,10 @@ services:
 
 
 ---
-title: '接入 ChatGLM2-m3e 模型'
+title: 接入 ChatGLM2-m3e 模型
 description: ' 将 FastGPT 接入私有化模型 ChatGLM2和m3e-large'
-icon: 'model_training'
-draft: false
-toc: true
-weight: 950
 ---
+
 
 ## 前言
 
@@ -535,13 +511,10 @@ chatglm2 模型的使用方法如下：
 
 
 ---
-title: '接入 ChatGLM2-6B'
+title: 接入 ChatGLM2-6B
 description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
-icon: 'model_training'
-draft: false
-toc: true
-weight: 930
 ---
+
 
 ## 前言
 
@@ -661,13 +634,10 @@ chatglm2 模型的使用方法如下：
 
 
 ---
-title: '接入 M3E 向量模型'
+title: 接入 M3E 向量模型
 description: ' 将 FastGPT 接入私有化模型 M3E'
-icon: 'model_training'
-draft: false
-toc: true
-weight: 940
 ---
+
 
 ## 前言
 
@@ -752,13 +722,10 @@ Authorization 为 sk-key。model 为刚刚在 One API 填写的自定义模型�
 
 
 ---
-title: '接入 Marker  PDF 文档解析'
-description: '使用 Marker 解析 PDF 文档，可实现图片提取和布局识别'
-icon: 'api'
-draft: false
-toc: true
-weight: 909
+title: 接入 Marker  PDF 文档解析
+description: 使用 Marker 解析 PDF 文档，可实现图片提取和布局识别
 ---
+
 
 ## 背景
 
@@ -858,11 +825,8 @@ CUSTOM_READ_FILE_EXTENSION=pdf
 ---
 title: '使用 Ollama 接入本地模型 '
 description: ' 采用 Ollama 部署自己的模型'
-icon: 'api'
-draft: false
-toc: true
-weight: 950
 ---
+
 
 [Ollama](https://ollama.com/) 是一个开源的AI大模型部署工具，专注于简化大语言模型的部署和使用，支持一键下载和运行各种大模型。
 
@@ -1042,13 +1006,10 @@ docker run -it --network < FastGPT 网络 > --name 容器名 intel/oneapi-hpckit
 
 
 ---
-title: '使用 Xinference 接入本地模型'
-description: '一站式本地 LLM 私有化部署'
-icon: 'api'
-draft: false
-toc: true
-weight: 910
+title: 使用 Xinference 接入本地模型
+description: 一站式本地 LLM 私有化部署
 ---
+
 
 [Xinference](https://github.com/xorbitsai/inference) 是一款开源模型推理平台，除了支持 LLM，它还可以部署 Embedding 和 ReRank 模型，这在企业级 RAG 构建中非常关键。同时，Xinference 还提供 Function Calling 等高级功能。还支持分布式部署，也就是说，随着未来应用调用量的增长，它可以进行水平扩展。
 
@@ -1210,23 +1171,17 @@ curl --location --request POST 'https://<oneapi_url>/v1/chat/completions' \
 
 
 ---
-weight: 900
-title: '本地模型使用'
-description: 'FastGPT 对接本地模型'
-icon: 'model_training'
-draft: false
-images: []
+title: 本地模型使用
+description: FastGPT 对接本地模型
 ---
+
 <!-- 900~950 -->
 
 ---
-weight: 961
-title: "数据集"
-description: "FastGPT 数据集中文件与数据的设计方案"
-icon: dataset
-draft: false
-images: []
+title: 数据集
+description: FastGPT 数据集中文件与数据的设计方案
 ---
+
 
 ## 文件与数据的关系
 
@@ -1246,23 +1201,17 @@ images: []
 5. 由训练线程从 mongo 中取数据，并在获取向量后插入到 pg。
 
 ---
-weight: 960
-title: "设计方案"
-description: "FastGPT 部分设计方案"
-icon: public
-draft: false
-images: []
+title: 设计方案
+description: FastGPT 部分设计方案
 ---
+
 <!-- 960~1050 -->
 
 ---
-title: 'Docker Compose 快速部署'
-description: '使用 Docker Compose 快速部署 FastGPT'
-icon: ''
-draft: false
-toc: true
-weight: 707
+title: Docker Compose 快速部署
+description: 使用 Docker Compose 快速部署 FastGPT
 ---
+
 
 ## 前置知识
 
@@ -1646,13 +1595,10 @@ mongo连接失败，查看mongo的运行状态**对应日志**。
 
 
 ---
-weight: 740
-title: "私有部署常见问题"
-description: "FastGPT 私有部署常见问题"
-icon: upgrade
-draft: false
-images: []
+title: 私有部署常见问题
+description: FastGPT 私有部署常见问题
 ---
+
 
 ## 一、错误排查方式
 
@@ -2074,13 +2020,10 @@ curl --location --request POST 'https://oneapi.xxxx/v1/chat/completions' \
 由于模型没有归一化导致的。目前仅支持归一化的模型。
 
 ---
-title: '快速开始本地开发'
-description: '对 FastGPT 进行开发调试'
-icon: 'developer_guide'
-draft: false
-toc: true
-weight: 705
+title: 快速开始本地开发
+description: 对 FastGPT 进行开发调试
 ---
+
 
 本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://tryfastgpt.ai)，。
 
@@ -2285,13 +2228,10 @@ common - 基础功能（日志管理，文件读写等）
 
 
 ---
-weight: 762
-title: "Docker 数据库迁移(无脑操作)"
-description: "FastGPT Docker 数据库备份和迁移"
-icon: database
-draft: false
-images: []
+title: Docker 数据库迁移(无脑操作)
+description: FastGPT Docker 数据库备份和迁移
 ---
+
 
 ## 1. 停止服务
 
@@ -2310,12 +2250,10 @@ Docker 部署数据库都会通过 volume 挂载本地的目录进入容器，�
 直接把pg 和 mongo目录全部复制走即可。
 
 ---
-title: "Docker Mongo迁移(dump模式)"
-description: "FastGPT Docker Mongo迁移"
-icon: database
-draft: false
-weight: 762
+title: Docker Mongo迁移(dump模式)
+description: FastGPT Docker Mongo迁移
 ---
+
 
 ## 作者
 
@@ -2498,23 +2436,17 @@ docker logs -f mongo  **强烈建议先检查mongo运行情况，在去做登录
 
 
 ---
-weight: 960
-title: "迁移&备份"
-description: "FastGPT 迁移&备份"
-icon: settings_backup_restore
-draft: false
-images: []
+title: 迁移&备份
+description: FastGPT 迁移&备份
 ---
+
 <!-- 960~970 -->
 
 ---
-title: '通过 AI Proxy 接入模型'
-description: '通过 AI Proxy 接入模型'
-icon: 'api'
-draft: false
-toc: true
-weight: 744
+title: 通过 AI Proxy 接入模型
+description: 通过 AI Proxy 接入模型
 ---
+
 
 从 `FastGPT 4.8.23` 版本开始，引入 AI Proxy 来进一步方便模型的配置。
 
@@ -2638,13 +2570,10 @@ curl --location --request POST '{{host}}/api/channels/import/oneapi' \
 脚本目前不是完全准，仅是简单的做数据映射，主要是迁移`代理地址`、`模型`和`API 密钥`，建议迁移后再进行手动检查。
 
 ---
-title: 'FastGPT 模型配置说明'
-description: 'FastGPT 模型配置说明'
-icon: 'api'
-draft: false
-toc: true
-weight: 744
+title: FastGPT 模型配置说明
+description: FastGPT 模型配置说明
 ---
+
 
 在 4.8.20 版本以前，FastGPT 模型配置在 `config.json` 文件中声明，你可以在 https://github.com/labring/FastGPT/blob/main/projects/app/data/model.json 中找到旧版的配置文件示例。
 
@@ -3106,13 +3035,10 @@ OneAPI 的语言识别接口，无法正确的识别其他模型（会始终识�
 
 
 ---
-title: '通过 OneAPI 接入模型'
-description: '通过 OneAPI 接入模型'
-icon: 'api'
-draft: false
-toc: true
-weight: 745
+title: 通过 OneAPI 接入模型
+description: 通过 OneAPI 接入模型
 ---
+
 
 FastGPT 目前采用模型分离的部署方案，FastGPT 中只兼容 OpenAI 的模型规范（OpenAI 不存在的模型采用一个较为通用的规范），并通过 [One API](https://github.com/songquanpeng/one-api) 来实现对不同模型接口的统一。
 
@@ -3239,13 +3165,10 @@ CHAT_API_KEY=sk-xxxxxx
 
 
 ---
-title: '通过 PPIO LLM API 接入模型'
-description: '通过 PPIO LLM API 接入模型'
-icon: 'api'
-draft: false
-toc: true
-weight: 747
+title: 通过 PPIO LLM API 接入模型
+description: 通过 PPIO LLM API 接入模型
 ---
+
 
 FastGPT 还可以通过 PPIO LLM API 接入模型。
 {{% alert context="warning" %}}
@@ -3341,13 +3264,10 @@ OPENAI_BASE_URL= http://OneAPI-IP:OneAPI-PORT/v1
 
 
 ---
-title: '通过 SiliconCloud 体验开源模型'
-description: '通过 SiliconCloud 体验开源模型'
-icon: 'api'
-draft: false
-toc: true
-weight: 746
+title: 通过 SiliconCloud 体验开源模型
+description: 通过 SiliconCloud 体验开源模型
 ---
+
 
 [SiliconCloud(硅基流动)](https://cloud.siliconflow.cn/i/TR9Ym0c4) 是一个以提供开源模型调用为主的平台，并拥有自己的加速引擎。帮助用户低成本、快速的进行开源模型的测试和使用。实际体验下来，他们家模型的速度和稳定性都非常不错，并且种类丰富，覆盖语言、向量、重排、TTS、STT、绘图、视频生成模型，可以满足 FastGPT 中所有模型需求。
 
@@ -3436,22 +3356,16 @@ CHAT_API_KEY=sk-xxxxxx
 如果你决定未来私有化部署模型和 FastGPT，前期可通过 SiliconCloud 进行测试验证，后期再进行硬件采购，减少 POC 时间和成本。
 
 ---
-weight: 745
-title: '模型配置方案'
-description: '本模型配置方案'
-icon: 'code_blocks'
-draft: false
-images: []
+title: 模型配置方案
+description: 本模型配置方案
 ---
 
+
 ---
-title: '对话接口'
-description: 'FastGPT OpenAPI 对话接口'
-icon: 'chat'
-draft: false
-toc: true
-weight: 852
+title: 对话接口
+description: FastGPT OpenAPI 对话接口
 ---
+
 
 # 如何获取 AppId
 
@@ -5175,13 +5089,10 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/createQu
 
 
 ---
-title: '知识库接口'
-description: 'FastGPT OpenAPI 知识库接口'
-icon: 'dataset'
-draft: false
-toc: true
-weight: 853
+title: 知识库接口
+description: FastGPT OpenAPI 知识库接口
 ---
+
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
 | --------------------- | --------------------- |
@@ -6665,13 +6576,10 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTe
 
 
 ---
-title: 'OpenAPI 介绍'
-description: 'FastGPT OpenAPI 介绍'
-icon: 'key'
-draft: false
-toc: true
-weight: 851
+title: OpenAPI 介绍
+description: FastGPT OpenAPI 介绍
 ---
+
 
 ## 使用说明
 
@@ -6750,13 +6658,10 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 
 
 ---
-title: '分享链接身份鉴权'
-description: 'FastGPT 分享链接身份鉴权'
-icon: 'share'
-draft: false
-toc: true
-weight: 860
+title: 分享链接身份鉴权
+description: FastGPT 分享链接身份鉴权
 ---
+
 
 ## 介绍
 
@@ -7155,23 +7060,17 @@ export default async function (ctx: FunctionContext) {
 除了对接已有系统的用户外，你还可以对接`余额`功能，通过`结果上报`接口扣除用户余额，通过`对话前校验`接口检查用户的余额。
 
 ---
-weight: 850
-title: "OpenAPI 接口文档"
-description: "FastGPT OpenAPI 文档"
-icon: api
-draft: false
-images: []
+title: OpenAPI 接口文档
+description: FastGPT OpenAPI 文档
 ---
+
 <!-- 850~900 -->
 
 ---
-title: "Cloudflare Worker 中转"
-description: "使用 Cloudflare Worker 实现中转"
-icon: "foggy"
-draft: false
-toc: true
-weight: 953
+title: Cloudflare Worker 中转
+description: 使用 Cloudflare Worker 实现中转
 ---
+
 
 [参考 "不做了睡觉" 的教程](https://gravel-twister-d32.notion.site/FastGPT-API-ba7bb261d5fd4fd9bbb2f0607dacdc9e)
 
@@ -7220,13 +7119,10 @@ OPENAI_BASE_URL_AUTH=auth_code
 ```
 
 ---
-title: "HTTP 代理中转"
-description: "使用 HTTP 代理实现中转"
-icon: "http"
-draft: false
-toc: true
-weight: 952
+title: HTTP 代理中转
+description: 使用 HTTP 代理实现中转
 ---
+
 
 如果你有代理工具（例如 [Clash](https://github.com/Dreamacro/clash) 或者 [sing-box](https://github.com/SagerNet/sing-box)），也可以使用 HTTP 代理来访问 OpenAI。只需要添加以下两个环境变量即可：
 
@@ -7269,13 +7165,10 @@ AXIOS_PROXY_PORT=7890
 
 
 ---
-title: "Nginx 中转"
-description: "使用 Sealos 部署 Nginx 实现中转"
-icon: "cloud_sync"
-draft: false
-toc: true
-weight: 951
+title: Nginx 中转
+description: 使用 Sealos 部署 Nginx 实现中转
 ---
+
 
 ## 登录 Sealos
 
@@ -7375,23 +7268,17 @@ weight: 951
 **Done!**
 
 ---
-weight: 950
-title: "代理方案"
-description: "FastGPT 私有化部署代理方案"
-icon: wify_proxy
-draft: false
-images: []
+title: 代理方案
+description: FastGPT 私有化部署代理方案
 ---
+
 <!-- 950~960 -->
 
 ---
-title: "Sealos 一键部署"
-description: "使用 Sealos 一键部署 FastGPT"
-icon: "cloud"
-draft: false
-toc: true
-weight: 706
+title: Sealos 一键部署
+description: 使用 Sealos 一键部署 FastGPT
 ---
+
 
 ## 部署架构图
 
@@ -7555,13 +7442,10 @@ SYSTEM_FAVICON 可以是一个网络地址
 [参考 OneAPI 使用步骤](/docs/development/modelconfig/one-api/)
 
 ---
-title: '升级到 V4.0'
-description: 'FastGPT 从旧版本升级到 V4.0 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 850
+title: 升级到 V4.0
+description: FastGPT 从旧版本升级到 V4.0 操作指南
 ---
+
 
 如果您是**从旧版本升级到 V4**，由于新版 MongoDB 表变更比较大，需要按照本文档的说明执行一些初始化脚本。
 
@@ -7623,13 +7507,10 @@ db.outlinks.find({shareId: {$exists: false}}).forEach(function(item){
 
 
 ---
-title: '升级到 V4.1'
-description: 'FastGPT 从旧版本升级到 V4.1 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 849
+title: 升级到 V4.1
+description: FastGPT 从旧版本升级到 V4.1 操作指南
 ---
+
 
 如果您是**从旧版本升级到 V4.1**，由于新版重新设置了对话存储结构，需要初始化原来的存储内容。
 
@@ -7654,13 +7535,10 @@ V4.1 优化了 PostgreSQL 和 MongoDB 的连接变量，只需要填 1 个 URL �
 
 
 ---
-title: '升级到 V4.2'
-description: 'FastGPT 从旧版本升级到 V4.2 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 848
+title: 升级到 V4.2
+description: FastGPT 从旧版本升级到 V4.2 操作指南
 ---
+
 
 99.9%用户不影响，升级 4.2 主要是修改了配置文件中 QAModel 的格式。从原先的数组改成对象：
 
@@ -7677,13 +7555,10 @@ weight: 848
 
 
 ---
-title: '升级到 V4.2.1'
-description: 'FastGPT 从旧版本升级到 V4.2.1 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 847
+title: 升级到 V4.2.1
+description: FastGPT 从旧版本升级到 V4.2.1 操作指南
 ---
+
 
 私有部署，如果添加了配置文件，需要在配置文件中修改 `VectorModels` 字段。增加 defaultToken 和 maxToken，分别对应直接分段时的默认 token 数量和该模型支持的 token 上限 (通常不建议超过 3000)
 
@@ -7703,13 +7578,10 @@ weight: 847
 
 
 ---
-title: '升级到 V4.3(包含升级脚本)'
-description: 'FastGPT 从旧版本升级到 V4.3 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 846
+title: 升级到 V4.3(包含升级脚本)
+description: FastGPT 从旧版本升级到 V4.3 操作指南
 ---
+
 
 ## 执行初始化 API
 
@@ -7735,13 +7607,10 @@ FILE_TOKEN_KEY=filetokenkey
 
 
 ---
-title: '升级到 V4.4(包含升级脚本)'
-description: 'FastGPT 从旧版本升级到 V4.4 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 845
+title: 升级到 V4.4(包含升级脚本)
+description: FastGPT 从旧版本升级到 V4.4 操作指南
 ---
+
 
 ## 执行初始化 API
 
@@ -7760,13 +7629,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv44' \
 
 
 ---
-title: '升级到 V4.4.1(包含升级脚本)'
-description: 'FastGPT 从旧版本升级到 V4.4.1 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 844
+title: 升级到 V4.4.1(包含升级脚本)
+description: FastGPT 从旧版本升级到 V4.4.1 操作指南
 ---
+
 
 ## 执行初始化 API
 
@@ -7785,13 +7651,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv441' \
 
 
 ---
-title: '升级到 V4.4.2(包含升级脚本)'
-description: 'FastGPT 从旧版本升级到 V4.4.2 操作指南'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 843
+title: 升级到 V4.4.2(包含升级脚本)
+description: FastGPT 从旧版本升级到 V4.4.2 操作指南
 ---
+
 
 ## 执行初始化 API
 
@@ -7810,13 +7673,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv442' \
 
 
 ---
-title: 'V4.4.5(包含升级脚本)'
-description: 'FastGPT V4.4.5 更新'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 842
+title: V4.4.5(包含升级脚本)
+description: FastGPT V4.4.5 更新
 ---
+
 
 ## 执行初始化 API
 
@@ -7842,13 +7702,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv445' \
 4. 优化 - 全局变量与开场白合并成同一模块。
 
 ---
-title: 'V4.4.6'
-description: 'FastGPT V4.4.6 更新'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 841
+title: V4.4.6
+description: FastGPT V4.4.6 更新
 ---
+
 
 ## 功能介绍
 
@@ -7857,13 +7714,10 @@ weight: 841
 3. 修复 - 下一步指引在免登录中身份问题。
 
 ---
-title: 'V4.4.7（需执行升级脚本）'
-description: 'FastGPT V4.4.7 更新（需执行升级脚本）'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 840
+title: V4.4.7（需执行升级脚本）
+description: FastGPT V4.4.7 更新（需执行升级脚本）
 ---
+
 
 ## 执行初始化 API
 
@@ -7890,13 +7744,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv447' \
 
 
 ---
-title: 'V4.5(需进行较为复杂更新)'
-description: 'FastGPT V4.5 更新'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 839
+title: V4.5(需进行较为复杂更新)
+description: FastGPT V4.5 更新
 ---
+
 
 FastGPT V4.5 引入 PgVector0.5 版本的 HNSW 索引，极大的提高了知识库检索的速度，比起`IVFFlat`索引大致有3~10倍的性能提升，可轻松实现百万数据毫秒级搜索。缺点在于构建索引的速度非常慢，4c16g 500w 组数据使用`并行构建`大约花了 48 小时。具体参数配置可参考 [PgVector官方](https://github.com/pgvector/pgvector)
 
@@ -7984,13 +7835,10 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 最新配置可参考: [V45版本最新 config.json](/docs/development/configuration)
 
 ---
-title: 'V4.5.1(需进行初始化)'
-description: 'FastGPT V4.5.1 更新'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 838
+title: V4.5.1(需进行初始化)
+description: FastGPT V4.5.1 更新
 ---
+
 
 ## 执行初始化 API
 
@@ -8020,13 +7868,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv451' \
 3. 修复部分模块无法触发完成事件
 
 ---
-title: 'V4.5.2'
-description: 'FastGPT V4.5.2 更新'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 837
+title: V4.5.2
+description: FastGPT V4.5.2 更新
 ---
+
 
 ## 功能介绍
 
@@ -8036,13 +7881,10 @@ weight: 837
 2. 优化 - 知识库引用提示。
 
 ---
-title: 'V4.6(包含升级脚本)'
-description: 'FastGPT V4.6 更新'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 836
+title: V4.6(包含升级脚本)
+description: FastGPT V4.6 更新
 ---
+
 
 **V4.6 版本加入了简单的团队功能，可以邀请其他用户进来管理资源。该版本升级后无法执行旧的升级脚本，且无法回退。**
 
@@ -8104,13 +7946,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv46-fix' \
 ```
 
 ---
-title: 'V4.6.1'
-description: 'FastGPT V4.6 .1'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 835
+title: V4.6.1
+description: FastGPT V4.6 .1
 ---
+
 
 
 ## V4.6.1 功能介绍
@@ -8122,13 +7961,10 @@ weight: 835
 
 
 ---
-title: 'V4.6.2(包含升级脚本)'
-description: 'FastGPT V4.6.2'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 834
+title: V4.6.2(包含升级脚本)
+description: FastGPT V4.6.2
 ---
+
 
 ## 1。执行初始化 API
 
@@ -8155,13 +7991,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv462' \
 
 
 ---
-title: 'V4.6.3(包含升级脚本)'
-description: 'FastGPT V4.6.3'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 833
+title: V4.6.3(包含升级脚本)
+description: FastGPT V4.6.3
 ---
+
 
 ## 1。执行初始化 API
 
@@ -8190,13 +8023,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv463' \
 
 
 ---
-title: 'V4.6.4(包含升级脚本)'
-description: 'FastGPT V4.6.4'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 832
+title: V4.6.4(包含升级脚本)
+description: FastGPT V4.6.4
 ---
+
 
 ## 1。执行初始化 API
 
@@ -8235,13 +8065,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv464' \
 
 
 ---
-title: 'V4.6.5（需要改配置文件）'
-description: 'FastGPT V4.6.5'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 831
+title: V4.6.5（需要改配置文件）
+description: FastGPT V4.6.5
 ---
+
 
 ## 配置文件变更
 
@@ -8270,13 +8097,10 @@ weight: 831
 
 
 ---
-title: 'V4.6.6（需要改配置文件）'
-description: 'FastGPT V4.6.6'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 830
+title: V4.6.6（需要改配置文件）
+description: FastGPT V4.6.6
 ---
+
 
 ## 配置文件变更
 
@@ -8304,13 +8128,10 @@ weight: 830
 8. 修复 - 链接读取的数据集，未保存选择器，导致同步时不使用选择器。
 
 ---
-title: 'V4.6.7（需要初始化）'
-description: 'FastGPT V4.6.7'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 829
+title: V4.6.7（需要初始化）
+description: FastGPT V4.6.7
 ---
+
 
 ## 1。执行初始化 API
 
@@ -8340,13 +8161,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv467' \
 7. 修复 - Iframe 嵌入网页可能导致的 window.onLoad 冲突。
 
 ---
-title: 'V4.6.8（需要初始化）'
-description: 'FastGPT V4.6.8更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 828
+title: V4.6.8（需要初始化）
+description: FastGPT V4.6.8更新说明
 ---
+
 
 ## docker 部署 - 手动更新 Mongo
 
@@ -8439,13 +8257,10 @@ curl --location --request POST 'https://{{host}}/api/init/v468' \
 7. 修复 - 对话框重新生成无法使用。
 
 ---
-title: 'V4.6.9(包含升级脚本)'
-description: 'FastGPT V4.6.9更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 827
+title: V4.6.9(包含升级脚本)
+description: FastGPT V4.6.9更新说明
 ---
+
 
 ## 修改商业版环境变量
 
@@ -8490,13 +8305,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv469' \
 
 
 ---
-title: 'V4.7（需要初始化）'
-description: 'FastGPT V4.7更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 826
+title: V4.7（需要初始化）
+description: FastGPT V4.7更新说明
 ---
+
 
 ## 1. 修改配置文件
 
@@ -8562,13 +8374,10 @@ cohere的重排模型对中文不是很好，感觉不如 bge 的好用，接入
 
 
 ---
-title: 'V4.7.1(包含升级脚本)'
-description: 'FastGPT V4.7.1 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 825
+title: V4.7.1(包含升级脚本)
+description: FastGPT V4.7.1 更新说明
 ---
+
 
 ## 初始化脚本
 
@@ -8604,13 +8413,10 @@ curl --location --request POST 'https://{{host}}/api/admin/clearInvalidData' \
 12. 修复 - 分享页面特殊情况下加载缓慢问题（由于ssr时候数据库不会触发连接）
 
 ---
-title: 'V4.8'
-description: 'FastGPT V4.8 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 824
+title: V4.8
+description: FastGPT V4.8 更新说明
 ---
+
 
 ## 新工作流
 
@@ -8660,13 +8466,10 @@ gmail: smtp.gmail.com
 23. 修复 - HTTP 模块url光标问题 https://github.com/labring/FastGPT/issues/1334 @maquannene 
 
 ---
-title: 'V4.8.1(包含升级脚本)'
-description: 'FastGPT V4.8.1 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 823
+title: V4.8.1(包含升级脚本)
+description: FastGPT V4.8.1 更新说明
 ---
+
 
 ## 初始化脚本
 
@@ -8701,13 +8504,10 @@ curl --location --request POST 'https://{{host}}/api/admin/clearInvalidData' \
 
 
 ---
-title: 'V4.8.10(包含升级脚本)'
-description: 'FastGPT V4.8.10 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 814
+title: V4.8.10(包含升级脚本)
+description: FastGPT V4.8.10 更新说明
 ---
+
 
 ## 更新指南
 
@@ -8807,13 +8607,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4810' \
 
 
 ---
-title: 'V4.8.11（商业版初始化）'
-description: 'FastGPT V4.8.11 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 813
+title: V4.8.11（商业版初始化）
+description: FastGPT V4.8.11 更新说明
 ---
+
 
 ## 更新指南
 
@@ -8948,13 +8745,10 @@ curl --location --request POST 'https://{{host}}/api/admin/init/4811' \
 
 
 ---
-title: 'V4.8.12(包含升级脚本)'
-description: 'FastGPT V4.8.12 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 812
+title: V4.8.12(包含升级脚本)
+description: FastGPT V4.8.12 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9018,13 +8812,10 @@ curl --location --request POST 'https://{{host}}/api/admin/resetMilvus' \
 
 
 ---
-title: 'V4.8.13'
-description: 'FastGPT V4.8.13 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 811
+title: V4.8.13
+description: FastGPT V4.8.13 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9071,13 +8862,10 @@ weight: 811
 
 
 ---
-title: 'V4.8.14'
-description: 'FastGPT V4.8.14 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 810
+title: V4.8.14
+description: FastGPT V4.8.14 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9127,13 +8915,10 @@ milvus版本使用：v4.8.14-milvus-fix 镜像。
 
 
 ---
-title: 'V4.8.15(包含升级脚本)'
-description: 'FastGPT V4.8.15 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 809
+title: V4.8.15(包含升级脚本)
+description: FastGPT V4.8.15 更新说明
 ---
+
 
 ## 新功能预览
 
@@ -9205,13 +8990,10 @@ curl --location --request POST 'https://{{host}}/api/admin/init/refreshFreeUser'
 
 
 ---
-title: 'V4.8.16(更新配置文件)'
-description: 'FastGPT V4.8.16 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 808
+title: V4.8.16(更新配置文件)
+description: FastGPT V4.8.16 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9279,13 +9061,10 @@ weight: 808
 21. 修复 - 设置NEXT_PUBLIC_BASE_URL时，图片文件读取URL不正确
 
 ---
-title: 'V4.8.17(包含升级脚本)'
-description: 'FastGPT V4.8.17 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 807
+title: V4.8.17(包含升级脚本)
+description: FastGPT V4.8.17 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9333,13 +9112,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4817' \
 
 
 ---
-title: 'V4.8.18(包含升级脚本)'
-description: 'FastGPT V4.8.18 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 806
+title: V4.8.18(包含升级脚本)
+description: FastGPT V4.8.18 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9382,13 +9158,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4818' \
 
 
 ---
-title: 'V4.8.19(包含升级脚本)'
-description: 'FastGPT V4.8.19 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 805
+title: V4.8.19(包含升级脚本)
+description: FastGPT V4.8.19 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9429,13 +9202,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4819' \
 15. 修复 - 部分模型提供商 logo 无法正常显示。
 
 ---
-title: 'V4.8.2'
-description: 'FastGPT V4.8.2 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 822
+title: V4.8.2
+description: FastGPT V4.8.2 更新说明
 ---
+
 
 ## Sealos 升级说明
 
@@ -9465,13 +9235,10 @@ SANDBOX_URL=内网地址
 
 
 ---
-title: 'V4.8.20(包含升级脚本)'
-description: 'FastGPT V4.8.20 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 804
+title: V4.8.20(包含升级脚本)
+description: FastGPT V4.8.20 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9517,13 +9284,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4820' \
 
 
 ---
-title: 'V4.8.21'
-description: 'FastGPT V4.8.21 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 803
+title: V4.8.21
+description: FastGPT V4.8.21 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9557,13 +9321,10 @@ weight: 803
 17. 修复 - 分享链接鉴权报错后无限循环。
 
 ---
-title: 'V4.8.22(包含升级脚本)'
-description: 'FastGPT V4.8.22 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 802
+title: V4.8.22(包含升级脚本)
+description: FastGPT V4.8.22 更新说明
 ---
+
 
 ## 🌟更新指南
 
@@ -9619,13 +9380,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4822' \
 12. 对话记录保存时，source 未正常记录。
 
 ---
-title: 'V4.8.23'
-description: 'FastGPT V4.8.23 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 801
+title: V4.8.23
+description: FastGPT V4.8.23 更新说明
 ---
+
 
 ## 更新指南
 
@@ -9674,13 +9432,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv4823' \
 6. 修复 Mongo Dataset text 索引在查询数据时未生效。
 
 ---
-title: 'V4.8.3'
-description: 'FastGPT V4.8.3 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 821
+title: V4.8.3
+description: FastGPT V4.8.3 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9697,13 +9452,10 @@ weight: 821
 5. 修复 - 变量更新在 Debug 模式下出错。
 
 ---
-title: 'V4.8.4(包含升级脚本)'
-description: 'FastGPT V4.8.4 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 820
+title: V4.8.4(包含升级脚本)
+description: FastGPT V4.8.4 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9737,13 +9489,10 @@ curl --location --request POST 'https://{{host}}/api/admin/init/484' \
 
 
 ---
-title: 'V4.8.5(包含升级脚本)'
-description: 'FastGPT V4.8.5 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 819
+title: V4.8.5(包含升级脚本)
+description: FastGPT V4.8.5 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9800,13 +9549,10 @@ curl --location --request POST 'https://{{host}}/api/admin/init/485' \
 
 
 ---
-title: 'V4.8.6(包含升级脚本)'
-description: 'FastGPT V4.8.6 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 818
+title: V4.8.6(包含升级脚本)
+description: FastGPT V4.8.6 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9853,13 +9599,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv486' \
 
 
 ---
-title: 'V4.8.7'
-description: 'FastGPT V4.8.7 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 817
+title: V4.8.7
+description: FastGPT V4.8.7 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9884,13 +9627,10 @@ weight: 817
 
 
 ---
-title: 'V4.8.8(包含升级脚本)'
-description: 'FastGPT V4.8.8 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 816
+title: V4.8.8(包含升级脚本)
+description: FastGPT V4.8.8 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9937,13 +9677,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv488' \
 
 
 ---
-title: 'V4.8.9（需要初始化）'
-description: 'FastGPT V4.8.9 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 815
+title: V4.8.9（需要初始化）
+description: FastGPT V4.8.9 更新说明
 ---
+
 
 ## 升级指南
 
@@ -9994,13 +9731,10 @@ curl --location --request POST 'https://{{host}}/api/admin/init/489' \
 
 
 ---
-title: 'V4.9.0(包含升级脚本)'
-description: 'FastGPT V4.9.0 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 800
+title: V4.9.0(包含升级脚本)
+description: FastGPT V4.9.0 更新说明
 ---
+
 
 
 ## 更新指南
@@ -10186,13 +9920,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv490' \
 
 
 ---
-title: 'V4.9.1'
-description: 'FastGPT V4.9.1 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 799
+title: V4.9.1
+description: FastGPT V4.9.1 更新说明
 ---
+
 
 ## 更新指南
 
@@ -10253,13 +9984,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv491' \
 
 
 ---
-title: 'V4.9.2'
-description: 'FastGPT V4.9.2 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 798
+title: V4.9.2
+description: FastGPT V4.9.2 更新说明
 ---
+
 ## 更新指南
 
 可直接升级v4.9.3，v4.9.2存在一个工作流数据类型转化错误。
@@ -10329,13 +10057,10 @@ weight: 798
 5. 移除 TTS 自定义请求地址时，必须需要填 requestAuth 字段。
 
 ---
-title: 'V4.9.3'
-description: 'FastGPT V4.9.3 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 797
+title: V4.9.3
+description: FastGPT V4.9.3 更新说明
 ---
+
 
 ## 更新指南
 
@@ -10360,13 +10085,10 @@ weight: 797
 
 
 ---
-title: 'V4.9.4'
-description: 'FastGPT V4.9.4 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 796
+title: V4.9.4
+description: FastGPT V4.9.4 更新说明
 ---
+
 
 ## 升级指南
 
@@ -10427,13 +10149,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initv494' \
 3. package/service 部分请求在多 app 中不一致。
 
 ---
-title: 'V4.9.5'
-description: 'FastGPT V4.9.5 更新说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 795
+title: V4.9.5
+description: FastGPT V4.9.5 更新说明
 ---
+
 
 ## 升级指南
 ### 1. 做好数据备份
@@ -10467,13 +10186,10 @@ weight: 795
 5. Debug 模式交互节点下一步可能造成死循环。
 
 ---
-title: '升级说明'
-description: 'FastGPT 升级说明'
-icon: 'upgrade'
-draft: false
-toc: true
-weight: 751
+title: 升级说明
+description: FastGPT 升级说明
 ---
+
 
 FastGPT 升级包括两个步骤：
 
@@ -10562,34 +10278,25 @@ sealos 中可以从上图左侧的环境变量中获取。
 
 
 ---
-weight: 750
-title: "版本更新/升级操作"
-description: "FastGPT 版本更新介绍及升级操作"
-icon: upgrade
-draft: false
-images: []
+title: 版本更新/升级操作
+description: FastGPT 版本更新介绍及升级操作
 ---
+
 <!-- 750~850 -->
 
 ---
-weight: 700
-title: '开发与部署指南'
-description: '本地开发 FastGPT 必看'
-icon: 'code_blocks'
-draft: false
-images: []
+title: 开发与部署指南
+description: 本地开发 FastGPT 必看
 ---
+
 <!-- 700 ~ 1100 -->
 
 
 ---
-title: '应用使用问题'
-description: 'FastGPT 常见应用使用问题，包括简易应用、工作流和插件'
-icon: 'quiz'
-draft: false
-toc: true
-weight: 908
+title: 应用使用问题
+description: FastGPT 常见应用使用问题，包括简易应用、工作流和插件
 ---
+
 
 ## 多轮对话中如何使连续问题被问题分类节点正确的归类
 
@@ -10667,13 +10374,10 @@ Latex block: $$e=mc^2$$
 
 
 ---
-title: '聊天框问题'
-description: 'FastGPT 常见聊天框问题'
-icon: 'quiz'
-draft: false
-toc: true
-weight: 906
+title: 聊天框问题
+description: FastGPT 常见聊天框问题
 ---
+
 
 ## 我修改了工作台的应用，为什么在“聊天”时没有更新配置？
 
@@ -10686,13 +10390,10 @@ weight: 906
 3. 需有 SSL 证书的站点才可以使用麦克风。
 
 ---
-title: '知识库使用问题'
-description: '常见知识库使用问题'
-icon: 'quiz'
-draft: false
-toc: true
-weight: 910
+title: 知识库使用问题
+description: 常见知识库使用问题
 ---
+
 
 ## 上传的文件内容出现中文乱码
 
@@ -10770,24 +10471,17 @@ FastGPT回复长度计算公式:
 另外，私有化部署的时候，后台配模型参数，可以在配置最大上文时，预留一些空间，比如 128000 的模型，可以只配置 120000, 剩余的空间后续会被安排给输出。
 
 ---
-title: 'Docker 部署问题'
-description: 'FastGPT Docker 部署问题'
-icon: ''
-draft: false
-toc: true
-weight: 902
-type: redirect
-target: /docs/development/docker/#faq
+title: Docker 部署问题
+description: FastGPT Docker 部署问题
 ---
 
 
+
 ---
-title: '报错'
-icon: 'quiz'
-draft: false
-toc: true
-weight: 914
+title: 报错
+description: ''
 ---
+
 
 1. ### 当前分组上游负载已饱和，请稍后再试(request id:202407100753411462086782835521)
 
@@ -10798,13 +10492,10 @@ weight: 914
 大概率是api-key填写了openapi，然后部署的服务器在国内，不能访问海外的api，可以使用中转或者反代的手段解决访问不到的问题
 
 ---
-title: "接入外部渠道"
-description: "如何通过外部渠道与 FastGPT 集成，实现对多种平台的支持"
-icon: "integration"
-draft: false
-toc: true
-weight: 912
+title: 接入外部渠道
+description: 如何通过外部渠道与 FastGPT 集成，实现对多种平台的支持
 ---
+
 
 1. ### 接入cow，图文对话无法直接显示图片
 
@@ -10817,12 +10508,10 @@ weight: 912
 ![](/imgs/integration1.png)
 
 ---
-title: '其他问题'
-icon: 'quiz'
-draft: false
-toc: true
-weight: 918
+title: 其他问题
+description: ''
 ---
+
 
 ## oneapi 官网是哪个
 
@@ -10833,13 +10522,10 @@ weight: 918
 开源版未支持多用户，仅商业版支持。
 
 ---
-title: "积分消耗"
-description: "了解 FastGPT 中的积分消耗机制和使用场景"
-icon: "points"
-draft: false
-toc: true
-weight: 916
+title: 积分消耗
+description: 了解 FastGPT 中的积分消耗机制和使用场景
 ---
+
 
 1. ### 接入oneapi后，为什么还会消耗fastgpt的积分
 
@@ -10848,36 +10534,25 @@ weight: 916
 ![](/imgs/points1.png)
 
 ---
-title: "私有部署常见问题"
-description: "FastGPT 私有部署常见问题"
-icon: upgrade
-draft: false
-images: []
-weight: 904
-type: redirect
-target: /docs/development/faq/
+title: 私有部署常见问题
+description: FastGPT 私有部署常见问题
 ---
 
+
 ---
-title: 'FAQ'
-description: '常见问题的解答'
-icon: 'quiz'
-draft: false
-toc: true
-weight: 900
+title: FAQ
+description: 常见问题的解答
 ---
+
 <!-- 900 ~ 1000 -->
 
 FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对产品使用存在疑问和建议，可尝试[加入社区](community)寻求支持。我们的团队与社区会竭尽所能为您提供帮助。
 
 ---
-title: 'SSO & 外部成员同步'
-description: 'FastGPT 外部成员系统接入设计与配置'
-icon: ''
-draft: false
-toc: true
-weight: 707
+title: SSO & 外部成员同步
+description: FastGPT 外部成员系统接入设计与配置
 ---
+
 
 如果你不需要用到 SSO/成员同步功能，或者是只需要用 Github、google、microsoft、公众号的快速登录，可以跳过本章节。本章适合需要接入自己的成员系统或主流 办公IM 的用户。
 
@@ -11454,13 +11129,10 @@ curl示例
 
 
 ---
-title: '团队模式说明文档'
-description: 'FastGPT 团队模式说明文档'
-icon: ''
-draft: false
-toc: true
-weight: 707
+title: 团队模式说明文档
+description: FastGPT 团队模式说明文档
 ---
+
 
 ## 介绍
 
@@ -11537,24 +11209,18 @@ weight: 707
 
 
 ---
-weight: 490
-title: '商业版后台'
-description: '商业版后台使用教程'
-icon: 'chat_bubble'
-draft: false
-images: []
+title: 商业版后台
+description: 商业版后台使用教程
 ---
+
 <!-- 470 ~ 500 -->
 
 
 ---
-title: "AI 相关参数配置说明"
-description: "FastGPT AI 相关参数配置说明"
-icon: "sign_language"
-draft: false
-toc: true
-weight: 104
+title: AI 相关参数配置说明
+description: FastGPT AI 相关参数配置说明
 ---
+
 
 在 FastGPT 的 AI 对话模块中，有一个 AI 高级配置，里面包含了 AI 模型的参数配置，本文详细介绍这些配置的含义。
 
@@ -11717,13 +11383,10 @@ Tips: 建议根据不同的场景，每种知识库仅选择1类数据类型，�
 
 
 ---
-title: "对话问题引导"
-description: "FastGPT 对话问题引导"
-icon: "code"
-draft: false
-toc: true
-weight: 106
+title: 对话问题引导
+description: FastGPT 对话问题引导
 ---
+
 
 ![](/imgs/questionGuide.png)
 
@@ -11772,13 +11435,10 @@ data是一个数组，包含了搜索到的问题，最多只需要返回5个问
 - searchKey - 搜索关键字
 
 ---
-title: "知识库集合标签"
-description: "FastGPT 知识库集合标签使用说明"
-icon: "developer_guide"
-draft: false
-toc: true
-weight: 109
+title: 知识库集合标签
+description: FastGPT 知识库集合标签使用说明
 ---
+
 
 知识库集合标签是 FastGPT 商业版特有功能。它允许你对知识库中的数据集合添加标签进行分类，更高效地管理知识库数据。
 
@@ -11824,13 +11484,10 @@ weight: 109
 
 
 ---
-title: '文件输入功能介绍'
-description: 'FastGPT 文件输入功能介绍'
-icon: 'description'
-draft: false
-toc: true
-weight: 110
+title: 文件输入功能介绍
+description: FastGPT 文件输入功能介绍
 ---
+
 
 从 4.8.9 版本起，FastGPT 支持在`简易模式`和`工作流`中，配置用户上传文件、图片功能。下面先简单介绍下如何使用文件输入功能，最后是介绍下文件解析的工作原理。
 
@@ -11938,13 +11595,10 @@ ${content}
 7. **工作流调用工作流：不再自动传递工作流上传的文件到子工作流，可以手动选择需要传递的文件链接。**
 
 ---
-title: '快速上手'
-description: '快速体验 FastGPT 基础功能'
-icon: 'rocket_launch'
-draft: false
-toc: true
-weight: 102
+title: 快速上手
+description: 快速体验 FastGPT 基础功能
 ---
+
 
 更多使用技巧，[查看视频教程](https://www.bilibili.com/video/BV1sH4y1T7s9)
 
@@ -11994,23 +11648,17 @@ weight: 102
 
 
 ---
-weight: 100
-title: '基础教程'
-description: 'FastGPT 基础教程'
-icon: 'import_contacts'
-draft: false
-images: []
+title: 基础教程
+description: FastGPT 基础教程
 ---
+
 <!-- 100 ~ 200 -->
 
 ---
-title: "对话框与HTML渲染"
-description: "如何在FastGPT中通过Markdown嵌入HTML代码块，并提供全屏、源代码切换等交互功能"
-icon: "group"
-draft: false
-toc: true
-weight: 470
+title: 对话框与HTML渲染
+description: 如何在FastGPT中通过Markdown嵌入HTML代码块，并提供全屏、源代码切换等交互功能
 ---
+
 
 | 源码模式 | 预览模式 | 全屏模式 |
 | --- | --- | --- |
@@ -12062,13 +11710,10 @@ weight: 470
 ```
 
 ---
-title: '知识库引用分块阅读器'
-description: 'FastGPT 分块阅读器功能介绍'
-icon: 'description'
-draft: false
-toc: true
-weight: 480
+title: 知识库引用分块阅读器
+description: FastGPT 分块阅读器功能介绍
 ---
+
 在企业 AI 应用落地过程中，文档知识引用的精确性和透明度一直是用户关注的焦点。FastGPT 4.9.1 版本带来的知识库分块阅读器，巧妙解决了这一痛点，让 AI 引用不再是"黑盒"。
 
 # 为什么需要分块阅读器？
@@ -12152,24 +11797,18 @@ FastGPT提供灵活的引用可见度设置，让知识共享既开放又安全�
 
 
 ---
-weight: 470
-title: '对话框'
-description: '对话框组件，支持多种交互方式，提升用户在应用中的交互体验。'
-icon: 'chat_bubble'
-draft: false
-images: []
+title: 对话框
+description: 对话框组件，支持多种交互方式，提升用户在应用中的交互体验。
 ---
+
 <!-- 470 ~ 500 -->
 
 
 ---
-title: 'API 文件库'
-description: 'FastGPT API 文件库功能介绍和使用方式'
-icon: 'language'
-draft: false
-toc: true
-weight: 405
+title: API 文件库
+description: FastGPT API 文件库功能介绍和使用方式
 ---
+
 
 | | |
 | --- | --- |
@@ -12352,13 +11991,12 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 
 
 ---
-title: '知识库搜索方案和参数'
-description: '本节会详细介绍 FastGPT 知识库结构设计，理解其 QA 的存储格式和多向量映射，以便更好的构建知识库。同时会介绍每个搜索参数的功能。这篇介绍主要以使用为主，详细原理不多介绍。'
-icon: 'language'
-draft: false
-toc: true
-weight: 404
+title: 知识库搜索方案和参数
+description: >-
+  本节会详细介绍 FastGPT 知识库结构设计，理解其 QA
+  的存储格式和多向量映射，以便更好的构建知识库。同时会介绍每个搜索参数的功能。这篇介绍主要以使用为主，详细原理不多介绍。
 ---
+
 
 ## 理解向量
 
@@ -12490,13 +12128,10 @@ FastGPT 会使用 `RRF` 对重排结果、向量搜索结果、全文检索结�
 
 
 ---
-title: '外部文件知识库'
-description: 'FastGPT 外部文件知识库功能介绍和使用方式'
-icon: 'language'
-draft: false
-toc: true
-weight: 408
+title: 外部文件知识库
+description: FastGPT 外部文件知识库功能介绍和使用方式
 ---
+
 
 外部文件库是 FastGPT 商业版特有功能。它允许接入你现在的文件系统，无需将文件再导入一份到 FastGPT 中。
 
@@ -12531,13 +12166,10 @@ weight: 408
 
 
 ---
-title: '飞书知识库'
-description: 'FastGPT 飞书知识库功能介绍和使用方式'
-icon: 'language'
-draft: false
-toc: true
-weight: 405
+title: 飞书知识库
+description: FastGPT 飞书知识库功能介绍和使用方式
 ---
+
 
 | | |
 | --- | --- |
@@ -12592,13 +12224,10 @@ FastGPT v4.8.16 版本开始，商业版用户支持飞书知识库导入，用�
 ![alt text](/imgs/image-39.png)
 
 ---
-title: '知识库基础原理介绍'
-description: '本节详细介绍RAG模型的核心机制、应用场景及其在生成任务中的优势与局限性。'
-icon: 'language'
-draft: false
-toc: true
-weight: 402
+title: 知识库基础原理介绍
+description: 本节详细介绍RAG模型的核心机制、应用场景及其在生成任务中的优势与局限性。
 ---
+
 
 [RAG文档](https://huggingface.co/docs/transformers/model_doc/rag)
 
@@ -12924,13 +12553,10 @@ RAG还可以应用于多模态生成场景，如图像、音频和3D内容生成
 RAG在智能问答、信息检索与文本生成等领域展现了出色的应用潜力，并在不断发展的技术支持下进一步拓展至多模态生成和企业决策支持等场景。通过引入混合检索技术、知识图谱以及动态反馈机制，RAG能够更加灵活地应对复杂的用户需求，生成具有事实支撑和逻辑连贯性的回答。未来，RAG将通过增强模型透明性与可控性，进一步提升在专业领域中的可信度和实用性，为智能信息检索与内容生成提供更广泛的应用空间。
 
 ---
-title: 'Web 站点同步'
-description: 'FastGPT Web 站点同步功能介绍和使用方式'
-icon: 'language'
-draft: false
-toc: true
-weight: 406
+title: Web 站点同步
+description: FastGPT Web 站点同步功能介绍和使用方式
 ---
+
 
 ![](/imgs/webSync1.jpg)
 
@@ -13005,13 +12631,10 @@ curl https://doc.tryfastgpt.ai/docs/intro/
 把两组选择器用逗号隔开即可：`.docs-content .mb-0.d-flex, .docs-content div[data-prismjs-copy]`
 
 ---
-title: '语雀文件库'
-description: 'FastGPT 语雀文件库功能介绍和使用方式'
-icon: 'language'
-draft: false
-toc: true
-weight: 405
+title: 语雀文件库
+description: FastGPT 语雀文件库功能介绍和使用方式
 ---
+
 
 | | |
 | --- | --- |
@@ -13048,23 +12671,17 @@ FastGPT v4.8.16 版本开始，商业版用户支持语雀文件库导入，用�
 ![alt text](/imgs/image-38.png)
 
 ---
-weight: 400
-title: '知识库'
-description: '知识库的基础原理、搜索方案、Web站点同步和外部文件知识库的使用方法。'
-icon: 'book'
-draft: false
-images: []
+title: 知识库
+description: 知识库的基础原理、搜索方案、Web站点同步和外部文件知识库的使用方法。
 ---
+
 <!-- 400 ~ 450 -->
 
 ---
-title: "Bing 搜索插件填写说明"
-description: "FastGPT Bing 搜索插件配置步骤详解"
-icon: "bing_search"
-draft: false
-toc: true
-weight: 306
+title: Bing 搜索插件填写说明
+description: FastGPT Bing 搜索插件配置步骤详解
 ---
+
 
 1. # 打开微软Azure官网，登陆账号
 
@@ -13091,13 +12708,10 @@ https://portal.azure.com/#create/Microsoft.BingSearch
 ![](/imgs/bing_search_plugin5.png)
 
 ---
-title: "Doc2x 插件填写说明"
-description: "如何配置和使用 Doc2x 插件"
-icon: "doc_transform"
-draft: false
-toc: true
-weight: 308
+title: Doc2x 插件填写说明
+description: 如何配置和使用 Doc2x 插件
 ---
+
 
 1. # 打开docx官网，创建账号，并复制 apikey
 
@@ -13118,13 +12732,10 @@ https://doc2x.noedgeai.com/
 ![](/imgs/doc2x_plugin4.png)
 
 ---
-title: "Google 搜索插件填写说明"
-description: "FastGPT Google 搜索插件配置指南"
-icon: "google_search"
-draft: false
-toc: true
-weight: 304
+title: Google 搜索插件填写说明
+description: FastGPT Google 搜索插件配置指南
 ---
+
 
 1. # 创建Google Custom Search Engine
 
@@ -13151,13 +12762,10 @@ https://developers.google.com/custom-search/v1/overview?hl=zh-cn
 ![](/imgs/google_search_plugin4.png)
 
 ---
-title: "如何提交系统插件"
-description: "FastGPT 系统插件提交指南"
-icon: "plugin_submission"
-draft: false
-toc: true
-weight: 302
+title: 如何提交系统插件
+description: FastGPT 系统插件提交指南
 ---
+
 
 > 如何向 FastGPT 社区提交系统插件
 
@@ -13270,13 +12878,10 @@ FastGPT 系统插件和用户工作台的插件效果是一致的，所以你需
 由于目前插件会默认插件输出均作为“工具调用”的结果，无法单独指定某些字段作为工具输出，所以，请避免插件的自定义输出携带大量说明字段。
 
 ---
-title: "SearXNG 搜索插件配置与使用说明"
-description: "FastGPT SearXNG 搜索插件配置指南"
-icon: "search"
-draft: false
-toc: true
-weight: 303
+title: SearXNG 搜索插件配置与使用说明
+description: FastGPT SearXNG 搜索插件配置指南
 ---
+
 
 [SearXNG](https://github.com/searxng/searxng)是一款免费的互联网元搜索引擎，它汇总了来自各种搜索服务和数据库的结果。它不会跟踪或分析用户。用户可以自行部署它进行使用。本文介绍 Searxng 的部署以及接入 FastGPT 插件。
 
@@ -13461,23 +13066,17 @@ default_doi_resolver: 'oadoi.org'
 2. 检查是否有超时的搜索引擎，通过 API 调用时不会返回结果。
 
 ---
-weight: 300
-title: '系统插件'
-description: '介绍如何使用和提交系统插件，以及各插件的填写说明'
-icon: 'extension'
-draft: false
-images: []
+title: 系统插件
+description: 介绍如何使用和提交系统插件，以及各插件的填写说明
 ---
+
 <!-- 300 ~ 400 -->
 
 ---
-title: "邀请链接说明文档"
-description: "如何使用邀请链接来邀请团队成员"
-icon: "group"
-draft: false
-toc: true
-weight: 451
+title: 邀请链接说明文档
+description: 如何使用邀请链接来邀请团队成员
 ---
+
 
 v4.9.1 团队邀请成员将开始使用「邀请链接」的模式，弃用之前输入用户名进行添加的形式。
 
@@ -13539,13 +13138,10 @@ v4.9.1 团队邀请成员将开始使用「邀请链接」的模式，弃用之�
 
 
 ---
-title: "团队&成员组&权限"
-description: "如何管理 FastGPT 团队、成员组及权限设置"
-icon: "group"
-draft: false
-toc: true
-weight: 450
+title: 团队&成员组&权限
+description: 如何管理 FastGPT 团队、成员组及权限设置
 ---
+
 
 # 团队 & 成员组 & 权限
 
@@ -13752,32 +13348,23 @@ export const ResourcePermissionSchema = new Schema({
 
 
 ---
-weight: 450
-title: '团队与权限'
-description: '团队管理、成员组与权限设置，确保团队协作中的数据安全和权限分配合理。'
-icon: 'group'
-draft: false
-images: []
+title: 团队与权限
+description: 团队管理、成员组与权限设置，确保团队协作中的数据安全和权限分配合理。
 ---
+
 <!-- 450 ~ 500 -->
 
 ---
-weight: 202
-title: '简易模式'
-description: '快速了解 FastGPT 工作台的简易模式'
-icon: 'speed'
-draft: false
-images: []
+title: 简易模式
+description: 快速了解 FastGPT 工作台的简易模式
 ---
 
+
 ---
-title: "使用 Gapier 快速导入Agent工具"
-description: "FastGPT 使用 Gapier 快速导入Agent工具"
-icon: "build"
-draft: false
-toc: true
-weight: 300
+title: 使用 Gapier 快速导入Agent工具
+description: FastGPT 使用 Gapier 快速导入Agent工具
 ---
+
 
 FastGPT V4.7版本加入了工具调用，可以兼容 GPTs 的 Actions。这意味着，你可以直接导入兼容 GPTs 的 Agent 工具。
 
@@ -13833,13 +13420,10 @@ Gapier 是一个在线 GPTs Actions工具，提供了50多种现成工具，并�
 
 
 ---
-title: "工作流&插件"
-description: "快速了解 FastGPT 工作流和插件的使用"
-icon: "extension"
-draft: false
-toc: true
-weight: 220
+title: 工作流&插件
+description: 快速了解 FastGPT 工作流和插件的使用
 ---
+
 
 FastGPT 从 V4 版本开始采用新的交互方式来构建 AI 应用。使用了 Flow 节点编排（工作流）的方式来实现复杂工作流，提高可玩性和扩展性。但同时也提高了上手的门槛，有一定开发背景的用户使用起来会比较容易。
 
@@ -13928,13 +13512,10 @@ FastGPT工作流中的线有以下几种状态：
 
 
 ---
-title: "AI 对话"
-description: "FastGPT AI 对话模块介绍"
-icon: "chat"
-draft: false
-toc: true
-weight: 232
+title: AI 对话
+description: FastGPT AI 对话模块介绍
 ---
+
 
 ## 特点
 
@@ -13963,13 +13544,10 @@ weight: 232
 {{% /alert %}}
 
 ---
-title: "文本内容提取"
-description: "FastGPT 内容提取模块介绍"
-icon: "content_paste_go"
-draft: false
-toc: true
-weight: 240
+title: 文本内容提取
+description: FastGPT 内容提取模块介绍
 ---
+
 
 ## 特点
 
@@ -14021,13 +13599,10 @@ weight: 240
 - **目标字段提取结果**：类型均为字符串。
 
 ---
-title: "问题优化"
-description: "问题优化模块介绍和使用"
-icon: "input"
-draft: false
-toc: true
-weight: 264
+title: 问题优化
+description: 问题优化模块介绍和使用
 ---
+
 
 ## 特点
 
@@ -14061,13 +13636,10 @@ weight: 264
 - [接入谷歌搜索](/docs/use-cases/app-cases/google_search/)
 
 ---
-title: "自定义反馈"
-description: "自定义反馈模块介绍"
-icon: "feedback"
-draft: false
-toc: true
-weight: 268
+title: 自定义反馈
+description: 自定义反馈模块介绍
 ---
+
 
 该模块为临时模块，后续会针对该模块进行更全面的设计。
 
@@ -14097,13 +13669,10 @@ weight: 268
 自定义反馈模块的功能类似于程序开发的`埋点`，便于你观测的对话中的数据。
 
 ---
-title: '知识库搜索'
-description: 'FastGPT AI 知识库搜索模块介绍'
-icon: 'chat'
-draft: false
-toc: true
-weight: 234
+title: 知识库搜索
+description: FastGPT AI 知识库搜索模块介绍
 ---
+
 
 知识库搜索具体参数说明，以及内部逻辑请移步：[FastGPT知识库搜索方案](/docs/guide/knowledge_base/rag/)
 
@@ -14133,13 +13702,10 @@ weight: 234
 
 
 ---
-title: "文档解析"
-description: "FastGPT 文档解析模块介绍"
-icon: "document_analysis"
-draft: false
-toc: true
-weight: 250
+title: 文档解析
+description: FastGPT 文档解析模块介绍
 ---
+
 
 <div style="display: flex; gap: 10px;">
     <img src="/imgs/document_analysis1.png" alt="文档解析示例 1" width="35%" />
@@ -14154,13 +13720,10 @@ weight: 250
 ## 作用 
 
 ---
-title: "表单输入"
-description: "FastGPT 表单输入模块介绍"
-icon: "form_input"
-draft: false
-toc: true
-weight: 244
+title: 表单输入
+description: FastGPT 表单输入模块介绍
 ---
+
 
 ## 特点 
 
@@ -14187,13 +13750,10 @@ weight: 244
 能够精准收集需要的用户信息，再根据用户信息进行后续操作
 
 ---
-title: "HTTP 请求"
-description: "FastGPT HTTP 模块介绍"
-icon: "http"
-draft: false
-toc: true
-weight: 252
+title: HTTP 请求
+description: FastGPT HTTP 模块介绍
 ---
+
 
 ## 特点
 
@@ -14444,13 +14004,10 @@ export default async function (ctx: FunctionContext) {
 
 
 ---
-title: "知识库搜索引用合并"
-description: "FastGPT 知识库搜索引用合并模块介绍"
-icon: "knowledge_merge"
-draft: false
-toc: true
-weight: 262
+title: 知识库搜索引用合并
+description: FastGPT 知识库搜索引用合并模块介绍
 ---
+
 
 
 ![](/imgs/knowledge_merge1.png)
@@ -14474,13 +14031,10 @@ AI对话只能接收一个知识库引用内容。因此，如果调用了多个
 1. 经过问题分类后对不同知识库进行检索，然后统一给一个 AI 进行回答，此时可以用到合并，不需要每个分支都添加一个 AI 对话。
 
 ---
-title: "Laf 函数调用"
-description: "FastGPT Laf 函数调用模块介绍"
-icon: "code"
-draft: false
-toc: true
-weight: 266
+title: Laf 函数调用
+description: FastGPT Laf 函数调用模块介绍
 ---
+
 
 
 ![](/imgs/laf1.webp)
@@ -14573,13 +14127,10 @@ export default async function (ctx: FunctionContext): Promise<IResponse> {
 先在 laf 中调试函数，看是否正常调用。可以通过 console.log，打印入参，将入参放在 Laf 测试页面的 Body 中进行测试。
 
 ---
-title: "批量运行"
-description: "FastGPT 批量运行节点介绍和使用"
-icon: "input"
-draft: false
-toc: true
-weight: 260
+title: 批量运行
+description: FastGPT 批量运行节点介绍和使用
 ---
+
 
 ## 节点概述
 
@@ -14872,13 +14423,10 @@ weight: 260
 
 
 ---
-title: "问题分类"
-description: "FastGPT 问题分类模块介绍"
-icon: "quiz"
-draft: false
-toc: true
-weight: 238
+title: 问题分类
+description: FastGPT 问题分类模块介绍
 ---
+
 
 ## 特点
 
@@ -14951,13 +14499,10 @@ const agentFunction = {
 上面的 Function 必然会返回 `type = abc，vvv，aaa` 其中一个值，从而实现分类判断。
 
 ---
-title: "指定回复"
-description: "FastGPT 指定回复模块介绍"
-icon: "reply"
-draft: false
-toc: true
-weight: 248
+title: 指定回复
+description: FastGPT 指定回复模块介绍
 ---
+
 
 ## 特点
 
@@ -14979,13 +14524,10 @@ weight: 248
 
 
 ---
-title: "代码运行"
-description: "FastGPT 代码运行节点介绍"
-icon: "input"
-draft: false
-toc: true
-weight: 258
+title: 代码运行
+description: FastGPT 代码运行节点介绍
 ---
+
 
 ![alt text](/imgs/image.png)
 
@@ -15081,13 +14623,10 @@ function main({secret}){
 ```
 
 ---
-title: "文本拼接"
-description: "FastGPT 文本加工模块介绍"
-icon: "input"
-draft: false
-toc: true
-weight: 246
+title: 文本拼接
+description: FastGPT 文本加工模块介绍
 ---
+
 
 ## 特点
 
@@ -15114,13 +14653,10 @@ weight: 246
 - [接入谷歌搜索](/docs/use-cases/app-cases/google_search/)
 
 ---
-title: "判断器"
-description: "FastGPT 判断器模块介绍"
-icon: "input"
-draft: false
-toc: true
-weight: 254
+title: 判断器
+description: FastGPT 判断器模块介绍
 ---
+
 
 ## 特点
 
@@ -15147,13 +14683,10 @@ weight: 254
 
 
 ---
-title: "工具调用&终止"
-description: "FastGPT 工具调用模块介绍"
-icon: "build"
-draft: false
-toc: true
-weight: 236
+title: 工具调用&终止
+description: FastGPT 工具调用模块介绍
 ---
+
 
 
 ![](/imgs/flow-tool1.png)
@@ -15234,13 +14767,10 @@ weight: 236
 - [发送飞书webhook](https://doc.fastgpt.in/docs/use-cases/app-cases/feishu_webhook/)
 
 ---
-title: "用户选择"
-description: "FastGPT 用户选择模块的使用说明"
-icon: "user_check"
-draft: false
-toc: true
-weight: 242
+title: 用户选择
+description: FastGPT 用户选择模块的使用说明
 ---
+
 
 ## 特点 
 
@@ -15267,13 +14797,10 @@ weight: 242
 基础的用法为提出需要用户做抉择的问题，然后根据用户的反馈设计不同的工作流流程
 
 ---
-title: "变量更新"
-description: "FastGPT 变量更新模块介绍"
-icon: "variable_update"
-draft: false
-toc: true
-weight: 256
+title: 变量更新
+description: FastGPT 变量更新模块介绍
 ---
+
 
 ## 特点 
 
@@ -15306,44 +14833,32 @@ weight: 256
 - 更新「变量更新」节点前的工作流节点输出，在后续使用中，使用的节点输出值为新的输出
 
 ---
-weight: 230
-title: '工作流节点'
-description: 'FastGPT 工作流节点设置和使用指南'
-icon: 'workflow'
-draft: false
-images: []
+title: 工作流节点
+description: FastGPT 工作流节点设置和使用指南
 ---
+
 <!-- 200 ~ 300 -->
 
 
 ---
-weight: 200
-title: '工作台'
-description: 'FastGPT 工作台及工作流节点的使用说明'
-icon: 'dashboard'
-draft: false
-images: []
+title: 工作台
+description: FastGPT 工作台及工作流节点的使用说明
 ---
+
 <!-- 200 ~ 300 -->
 
 ---
-weight: 100
-title: '功能介绍'
-description: 'FastGPT 的功能和使用指南'
-icon: 'import_contacts'
-draft: false
-images: []
+title: 功能介绍
+description: FastGPT 的功能和使用指南
 ---
+
 <!-- 100 ~ 500 -->
 
 ---
-title: '快速了解 FastGPT'
-description: 'FastGPT 的能力与优势'
-icon: 'rocket_launch'
-draft: false
-toc: true
-weight: -10
+title: 快速了解 FastGPT
+description: FastGPT 的能力与优势
 ---
+
 
 FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，将智能对话与可视化编排完美结合，让 AI 应用开发变得简单自然。无论您是开发者还是业务人员，都能轻松打造专属的 AI 应用。
 
@@ -15409,13 +14924,10 @@ FastGPT 完全对齐 OpenAI 官方接口，支持一键接入企业微信、公�
 
 
 ---
-title: '商业版'
-description: 'FastGPT 商业版相关说明'
-icon: 'shopping_cart'
-draft: false
-toc: true
-weight: 1104
+title: 商业版
+description: FastGPT 商业版相关说明
 ---
+
 
 ## 简介
 
@@ -15523,13 +15035,10 @@ Sealos 云服务属于按量计费，下面是它的价格表：
 | ![alt text](/imgs/image-55.png) | ![alt text](/imgs/image-56.png) | ![alt text](/imgs/image-57.png) |
 
 ---
-title: '线上版定价'
-description: 'FastGPT 线上版定价'
-icon: 'currency_yen'
-draft: false
-toc: true
-weight: 1102
+title: 线上版定价
+description: FastGPT 线上版定价
 ---
+
 
 线上版价格按套餐订阅模式，具体价格和计费请查看（请正确选择版本，账号不互通）：
 
@@ -15537,24 +15046,18 @@ weight: 1102
 - [国内版](https://cloud.fastgpt.cn/price)
 
 ---
-weight: 1100
-title: '收费说明'
-description: 'FastGPT 收费说明'
-icon: 'shopping_cart'
-draft: false
-images: []
+title: 收费说明
+description: FastGPT 收费说明
 ---
+
 <!-- 1100 ~ 1200 -->
 
 
 ---
-title: 'Dalle3 绘图'
-description: '使用 HTTP 模块绘制图片'
-icon: 'image'
-draft: false
-toc: true
-weight: 614
+title: Dalle3 绘图
+description: 使用 HTTP 模块绘制图片
 ---
+
 
 |                       |                       |
 | --------------------- | --------------------- |
@@ -16021,13 +15524,10 @@ Response:
 
 
 ---
-title: "英语作文纠错机器人"
-description: "使用 FastGPT 创建一个用于英语作文纠错的机器人，帮助用户检测并纠正语言错误"
-icon: "spellcheck"
-draft: false
-toc: true
-weight: 608
+title: 英语作文纠错机器人
+description: 使用 FastGPT 创建一个用于英语作文纠错的机器人，帮助用户检测并纠正语言错误
 ---
+
 
 FastGPT 提供了一种基于 LLM Model 搭建应用的简便方式。
 
@@ -16119,13 +15619,10 @@ FastGPT 的指定回复组件可以将 Markdown 解析为 Html 返回。
 > [点我使用](https://share.fastgpt.in/chat/share?shareId=b4r173wkcjae7wpnexcvmyc3)
 
 ---
-title: '发送飞书webhook通知'
-description: '利用工具调用模块，发送一个飞书webhook通知'
-icon: 'image'
-draft: false
-toc: true
-weight: 618
+title: 发送飞书webhook通知
+description: 利用工具调用模块，发送一个飞书webhook通知
 ---
+
 
 该文章展示如何发送一个简单的飞书webhook通知，以此类推，发送其他类型的通知也可以这么操作。
 
@@ -16531,13 +16028,10 @@ weight: 618
 4. HTTP模块输出再连上一个指定回复，直接回复一个发送成功，用于替代AI的回答。
 
 ---
-title: '固定开头和结尾内容'
-description: '利用指定回复，创建固定的开头和结尾'
-icon: 'healing'
-draft: false
-toc: true
-weight: 610
+title: 固定开头和结尾内容
+description: 利用指定回复，创建固定的开头和结尾
 ---
+
 
 ![](/imgs/demo-fix-evidence1.jpg)
 
@@ -16965,13 +16459,10 @@ weight: 610
 
 
 ---
-title: '接入谷歌搜索'
-description: '将 FastGPT 接入谷歌搜索'
-icon: 'search'
-draft: false
-toc: true
-weight: 616
+title: 接入谷歌搜索
+description: 将 FastGPT 接入谷歌搜索
 ---
+
 
 |                     |                       |
 | --------------------- | --------------------- |
@@ -18252,13 +17743,10 @@ export default async function (ctx: FunctionContext) {
 
 
 ---
-title: '实验室预约'
-description: '展示高级编排操作数据库的能力'
-icon: 'database'
-draft: false
-toc: true
-weight: 612
+title: 实验室预约
+description: 展示高级编排操作数据库的能力
 ---
+
 
 |                       |                       |
 | --------------------- | --------------------- |
@@ -19107,13 +18595,10 @@ async function createRecord({ name, time, labname }: RequestType) {
 
 
 ---
-title: "多轮翻译机器人"
-description: "如何使用 FastGPT 构建一个多轮翻译机器人，实现连续的对话翻译功能"
-icon: "translate"
-draft: false
-toc: true
-weight: 606
+title: 多轮翻译机器人
+description: 如何使用 FastGPT 构建一个多轮翻译机器人，实现连续的对话翻译功能
 ---
+
 
 吴恩达老师提出了一种反思翻译的大语言模型(LLM)翻译工作流程——[GitHub - andrewyng/translation-agent](https://github.com/andrewyng/translation-agent)，具体工作流程如下：
 
@@ -19423,13 +18908,10 @@ Fastgpt 提供了工作流线路可以返回去执行的功能，所以我们可
 而对于一些超出 LLM 理解的术语等，也可以利用 Fastgpt 的知识库功能进行相应扩展，进一步完善翻译机器人的功能
 
 ---
-title: "如何提交应用模板"
-description: "指南：如何向 FastGPT 提交应用模板"
-icon: "template_submission"
-draft: false
-toc: true
-weight: 602
+title: 如何提交应用模板
+description: 指南：如何向 FastGPT 提交应用模板
 ---
+
 
 
 ## 什么模板可以合并
@@ -19511,13 +18993,10 @@ weight: 602
 
 
 ---
-title: '长字幕翻译'
-description: '利用 AI 自我反思提升翻译质量，同时循环迭代执行 AI 工作流来突破 LLM tokens 限制，实现一个高效的长字幕翻译机器人。'
-icon: 'translate'
-draft: false
-toc: true
-weight: 604
+title: 长字幕翻译
+description: 利用 AI 自我反思提升翻译质量，同时循环迭代执行 AI 工作流来突破 LLM tokens 限制，实现一个高效的长字幕翻译机器人。
 ---
+
 
 直接使用 LLM 来翻译长字幕会遇到很多难点，这些难点也正是直接使用 AI 无法有效处理的问题：
 
@@ -21729,23 +21208,18 @@ weight: 604
 {{% /details %}}
 
 ---
-title: "应用搭建案例"
-description: "FastGPT 应用场景及功能实现的搭建案例"
-icon: "construction"
-draft: false
-weight: 600
+title: 应用搭建案例
+description: FastGPT 应用场景及功能实现的搭建案例
 ---
+
 <!-- 600 ~ 700 -->
 
 
 ---
-title: "接入钉钉机器人教程"
-description: "FastGPT 接入钉钉机器人教程"
-icon: "chat"
-draft: false
-toc: true
-weight: 505
+title: 接入钉钉机器人教程
+description: FastGPT 接入钉钉机器人教程
 ---
+
 
 从 4.8.16 版本起，FastGPT 商业版支持直接接入钉钉机器人，无需额外的 API。
 
@@ -21798,13 +21272,10 @@ weight: 505
 
 
 ---
-title: "接入飞书机器人教程"
-description: "FastGPT 接入飞书机器人教程"
-icon: "chat"
-draft: false
-toc: true
-weight: 504
+title: 接入飞书机器人教程
+description: FastGPT 接入飞书机器人教程
 ---
+
 
 从 4.8.10 版本起，FastGPT 商业版支持直接接入飞书机器人，无需额外的 API。
 
@@ -21896,22 +21367,16 @@ Verification Token 默认生成的这个 Token 用于校验来源。但我们使
 4. 如果没记录，则可能是应用运行报错了，可以先试试最简单的机器人。（飞书机器人无法输入全局变量、文件、图片内容）
 
 ---
-title: "iframe 接入"
-description: "通过 iframe 嵌入 FastGPT 内容到其他网页或应用"
-icon: "iframe"
-draft: false
-toc: true
-weight: 512
+title: iframe 接入
+description: 通过 iframe 嵌入 FastGPT 内容到其他网页或应用
 ---
 
+
 ---
-title: '接入微信公众号教程'
-description: 'FastGPT 接入微信公众号教程'
-icon: 'description'
-draft: false
-toc: true
-weight: 506
+title: 接入微信公众号教程
+description: FastGPT 接入微信公众号教程
 ---
+
 
 从 4.8.10 版本起，FastGPT 商业版支持直接接入微信公众号，无需额外的 API。
 
@@ -22031,13 +21496,10 @@ weight: 506
 
 
 ---
-title: "对接 chatgpt-on-wechat"
-description: "FastGPT 对接 chatgpt-on-wechat"
-icon: "chat"
-draft: false
-toc: true
-weight: 509
+title: 对接 chatgpt-on-wechat
+description: FastGPT 对接 chatgpt-on-wechat
 ---
+
 
 # 1 分钟对接 chatgpt-on-wechat
 
@@ -22105,13 +21567,10 @@ docker-compose up -d
 * 随便找个账号，私信发送: bot问题  会将 问题 传到 FastGPT 进行回答。
 
 ---
-title: "通过 API 访问应用"
-description: "通过 API 访问 FastGPT 应用"
-icon: "model_training"
-draft: false
-toc: true
-weight: 502
+title: 通过 API 访问应用
+description: 通过 API 访问 FastGPT 应用
 ---
+
 
 在 FastGPT 中，你可以为每一个应用创建多个 API 密钥，用于访问应用的 API 接口。每个密钥仅能访问一个应用。完整的接口可以[查看应用对话接口](/docs/development/openapi/chat)。
 
@@ -22146,13 +21605,10 @@ OPENAI_API_KEY = 上一步获取到的密钥
 ![](/imgs/chatgptweb.png)
 
 ---
-title: "接入微信和企业微信 "
-description: "FastGPT 接入微信和企业微信 "
-icon: "chat"
-draft: false
-toc: true
-weight: 510
+title: '接入微信和企业微信 '
+description: 'FastGPT 接入微信和企业微信 '
 ---
+
 
 # FastGPT 三分钟接入微信/企业微信
 私人微信和企业微信接入的方式基本一样，不同的地方会刻意指出。   
@@ -22223,35 +21679,25 @@ WORK_PRO_TOKEN=你申请的企微 token   （企业微信需要填写，私人�
 
 
 ---
-weight: 500
-title: "外部调用 FastGPT"
-description: "外部应用通过多种方式调用 FastGPT 功能的教程"
-icon: "cloud"
-draft: false
-images: []
+title: 外部调用 FastGPT
+description: 外部应用通过多种方式调用 FastGPT 功能的教程
 ---
+
 <!-- 500 ~ 600 -->
 
 
 ---
-weight: 500
-title: '使用案例'
-description: '有关 FastGPT 其他实践案例的更多信息'
-icon: 'cases'
-draft: false
-images: []
+title: 使用案例
+description: 有关 FastGPT 其他实践案例的更多信息
 ---
+
 <!-- 500 ~ 700 -->
 
 
 ---
-weight: 0
-title: '文档'
-description: 'FastGPT 官方文档'
-icon: menu_book
-lead: ''
-draft: false
-images: []
+title: 文档
+description: FastGPT 官方文档
 ---
+
 
 
