@@ -28,6 +28,15 @@ type ChildrenInteractive = InteractiveNodeType & {
   };
 };
 
+type LoopInteractive = InteractiveNodeType & {
+  type: 'loopInteractive';
+  params: {
+    loopResult: any[];
+    childrenResponse: WorkflowInteractiveResponseType;
+    currentIndex: number;
+  };
+};
+
 export type UserSelectOptionItemType = {
   key: string;
   value: string;
@@ -71,5 +80,7 @@ type UserInputInteractive = InteractiveNodeType & {
 export type InteractiveNodeResponseType =
   | UserSelectInteractive
   | UserInputInteractive
-  | ChildrenInteractive;
+  | ChildrenInteractive
+  | LoopInteractive;
+
 export type WorkflowInteractiveResponseType = InteractiveBasicType & InteractiveNodeResponseType;

@@ -7,7 +7,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -70,7 +70,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
       appData.modules,
       getWorkflowEntryNodeIds(appData.modules)
     ),
-    runtimeEdges: initWorkflowEdgeStatus(appData.edges),
+    runtimeEdges: storeEdges2RuntimeEdges(appData.edges),
     histories: chatHistories,
     query: runtimePrompt2ChatsValue({
       files,

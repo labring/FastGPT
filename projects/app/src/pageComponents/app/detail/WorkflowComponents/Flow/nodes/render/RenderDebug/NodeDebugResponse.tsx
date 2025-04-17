@@ -15,7 +15,7 @@ import {
 import { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
   getLastInteractiveValue,
-  initWorkflowEdgeStatus
+  storeEdges2RuntimeEdges
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -137,7 +137,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
       onNextNodeDebug({
         ...workflowDebugData,
         // Rewrite runtimeEdges
-        runtimeEdges: initWorkflowEdgeStatus(workflowDebugData.runtimeEdges, lastInteractive),
+        runtimeEdges: storeEdges2RuntimeEdges(workflowDebugData.runtimeEdges, lastInteractive),
         query: updatedQuery,
         history: mockHistory
       });

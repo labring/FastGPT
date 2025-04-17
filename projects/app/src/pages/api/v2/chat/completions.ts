@@ -11,7 +11,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse,
   getLastInteractiveValue
@@ -288,7 +288,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           responseChatItemId,
           runtimeNodes,
-          runtimeEdges: initWorkflowEdgeStatus(edges, interactive),
+          runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
           variables,
           query: removeEmptyUserInput(userQuestion.value),
           lastInteractive: interactive,

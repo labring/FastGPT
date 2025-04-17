@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   RuntimeEdgeItemType,
+  RuntimeNodeItemType,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
@@ -14,7 +15,8 @@ import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import json5 from 'json5';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -104,102 +106,6 @@ export const getHistories = (history?: ChatItemType[] | number, histories: ChatI
   return [...systemHistories, ...filterHistories];
 };
 
-/* value type format */
-export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
-  // 1. 基础条件检查
-  if (value === undefined || value === null) return;
-  if (!type || type === WorkflowIOValueTypeEnum.any) return value;
-
-  // 2. 如果值已经符合目标类型，直接返回
-  if (
-    (type === WorkflowIOValueTypeEnum.string && typeof value === 'string') ||
-    (type === WorkflowIOValueTypeEnum.number && typeof value === 'number') ||
-    (type === WorkflowIOValueTypeEnum.boolean && typeof value === 'boolean') ||
-    (type === WorkflowIOValueTypeEnum.object &&
-      typeof value === 'object' &&
-      !Array.isArray(value)) ||
-    (type.startsWith('array') && Array.isArray(value))
-  ) {
-    return value;
-  }
-
-  // 3. 处理JSON字符串
-  if (type === WorkflowIOValueTypeEnum.object || type.startsWith('array')) {
-    if (typeof value === 'string' && value.trim()) {
-      const trimmedValue = value.trim();
-      const isJsonLike =
-        (trimmedValue.startsWith('{') && trimmedValue.endsWith('}')) ||
-        (trimmedValue.startsWith('[') && trimmedValue.endsWith(']'));
-
-      if (isJsonLike) {
-        try {
-          const parsed = json5.parse(trimmedValue);
-
-          // 解析结果与目标类型匹配时使用解析后的值
-          if (
-            (Array.isArray(parsed) && type.startsWith('array')) ||
-            (type === WorkflowIOValueTypeEnum.object &&
-              typeof parsed === 'object' &&
-              !Array.isArray(parsed))
-          ) {
-            return parsed;
-          }
-        } catch (error) {
-          // 解析失败时继续使用原始值
-        }
-      }
-    }
-  }
-
-  // 4. 按类型处理
-  // 4.1 数组类型
-  if (type.startsWith('array')) {
-    // 数组类型的特殊处理：字符串转为单元素数组
-    if (type === WorkflowIOValueTypeEnum.arrayString && typeof value === 'string') {
-      return [value];
-    }
-    // 其他值包装为数组
-    return [value];
-  }
-
-  // 4.2 基本类型转换
-  if (type === WorkflowIOValueTypeEnum.string) {
-    return typeof value === 'object' ? JSON.stringify(value) : String(value);
-  }
-
-  if (type === WorkflowIOValueTypeEnum.number) {
-    return Number(value);
-  }
-
-  if (type === WorkflowIOValueTypeEnum.boolean) {
-    if (typeof value === 'string') {
-      return value.toLowerCase() === 'true';
-    }
-    return Boolean(value);
-  }
-
-  // 4.3 复杂对象类型处理
-  if (
-    [
-      WorkflowIOValueTypeEnum.object,
-      WorkflowIOValueTypeEnum.chatHistory,
-      WorkflowIOValueTypeEnum.datasetQuote,
-      WorkflowIOValueTypeEnum.selectApp,
-      WorkflowIOValueTypeEnum.selectDataset
-    ].includes(type) &&
-    typeof value !== 'object'
-  ) {
-    try {
-      return json5.parse(value);
-    } catch (error) {
-      return value;
-    }
-  }
-
-  // 5. 默认返回原值
-  return value;
-};
-
 export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
   if (!quoteQA) return undefined;
   if (quoteQA.length === 0) {
@@ -251,4 +157,54 @@ export const formatHttpError = (error: any) => {
     code: error?.code,
     status: error?.status
   };
+};
+
+export const rewriteRuntimeWorkFlow = (
+  nodes: RuntimeNodeItemType[],
+  edges: RuntimeEdgeItemType[]
+) => {
+  const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+
+  if (toolSetNodes.length === 0) {
+    return;
+  }
+
+  const nodeIdsToRemove = new Set<string>();
+
+  for (const toolSetNode of toolSetNodes) {
+    nodeIdsToRemove.add(toolSetNode.nodeId);
+    const toolList =
+      toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
+    const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
+
+    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+
+    for (const tool of toolList) {
+      const newToolNode = getMCPToolRuntimeNode({ avatar: toolSetNode.avatar, tool, url });
+
+      nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
+
+      for (const inEdge of incomingEdges) {
+        edges.push({
+          source: inEdge.source,
+          target: newToolNode.nodeId,
+          sourceHandle: inEdge.sourceHandle,
+          targetHandle: 'selectedTools',
+          status: inEdge.status
+        });
+      }
+    }
+  }
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(nodes[i].nodeId)) {
+      nodes.splice(i, 1);
+    }
+  }
+
+  for (let i = edges.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(edges[i].target)) {
+      edges.splice(i, 1);
+    }
+  }
 };

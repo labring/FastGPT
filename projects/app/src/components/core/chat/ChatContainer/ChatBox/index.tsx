@@ -66,6 +66,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -440,12 +441,13 @@ const ChatBox = ({
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           allVariableList?.forEach((item) => {
-            requestVariables[item.key] =
+            const val =
               variables[item.key] === '' ||
               variables[item.key] === undefined ||
               variables[item.key] === null
                 ? item.defaultValue
                 : variables[item.key];
+            requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 
           const responseChatId = getNanoid(24);

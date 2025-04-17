@@ -26,7 +26,9 @@ const provider = () => {
     (res: ResLogin) => {
       setUserInfo(res.user);
 
-      router.push(loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/app/list');
+      router.push(
+        loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/dashboard/apps'
+      );
     },
     [setUserInfo, router, loginStore?.lastRoute]
   );
@@ -95,7 +97,7 @@ const provider = () => {
 
     (async () => {
       await clearToken();
-      router.prefetch('/app/list');
+      router.prefetch('/dashboard/apps');
 
       if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
         toast({

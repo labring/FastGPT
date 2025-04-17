@@ -10,7 +10,8 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import axios from 'axios';
-import { formatHttpError, valueTypeFormat } from '../utils';
+import { formatHttpError } from '../utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';

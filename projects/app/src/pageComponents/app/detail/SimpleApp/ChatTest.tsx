@@ -1,4 +1,4 @@
-import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -10,7 +10,6 @@ import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatTest } from '../useChatTest';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
@@ -57,7 +56,6 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
       <MyBox
         flex={'1 0 0'}
         w={0}
-        isLoading={loading}
         display={'flex'}
         position={'relative'}
         flexDirection={'column'}

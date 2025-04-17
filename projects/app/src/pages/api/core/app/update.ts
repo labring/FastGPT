@@ -99,6 +99,16 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
 
     await refreshSourceAvatar(avatar, app.avatar, session);
 
+    if (app.type === AppTypeEnum.toolSet && avatar) {
+      await MongoApp.updateMany(
+        { parentId: appId, teamId: app.teamId },
+        {
+          avatar
+        },
+        { session }
+      );
+    }
+
     return MongoApp.findByIdAndUpdate(
       appId,
       {

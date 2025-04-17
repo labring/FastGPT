@@ -13,25 +13,32 @@ jobs:
       pull-requests: write
 
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        image: [fastgpt, sandbox, mcp_server]
+      fail-fast: false # 即使一个镜像构建失败，也继续构建其他镜像
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
-          fetch-depth: 0 # Fetch all history for .GitInfo and .Lastmod
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
         with:
           driver-opts: network=host
+
       - name: Cache Docker layers
         uses: actions/cache@v3
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ github.sha }}-${{ matrix.image }}
           restore-keys: |
+            ${{ runner.os }}-buildx-${{ github.sha }}-
             ${{ runner.os }}-buildx-
 
       - name: Login to GitHub Container Registry
@@ -41,24 +48,35 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
+      - name: Set image config
+        id: config
         run: |
-          echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          if [[ "${{ matrix.image }}" == "fastgpt" ]]; then
+            echo "DOCKERFILE=projects/app/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-pr image" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "sandbox" ]]; then
+            echo "DOCKERFILE=projects/sandbox/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-sandbox-pr image" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_sandbox_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ matrix.image }}" == "mcp_server" ]]; then
+            echo "DOCKERFILE=projects/mcp_server/Dockerfile" >> $GITHUB_OUTPUT
+            echo "DESCRIPTION=fastgpt-mcp_server-pr image" >> $GITHUB_OUTPUT
+            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-pr:fatsgpt_mcp_server_${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Build image for PR
-        env:
-          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+      - name: Build ${{ matrix.image }} image for PR
         run: |
           docker buildx build \
-          -f projects/app/Dockerfile \
+          -f ${{ steps.config.outputs.DOCKERFILE }} \
           --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
-          --label "org.opencontainers.image.description=fastgpt-pr image" \
-          --label "org.opencontainers.image.licenses=Apache" \
+          --label "org.opencontainers.image.description=${{ steps.config.outputs.DESCRIPTION }}" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${DOCKER_REPO_TAGGED} \
+          -t ${{ steps.config.outputs.DOCKER_REPO_TAGGED }} \
           .
+
       - uses: actions/github-script@v7
         with:
           github-token: ${{secrets.GITHUB_TOKEN}}
@@ -67,5 +85,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'Preview Image: `${{ env.DOCKER_REPO_TAGGED }}`'
+              body: 'Preview ${{ matrix.image }} Image: `${{ steps.config.outputs.DOCKER_REPO_TAGGED }}`'
             })

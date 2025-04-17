@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -79,7 +79,7 @@ export const getScheduleTriggerApp = async () => {
             },
             uid: String(app.tmbId),
             runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-            runtimeEdges: initWorkflowEdgeStatus(edges),
+            runtimeEdges: storeEdges2RuntimeEdges(edges),
             variables: {},
             query: userQuery,
             chatConfig,
