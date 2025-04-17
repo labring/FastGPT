@@ -38,18 +38,18 @@ app.get('/:key/sse', async (req, res) => {
   );
 
   transport.onclose = () => {
-    addLog.info(`Transport ${transport.sessionId} closed`);
+    addLog.info(`Transport closed ${transport.sessionId}`);
     delete transportMap[transport.sessionId];
   };
   transport.onerror = (err) => {
-    addLog.error(`Transport ${transport.sessionId} error`, err);
+    addLog.error(`Transport error ${transport.sessionId}`, err);
   };
   server.onclose = () => {
-    addLog.info(`Server ${transport.sessionId} closed`);
+    addLog.info(`Server closed ${transport.sessionId}`);
     delete transportMap[transport.sessionId];
   };
   server.onerror = (err) => {
-    addLog.error(`Server ${transport.sessionId} error`, err);
+    addLog.error(`Server error ${transport.sessionId}`, err);
   };
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({
