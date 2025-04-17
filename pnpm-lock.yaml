@@ -23,6 +23,9 @@ importers:
       i18next:
         specifier: 23.16.8
         version: 23.16.8
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
       lint-staged:
         specifier: ^13.3.0
         version: 13.3.0
