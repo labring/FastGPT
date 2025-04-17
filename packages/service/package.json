@@ -27,6 +27,7 @@
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
+    "minio": "^8.0.5",
     "mongoose": "^8.10.1",
     "multer": "1.4.5-lts.1",
     "mysql2": "^3.11.3",

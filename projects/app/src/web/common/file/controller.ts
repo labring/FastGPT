@@ -4,6 +4,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/file/img';
 import type { UploadChatFileProps, UploadDatasetFileProps } from '@/pages/api/common/file/upload';
+import { POST } from '../api/request';
 
 /**
  * upload file to mongo gridfs
@@ -21,18 +22,30 @@ export const uploadFile2DB = ({
   metadata?: Record<string, any>;
   percentListen?: (percent: number) => void;
 }) => {
-  const form = new FormData();
-  form.append('metadata', JSON.stringify(metadata));
-  form.append('bucketName', bucketName);
-  form.append('file', file, encodeURIComponent(file.name));
-  form.append('data', JSON.stringify(data));
+  if (bucketName === BucketNameEnum.dataset) {
+    const form = new FormData();
+    form.append('metadata', JSON.stringify(metadata));
+    form.append('bucketName', bucketName);
+    form.append('file', file, encodeURIComponent(file.name));
+    form.append('data', JSON.stringify(data));
 
-  return postUploadFiles(form, (e) => {
-    if (!e.total) return;
+    return postUploadFiles(form, (e) => {
+      if (!e.total) return;
 
-    const percent = Math.round((e.loaded / e.total) * 100);
-    percentListen?.(percent);
-  });
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    });
+  } else if (bucketName === BucketNameEnum.chat) {
+    POST();
+
+    return postUploadFiles(form, (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    });
+  }
+  return Promise.resolve({ fileId: '', previewUrl: '' });
 };
 
 /**

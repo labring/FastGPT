@@ -11,6 +11,7 @@ export async function register() {
         { connectMongo },
         { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
         { systemStartCb },
+        { initBucket },
         { initGlobalVariables, getInitConfig, initSystemPluginGroups, initAppTemplateTypes },
         { initVectorStore },
         { initRootUser },
@@ -22,6 +23,7 @@ export async function register() {
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
         import('@fastgpt/service/common/system/tools'),
+        import('@fastgpt/service/common/file/s3'),
         import('@/service/common/system'),
         import('@fastgpt/service/common/vectorStore/controller'),
         import('@/service/mongo'),
@@ -40,7 +42,7 @@ export async function register() {
       connectMongo(connectionLogMongo, MONGO_LOG_URL);
 
       //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
+      await Promise.all([initBucket(), getInitConfig(), initVectorStore(), initRootUser()]);
 
       initSystemPluginGroups();
       initAppTemplateTypes();

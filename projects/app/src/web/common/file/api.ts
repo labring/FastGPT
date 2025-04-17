@@ -18,3 +18,11 @@ export const postUploadFiles = (
       'Content-Type': 'multipart/form-data; charset=utf-8'
     }
   });
+
+export const postS3PresignedUpload = (data: any) =>
+  POST<{
+    postURL: string;
+    formData: {
+      [key: string]: any;
+    };
+  }>('/common/file/s3PresignedUpload', data);
