@@ -1,18 +1,22 @@
 # FastGPT
 FastGPT 文档
 
+## .
+- [文档](https://doc.fastgpt.cn/docs/_index/) FastGPT 官方文档
+
 ## agreement
+- [协议](https://doc.fastgpt.cn/docs/agreement/_index/) 社区相关内容
 - [开源协议](https://doc.fastgpt.cn/docs/agreement/open-source/)  FastGPT 开源许可证
 - [隐私政策](https://doc.fastgpt.cn/docs/agreement/privacy/)  FastGPT 隐私政策
 - [服务协议](https://doc.fastgpt.cn/docs/agreement/terms/)  FastGPT 服务协议
-
-## .
 - [加入社区](https://doc.fastgpt.cn/docs/community/)  加入 FastGPT 开发者社区和我们一起成长
 
 ## development
+- [开发与部署指南](https://doc.fastgpt.cn/docs/development/_index/) 本地开发 FastGPT 必看
 - [配置文件介绍](https://doc.fastgpt.cn/docs/development/configuration/) FastGPT 配置参数介绍
 
 ## development/custom-models
+- [本地模型使用](https://doc.fastgpt.cn/docs/development/custom-models/_index/) FastGPT 对接本地模型
 - [接入 bge-rerank 重排模型](https://doc.fastgpt.cn/docs/development/custom-models/bge-rerank/) 接入 bge-rerank 重排模型
 - [接入 ChatGLM2-m3e 模型](https://doc.fastgpt.cn/docs/development/custom-models/chatglm2-m3e/)  将 FastGPT 接入私有化模型 ChatGLM2和m3e-large
 - [接入 ChatGLM2-6B](https://doc.fastgpt.cn/docs/development/custom-models/chatglm2/)  将 FastGPT 接入私有化模型 ChatGLM2-6B
@@ -22,16 +26,19 @@ FastGPT 文档
 - [使用 Xinference 接入本地模型](https://doc.fastgpt.cn/docs/development/custom-models/xinference/) 一站式本地 LLM 私有化部署
 
 ## development/design
+- [设计方案](https://doc.fastgpt.cn/docs/development/design/_index/) FastGPT 部分设计方案
 - [数据集](https://doc.fastgpt.cn/docs/development/design/dataset/) FastGPT 数据集中文件与数据的设计方案
 - [Docker Compose 快速部署](https://doc.fastgpt.cn/docs/development/docker/) 使用 Docker Compose 快速部署 FastGPT
 - [私有部署常见问题](https://doc.fastgpt.cn/docs/development/faq/) FastGPT 私有部署常见问题
 - [快速开始本地开发](https://doc.fastgpt.cn/docs/development/intro/) 对 FastGPT 进行开发调试
 
 ## development/migration
+- [迁移&备份](https://doc.fastgpt.cn/docs/development/migration/_index/) FastGPT 迁移&备份
 - [Docker 数据库迁移(无脑操作)](https://doc.fastgpt.cn/docs/development/migration/docker_db/) FastGPT Docker 数据库备份和迁移
 - [Docker Mongo迁移(dump模式)](https://doc.fastgpt.cn/docs/development/migration/docker_mongo/) FastGPT Docker Mongo迁移
 
 ## development/modelConfig
+- [模型配置方案](https://doc.fastgpt.cn/docs/development/modelConfig/_index/) 本模型配置方案
 - [通过 AI Proxy 接入模型](https://doc.fastgpt.cn/docs/development/modelConfig/ai-proxy/) 通过 AI Proxy 接入模型
 - [FastGPT 模型配置说明](https://doc.fastgpt.cn/docs/development/modelConfig/intro/) FastGPT 模型配置说明
 - [通过 OneAPI 接入模型](https://doc.fastgpt.cn/docs/development/modelConfig/one-api/) 通过 OneAPI 接入模型
@@ -39,12 +46,14 @@ FastGPT 文档
 - [通过 SiliconCloud 体验开源模型](https://doc.fastgpt.cn/docs/development/modelConfig/siliconCloud/) 通过 SiliconCloud 体验开源模型
 
 ## development/openapi
+- [OpenAPI 接口文档](https://doc.fastgpt.cn/docs/development/openapi/_index/) FastGPT OpenAPI 文档
 - [对话接口](https://doc.fastgpt.cn/docs/development/openapi/chat/) FastGPT OpenAPI 对话接口
 - [知识库接口](https://doc.fastgpt.cn/docs/development/openapi/dataset/) FastGPT OpenAPI 知识库接口
 - [OpenAPI 介绍](https://doc.fastgpt.cn/docs/development/openapi/intro/) FastGPT OpenAPI 介绍
 - [分享链接身份鉴权](https://doc.fastgpt.cn/docs/development/openapi/share/) FastGPT 分享链接身份鉴权
 
 ## development/proxy
+- [代理方案](https://doc.fastgpt.cn/docs/development/proxy/_index/) FastGPT 私有化部署代理方案
 - [Cloudflare Worker 中转](https://doc.fastgpt.cn/docs/development/proxy/cloudflare/) 使用 Cloudflare Worker 实现中转
 - [HTTP 代理中转](https://doc.fastgpt.cn/docs/development/proxy/http_proxy/) 使用 HTTP 代理实现中转
 - [Nginx 中转](https://doc.fastgpt.cn/docs/development/proxy/nginx/) 使用 Sealos 部署 Nginx 实现中转
@@ -108,9 +117,11 @@ FastGPT 文档
 - [V4.9.4](https://doc.fastgpt.cn/docs/development/upgrading/494/) FastGPT V4.9.4 更新说明
 - [V4.9.5](https://doc.fastgpt.cn/docs/development/upgrading/495/) FastGPT V4.9.5 更新说明
 - [V4.9.6(进行中)](https://doc.fastgpt.cn/docs/development/upgrading/496/) FastGPT V4.9.6 更新说明
+- [版本更新/升级操作](https://doc.fastgpt.cn/docs/development/upgrading/_index/) FastGPT 版本更新介绍及升级操作
 - [升级说明](https://doc.fastgpt.cn/docs/development/upgrading/intro/) FastGPT 升级说明
 
 ## faq
+- [FAQ](https://doc.fastgpt.cn/docs/faq/_index/) 常见问题的解答
 - [应用使用问题](https://doc.fastgpt.cn/docs/faq/app/) FastGPT 常见应用使用问题，包括简易应用、工作流和插件
 - [聊天框问题](https://doc.fastgpt.cn/docs/faq/chat/) FastGPT 常见聊天框问题
 - [知识库使用问题](https://doc.fastgpt.cn/docs/faq/dataset/) 常见知识库使用问题
@@ -122,14 +133,18 @@ FastGPT 文档
 - [私有部署常见问题](https://doc.fastgpt.cn/docs/faq/privateDeploy/) FastGPT 私有部署常见问题
 
 ## guide/DialogBoxes
+- [对话框](https://doc.fastgpt.cn/docs/guide/DialogBoxes/_index/) 对话框组件，支持多种交互方式，提升用户在应用中的交互体验。
 - [对话框与HTML渲染](https://doc.fastgpt.cn/docs/guide/DialogBoxes/htmlRendering/) 如何在FastGPT中通过Markdown嵌入HTML代码块，并提供全屏、源代码切换等交互功能
 - [知识库引用分块阅读器](https://doc.fastgpt.cn/docs/guide/DialogBoxes/quoteList/) FastGPT 分块阅读器功能介绍
+- [功能介绍](https://doc.fastgpt.cn/docs/guide/_index/) FastGPT 的功能和使用指南
 
 ## guide/admin
+- [商业版后台](https://doc.fastgpt.cn/docs/guide/admin/_index/) 商业版后台使用教程
 - [SSO & 外部成员同步](https://doc.fastgpt.cn/docs/guide/admin/sso/) FastGPT 外部成员系统接入设计与配置
 - [团队模式说明文档](https://doc.fastgpt.cn/docs/guide/admin/teamMode/) FastGPT 团队模式说明文档
 
 ## guide/course
+- [基础教程](https://doc.fastgpt.cn/docs/guide/course/_index/) FastGPT 基础教程
 - [AI 相关参数配置说明](https://doc.fastgpt.cn/docs/guide/course/ai_settings/) FastGPT AI 相关参数配置说明
 - [对话问题引导](https://doc.fastgpt.cn/docs/guide/course/chat_input_guide/) FastGPT 对话问题引导
 - [知识库集合标签](https://doc.fastgpt.cn/docs/guide/course/collection_tags/) FastGPT 知识库集合标签使用说明
@@ -137,12 +152,14 @@ FastGPT 文档
 - [快速上手](https://doc.fastgpt.cn/docs/guide/course/quick-start/) 快速体验 FastGPT 基础功能
 
 ## guide/dashboard
+- [工作台](https://doc.fastgpt.cn/docs/guide/dashboard/_index/) FastGPT 工作台及工作流节点的使用说明
 - [简易模式](https://doc.fastgpt.cn/docs/guide/dashboard/basic-mode/) 快速了解 FastGPT 工作台的简易模式
 - [使用 Gapier 快速导入Agent工具](https://doc.fastgpt.cn/docs/guide/dashboard/gapier/) FastGPT 使用 Gapier 快速导入Agent工具
 - [工作流&插件](https://doc.fastgpt.cn/docs/guide/dashboard/intro/) 快速了解 FastGPT 工作流和插件的使用
 - [MCP 服务](https://doc.fastgpt.cn/docs/guide/dashboard/mcp_server/) 快速了解 FastGPT MCP server
 
 ## guide/dashboard/workflow
+- [工作流节点](https://doc.fastgpt.cn/docs/guide/dashboard/workflow/_index/) FastGPT 工作流节点设置和使用指南
 - [AI 对话](https://doc.fastgpt.cn/docs/guide/dashboard/workflow/ai_chat/) FastGPT AI 对话模块介绍
 - [文本内容提取](https://doc.fastgpt.cn/docs/guide/dashboard/workflow/content_extract/) FastGPT 内容提取模块介绍
 - [问题优化](https://doc.fastgpt.cn/docs/guide/dashboard/workflow/coreferenceResolution/) 问题优化模块介绍和使用
@@ -165,6 +182,7 @@ FastGPT 文档
 
 ## guide/knowledge_base
 - [知识库基础原理介绍](https://doc.fastgpt.cn/docs/guide/knowledge_base/RAG/) 本节详细介绍RAG模型的核心机制、应用场景及其在生成任务中的优势与局限性。
+- [知识库](https://doc.fastgpt.cn/docs/guide/knowledge_base/_index/) 知识库的基础原理、搜索方案、Web站点同步和外部文件知识库的使用方法。
 - [API 文件库](https://doc.fastgpt.cn/docs/guide/knowledge_base/api_dataset/) FastGPT API 文件库功能介绍和使用方式
 - [知识库搜索方案和参数](https://doc.fastgpt.cn/docs/guide/knowledge_base/dataset_engine/) 本节会详细介绍 FastGPT 知识库结构设计，理解其 QA 的存储格式和多向量映射，以便更好的构建知识库。同时会介绍每个搜索参数的功能。这篇介绍主要以使用为主，详细原理不多介绍。
 - [外部文件知识库](https://doc.fastgpt.cn/docs/guide/knowledge_base/externalFile/) FastGPT 外部文件知识库功能介绍和使用方式
@@ -173,6 +191,7 @@ FastGPT 文档
 - [语雀文件库](https://doc.fastgpt.cn/docs/guide/knowledge_base/yuque_dataset/) FastGPT 语雀文件库功能介绍和使用方式
 
 ## guide/plugins
+- [系统插件](https://doc.fastgpt.cn/docs/guide/plugins/_index/) 介绍如何使用和提交系统插件，以及各插件的填写说明
 - [Bing 搜索插件填写说明](https://doc.fastgpt.cn/docs/guide/plugins/bing_search_plugin/) FastGPT Bing 搜索插件配置步骤详解
 - [Doc2x 插件填写说明](https://doc.fastgpt.cn/docs/guide/plugins/doc2x_plugin_guide/) 如何配置和使用 Doc2x 插件
 - [Google 搜索插件填写说明](https://doc.fastgpt.cn/docs/guide/plugins/google_search_plugin_guide/) FastGPT Google 搜索插件配置指南
@@ -180,15 +199,21 @@ FastGPT 文档
 - [SearXNG 搜索插件配置与使用说明](https://doc.fastgpt.cn/docs/guide/plugins/searxng_plugin_guide/) FastGPT SearXNG 搜索插件配置指南
 
 ## guide/team_permissions
+- [团队与权限](https://doc.fastgpt.cn/docs/guide/team_permissions/_index/) 团队管理、成员组与权限设置，确保团队协作中的数据安全和权限分配合理。
 - [邀请链接说明文档](https://doc.fastgpt.cn/docs/guide/team_permissions/invitation_link/) 如何使用邀请链接来邀请团队成员
 - [团队&成员组&权限](https://doc.fastgpt.cn/docs/guide/team_permissions/team_roles_permissions/) 如何管理 FastGPT 团队、成员组及权限设置
 - [快速了解 FastGPT](https://doc.fastgpt.cn/docs/intro/) FastGPT 的能力与优势
 
 ## shopping_cart
+- [收费说明](https://doc.fastgpt.cn/docs/shopping_cart/_index/) FastGPT 收费说明
 - [商业版](https://doc.fastgpt.cn/docs/shopping_cart/intro/) FastGPT 商业版相关说明
 - [线上版定价](https://doc.fastgpt.cn/docs/shopping_cart/saas/) FastGPT 线上版定价
 
+## use-cases
+- [使用案例](https://doc.fastgpt.cn/docs/use-cases/_index/) 有关 FastGPT 其他实践案例的更多信息
+
 ## use-cases/app-cases
+- [应用搭建案例](https://doc.fastgpt.cn/docs/use-cases/app-cases/_index/) FastGPT 应用场景及功能实现的搭建案例
 - [Dalle3 绘图](https://doc.fastgpt.cn/docs/use-cases/app-cases/dalle3/) 使用 HTTP 模块绘制图片
 - [英语作文纠错机器人](https://doc.fastgpt.cn/docs/use-cases/app-cases/english_essay_correction_bot/) 使用 FastGPT 创建一个用于英语作文纠错的机器人，帮助用户检测并纠正语言错误
 - [发送飞书webhook通知](https://doc.fastgpt.cn/docs/use-cases/app-cases/feishu_webhook/) 利用工具调用模块，发送一个飞书webhook通知
@@ -200,6 +225,7 @@ FastGPT 文档
 - [长字幕翻译](https://doc.fastgpt.cn/docs/use-cases/app-cases/translate-subtitle-using-gpt/) 利用 AI 自我反思提升翻译质量，同时循环迭代执行 AI 工作流来突破 LLM tokens 限制，实现一个高效的长字幕翻译机器人。
 
 ## use-cases/external-integration
+- [外部调用 FastGPT](https://doc.fastgpt.cn/docs/use-cases/external-integration/_index/) 外部应用通过多种方式调用 FastGPT 功能的教程
 - [接入钉钉机器人教程](https://doc.fastgpt.cn/docs/use-cases/external-integration/dingtalk/) FastGPT 接入钉钉机器人教程
 - [接入飞书机器人教程](https://doc.fastgpt.cn/docs/use-cases/external-integration/feishu/) FastGPT 接入飞书机器人教程
 - [iframe 接入](https://doc.fastgpt.cn/docs/use-cases/external-integration/iframe_integration/) 通过 iframe 嵌入 FastGPT 内容到其他网页或应用
