@@ -201,6 +201,12 @@ export class PgVectorCtrl {
       );
       const rows = results?.[3]?.rows as PgSearchRawType[];
 
+      if (!Array.isArray(rows)) {
+        return {
+          results: []
+        };
+      }
+
       return {
         results: rows.map((item) => ({
           id: String(item.id),
