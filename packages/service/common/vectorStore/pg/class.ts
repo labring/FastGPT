@@ -192,8 +192,7 @@ export class PgVectorCtrl {
           WITH relaxed_results AS MATERIALIZED (
             select id, collection_id, vector <#> '[${vector}]' AS score
               from ${DatasetVectorTableName}
-              where team_id='${teamId}'
-                AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+              where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
                 ${filterCollectionIdSql}
                 ${forbidCollectionSql}
               order by score limit ${limit}
