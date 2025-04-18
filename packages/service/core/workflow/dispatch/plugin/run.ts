@@ -1,6 +1,9 @@
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlow } from '../index';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getChildAppRuntimeById } from '../../../app/plugin/controller';
 import {
@@ -17,6 +20,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { JSONPath } from 'jsonpath-plus';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -107,6 +111,30 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   if (output) {
     output.moduleLogo = plugin.avatar;
   }
+  const results: Record<string, any> = {};
+  props.node.outputs
+    .filter((item) => item.type === FlowNodeOutputTypeEnum.dynamic)
+    .forEach((item) => {
+      const key = item.key.startsWith('$') ? item.key : `$.${item.key}`;
+      results[item.key] = (() => {
+        const result = JSONPath({ path: key, json: output?.pluginOutput ?? {} });
+
+        // 如果结果为空,返回 undefined
+        if (!result || result.length === 0) {
+          return undefined;
+        }
+
+        // 以下情况返回数组:
+        // 1. 使用通配符 *
+        // 2. 使用数组切片 [start:end]
+        // 3. 使用过滤表达式 [?(...)]
+        // 4. 使用递归下降 ..
+        // 5. 使用多个结果运算符 ,
+        const needArrayResult = /[*]|[\[][:?]|\.\.|\,/.test(key);
+
+        return needArrayResult ? result : result[0];
+      })();
+    });
 
   const usagePoints = await computedPluginUsage({
     plugin,
@@ -114,6 +142,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     error: !!output?.pluginOutput?.error
   });
   return {
+    ...results,
     // 嵌套运行时，如果 childApp stream=false，实际上不会有任何内容输出给用户，所以不需要存储
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     // responseData, // debug
