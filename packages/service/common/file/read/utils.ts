@@ -2,16 +2,13 @@ import { uploadMongoImg } from '../image/controller';
 import FormData from 'form-data';
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import fs from 'fs';
-import type { ImageType, ReadFileResponse } from '../../../worker/readFile/type';
+import type { ReadFileResponse } from '../../../worker/readFile/type';
 import axios from 'axios';
 import { addLog } from '../../system/log';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { htmlTable2Md, matchMdImg } from '@fastgpt/global/common/string/markdown';
+import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { delay } from '@fastgpt/global/common/system/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getImageBase64 } from '../image/utils';
+import { useDoc2xServer } from '../../../thirdProvider/doc2x';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -114,169 +111,12 @@ export const readRawContentByFileBuffer = async ({
       imageList
     };
   };
+  // Doc2x api
   const parsePdfFromDoc2x = async (): Promise<ReadFileResponse> => {
     const doc2xKey = global.systemEnv.customPdfParse?.doc2xKey;
     if (!doc2xKey) return systemParse();
 
-    const parseTextImage = async (text: string) => {
-      // Extract image links and convert to base64
-      const imageList: { id: string; url: string }[] = [];
-      let processedText = text.replace(/!\[.*?\]\((http[^)]+)\)/g, (match, url) => {
-        const id = `IMAGE_${getNanoid()}_IMAGE`;
-        imageList.push({
-          id,
-          url
-        });
-        return `![](${id})`;
-      });
-
-      // Get base64 from image url
-      let resultImageList: ImageType[] = [];
-      await batchRun(
-        imageList,
-        async (item) => {
-          try {
-            const { base64, mime } = await getImageBase64(item.url);
-            resultImageList.push({
-              uuid: item.id,
-              mime,
-              base64
-            });
-          } catch (error) {
-            processedText = processedText.replace(item.id, item.url);
-            addLog.warn(`Failed to get image from ${item.url}: ${getErrText(error)}`);
-          }
-        },
-        5
-      );
-
-      return {
-        text: processedText,
-        imageList: resultImageList
-      };
-    };
-
-    let startTime = Date.now();
-
-    // 1. Get pre-upload URL first
-    const { data: preupload_data } = await axios
-      .post<{ code: string; data: { uid: string; url: string } }>(
-        'https://v2.doc2x.noedgeai.com/api/v2/parse/preupload',
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${doc2xKey}`
-          }
-        }
-      )
-      .catch((error) => {
-        return Promise.reject(
-          `[Pre-upload Error] Failed to get pre-upload URL: ${getErrText(error)}`
-        );
-      });
-    if (preupload_data?.code !== 'success') {
-      return Promise.reject(`Failed to get pre-upload URL: ${JSON.stringify(preupload_data)}`);
-    }
-
-    const upload_url = preupload_data.data.url;
-    const uid = preupload_data.data.uid;
-
-    // 2. Upload file to pre-signed URL with binary stream
-    const blob = new Blob([buffer], { type: 'application/pdf' });
-    const response = await axios
-      .put(upload_url, blob, {
-        headers: {
-          'Content-Type': 'application/pdf'
-        }
-      })
-      .catch((error) => {
-        return Promise.reject(`[Upload Error] Failed to upload file: ${getErrText(error)}`);
-      });
-    if (response.status !== 200) {
-      return Promise.reject(`Upload failed with status ${response.status}: ${response.statusText}`);
-    }
-
-    await delay(5000);
-    addLog.debug(`Uploaded file to Doc2x, uid: ${uid}`);
-    // 3. Get the result by uid
-    const checkResult = async (retry = 30) => {
-      if (retry <= 0) {
-        return Promise.reject(
-          `[Parse Timeout Error] Failed to get result (uid: ${uid}): Process timeout`
-        );
-      }
-
-      try {
-        const { data: result_data } = await axios
-          .get<{
-            code: string;
-            data: {
-              progress: number;
-              status: 'processing' | 'failed' | 'success';
-              result: {
-                pages: {
-                  md: string;
-                }[];
-              };
-            };
-          }>(`https://v2.doc2x.noedgeai.com/api/v2/parse/status?uid=${uid}`, {
-            headers: {
-              Authorization: `Bearer ${doc2xKey}`
-            }
-          })
-          .catch((error) => {
-            return Promise.reject(
-              `[Parse Status Error] Failed to get parse status: ${getErrText(error)}`
-            );
-          });
-
-        // Error
-        if (!['ok', 'success'].includes(result_data.code)) {
-          return Promise.reject(
-            `Failed to get result (uid: ${uid}): ${JSON.stringify(result_data)}`
-          );
-        }
-
-        // Process
-        if (['ready', 'processing'].includes(result_data.data.status)) {
-          addLog.debug(`Waiting for the result, uid: ${uid}`);
-          await delay(5000);
-          return checkResult(retry - 1);
-        }
-
-        // Finifsh
-        if (result_data.data.status === 'success') {
-          const result = result_data.data.result.pages
-            .map((page) => page.md)
-            .join('')
-            // Do some post-processing
-            .replace(/\\[\(\)]/g, '$')
-            .replace(/\\[\[\]]/g, '$$')
-            .replace(/<img\s+src="([^"]+)"(?:\s*\?[^>]*)?(?:\s*\/>|>)/g, '![img]($1)')
-            .replace(/<!-- Media -->/g, '')
-            .replace(/<!-- Footnote -->/g, '')
-            .replace(/\$(.+?)\s+\\tag\{(.+?)\}\$/g, '$$$1 \\qquad \\qquad ($2)$$')
-            .replace(/\\text\{([^}]*?)(\b\w+)_(\w+\b)([^}]*?)\}/g, '\\text{$1$2\\_$3$4}');
-
-          const { text, imageList } = await parseTextImage(htmlTable2Md(result));
-
-          return {
-            pages: result_data.data.result.pages.length,
-            text,
-            imageList
-          };
-        }
-        return checkResult(retry - 1);
-      } catch (error) {
-        if (retry > 1) {
-          await delay(100);
-          return checkResult(retry - 1);
-        }
-        return Promise.reject(error);
-      }
-    };
-
-    const { pages, text, imageList } = await checkResult();
+    const { pages, text, imageList } = await useDoc2xServer({ apiKey: doc2xKey }).parsePDF(buffer);
 
     createPdfParseUsage({
       teamId,
@@ -284,7 +124,6 @@ export const readRawContentByFileBuffer = async ({
       pages
     });
 
-    addLog.info(`Doc2x parse success, time: ${Date.now() - startTime}ms`);
     return {
       rawText: text,
       formatText: text,
