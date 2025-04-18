@@ -169,6 +169,7 @@ const MySelect = <T = any,>(
     <Box
       css={css({
         '& div': {
+          maxWidth: '100%',
           width: 'auto !important'
         }
       })}
