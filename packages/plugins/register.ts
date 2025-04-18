@@ -27,6 +27,7 @@ const packagePluginList = [
   'drawing/baseChart',
   'wiki',
   'databaseConnection',
+  'databaseQuery',
   'Doc2X',
   'Doc2X/PDF2text',
   'searchXNG',
