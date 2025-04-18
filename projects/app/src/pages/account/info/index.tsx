@@ -9,7 +9,9 @@ import {
   Link,
   Progress,
   Grid,
-  BoxProps
+  BoxProps,
+  VStack,
+  Text
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
@@ -25,7 +27,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
-import { putUpdateMemberName } from '@/web/support/user/team/api';
+import { putUpdateMemberName, redeemCoupon } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import {
   StandardSubLevelEnum,
@@ -46,6 +48,7 @@ import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
@@ -353,7 +356,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { userInfo, initUserInfo, teamPlanStatus } = useUserStore();
+  const { userInfo, initUserInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans } = useSystemStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -363,6 +366,12 @@ const PlanUsage = () => {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
     onOpen: onOpenStandardModal
+  } = useDisclosure();
+
+  const {
+    isOpen: isOpenRedeemCouponModal,
+    onClose: onCloseRedeemCouponModal,
+    onOpen: onOpenRedeemCouponModal
   } = useDisclosure();
 
   const planName = useMemo(() => {
@@ -468,6 +477,11 @@ const PlanUsage = () => {
         <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
         </Button>
+        {userInfo?.permission.isOwner && (
+          <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
+            {t('account_info:redeem_coupon')}
+          </Button>
+        )}
       </Flex>
       <Box
         mt={[3, 6]}
@@ -603,8 +617,60 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
+      <RedeemCouponModal
+        isOpen={isOpenRedeemCouponModal}
+        onClose={onCloseRedeemCouponModal}
+        onSuccess={() => initTeamPlanStatus()}
+      />
     </Box>
   ) : null;
+};
+
+const RedeemCouponModal = ({
+  isOpen,
+  onClose,
+  onSuccess
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  const [couponCode, setCouponCode] = React.useState('');
+
+  const { runAsync: redeemCouponAsync, loading } = useRequest2(redeemCoupon, {
+    manual: true,
+    onSuccess: () => {
+      onSuccess();
+      onClose();
+    },
+    successToast: t('common.Success')
+  });
+
+  return (
+    <MyModal
+      isOpen={isOpen}
+      onClose={onClose}
+      iconSrc="support/account/coupon"
+      title={t('account_info:redeem_coupon')}
+    >
+      <VStack px={'24px'} py={'36px'}>
+        <Text fontWeight={500} fontSize={'14px'} mb={'8px'} mr={'auto'}>
+          {t('account_info:redeem_coupon')}
+        </Text>
+        <Input
+          mb={'24px'}
+          placeholder={t('account_info:redeem_coupon')}
+          value={couponCode}
+          onChange={(e) => setCouponCode(e.target.value)}
+        />
+        <Button isLoading={loading} ml={'auto'} onClick={() => redeemCouponAsync(couponCode)}>
+          {t('account_info:confirm')}
+        </Button>
+      </VStack>
+    </MyModal>
+  );
 };
 
 const ButtonStyles = {
