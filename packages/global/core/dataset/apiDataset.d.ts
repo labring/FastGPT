@@ -26,13 +26,21 @@ export type APIFileReadResponse = {
   url: string;
 };
 
+export type ApiDatasetDetailResponse = {
+  id: string;
+  name: string;
+  parentId: string | null;
+};
+
 export type FeishuServer = {
   appId: string;
   appSecret: string;
   folderToken: string;
+  // baseUrl: string | undefined;
 };
 
 export type YuqueServer = {
   userId: string;
   token: string;
+  baseUrl: string | undefined;
 };
