@@ -443,6 +443,7 @@ export const iconPaths = {
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
+  'support/account/coupon': () => import('./icons/support/account/coupon.svg'),
   'support/bill/extraDatasetsize': () => import('./icons/support/bill/extraDatasetsize.svg'),
   'support/bill/extraPoints': () => import('./icons/support/bill/extraPoints.svg'),
   'support/bill/payRecordLight': () => import('./icons/support/bill/payRecordLight.svg'),
