@@ -169,6 +169,7 @@ const MySelect = <T = any,>(
     <Box
       css={css({
         '& div': {
+          maxWidth: '100%',
           width: 'auto !important'
         }
       })}
@@ -191,6 +192,9 @@ const MySelect = <T = any,>(
           size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
+          h={'100%'}
+          whiteSpace={'pre-wrap'}
+          wordBreak={'break-word'}
           _active={{
             transform: 'none'
           }}
