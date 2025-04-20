@@ -22,7 +22,7 @@ jobs:
         uses: BetaHuhn/repo-file-sync-action@v1.21.0
         with:
           GH_PAT: ${{ secrets.IMG_GH_PAT }}
-          CONFIG_PATH: .github/sync_imgs.yml
+          CONFIG_PATH: .github/doc-sync-image.yml
           ORIGINAL_MESSAGE: true
           SKIP_PR: true
           COMMIT_EACH_FILE: false
