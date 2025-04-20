@@ -45,8 +45,8 @@ const UsageTableList = ({
     filterParams;
   const requestParams = useMemo(() => {
     return {
-      dateStart: dateRange.from || new Date(),
-      dateEnd: addDays(dateRange.to || new Date(), 1),
+      dateStart: dayjs(dateRange.from || new Date()).format(),
+      dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
       sources: isSelectAllSource ? undefined : usageSources,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName
