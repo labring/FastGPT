@@ -10,6 +10,7 @@ import { addLog } from '../../common/system/log';
 import { i18nT } from '../../../web/i18n/utils';
 import { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import { getLLMModel } from './model';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const aiProxyBaseUrl = process.env.AIPROXY_API_ENDPOINT
   ? `${process.env.AIPROXY_API_ENDPOINT}/v1`
@@ -68,7 +69,11 @@ export const createChatCompletion = async ({
   )
 > => {
   try {
+    // Rewrite model
     const modelConstantsData = getLLMModel(body.model);
+    if (!modelConstantsData) {
+      return Promise.reject(`${body.model} not found`);
+    }
 
     const formatTimeout = timeout ? timeout : body.stream ? 60000 : 600000;
     const ai = getAIApi({
