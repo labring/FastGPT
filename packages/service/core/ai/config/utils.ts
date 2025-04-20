@@ -45,43 +45,42 @@ export const loadSystemModels = async (init = false) => {
 
     if (model.isActive) {
       global.systemActiveModelList.push(model);
-
-      if (model.type === ModelTypeEnum.llm) {
-        global.llmModelMap.set(model.model, model);
-        global.llmModelMap.set(model.name, model);
-        if (model.isDefault) {
-          global.systemDefaultModel.llm = model;
-        }
-        if (model.isDefaultDatasetTextModel) {
-          global.systemDefaultModel.datasetTextLLM = model;
-        }
-        if (model.isDefaultDatasetImageModel) {
-          global.systemDefaultModel.datasetImageLLM = model;
-        }
-      } else if (model.type === ModelTypeEnum.embedding) {
-        global.embeddingModelMap.set(model.model, model);
-        global.embeddingModelMap.set(model.name, model);
-        if (model.isDefault) {
-          global.systemDefaultModel.embedding = model;
-        }
-      } else if (model.type === ModelTypeEnum.tts) {
-        global.ttsModelMap.set(model.model, model);
-        global.ttsModelMap.set(model.name, model);
-        if (model.isDefault) {
-          global.systemDefaultModel.tts = model;
-        }
-      } else if (model.type === ModelTypeEnum.stt) {
-        global.sttModelMap.set(model.model, model);
-        global.sttModelMap.set(model.name, model);
-        if (model.isDefault) {
-          global.systemDefaultModel.stt = model;
-        }
-      } else if (model.type === ModelTypeEnum.rerank) {
-        global.reRankModelMap.set(model.model, model);
-        global.reRankModelMap.set(model.name, model);
-        if (model.isDefault) {
-          global.systemDefaultModel.rerank = model;
-        }
+    }
+    if (model.type === ModelTypeEnum.llm) {
+      global.llmModelMap.set(model.model, model);
+      global.llmModelMap.set(model.name, model);
+      if (model.isDefault) {
+        global.systemDefaultModel.llm = model;
+      }
+      if (model.isDefaultDatasetTextModel) {
+        global.systemDefaultModel.datasetTextLLM = model;
+      }
+      if (model.isDefaultDatasetImageModel) {
+        global.systemDefaultModel.datasetImageLLM = model;
+      }
+    } else if (model.type === ModelTypeEnum.embedding) {
+      global.embeddingModelMap.set(model.model, model);
+      global.embeddingModelMap.set(model.name, model);
+      if (model.isDefault) {
+        global.systemDefaultModel.embedding = model;
+      }
+    } else if (model.type === ModelTypeEnum.tts) {
+      global.ttsModelMap.set(model.model, model);
+      global.ttsModelMap.set(model.name, model);
+      if (model.isDefault) {
+        global.systemDefaultModel.tts = model;
+      }
+    } else if (model.type === ModelTypeEnum.stt) {
+      global.sttModelMap.set(model.model, model);
+      global.sttModelMap.set(model.name, model);
+      if (model.isDefault) {
+        global.systemDefaultModel.stt = model;
+      }
+    } else if (model.type === ModelTypeEnum.rerank) {
+      global.reRankModelMap.set(model.model, model);
+      global.reRankModelMap.set(model.name, model);
+      if (model.isDefault) {
+        global.systemDefaultModel.rerank = model;
       }
     }
   };
