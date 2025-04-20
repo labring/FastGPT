@@ -16,8 +16,6 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MultipleSelect, {
   useMultipleSelect
 } from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 
