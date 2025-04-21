@@ -1,3 +1,4 @@
+import * as copyapi from '@/pages/api/core/app/copy';
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -8,8 +9,8 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
-describe('create api', () => {
-  it('should return 200 when create app success', async () => {
+describe('Copy', () => {
+  it('should return success', async () => {
     const users = await getFakeUsers(2);
     await MongoResourcePermission.create({
       resourceType: 'team',
@@ -35,22 +36,19 @@ describe('create api', () => {
       auth: users.members[0],
       body: {
         modules: [],
-        name: 'testapp',
-        type: AppTypeEnum.simple,
-        parentId: String(folderId)
+        parentId: folderId,
+        name: 'simple app',
+        type: AppTypeEnum.simple
       }
     });
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
-    expect(res2.data).toBeDefined();
+    const appId = res2.data as string;
 
-    const res3 = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
+    const res3 = await Call<copyapi.copyAppBody, {}, {}>(copyapi.default, {
       auth: users.members[1],
       body: {
-        modules: [],
-        name: 'testapp',
-        type: AppTypeEnum.simple,
-        parentId: String(folderId)
+        appId
       }
     });
     expect(res3.error).toBe(AppErrEnum.unAuthApp);
@@ -64,17 +62,13 @@ describe('create api', () => {
       permission: WritePermissionVal
     });
 
-    const res4 = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
+    const res4 = await Call<copyapi.copyAppBody, {}, {}>(copyapi.default, {
       auth: users.members[1],
       body: {
-        modules: [],
-        name: 'testapp',
-        type: AppTypeEnum.simple,
-        parentId: String(folderId)
+        appId
       }
     });
     expect(res4.error).toBeUndefined();
     expect(res4.code).toBe(200);
-    expect(res4.data).toBeDefined();
   });
 });
