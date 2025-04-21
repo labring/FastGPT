@@ -47,7 +47,9 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
-const RedeemCouponModal = dynamic(() => import('./RedeemCouponModal'), { ssr: false });
+const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
+  ssr: false
+});
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }
