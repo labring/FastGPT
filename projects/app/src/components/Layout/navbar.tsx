@@ -82,6 +82,7 @@ const Navbar = ({ unread }: { unread: number }) => {
           '/account/team',
           '/account/usage',
           '/account/thirdParty',
+          '/account/gateway',
           '/account/apikey',
           '/account/setting',
           '/account/inform',

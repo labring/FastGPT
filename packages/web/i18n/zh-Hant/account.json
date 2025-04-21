@@ -4,6 +4,8 @@
   "api_key": "API 金鑰",
   "bills_and_invoices": "帳單與發票",
   "channel": "模型管道",
+  "config_app": "應用配置",
+  "config_home": "首頁配置",
   "config_model": "模型設定",
   "confirm_logout": "確認登出登入？",
   "create_channel": "新增頻道",
