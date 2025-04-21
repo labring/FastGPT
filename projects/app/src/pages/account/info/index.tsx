@@ -25,7 +25,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
-import { putUpdateMemberName } from '@/web/support/user/team/api';
+import { putUpdateMemberName, redeemCoupon } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import {
   StandardSubLevelEnum,
@@ -47,6 +47,9 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 
+const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
+  ssr: false
+});
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }
@@ -353,7 +356,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { userInfo, initUserInfo, teamPlanStatus } = useUserStore();
+  const { userInfo, initUserInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
   const { subPlans } = useSystemStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
@@ -363,6 +366,12 @@ const PlanUsage = () => {
     isOpen: isOpenStandardModal,
     onClose: onCloseStandardModal,
     onOpen: onOpenStandardModal
+  } = useDisclosure();
+
+  const {
+    isOpen: isOpenRedeemCouponModal,
+    onClose: onCloseRedeemCouponModal,
+    onOpen: onOpenRedeemCouponModal
   } = useDisclosure();
 
   const planName = useMemo(() => {
@@ -468,6 +477,11 @@ const PlanUsage = () => {
         <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
         </Button>
+        {userInfo?.permission.isOwner && (
+          <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
+            {t('account_info:redeem_coupon')}
+          </Button>
+        )}
       </Flex>
       <Box
         mt={[3, 6]}
@@ -603,6 +617,11 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
+      <RedeemCouponModal
+        isOpen={isOpenRedeemCouponModal}
+        onClose={onCloseRedeemCouponModal}
+        onSuccess={() => initTeamPlanStatus()}
+      />
     </Box>
   ) : null;
 };
