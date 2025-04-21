@@ -28,7 +28,7 @@
   "log_status": "狀態",
   "mapping": "模型對映",
   "mapping_tip": "需填寫一個有效 Json。\n可在向實際地址傳送請求時，對模型進行對映。\n例如：\n{\n  \n  \"gpt-4o\": \"gpt-4o-test\"\n\n}\n\n當 FastGPT 請求 gpt-4o 模型時，會向實際地址傳送 gpt-4o-test 的模型，而不是 gpt-4o。",
-  "maxToken_tip": "模型 max_tokens 參數，如果留空，則代表模型不支援該參數。",
+  "maxToken_tip": "模型 max_tokens 參數",
   "max_temperature_tip": "模型 temperature 參數，不填則代表模型不支援 temperature 參數。",
   "model": "模型",
   "model_name": "模型名",

@@ -45,11 +45,13 @@ export const getAxiosConfig = (props?: { userKey?: OpenaiAccountType }) => {
 };
 
 export const createChatCompletion = async ({
+  modelData,
   body,
   userKey,
   timeout,
   options
 }: {
+  modelData?: LLMModelItemType;
   body: ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
   userKey?: OpenaiAccountType;
   timeout?: number;
@@ -70,10 +72,11 @@ export const createChatCompletion = async ({
 > => {
   try {
     // Rewrite model
-    const modelConstantsData = getLLMModel(body.model);
+    const modelConstantsData = modelData || getLLMModel(body.model);
     if (!modelConstantsData) {
       return Promise.reject(`${body.model} not found`);
     }
+    body.model = modelConstantsData.model;
 
     const formatTimeout = timeout ? timeout : body.stream ? 60000 : 600000;
     const ai = getAIApi({
