@@ -11,7 +11,6 @@ import {
   Grid,
   BoxProps
 } from '@chakra-ui/react';
-import { RedeemCouponModal } from './RedeemCouponModal';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -47,8 +46,8 @@ import { getWorkorderURL } from '@/web/common/workorder/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMount } from 'ahooks';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 
+const RedeemCouponModal = dynamic(() => import('./RedeemCouponModal'), { ssr: false });
 const StandDetailModal = dynamic(
   () => import('@/pageComponents/account/info/standardDetailModal'),
   { ssr: false }

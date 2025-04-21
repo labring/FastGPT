@@ -5,7 +5,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-export const RedeemCouponModal = ({
+const RedeemCouponModal = ({
   isOpen,
   onClose,
   onSuccess
@@ -51,3 +51,5 @@ export const RedeemCouponModal = ({
     </MyModal>
   );
 };
+
+export default RedeemCouponModal;
