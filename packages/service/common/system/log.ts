@@ -4,6 +4,12 @@ import { LogLevelEnum } from './log/constant';
 import { connectionMongo } from '../mongo/index';
 import { getMongoLog } from './log/schema';
 
+export enum EventTypeEnum {
+  outLinkBot = '[Outlink bot]',
+  feishuBot = '[Feishu bot]',
+  wxOffiaccount = '[Offiaccount bot]'
+}
+
 const logMap = {
   [LogLevelEnum.debug]: {
     levelLog: chalk.green('[Debug]')
