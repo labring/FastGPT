@@ -356,7 +356,12 @@ export const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                          <MyNumberInput
+                            min={2000}
+                            register={register}
+                            name="maxResponse"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -372,6 +377,7 @@ export const ModelEditModal = ({
                           <MyNumberInput
                             register={register}
                             name="maxTemperature"
+                            min={0}
                             step={0.1}
                             {...InputStyles}
                           />

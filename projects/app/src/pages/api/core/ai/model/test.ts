@@ -79,6 +79,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
   );
 
   const { response, isStreamResponse } = await createChatCompletion({
+    modelData: model,
     body: requestBody,
     options: {
       headers: {
