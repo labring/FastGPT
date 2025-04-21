@@ -1,4 +1,4 @@
-/* 
+/*
   user sub plan
   1. type=standard: There will only be 1, and each team will have one
   2. type=extraDatasetSize/extraPoints: Can buy multiple
