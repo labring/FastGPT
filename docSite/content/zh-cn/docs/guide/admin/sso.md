@@ -74,7 +74,7 @@ env:
 {{< table "table-hover table-striped-columns" >}}
 | <div style="text-align:center">企业微信</div> | <div style="text-align:center">钉钉</div> | <div style="text-align:center">飞书</div> |
 |-----------|-----------------|--------------|
-| ![企业微信](/imgs/sso15.png)  |  ![钉钉](/imgs/sso16.png)       | ![飞书](/imgs/sso17.png)     |   
+| ![企业微信](/imgs/sso15.png)  |  ![钉钉](/imgs/sso16.png)       | ![飞书](/imgs/sso17.png)     |
 {{< /table >}}
 
 #### 3. 开启成员同步（可选）
@@ -210,7 +210,7 @@ fastgpt-sso:
    1. 企业的 CorpID
 
       a. 使用管理员账号登陆企业微信管理后台 `https://work.weixin.qq.com/wework_admin/loginpage_wx`
-      
+
       b. 点击 【我的企业】 页面，查看企业的 **企业ID**
 
       ![](/imgs/sso7.png)
@@ -296,52 +296,81 @@ fastgpt-sso:
 
 ### 标准 OAuth2.0
 
+我们提供一套 RFC 6749 中鉴权码模式的 OAuth2.0 接入支持。
+参考：
+- [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749) 文档。
+- [阮一峰的网络日志](https://www.ruanyifeng.com/blog/2014/05/oauth_2_0.html)
+
 #### 参数需求
 
+##### 三个地址
 我们提供一套标准的 OAuth2.0 接入流程。需要三个地址：
 
-1. 登陆鉴权地址（登陆后将 code 传入 redirect_uri）
-   - 需要将地址完整写好，除了 redirect_uri 以外（会自动补全）
-2. 获取 access_token 的地址，请求为 GET 方法，参数 code
+1. 登陆鉴权地址（用户点击 SSO 按钮后将携带参数直接跳转到该地址）, 例如：`http://example.com/oauth/authorize`
+    ```bash
+    curl -X GET\
+    "http://example.com/oauth/authorize?response_type=code&client_id=s6BhdRkqt3&state=xyz&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
+    ```
+      用户输入账号密码后，会跳转到 redirect_uri 中，并携带 code 参数：
+      `https://fastgpt.cn/login/provider?code=4/P7qD2qAz4&state=xyz`
+2. 获取 access_token 的地址，获取到 code 后，通过*服务器请求*该地址获取 access_token 例如：`http://example.com/oauth/access_token`
+    ```bash
+    curl -X POST\
+        -H "Content-Type: application/x-www-form-urlencoded"\
+    "http://example.com/oauth/access_token?grant_type=authorization_code&client_id=s6BhdRkqt3&client_secret=xxx&code=4/P7qD2qAz4&redirect_uri=https%3A%2F%2Ffastgpt.cn%2Flogin%2Fprovider"
+    ```
+    注意：Content-Type 必须是 application/x-www-form-urlencoded, 而不是 application/json
+3. 获取用户信息的地址，需要传入 access_token 例如：`http://example.com/oauth/user_info`
+    ```bash
+    curl -X GET\
+        -H "Authorization: Bearer 4/P7qD2qAz4"\
+        "http://example.com/oauth/user_info"
+    ```
+    注意： access_token 作为 Authorization 头部传入, 格式为 Bearer xxxx
 
-```bash
-http://example.com/oauth/access_token?code=xxxx
-```
+##### 参数配置
+- CLIENT_ID: 必须
+- CLIENT_SECRET: 非必须，如果没有可以不配置
+- SCOPE: 非必须，如果没有可以不配置
 
-3. 获取用户信息的地址
-
-```bash
-http://example.com/oauth/user_info
-
-```
+> redirect_uri 参数会根据运行环境自动补全
+>
+> 其他固定参数如 grant_type, response_type 等会自动补全
 
 #### 配置示例
 
 ```bash
 fastgpt-sso:
-   image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
-   container_name: fastgpt-sso
-   restart: always
-   networks:
-      - fastgpt
-   environment:
-      # OAuth2.0
-      - AUTH_TOKEN=xxxxx
-      - SSO_PROVIDER=oauth2
-      # OAuth2 重定向地址
-      - OAUTH2_AUTHORIZE_URL=
-      # OAuth2 获取 AccessToken 地址
-      - OAUTH2_TOKEN_URL=
-      # OAuth2 获取用户信息地址
-      - OAUTH2_USER_INFO_URL=
-      # OAuth2 用户名字段映射（必填）
-      - OAUTH2_USERNAME_MAP=
-      # OAuth2 头像字段映射（选填）
-      - OAUTH2_AVATAR_MAP=
-      # OAuth2 成员名字段映射(选填)
-      - OAUTH2_MEMBER_NAME_MAP=
-      # OAuth2 联系方式字段映射(选填)
-      - OAUTH2_CONTACT_MAP=
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sso-service:v4.9.0
+    container_name: fastgpt-sso
+    restart: always
+    networks:
+        - fastgpt
+    environment:
+        # OAuth2.0
+        # === 请求地址 ===
+        # 1. OAuth2 登陆鉴权地址 (必填)
+        - OAUTH2_AUTHORIZE_URL=
+        # 2. OAuth2 获取 AccessToken 地址 (必填)
+        - OAUTH2_TOKEN_URL=
+        # 3. OAuth2 获取用户信息地址 (必填)
+        - OAUTH2_USER_INFO_URL=
+        # === 参数 ===
+        # 1. client_id （必填）
+        - OAUTH2_CLIENT_ID=
+        # 2. client_secret (选填，如果没有则不传)
+        - OAUTH2_CLIENT_SECRET=
+        # 3. scope （选填）
+        - OAUTH2_SCOPE=
+        # === 字段映射 ===
+        # OAuth2 用户名字段映射（必填）
+        - OAUTH2_USERNAME_MAP=
+        # OAuth2 头像字段映射（选填）
+        - OAUTH2_AVATAR_MAP=
+        # OAuth2 成员名字段映射(选填)
+        - OAUTH2_MEMBER_NAME_MAP=
+        # OAuth2 联系方式字段映射(选填)
+        - OAUTH2_CONTACT_MAP=
 ```
 
 ## 标准接口文档
@@ -473,7 +502,7 @@ curl -X GET "https://example.com/org/list" \
 type OrgListResponseType = {
     message?: string; // 报错信息
     success: boolean;
-    orgList: {  
+    orgList: {
         id: string; // 部门的唯一 id
         name: string; // 名字
         parentId: string; // parentId，如果为根部门，传空字符串。
@@ -531,7 +560,7 @@ type UserListResponseListType = {
     message?: string; // 报错信息
     success: boolean;
     userList: {
-      username: string; // 唯一 id username 必须与 SSO 接口返回的用户 username 相同。并且必须携带一个前缀，例如: sync-aaaaa，和 sso 接口返回的前缀一致 
+      username: string; // 唯一 id username 必须与 SSO 接口返回的用户 username 相同。并且必须携带一个前缀，例如: sync-aaaaa，和 sso 接口返回的前缀一致
       memberName?: string; // 名字，作为 tmbname
       avatar?: string;
       contact?: string; // email or phone number
@@ -574,8 +603,8 @@ curl示例
 
 ## 如何对接非标准系统
 
-1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 fastgpt-pro  
-   可以参考该模版库：[fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template) 进行开发  
-2. 由 fastgpt 团队定制开发：  
-   a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。  
+1. 客户自己开发：按 fastgpt 提供的标准接口进行开发，并将部署后的服务地址填入 fastgpt-pro
+   可以参考该模版库：[fastgpt-sso-template](https://github.com/labring/fastgpt-sso-template) 进行开发
+2. 由 fastgpt 团队定制开发：
+   a. 提供系统的 SSO 文档、获取成员和组织的文档、以及外网测试地址。
    b. 在 fastgpt-sso-service 中，增加对应的 provider 和环境变量，并编写代码来对接。
