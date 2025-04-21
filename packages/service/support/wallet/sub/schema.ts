@@ -15,7 +15,7 @@ import type { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 
 export const subCollectionName = 'team_subscriptions';
 
-export const SubSchema = new Schema({
+const SubSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,

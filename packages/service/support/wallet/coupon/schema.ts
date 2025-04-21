@@ -1,16 +1,10 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
-import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/type';
+import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
 
-export const couponCollectionName = 'team_coupons';
+export const couponCollectionName = 'team_sub_coupons';
 
 const CouponSchema = new Schema({
-  teamId: {
-    type: Schema.Types.ObjectId,
-    ref: TeamCollectionName,
-    required: true
-  },
   key: {
     type: String,
     required: true
@@ -30,7 +24,7 @@ const CouponSchema = new Schema({
 });
 
 try {
-  CouponSchema.index({ teamId: 1, key: 1 }, { unique: true });
+  CouponSchema.index({ key: 1 }, { unique: true });
 } catch (error) {
   console.log(error);
 }
