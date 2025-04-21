@@ -22,7 +22,8 @@ export enum TabEnum {
   'apikey' = 'apikey',
   'loginout' = 'loginout',
   'team' = 'team',
-  'model' = 'model'
+  'model' = 'model',
+  gateway = 'gateway'
 }
 
 const AccountContainer = ({
@@ -60,6 +61,11 @@ const AccountContainer = ({
             icon: 'support/usage/usageRecordLight',
             label: t('account:usage_records'),
             value: TabEnum.usage
+          },
+          {
+            icon: 'support/gate/gateLight',
+            label: t('account:gateways'),
+            value: TabEnum.gateway
           }
         ]
       : []),
@@ -76,6 +82,11 @@ const AccountContainer = ({
       icon: 'common/thirdParty',
       label: t('account:third_party'),
       value: TabEnum.thirdParty
+    },
+    {
+      icon: 'support/gate/gateLight',
+      label: t('account:gateways'),
+      value: TabEnum.gateway
     },
     {
       icon: 'common/model',

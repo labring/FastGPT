@@ -11,6 +11,7 @@
   "custom_model": "custom model",
   "default_model": "Default model",
   "default_model_config": "Default model configuration",
+  "gateways": "Portal Management",
   "logout": "Sign out",
   "model.active": "Active",
   "model.alias": "Alias",
