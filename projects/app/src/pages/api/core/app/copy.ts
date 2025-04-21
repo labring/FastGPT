@@ -1,10 +1,10 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { onCreateApp } from './create';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { onCreateApp } from './create';
 
 export type copyAppQuery = {};
 
@@ -26,7 +26,7 @@ async function handler(
   });
 
   const { tmbId } = app.parentId
-    ? await authApp({ req, appId: app.parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    ? await authApp({ req, appId: app.parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   const appId = await onCreateApp({
