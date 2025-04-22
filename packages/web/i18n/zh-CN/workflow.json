@@ -15,6 +15,7 @@
   "assigned_reply": "指定回复",
   "auth_tmb_id": "使用者鉴权",
   "auth_tmb_id_tip": "开启后，对外发布该应用时，还会根据用户是否有该知识库权限进行知识库过滤。\n若未开启，则直接按配置的知识库进行检索，不进行权限过滤。",
+  "auto_align": "自动对齐",
   "can_not_loop": "该节点不支持循环嵌套",
   "choose_another_application_to_call": "选择一个其他应用进行调用",
   "classification_result": "分类结果",

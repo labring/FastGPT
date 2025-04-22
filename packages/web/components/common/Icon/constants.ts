@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 export const iconPaths = {
+  alignLeft: () => import('./icons/alignLeft.svg'),
   book: () => import('./icons/book.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
@@ -439,11 +440,11 @@ export const iconPaths = {
   save: () => import('./icons/save.svg'),
   sliderTag: () => import('./icons/sliderTag.svg'),
   stop: () => import('./icons/stop.svg'),
+  'support/account/coupon': () => import('./icons/support/account/coupon.svg'),
   'support/account/laf': () => import('./icons/support/account/laf.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
-  'support/account/coupon': () => import('./icons/support/account/coupon.svg'),
   'support/bill/extraDatasetsize': () => import('./icons/support/bill/extraDatasetsize.svg'),
   'support/bill/extraPoints': () => import('./icons/support/bill/extraPoints.svg'),
   'support/bill/payRecordLight': () => import('./icons/support/bill/payRecordLight.svg'),

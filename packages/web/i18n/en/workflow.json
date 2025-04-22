@@ -15,6 +15,7 @@
   "assigned_reply": "Assigned Reply",
   "auth_tmb_id": "Auth member",
   "auth_tmb_id_tip": "After it is turned on, when the application is released to the outside world, the knowledge base will be filtered based on whether the user has permission to the knowledge base.\n\nIf it is not enabled, the configured knowledge base will be searched directly without permission filtering.",
+  "auto_align": "Automatic alignment",
   "can_not_loop": "This node can't loop.",
   "choose_another_application_to_call": "Select another application to call",
   "classification_result": "Classification Result",
