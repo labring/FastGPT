@@ -138,7 +138,7 @@ async function handler(
     );
 
     return {
-      name: mcpApp.toolName,
+      name: mcpApp.toolAlias || mcpApp.toolName,
       description: mcpApp.description,
       inputSchema: isPlugin
         ? pluginNodes2InputSchema(version.nodes)
