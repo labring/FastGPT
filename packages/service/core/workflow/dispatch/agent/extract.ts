@@ -103,7 +103,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 
   // auto fill required fields
   extractKeys.forEach((item) => {
-    if (item.required && !arg[item.key]) {
+    if (item.required && arg[item.key] === undefined) {
       arg[item.key] = item.defaultValue || '';
     }
   });
