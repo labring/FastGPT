@@ -60,7 +60,6 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     histories,
     params: { content, history = 6, model, description, extractKeys }
   } = props;
-  console.log('props', props.params);
 
   if (!content) {
     return Promise.reject('Input is empty');
@@ -90,7 +89,6 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractModel
     });
   })();
-  console.log('arg', arg);
 
   // remove invalid key
   for (let key in arg) {
