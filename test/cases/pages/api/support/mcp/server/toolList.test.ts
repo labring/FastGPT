@@ -136,7 +136,7 @@ describe('toolList', () => {
           {
             appId: 'app1',
             toolName: 'tool1',
-            toolAlias: 'alias1',
+            appName: 'alias1',
             description: 'desc1'
           }
         ]
