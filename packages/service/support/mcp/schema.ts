@@ -41,6 +41,9 @@ const McpKeySchema = new Schema({
         toolName: {
           type: String
         },
+        toolAlias: {
+          type: String
+        },
         description: {
           type: String
         }

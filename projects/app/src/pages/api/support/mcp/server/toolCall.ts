@@ -184,7 +184,7 @@ async function handler(
   const app = appList.find((app) => {
     const mcpApp = mcp.apps.find((mcpApp) => String(mcpApp.appId) === String(app._id))!;
 
-    return toolName === mcpApp.toolName;
+    return toolName === mcpApp.toolAlias || toolName === mcpApp.toolName;
   });
 
   if (!app) {
