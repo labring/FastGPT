@@ -84,11 +84,6 @@ const AccountContainer = ({
       value: TabEnum.thirdParty
     },
     {
-      icon: 'support/gate/gateLight',
-      label: t('account:gateways'),
-      value: TabEnum.gateway
-    },
-    {
       icon: 'common/model',
       label: t('account:model_provider'),
       value: TabEnum.model
