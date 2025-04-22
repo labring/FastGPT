@@ -1,3 +1,4 @@
+import { addDays } from 'date-fns';
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { TeamCouponSchema } from '@fastgpt/global/support/wallet/sub/coupon/type';
@@ -19,7 +20,7 @@ const CouponSchema = new Schema({
   },
   expiredAt: {
     type: Date,
-    default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    default: () => addDays(new Date(), 7)
   }
 });
 

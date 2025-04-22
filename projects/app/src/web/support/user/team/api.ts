@@ -105,7 +105,7 @@ export const getTeamPlans = () =>
   GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);
 
 export const redeemCoupon = (couponCode: string) =>
-  GET(`/proApi/support/user/team/plan/coupon/redeem`, { key: couponCode });
+  GET(`/proApi/support/wallet/coupon/redeem`, { key: couponCode });
 
 export const getTeamInvoiceHeader = () =>
   GET<TeamInvoiceHeaderType>(`/proApi/support/user/team/invoiceAccount/getTeamInvoiceHeader`);
