@@ -13,6 +13,7 @@
   "custom_model": "自定义模型",
   "default_model": "预设模型",
   "default_model_config": "默认模型配置",
+  "gateway.cname_tip": "请到您的域名服务商处，比如添加该域名的、CNAME 解析到 Ixjgiwggswmb.sealoshzh.site，解析生效后即可绑定自定义域名。",
   "gateway.save_config": "保存",
   "gateway.share": "分享",
   "gateways": "门户管理",

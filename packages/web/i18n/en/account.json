@@ -13,6 +13,7 @@
   "custom_model": "custom model",
   "default_model": "Default model",
   "default_model_config": "Default model configuration",
+  "gateway.cname_tip": "Please go to your domain name service provider, such as adding the domain name, and parsing the CNAME to Ixjgiwggswmb.sealoshzh.site. After the resolution takes effect, you can bind the custom domain name.",
   "gateway.save_config": "save",
   "gateway.share": "share",
   "gateways": "Portal Management",
