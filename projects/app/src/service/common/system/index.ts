@@ -39,6 +39,12 @@ export const readConfigData = async (name: string) => {
       return `data/${name}`;
     }
     // production path
+    // 通过环境变量获取配置文件路径.环境变量：DATA_PATH
+    const envPath = process.env.DATA_PATH;
+    if (envPath) {
+      return `${envPath}/${name}`;
+    }
+    // Fallback to default production path
     return `/app/data/${name}`;
   })();
 
