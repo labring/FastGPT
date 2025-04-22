@@ -357,7 +357,7 @@ const PlanUsage = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const { userInfo, initUserInfo, teamPlanStatus, initTeamPlanStatus } = useUserStore();
-  const { subPlans } = useSystemStore();
+  const { subPlans, feConfigs } = useSystemStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -469,16 +469,16 @@ const PlanUsage = () => {
         </Flex>
         <ModelPriceModal>
           {({ onOpen }) => (
-            <Button ml={4} size={'sm'} onClick={onOpen}>
+            <Button ml={3} size={'sm'} onClick={onOpen}>
               {t('account_info:billing_standard')}
             </Button>
           )}
         </ModelPriceModal>
-        <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
+        <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>
           {t('account_info:package_details')}
         </Button>
-        {userInfo?.permission.isOwner && (
-          <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
+        {userInfo?.permission.isOwner && feConfigs?.show_coupon && (
+          <Button ml={3} variant={'whitePrimary'} size={'sm'} onClick={onOpenRedeemCouponModal}>
             {t('account_info:redeem_coupon')}
           </Button>
         )}
@@ -617,11 +617,12 @@ const PlanUsage = () => {
         </Box>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
-      <RedeemCouponModal
-        isOpen={isOpenRedeemCouponModal}
-        onClose={onCloseRedeemCouponModal}
-        onSuccess={() => initTeamPlanStatus()}
-      />
+      {isOpenRedeemCouponModal && (
+        <RedeemCouponModal
+          onClose={onCloseRedeemCouponModal}
+          onSuccess={() => initTeamPlanStatus()}
+        />
+      )}
     </Box>
   ) : null;
 };

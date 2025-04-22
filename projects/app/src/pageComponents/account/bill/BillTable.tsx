@@ -210,11 +210,13 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
             <Box>{t(billPayWayMap[bill.metadata.payWay]?.label as any)}</Box>
           </Flex>
         )}
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
-          <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
-        </Flex>
-        {bill.metadata && (
+        {!!bill.price && (
+          <Flex alignItems={'center'} pb={4}>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
+            <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
+          </Flex>
+        )}
+        {bill.metadata && !!bill.price && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:has_invoice')}:</FormLabel>
             {bill.metadata.payWay === 'balance' ? (
@@ -239,7 +241,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {bill.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_mode_month')}:</FormLabel>
-            <Box>{bill.metadata?.month}</Box>
+            <Box>{`${bill.metadata?.month} ${t('account_bill:month')}`}</Box>
           </Flex>
         )}
         {bill.metadata?.datasetSize !== undefined && (

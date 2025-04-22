@@ -33,6 +33,7 @@ declare global {
       CHAT_LOG_INTERVAL: string;
       CHAT_LOG_SOURCE_ID_PREFIX: string;
       ALLOWED_ORIGINS: string;
+      SHOW_COUPON: string;
     }
   }
 }

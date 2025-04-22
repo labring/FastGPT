@@ -1,3 +1,5 @@
+import { i18nT } from '../../../../web/i18n/utils';
+
 export enum BillTypeEnum {
   balance = 'balance',
   standSubPlan = 'standSubPlan',
@@ -42,7 +44,8 @@ export const billStatusMap = {
 
 export enum BillPayWayEnum {
   balance = 'balance',
-  wx = 'wx'
+  wx = 'wx',
+  coupon = 'coupon'
 }
 
 export const billPayWayMap = {
@@ -51,6 +54,9 @@ export const billPayWayMap = {
   },
   [BillPayWayEnum.wx]: {
     label: 'support.wallet.bill.payWay.wx'
+  },
+  [BillPayWayEnum.coupon]: {
+    label: i18nT('account_bill:payway_coupon')
   }
 };
 
