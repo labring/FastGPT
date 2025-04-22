@@ -160,7 +160,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           },
           chatDetails: {
             $map: {
-              input: { $slice: ['$chatitems', -100] },
+              input: { $slice: ['$chatitems', -1000] },
               as: 'item',
               in: {
                 id: '$$item._id',
