@@ -102,12 +102,6 @@ export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode
             return;
           }
         }
-      } else {
-        const nextMatch = getMatch(nextText);
-
-        if (nextMatch !== null && nextMatch.start === 0) {
-          return;
-        }
       }
 
       if (match === null) {
