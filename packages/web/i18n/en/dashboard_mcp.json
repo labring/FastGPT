@@ -2,7 +2,6 @@
   "app_alias_name": "Tool name",
   "app_description": "Application Description",
   "app_name": "Application name",
-  "app_tool_name": "Tool alias",
   "apps": "Exposed applications",
   "create_mcp": "Create an MCP service",
   "create_mcp_server": "Create a new service",
@@ -19,5 +18,8 @@
   "search_app": "Search for apps",
   "select_app": "Application selection",
   "start_use": "Get started",
+  "tool_name": "Tool name",
+  "tool_name_placeholder": "It is recommended to use an English name",
+  "tool_name_tip": "Some Clients only support English, and you can modify this value to the tool name in English.",
   "usage_way": "MCP service usage"
 }
