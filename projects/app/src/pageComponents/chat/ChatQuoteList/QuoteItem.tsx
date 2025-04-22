@@ -64,13 +64,15 @@ const QuoteItem = ({
             fontSize={'10px'}
             h={'full'}
             alignItems={'center'}
+            mr={1}
+            flexShrink={0}
           >
             {index + 1}
           </Flex>
           <Flex px={1.5}>
             <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
             <Box
-              className="textEllipsis3"
+              className={'textEllipsis'}
               wordBreak={'break-all'}
               flex={'1 0 0'}
               fontSize={'mini'}
@@ -81,7 +83,7 @@ const QuoteItem = ({
           </Flex>
         </Box>
         {score && !isDeleted && (
-          <Box className="hover-data" visibility={'hidden'}>
+          <Box className="hover-data" visibility={'hidden'} flexShrink={0}>
             <ScoreTag {...score} />
           </Box>
         )}

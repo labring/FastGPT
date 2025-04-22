@@ -44,27 +44,30 @@ const QuoteList = React.memo(function QuoteList({
       }),
     {
       refreshDeps: [rawSearch, RawSourceBoxProps.chatId],
-      manual: false
+      manual: !chatItemDataId
     }
   );
 
   const formatedDataList = useMemo(() => {
-    return rawSearch
-      .map((item) => {
-        const currentFilterItem = quoteList?.find((res) => res._id === item.id);
-
+    const processedData = rawSearch.map((item) => {
+      if (chatItemDataId && quoteList) {
+        const currentFilterItem = quoteList.find((res) => res._id === item.id);
         return {
           ...item,
           q: currentFilterItem?.q || '',
           a: currentFilterItem?.a || ''
         };
-      })
-      .sort((a, b) => {
-        const aScore = formatScore(a.score);
-        const bScore = formatScore(b.score);
-        return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
-      });
-  }, [quoteList, rawSearch]);
+      }
+
+      return item;
+    });
+
+    return processedData.sort((a, b) => {
+      const aScore = formatScore(a.score);
+      const bScore = formatScore(b.score);
+      return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
+    });
+  }, [rawSearch, quoteList, chatItemDataId]);
 
   return (
     <>
