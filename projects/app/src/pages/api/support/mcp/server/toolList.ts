@@ -150,3 +150,5 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+export { pluginNodes2InputSchema, workflow2InputSchema, handler };
