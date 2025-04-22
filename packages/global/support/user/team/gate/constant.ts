@@ -1,5 +1,8 @@
 import { GateStatus, GateTool } from './type';
 
+export const GATE_COLLECTION_NAME = 'team_gate';
+export const GATE_HOME_COLLECTION_NAME = 'team_gate_home';
+export const GATE_COPYRIGHT_COLLECTION_NAME = 'team_gate_copyright';
 export const GATE_STATUS: Record<string, GateStatus> = {
   ENABLED: 'enabled',
   DISABLED: 'disabled'

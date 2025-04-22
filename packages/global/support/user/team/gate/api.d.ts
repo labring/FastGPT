@@ -22,14 +22,3 @@ export type putUpdateGateCopyrightConfigData = {
   teamId?: string;
   teamName?: string;
 };
-
-export type putUploadGateLogoData = {
-  teamId?: string;
-  ratio: string; // "4:1" | "1:1"
-  file: File;
-};
-
-export type deleteGateLogoData = {
-  teamId?: string;
-  logoId: string;
-};

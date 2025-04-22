@@ -5,7 +5,7 @@ export type GateTool = 'webSearch' | 'deepThinking' | 'fileUpload' | 'imageUploa
 export type GateCopyrightLogoType = {
   id: string;
   ratio: string; // "4:1" | "1:1"
-  url: string;
+  base64img: string;
   updatedAt: Date;
 };
 

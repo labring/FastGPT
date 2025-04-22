@@ -17,6 +17,7 @@ const TeamSchema = new Schema({
     type: String,
     default: '/icon/logo.svg'
   },
+  // todo :banner
   createTime: {
     type: Date,
     default: () => Date.now()

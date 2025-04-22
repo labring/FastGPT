@@ -3,9 +3,7 @@ import {
   getGateConfigParams,
   postCreateGateConfigData,
   putUpdateGateHomeConfigData,
-  putUpdateGateCopyrightConfigData,
-  putUploadGateLogoData,
-  deleteGateLogoData
+  putUpdateGateCopyrightConfigData
 } from '@fastgpt/global/support/user/team/gate/api';
 import { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
@@ -44,20 +42,4 @@ export const updateTeamGateCopyrightConfig = (
 ) => {
   const requestData: putUpdateGateCopyrightConfigData = { teamId, ...data };
   return PUT<GateSchemaType>('/proApi/support/user/team/gate/copyright/config', requestData);
-};
-
-/**
- * 上传团队门户Logo
- */
-export const uploadTeamGateLogo = (teamId: string, file: File, ratio: string) => {
-  const requestData: putUploadGateLogoData = { teamId, file, ratio };
-  return POST<{ url: string }>('/proApi/support/user/team/gate/copyright/logo', requestData);
-};
-
-/**
- * 删除团队门户Logo
- */
-export const deleteTeamGateLogo = (teamId: string, logoId: string) => {
-  const requestData: deleteGateLogoData = { teamId, logoId };
-  return DELETE<boolean>('/proApi/support/user/team/gate/copyright/logo', { data: requestData });
 };
