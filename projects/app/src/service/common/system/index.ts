@@ -38,8 +38,9 @@ export const readConfigData = async (name: string) => {
       }
       return `data/${name}`;
     }
-    // production path
-    return `/app/data/${name}`;
+    // Fallback to default production path
+    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
+    return `${envPath}/${name}`;
   })();
 
   const content = await fs.promises.readFile(filename, 'utf-8');
