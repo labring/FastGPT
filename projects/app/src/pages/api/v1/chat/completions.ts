@@ -325,7 +325,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
     };
 
-    const saveChatId = chatId === 'no-history-sT$hjq*K!vmx' ? '' : chatId || getNanoid(24);
+    const saveChatId = chatId || getNanoid(24);
     if (isInteractiveRequest) {
       await updateInteractiveChat({
         chatId: saveChatId,
