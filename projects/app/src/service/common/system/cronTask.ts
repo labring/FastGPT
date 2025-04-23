@@ -8,7 +8,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import {
   deleteDatasetDataVector,
   getVectorDataByTime
-} from '@fastgpt/service/common/vectorStore/controller';
+} from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';

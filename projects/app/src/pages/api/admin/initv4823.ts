@@ -11,7 +11,7 @@ import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTex
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
+import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 
 // 删了库，没删集合
 const checkInvalidCollection = async () => {

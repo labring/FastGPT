@@ -3,7 +3,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { recallFromVectorStore } from '../../../common/vectorStore/controller';
+import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
