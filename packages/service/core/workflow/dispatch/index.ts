@@ -140,6 +140,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     responseAllData = true,
     ...props
   } = data;
+  const startTime = Date.now();
 
   rewriteRuntimeWorkFlow(runtimeNodes, runtimeEdges);
 
@@ -163,7 +164,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.runTimes]: 1,
       [DispatchNodeResponseKeyEnum.assistantResponses]: [],
       [DispatchNodeResponseKeyEnum.toolResponses]: null,
-      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
+      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables),
+      durationSeconds: 0
     };
   }
 
@@ -745,6 +747,15 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
     })();
 
+    const durationSeconds = +((Date.now() - startTime) / 1000).toFixed(2);
+
+    if (isRootRuntime && stream) {
+      props.workflowStreamResponse?.({
+        event: SseResponseEventEnum.workflowDuration,
+        data: { durationSeconds }
+      });
+    }
+
     return {
       flowResponses: chatResponses,
       flowUsages: chatNodeUsages,
@@ -758,7 +769,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       [DispatchNodeResponseKeyEnum.assistantResponses]:
         mergeAssistantResponseAnswerText(chatAssistantResponse),
       [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
-      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables)
+      newVariables: removeSystemVariable(variables, externalProvider.externalWorkflowVariables),
+      durationSeconds
     };
   } catch (error) {
     return Promise.reject(error);

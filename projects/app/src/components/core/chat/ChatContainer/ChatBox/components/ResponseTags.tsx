@@ -30,15 +30,15 @@ const ResponseTags = ({
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
-  const chatTime = historyItem.time || new Date();
 
+  const chatTime = historyItem.time || new Date();
+  const durationSeconds = historyItem.durationSeconds || 0;
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
-    totalRunningTime: runningTime = 0,
     historyPreviewLength = 0
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
-
+  console.log(durationSeconds);
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
@@ -90,7 +90,7 @@ const ResponseTags = ({
     quoteList.length > 0 ||
     (llmModuleAccount === 1 && notSharePage) ||
     (llmModuleAccount > 1 && notSharePage) ||
-    (isPc && runningTime > 0) ||
+    (isPc && durationSeconds > 0) ||
     notSharePage;
 
   return !showTags ? null : (
@@ -279,10 +279,10 @@ const ResponseTags = ({
               {t('chat:multiple_AI_conversations')}
             </MyTag>
           )}
-          {isPc && runningTime > 0 && (
+          {isPc && durationSeconds > 0 && (
             <MyTooltip label={t('chat:module_runtime_and')}>
               <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
-                {runningTime}s
+                {durationSeconds.toFixed(2)}s
               </MyTag>
             </MyTooltip>
           )}

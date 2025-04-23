@@ -62,32 +62,34 @@ export const getScheduleTriggerApp = async () => {
           }
         ];
 
-        const { flowUsages, assistantResponses, flowResponses } = await retryFn(() => {
-          return dispatchWorkFlow({
-            chatId,
-            timezone,
-            externalProvider,
-            mode: 'chat',
-            runningAppInfo: {
-              id: String(app._id),
-              teamId: String(app.teamId),
-              tmbId: String(app.tmbId)
-            },
-            runningUserInfo: {
-              teamId: String(app.teamId),
-              tmbId: String(app.tmbId)
-            },
-            uid: String(app.tmbId),
-            runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-            runtimeEdges: storeEdges2RuntimeEdges(edges),
-            variables: {},
-            query: userQuery,
-            chatConfig,
-            histories: [],
-            stream: false,
-            maxRunTimes: WORKFLOW_MAX_RUN_TIMES
-          });
-        });
+        const { flowUsages, assistantResponses, flowResponses, durationSeconds } = await retryFn(
+          () => {
+            return dispatchWorkFlow({
+              chatId,
+              timezone,
+              externalProvider,
+              mode: 'chat',
+              runningAppInfo: {
+                id: String(app._id),
+                teamId: String(app.teamId),
+                tmbId: String(app.tmbId)
+              },
+              runningUserInfo: {
+                teamId: String(app.teamId),
+                tmbId: String(app.tmbId)
+              },
+              uid: String(app.tmbId),
+              runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
+              runtimeEdges: storeEdges2RuntimeEdges(edges),
+              variables: {},
+              query: userQuery,
+              chatConfig,
+              histories: [],
+              stream: false,
+              maxRunTimes: WORKFLOW_MAX_RUN_TIMES
+            });
+          }
+        );
 
         // Save chat
         await saveChat({
@@ -111,7 +113,8 @@ export const getScheduleTriggerApp = async () => {
               value: assistantResponses,
               [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
             }
-          ]
+          ],
+          durationSeconds
         });
         createChatUsage({
           appName: app.name,
