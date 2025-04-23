@@ -1,15 +1,19 @@
-import { postUploadImg, postUploadFiles } from '@/web/common/file/api';
+import {
+  postUploadImg,
+  postUploadFiles,
+  postS3PresignedUpload,
+  postUploadFileS3
+} from '@/web/common/file/api';
 import { UploadImgProps } from '@fastgpt/global/common/file/api';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { preUploadImgProps } from '@fastgpt/global/common/file/api';
 import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/file/img';
 import type { UploadChatFileProps, UploadDatasetFileProps } from '@/pages/api/common/file/upload';
-import { POST } from '../api/request';
 
 /**
  * upload file to mongo gridfs
  */
-export const uploadFile2DB = ({
+export const uploadFile2DB = async ({
   file,
   bucketName,
   data,
@@ -36,14 +40,28 @@ export const uploadFile2DB = ({
       percentListen?.(percent);
     });
   } else if (bucketName === BucketNameEnum.chat) {
-    POST();
+    const { fileId, formData, postURL, previewUrl } = await postS3PresignedUpload({
+      bucketName,
+      fileName: file.name,
+      metadata: JSON.stringify(metadata),
+      data
+    });
 
-    return postUploadFiles(form, (e) => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries(formData)) {
+      form.append(key, value);
+    }
+
+    form.append('file', file, encodeURIComponent(file.name));
+
+    await postUploadFileS3(postURL, form, (e) => {
       if (!e.total) return;
 
       const percent = Math.round((e.loaded / e.total) * 100);
       percentListen?.(percent);
     });
+
+    return Promise.resolve({ fileId, previewUrl });
   }
   return Promise.resolve({ fileId: '', previewUrl: '' });
 };

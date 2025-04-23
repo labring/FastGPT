@@ -1,18 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
-import { getUploadModel } from '@fastgpt/service/common/file/multer';
-import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { createFileToken } from '@fastgpt/service/support/permission/controller';
-import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
 import { authFrequencyLimit } from '@/service/common/frequencyLimit/api';
 import { addSeconds } from 'date-fns';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { UploadDatasetFileProps } from './upload';
+import { postObjectPresignedUrl, getObjectPresignedUrl } from '@fastgpt/service/common/file/s3';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type UploadChatFileProps = {
   appId: string;
@@ -28,10 +25,8 @@ const authUploadLimit = (tmbId: string) => {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const filePaths: string[] = [];
   try {
     const maxSize = global.feConfigs?.uploadFileMaxSize;
-    /* Creates the multer uploader */
     const { bucketName, metadata, data, fileName } = req.body;
 
     const { teamId, uid } = await (async () => {
@@ -67,41 +62,29 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     await authUploadLimit(uid);
 
-    addLog.info(`Upload file success ${file.originalname}, cost ${Date.now() - start}ms`);
+    const fileId = `${getNanoid()}.${fileName}`;
+    const key = `${bucketName}/${fileId}`;
 
-    if (!bucketName) {
-      throw new Error('bucketName is empty');
-    }
+    const presigned = await postObjectPresignedUrl(
+      key,
+      { teamId, uid, metadata },
+      (maxSize ?? 100) * 1024 * 1024,
+      10 * 60 * 1000
+    );
 
-    const fileId = await uploadFile({
-      teamId,
-      uid,
-      bucketName,
-      path: file.path,
-      filename: file.originalname,
-      contentType: file.mimetype,
-      metadata: metadata
-    });
+    const previewUrl = await getObjectPresignedUrl(key, 10 * 60 * 1000);
 
-    jsonRes(res, {
-      data: {
-        fileId,
-        previewUrl: `${ReadFileBaseUrl}/${file.originalname}?token=${await createFileToken({
-          bucketName,
-          teamId,
-          uid,
-          fileId
-        })}`
-      }
-    });
+    return {
+      ...presigned,
+      fileId,
+      previewUrl
+    };
   } catch (error) {
     jsonRes(res, {
       code: 500,
       error
     });
   }
-
-  removeFilesByPaths(filePaths);
 }
 
 export default NextAPI(handler);
