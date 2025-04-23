@@ -55,6 +55,8 @@ export async function saveChat({
   durationSeconds,
   metadata = {}
 }: Props) {
+  if (!chatId) return;
+
   try {
     const chat = await MongoChat.findOne(
       {
