@@ -11,51 +11,9 @@ import { WorkflowEventContext } from '../../context/workflowEventContext';
 import { WorkflowContext } from '../../context';
 import dagre from '@dagrejs/dagre';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-
-const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-const getLayoutedElements = (nodes: Node<FlowNodeItemType>[], edges: any[]) => {
-  dagreGraph.setGraph({
-    rankdir: 'LR',
-    nodesep: 80, // Horizontal space
-    ranksep: 120 // Vertical space
-  });
-
-  // Find connected nodes
-  const connectedNodeIds = new Set<string>();
-  edges.forEach((edge) => {
-    connectedNodeIds.add(edge.source);
-    connectedNodeIds.add(edge.target);
-  });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const newNodes = nodes.map<Node<FlowNodeItemType>>((node) => {
-    if (!connectedNodeIds.has(node.id)) {
-      return node;
-    }
-
-    const nodeWithPosition = dagreGraph.node(node.id);
-    const newNode = {
-      ...node,
-      position: {
-        x: nodeWithPosition.x - node.width! / 2,
-        y: nodeWithPosition.y - node.height! / 2
-      }
-    };
-
-    return newNode;
-  });
-
-  return { nodes: newNodes, edges };
-};
+import { WorkflowStatusContext } from '../../context/workflowStatusContext';
+import { cloneDeep } from 'lodash';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
@@ -64,6 +22,10 @@ const ContextMenu = () => {
   const setMenu = useContextSelector(WorkflowEventContext, (ctx) => ctx.setMenu);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const getParentNodeSizeAndPosition = useContextSelector(
+    WorkflowStatusContext,
+    (v) => v.getParentNodeSizeAndPosition
+  );
 
   const { fitView, screenToFlowPosition } = useReactFlow();
 
@@ -72,12 +34,164 @@ const ContextMenu = () => {
   }, [nodeList, menu]);
 
   const onLayout = useCallback(() => {
+    const updateChildNodesPosition = ({
+      startNode,
+      nodes,
+      edges
+    }: {
+      startNode: Node<FlowNodeItemType>;
+      nodes: Node<FlowNodeItemType>[];
+      edges: any[];
+    }) => {
+      const startPosition = { x: startNode.position.x, y: startNode.position.y };
+
+      const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+      dagreGraph.setGraph({
+        rankdir: 'LR',
+        nodesep: 80, // Horizontal space
+        ranksep: 120 // Vertical space
+      });
+
+      nodes.forEach((node) => {
+        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+      });
+
+      // Find connected nodes
+      const connectedNodeIds = new Set<string>();
+      edges.forEach((edge) => {
+        connectedNodeIds.add(edge.source);
+        connectedNodeIds.add(edge.target);
+
+        dagreGraph.setEdge(edge.source, edge.target);
+      });
+
+      dagre.layout(dagreGraph);
+      const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
+      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
+
+      nodes.forEach((node) => {
+        if (!connectedNodeIds.has(node.id)) {
+          return;
+        }
+
+        const nodeWithPosition = dagreGraph.node(node.id);
+
+        node.position = {
+          x: nodeWithPosition.x - node.width! / 2 + offsetX,
+          y: nodeWithPosition.y - node.height! / 2 + offsetY
+        };
+      });
+    };
+    const updateParentNodesPosition = ({
+      nodes,
+      edges
+    }: {
+      nodes: Node<FlowNodeItemType>[];
+      edges: any[];
+    }) => {
+      const childNodeIdsSet = new Set(
+        nodes.filter((node) => !!node.data.parentNodeId).map((node) => node.data.nodeId)
+      );
+
+      const dagreGraph = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
+      dagreGraph.setGraph({
+        rankdir: 'LR',
+        nodesep: 80, // Horizontal space
+        ranksep: 120 // Vertical space
+      });
+
+      nodes.forEach((node) => {
+        if (childNodeIdsSet.has(node.data.nodeId)) return;
+        dagreGraph.setNode(node.id, { width: node.width!, height: node.height! });
+      });
+
+      // Find connected nodes
+      const connectedNodeIds = new Set<string>();
+      edges.forEach((edge) => {
+        if (childNodeIdsSet.has(edge.source)) return;
+        if (childNodeIdsSet.has(edge.target)) return;
+
+        connectedNodeIds.add(edge.source);
+        connectedNodeIds.add(edge.target);
+
+        dagreGraph.setEdge(edge.source, edge.target);
+      });
+
+      dagre.layout(dagreGraph);
+
+      nodes.forEach((node) => {
+        if (!connectedNodeIds.has(node.id) || childNodeIdsSet.has(node.data.nodeId)) {
+          return;
+        }
+
+        const nodeWithPosition = dagreGraph.node(node.id);
+        const targetX = nodeWithPosition.x - node.width! / 2;
+        const targetY = nodeWithPosition.y - node.height! / 2;
+        const diffX = targetX - node.position.x;
+        const diffY = targetY - node.position.y;
+        node.position = {
+          x: targetX,
+          y: targetY
+        };
+
+        // Update child nodes position
+        nodes.forEach((childNode) => {
+          if (childNode.data.parentNodeId === node.data.nodeId) {
+            childNode.position = {
+              x: childNode.position.x + diffX,
+              y: childNode.position.y + diffY
+            };
+          }
+        });
+      });
+    };
+
     setNodes((nodes) => {
-      let newNodes: Node<FlowNodeItemType>[] = [];
+      let newNodes = cloneDeep(nodes);
+
       setEdges((edges) => {
-        const { nodes: newLayoutNodes, edges: newEdges } = getLayoutedElements(nodes, edges);
-        newNodes = newLayoutNodes;
-        return newEdges;
+        const childNodes = newNodes.filter((node) => node.data.parentNodeId);
+        const childNodesIdSet = new Set(childNodes.map((node) => node.data.parentNodeId));
+
+        // 1. Layout child nodes
+        updateChildNodesPosition({
+          startNode: childNodes[0],
+          nodes: childNodes,
+          edges
+        });
+
+        // 2. Reset parent node size and position
+        const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
+        parentNodes.forEach((node) => {
+          const res = getParentNodeSizeAndPosition({
+            nodes: newNodes,
+            parentId: node.data.nodeId
+          });
+          if (!res) return;
+          const { parentX, parentY, nodeWidth, nodeHeight, childHeight, childWidth } = res;
+
+          node.position = {
+            x: parentX,
+            y: parentY
+          };
+          node.width = nodeWidth;
+          node.height = nodeHeight;
+          node.data.inputs.forEach((input) => {
+            if (input.key === NodeInputKeyEnum.nodeHeight) {
+              input.value = childHeight;
+            } else if (input.key === NodeInputKeyEnum.nodeWidth) {
+              input.value = childWidth;
+            }
+          });
+        });
+
+        // 3. Layout parent node
+        updateParentNodesPosition({
+          nodes: newNodes,
+          edges
+        });
+        return edges;
       });
 
       return newNodes;
