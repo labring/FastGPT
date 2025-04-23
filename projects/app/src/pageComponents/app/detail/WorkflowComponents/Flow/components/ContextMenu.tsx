@@ -14,6 +14,7 @@ import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { WorkflowStatusContext } from '../../context/workflowStatusContext';
 import { cloneDeep } from 'lodash';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const ContextMenu = () => {
   const { t } = useTranslation();
@@ -84,12 +85,16 @@ const ContextMenu = () => {
       });
     };
     const updateParentNodesPosition = ({
+      startNode,
       nodes,
       edges
     }: {
+      startNode: Node<FlowNodeItemType>;
       nodes: Node<FlowNodeItemType>[];
       edges: any[];
     }) => {
+      const startPosition = { x: startNode.position.x, y: startNode.position.y };
+
       const childNodeIdsSet = new Set(
         nodes.filter((node) => !!node.data.parentNodeId).map((node) => node.data.nodeId)
       );
@@ -119,6 +124,9 @@ const ContextMenu = () => {
       });
 
       dagre.layout(dagreGraph);
+      const layoutedStartNode = dagreGraph.node(startNode.data.nodeId);
+      const offsetX = startPosition.x - (layoutedStartNode.x - startNode.width! / 2);
+      const offsetY = startPosition.y - (layoutedStartNode.y - startNode.height! / 2);
 
       nodes.forEach((node) => {
         if (!connectedNodeIds.has(node.id) || childNodeIdsSet.has(node.data.nodeId)) {
@@ -126,8 +134,8 @@ const ContextMenu = () => {
         }
 
         const nodeWithPosition = dagreGraph.node(node.id);
-        const targetX = nodeWithPosition.x - node.width! / 2;
-        const targetY = nodeWithPosition.y - node.height! / 2;
+        const targetX = nodeWithPosition.x - node.width! / 2 + offsetX;
+        const targetY = nodeWithPosition.y - node.height! / 2 + offsetY;
         const diffX = targetX - node.position.x;
         const diffY = targetY - node.position.y;
         node.position = {
@@ -203,6 +211,15 @@ const ContextMenu = () => {
 
         // 3. Layout parent node
         updateParentNodesPosition({
+          startNode:
+            newNodes.find((node) =>
+              [
+                FlowNodeTypeEnum.systemConfig,
+                FlowNodeTypeEnum.pluginConfig,
+                FlowNodeTypeEnum.workflowStart,
+                FlowNodeTypeEnum.pluginInput
+              ].includes(node.data.flowNodeType)
+            ) || newNodes[0],
           nodes: newNodes,
           edges
         });
@@ -211,7 +228,10 @@ const ContextMenu = () => {
 
       return newNodes;
     });
-    fitView();
+
+    setTimeout(() => {
+      fitView();
+    });
   }, []);
 
   const onAddComment = useCallback(() => {
