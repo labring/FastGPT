@@ -17,6 +17,7 @@ export type generatingMessageProps = {
   interactive?: WorkflowInteractiveResponseType;
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
+  durationSeconds?: number;
 };
 
 export type StartChatFnProps = {
