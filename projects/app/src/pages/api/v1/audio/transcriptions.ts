@@ -56,15 +56,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       ...req.body
     });
 
-    // auth app
-    // const app = await MongoApp.findById(appId, 'modules').lean();
-    // if (!app) {
-    //   throw new Error('app not found');
-    // }
-    // if (!whisperConfig?.open) {
-    //   throw new Error('Whisper is not open in the app');
-    // }
-
     const result = await aiTranscriptions({
       model: getDefaultSTTModel(),
       fileStream: fs.createReadStream(file.path)
@@ -73,7 +64,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     pushWhisperUsage({
       teamId,
       tmbId,
-      duration
+      duration: result?.usage?.total_tokens || duration
     });
 
     jsonRes(res, {
