@@ -168,8 +168,9 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
   let workflowRunTimes = 0;
 
-  // set sse response headers
+  // Init
   if (isRootRuntime) {
+    // set sse response headers
     res?.setHeader('Connection', 'keep-alive'); // Set keepalive for long connection
     if (stream && res) {
       res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
@@ -191,13 +192,14 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       };
       sendStreamTimerSign();
     }
-  }
 
-  variables = {
-    ...getSystemVariable(data),
-    ...externalProvider.externalWorkflowVariables,
-    ...variables
-  };
+    // Add system variables
+    variables = {
+      ...getSystemVariable(data),
+      ...externalProvider.externalWorkflowVariables,
+      ...variables
+    };
+  }
 
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
