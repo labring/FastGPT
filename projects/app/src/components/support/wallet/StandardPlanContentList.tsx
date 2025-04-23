@@ -40,7 +40,8 @@ const StandardPlanContentList = ({
       trainingWeight: plan.trainingWeight,
       permissionReRank: plan.permissionReRank,
       totalPoints: plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
-      permissionWebsiteSync: plan.permissionWebsiteSync
+      permissionWebsiteSync: plan.permissionWebsiteSync,
+      permissionTeamOperationLog: plan.permissionTeamOperationLog
     };
   }, [subPlans?.standard, level, mode]);
 
@@ -123,6 +124,14 @@ const StandardPlanContentList = ({
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
           <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
+        </Flex>
+      )}
+      {!!planContent.permissionTeamOperationLog && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>
+            {t('common:support.wallet.subscription.team_operation_log')}
+          </Box>
         </Flex>
       )}
     </Grid>

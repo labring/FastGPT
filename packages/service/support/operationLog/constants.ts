@@ -22,6 +22,10 @@ export const operationLogI18nMap = {
     content: i18nT('account_team:log_kick_out_team'),
     typeLabel: i18nT('account_team:kick_out_team')
   },
+  [OperationLogEventEnum.RECOVER_TEAM_MEMBER]: {
+    content: i18nT('account_team:log_recover_team_member'),
+    typeLabel: i18nT('account_team:recover_team_member')
+  },
   [OperationLogEventEnum.CREATE_DEPARTMENT]: {
     content: i18nT('account_team:log_create_department'),
     typeLabel: i18nT('account_team:create_department')
@@ -62,6 +66,10 @@ export type TemplateParamsMap = {
     newName: string;
   };
   [OperationLogEventEnum.KICK_OUT_TEAM]: {
+    name?: string;
+    memberName: string;
+  };
+  [OperationLogEventEnum.RECOVER_TEAM_MEMBER]: {
     name?: string;
     memberName: string;
   };
