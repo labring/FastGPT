@@ -82,7 +82,8 @@ const ChatItemSchema = new Schema({
   [DispatchNodeResponseKeyEnum.nodeResponse]: {
     type: Array,
     default: []
-  }
+  },
+  durationSeconds: Number
 });
 
 try {

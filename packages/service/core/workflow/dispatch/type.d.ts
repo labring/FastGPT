@@ -26,6 +26,7 @@ export type DispatchFlowResponse = {
   [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
   [DispatchNodeResponseKeyEnum.runTimes]: number;
   newVariables: Record<string, string>;
+  durationSeconds: number;
 };
 
 export type WorkflowResponseType = ({

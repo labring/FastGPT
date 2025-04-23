@@ -2,7 +2,6 @@ import fs from 'fs';
 import { getAxiosConfig } from '../config';
 import axios from 'axios';
 import FormData from 'form-data';
-import { getSTTModel } from '../model';
 import { STTModelType } from '@fastgpt/global/core/ai/model.d';
 
 export const aiTranscriptions = async ({
@@ -24,7 +23,7 @@ export const aiTranscriptions = async ({
 
   const aiAxiosConfig = getAxiosConfig();
 
-  const { data: result } = await axios<{ text: string }>({
+  const { data: result } = await axios<{ text: string; usage?: { total_tokens: number } }>({
     method: 'post',
     ...(modelData.requestUrl
       ? { url: modelData.requestUrl }
