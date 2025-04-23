@@ -93,14 +93,6 @@ type AuthResponseType = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.on('close', () => {
-    res.end();
-  });
-  res.on('error', () => {
-    console.log('error: ', 'request error');
-    res.end();
-  });
-
   let {
     chatId,
     appId,
