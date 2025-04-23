@@ -151,15 +151,30 @@ const ContextMenu = () => {
       let newNodes = cloneDeep(nodes);
 
       setEdges((edges) => {
-        const childNodes = newNodes.filter((node) => node.data.parentNodeId);
-        const childNodesIdSet = new Set(childNodes.map((node) => node.data.parentNodeId));
+        const childNodesIdSet = new Set();
 
         // 1. Layout child nodes
-        updateChildNodesPosition({
-          startNode: childNodes[0],
-          nodes: childNodes,
-          edges
+        const childNodesMap: Record<string, Node<FlowNodeItemType>[]> = {};
+        newNodes.forEach((node) => {
+          const parentId = node.data.parentNodeId;
+          if (parentId) {
+            childNodesIdSet.add(parentId);
+            if (!childNodesMap[parentId]) {
+              childNodesMap[parentId] = [];
+            }
+            childNodesMap[parentId].push(node);
+          }
         });
+        const childNodesArr = Object.values(childNodesMap);
+        if (childNodesArr.length > 0) {
+          childNodesArr.forEach((childNodes) => {
+            updateChildNodesPosition({
+              startNode: childNodes[0],
+              nodes: childNodes,
+              edges
+            });
+          });
+        }
 
         // 2. Reset parent node size and position
         const parentNodes = newNodes.filter((node) => childNodesIdSet.has(node.data.nodeId));
