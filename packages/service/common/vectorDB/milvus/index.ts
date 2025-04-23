@@ -12,7 +12,7 @@ import type {
   InsertVectorControllerProps
 } from '../controller.d';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { addLog } from '../../../common/system/log';
+import { addLog } from '../../system/log';
 import { customNanoid } from '@fastgpt/global/common/string/tools';
 
 export class MilvusCtrl {

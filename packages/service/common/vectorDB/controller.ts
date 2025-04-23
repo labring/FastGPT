@@ -1,11 +1,11 @@
 /* vector crud */
-import { PgVectorCtrl } from './pg/class';
-import { ObVectorCtrl } from './oceanbase/class';
+import { PgVectorCtrl } from './pg';
+import { ObVectorCtrl } from './oceanbase';
 import { getVectorsByText } from '../../core/ai/embedding';
 import { DelDatasetVectorCtrlProps, InsertVectorProps } from './controller.d';
 import { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS, OCEANBASE_ADDRESS } from './constants';
-import { MilvusCtrl } from './milvus/class';
+import { MilvusCtrl } from './milvus';
 import { setRedisCache, getRedisCache, delRedisCache, CacheKeyEnum } from '../redis/cache';
 import { throttle } from 'lodash';
 import { retryFn } from '@fastgpt/global/common/system/utils';
