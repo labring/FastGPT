@@ -8,7 +8,11 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { UploadDatasetFileProps } from './upload';
-import { postObjectPresignedUrl, getObjectPresignedUrl } from '@fastgpt/service/common/file/s3';
+import {
+  postObjectPresignedUrl,
+  getObjectPresignedUrl,
+  isS3ClientInitialized
+} from '@fastgpt/service/common/file/s3';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type UploadChatFileProps = {
@@ -26,6 +30,10 @@ const authUploadLimit = (tmbId: string) => {
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
+    const s3 = isS3ClientInitialized();
+    if (!s3) {
+      return;
+    }
     const maxSize = global.feConfigs?.uploadFileMaxSize;
     const { bucketName, metadata, data, fileName } = req.body;
 
@@ -62,8 +70,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     await authUploadLimit(uid);
 
+    const chatId = JSON.parse(metadata)?.chatId ?? 'unknown';
+
     const fileId = `${getNanoid()}.${fileName}`;
-    const key = `${bucketName}/${fileId}`;
+    const key = (() => {
+      if (bucketName === 'chat') {
+        return `${bucketName}/${chatId}/${fileId}`;
+      }
+      return `${bucketName}/${fileId}`;
+    })();
 
     const presigned = await postObjectPresignedUrl(
       key,

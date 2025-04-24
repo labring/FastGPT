@@ -5,6 +5,7 @@ import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delFileByFileIdList, getGFSCollection } from '../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoChat } from './chatSchema';
+import { removeObjectsByPrefix } from '../../common/file/s3';
 
 export async function getChatItems({
   appId,
@@ -81,7 +82,7 @@ export const addCustomFeedbacks = async ({
   }
 };
 
-/* 
+/*
   Delete chat files
   1. ChatId: Delete one chat files
   2. AppId: Delete all the app's chat files
@@ -116,4 +117,9 @@ export const deleteChatFiles = async ({
     bucketName: BucketNameEnum.chat,
     fileIdList: files.map((item) => String(item._id))
   });
+
+  // remove s3 files
+  for (const chatId of appChatIdList) {
+    await removeObjectsByPrefix(`chat/${chatId}/`);
+  }
 };

@@ -29,7 +29,7 @@ export const postS3PresignedUpload = (data: any) =>
     previewUrl: string;
   }>('/common/file/s3PresignedUpload', data);
 
-export const postUploadFileS3 = (
+export const postS3UploadFile = (
   postURL: string,
   form: FormData,
   onUploadProgress: (progressEvent: AxiosProgressEvent) => void
