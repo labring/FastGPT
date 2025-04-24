@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
+import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -12,6 +12,8 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
+import SliderApps from '@/pageComponents/chat/SliderApps';
+import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -20,38 +22,49 @@ import { getMyApps } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 import { useMount } from 'ahooks';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
+import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
+import ChatRecordContextProvider, {
+  ChatRecordContext
+} from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
 
-const Chat = ({ gateAppId }: { gateAppId: string }) => {
+const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
+
+const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
+  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
-
   const { setLastChatAppId, chatId, appId, outLinkAuthData } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
+  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+
+  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   // Load chat init data
   const { loading } = useRequest2(
@@ -82,7 +95,7 @@ const Chat = ({ gateAppId }: { gateAppId: string }) => {
           router.replace({
             query: {
               ...router.query,
-              appId: gateAppId
+              appId: myApps[0]?._id
             }
           });
         }
@@ -159,7 +172,7 @@ const Chat = ({ gateAppId }: { gateAppId: string }) => {
         title={userInfo?.team.teamName + t('account_gate:Gate')}
         icon={chatBoxData.app.avatar}
       ></NextHead>
-      {isPc && <GateSideBar apps={[]} activeAppId={appId} />}
+      {isPc && <GateSideBar apps={myApps} activeAppId={appId} />}
 
       {(!quoteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
@@ -174,18 +187,36 @@ const Chat = ({ gateAppId }: { gateAppId: string }) => {
               flex={'1 0 0'}
               flexDirection={'column'}
             >
+              {/* header */}
+              {/* <ChatHeader
+                totalRecordsCount={totalRecordsCount}
+                apps={myApps}
+                history={chatRecords}
+                showHistory
+              /> */}
+
               {/* chat box */}
               <Box flex={'1 0 0'} bg={'white'}>
-                <ChatBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  showEmptyIntro
-                  feedbackType={'user'}
-                  onStartChat={onStartChat}
-                  chatType={'chat'}
-                  isReady={!loading}
-                />
+                {isPlugin ? (
+                  <CustomPluginRunBox
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    onNewChat={() => onChangeChatId(getNanoid())}
+                    onStartChat={onStartChat}
+                  />
+                ) : (
+                  <ChatBox
+                    appId={appId}
+                    chatId={chatId}
+                    outLinkAuthData={outLinkAuthData}
+                    showEmptyIntro
+                    feedbackType={'user'}
+                    onStartChat={onStartChat}
+                    chatType={'chat'}
+                    isReady={!loading}
+                  />
+                )}
               </Box>
             </Flex>
           </Flex>
@@ -206,71 +237,71 @@ const Chat = ({ gateAppId }: { gateAppId: string }) => {
 };
 
 const Render = (props: { appId: string; isStandalone?: string }) => {
+  const { appId, isStandalone } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
-  const { source, chatId, setSource, setAppId } = useChatStore();
+  const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
 
-  // 修改为只获取 gate 应用
-  const { data: gateAppId = '', runAsync: loadGateApp } = useRequest2(
-    async () => {
-      const apps = await getMyApps();
-      const gateApp = apps.find((app) => app.name === 'gate');
-      if (!gateApp) {
-        throw new Error('Gate app not found');
-      }
-      return gateApp._id;
-    },
-    {
-      manual: false
-    }
-  );
+  const {
+    data: myApps = [],
+    loading: loadingApps,
+    runAsync: loadMyApps
+  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
+    manual: false,
+    refreshDeps: [appId]
+  });
 
   // 初始化聊天框
   useMount(async () => {
-    try {
-      const gateId = await loadGateApp();
-      setAppId(gateId);
-      router.replace({
-        query: {
-          ...router.query,
-          appId: gateId
-        }
-      });
-      setSource('online');
-    } catch (error) {
-      toast({
-        status: 'error',
-        title: t('common:core.chat.You need to a chat app')
-      });
-      router.replace('/dashboard/apps');
+    // pc: redirect to latest model chat
+    if (!appId) {
+      const apps = await loadMyApps();
+      if (apps.length === 0) {
+        toast({
+          status: 'error',
+          title: t('common:core.chat.You need to a chat app')
+        });
+        router.replace('/dashboard/apps');
+      } else {
+        router.replace({
+          query: {
+            ...router.query,
+            appId: lastChatAppId || apps[0]._id
+          }
+        });
+      }
     }
+    setSource('online');
   });
+  // Watch appId
+  useEffect(() => {
+    setAppId(appId);
+  }, [appId, setAppId]);
 
-  // 使用 props.appId 替代之前的 appId
   const chatHistoryProviderParams = useMemo(
-    () => ({ appId: props.appId, source: ChatSourceEnum.online }),
-    []
+    () => ({ appId, source: ChatSourceEnum.online }),
+    [appId]
   );
-
   const chatRecordProviderParams = useMemo(() => {
     return {
-      appId: props.appId,
+      appId,
       type: GetChatTypeEnum.normal,
-      chatId
+      chatId: chatId
     };
-  }, []);
+  }, [appId, chatId]);
 
   return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
-        showRouteToAppDetail={props.isStandalone !== '1'}
-        showRouteToDatasetDetail={props.isStandalone !== '1'}
+        showRouteToAppDetail={isStandalone !== '1'}
+        showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
+        // isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat gateAppId={gateAppId} />
+          <Chat myApps={myApps} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>

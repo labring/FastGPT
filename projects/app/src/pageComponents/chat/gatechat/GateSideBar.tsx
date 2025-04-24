@@ -212,7 +212,7 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
         </Flex>
 
         {/* Recent Apps */}
-        {apps && apps.length > 0 && (
+        {!isChatPage && apps && apps.length > 0 && (
           <Box w={isCollapsed ? '36px' : '100%'} mt={4} transition="all 0.2s" overflow="hidden">
             <Box className="nav-item">
               <Box className="nav-content">
