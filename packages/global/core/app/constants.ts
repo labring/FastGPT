@@ -62,8 +62,3 @@ export enum AppTemplateTypeEnum {
 }
 
 export const defaultDatasetMaxTokens = 16000;
-
-export enum MCPToolsOperationTypeEnum {
-  GET_TOOLS = 'getTools',
-  TOOL_TEST = 'toolTest'
-}

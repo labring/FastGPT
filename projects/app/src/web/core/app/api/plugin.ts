@@ -22,7 +22,8 @@ import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 import { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
 import { ToolType } from '@fastgpt/global/core/app/type';
 import { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
-import { MCPToolsBody } from '@/pages/api/support/mcp/client';
+import { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
+import { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -77,7 +78,10 @@ export const postCreateMCPTools = (data: createMCPToolsBody) =>
 export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
   POST('/core/app/mcpTools/update', data);
 
-export const postMCPTools = (data: MCPToolsBody) => POST<ToolType[]>('/support/mcp/client', data);
+export const getMCPTools = (data: getMCPToolsBody) =>
+  POST<ToolType[]>('/support/mcp/client/getTools', data);
+
+export const postRunMCPTool = (data: RunMCPToolBody) => POST('/support/mcp/client/runTool', data);
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>

@@ -1,5 +1,5 @@
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { postCreateMCPTools, postMCPTools } from '@/web/core/app/api/plugin';
+import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
 import {
   Box,
   Button,
@@ -26,8 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { ToolType } from '@fastgpt/global/core/app/type';
-import { MCPToolsOperationTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getToolsBody } from '@/pages/api/support/mcp/client';
+import { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 export type MCPToolSetData = {
   url: string;
@@ -80,9 +79,9 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
-    (data: getToolsBody) => postMCPTools({ ...data, type: MCPToolsOperationTypeEnum.GET_TOOLS }),
+    (data: getMCPToolsBody) => getMCPTools(data),
     {
-      onSuccess: (res) => {
+      onSuccess: (res: ToolType[]) => {
         setValue('mcpData.toolList', res);
       },
       errorToast: t('app:MCP_tools_parse_failed')
