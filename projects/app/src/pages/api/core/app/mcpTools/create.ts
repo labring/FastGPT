@@ -11,6 +11,7 @@ import {
   getMCPToolRuntimeNode,
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/mcpTools/utils';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 
 export type createMCPToolsQuery = {};
 
@@ -59,6 +60,13 @@ async function handler(
         session
       });
     }
+  });
+
+  pushTrack.createApp({
+    type: AppTypeEnum.toolSet,
+    uid: userId,
+    teamId,
+    tmbId
   });
 
   return {};
