@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { ToolType } from '../type';
+import { ToolType } from '@fastgpt/global/core/app/type';
 
 export class MCPClient {
   private client: Client | null = null;
@@ -37,12 +37,12 @@ export class MCPClient {
     }
   }
 
-  public async close() {
+  // 内部方法：关闭连接
+  private async closeConnection() {
     if (this.client) {
       try {
         await this.client.close();
         this.client = null;
-        console.log('MCP client closed');
       } catch (error) {
         console.error('Failed to close MCP client:', error);
       }
@@ -70,7 +70,9 @@ export class MCPClient {
       return tools;
     } catch (error) {
       console.error('Failed to get MCP tools:', error);
-      throw error;
+      return Promise.reject(error);
+    } finally {
+      await this.closeConnection();
     }
   }
 
@@ -93,7 +95,9 @@ export class MCPClient {
       return result;
     } catch (error) {
       console.error(`Failed to call tool ${toolName}:`, error);
-      throw error;
+      return Promise.reject(error);
+    } finally {
+      await this.closeConnection();
     }
   }
 }

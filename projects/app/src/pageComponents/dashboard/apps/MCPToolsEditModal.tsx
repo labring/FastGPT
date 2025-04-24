@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { ToolType } from '@fastgpt/global/core/app/type';
-import { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 export type MCPToolSetData = {
   url: string;

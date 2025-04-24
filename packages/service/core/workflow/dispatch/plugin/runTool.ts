@@ -4,7 +4,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import getMCPClient from '@fastgpt/global/core/app/mcpTools/mcp';
+import getMCPClient from '../../../app/mcp';
 
 type RunToolProps = ModuleDispatchProps<{
   toolData: {
@@ -42,7 +42,5 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   } catch (error) {
     console.error('Error running MCP tool:', error);
     return Promise.reject(error);
-  } finally {
-    await mcpClient.close();
   }
 };

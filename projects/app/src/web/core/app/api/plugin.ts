@@ -19,11 +19,11 @@ import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/g
 import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
-import { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
+import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
 import { ToolType } from '@fastgpt/global/core/app/type';
-import { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
-import { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
-import { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
+import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
+import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
