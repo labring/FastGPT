@@ -1,5 +1,5 @@
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { getMCPTools, postCreateMCPTools } from '@/web/core/app/api/plugin';
+import { postCreateMCPTools, postMCPTools } from '@/web/core/app/api/plugin';
 import {
   Box,
   Button,
@@ -26,7 +26,8 @@ import { useTranslation } from 'react-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { ToolType } from '@fastgpt/global/core/app/type';
-import { getMCPToolsBody } from '@/pages/api/core/app/mcpTools/getMCPTools';
+import { MCPToolsOperationTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getToolsBody } from '@/pages/api/support/mcp/client';
 
 export type MCPToolSetData = {
   url: string;
@@ -79,7 +80,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   );
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
-    (data: getMCPToolsBody) => getMCPTools(data),
+    (data: getToolsBody) => postMCPTools({ ...data, type: MCPToolsOperationTypeEnum.GET_TOOLS }),
     {
       onSuccess: (res) => {
         setValue('mcpData.toolList', res);

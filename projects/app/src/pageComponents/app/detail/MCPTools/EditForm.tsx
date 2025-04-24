@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getMCPTools } from '@/web/core/app/api/plugin';
+import { postMCPTools } from '@/web/core/app/api/plugin';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -12,7 +12,8 @@ import { ToolType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getMCPToolsBody } from '@/pages/api/core/app/mcpTools/getMCPTools';
+import { MCPToolsOperationTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getToolsBody } from '@/pages/api/support/mcp/client';
 
 const EditForm = ({
   url,
@@ -34,7 +35,8 @@ const EditForm = ({
   const [toolDetail, setToolDetail] = useState<ToolType | null>(null);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
-    async (data: getMCPToolsBody) => await getMCPTools(data),
+    async (data: getToolsBody) =>
+      await postMCPTools({ ...data, type: MCPToolsOperationTypeEnum.GET_TOOLS }),
     {
       onSuccess: (res) => {
         setToolList(res);
