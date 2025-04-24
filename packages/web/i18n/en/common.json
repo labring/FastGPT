@@ -617,6 +617,7 @@
   "core.dataset.search.ReRank": "Result Re-rank",
   "core.dataset.search.ReRank desc": "Use the re-rank model for secondary sorting to enhance the comprehensive ranking.",
   "core.dataset.search.Source id": "Source ID",
+  "core.dataset.search.Source index": "What sources",
   "core.dataset.search.Source name": "Quote Source Name",
   "core.dataset.search.Using query extension": "Use Question Optimization",
   "core.dataset.search.mode.embedding": "Semantic Search",
