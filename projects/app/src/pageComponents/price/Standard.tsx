@@ -54,7 +54,8 @@ const Standard = ({
             permissionCustomCopyright: value.permissionCustomCopyright,
             trainingWeight: value.trainingWeight,
             totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
-            permissionWebsiteSync: value.permissionWebsiteSync
+            permissionWebsiteSync: value.permissionWebsiteSync,
+            permissionTeamOperationLog: value.permissionTeamOperationLog
           };
         })
       : [];
