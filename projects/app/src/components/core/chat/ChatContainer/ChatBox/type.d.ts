@@ -30,6 +30,7 @@ export type ChatBoxInputType = {
   files?: UserInputFileItemType[];
   isInteractivePrompt?: boolean;
   hideInUI?: boolean;
+  gateModel?: string;
 };
 
 export type SendPromptFnType = (

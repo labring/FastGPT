@@ -2,6 +2,7 @@
   "App": "Application",
   "Click_to_expand": "Click to expand",
   "Download": "Download",
+  "Error": "mistake",
   "Export": "Export",
   "FAQ.ai_point_a": "Each time you use the AI model, a certain amount of AI points will be deducted. For detailed calculation standards, please refer to the 'AI Points Calculation Standards' above.\nToken calculation uses the same formula as GPT-3.5, where 1 Token ≈ 0.7 Chinese characters ≈ 0.9 English words. Consecutive characters may be considered as 1 Token.",
   "FAQ.ai_point_expire_a": "Yes, they will expire. After the current package expires, the AI points will be reset to the new package's AI points. Annual package AI points are valid for one year, not monthly.",

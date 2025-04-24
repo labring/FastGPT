@@ -2,15 +2,14 @@ import React from 'react';
 import { Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ShareGateModal from './ShareModol';
-import {
-  updateTeamGateConfig,
-  updateTeamGateConfigCopyRight
-} from '@/web/support/user/team/gate/api';
 import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { getMyApps, postCreateApp, putAppById } from '@/web/core/app/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 type Props = {
   tab: 'home' | 'copyright';
@@ -21,29 +20,24 @@ type Props = {
   teamName: string;
 };
 
-const ConfigButtons = ({ tab, tools, slogan, placeholderText, status, teamName }: Props) => {
+const ConfigButtons = ({ tab }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { saveGateConfig, saveCopyRightConfig } = useGateStore();
+  const { userInfo } = useUserStore();
 
   // 保存配置
   const { runAsync: saveHomeConfig, loading: savingHome } = useRequest2(
     async () => {
-      await updateTeamGateConfig({
-        tools,
-        slogan,
-        placeholderText,
-        status
+      await saveGateConfig();
+      toast({
+        title: t('common:common.Save Success'),
+        status: 'success'
       });
     },
     {
       manual: true,
-      onSuccess: () => {
-        toast({
-          title: t('common:common.Save Success'),
-          status: 'success'
-        });
-      },
       onError: (err) => {
         toast({
           title: t('common:common.Save Failed'),
@@ -57,18 +51,14 @@ const ConfigButtons = ({ tab, tools, slogan, placeholderText, status, teamName }
   // 保存版权配置
   const { runAsync: saveCopyrightConfig, loading: savingCopyright } = useRequest2(
     async () => {
-      await updateTeamGateConfigCopyRight({
-        name: teamName
+      await saveCopyRightConfig();
+      toast({
+        title: t('common:common.Save Success'),
+        status: 'success'
       });
     },
     {
       manual: true,
-      onSuccess: () => {
-        toast({
-          title: t('common:common.Save Success'),
-          status: 'success'
-        });
-      },
       onError: (err) => {
         toast({
           title: t('common:common.Save Failed'),
@@ -78,12 +68,49 @@ const ConfigButtons = ({ tab, tools, slogan, placeholderText, status, teamName }
       }
     }
   );
+  const checkAndCreateGateApp = async () => {
+    try {
+      // 获取应用列表
+      const apps = await getMyApps();
+      const gateApp = apps.find((app) => app.name === 'gate');
+      const currentTeamAvatar = userInfo?.team?.teamAvatar;
 
-  const handleSave = () => {
+      if (gateApp) {
+        if (gateApp.avatar !== currentTeamAvatar) {
+          await putAppById(gateApp._id, {
+            avatar: currentTeamAvatar
+          });
+          toast({
+            title: t('account_gate:Gate app avatar updated'),
+            status: 'success'
+          });
+        }
+      } else {
+        await postCreateApp({
+          avatar: currentTeamAvatar,
+          name: 'gate',
+          type: AppTypeEnum.simple,
+          modules: [],
+          edges: []
+        });
+        toast({
+          title: t('account_gate:Gate app created successfully'),
+          status: 'success'
+        });
+      }
+    } catch (error) {
+      toast({
+        title: t('account_gate:Operation failed'),
+        status: 'error'
+      });
+    }
+  };
+  const handleSave = async () => {
+    await checkAndCreateGateApp();
     if (tab === 'home') {
-      saveHomeConfig();
+      await saveHomeConfig();
     } else if (tab === 'copyright') {
-      saveCopyrightConfig();
+      await saveCopyrightConfig();
     }
   };
 

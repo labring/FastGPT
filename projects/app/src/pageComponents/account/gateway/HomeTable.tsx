@@ -20,30 +20,19 @@ import {
 import { useTranslation } from 'next-i18next';
 import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 
 type Props = {
   tools: GateTool[];
-  setTools: (tools: GateTool[]) => void;
   slogan: string;
-  setSlogan: (slogan: string) => void;
   placeholderText: string;
-  setPlaceholderText: (text: string) => void;
   status: boolean;
-  setStatus: (status: boolean) => void;
 };
 
-const HomeTable = ({
-  tools,
-  setTools,
-  slogan,
-  setSlogan,
-  placeholderText,
-  setPlaceholderText,
-  status,
-  setStatus
-}: Props) => {
+const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { updateLocalGateConfig } = useGateStore();
 
   // 通用样式变量
   const spacing = {
@@ -72,6 +61,30 @@ const HomeTable = ({
   // 响应式工具布局
   const toolsSpacing = useBreakpointValue({ base: '6px', md: spacing.md });
 
+  const handleStatusChange = (val: string) => {
+    updateLocalGateConfig({
+      status: val === 'enabled'
+    });
+  };
+
+  const handleToolsChange = (val: GateTool[]) => {
+    updateLocalGateConfig({
+      tools: val
+    });
+  };
+
+  const handleSloganChange = (val: string) => {
+    updateLocalGateConfig({
+      slogan: val
+    });
+  };
+
+  const handlePlaceholderChange = (val: string) => {
+    updateLocalGateConfig({
+      placeholderText: val
+    });
+  };
+
   return (
     <Box flex="1 0 0" overflow="auto" px={spacing.sm}>
       <Flex
@@ -95,10 +108,7 @@ const HomeTable = ({
           >
             {t('account_gate:status')}
           </FormLabel>
-          <RadioGroup
-            value={status ? 'enabled' : 'disabled'}
-            onChange={(val) => setStatus(val === 'enabled')}
-          >
+          <RadioGroup value={status ? 'enabled' : 'disabled'} onChange={handleStatusChange}>
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={spacing.md}>
               <Flex
                 alignItems="center"
@@ -171,11 +181,7 @@ const HomeTable = ({
             </FormLabel>
             <QuestionTip />
           </Flex>
-          <CheckboxGroup
-            colorScheme="blue"
-            value={tools}
-            onChange={(val) => setTools(val as GateTool[])}
-          >
+          <CheckboxGroup colorScheme="blue" value={tools} onChange={handleToolsChange}>
             <Wrap spacing={toolsSpacing}>
               {[
                 { value: 'webSearch', label: t('account_gate:web_search') },
@@ -247,7 +253,7 @@ const HomeTable = ({
           </Flex>
           <Input
             value={slogan}
-            onChange={(e) => setSlogan(e.target.value)}
+            onChange={(e) => handleSloganChange(e.target.value)}
             bg="myGray.50"
             borderWidth="1px"
             borderColor="myGray.200"
@@ -284,7 +290,7 @@ const HomeTable = ({
           </Flex>
           <Input
             value={placeholderText}
-            onChange={(e) => setPlaceholderText(e.target.value)}
+            onChange={(e) => handlePlaceholderChange(e.target.value)}
             bg="myGray.50"
             borderWidth="1px"
             borderColor="myGray.200"

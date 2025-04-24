@@ -22,7 +22,12 @@ export interface VoiceInputComponentRef {
 }
 
 type VoiceInputProps = {
-  onSendMessage: (params: { text: string; files?: any[]; autoTTSResponse?: boolean }) => void;
+  onSendMessage: (params: {
+    text: string;
+    files?: any[];
+    autoTTSResponse?: boolean;
+    gateModel?: string;
+  }) => void;
   resetInputVal: (val: { text: string }) => void;
 };
 

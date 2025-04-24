@@ -466,6 +466,10 @@ export const iconPaths = {
   'support/user/usersFill': () => import('./icons/support/user/usersFill.svg'),
   'support/user/usersLight': () => import('./icons/support/user/usersLight.svg'),
   'support/gate/gateLight': () => import('./icons/support/gate/gateLight.svg'),
+  'support/gate/chat/sidebar/chatGray': () =>
+    import('./icons/support/gate/chat/sidebar/chatGray.svg'),
+  'support/gate/chat/sidebar/appGray': () =>
+    import('./icons/support/gate/chat/sidebar/appGray.svg'),
   'support/gate/chat/voiceGray': () => import('./icons/support/gate/chat/voiceGray.svg'),
   'support/gate/chat/fileGray': () => import('./icons/support/gate/chat/fileGray.svg'),
   'support/gate/chat/imageGray': () => import('./icons/support/gate/chat/imageGray.svg'),

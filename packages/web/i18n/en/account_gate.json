@@ -1,4 +1,8 @@
 {
+  "Gate": "Portal",
+  "Gate app avatar updated": "Portal app icon update",
+  "Gate app created successfully": "The portal application was created successfully",
+  "Operation failed": "Operation failed",
   "available_tools": "Available tools",
   "deep_thinking": "Deep thinking",
   "dialog_prompt_text": "Dialog prompt text",

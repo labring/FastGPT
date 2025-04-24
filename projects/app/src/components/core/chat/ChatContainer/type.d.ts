@@ -25,6 +25,7 @@ export type StartChatFnProps = {
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;
+  gateModel?: string;
 };
 
 export type onStartChatType = (e: StartChatFnProps) => Promise<

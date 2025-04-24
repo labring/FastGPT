@@ -1,4 +1,8 @@
 {
+  "Gate": "门户",
+  "Gate app avatar updated": "门户应用图标更新",
+  "Gate app created successfully": "门户应用创建成功",
+  "Operation failed": "操作失败",
   "available_tools": "可用工具",
   "deep_thinking": "深度思考",
   "dialog_prompt_text": "对话框提示文字",

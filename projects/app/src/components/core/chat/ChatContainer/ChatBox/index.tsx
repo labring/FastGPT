@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox } from '@chakra-ui/react';
+import { Box, Checkbox, Flex } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -67,6 +67,11 @@ import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
+import GateChatInput from './Input/GateChatInput';
+import ChatWelcome from './components/ChatWelcome';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useRouter } from 'next/router';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -410,7 +415,8 @@ const ChatBox = ({
       history = chatRecords,
       autoTTSResponse = false,
       isInteractivePrompt = false,
-      hideInUI = false
+      hideInUI = false,
+      gateModel = ''
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
@@ -529,6 +535,7 @@ const ChatBox = ({
             });
 
             const { responseText } = await onStartChat({
+              gateModel,
               messages, // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
@@ -1083,6 +1090,18 @@ const ChatBox = ({
     welcomeText
   ]);
 
+  const router = useRouter();
+  const { gateConfig, copyRightConfig } = useGateStore();
+  const { userInfo } = useUserStore();
+
+  const showWelcome = useMemo(() => {
+    return (
+      router.pathname.startsWith('/chat/gate') &&
+      !router.pathname.includes('/chat/gate/application') &&
+      chatRecords.length === 0
+    );
+  }, [router.pathname, chatRecords.length]);
+
   return (
     <MyBox
       isLoading={isLoading}
@@ -1092,18 +1111,57 @@ const ChatBox = ({
       position={'relative'}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-      {/* chat box container */}
-      {RenderRecords}
-      {/* message input */}
-      {onStartChat && chatStarted && active && !isInteractive && (
-        <ChatInput
-          onSendMessage={sendPrompt}
-          onStop={() => chatController.current?.abort('stop')}
-          TextareaDom={TextareaDom}
-          resetInputVal={resetInputVal}
-          chatForm={chatForm}
-        />
+
+      {chatRecords.length === 0 && showWelcome ? (
+        <Flex flex={1} direction="column" align="center" justify="center" h="100%" gap={6}>
+          {
+            <ChatWelcome
+              teamName={copyRightConfig?.name || chatBoxData?.app?.name}
+              teamAvatar={userInfo?.team?.teamAvatar}
+              slogan={gateConfig?.slogan}
+            />
+          }
+          {/* message input */}
+          {onStartChat && chatStarted && active && !isInteractive && (
+            <Box maxW="700px" w="100%" px={[0, 5]}>
+              <GateChatInput
+                onSendMessage={sendPrompt}
+                onStop={() => chatController.current?.abort('stop')}
+                TextareaDom={TextareaDom}
+                resetInputVal={resetInputVal}
+                chatForm={chatForm}
+                placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+              />
+            </Box>
+          )}
+        </Flex>
+      ) : (
+        <>
+          {RenderRecords}
+          {/* message input */}
+          {onStartChat && chatStarted && active && !isInteractive && (
+            <Box
+              m={['0 auto', '10px auto']}
+              w={'100%'}
+              maxW={['auto', 'min(800px, 100%)']}
+              px={[0, 5]}
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+            >
+              <GateChatInput
+                onSendMessage={sendPrompt}
+                onStop={() => chatController.current?.abort('stop')}
+                TextareaDom={TextareaDom}
+                resetInputVal={resetInputVal}
+                chatForm={chatForm}
+                placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+              />
+            </Box>
+          )}
+        </>
       )}
+
       {/* user feedback modal */}
       {!!feedbackId && chatId && (
         <FeedbackModal
