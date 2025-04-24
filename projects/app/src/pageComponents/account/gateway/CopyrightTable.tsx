@@ -1,22 +1,9 @@
-import React, { useState } from 'react';
-import {
-  Box,
-  Flex,
-  Text,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Input,
-  Button,
-  Icon,
-  useBreakpointValue
-} from '@chakra-ui/react';
+import React, { useState, useEffect } from 'react';
+import { Box, Flex, Text, Input, Button, useBreakpointValue } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
+import { getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 // FastGPT Logo SVG组件
 const FastGPTLogo = (props: any) => (
@@ -63,9 +50,31 @@ const FastGPTLogo = (props: any) => (
   </svg>
 );
 
-const CopyrightTable = () => {
+type Props = {
+  teamName: string;
+  setTeamName: (name: string) => void;
+};
+
+const CopyrightTable = ({ teamName, setTeamName }: Props) => {
   const { t } = useTranslation();
-  const [teamName, setTeamName] = useState<string>('FastGPT');
+  const { toast } = useToast();
+
+  // Load initial data
+  useEffect(() => {
+    loadCopyrightConfig();
+  }, []);
+
+  const loadCopyrightConfig = async () => {
+    try {
+      const res = await getTeamGateConfigCopyRight();
+      setTeamName(res.name);
+    } catch (error) {
+      toast({
+        title: t('common:Error'),
+        status: 'error'
+      });
+    }
+  };
 
   // 响应式尺寸 - 根据设计比例调整
   const logoBoxSize = useBreakpointValue({ base: '23.18px', md: '50px' });
@@ -87,16 +96,15 @@ const CopyrightTable = () => {
             <Flex alignItems="center" gap={3}>
               <Box w="4px" h="16px" bg="#3370FF" borderRadius="6px" />
               <Text fontSize={{ base: '14px', md: '16px' }} fontWeight={500}>
-                {t('基础配置')}
+                {t('common:common.base_config')}
               </Text>
             </Flex>
 
             <Flex direction="column" gap={2}>
               <Text fontSize="14px" color="#485264" fontWeight={500}>
-                {t('团队名')}
+                {t('account_gate:team_name')}
               </Text>
               <Input
-                placeholder={t('输入团队名称')}
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 bg="#FBFBFC"
@@ -110,7 +118,7 @@ const CopyrightTable = () => {
           {/* Logo 设置区域 */}
           <Flex flexDirection="column" gap={{ base: 3, md: 4 }}>
             <Text fontSize="14px" color="#485264" fontWeight={500}>
-              {t('Logo')}
+              Logo
             </Text>
 
             <Flex
@@ -147,7 +155,7 @@ const CopyrightTable = () => {
                   </Text>
                 </Flex>
                 <Text fontSize="12px" color="#667085" alignSelf="flex-start">
-                  {t('建议比例 4:1')}
+                  {t('account_gate:suggestion_ratio_4_1')}
                 </Text>
               </Flex>
 
@@ -177,7 +185,7 @@ const CopyrightTable = () => {
                   />
                 </Box>
                 <Text fontSize="12px" color="#667085">
-                  {t('建议比例 1:1')}
+                  {t('account_gate:suggestion_ratio_1_1')}
                 </Text>
               </Flex>
             </Flex>
@@ -197,7 +205,7 @@ const CopyrightTable = () => {
                 _hover={{ bg: '#f6f8fb' }}
                 px={3}
               >
-                {t('上传')}
+                {t('account_gate:upload')}
               </Button>
             </Flex>
           </Flex>

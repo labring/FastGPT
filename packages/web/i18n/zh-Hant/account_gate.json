@@ -1,0 +1,17 @@
+{
+  "available_tools": "可用工具",
+  "deep_thinking": "深度思考",
+  "dialog_prompt_text": "對話框提示文字",
+  "disabled": "關閉",
+  "enabled": "啟用",
+  "example": "示意圖",
+  "file_upload": "文件上傳",
+  "image_upload": "圖片上傳",
+  "slogan": "標語",
+  "status": "狀態",
+  "suggestion_ratio_1_1": "建議比例 1:1",
+  "suggestion_ratio_4_1": "建議比例 4:1",
+  "team_name": "團隊名",
+  "voice_input": "語音輸入",
+  "web_search": "聯網搜索"
+}

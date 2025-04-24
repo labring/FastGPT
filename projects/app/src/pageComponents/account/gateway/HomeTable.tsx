@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Flex,
@@ -9,33 +9,41 @@ import {
   CheckboxGroup,
   Stack,
   Input,
-  Button,
   FormControl,
   FormLabel,
-  Textarea,
   Link,
-  HStack,
-  Center,
   useTheme,
   Wrap,
   WrapItem,
   useBreakpointValue
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
-const HomeTable = () => {
+type Props = {
+  tools: GateTool[];
+  setTools: (tools: GateTool[]) => void;
+  slogan: string;
+  setSlogan: (slogan: string) => void;
+  placeholderText: string;
+  setPlaceholderText: (text: string) => void;
+  status: boolean;
+  setStatus: (status: boolean) => void;
+};
+
+const HomeTable = ({
+  tools,
+  setTools,
+  slogan,
+  setSlogan,
+  placeholderText,
+  setPlaceholderText,
+  status,
+  setStatus
+}: Props) => {
   const { t } = useTranslation();
   const theme = useTheme();
-
-  // 状态
-  const [status, setStatus] = useState('enabled');
-
-  // 可用工具
-  const [tools, setTools] = useState([]);
-
-  // slogan和提示文字
-  const [slogan, setSlogan] = useState('你好👋，我是 FastGPT！请问有什么可以帮你?');
-  const [placeholderText, setPlaceholderText] = useState('你可以问我任何问题');
 
   // 通用样式变量
   const spacing = {
@@ -73,6 +81,7 @@ const HomeTable = () => {
         maxW="640px"
         mx="auto"
         pb={6}
+        pt={{ base: 4, md: 6 }}
       >
         {/* 状态选择 */}
         <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
@@ -84,17 +93,27 @@ const HomeTable = () => {
             color="myGray.700"
             mb="0"
           >
-            状态
+            {t('account_gate:status')}
           </FormLabel>
-          <RadioGroup onChange={setStatus} value={status}>
+          <RadioGroup
+            value={status ? 'enabled' : 'disabled'}
+            onChange={(val) => setStatus(val === 'enabled')}
+          >
             <Stack direction={{ base: 'column', sm: 'row' }} spacing={spacing.md}>
               <Flex
                 alignItems="center"
                 p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
                 borderWidth="1px"
-                borderColor={status === 'enabled' ? 'primary.500' : 'myGray.200'}
+                borderColor={status ? 'primary.500' : 'myGray.200'}
                 borderRadius="7px"
-                bg={status === 'enabled' ? 'blue.50' : 'white'}
+                bg={status ? 'blue.50' : 'white'}
+                transition="all 0.2s ease-in-out"
+                _hover={{
+                  bg: status ? 'blue.100' : 'myGray.50',
+                  borderColor: status ? 'primary.600' : 'myGray.300',
+                  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+                  transform: 'translateY(-1px)'
+                }}
               >
                 <Radio value="enabled" colorScheme="blue" mr={2}>
                   <Text
@@ -103,7 +122,7 @@ const HomeTable = () => {
                     fontWeight={formStyles.fontWeight}
                     letterSpacing={formStyles.letterSpacing}
                   >
-                    启用
+                    {t('account_gate:enabled')}
                   </Text>
                 </Radio>
               </Flex>
@@ -111,9 +130,16 @@ const HomeTable = () => {
                 alignItems="center"
                 p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
                 borderWidth="1px"
-                borderColor={status === 'disabled' ? 'primary.500' : 'myGray.200'}
+                borderColor={!status ? 'primary.500' : 'myGray.200'}
                 borderRadius="7px"
-                bg={status === 'disabled' ? 'blue.50' : 'white'}
+                bg={!status ? 'blue.50' : 'white'}
+                transition="all 0.2s ease-in-out"
+                _hover={{
+                  bg: !status ? 'blue.100' : 'myGray.50',
+                  borderColor: !status ? 'primary.600' : 'myGray.300',
+                  boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+                  transform: 'translateY(-1px)'
+                }}
               >
                 <Radio value="disabled" colorScheme="blue" mr={2}>
                   <Text
@@ -122,7 +148,7 @@ const HomeTable = () => {
                     fontWeight={formStyles.fontWeight}
                     letterSpacing={formStyles.letterSpacing}
                   >
-                    关闭
+                    {t('account_gate:disabled')}
                   </Text>
                 </Radio>
               </Flex>
@@ -141,34 +167,46 @@ const HomeTable = () => {
               color="myGray.700"
               mb="0"
             >
-              可用工具
+              {t('account_gate:available_tools')}
             </FormLabel>
+            <QuestionTip />
           </Flex>
           <CheckboxGroup
             colorScheme="blue"
             value={tools}
-            onChange={(val) => setTools(val as string[])}
+            onChange={(val) => setTools(val as GateTool[])}
           >
             <Wrap spacing={toolsSpacing}>
               {[
-                { value: 'webSearch', label: '联网搜索' },
-                { value: 'deepThinking', label: '深度思考' },
-                { value: 'fileUpload', label: '文档上传' },
-                { value: 'imageUpload', label: '图片上传' },
-                { value: 'voiceInput', label: '语音输入' }
+                { value: 'webSearch', label: t('account_gate:web_search') },
+                { value: 'deepThinking', label: t('account_gate:deep_thinking') },
+                { value: 'fileUpload', label: t('account_gate:file_upload') },
+                { value: 'imageUpload', label: t('account_gate:image_upload') },
+                { value: 'voiceInput', label: t('account_gate:voice_input') }
               ].map((item) => (
                 <WrapItem key={item.value}>
                   <Flex
                     p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
                     borderWidth="1px"
-                    borderColor={tools.includes(item.value) ? 'primary.500' : 'myGray.200'}
+                    borderColor={
+                      tools.includes(item.value as GateTool) ? 'primary.500' : 'myGray.200'
+                    }
                     borderRadius="7px"
-                    bg={tools.includes(item.value) ? 'blue.50' : 'white'}
+                    bg={tools.includes(item.value as GateTool) ? 'blue.50' : 'white'}
+                    transition="all 0.2s ease-in-out"
+                    _hover={{
+                      bg: tools.includes(item.value as GateTool) ? 'blue.100' : 'myGray.50',
+                      borderColor: tools.includes(item.value as GateTool)
+                        ? 'primary.600'
+                        : 'myGray.300',
+                      boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
+                      transform: 'translateY(-1px)'
+                    }}
                   >
                     <Checkbox
                       value={item.value}
                       colorScheme="blue"
-                      isChecked={tools.includes(item.value)}
+                      isChecked={tools.includes(item.value as GateTool)}
                     >
                       <Text
                         fontSize={formStyles.fontSize}
@@ -196,7 +234,7 @@ const HomeTable = () => {
               letterSpacing={formStyles.letterSpacing}
               color="myGray.700"
             >
-              slogan
+              {t('account_gate:slogan')}
             </Text>
             <Link
               color="primary.500"
@@ -204,13 +242,12 @@ const HomeTable = () => {
               fontWeight={formStyles.fontWeight}
               textDecoration="underline"
             >
-              示意图
+              {t('account_gate:example')}
             </Link>
           </Flex>
           <Input
             value={slogan}
             onChange={(e) => setSlogan(e.target.value)}
-            placeholder="设置AI助手的欢迎语"
             bg="myGray.50"
             borderWidth="1px"
             borderColor="myGray.200"
@@ -234,7 +271,7 @@ const HomeTable = () => {
               letterSpacing={formStyles.letterSpacing}
               color="myGray.700"
             >
-              对话框提示文字
+              {t('account_gate:dialog_prompt_text')}
             </Text>
             <Link
               color="primary.500"
@@ -242,13 +279,12 @@ const HomeTable = () => {
               fontWeight={formStyles.fontWeight}
               textDecoration="underline"
             >
-              示意图
+              {t('account_gate:example')}
             </Link>
           </Flex>
           <Input
             value={placeholderText}
             onChange={(e) => setPlaceholderText(e.target.value)}
-            placeholder="设置对话框的提示文字"
             bg="myGray.50"
             borderWidth="1px"
             borderColor="myGray.200"

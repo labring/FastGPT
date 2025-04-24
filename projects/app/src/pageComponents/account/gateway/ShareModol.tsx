@@ -220,7 +220,7 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                 </Flex>
                 {/* CNAME提示信息 */}
                 <Flex alignItems="center" gap="4px">
-                  <MyIcon name="common/infoCircle" w="14px" h="14px" color="#3370FF" />
+                  <MyIcon name="infoRounded" w="14px" h="14px" color="#3370FF" />
                   <Text
                     fontFamily="PingFang SC"
                     fontWeight="400"

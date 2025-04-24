@@ -1,0 +1,18 @@
+{
+  "available_tools": "可用工具",
+  "deep_thinking": "深度思考",
+  "dialog_prompt_text": "对话框提示文字",
+  "disabled": "关闭",
+  "enabled": "启用",
+  "example": "示意图",
+  "file_upload": "文件上传",
+  "image_upload": "图片上传",
+  "slogan": "标语",
+  "status": "状态",
+  "suggestion_ratio_1_1": "建议比例 1:1",
+  "suggestion_ratio_4_1": "建议比例 4:1",
+  "team_name": "团队名",
+  "upload": "上传",
+  "voice_input": "语音输入",
+  "web_search": "联网搜索"
+}

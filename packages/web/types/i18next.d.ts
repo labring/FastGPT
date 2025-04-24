@@ -7,6 +7,7 @@ import account_inform from '../i18n/zh-CN/account_inform.json';
 import account_setting from '../i18n/zh-CN/account_setting.json';
 import account_apikey from '../i18n/zh-CN/account_apikey.json';
 import account_bill from '../i18n/zh-CN/account_bill.json';
+import account_gate from '../i18n/zh-CN/account_gate.json';
 import account_usage from '../i18n/zh-CN/account_usage.json';
 import account_info from '../i18n/zh-CN/account_info.json';
 import common from '../i18n/zh-CN/common.json';
@@ -34,6 +35,7 @@ export interface I18nNamespaces {
   account_info: typeof account_info;
   account_usage: typeof account_usage;
   account_bill: typeof account_bill;
+  account_gate: typeof account_gate;
   account_apikey: typeof account_apikey;
   account_setting: typeof account_setting;
   account_inform: typeof account_inform;
@@ -71,6 +73,7 @@ declare module 'i18next' {
       'account_info',
       'account_usage',
       'account_bill',
+      'account_gate',
       'account_apikey',
       'account_setting',
       'account_inform',

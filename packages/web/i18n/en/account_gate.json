@@ -1,0 +1,18 @@
+{
+  "available_tools": "Available tools",
+  "deep_thinking": "Deep thinking",
+  "dialog_prompt_text": "Dialog prompt text",
+  "disabled": "closure",
+  "enabled": "Enable",
+  "example": "Schematic diagram",
+  "file_upload": "File upload",
+  "image_upload": "Image upload",
+  "slogan": "slogan",
+  "status": "state",
+  "suggestion_ratio_1_1": "Suggested ratio 1:1",
+  "suggestion_ratio_4_1": "Suggested ratio 4:1",
+  "team_name": "Team name",
+  "upload": "Upload",
+  "voice_input": "Voice input",
+  "web_search": "Search online"
+}

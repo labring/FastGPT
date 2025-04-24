@@ -1,9 +1,18 @@
+import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../../../common/mongo';
 import { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
-export const gateCollectionName = 'team_gate_configs';
+export const gateCollectionName = 'team_gate_config';
 
-const GateHomeConfigSchema = new Schema({
+const GateConfigSchema = new Schema({
+  teamId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamCollectionName
+  },
+  status: {
+    type: Boolean,
+    default: false
+  },
   tools: {
     type: [String],
     enum: Object.values(['webSearch', 'deepThinking', 'fileUpload', 'imageUpload', 'voiceInput'])
@@ -16,7 +25,4 @@ const GateHomeConfigSchema = new Schema({
   }
 });
 
-export const MongoTeamGate = getMongoModel<GateSchemaType>(
-  gateCollectionName,
-  GateHomeConfigSchema
-);
+export const MongoTeamGate = getMongoModel<GateSchemaType>(gateCollectionName, GateConfigSchema);

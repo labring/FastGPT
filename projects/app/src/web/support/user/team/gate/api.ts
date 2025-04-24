@@ -1,45 +1,41 @@
-import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
-import {
-  getGateConfigParams,
-  postCreateGateConfigData,
-  putUpdateGateHomeConfigData,
-  putUpdateGateCopyrightConfigData
-} from '@fastgpt/global/support/user/team/gate/api';
+import { GET, PUT } from '@/web/common/api/request';
+import type {
+  putUpdateGateConfigCopyRightData,
+  putUpdateGateConfigCopyRightResponse,
+  putUpdateGateConfigData,
+  putUpdateGateConfigResponse
+} from '@fastgpt/global/support/user/team/gate/api.d';
 import { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 /**
- * 获取团队门户配置
+ * 获取门户配置 - Get请求
  */
-export const getTeamGateConfig = (teamId: string) => {
-  const params: getGateConfigParams = { teamId };
-  return GET<GateSchemaType>(`/proApi/support/user/team/gate/config`, { params });
+export const getTeamGateConfig = () => {
+  return GET<GateSchemaType>('/proApi/support/user/team/gate/config/list');
 };
 
 /**
- * 创建/更新团队门户配置
+ * 创建/更新团队门户配置 - 主页配置
  */
-export const createTeamGateConfig = (data: postCreateGateConfigData) => {
-  return POST<GateSchemaType>('/proApi/support/user/team/gate/config', data);
+export const updateTeamGateConfig = (data: putUpdateGateConfigData) => {
+  return PUT<putUpdateGateConfigResponse>('/proApi/support/user/team/gate/config/update', data);
 };
 
 /**
- * 更新团队门户首页配置
+ * 更新团队门户配置的版权信息
  */
-export const updateTeamGateHomeConfig = (
-  teamId: string,
-  data: Omit<putUpdateGateHomeConfigData, 'teamId'>
-) => {
-  const requestData: putUpdateGateHomeConfigData = { teamId, ...data };
-  return PUT<GateSchemaType>('/proApi/support/user/team/gate/home/config', requestData);
+export const updateTeamGateConfigCopyRight = (data: putUpdateGateConfigCopyRightData) => {
+  return PUT<putUpdateGateConfigCopyRightResponse>(
+    '/proApi/support/user/team/gate/config/copyright/update',
+    data
+  );
 };
 
 /**
- * 更新团队门户版权配置
+ * 获取团队门户配置的版权信息
  */
-export const updateTeamGateCopyrightConfig = (
-  teamId: string,
-  data: Omit<putUpdateGateCopyrightConfigData, 'teamId'>
-) => {
-  const requestData: putUpdateGateCopyrightConfigData = { teamId, ...data };
-  return PUT<GateSchemaType>('/proApi/support/user/team/gate/copyright/config', requestData);
+export const getTeamGateConfigCopyRight = () => {
+  return GET<putUpdateGateConfigCopyRightResponse>(
+    '/proApi/support/user/team/gate/config/copyright/list'
+  );
 };

@@ -18,6 +18,10 @@ const TeamSchema = new Schema({
     default: '/icon/logo.svg'
   },
   // todo :banner
+  banner: {
+    type: String,
+    default: ''
+  },
   createTime: {
     type: Date,
     default: () => Date.now()

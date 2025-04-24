@@ -1,24 +1,30 @@
-import { GateStatus, GateTool, GateHomeConfigType, GateCopyrightConfigType } from './type';
+import { GateTool } from './type';
 
-export type getGateConfigParams = {
-  teamId?: string;
-};
-
-export type postCreateGateConfigData = {
-  teamId: string;
-  home?: Partial<GateHomeConfigType>;
-  copyright?: Partial<GateCopyrightConfigType>;
-};
-
-export type putUpdateGateHomeConfigData = {
-  teamId?: string;
-  status?: GateStatus;
+export type putUpdateGateConfigData = {
+  status?: boolean;
   tools?: GateTool[];
   slogan?: string;
   placeholderText?: string;
 };
 
-export type putUpdateGateCopyrightConfigData = {
-  teamId?: string;
-  teamName?: string;
+export type putUpdateGateConfigResponse = {
+  status: boolean;
+  tools: string[];
+  slogan: string;
+  placeholderText: string;
+};
+
+export type putUpdateGateConfigCopyRightData = {
+  name?: string;
+  avatar?: string;
+};
+
+export type putUpdateGateConfigCopyRightResponse = {
+  name: string;
+  avatar: string;
+};
+
+export type getGateConfigCopyRightResponse = {
+  name: string;
+  avatar: string;
 };
