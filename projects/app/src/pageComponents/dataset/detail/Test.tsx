@@ -71,7 +71,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       searchParams: {
         searchMode: DatasetSearchModeEnum.embedding,
         embeddingWeight: 0.5,
-        usingReRank: false,
+        usingReRank: true,
         rerankModel: defaultModels?.rerank?.model,
         rerankWeight: 0.5,
         limit: 5000,

@@ -236,10 +236,9 @@ export const streamFetch = ({
             }
             errMsg = getErrText(parseJson, '流响应错误');
           } else if (
-            [
-              SseResponseEventEnum.workflowDuration,
-              event === SseResponseEventEnum.flowNodeStatus
-            ].includes(event as any)
+            [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
+              event as any
+            )
           ) {
             onMessage({
               event,

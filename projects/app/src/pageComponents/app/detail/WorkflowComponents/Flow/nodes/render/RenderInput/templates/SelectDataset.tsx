@@ -26,7 +26,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
     similarity: 0.5,
-    usingReRank: false
+    usingReRank: true
   });
 
   const {
