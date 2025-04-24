@@ -167,7 +167,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
         </FormControl>
 
         {/* 可用工具 */}
-        <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
+        {/* <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
           <Flex gap={spacing.xs}>
             <FormLabel
               fontWeight={formStyles.fontWeight}
@@ -228,7 +228,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
               ))}
             </Wrap>
           </CheckboxGroup>
-        </FormControl>
+        </FormControl> */}
 
         {/* slogan设置 */}
         <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
