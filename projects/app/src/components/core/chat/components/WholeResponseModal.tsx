@@ -252,29 +252,39 @@ export const WholeResponseContent = ({
             }
           />
         )}
-
         <Row
           label={t('common:core.chat.response.module similarity')}
           value={activeModule?.similarity}
         />
         <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row label={t('chat:response_embedding_model')} value={activeModule?.embeddingModel} />
+        <Row
+          label={t('chat:response_embedding_model_tokens')}
+          value={`${activeModule?.embeddingTokens}`}
+        />
         {activeModule?.searchUsingReRank !== undefined && (
-          <Row
-            label={t('common:core.chat.response.search using reRank')}
-            rawDom={
-              <Box border={'base'} borderRadius={'md'} p={2}>
-                {activeModule?.searchUsingReRank ? (
-                  activeModule?.rerankModel ? (
-                    <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+          <>
+            <Row
+              label={t('common:core.chat.response.search using reRank')}
+              rawDom={
+                <Box border={'base'} borderRadius={'md'} p={2}>
+                  {activeModule?.searchUsingReRank ? (
+                    activeModule?.rerankModel ? (
+                      <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                    ) : (
+                      'True'
+                    )
                   ) : (
-                    'True'
-                  )
-                ) : (
-                  `False`
-                )}
-              </Box>
-            }
-          />
+                    `False`
+                  )}
+                </Box>
+              }
+            />
+            <Row
+              label={t('chat:response_rerank_tokens')}
+              value={`${activeModule?.reRankInputTokens}`}
+            />
+          </>
         )}
         {activeModule.queryExtensionResult && (
           <>

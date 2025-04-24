@@ -26,7 +26,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       similarity: 0.4,
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
-      usingReRank: false,
+      usingReRank: true,
       rerankModel: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,

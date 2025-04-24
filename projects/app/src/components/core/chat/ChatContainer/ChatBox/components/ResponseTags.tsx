@@ -38,7 +38,7 @@ const ResponseTags = ({
     llmModuleAccount = 0,
     historyPreviewLength = 0
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
-  console.log(durationSeconds);
+
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);

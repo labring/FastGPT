@@ -127,11 +127,11 @@ export const ModelEditModal = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel) return '/ 1k Tokens';
+    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
     if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(
     async (data: SystemModelItemType) => {
