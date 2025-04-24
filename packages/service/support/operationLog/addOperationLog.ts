@@ -14,7 +14,6 @@ export function addOperationLog<T extends OperationLogEventEnum>({
   event: T;
   params?: TemplateParamsMap[T];
 }) {
-  console.log('Insert log');
   retryFn(() =>
     MongoOperationLog.create({
       tmbId: tmbId,
