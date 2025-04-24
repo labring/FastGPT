@@ -2,50 +2,38 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { ToolType } from '@fastgpt/global/core/app/type';
+import { addLog } from '../../common/system/log';
+import { retryFn } from '@fastgpt/global/common/system/utils';
 
 export class MCPClient {
-  private client: Client | null = null;
+  private client: Client;
   private url: string;
 
   constructor(config: { url: string }) {
     this.url = config.url;
+    this.client = new Client({
+      name: 'FastGPT-MCP-client',
+      version: '1.0.0'
+    });
   }
 
   private async getConnection(): Promise<Client> {
-    if (this.client) {
-      return this.client;
-    }
-
     try {
-      const client = new Client({
-        name: 'FastGPT-MCP-http-client',
-        version: '1.0.0'
-      });
       const transport = new StreamableHTTPClientTransport(new URL(this.url));
-      await client.connect(transport);
-      this.client = client;
-      return client;
+      await this.client.connect(transport);
+      return this.client;
     } catch (error) {
-      const client = new Client({
-        name: 'FastGPT-MCP-sse-client',
-        version: '1.0.0'
-      });
-      const sseTransport = new SSEClientTransport(new URL(this.url));
-      await client.connect(sseTransport);
-      this.client = client;
-      return client;
+      await this.client.connect(new SSEClientTransport(new URL(this.url)));
+      return this.client;
     }
   }
 
   // 内部方法：关闭连接
   private async closeConnection() {
-    if (this.client) {
-      try {
-        await this.client.close();
-        this.client = null;
-      } catch (error) {
-        console.error('Failed to close MCP client:', error);
-      }
+    try {
+      await retryFn(() => this.client.close(), 3);
+    } catch (error) {
+      addLog.error('[MCP Client] Failed to close connection:', error);
     }
   }
 
@@ -58,7 +46,11 @@ export class MCPClient {
       const client = await this.getConnection();
       const response = await client.listTools();
 
-      const tools = (response.tools || []).map((tool: any) => ({
+      if (!Array.isArray(response.tools)) {
+        return Promise.reject('[MCP Client] Get tools response is not an array');
+      }
+
+      const tools = response.tools.map((tool) => ({
         name: tool.name,
         description: tool.description || '',
         inputSchema: tool.inputSchema || {
@@ -67,9 +59,10 @@ export class MCPClient {
         }
       }));
 
+      // @ts-ignore
       return tools;
     } catch (error) {
-      console.error('Failed to get MCP tools:', error);
+      addLog.error('[MCP Client] Failed to get tools:', error);
       return Promise.reject(error);
     } finally {
       await this.closeConnection();
@@ -85,28 +78,17 @@ export class MCPClient {
   public async toolCall(toolName: string, params: Record<string, any>): Promise<any> {
     try {
       const client = await this.getConnection();
-      console.log(`Call tool: ${toolName}`, params);
+      addLog.debug(`[MCP Client] Call tool: ${toolName}`, params);
 
-      const result = await client.callTool({
+      return await client.callTool({
         name: toolName,
         arguments: params
       });
-
-      return result;
     } catch (error) {
-      console.error(`Failed to call tool ${toolName}:`, error);
+      addLog.error(`[MCP Client] Failed to call tool ${toolName}:`, error);
       return Promise.reject(error);
     } finally {
       await this.closeConnection();
     }
   }
-}
-
-/**
- * Create MCP client
- * @param config Client configuration, containing url
- * @returns MCPClient instance
- */
-export default function getMCPClient(config: { url: string }): MCPClient {
-  return new MCPClient(config);
 }
