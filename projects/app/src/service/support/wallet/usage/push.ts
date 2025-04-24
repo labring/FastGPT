@@ -279,3 +279,39 @@ export const pushWhisperUsage = ({
     ]
   });
 };
+
+export const pushRerankUsage = ({
+  teamId,
+  tmbId,
+  model,
+  inputTokens
+}: {
+  teamId: string;
+  tmbId: string;
+  model: string;
+  inputTokens: number;
+}) => {
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model,
+    inputTokens,
+    modelType: ModelTypeEnum.rerank
+  });
+
+  createUsage({
+    teamId,
+    tmbId,
+    appName: modelName,
+    totalPoints,
+    source: UsageSourceEnum.fastgpt,
+    list: [
+      {
+        moduleName: modelName,
+        amount: totalPoints,
+        model: modelName,
+        inputTokens
+      }
+    ]
+  });
+
+  return { totalPoints };
+};

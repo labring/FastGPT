@@ -34,17 +34,19 @@ const QuoteList = React.memo(function QuoteList({
 
   const { data: quoteList } = useRequest2(
     async () =>
-      await getQuoteDataList({
-        datasetDataIdList: rawSearch.map((item) => item.id),
-        collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
-        chatItemDataId,
-        appId,
-        chatId: RawSourceBoxProps.chatId,
-        ...outLinkAuthData
-      }),
+      !!chatItemDataId
+        ? await getQuoteDataList({
+            datasetDataIdList: rawSearch.map((item) => item.id),
+            collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
+            chatItemDataId,
+            appId,
+            chatId: RawSourceBoxProps.chatId,
+            ...outLinkAuthData
+          })
+        : [],
     {
       refreshDeps: [rawSearch, RawSourceBoxProps.chatId],
-      manual: !chatItemDataId
+      manual: false
     }
   );
 
@@ -59,7 +61,11 @@ const QuoteList = React.memo(function QuoteList({
         };
       }
 
-      return item;
+      return {
+        ...item,
+        q: '',
+        a: ''
+      };
     });
 
     return processedData.sort((a, b) => {

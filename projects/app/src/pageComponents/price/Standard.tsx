@@ -53,7 +53,6 @@ const Standard = ({
             permissionCustomApiKey: value.permissionCustomApiKey,
             permissionCustomCopyright: value.permissionCustomCopyright,
             trainingWeight: value.trainingWeight,
-            permissionReRank: value.permissionReRank,
             totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
             permissionWebsiteSync: value.permissionWebsiteSync
           };
