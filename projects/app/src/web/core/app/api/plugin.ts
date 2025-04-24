@@ -19,11 +19,11 @@ import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/g
 import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
-import { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
+import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
 import { ToolType } from '@fastgpt/global/core/app/type';
-import { getMCPToolsBody } from '@/pages/api/core/app/mcpTools/getMCPTools';
-import { RunToolTestBody } from '@/pages/api/core/app/mcpTools/runTest';
-import { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
+import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
+import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
+import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -72,16 +72,16 @@ export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);
 
 /* ============ mcp tools ============== */
-export const getMCPTools = (data: getMCPToolsBody) =>
-  POST<ToolType[]>('/core/app/mcpTools/getMCPTools', data);
-
 export const postCreateMCPTools = (data: createMCPToolsBody) =>
   POST('/core/app/mcpTools/create', data);
 
 export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
   POST('/core/app/mcpTools/update', data);
 
-export const postRunMCPTools = (data: RunToolTestBody) => POST('/core/app/mcpTools/runTest', data);
+export const getMCPTools = (data: getMCPToolsBody) =>
+  POST<ToolType[]>('/support/mcp/client/getTools', data);
+
+export const postRunMCPTool = (data: RunMCPToolBody) => POST('/support/mcp/client/runTool', data);
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>

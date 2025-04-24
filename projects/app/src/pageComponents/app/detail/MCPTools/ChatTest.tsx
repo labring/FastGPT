@@ -15,7 +15,7 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
-import { postRunMCPTools } from '@/web/core/app/api/plugin';
+import { postRunMCPTool } from '@/web/core/app/api/plugin';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
@@ -39,7 +39,7 @@ const ChatTest = ({ currentTool, url }: { currentTool: ToolType | null; url: str
   const { runAsync: runTool, loading: isRunning } = useRequest2(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
-      return await postRunMCPTools({
+      return await postRunMCPTool({
         params: data,
         url,
         toolName: currentTool.name
