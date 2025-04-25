@@ -109,8 +109,9 @@ export type FastGPTFeConfigsType = {
   externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
 
   payConfig?: {
-    wx;
-    alipay;
+    wx?: boolean;
+    alipay?: boolean;
+    bank?: boolean;
   };
 };
 

@@ -1,7 +1,7 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { Box, ModalBody, Flex, Button, Toast } from '@chakra-ui/react';
+import { Box, ModalBody, Flex, Button } from '@chakra-ui/react';
 import { checkBalancePayResult, getQRCodeInPayModal } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
@@ -16,6 +16,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+
 export type QRPayProps = {
   readPrice: number;
   qrItem: string;
@@ -36,15 +37,16 @@ const QRCodePayModal = ({
 }: QRPayProps & { tip?: string; onSuccess?: () => any }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [selectedPayment, setSelectedPayment] = useState(payment);
-  const [currentQrItem, setCurrentQrItem] = useState(qrItem);
-  const [drawType, setDrawType] = useState(type);
   const toast = useToast();
   const { feConfigs } = useSystemStore();
 
   const isAlipayConfigured = feConfigs.payConfig?.alipay;
-
   const isWxConfigured = feConfigs.payConfig?.wx;
+  const isBankConfigured = feConfigs.payConfig?.bank;
+
+  const [selectedPayment, setSelectedPayment] = useState(payment);
+  const [currentQrItem, setCurrentQrItem] = useState(qrItem);
+  const [drawType, setDrawType] = useState(type);
 
   const drawCode = useCallback(() => {
     if (selectedPayment !== BillPayWayEnum.wx) return;
@@ -170,25 +172,16 @@ const QRCodePayModal = ({
   });
 
   return (
-    <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/wallet.svg">
-      <ModalBody textAlign={'center'} pb={10} padding="32px 52px 32px 52px">
-        {tip && <LightTip text={tip} mb={8} textAlign={'left'} />}
-        {t('common:pay_money')}
-        <Box
-          color="primary.600"
-          fontFamily="PingFang SC"
-          fontSize="36px"
-          fontStyle="normal"
-          fontWeight="600"
-          lineHeight="44px"
-          mt={3}
-          mb={6}
-        >
+    <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/wallet.svg" w={'600px'}>
+      <ModalBody textAlign={'center'} padding={['16px 24px', '32px 52px']}>
+        {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
+        <Box>{t('common:pay_money')}</Box>
+        <Box color="primary.600" fontSize="32px" fontWeight="600" lineHeight="40px" mb={6}>
           ¥{readPrice}.00
         </Box>
-        <Box mb={3}>{t('common:scan_code')}</Box>
 
         {renderPaymentContent()}
+
         <Box
           mt={5}
           textAlign={'center'}
@@ -201,7 +194,7 @@ const QRCodePayModal = ({
           {t('common:pay.noclose')}
         </Box>
 
-        <Flex justifyContent="center" gap={3} mt={6} mb={5}>
+        <Flex justifyContent="center" gap={3} mt={6}>
           {isWxConfigured && (
             <Button
               flex={1}
@@ -218,7 +211,6 @@ const QRCodePayModal = ({
             <Button
               flex={1}
               h={10}
-              w="137px"
               color={'myGray.900'}
               onClick={() => handlePaymentChange(BillPayWayEnum.alipay)}
               leftIcon={<MyIcon name={'common/alipay'} />}
@@ -227,15 +219,17 @@ const QRCodePayModal = ({
               {t('common:pay_alipay_payment')}
             </Button>
           )}
-          <Button
-            flex={1}
-            h={10}
-            color={'myGray.900'}
-            onClick={() => handlePaymentChange(BillPayWayEnum.bank)}
-            sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.bank).baseStyle}
-          >
-            {t('common:pay_corporate_payment')}
-          </Button>
+          {isBankConfigured && (
+            <Button
+              flex={1}
+              h={10}
+              color={'myGray.900'}
+              onClick={() => handlePaymentChange(BillPayWayEnum.bank)}
+              sx={getPaymentButtonStyles(selectedPayment === BillPayWayEnum.bank).baseStyle}
+            >
+              {t('common:pay_corporate_payment')}
+            </Button>
+          )}
         </Flex>
       </ModalBody>
     </MyModal>

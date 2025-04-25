@@ -67,13 +67,7 @@ const Standard = ({
   /* Get pay code */
   const { runAsync: onPay, loading: isLoading } = useRequest2(getPayQRCode, {
     onSuccess(res) {
-      setQRPayData({
-        readPrice: res.readPrice,
-        qrItem: res.qrItem,
-        billId: res.billId,
-        payment: res.payment,
-        type: res.type
-      });
+      setQRPayData(res);
     }
   });
 
