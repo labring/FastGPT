@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
-import { importWorkflowFromUrl } from '@/web/core/app/utils';
+import { importWorkflowFromUrl } from '@/web/core/app/workflow';
 import {
   Modal,
   ModalOverlay,
