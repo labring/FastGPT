@@ -166,20 +166,14 @@ const MySelect = <T = any,>(
   const isSelecting = loading || isLoading;
 
   return (
-    <Box
-      css={css({
-        '& div': {
-          width: 'auto !important'
-        }
-      })}
-    >
+    <Box>
       <Menu
         autoSelect={false}
         isOpen={isOpen && !isSelecting}
         onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
-        matchWidth
+        // matchWidth
       >
         <MenuButton
           as={Button}
@@ -191,6 +185,9 @@ const MySelect = <T = any,>(
           size={'md'}
           fontSize={'sm'}
           textAlign={'left'}
+          h={'auto'}
+          whiteSpace={'pre-wrap'}
+          wordBreak={'break-word'}
           _active={{
             transform: 'none'
           }}
@@ -239,7 +236,7 @@ const MySelect = <T = any,>(
         <MenuList
           ref={MenuListRef}
           className={props.className}
-          minW={(() => {
+          w={(() => {
             const w = ButtonRef.current?.clientWidth;
             if (w) {
               return `${w}px !important`;
@@ -248,7 +245,6 @@ const MySelect = <T = any,>(
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;
           })()}
-          w={'auto'}
           px={'6px'}
           py={'6px'}
           border={'1px solid #fff'}

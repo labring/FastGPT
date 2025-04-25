@@ -1,12 +1,12 @@
 import * as createapi from '@/pages/api/core/app/create';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { delay } from '@fastgpt/global/common/system/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { expect, it, describe } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('create api', () => {
   it('should return 200 when create app success', async () => {
@@ -18,7 +18,7 @@ describe('create api', () => {
       tmbId: users.members[0].tmbId,
       permission: TeamAppCreatePermissionVal
     });
-    await delay(100);
+
     const res = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
       auth: users.members[0],
       body: {
@@ -40,7 +40,6 @@ describe('create api', () => {
         parentId: String(folderId)
       }
     });
-    await delay(500);
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
     expect(res2.data).toBeDefined();
@@ -56,5 +55,26 @@ describe('create api', () => {
     });
     expect(res3.error).toBe(AppErrEnum.unAuthApp);
     expect(res3.code).toBe(500);
+
+    await MongoResourcePermission.create({
+      resourceType: 'app',
+      teamId: users.members[1].teamId,
+      resourceId: String(folderId),
+      tmbId: users.members[1].tmbId,
+      permission: WritePermissionVal
+    });
+
+    const res4 = await Call<createapi.CreateAppBody, {}, {}>(createapi.default, {
+      auth: users.members[1],
+      body: {
+        modules: [],
+        name: 'testapp',
+        type: AppTypeEnum.simple,
+        parentId: String(folderId)
+      }
+    });
+    expect(res4.error).toBeUndefined();
+    expect(res4.code).toBe(200);
+    expect(res4.data).toBeDefined();
   });
 });

@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
 import { ToolType } from '@fastgpt/global/core/app/type';
-import { getMCPToolsBody } from '@/pages/api/core/app/mcpTools/getMCPTools';
+import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 export type MCPToolSetData = {
   url: string;
@@ -81,7 +81,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
     (data: getMCPToolsBody) => getMCPTools(data),
     {
-      onSuccess: (res) => {
+      onSuccess: (res: ToolType[]) => {
         setValue('mcpData.toolList', res);
       },
       errorToast: t('app:MCP_tools_parse_failed')

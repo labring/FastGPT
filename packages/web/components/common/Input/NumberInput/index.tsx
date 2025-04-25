@@ -26,9 +26,9 @@ const MyNumberInput = (props: Props) => {
     <NumberInput
       {...restProps}
       onBlur={(e) => {
-        const numE = Number(e.target.value);
+        const numE = e.target.value === '' ? '' : Number(e.target.value);
         if (onBlur) {
-          if (isNaN(numE)) {
+          if (numE === '') {
             // @ts-ignore
             onBlur('');
           } else {
@@ -46,9 +46,9 @@ const MyNumberInput = (props: Props) => {
         }
       }}
       onChange={(e) => {
-        const numE = Number(e);
+        const numE = e === '' ? '' : Number(e);
         if (onChange) {
-          if (isNaN(numE)) {
+          if (numE === '') {
             // @ts-ignore
             onChange('');
           } else {
@@ -62,6 +62,7 @@ const MyNumberInput = (props: Props) => {
               value: numE
             }
           };
+
           register(name).onChange(event);
         }
       }}

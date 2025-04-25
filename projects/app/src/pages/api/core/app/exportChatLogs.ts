@@ -67,7 +67,6 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
       }
     }
   ]);
-  console.log(teamMemberWithContact);
 
   const where = {
     teamId: new Types.ObjectId(teamId),
@@ -161,7 +160,7 @@ async function handler(req: ApiRequestProps<ExportChatLogsBody, {}>, res: NextAp
           },
           chatDetails: {
             $map: {
-              input: '$chatitems',
+              input: { $slice: ['$chatitems', -1000] },
               as: 'item',
               in: {
                 id: '$$item._id',

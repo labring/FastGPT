@@ -4,7 +4,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getMCPTools } from '@/web/core/app/api/plugin';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
@@ -12,7 +11,8 @@ import { ToolType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getMCPToolsBody } from '@/pages/api/core/app/mcpTools/getMCPTools';
+import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import { getMCPTools } from '@/web/core/app/api/plugin';
 
 const EditForm = ({
   url,

@@ -86,7 +86,7 @@
   "llm_use_vision_tip": "After clicking on the model selection, you can see whether the model supports image recognition and the ability to control whether to start image recognition. \nAfter starting image recognition, the model will read the image content in the file link, and if the user question is less than 500 words, it will automatically parse the image in the user question.",
   "logs_chat_user": "user",
   "logs_empty": "No logs yet~",
-  "logs_export_confirm_tip": "There are a total of {{total}} dialogue records, confirm the export?",
+  "logs_export_confirm_tip": "There are currently {{total}} conversation records, and each conversation can export up to 100 latest messages. \nConfirm export?",
   "logs_export_title": "Time, source, user, contact, title, total number of messages, user good feedback, user bad feedback, custom feedback, labeled answers, conversation details",
   "logs_message_total": "Total Messages",
   "logs_source": "source",

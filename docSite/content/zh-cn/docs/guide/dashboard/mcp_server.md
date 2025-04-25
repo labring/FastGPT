@@ -62,7 +62,7 @@ FastGPT MCP Server 功能允许你选择`多个`在 FastGPT 上构建好的应�
 
 ## 私有化部署 MCP server 问题
 
-私有化部署版本的 FastGPT，需要升级到`v4.9.6-alpha`及以上版本才可使用 MCP server 功能。
+私有化部署版本的 FastGPT，需要升级到`v4.9.6`及以上版本才可使用 MCP server 功能。
 
 ### 修改 docker-compose.yml 文件
 

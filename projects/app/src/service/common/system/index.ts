@@ -51,6 +51,7 @@ export const readConfigData = async (name: string) => {
 export function initGlobalVariables() {
   function initPlusRequest() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
+      if (!isProVersion()) return Promise.resolve({ code: 200 });
       return POST<{ code: number; message?: string }>('/common/censor/check', { text });
     };
 
