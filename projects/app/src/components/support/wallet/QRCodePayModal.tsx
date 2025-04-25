@@ -166,7 +166,7 @@ const QRCodePayModal = ({
         {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
         <Box>{t('common:pay_money')}</Box>
         <Box color="primary.600" fontSize="32px" fontWeight="600" lineHeight="40px" mb={6}>
-          ¥{readPrice}.00
+          ¥{readPrice.toFixed(2)}
         </Box>
 
         {renderPaymentContent()}
