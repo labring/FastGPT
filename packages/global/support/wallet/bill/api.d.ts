@@ -1,6 +1,12 @@
 import { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
 import { BillTypeEnum, DrawBillQRItem } from './constants';
 
+export type CreateOrderResponse = {
+  qrCode?: string;
+  iframeCode?: string;
+  markdown?: string;
+};
+
 export type CreateStandPlanBill = {
   type: BillTypeEnum.standSubPlan;
   level: `${StandardSubLevelEnum}`;
@@ -22,18 +28,16 @@ export type CreateBillProps =
 
 export type CreateBillResponse = {
   billId: string;
-  qrItem: string;
   readPrice: number;
   payment: BillPayWayEnum;
-  type: DrawBillQRItem;
-};
+} & CreateOrderResponse;
 
-export type CreateBillQRItemProps = {
+export type UpdatePaymentProps = {
   billId: string;
   payWay: BillPayWayEnum;
 };
 
-export type CreateQRCodeItemResponse = {
-  qrItem: string;
-  type: DrawBillQRItem;
+export type CheckPayResultResponse = {
+  status: BillStatusEnum;
+  description?: string;
 };

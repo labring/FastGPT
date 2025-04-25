@@ -2,38 +2,34 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, ModalBody, Flex, Button } from '@chakra-ui/react';
-import { checkBalancePayResult, getQRCodeInPayModal } from '@/web/support/wallet/bill/api';
+import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   BillPayWayEnum,
   BillStatusEnum,
-  DrawBillQRItem,
   QR_CODE_SIZE
 } from '@fastgpt/global/support/wallet/bill/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { CreateBillResponse } from '@fastgpt/global/support/wallet/bill/api';
 
-export type QRPayProps = {
-  readPrice: number;
-  qrItem: string;
-  billId: string;
-  payment: BillPayWayEnum;
+export type QRPayProps = CreateBillResponse & {
   tip?: string;
-  type: DrawBillQRItem;
 };
 
 const QRCodePayModal = ({
   tip,
   readPrice,
-  qrItem,
   billId,
   payment,
-  onSuccess,
-  type
+  qrCode,
+  iframeCode,
+  markdown,
+  onSuccess
 }: QRPayProps & { tip?: string; onSuccess?: () => any }) => {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -44,16 +40,58 @@ const QRCodePayModal = ({
   const isWxConfigured = feConfigs.payConfig?.wx;
   const isBankConfigured = feConfigs.payConfig?.bank;
 
-  const [selectedPayment, setSelectedPayment] = useState(payment);
-  const [currentQrItem, setCurrentQrItem] = useState(qrItem);
-  const [drawType, setDrawType] = useState(type);
+  const [payWayRenderData, setPayWayRenderData] = useState<{
+    qrCode?: string;
+    iframeCode?: string;
+    markdown?: string;
+  }>({
+    qrCode,
+    iframeCode,
+    markdown
+  });
 
+  const [selectedPayment, setSelectedPayment] = useState(payment);
+  const { runAsync: handlePaymentChange, loading: isUpdating } = useRequest2(
+    async (newPayment: BillPayWayEnum) => {
+      if (newPayment === selectedPayment) {
+        return;
+      }
+
+      const response = await putUpdatePayment({ billId, payWay: newPayment });
+      setPayWayRenderData(response);
+      setSelectedPayment(newPayment);
+    },
+    {
+      refreshDeps: [billId, selectedPayment]
+    }
+  );
+
+  // Check pay result
+  useRequest2(() => checkBalancePayResult(billId), {
+    manual: false,
+    pollingInterval: 2000,
+    onSuccess: ({ status, description }) => {
+      if (status === BillStatusEnum.SUCCESS) {
+        toast.toast({
+          description: t('common:pay_success'),
+          status: 'success',
+          duration: 2000
+        });
+        onSuccess?.();
+      } else {
+        console.log(status, description);
+      }
+    }
+  });
+
+  // UI render
+  // Draw QR code
   const drawCode = useCallback(() => {
-    if (selectedPayment !== BillPayWayEnum.wx) return;
+    if (!payWayRenderData.qrCode) return;
 
     const canvas = document.createElement('canvas');
 
-    QRCode.toCanvas(canvas, currentQrItem, {
+    QRCode.toCanvas(canvas, payWayRenderData.qrCode, {
       width: QR_CODE_SIZE,
       margin: 0,
       color: {
@@ -68,41 +106,11 @@ const QRCodePayModal = ({
         }
       })
       .catch(console.error);
-  }, [currentQrItem, selectedPayment]);
-
+  }, [payWayRenderData.qrCode]);
   useEffect(() => {
     drawCode();
   }, [drawCode]);
-
-  useEffect(() => {
-    if (payment === BillPayWayEnum.alipay && !isWxConfigured) {
-      setSelectedPayment(BillPayWayEnum.alipay);
-    }
-  }, [payment, isWxConfigured]);
-
-  useEffect(() => {
-    payment && setSelectedPayment(payment);
-  }, [payment]);
-
-  const handlePaymentChange = async (newPayment: BillPayWayEnum) => {
-    if (newPayment === selectedPayment) {
-      return;
-    }
-    try {
-      const response = await getQRCodeInPayModal({ billId, payWay: newPayment });
-      setSelectedPayment(newPayment);
-      setDrawType(response.type);
-      setCurrentQrItem(response.qrItem);
-    } catch (error: any) {
-      toast.toast({
-        description: error.message,
-        status: 'error',
-        duration: 2000,
-        isClosable: true
-      });
-    }
-  };
-
+  // Payment Button
   const getPaymentButtonStyles = (isActive: boolean) => ({
     baseStyle: {
       display: 'flex',
@@ -123,56 +131,37 @@ const QRCodePayModal = ({
       }
     }
   });
-
   const renderPaymentContent = () => {
-    switch (drawType) {
-      case 'qr':
-        return <Box ref={canvasRef} display={'inline-block'} h={`${QR_CODE_SIZE}px`} />;
-      case 'markdown':
-        return <Markdown source={currentQrItem} />;
-      case 'iframe':
-        return (
-          <iframe
-            srcDoc={currentQrItem}
-            style={{
-              width: QR_CODE_SIZE + 5,
-              height: QR_CODE_SIZE + 5,
-              border: 'none',
-              display: 'inline-block'
-            }}
-          />
-        );
-      default:
-        return null;
+    if (payWayRenderData.qrCode) {
+      return <Box ref={canvasRef} display={'inline-block'} h={`${QR_CODE_SIZE}px`} />;
     }
+    if (payWayRenderData.iframeCode) {
+      return (
+        <iframe
+          srcDoc={payWayRenderData.iframeCode}
+          style={{
+            width: QR_CODE_SIZE + 5,
+            height: QR_CODE_SIZE + 5,
+            border: 'none',
+            display: 'inline-block'
+          }}
+        />
+      );
+    }
+    if (payWayRenderData.markdown) {
+      return <Markdown source={payWayRenderData.markdown} />;
+    }
+    return null;
   };
 
-  useRequest2(() => checkBalancePayResult(billId), {
-    manual: false,
-    pollingInterval: 2000,
-    onSuccess: (res) => {
-      if (res === BillStatusEnum.SUCCESS) {
-        toast.toast({
-          description: t('common:pay_success'),
-          status: 'success',
-          duration: 2000,
-          isClosable: true
-        });
-        onSuccess?.();
-      }
-    },
-    onError: (res) => {
-      toast.toast({
-        description: res.message,
-        status: 'error',
-        duration: 2000,
-        isClosable: true
-      });
-    }
-  });
-
   return (
-    <MyModal isOpen title={t('common:user.Pay')} iconSrc="/imgs/modal/wallet.svg" w={'600px'}>
+    <MyModal
+      isLoading={isUpdating}
+      isOpen
+      title={t('common:user.Pay')}
+      iconSrc="/imgs/modal/wallet.svg"
+      w={'600px'}
+    >
       <ModalBody textAlign={'center'} padding={['16px 24px', '32px 52px']}>
         {tip && <LightTip text={tip} mb={6} textAlign={'left'} />}
         <Box>{t('common:pay_money')}</Box>

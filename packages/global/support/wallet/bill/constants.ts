@@ -8,16 +8,16 @@ export enum BillTypeEnum {
 }
 export const billTypeMap = {
   [BillTypeEnum.balance]: {
-    label: 'support.wallet.subscription.type.balance'
+    label: i18nT('common:support.wallet.subscription.type.balance')
   },
   [BillTypeEnum.standSubPlan]: {
-    label: 'support.wallet.subscription.type.standard'
+    label: i18nT('common:support.wallet.subscription.type.standard')
   },
   [BillTypeEnum.extraDatasetSub]: {
-    label: 'support.wallet.subscription.type.extraDatasetSize'
+    label: i18nT('common:support.wallet.subscription.type.extraDatasetSize')
   },
   [BillTypeEnum.extraPoints]: {
-    label: 'support.wallet.subscription.type.extraPoints'
+    label: i18nT('common:support.wallet.subscription.type.extraPoints')
   }
 };
 
@@ -29,16 +29,16 @@ export enum BillStatusEnum {
 }
 export const billStatusMap = {
   [BillStatusEnum.SUCCESS]: {
-    label: 'support.wallet.bill.status.success'
+    label: i18nT('common:support.wallet.bill.status.success')
   },
   [BillStatusEnum.REFUND]: {
-    label: 'support.wallet.bill.status.refund'
+    label: i18nT('common:support.wallet.bill.status.refund')
   },
   [BillStatusEnum.NOTPAY]: {
-    label: 'support.wallet.bill.status.notpay'
+    label: i18nT('common:support.wallet.bill.status.notpay')
   },
   [BillStatusEnum.CLOSED]: {
-    label: 'support.wallet.bill.status.closed'
+    label: i18nT('common:support.wallet.bill.status.closed')
   }
 };
 
@@ -52,27 +52,21 @@ export enum BillPayWayEnum {
 
 export const billPayWayMap = {
   [BillPayWayEnum.balance]: {
-    label: 'support.wallet.bill.payWay.balance'
+    label: i18nT('common:support.wallet.bill.payWay.balance')
   },
   [BillPayWayEnum.wx]: {
-    label: 'support.wallet.bill.payWay.wx'
+    label: i18nT('common:support.wallet.bill.payWay.wx')
   },
   [BillPayWayEnum.alipay]: {
-    label: 'support.wallet.bill.payWay.alipay'
+    label: i18nT('common:support.wallet.bill.payWay.alipay')
   },
   [BillPayWayEnum.bank]: {
-    label: 'support.wallet.bill.payWay.bank'
+    label: i18nT('common:support.wallet.bill.payWay.bank')
   },
   [BillPayWayEnum.coupon]: {
     label: i18nT('account_bill:payway_coupon')
   }
 };
-
-export enum DrawBillQRItem {
-  qr = 'qr',
-  markdown = 'markdown',
-  iframe = 'iframe'
-}
 
 export const SUB_DATASET_SIZE_RATE = 1000;
 export const SUB_EXTRA_POINT_RATE = 1000;

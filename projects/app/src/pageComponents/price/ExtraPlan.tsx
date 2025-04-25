@@ -5,7 +5,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getPayQRCode } from '@/web/support/wallet/bill/api';
+import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -38,7 +38,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         });
       }
 
-      const res = await getPayQRCode({
+      const res = await postCreatePayBill({
         type: BillTypeEnum.extraDatasetSub,
         month,
         extraDatasetSize: datasetSize
@@ -76,7 +76,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         });
       }
 
-      const res = await getPayQRCode({
+      const res = await postCreatePayBill({
         type: BillTypeEnum.extraPoints,
         extraPoints: points
       });
