@@ -22,6 +22,15 @@ import type { AppTypeEnum } from 'core/app/constants';
 import type { StoreNodeItemType } from './node';
 import { FlowNodeTemplateType } from './node';
 
+export type localeType = 'en' | 'zh-CN' | 'zh-Hant';
+export type I18nStringType =
+  | {
+      'zh-CN': string;
+      'zh-Hant'?: string;
+      en?: string;
+    }
+  | string;
+
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
@@ -32,9 +41,9 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  name: string;
+  name: I18nStringType;
   avatar: string;
-  intro?: string;
+  intro?: I18nStringType;
   author?: string;
   courseUrl?: string;
 

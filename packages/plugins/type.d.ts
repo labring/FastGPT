@@ -12,6 +12,5 @@ export type SystemPluginSpecialResponse = {
 
 declare global {
   var pluginGroups: PluginGroupSchemaType[];
-  var systemPlugins: SystemPluginTemplateItemType[];
-  var systemPluginCb: Record<string, (e: any) => SystemPluginResponseType>;
+  var systemPlugins: SystemPluginTemplateItemType[] | undefined;
 }

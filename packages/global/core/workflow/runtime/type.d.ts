@@ -1,7 +1,6 @@
 import type { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import type {
   ChatItemType,
-  UserChatItemValueItemType,
   ToolRunResponseItemType,
   AIChatItemValueItemType
 } from '../../chat/type';
@@ -95,6 +94,7 @@ export type RuntimeNodeItemType = {
   intro?: StoreNodeItemType['intro'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
+  systemToolConfig?: StoreNodeItemType['systemToolConfig'];
   isEntry?: boolean;
 
   inputs: FlowNodeInputItemType[];

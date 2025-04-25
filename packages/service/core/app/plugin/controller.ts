@@ -2,16 +2,14 @@ import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
+  parseI18nString,
   pluginData2FlowNodeIO,
   toolData2FlowNodeIO,
   toolSetData2FlowNodeIO
 } from '@fastgpt/global/core/workflow/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
+import type { localeType } from '@fastgpt/global/core/workflow/type';
 import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
 import {
@@ -23,12 +21,20 @@ import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { Types } from 'mongoose';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import type {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
-/* 
+/*
   plugin id rule:
-  personal: id
-  community: community-id
-  commercial: commercial-id
+  - personal: id
+  - commercial: commercial-id
+  - systemtool: systemTool-id
+  (deprecated) community: community-id
 */
 export function splitCombineToolId(id: string) {
   const splitRes = id.split('-');
@@ -40,18 +46,26 @@ export function splitCombineToolId(id: string) {
     };
   }
 
-  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string];
+  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string | undefined];
   if (!source || !pluginId) throw new Error('pluginId not found');
-
+  if (source === 'community') {
+    return { source: PluginSourceEnum.systemTool, pluginId: id };
+  }
   return { source, pluginId: id };
 }
 
-type ChildAppType = SystemPluginTemplateItemType & { teamId?: string; tmbId?: string };
+type ChildAppType = SystemPluginTemplateItemType & {
+  teamId?: string;
+  tmbId?: string;
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
+};
 
 const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
+  const items = getSystemPluginTemplates();
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
   if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -108,14 +122,15 @@ const getSystemPluginTemplateById = async (
 /* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
   appId,
-  versionId
+  versionId,
+  lang = 'zh-CN'
 }: {
   appId: string;
   versionId?: string;
+  lang?: localeType;
 }): Promise<FlowNodeTemplateType> {
+  const { source, pluginId } = splitCombineToolId(appId);
   const app: ChildAppType = await (async () => {
-    const { source, pluginId } = splitCombineToolId(appId);
-
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(appId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -152,11 +167,13 @@ export async function getChildAppPreviewNode({
         currentCost: 0,
         hasTokenFee: false,
         pluginOrder: 0
-      };
+      } as ChildAppType;
     } else {
       return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
+
+  const isSystemTool = source === PluginSourceEnum.systemTool;
 
   const isPlugin = !!app.workflow.nodes.find(
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
@@ -186,6 +203,14 @@ export async function getChildAppPreviewNode({
         flowNodeType: FlowNodeTypeEnum.pluginModule,
         nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
       };
+    if (isSystemTool)
+      return {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        nodeIOConfig: {
+          inputs: app.inputs!,
+          outputs: app.outputs!
+        }
+      };
     return {
       flowNodeType: FlowNodeTypeEnum.appModule,
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
@@ -198,8 +223,8 @@ export async function getChildAppPreviewNode({
     templateType: app.templateType,
     flowNodeType,
     avatar: app.avatar,
-    name: app.name,
-    intro: app.intro,
+    name: parseI18nString(app.name, lang),
+    intro: parseI18nString(app.intro, lang),
     courseUrl: app.courseUrl,
     userGuide: app.userGuide,
     showStatus: app.showStatus,
@@ -209,24 +234,19 @@ export async function getChildAppPreviewNode({
     versionLabel: app.versionLabel,
     isLatestVersion: app.isLatestVersion,
 
-    sourceHandle: isToolSet
-      ? getHandleConfig(false, false, false, false)
-      : getHandleConfig(true, true, true, true),
-    targetHandle: isToolSet
-      ? getHandleConfig(false, false, false, false)
-      : getHandleConfig(true, true, true, true),
     ...nodeIOConfig
   };
 }
 
-/* 
+/*
   Get runtime plugin data
   System plugin: plugin id
   Personal plugin: Version id
 */
 export async function getChildAppRuntimeById(
   id: string,
-  versionId?: string
+  versionId?: string,
+  lang: localeType = 'zh-CN'
 ): Promise<PluginRuntimeType> {
   const app = await (async () => {
     const { source, pluginId } = splitCombineToolId(id);
@@ -271,8 +291,8 @@ export async function getChildAppRuntimeById(
     id: app.id,
     teamId: app.teamId,
     tmbId: app.tmbId,
-    name: app.name,
-    avatar: app.avatar,
+    name: parseI18nString(app.name, lang),
+    avatar: parseI18nString(app.avatar, lang),
     showStatus: app.showStatus,
     currentCost: app.currentCost,
     nodes: app.workflow.nodes,

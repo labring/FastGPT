@@ -51,6 +51,7 @@ import { getNanoid } from '../../common/string/tools';
 import { ChatRoleEnum } from '../../core/chat/constants';
 import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
 import { getPluginRunContent } from '../../core/app/plugin/utils';
+import type { I18nStringType, localeType } from './type';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -85,7 +86,7 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const questionGuide: AppQGConfigType =
     typeof questionGuideVal === 'boolean'
       ? { ...defaultQGConfig, open: questionGuideVal }
-      : questionGuideVal ?? defaultQGConfig;
+      : (questionGuideVal ?? defaultQGConfig);
 
   const ttsConfig: AppTTSConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ??
@@ -356,7 +357,7 @@ export const formatEditorVariablePickerIcon = (
 export const isValidReferenceValueFormat = (value: any): value is ReferenceItemValueType => {
   return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
 };
-/* 
+/*
   Check whether the value([variableId, outputId]) value is a valid reference value:
   1. The value must be an array of length 2
   2. The first item of the array must be one of VARIABLE_NODE_ID or nodeIds
@@ -370,7 +371,7 @@ export const isValidReferenceValue = (
   const validIdSet = new Set([VARIABLE_NODE_ID, ...nodeIds]);
   return validIdSet.has(value[0]);
 };
-/* 
+/*
   Check whether the value([variableId, outputId][]) value is a valid reference value array:
   1. The value must be an array
   2. The array must contain at least one element
@@ -445,4 +446,9 @@ export const getPluginRunUserQuery = ({
       files
     })
   };
+};
+
+export const parseI18nString = (str: I18nStringType = '', lang: localeType = 'zh-CN') => {
+  if (typeof str === 'string') return str;
+  return str[lang] ?? str['zh-CN'];
 };
