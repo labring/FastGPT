@@ -6,7 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
+import { getPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -41,15 +41,17 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         }
         setLoading(true);
 
-        const res = await getWxPayQRCode({
+        const res = await getPayQRCode({
           type: BillTypeEnum.extraDatasetSub,
           month,
           extraDatasetSize: datasetSize
         });
         setQRPayData({
           readPrice: res.readPrice,
-          codeUrl: res.codeUrl,
-          billId: res.billId
+          qrItem: res.qrItem,
+          billId: res.billId,
+          payment: res.payment,
+          type: res.type
         });
       } catch (err) {
         toast({
@@ -86,15 +88,19 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
         }
         setLoading(true);
 
-        const res = await getWxPayQRCode({
+        const res = await getPayQRCode({
           type: BillTypeEnum.extraPoints,
           extraPoints: points
         });
 
+        console.log('res', res);
+
         setQRPayData({
           readPrice: res.readPrice,
-          codeUrl: res.codeUrl,
-          billId: res.billId
+          qrItem: res.qrItem,
+          billId: res.billId,
+          payment: res.payment,
+          type: res.type
         });
       } catch (err) {
         toast({

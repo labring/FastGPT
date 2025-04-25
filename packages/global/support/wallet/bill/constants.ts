@@ -45,6 +45,8 @@ export const billStatusMap = {
 export enum BillPayWayEnum {
   balance = 'balance',
   wx = 'wx',
+  alipay = 'alipay',
+  bank = 'bank',
   coupon = 'coupon'
 }
 
@@ -55,10 +57,24 @@ export const billPayWayMap = {
   [BillPayWayEnum.wx]: {
     label: 'support.wallet.bill.payWay.wx'
   },
+  [BillPayWayEnum.alipay]: {
+    label: 'support.wallet.bill.payWay.alipay'
+  },
+  [BillPayWayEnum.bank]: {
+    label: 'support.wallet.bill.payWay.bank'
+  },
   [BillPayWayEnum.coupon]: {
     label: i18nT('account_bill:payway_coupon')
   }
 };
 
+export enum DrawBillQRItem {
+  qr = 'qr',
+  markdown = 'markdown',
+  iframe = 'iframe'
+}
+
 export const SUB_DATASET_SIZE_RATE = 1000;
 export const SUB_EXTRA_POINT_RATE = 1000;
+export const MAX_WX_PAY_AMOUNT = 6000;
+export const QR_CODE_SIZE = 210;
