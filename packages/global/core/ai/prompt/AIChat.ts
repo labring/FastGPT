@@ -7,6 +7,13 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: i18nT('app:template.standard_template_des'),
     value: {
+      ['4.9.7']: `{
+  "sourceIndex": "{{sourceIndex}}",
+  "id": "{{id}}",
+  "sourceName": "{{source}}",
+  "content": "{{q}}\n{{a}}"
+}
+`,
       ['4.9.2']: `{
   "sourceName": "{{source}}",
   "updateTime": "{{updateTime}}",
@@ -31,6 +38,13 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: i18nT('app:template.standard_strict_des'),
     value: {
+      ['4.9.7']: `{
+  "sourceIndex": "{{sourceIndex}}",
+  "id": "{{id}}",
+  "sourceName": "{{source}}",
+  "content": "{{q}}\n{{a}}"
+}
+`,
       ['4.9.2']: `{
   "sourceName": "{{source}}",
   "updateTime": "{{updateTime}}",
@@ -64,6 +78,21 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
+      ['4.9.7']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+
+<Reference>
+{{quote}}
+</Reference>
+
+回答要求：
+- 如果你不清楚答案，你需要澄清。
+- 避免提及你是从 <Reference></Reference> 获取的知识。
+- 保持答案与 <Reference></Reference> 中描述的一致。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
+- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
       ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
@@ -103,6 +132,27 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
+      ['4.9.7']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+
+<Reference>
+{{quote}}
+</Reference>
+
+思考流程：
+1. 判断问题是否与 <Reference></Reference> 标记中的内容有关。
+2. 如果有关，你按下面的要求回答。
+3. 如果无关，你直接拒绝回答本次问题。
+
+回答要求：
+- 避免提及你是从 <Reference></Reference> 获取的知识。
+- 保持答案与 <Reference></Reference> 中描述的一致。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
+- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。
+
+问题:"""{{question}}"""`,
       ['4.9.2']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
@@ -157,6 +207,21 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_template'),
     desc: '',
     value: {
+      ['4.9.7']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+
+<Reference>
+{{quote}}
+</Reference>
+
+回答要求：
+- 如果你不清楚答案，你需要澄清。
+- 避免提及你是从 <Reference></Reference> 获取的知识。
+- 保持答案与 <Reference></Reference> 中描述的一致。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
+- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
       ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
@@ -192,6 +257,27 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
     title: i18nT('app:template.standard_strict'),
     desc: '',
     value: {
+      ['4.9.7']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
+
+<Reference>
+{{quote}}
+</Reference>
+
+思考流程：
+1. 判断问题是否与 <Reference></Reference> 标记中的内容有关。
+2. 如果有关，你按下面的要求回答。
+3. 如果无关，你直接拒绝回答本次问题。
+
+回答要求：
+- 避免提及你是从 <Reference></Reference> 获取的知识。
+- 保持答案与 <Reference></Reference> 中描述的一致。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
+- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。
+
+问题:"""{{question}}"""`,
       ['4.9.2']: `忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
 <Reference>
@@ -250,10 +336,10 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 export const getDocumentQuotePrompt = (version: string) => {
   const promptMap = {
     ['4.9.2']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
-  <FilesContent>
-  {{quote}}
-  </FilesContent>
-  `
+<FilesContent>
+{{quote}}
+</FilesContent>
+`
   };
 
   return getPromptByVersion(version, promptMap);

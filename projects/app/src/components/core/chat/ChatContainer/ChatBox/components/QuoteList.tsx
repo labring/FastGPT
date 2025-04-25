@@ -59,7 +59,7 @@ const QuoteList = React.memo(function QuoteList({
         };
       }
 
-      return item;
+      return { ...item, q: item.q || '', a: item.a || '' };
     });
 
     return processedData.sort((a, b) => {

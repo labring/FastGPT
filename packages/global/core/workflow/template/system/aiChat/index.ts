@@ -55,7 +55,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   showStatus: true,
   isTool: true,
   courseUrl: '/docs/guide/workbench/workflow/ai_chat/',
-  version: '4.9.0',
+  version: '4.9.7',
   inputs: [
     Input_Template_SettingAiModel,
     // --- settings modal

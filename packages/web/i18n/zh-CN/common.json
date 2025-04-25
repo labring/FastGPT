@@ -617,6 +617,7 @@
   "core.dataset.search.ReRank": "结果重排",
   "core.dataset.search.ReRank desc": "使用重排模型来进行二次排序，可增强综合排名。",
   "core.dataset.search.Source id": "来源 ID",
+  "core.dataset.search.Source index": "第几个来源",
   "core.dataset.search.Source name": "引用来源名",
   "core.dataset.search.Using query extension": "使用问题优化",
   "core.dataset.search.mode.embedding": "语义检索",
