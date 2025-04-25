@@ -171,17 +171,19 @@ const QRCodePayModal = ({
 
         {renderPaymentContent()}
 
-        <Box
-          mt={5}
-          textAlign={'center'}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          gap={1}
-        >
-          <MyIcon name={'common/info'} w={4} h={4} />
-          {t('common:pay.noclose')}
-        </Box>
+        {selectedPayment !== BillPayWayEnum.bank && (
+          <Box
+            mt={5}
+            textAlign={'center'}
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+            gap={1}
+          >
+            <MyIcon name={'common/info'} w={4} h={4} />
+            {t('common:pay.noclose')}
+          </Box>
+        )}
 
         <Flex justifyContent="center" gap={3} mt={6}>
           {isWxConfigured && (

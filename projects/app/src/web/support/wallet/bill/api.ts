@@ -6,7 +6,7 @@ import type {
   CreateOrderResponse,
   UpdatePaymentProps
 } from '@fastgpt/global/support/wallet/bill/api';
-import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { BillStatusEnum, BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
@@ -23,7 +23,9 @@ export const checkBalancePayResult = (payId: string) =>
   GET<CheckPayResultResponse>(`/proApi/support/wallet/bill/pay/checkPayResult`, { payId }).then(
     (data) => {
       try {
-        GET('/common/system/unlockTask');
+        if (data.status === BillStatusEnum.SUCCESS) {
+          GET('/common/system/unlockTask');
+        }
       } catch (error) {}
       return data;
     }
