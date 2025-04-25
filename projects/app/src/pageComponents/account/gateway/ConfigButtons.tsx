@@ -10,6 +10,8 @@ import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMyApps, postCreateApp, putAppById } from '@/web/core/app/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { emptyTemplates } from '@/web/core/app/templates';
+import { putUpdateTeam } from '@/web/support/user/team/api';
 
 type Props = {
   tab: 'home' | 'copyright';
@@ -24,7 +26,7 @@ const ConfigButtons = ({ tab }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { saveGateConfig, saveCopyRightConfig } = useGateStore();
+  const { saveGateConfig, saveCopyRightConfig, copyRightConfig } = useGateStore();
   const { userInfo } = useUserStore();
 
   // 保存配置
@@ -51,6 +53,15 @@ const ConfigButtons = ({ tab }: Props) => {
   // 保存版权配置
   const { runAsync: saveCopyrightConfig, loading: savingCopyright } = useRequest2(
     async () => {
+      const currentTeamAvatar = userInfo?.team?.teamAvatar;
+      // 如果有头像，先使用putUpdateTeam API更新团队头像
+      if (copyRightConfig?.avatar && copyRightConfig?.avatar !== currentTeamAvatar) {
+        await putUpdateTeam({
+          avatar: copyRightConfig.avatar
+        });
+      }
+
+      // 保存其他版权配置
       await saveCopyRightConfig();
       toast({
         title: t('common:common.Save Success'),
@@ -73,7 +84,7 @@ const ConfigButtons = ({ tab }: Props) => {
       // 获取应用列表
       const apps = await getMyApps();
       const gateApp = apps.find((app) => app.name === 'gate');
-      const currentTeamAvatar = userInfo?.team?.teamAvatar;
+      const currentTeamAvatar = copyRightConfig?.avatar || userInfo?.team?.teamAvatar;
 
       if (gateApp) {
         if (gateApp.avatar !== currentTeamAvatar) {
@@ -81,7 +92,7 @@ const ConfigButtons = ({ tab }: Props) => {
             avatar: currentTeamAvatar
           });
           toast({
-            title: t('account_gate:Gate app avatar updated'),
+            title: t('common:common.Update Success'),
             status: 'success'
           });
         }
@@ -90,27 +101,35 @@ const ConfigButtons = ({ tab }: Props) => {
           avatar: currentTeamAvatar,
           name: 'gate',
           type: AppTypeEnum.simple,
-          modules: [],
-          edges: []
+          modules: emptyTemplates[AppTypeEnum.simple].nodes,
+          edges: emptyTemplates[AppTypeEnum.simple].edges,
+          chatConfig: {
+            fileSelectConfig: {
+              canSelectFile: true,
+              canSelectImg: true,
+              maxFiles: 10
+            }
+          }
         });
         toast({
-          title: t('account_gate:Gate app created successfully'),
+          title: t('common:common.Create Success'),
           status: 'success'
         });
       }
     } catch (error) {
       toast({
-        title: t('account_gate:Operation failed'),
+        title: t('common:error.Create failed'),
         status: 'error'
       });
     }
   };
   const handleSave = async () => {
-    await checkAndCreateGateApp();
     if (tab === 'home') {
       await saveHomeConfig();
+      await checkAndCreateGateApp();
     } else if (tab === 'copyright') {
       await saveCopyrightConfig();
+      await checkAndCreateGateApp();
     }
   };
 
