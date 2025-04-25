@@ -38,6 +38,7 @@ import ChatRecordContextProvider, {
 } from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -242,6 +243,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
+  const { gateConfig, initGateConfig } = useGateStore();
 
   const {
     data: myApps = [],
@@ -254,6 +256,19 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
   // 初始化聊天框
   useMount(async () => {
+    // 初始化获取gate配置
+    await initGateConfig();
+
+    // 检查gate status，如果为false则重定向到应用列表页面
+    if (gateConfig && !gateConfig.status) {
+      toast({
+        status: 'warning',
+        title: t('common:Gate.service.is.unavailable')
+      });
+      router.replace('/dashboard/apps');
+      return;
+    }
+
     // pc: redirect to latest model chat
     if (!appId) {
       const apps = await loadMyApps();
@@ -274,10 +289,27 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     }
     setSource('online');
   });
+
+  // 监听gateConfig变化，如果status变为false则重定向
+  useEffect(() => {
+    if (gateConfig && !gateConfig.status) {
+      toast({
+        status: 'warning',
+        title: t('common:Gate.service.is.unavailable')
+      });
+      router.replace('/dashboard/apps');
+    }
+  }, [gateConfig, router, toast, t]);
+
   // Watch appId
   useEffect(() => {
     setAppId(appId);
   }, [appId, setAppId]);
+
+  // 如果状态检查失败，不渲染任何内容
+  if (gateConfig && !gateConfig.status) {
+    return null;
+  }
 
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
@@ -313,7 +345,14 @@ export async function getServerSideProps(context: any) {
     props: {
       appId: context?.query?.appId || '',
       isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, ['file', 'app', 'chat', 'workflow', 'account_gate']))
+      ...(await serviceSideProps(context, [
+        'file',
+        'app',
+        'chat',
+        'workflow',
+        'account_gate',
+        'common'
+      ]))
     }
   };
 }

@@ -2,6 +2,7 @@
   "App": "應用程式",
   "Click_to_expand": "點選檢視詳細資訊",
   "Download": "下載",
+  "Gate.service.is.unavailable": "門戶不可用",
   "Error": "錯誤",
   "Export": "匯出",
   "FAQ.ai_point_a": "每次呼叫 AI 模型時，都會消耗一定數量的 AI 點數。詳細的計算標準請參考上方的「AI 點數計算標準」。\nToken 計算採用與 GPT3.5 相同的公式，1 Token ≈ 0.7 個中文字 ≈ 0.9 個英文單字，連續出現的字元可能會被視為 1 個 Token。",

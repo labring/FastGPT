@@ -2,6 +2,7 @@
   "App": "应用",
   "Click_to_expand": "点击查看详情",
   "Download": "下载",
+  "Gate.service.is.unavailable": "门户不可用",
   "Error": "错误",
   "Export": "导出",
   "FAQ.ai_point_a": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。\nToken计算采用GPT3.5相同公式，1Token≈0.7中文字符≈0.9英文单词，连续出现的字符可能被认为是1个Tokens。",

@@ -23,7 +23,6 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
   const companyNameRef = useRef<HTMLSpanElement>(null);
   const [companyNameScale, setCompanyNameScale] = useState(1);
 
-  const isApplicationPage = router.pathname === '/chat/gate/application';
   const isChatPage = router.pathname === '/chat/gate';
 
   useEffect(() => {
@@ -155,64 +154,10 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
               </Text>
             </Box>
           </Flex>
-
-          {/* Applications Button */}
-          <Flex
-            align="center"
-            p="8px"
-            gap="8px"
-            w={isCollapsed ? '36px' : '100%'}
-            h="44px"
-            borderRadius="8px"
-            cursor="pointer"
-            bg={isApplicationPage ? 'rgba(51, 112, 255, 0.05)' : 'transparent'}
-            _hover={{
-              bg: isApplicationPage ? 'rgba(51, 112, 255, 0.1)' : 'rgba(17, 24, 36, 0.05)'
-            }}
-            flexGrow={0}
-            transition="width 0.2s"
-            className="nav-item"
-            onClick={() => router.push('/chat/gate/application')}
-            sx={{
-              '&.nav-item': {
-                '& > .nav-content': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: isCollapsed ? '20px' : '100%',
-                  transition: 'all 0.2s'
-                }
-              }
-            }}
-          >
-            <Box className="nav-content">
-              <MyIcon
-                name="support/gate/chat/sidebar/appGray"
-                width="20px"
-                height="20px"
-                color={isApplicationPage ? '#3370FF' : '#8A95A7'}
-              />
-              <Text
-                fontSize="14px"
-                fontWeight="500"
-                lineHeight="20px"
-                letterSpacing="0.1px"
-                fontFamily="PingFang SC"
-                color={isApplicationPage ? '#3370FF' : '#667085'}
-                opacity={isCollapsed ? 0 : 1}
-                transform={`scale(${isCollapsed ? 0 : 1})`}
-                transformOrigin="left center"
-                transition="all 0.2s"
-                whiteSpace="nowrap"
-              >
-                {t('common:App')}
-              </Text>
-            </Box>
-          </Flex>
         </Flex>
 
         {/* Recent Apps */}
-        {!isChatPage && apps && apps.length > 0 && (
+        {apps && apps.length > 0 && (
           <Box w={isCollapsed ? '36px' : '100%'} mt={4} transition="all 0.2s" overflow="hidden">
             <Box className="nav-item">
               <Box className="nav-content">
@@ -267,6 +212,7 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
                     item._id !== activeAppId
                       ? () =>
                           router.replace({
+                            pathname: '/chat/gate/application',
                             query: {
                               ...router.query,
                               appId: item._id
