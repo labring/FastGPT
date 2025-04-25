@@ -1,33 +1,33 @@
+import Path from '@/components/common/folder/Path';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { getGroupList } from '@/web/support/user/team/group/api';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
-import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useTranslation } from 'next-i18next';
-import { useMemo, useRef, useState } from 'react';
-import PermissionSelect from './PermissionSelect';
 import {
   DEFAULT_ORG_AVATAR,
   DEFAULT_TEAM_AVATAR,
   DEFAULT_USER_AVATAR
 } from '@fastgpt/global/common/system/constants';
-import Path from '@/components/common/folder/Path';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import MyAvatar from '@fastgpt/web/components/common/Avatar';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { useTranslation } from 'next-i18next';
+import { ValueOf } from 'next/dist/shared/lib/constants';
+import { useMemo, useRef, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
-import { getTeamMembers } from '@/web/support/user/team/api';
-import { getGroupList } from '@/web/support/user/team/group/api';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
-import useOrg from '@/web/support/user/team/org/hooks/useOrg';
-import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
-import { ValueOf } from 'next/dist/shared/lib/constants';
+import PermissionSelect from './PermissionSelect';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -348,6 +348,9 @@ function MemberModal({
                         const isChecked = !!selectedMemberList.find(
                           (v) => v.tmbId === member.tmbId
                         );
+                        const collaborator = collaboratorList?.find(
+                          (v) => v.tmbId === member.tmbId
+                        );
                         return (
                           <MemberItemCard
                             avatar={member.avatar}
@@ -362,7 +365,7 @@ function MemberModal({
                               });
                             }}
                             isChecked={isChecked}
-                            permission={member.permission.value}
+                            permission={collaborator?.permission.value}
                             addOnly={addOnly && !!member.permission.value}
                             orgs={member.orgs}
                           />
