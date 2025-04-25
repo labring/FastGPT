@@ -1,29 +1,8 @@
-import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  VariableInputEnum
-} from '../constants';
-import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
-import { UserModelSchema } from '../../../support/user/type';
-import {
-  ChatHistoryItemResType,
-  ChatItemType,
-  ChatItemValueItemType,
-  ToolRunResponseItemType,
-  UserChatItemValueItemType
-} from '../../chat/type';
-import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { RuntimeNodeItemType } from '../runtime/type';
-import { PluginTypeEnum } from '../../plugin/constants';
-import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
-import { NextApiResponse } from 'next';
-import { AppDetailType, AppSchema } from '../../app/type';
 import { ParentIdType } from 'common/parentFolder/type';
-import { AppTypeEnum } from 'core/app/constants';
+import { ChatHistoryItemResType } from '../../chat/type';
+import { FlowNodeTypeEnum } from '../node/constant';
 import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
 
 export type FlowNodeCommonType = {
   parentNodeId?: string;
@@ -45,6 +24,9 @@ export type FlowNodeCommonType = {
   isFolder?: boolean;
   // pluginType?: AppTypeEnum;
   pluginData?: PluginDataType;
+
+  // Tool config: systemTool, mcpTool, httpTool, etc.
+  systemToolConfig?: {};
 };
 
 export type PluginDataType = {

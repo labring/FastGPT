@@ -1,22 +1,24 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { dispatchWorkFlow } from '../index';
+import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getChildAppRuntimeById } from '../../../app/plugin/controller';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { authPluginByTmbId } from '../../../../support/permission/app/auth';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { computedPluginUsage } from '../../../app/plugin/utils';
-import { filterSystemVariables } from '../utils';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
-import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authPluginByTmbId } from '../../../../support/permission/app/auth';
+import { getChildAppRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
+import { computedPluginUsage } from '../../../app/plugin/utils';
+import { runTool } from '../../../app/tool/api';
+import { dispatchWorkFlow } from '../index';
+import { filterSystemVariables } from '../utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
@@ -42,6 +44,13 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     tmbId: runningAppInfo.tmbId,
     per: ReadPermissionVal
   });
+
+  const { source } = await splitCombinePluginId(pluginId);
+  if (source === PluginSourceEnum.systemTool) {
+    const { error, output } = await runTool(pluginId, data);
+    if (error) return Promise.reject(error);
+    return output;
+  }
 
   const plugin = await getChildAppRuntimeById(pluginId, version);
 

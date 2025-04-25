@@ -1,35 +1,10 @@
-import {
-  chatHistoryValueDesc,
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from './node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeInputKeyEnum,
-  VariableInputEnum,
-  variableMap,
-  VARIABLE_NODE_ID,
-  NodeOutputKeyEnum
-} from './constants';
-import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType,
-  ReferenceArrayValueType,
-  ReferenceItemValueType
-} from './type/io.d';
-import { StoreNodeItemType } from './type/node';
-import type {
-  VariableItemType,
-  AppTTSConfigType,
-  AppWhisperConfigType,
-  AppScheduledTriggerConfigType,
-  ChatInputGuideConfigType,
-  AppChatConfigType,
-  AppAutoExecuteConfigType,
-  AppQGConfigType
-} from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
+import { i18nT } from '../../../web/i18n/utils';
+import { getNanoid } from '../../common/string/tools';
+import { getPluginRunContent } from '../../core/app/plugin/utils';
+import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
+import { ChatRoleEnum } from '../../core/chat/constants';
+import { RuntimeUserPromptType, UserChatItemType } from '../../core/chat/type';
 import {
   defaultAutoExecuteConfig,
   defaultChatInputGuideConfig,
@@ -37,7 +12,30 @@ import {
   defaultTTSConfig,
   defaultWhisperConfig
 } from '../app/constants';
-import { IfElseResultEnum } from './template/system/ifElse/constant';
+import type {
+  AppAutoExecuteConfigType,
+  AppChatConfigType,
+  AppQGConfigType,
+  AppScheduledTriggerConfigType,
+  AppTTSConfigType,
+  AppWhisperConfigType,
+  ChatInputGuideConfigType,
+  VariableItemType
+} from '../app/type';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
+  VariableInputEnum,
+  variableMap,
+  WorkflowIOValueTypeEnum
+} from './constants';
+import {
+  chatHistoryValueDesc,
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from './node/constant';
 import { RuntimeNodeItemType } from './runtime/type';
 import {
   Input_Template_File_Link,
@@ -45,12 +43,15 @@ import {
   Input_Template_Stream_MODE,
   Input_Template_UserChatInput
 } from './template/input';
-import { i18nT } from '../../../web/i18n/utils';
-import { RuntimeUserPromptType, UserChatItemType } from '../../core/chat/type';
-import { getNanoid } from '../../common/string/tools';
-import { ChatRoleEnum } from '../../core/chat/constants';
-import { runtimePrompt2ChatsValue } from '../../core/chat/adapt';
-import { getPluginRunContent } from '../../core/app/plugin/utils';
+import { IfElseResultEnum } from './template/system/ifElse/constant';
+import { I18nStringType, localeType } from './type';
+import {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  ReferenceArrayValueType,
+  ReferenceItemValueType
+} from './type/io.d';
+import { StoreNodeItemType } from './type/node';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
   return `${nodeId}-${type}-${key}`;
@@ -356,7 +357,7 @@ export const formatEditorVariablePickerIcon = (
 export const isValidReferenceValueFormat = (value: any): value is ReferenceItemValueType => {
   return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
 };
-/* 
+/*
   Check whether the value([variableId, outputId]) value is a valid reference value:
   1. The value must be an array of length 2
   2. The first item of the array must be one of VARIABLE_NODE_ID or nodeIds
@@ -370,7 +371,7 @@ export const isValidReferenceValue = (
   const validIdSet = new Set([VARIABLE_NODE_ID, ...nodeIds]);
   return validIdSet.has(value[0]);
 };
-/* 
+/*
   Check whether the value([variableId, outputId][]) value is a valid reference value array:
   1. The value must be an array
   2. The array must contain at least one element
@@ -445,4 +446,9 @@ export const getPluginRunUserQuery = ({
       files
     })
   };
+};
+
+export const parseI18nString = (str: I18nStringType = '', lang: localeType = 'zh-CN') => {
+  if (typeof str === 'string') return str;
+  return str[lang] ?? str['zh-CN'];
 };

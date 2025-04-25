@@ -1,11 +1,12 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { runTool } from '../../../app/tool/api';
 
 type RunToolProps = ModuleDispatchProps<{
   toolData: {
@@ -21,12 +22,22 @@ type RunToolResponse = DispatchNodeResultType<{
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
-    node: { avatar }
+    node: { avatar, systemToolConfig, pluginId }
   } = props;
 
   const { toolData, ...restParams } = params;
   const { name: toolName, url } = toolData;
 
+  if (systemToolConfig && pluginId) {
+    // run system tool
+    const { error, output } = await runTool(pluginId, restParams);
+    if (error) {
+      return Promise.reject(error);
+    }
+    return {
+      [NodeOutputKeyEnum.rawResponse]: output
+    };
+  }
   const mcpClient = new MCPClient({ url });
 
   try {

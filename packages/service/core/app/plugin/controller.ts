@@ -1,29 +1,35 @@
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { defaultNodeVersion, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
+import { localeType, SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
+  parseI18nString,
   pluginData2FlowNodeIO,
   toolData2FlowNodeIO,
   toolSetData2FlowNodeIO
 } from '@fastgpt/global/core/workflow/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
-import { MongoApp } from '../schema';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
+import { MongoApp } from '../schema';
 import { getAppLatestVersion, getAppVersionById } from '../version/controller';
-import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
-import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 
-/* 
+/*
   plugin id rule:
-  personal: id
-  community: community-id
-  commercial: commercial-id
+  - personal: id
+  - commercial: commercial-id
+  - systemtool: systemTool-id
+  (deprecated) community: community-id
 */
 
 export async function splitCombinePluginId(id: string) {
@@ -36,18 +42,27 @@ export async function splitCombinePluginId(id: string) {
     };
   }
 
-  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string];
+  const [source, pluginId] = id.split('-') as [PluginSourceEnum, string | undefined];
   if (!source || !pluginId) return Promise.reject('pluginId not found');
-
+  if (source === 'community') {
+    return { source: PluginSourceEnum.systemTool, pluginId: id };
+  }
   return { source, pluginId: id };
 }
 
-type ChildAppType = SystemPluginTemplateItemType & { teamId?: string; tmbId?: string };
+type ChildAppType = SystemPluginTemplateItemType & {
+  teamId?: string;
+  tmbId?: string;
+  inputs?: FlowNodeInputItemType[];
+  outputs?: FlowNodeOutputItemType[];
+};
 
 const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
 ): Promise<ChildAppType> => {
+  const items = getSystemPluginTemplates();
+  console.log('items', items);
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
   if (!item) return Promise.reject(PluginErrEnum.unAuth);
 
@@ -90,13 +105,14 @@ const getSystemPluginTemplateById = async (
 
 /* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
-  id
+  id,
+  lang = 'zh-CN'
 }: {
   id: string;
+  lang?: localeType;
 }): Promise<FlowNodeTemplateType> {
-  const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(id);
-
+  const { source } = await splitCombinePluginId(id);
+  const app = await (async () => {
     if (source === PluginSourceEnum.personal) {
       const item = await MongoApp.findById(id).lean();
       if (!item) return Promise.reject('plugin not found');
@@ -123,11 +139,13 @@ export async function getChildAppPreviewNode({
         currentCost: 0,
         hasTokenFee: false,
         pluginOrder: 0
-      };
+      } as ChildAppType;
     } else {
-      return getSystemPluginTemplateById(pluginId);
+      return getSystemPluginTemplateById(id);
     }
   })();
+
+  const isSystemTool = source === PluginSourceEnum.systemTool;
 
   const isPlugin = !!app.workflow.nodes.find(
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
@@ -157,6 +175,14 @@ export async function getChildAppPreviewNode({
         flowNodeType: FlowNodeTypeEnum.pluginModule,
         nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
       };
+    if (isSystemTool)
+      return {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        nodeIOConfig: {
+          inputs: app.inputs!,
+          outputs: app.outputs!
+        }
+      };
     return {
       flowNodeType: FlowNodeTypeEnum.appModule,
       nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
@@ -169,8 +195,8 @@ export async function getChildAppPreviewNode({
     templateType: app.templateType,
     flowNodeType,
     avatar: app.avatar,
-    name: app.name,
-    intro: app.intro,
+    name: parseI18nString(app.name, lang),
+    intro: parseI18nString(app.intro, lang),
     courseUrl: app.courseUrl,
     userGuide: app.userGuide,
     showStatus: app.showStatus,
@@ -186,14 +212,15 @@ export async function getChildAppPreviewNode({
   };
 }
 
-/* 
+/*
   Get runtime plugin data
   System plugin: plugin id
   Personal plugin: Version id
 */
 export async function getChildAppRuntimeById(
   id: string,
-  versionId?: string
+  versionId?: string,
+  lang: localeType = 'zh-CN'
 ): Promise<PluginRuntimeType> {
   const app: ChildAppType = await (async () => {
     const { source, pluginId } = await splitCombinePluginId(id);
@@ -240,8 +267,8 @@ export async function getChildAppRuntimeById(
     id: app.id,
     teamId: app.teamId,
     tmbId: app.tmbId,
-    name: app.name,
-    avatar: app.avatar,
+    name: parseI18nString(app.name, lang),
+    avatar: parseI18nString(app.avatar, lang),
     showStatus: app.showStatus,
     currentCost: app.currentCost,
     nodes: app.workflow.nodes,

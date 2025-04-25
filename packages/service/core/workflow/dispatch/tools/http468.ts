@@ -1,5 +1,7 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import {
+  ContentTypes,
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
   VARIABLE_NODE_ID,
@@ -9,26 +11,24 @@ import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import axios from 'axios';
-import { formatHttpError } from '../utils';
-import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
-import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
-import { addLog } from '../../../../common/system/log';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
-  textAdaptGptResponse,
-  replaceEditorVariable,
   formatVariableValByType,
-  getReferenceVariableValue
+  getReferenceVariableValue,
+  replaceEditorVariable,
+  textAdaptGptResponse,
+  valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ContentTypes } from '@fastgpt/global/core/workflow/constants';
-import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
-import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
-import { createFileToken } from '../../../../support/permission/controller';
+import axios from 'axios';
+import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import type { SystemPluginSpecialResponse } from '../../../../../plugins/type';
-import json5 from 'json5';
+import { uploadFileFromBase64Img } from '../../../../common/file/gridfs/controller';
+import { addLog } from '../../../../common/system/log';
+import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
+import { createFileToken } from '../../../../support/permission/controller';
+import { formatHttpError } from '../utils';
 
 type PropsArrType = {
   key: string;
@@ -402,19 +402,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
   try {
     const { formatResponse, rawResponse } = await (async () => {
-      const systemPluginCb = global.systemPluginCb;
-      if (systemPluginCb[httpReqUrl]) {
-        const pluginResult = await replaceSystemPluginResponse({
-          response: await systemPluginCb[httpReqUrl](requestBody),
-          teamId,
-          tmbId
-        });
-
-        return {
-          formatResponse: pluginResult,
-          rawResponse: pluginResult
-        };
-      }
       return fetchData({
         method: httpMethod,
         url: httpReqUrl,

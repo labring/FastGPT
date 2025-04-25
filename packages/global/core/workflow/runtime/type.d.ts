@@ -1,30 +1,27 @@
+import { NextApiResponse } from 'next';
+import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
+import { OpenaiAccountType } from '../../../support/user/team/type';
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
+import { CompletionFinishReason } from '../../ai/type';
+import { AppSchema } from '../../app/type';
 import {
+  AIChatItemValueItemType,
   ChatItemType,
-  UserChatItemValueItemType,
   ToolRunResponseItemType,
-  NodeOutputItemType,
-  AIChatItemValueItemType
+  UserChatItemValueItemType
 } from '../../chat/type';
+import { SearchDataResponseItemType } from '../../dataset/type';
+import { NodeInputKeyEnum } from '../constants';
+import { RuntimeNodeItemType } from '../runtime/type';
+import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
+import { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
+import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import { ReadFileNodeResponse } from '../template/system/readFiles/type';
+import { StoreEdgeItemType } from '../type/edge';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
 import { StoreNodeItemType } from '../type/node';
 import { DispatchNodeResponseKeyEnum } from './constants';
-import { StoreEdgeItemType } from '../type/edge';
-import { NodeInputKeyEnum } from '../constants';
-import { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
-import { NextApiResponse } from 'next';
-import { UserModelSchema } from '../../../support/user/type';
-import { AppDetailType, AppSchema } from '../../app/type';
-import { RuntimeNodeItemType } from '../runtime/type';
 import { RuntimeEdgeItemType } from './edge';
-import { ReadFileNodeResponse } from '../template/system/readFiles/type';
-import { UserSelectOptionType } from '../template/system/userSelect/type';
-import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
-import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
-import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
-import { CompletionFinishReason } from '../../ai/type';
-import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
-import { SearchDataResponseItemType } from '../../dataset/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -93,6 +90,7 @@ export type RuntimeNodeItemType = {
   intro?: StoreNodeItemType['intro'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
+  systemToolConfig?: StoreNodeItemType['systemToolConfig'];
   isEntry?: boolean;
 
   inputs: FlowNodeInputItemType[];
