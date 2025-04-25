@@ -8,7 +8,7 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
-import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
+import { getPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 
@@ -65,12 +65,14 @@ const Standard = ({
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
   /* Get pay code */
-  const { runAsync: onPay, loading: isLoading } = useRequest2(getWxPayQRCode, {
+  const { runAsync: onPay, loading: isLoading } = useRequest2(getPayQRCode, {
     onSuccess(res) {
       setQRPayData({
         readPrice: res.readPrice,
-        codeUrl: res.codeUrl,
-        billId: res.billId
+        qrItem: res.qrItem,
+        billId: res.billId,
+        payment: res.payment,
+        type: res.type
       });
     }
   });

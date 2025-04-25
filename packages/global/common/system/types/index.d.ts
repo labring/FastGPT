@@ -107,6 +107,11 @@ export type FastGPTFeConfigsType = {
   lafEnv?: string;
   navbarItems?: NavbarItemType[];
   externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
+
+  payConfig?: {
+    wx;
+    alipay;
+  };
 };
 
 export type SystemEnvType = {
