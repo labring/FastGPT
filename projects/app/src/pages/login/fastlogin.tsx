@@ -26,6 +26,14 @@ const FastLogin = ({
     (res: ResLogin) => {
       setUserInfo(res.user);
 
+      // 检查是否有工作流需要导入
+      if (typeof window !== 'undefined' && sessionStorage.getItem('utm_workflow')) {
+        console.log('快速登录成功，检测到工作流导入链接，跳转到首页以触发导入逻辑');
+        // 跳转到首页，让Layout中的WorkflowImporter组件处理导入
+        router.push('/');
+        return;
+      }
+
       setTimeout(() => {
         router.push(decodeURIComponent(callbackUrl));
       }, 100);

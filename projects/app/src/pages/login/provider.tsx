@@ -26,6 +26,12 @@ const provider = () => {
     (res: ResLogin) => {
       setUserInfo(res.user);
 
+      if (typeof window !== 'undefined' && sessionStorage.getItem('utm_workflow')) {
+        console.log('OAuth登录成功，检测到工作流导入链接，跳转到首页以触发导入逻辑');
+        router.push('/');
+        return;
+      }
+
       router.push(
         loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/dashboard/apps'
       );

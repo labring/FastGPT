@@ -7,7 +7,10 @@ export type TrackRegisterParams = {
   inviterId?: string;
   bd_vid?: string;
   fastgpt_sem?: {
-    keyword: string;
+    keyword?: string;
+    source?: string;
+    medium?: string;
+    content?: string;
   };
   sourceDomain?: string;
 };
