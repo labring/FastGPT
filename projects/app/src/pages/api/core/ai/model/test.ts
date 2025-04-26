@@ -16,7 +16,7 @@ import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
-import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
+import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '@fastgpt/service/core/ai/utils';
 
 export type testQuery = { model: string; channelId?: number };
 
@@ -88,23 +88,10 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
       }
     }
   });
+  const { text: answer } = await llmResponseToAnswerText(response);
 
-  if (isStreamResponse) {
-    for await (const part of response) {
-      const content = part.choices?.[0]?.delta?.content || '';
-      // @ts-ignore
-      const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
-      if (content || reasoningContent) {
-        response?.controller?.abort();
-        return;
-      }
-    }
-  } else {
-    addLog.info(`Model not stream response`);
-    const answer = response.choices?.[0]?.message?.content || '';
-    if (answer) {
-      return answer;
-    }
+  if (answer) {
+    return answer;
   }
 
   return Promise.reject('Model response empty');

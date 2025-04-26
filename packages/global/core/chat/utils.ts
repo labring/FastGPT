@@ -185,7 +185,6 @@ export const mergeChatResponseData = (
           runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
           totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
           childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
-          toolCallTokens: (lastResponse.toolCallTokens || 0) + (curr.toolCallTokens || 0),
           toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])],
           loopDetail: [...(lastResponse.loopDetail || []), ...(curr.loopDetail || [])],
           pluginDetail: [...(lastResponse.pluginDetail || []), ...(curr.pluginDetail || [])]

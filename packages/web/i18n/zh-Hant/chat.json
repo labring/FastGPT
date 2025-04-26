@@ -43,6 +43,7 @@
   "insert_input_guide,_some_data_already_exists": "偵測到重複資料，已自動過濾，共插入 {{len}} 筆資料",
   "is_chatting": "對話進行中...請稍候",
   "items": "筆",
+  "llm_tokens": "LLM tokens",
   "module_runtime_and": "模組執行總時間",
   "moveCancel": "上滑取消",
   "multiple_AI_conversations": "多組 AI 對話",

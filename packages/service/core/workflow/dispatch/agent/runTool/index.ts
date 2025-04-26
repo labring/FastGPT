@@ -171,7 +171,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const {
     toolWorkflowInteractiveResponse,
     dispatchFlowResponse, // tool flow response
-    toolNodeTokens,
     toolNodeInputTokens,
     toolNodeOutputTokens,
     completeMessages = [], // The actual message sent to AI(just save text)
@@ -271,7 +270,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       // 展示的积分消耗
       totalPoints: totalPointsUsage,
-      toolCallTokens: toolNodeTokens,
       toolCallInputTokens: toolNodeInputTokens,
       toolCallOutputTokens: toolNodeOutputTokens,
       childTotalPoints: flatUsages.reduce((sum, item) => sum + item.totalPoints, 0),

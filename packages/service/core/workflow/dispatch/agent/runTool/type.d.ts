@@ -36,7 +36,6 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 
 export type RunToolResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
-  toolNodeTokens?: number; // deprecated
   toolNodeInputTokens: number;
   toolNodeOutputTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
