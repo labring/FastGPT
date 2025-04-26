@@ -1,4 +1,13 @@
 import { i18nT } from '../../../web/i18n/utils';
+import type { CompletionUsage } from './type';
+
+export const getLLMDefaultUsage = (): CompletionUsage => {
+  return {
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    total_tokens: 0
+  };
+};
 
 export enum ChatCompletionRequestMessageRoleEnum {
   'System' = 'system',

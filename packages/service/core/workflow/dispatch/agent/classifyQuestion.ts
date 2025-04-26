@@ -19,7 +19,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
-import { llmCompletionsBodyFormat } from '../../../ai/utils';
+import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -129,7 +129,7 @@ const completions = async ({
     useVision: false
   });
 
-  const { response: data } = await createChatCompletion({
+  const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
         model: cqModel.model,
@@ -141,7 +141,7 @@ const completions = async ({
     ),
     userKey: externalProvider.openaiAccount
   });
-  const answer = data.choices?.[0].message?.content || '';
+  const { text: answer, usage } = await llmResponseToAnswerText(response);
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
   // console.log(answer, '----');
@@ -156,8 +156,8 @@ const completions = async ({
   }
 
   return {
-    inputTokens: await countGptMessagesTokens(requestMessages),
-    outputTokens: await countPromptTokens(answer),
+    inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
+    outputTokens: usage?.completion_tokens || (await countPromptTokens(answer)),
     arg: { type: id }
   };
 };

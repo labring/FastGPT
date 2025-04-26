@@ -3,9 +3,12 @@ import {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
   CompletionFinishReason,
-  StreamChatType
+  StreamChatType,
+  UnStreamChatType,
+  CompletionUsage
 } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from './model';
+import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 
 /* 
   Count response max token
@@ -97,13 +100,42 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
   return requestBody as unknown as InferCompletionsBody<T>;
 };
 
-export const llmStreamResponseToAnswerText = async (response: StreamChatType) => {
+export const llmStreamResponseToAnswerText = async (
+  response: StreamChatType
+): Promise<{
+  text: string;
+  usage?: CompletionUsage;
+}> => {
   let answer = '';
+  let usage = getLLMDefaultUsage();
   for await (const part of response) {
+    usage = part.usage || usage;
+
     const content = part.choices?.[0]?.delta?.content || '';
     answer += content;
   }
-  return parseReasoningContent(answer)[1];
+  return {
+    text: parseReasoningContent(answer)[1],
+    usage
+  };
+};
+export const llmUnStreamResponseToAnswerText = async (
+  response: UnStreamChatType
+): Promise<{
+  text: string;
+  usage?: CompletionUsage;
+}> => {
+  const answer = response.choices?.[0]?.message?.content || '';
+  return {
+    text: answer,
+    usage: response.usage
+  };
+};
+export const llmResponseToAnswerText = async (response: StreamChatType | UnStreamChatType) => {
+  if ('iterator' in response) {
+    return llmStreamResponseToAnswerText(response);
+  }
+  return llmUnStreamResponseToAnswerText(response);
 };
 
 // Parse <think></think> tags to think and answer - unstream response
@@ -140,7 +172,7 @@ export const parseReasoningStreamContent = () => {
     part: {
       choices: {
         delta: {
-          content?: string;
+          content?: string | null;
           reasoning_content?: string;
         };
         finish_reason?: CompletionFinishReason;

@@ -10,6 +10,7 @@ import type {
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 import { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { Stream } from 'openai/streaming';
 export * from 'openai/resources';
 
 // Extension of ChatCompletionMessageParam, Add file url type
@@ -84,6 +85,7 @@ export type CompletionFinishReason =
 
 export default openai;
 export * from 'openai';
+export type { Stream };
 
 // Other
 export type PromptTemplateItem = {
