@@ -34,6 +34,7 @@ type Props = {
   outLinkUid?: string;
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
   metadata?: Record<string, any>;
+  durationSeconds: number; //s
 };
 
 export async function saveChat({
@@ -51,8 +52,11 @@ export async function saveChat({
   shareId,
   outLinkUid,
   content,
+  durationSeconds,
   metadata = {}
 }: Props) {
+  if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
+
   try {
     const chat = await MongoChat.findOne(
       {
@@ -78,34 +82,33 @@ export async function saveChat({
     // Format save chat content: Remove quote q/a
     const processedContent = content.map((item) => {
       if (item.obj === ChatRoleEnum.AI) {
-        const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse];
+        const nodeResponse = item[DispatchNodeResponseKeyEnum.nodeResponse]?.map((responseItem) => {
+          if (
+            responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
+            responseItem.quoteList
+          ) {
+            return {
+              ...responseItem,
+              quoteList: responseItem.quoteList.map((quote: any) => ({
+                id: quote.id,
+                chunkIndex: quote.chunkIndex,
+                datasetId: quote.datasetId,
+                collectionId: quote.collectionId,
+                sourceId: quote.sourceId,
+                sourceName: quote.sourceName,
+                score: quote.score,
+                tokens: quote.tokens
+              }))
+            };
+          }
+          return responseItem;
+        });
 
-        if (nodeResponse) {
-          return {
-            ...item,
-            [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse.map((responseItem) => {
-              if (
-                responseItem.moduleType === FlowNodeTypeEnum.datasetSearchNode &&
-                responseItem.quoteList
-              ) {
-                return {
-                  ...responseItem,
-                  quoteList: responseItem.quoteList.map((quote: any) => ({
-                    id: quote.id,
-                    chunkIndex: quote.chunkIndex,
-                    datasetId: quote.datasetId,
-                    collectionId: quote.collectionId,
-                    sourceId: quote.sourceId,
-                    sourceName: quote.sourceName,
-                    score: quote.score,
-                    tokens: quote.tokens
-                  }))
-                };
-              }
-              return responseItem;
-            })
-          };
-        }
+        return {
+          ...item,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+          durationSeconds
+        };
       }
       return item;
     });
@@ -175,13 +178,15 @@ export const updateInteractiveChat = async ({
   appId,
   userInteractiveVal,
   aiResponse,
-  newVariables
+  newVariables,
+  durationSeconds
 }: {
   chatId: string;
   appId: string;
   userInteractiveVal: string;
   aiResponse: AIChatItemType & { dataId?: string };
   newVariables?: Record<string, any>;
+  durationSeconds: number;
 }) => {
   if (!chatId) return;
 
@@ -245,6 +250,10 @@ export const updateInteractiveChat = async ({
   if (aiResponse.value) {
     chatItem.value = chatItem.value ? [...chatItem.value, ...aiResponse.value] : aiResponse.value;
   }
+
+  chatItem.durationSeconds = chatItem.durationSeconds
+    ? +(chatItem.durationSeconds + durationSeconds).toFixed(2)
+    : durationSeconds;
 
   await mongoSessionRun(async (session) => {
     await chatItem.save({ session });

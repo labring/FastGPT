@@ -93,14 +93,6 @@ type AuthResponseType = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.on('close', () => {
-    res.end();
-  });
-  res.on('error', () => {
-    console.log('error: ', 'request error');
-    res.end();
-  });
-
   let {
     chatId,
     appId,
@@ -265,44 +257,46 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start flow controller */
-    const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
-      if (app.version === 'v2') {
-        return dispatchWorkFlow({
-          res,
-          requestOrigin: req.headers.origin,
-          mode: 'chat',
-          timezone,
-          externalProvider,
+    const { flowResponses, flowUsages, assistantResponses, newVariables, durationSeconds } =
+      await (async () => {
+        if (app.version === 'v2') {
+          return dispatchWorkFlow({
+            res,
+            requestOrigin: req.headers.origin,
+            mode: 'chat',
+            timezone,
+            externalProvider,
 
-          runningAppInfo: {
-            id: String(app._id),
-            teamId: String(app.teamId),
-            tmbId: String(app.tmbId)
-          },
-          runningUserInfo: {
-            teamId,
-            tmbId
-          },
-          uid: String(outLinkUserId || tmbId),
+            runningAppInfo: {
+              id: String(app._id),
+              teamId: String(app.teamId),
+              tmbId: String(app.tmbId)
+            },
+            runningUserInfo: {
+              teamId,
+              tmbId
+            },
+            uid: String(outLinkUserId || tmbId),
 
-          chatId,
-          responseChatItemId,
-          runtimeNodes,
-          runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-          variables,
-          query: removeEmptyUserInput(userQuestion.value),
-          lastInteractive: interactive,
-          chatConfig,
-          histories: newHistories,
-          stream,
-          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-          workflowStreamResponse: workflowResponseWrite,
-          version: 'v2',
-          responseDetail
-        });
-      }
-      return Promise.reject('您的工作流版本过低，请重新发布一次');
-    })();
+            chatId,
+            responseChatItemId,
+            runtimeNodes,
+            runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+            variables,
+            query: removeEmptyUserInput(userQuestion.value),
+            lastInteractive: interactive,
+            chatConfig,
+            histories: newHistories,
+            stream,
+            maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+            workflowStreamResponse: workflowResponseWrite,
+            version: 'v2',
+            responseAllData,
+            responseDetail
+          });
+        }
+        return Promise.reject('您的工作流版本过低，请重新发布一次');
+      })();
 
     // save chat
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
@@ -340,7 +334,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables
+        newVariables,
+        durationSeconds
       });
     } else {
       await saveChat({
@@ -361,7 +356,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         metadata: {
           originIp,
           ...metadata
-        }
+        },
+        durationSeconds
       });
     }
 

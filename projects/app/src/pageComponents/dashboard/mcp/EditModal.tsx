@@ -35,6 +35,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { postCreateMcpServer, putUpdateMcpServer } from '../../../web/support/mcp/api';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export type EditMcForm = {
   id?: string;
@@ -62,7 +63,7 @@ const SelectAppModal = ({
     {
       appId: string;
       toolName: string;
-      toolAlias: string;
+      appName: string;
       avatar: string;
       description: string;
     }[]
@@ -76,7 +77,7 @@ const SelectAppModal = ({
         data.map((item) => ({
           appId: item.id,
           toolName: item.name,
-          toolAlias: item.name,
+          appName: item.name,
           avatar: item.avatar,
           description: selectedApps.find((app) => app.appId === item.id)?.description || ''
         }))
@@ -176,7 +177,7 @@ const SelectAppModal = ({
                           {
                             appId: item._id,
                             toolName: item.name,
-                            toolAlias: item.name,
+                            appName: item.name,
                             avatar: item.avatar,
                             description: item.intro
                           }
@@ -281,7 +282,7 @@ const EditMcpModal = ({
         apps: data.apps.map((item) => ({
           appId: item.appId,
           toolName: item.toolName,
-          toolAlias: item.toolAlias,
+          appName: item.appName,
           description: item.description
         }))
       }),
@@ -299,7 +300,7 @@ const EditMcpModal = ({
         apps: data.apps.map((item) => ({
           appId: item.appId,
           toolName: item.toolName,
-          toolAlias: item.toolAlias,
+          appName: item.appName,
           description: item.description
         }))
       }),
@@ -317,7 +318,7 @@ const EditMcpModal = ({
         iconSrc="key"
         title={isEdit ? t('dashboard_mcp:edit_mcp') : t('dashboard_mcp:create_mcp')}
         w={'100%'}
-        maxW={['90vw', '600px']}
+        maxW={['90vw', '800px']}
         isOpen
         onClose={onClose}
       >
@@ -339,8 +340,11 @@ const EditMcpModal = ({
               <Table>
                 <Thead>
                   <Tr>
+                    <Th>
+                      {t('dashboard_mcp:tool_name')}
+                      <QuestionTip label={t('dashboard_mcp:tool_name_tip')} />
+                    </Th>
                     <Th>{t('dashboard_mcp:app_name')}</Th>
-                    <Th>{t('dashboard_mcp:app_tool_name')}</Th>
                     <Th>{t('dashboard_mcp:app_description')}</Th>
                     <Th></Th>
                   </Tr>
@@ -349,15 +353,15 @@ const EditMcpModal = ({
                   {apps.map((app, index) => {
                     return (
                       <Tr key={app.id} fontWeight={500} fontSize={'mini'} color={'myGray.900'}>
-                        <Td>{app.toolName}</Td>
                         <Td>
                           <Input
-                            {...register(`apps.${index}.toolAlias`)}
-                            placeholder={app.toolName}
+                            {...register(`apps.${index}.toolName`, { required: true })}
+                            placeholder={t('dashboard_mcp:tool_name_placeholder')}
                             bg={'myGray.50'}
                             w={'100%'}
                           />
                         </Td>
+                        <Td>{app.appName}</Td>
                         <Td>
                           <Input
                             {...register(`apps.${index}.description`, { required: true })}
@@ -413,7 +417,7 @@ const EditMcpModal = ({
               e.map((item) => ({
                 appId: item.appId,
                 toolName: item.toolName,
-                toolAlias: item.toolAlias,
+                appName: item.appName,
                 description: item.description
               }))
             );

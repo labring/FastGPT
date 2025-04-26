@@ -221,7 +221,7 @@ const InvoiceHeaderForm = () => {
 
   return (
     <>
-      <MyBox isLoading={isLoading} pt={['1rem', '3.5rem']}>
+      <MyBox isLoading={isLoading} pt={'1rem'}>
         <Flex w={'100%'} overflow={'auto'} justify={'center'} flexDir={'column'} align={'center'}>
           <InvoiceHeaderSingleForm inputForm={inputForm} />
           <Flex w={'100%'} justify={'center'} mt={'3rem'}>

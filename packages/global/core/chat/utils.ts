@@ -77,13 +77,6 @@ export const getHistoryPreview = (
   });
 };
 
-export const filterModuleTypeList: any[] = [
-  FlowNodeTypeEnum.pluginModule,
-  FlowNodeTypeEnum.datasetSearchNode,
-  FlowNodeTypeEnum.tools,
-  FlowNodeTypeEnum.pluginOutput
-];
-
 export const filterPublicNodeResponseData = ({
   flowResponses = [],
   responseDetail = false
@@ -91,12 +84,19 @@ export const filterPublicNodeResponseData = ({
   flowResponses?: ChatHistoryItemResType[];
   responseDetail?: boolean;
 }) => {
+  const publicNodeMap: Record<string, any> = {
+    [FlowNodeTypeEnum.pluginModule]: true,
+    [FlowNodeTypeEnum.datasetSearchNode]: true,
+    [FlowNodeTypeEnum.tools]: true,
+    [FlowNodeTypeEnum.pluginOutput]: true
+  };
+
   const filedList = responseDetail
     ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
     : ['moduleType', 'pluginOutput', 'runningTime'];
 
   return flowResponses
-    .filter((item) => filterModuleTypeList.includes(item.moduleType))
+    .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {

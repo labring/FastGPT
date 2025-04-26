@@ -22,7 +22,7 @@ export const formatModelChars2Points = ({
     };
   }
 
-  const isIOPriceType = typeof modelData.inputPrice === 'number';
+  const isIOPriceType = typeof modelData.inputPrice === 'number' && modelData.inputPrice > 0;
 
   const totalPoints = isIOPriceType
     ? (modelData.inputPrice || 0) * (inputTokens / multiple) +

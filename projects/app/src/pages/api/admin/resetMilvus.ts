@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MilvusCtrl } from '@fastgpt/service/common/vectorStore/milvus/class';
-import { DatasetVectorTableName } from '@fastgpt/service/common/vectorStore/constants';
+import { MilvusCtrl } from '@fastgpt/service/common/vectorDB/milvus/index';
+import { DatasetVectorTableName } from '@fastgpt/service/common/vectorDB/constants';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';

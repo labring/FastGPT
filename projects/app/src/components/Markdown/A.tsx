@@ -8,7 +8,8 @@ import {
   PopoverBody,
   PopoverArrow,
   Box,
-  Flex
+  Flex,
+  useDisclosure
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -31,6 +32,8 @@ const A = ({ children, ...props }: any) => {
   } = useRequest2(getQuoteData, {
     manual: true
   });
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   // empty href link
   if (!props.href && typeof children?.[0] === 'string') {
@@ -71,77 +74,95 @@ const A = ({ children, ...props }: any) => {
         direction="rtl"
         placement="bottom"
         strategy={'fixed'}
-        onOpen={() => runAsync(String(children))}
+        isOpen={isOpen}
+        onClose={onClose}
+        onOpen={() => {
+          onOpen();
+          runAsync(String(children));
+        }}
+        gutter={4}
       >
         <PopoverTrigger>
           <Button variant={'unstyled'} minH={0} minW={0} h={'auto'}>
             <MyTooltip label={t('common:read_quote')}>
               <Box
-                w={5}
-                h={5}
-                border={'1px solid'}
+                w={'14px'}
+                h={'14px'}
                 borderRadius={'full'}
-                borderColor={'myGray.200'}
-                color={'myGray.500'}
+                bg={'rgba(0, 0, 0, 0.08)'}
+                color={'myGray.600'}
                 fontSize={'10px'}
                 display={'flex'}
                 alignItems={'center'}
                 justifyContent={'center'}
                 ml={0.5}
-                transform={'translateY(-2px)'}
+                transform={'translateY(-3px)'}
               >
                 {index}
               </Box>
             </MyTooltip>
           </Button>
         </PopoverTrigger>
-        <PopoverContent boxShadow={'lg'} w={'400px'} py={4}>
-          <MyBox isLoading={loading} minH={'224px'}>
+        <PopoverContent boxShadow={'lg'} w={'500px'} py={4}>
+          <MyBox isLoading={loading}>
             <PopoverArrow />
-            <PopoverBody
-              px={4}
-              py={0}
-              fontSize={'sm'}
-              maxW={'400px'}
-              maxH={'224px'}
-              overflow={'auto'}
-            >
-              <Box
-                alignItems={'center'}
-                fontSize={'xs'}
-                border={'sm'}
-                borderRadius={'sm'}
-                overflow={'hidden'}
-                display={'inline-flex'}
-                height={6}
-              >
-                <Flex
-                  color={'myGray.500'}
-                  bg={'myGray.150'}
-                  w={4}
-                  justifyContent={'center'}
-                  fontSize={'10px'}
-                  h={'full'}
+            <PopoverBody py={0} px={0} fontSize={'sm'}>
+              <Flex px={4} pb={1} justifyContent={'space-between'}>
+                <Box
                   alignItems={'center'}
+                  fontSize={'xs'}
+                  border={'sm'}
+                  borderRadius={'sm'}
+                  overflow={'hidden'}
+                  display={'inline-flex'}
+                  height={6}
                   mr={1}
-                  flexShrink={0}
                 >
-                  {index}
-                </Flex>
-                <Flex px={1.5}>
-                  <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
-                  <Box
-                    className={'textEllipsis'}
-                    wordBreak={'break-all'}
-                    flex={'1 0 0'}
-                    fontSize={'mini'}
-                    color={'myGray.900'}
+                  <Flex
+                    color={'myGray.500'}
+                    bg={'myGray.150'}
+                    w={4}
+                    justifyContent={'center'}
+                    fontSize={'10px'}
+                    h={'full'}
+                    alignItems={'center'}
+                    mr={1}
+                    flexShrink={0}
                   >
-                    {sourceData.sourceName}
-                  </Box>
-                </Flex>
-              </Box>
-              <Box>
+                    {index}
+                  </Flex>
+                  <Flex px={1.5}>
+                    <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
+                    <Box
+                      className={'textEllipsis'}
+                      wordBreak={'break-all'}
+                      flex={'1 0 0'}
+                      fontSize={'mini'}
+                      color={'myGray.900'}
+                    >
+                      {sourceData.sourceName}
+                    </Box>
+                  </Flex>
+                </Box>
+                <Button
+                  variant={'ghost'}
+                  color={'primary.600'}
+                  size={'xs'}
+                  onClick={() => {
+                    onClose();
+                    eventBus.emit(EventNameEnum.openQuoteReader, {
+                      // quoteId: String(children),
+                      sourceId: sourceData.sourceId,
+                      sourceName: sourceData.sourceName,
+                      datasetId: quoteData?.collection.datasetId,
+                      collectionId: quoteData?.collection._id
+                    });
+                  }}
+                >
+                  {t('common:all_quotes')}
+                </Button>
+              </Flex>
+              <Box h={'300px'} overflow={'auto'} px={4}>
                 <Markdown source={quoteData?.q} />
                 {quoteData?.a && <Markdown source={quoteData?.a} />}
               </Box>

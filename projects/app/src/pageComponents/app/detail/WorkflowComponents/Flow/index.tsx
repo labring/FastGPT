@@ -73,6 +73,7 @@ const Workflow = () => {
     WorkflowEventContext,
     (v) => v.workflowControlMode
   );
+  const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
 
   const {
     handleNodesChange,
@@ -163,7 +164,7 @@ const Workflow = () => {
             : {})}
           onNodeDragStop={onNodeDragStop}
         >
-          <ContextMenu />
+          {!!menu && <ContextMenu />}
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>

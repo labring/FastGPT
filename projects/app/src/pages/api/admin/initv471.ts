@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
+import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
 
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

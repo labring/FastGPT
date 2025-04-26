@@ -78,7 +78,7 @@ const DatasetParamsModal = ({
       defaultValues: {
         searchMode,
         embeddingWeight: embeddingWeight || 0.5,
-        usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
+        usingReRank: usingReRank || true,
         rerankModel: rerankModel || defaultModels?.rerank?.model,
         rerankWeight: rerankWeight || 0.5,
         limit,
@@ -245,11 +245,6 @@ const DatasetParamsModal = ({
                 {!showReRank ? (
                   <Box color={'myGray.500'} fontSize={'sm'}>
                     {t('common:core.ai.Not deploy rerank model')}
-                  </Box>
-                ) : teamPlanStatus?.standardConstants &&
-                  !teamPlanStatus?.standardConstants?.permissionReRank ? (
-                  <Box color={'myGray.500'} fontSize={'sm'}>
-                    {t('common:support.team.limit.No permission rerank')}
                   </Box>
                 ) : (
                   <Switch {...register('usingReRank')} />
