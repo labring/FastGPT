@@ -13,7 +13,10 @@ import { NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  getLLMDefaultUsage
+} from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
 import json5 from 'json5';
@@ -244,17 +247,34 @@ export const runToolWithFunctionCall = async (
     }
   });
 
-  const { answer, functionCalls } = await (async () => {
-    if (res && isStreamResponse) {
-      return streamResponse({
+  let { answer, functionCalls, inputTokens, outputTokens } = await (async () => {
+    if (isStreamResponse) {
+      if (!res || res.closed) {
+        return {
+          answer: '',
+          functionCalls: [],
+          inputTokens: 0,
+          outputTokens: 0
+        };
+      }
+      const result = await streamResponse({
         res,
         toolNodes,
         stream: aiResponse,
         workflowStreamResponse
       });
+
+      return {
+        answer: result.answer,
+        functionCalls: result.functionCalls,
+        inputTokens: result.usage.prompt_tokens,
+        outputTokens: result.usage.completion_tokens
+      };
     } else {
       const result = aiResponse as ChatCompletion;
       const function_call = result.choices?.[0]?.message?.function_call;
+      const usage = result.usage;
+
       const toolNode = toolNodes.find((node) => node.nodeId === function_call?.name);
 
       const toolCalls = function_call
@@ -270,7 +290,9 @@ export const runToolWithFunctionCall = async (
 
       return {
         answer: result.choices?.[0]?.message?.content || '',
-        functionCalls: toolCalls
+        functionCalls: toolCalls,
+        inputTokens: usage?.prompt_tokens,
+        outputTokens: usage?.completion_tokens
       };
     }
   })();
@@ -338,7 +360,7 @@ export const runToolWithFunctionCall = async (
     : flatToolsResponseData;
 
   const functionCall = functionCalls[0];
-  if (functionCall && !res?.closed) {
+  if (functionCall) {
     // Run the tool, combine its results, and perform another round of AI calls
     const assistantToolMsgParams: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -356,8 +378,9 @@ export const runToolWithFunctionCall = async (
     ] as ChatCompletionMessageParam[];
     // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
     // const tokens = await countGptMessagesTokens(concatToolMessages, undefined, functions);
-    const inputTokens = await countGptMessagesTokens(requestMessages, undefined, functions);
-    const outputTokens = await countGptMessagesTokens([assistantToolMsgParams]);
+    inputTokens =
+      inputTokens || (await countGptMessagesTokens(requestMessages, undefined, functions));
+    outputTokens = outputTokens || (await countGptMessagesTokens([assistantToolMsgParams]));
     /* 
       ...
       user
@@ -459,8 +482,9 @@ export const runToolWithFunctionCall = async (
       content: answer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
-    const inputTokens = await countGptMessagesTokens(requestMessages, undefined, functions);
-    const outputTokens = await countGptMessagesTokens([gptAssistantResponse]);
+    inputTokens =
+      inputTokens || (await countGptMessagesTokens(requestMessages, undefined, functions));
+    outputTokens = outputTokens || (await countGptMessagesTokens([gptAssistantResponse]));
     // console.log(tokens, 'response token');
 
     // concat tool assistant
@@ -500,8 +524,10 @@ async function streamResponse({
   let textAnswer = '';
   let functionCalls: ChatCompletionMessageFunctionCall[] = [];
   let functionId = getNanoid();
+  let usage = getLLMDefaultUsage();
 
   for await (const part of stream) {
+    usage = part.usage || usage;
     if (res.closed) {
       stream.controller?.abort();
       break;
@@ -522,7 +548,7 @@ async function streamResponse({
       });
     } else if (responseChoice.function_call) {
       const functionCall: {
-        arguments: string;
+        arguments?: string;
         name?: string;
       } = responseChoice.function_call;
 
@@ -532,11 +558,9 @@ async function streamResponse({
         const toolNode = toolNodes.find((item) => item.nodeId === functionCall?.name);
 
         if (toolNode) {
-          if (functionCall?.arguments === undefined) {
-            functionCall.arguments = '';
-          }
           functionCalls.push({
             ...functionCall,
+            arguments: functionCall.arguments || '',
             id: functionId,
             name: functionCall.name,
             toolName: toolNode.name,
@@ -552,7 +576,7 @@ async function streamResponse({
                 toolName: toolNode.name,
                 toolAvatar: toolNode.avatar,
                 functionName: functionCall.name,
-                params: functionCall.arguments,
+                params: functionCall.arguments || '',
                 response: ''
               }
             }
@@ -585,5 +609,5 @@ async function streamResponse({
     }
   }
 
-  return { answer: textAnswer, functionCalls };
+  return { answer: textAnswer, functionCalls, usage };
 }

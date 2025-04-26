@@ -45,6 +45,7 @@
   "insert_input_guide,_some_data_already_exists": "有重复数据，已自动过滤，共插入 {{len}} 条数据",
   "is_chatting": "正在聊天中...请等待结束",
   "items": "条",
+  "llm_tokens": "LLM tokens",
   "module_runtime_and": "工作流总运行时间",
   "multiple_AI_conversations": "多组 AI 对话",
   "new_input_guide_lexicon": "新词库",

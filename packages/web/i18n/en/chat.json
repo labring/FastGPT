@@ -45,6 +45,7 @@
   "insert_input_guide,_some_data_already_exists": "Duplicate data detected, automatically filtered, {{len}} items inserted",
   "is_chatting": "Chatting in progress... please wait until it finishes",
   "items": "Items",
+  "llm_tokens": "LLM tokens",
   "module_runtime_and": "Total Module Runtime",
   "multiple_AI_conversations": "Multiple AI Conversations",
   "new_input_guide_lexicon": "New Lexicon",
