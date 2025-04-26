@@ -61,6 +61,7 @@ export type parseHeaderCertRet = {
 export type MockReqType<B = any, Q = any> = {
   body?: B;
   query?: Q;
+  headers?: Record<string, any>;
   auth?: parseHeaderCertRet;
   [key: string]: any;
 };

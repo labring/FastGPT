@@ -8,10 +8,10 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { Tool } from '@modelcontextprotocol/sdk/types';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 export type listToolsQuery = { key: string };
 
@@ -19,7 +19,9 @@ export type listToolsBody = {};
 
 export type listToolsResponse = {};
 
-const pluginNodes2InputSchema = (nodes: StoreNodeItemType[]) => {
+export const pluginNodes2InputSchema = (
+  nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
+) => {
   const pluginInput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
 
   const schema: Tool['inputSchema'] = {
@@ -47,7 +49,10 @@ const pluginNodes2InputSchema = (nodes: StoreNodeItemType[]) => {
 
   return schema;
 };
-const workflow2InputSchema = (chatConfig?: AppChatConfigType) => {
+export const workflow2InputSchema = (chatConfig?: {
+  fileSelectConfig?: AppChatConfigType['fileSelectConfig'];
+  variables?: AppChatConfigType['variables'];
+}) => {
   const schema: Tool['inputSchema'] = {
     type: 'object',
     properties: {
@@ -138,7 +143,7 @@ async function handler(
     );
 
     return {
-      name: mcpApp.toolAlias || mcpApp.toolName,
+      name: mcpApp.toolName,
       description: mcpApp.description,
       inputSchema: isPlugin
         ? pluginNodes2InputSchema(version.nodes)
@@ -150,5 +155,3 @@ async function handler(
 }
 
 export default NextAPI(handler);
-
-export { pluginNodes2InputSchema, workflow2InputSchema, handler };

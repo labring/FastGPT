@@ -65,7 +65,6 @@ export function useLinkedScroll<
   let scroolSign = useRef(false);
   const { runAsync: loadInitData } = useRequest2(
     async ({ scrollWhenFinish, refresh } = { scrollWhenFinish: true, refresh: false }) => {
-      console.log('loadInitData', params);
       if (!currentData || isLoading) return;
 
       const item = dataList.find((item) => item._id === currentData.id);

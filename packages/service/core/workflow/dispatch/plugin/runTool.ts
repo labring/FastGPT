@@ -4,7 +4,8 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import getMCPClient from '../../../app/mcp';
+import { MCPClient } from '../../../app/mcp';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type RunToolProps = ModuleDispatchProps<{
   toolData: {
@@ -14,7 +15,7 @@ type RunToolProps = ModuleDispatchProps<{
 }>;
 
 type RunToolResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]: any;
+  [NodeOutputKeyEnum.rawResponse]?: any;
 }>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
@@ -26,7 +27,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const { toolData, ...restParams } = params;
   const { name: toolName, url } = toolData;
 
-  const mcpClient = getMCPClient({ url });
+  const mcpClient = new MCPClient({ url });
 
   try {
     const result = await mcpClient.toolCall(toolName, restParams);
@@ -40,7 +41,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       [NodeOutputKeyEnum.rawResponse]: result
     };
   } catch (error) {
-    console.error('Error running MCP tool:', error);
-    return Promise.reject(error);
+    return {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        moduleLogo: avatar,
+        error: getErrText(error)
+      },
+      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
+    };
   }
 };

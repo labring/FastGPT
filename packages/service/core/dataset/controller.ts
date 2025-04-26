@@ -5,7 +5,7 @@ import { delCollectionRelatedSource } from './collection/controller';
 import { ClientSession } from '../../common/mongo';
 import { MongoDatasetTraining } from './training/schema';
 import { MongoDatasetData } from './data/schema';
-import { deleteDatasetDataVector } from '../../common/vectorStore/controller';
+import { deleteDatasetDataVector } from '../../common/vectorDB/controller';
 import { MongoDatasetDataText } from './data/dataTextSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { retryFn } from '@fastgpt/global/common/system/utils';

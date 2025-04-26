@@ -190,8 +190,9 @@ function EditModal({
       />
       {isOpenContact && (
         <UpdateContact
-          onClose={() => {
-            onCloseContact();
+          onClose={onCloseContact}
+          onSuccess={(val) => {
+            setValue('notificationAccount', val);
           }}
           mode="notification_account"
         />

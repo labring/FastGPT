@@ -38,8 +38,9 @@ export const readConfigData = async (name: string) => {
       }
       return `data/${name}`;
     }
-    // production path
-    return `/app/data/${name}`;
+    // Fallback to default production path
+    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
+    return `${envPath}/${name}`;
   })();
 
   const content = await fs.promises.readFile(filename, 'utf-8');
@@ -126,7 +127,8 @@ export async function initSystemConfig() {
       ...defaultFeConfigs,
       ...(dbConfig.feConfigs || {}),
       isPlus: !!FastGPTProUrl,
-      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT
+      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
+      show_coupon: process.env.SHOW_COUPON === 'true'
     },
     systemEnv: {
       ...fileRes.systemEnv,

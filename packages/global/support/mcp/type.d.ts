@@ -9,7 +9,7 @@ export type McpKeyType = {
 
 export type McpAppType = {
   appId: string;
+  appName?: string;
   toolName: string;
-  toolAlias?: string;
   description: string;
 };

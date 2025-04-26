@@ -15,6 +15,7 @@
   "assigned_reply": "指定回覆",
   "auth_tmb_id": "使用者鑑權",
   "auth_tmb_id_tip": "開啟後，對外發布應用程式時，也會根據使用者是否有該知識庫權限進行知識庫過濾。\n\n若未開啟，則直接按設定的知識庫進行檢索，不進行權限過濾。",
+  "auto_align": "自動對齊",
   "can_not_loop": "這個節點不能迴圈。",
   "choose_another_application_to_call": "選擇另一個應用程式來呼叫",
   "classification_result": "分類結果",

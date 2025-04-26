@@ -17,9 +17,11 @@ type FormType = {
 
 const UpdateContactModal = ({
   onClose,
+  onSuccess,
   mode
 }: {
   onClose: () => void;
+  onSuccess?: (val: string) => void;
   mode: 'contact' | 'notification_account';
 }) => {
   const { t } = useTranslation();
@@ -37,20 +39,22 @@ const UpdateContactModal = ({
   const verifyCode = watch('verifyCode');
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
-    (data: FormType) => {
+    async (data: FormType) => {
       if (mode === 'contact') {
-        return updateContact(data);
+        await updateContact(data);
       } else {
-        return updateNotificationAccount({
+        await updateNotificationAccount({
           account: data.contact,
           verifyCode: data.verifyCode
         });
       }
+      return data.contact;
     },
     {
-      onSuccess() {
+      onSuccess(data) {
         initUserInfo();
         onClose();
+        onSuccess?.(data);
       },
       successToast: t('common:support.user.info.bind_notification_success'),
       errorToast: t('common:support.user.info.bind_notification_error')

@@ -167,13 +167,25 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
               if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9')) {
                 return {
                   options: { mimeType: 'video/webm; codecs=vp9' },
-                  filename: 'recording.mp3'
+                  filename: 'recording.webm'
                 };
               }
               if (MediaRecorder.isTypeSupported('video/webm')) {
                 return {
                   options: { type: 'video/webm' },
-                  filename: 'recording.mp3'
+                  filename: 'recording.webm'
+                };
+              }
+              if (MediaRecorder.isTypeSupported('audio/webm')) {
+                return {
+                  options: { mimeType: 'audio/webm' },
+                  filename: 'recording.webm'
+                };
+              }
+              if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                return {
+                  options: { mimeType: 'audio/mp4' },
+                  filename: 'recording.m4a'
                 };
               }
               if (MediaRecorder.isTypeSupported('video/mp4')) {
@@ -182,9 +194,16 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
                   filename: 'recording.mp4'
                 };
               }
+              if (MediaRecorder.isTypeSupported('audio/mp3')) {
+                return {
+                  options: { mimeType: 'audio/mp3' },
+                  filename: 'recording.mp3'
+                };
+              }
+              // 默认回退选项
               return {
-                options: { type: 'video/webm' },
-                filename: 'recording.mp3'
+                options: { type: 'audio/webm' },
+                filename: 'recording.webm'
               };
             })();
 
