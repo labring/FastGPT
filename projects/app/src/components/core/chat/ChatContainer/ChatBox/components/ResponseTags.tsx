@@ -14,7 +14,7 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
@@ -42,11 +42,6 @@ const ResponseTags = ({
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
-
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
@@ -66,7 +61,6 @@ const ResponseTags = ({
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
-  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
   const sourceList = useMemo(() => {
     return Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -85,6 +79,15 @@ const ResponseTags = ({
         datasetId: item.datasetId
       }));
   }, [quoteList]);
+
+  const openQuoteReader = (item?: {
+    collectionId?: string;
+    sourceId?: string;
+    sourceName?: string;
+    datasetId?: string;
+  }) => {
+    eventBus.emit(EventNameEnum.openQuoteReader, item);
+  };
 
   const notEmptyTags =
     quoteList.length > 0 ||
@@ -158,35 +161,7 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-
-                      if (isShowReadRawSource) {
-                        setQuoteData({
-                          rawSearch: quoteList,
-                          metadata: {
-                            appId,
-                            chatId,
-                            chatItemDataId: dataId,
-                            collectionId: item.collectionId,
-                            sourceId: item.sourceId || '',
-                            sourceName: item.sourceName,
-                            datasetId: item.datasetId,
-                            outLinkAuthData
-                          }
-                        });
-                      } else {
-                        setQuoteData({
-                          rawSearch: quoteList,
-                          metadata: {
-                            appId,
-                            chatId,
-                            chatItemDataId: dataId,
-                            collectionIdList: [item.collectionId],
-                            sourceId: item.sourceId || '',
-                            sourceName: item.sourceName,
-                            outLinkAuthData
-                          }
-                        });
-                      }
+                      openQuoteReader(item);
                     }}
                     height={6}
                   >
@@ -241,17 +216,7 @@ const ResponseTags = ({
                 cursor={'pointer'}
                 onClick={(e) => {
                   e.stopPropagation();
-
-                  setQuoteData({
-                    rawSearch: quoteList,
-                    metadata: {
-                      appId,
-                      chatId,
-                      chatItemDataId: dataId,
-                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))],
-                      outLinkAuthData
-                    }
-                  });
+                  openQuoteReader();
                 }}
               >
                 {t('chat:citations', { num: quoteList.length })}
