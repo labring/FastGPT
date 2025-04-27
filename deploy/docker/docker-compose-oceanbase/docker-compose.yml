@@ -7,8 +7,8 @@ version: '3.3'
 services:
   # vector db
   ob:
-    image: oceanbase/oceanbase-ce # docker hub
-    # image: quay.io/oceanbase/oceanbase-ce:4.3.5.1-101000042025031818 # 镜像
+    image: oceanbase/oceanbase-ce:4.3.5-lts # docker hub
+    # image: quay.io/oceanbase/oceanbase-ce:4.3.5-lts # 镜像
     container_name: ob
     restart: always
     # ports: # 生产环境建议不要暴露
@@ -23,7 +23,7 @@ services:
       - OB_TENANT_NAME=tenantname
       - OB_TENANT_PASSWORD=tenantpassword
       # MODE分为MINI和NORMAL， 后者会最大程度使用主机资源
-      - MODE=NORMAL
+      - MODE=MINI
       - OB_SERVER_IP=127.0.0.1
       # 更多环境变量配置见oceanbase官方文档： https://www.oceanbase.com/docs/common-oceanbase-database-cn-1000000002013494
     volumes:
@@ -35,7 +35,7 @@ services:
       test:
         [
           'CMD-SHELL',
-          'obclient -h$OB_SERVER_IP -P2881 -uroot@$OB_TENANT_NAME -p$OB_TENANT_PASSWORD -e "SELECT 1;"'
+          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"'
         ]
       interval: 30s
       timeout: 10s
