@@ -177,7 +177,7 @@ export async function dispatchDatasetSearch(
   });
   // Rerank
   const { totalPoints: reRankTotalPoints, modelName: reRankModelName } = formatModelChars2Points({
-    model: rerankModelData.model,
+    model: rerankModelData?.model,
     inputTokens: reRankInputTokens,
     modelType: ModelTypeEnum.rerank
   });
