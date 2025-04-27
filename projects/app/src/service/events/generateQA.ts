@@ -2,7 +2,7 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { pushQAUsage } from '@/service/support/wallet/usage/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createChatCompletion } from '@fastgpt/service/core/ai/config';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -17,10 +17,7 @@ import {
 } from '@fastgpt/service/common/string/tiktoken/index';
 import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
-import {
-  llmCompletionsBodyFormat,
-  llmStreamResponseToAnswerText
-} from '@fastgpt/service/core/ai/utils';
+import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '@fastgpt/service/core/ai/utils';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
   chunkAutoChunkSize,
@@ -143,7 +140,9 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
         modelData
       )
     });
-    const answer = await llmStreamResponseToAnswerText(chatResponse);
+    const { text: answer, usage } = await llmResponseToAnswerText(chatResponse);
+    const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
+    const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
     const qaArr = formatSplitText({ answer, rawText: text, llmModel: modelData }); // 格式化后的QA对
 
@@ -167,15 +166,15 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     pushQAUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      inputTokens: await countGptMessagesTokens(messages),
-      outputTokens: await countPromptTokens(answer),
+      inputTokens,
+      outputTokens,
       billId: data.billId,
       model: modelData.model
     });
     addLog.info(`[QA Queue] Finish`, {
       time: Date.now() - startTime,
       splitLength: qaArr.length,
-      usage: chatResponse.usage
+      usage
     });
 
     return reduceQueueAndReturn();

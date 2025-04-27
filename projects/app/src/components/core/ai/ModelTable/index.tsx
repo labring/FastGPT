@@ -94,6 +94,7 @@ const ModelTable = () => {
       typeLabel: t('common:model.type.embedding'),
       priceLabel: (
         <Flex color={'myGray.700'}>
+          {`${t('common:common.Input')}: `}
           <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
             {item.charsPointsPrice || 0}
           </Box>
@@ -131,7 +132,17 @@ const ModelTable = () => {
     const formatRerankModelList = reRankModelList.map((item) => ({
       ...item,
       typeLabel: t('common:model.type.reRank'),
-      priceLabel: <Flex color={'myGray.700'}>- </Flex>,
+      priceLabel: item.charsPointsPrice ? (
+        <Flex color={'myGray.700'}>
+          {`${t('common:common.Input')}: `}
+          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+            {item.charsPointsPrice}
+          </Box>
+          {` ${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+        </Flex>
+      ) : (
+        '-'
+      ),
       tagColor: 'red'
     }));
 

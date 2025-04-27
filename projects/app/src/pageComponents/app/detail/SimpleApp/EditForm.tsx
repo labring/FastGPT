@@ -124,7 +124,7 @@ const EditForm = ({
         }
       }));
     }
-  }, [selectedModel]);
+  }, [selectedModel, setAppForm]);
 
   return (
     <>

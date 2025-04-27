@@ -9,7 +9,7 @@ import { DatasetCollectionSchemaType, DatasetSchemaType } from '@fastgpt/global/
 import { MongoDatasetTraining } from '../training/schema';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
-import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
+import { deleteDatasetDataVector } from '../../../common/vectorDB/controller';
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { ClientSession } from '../../../common/mongo';

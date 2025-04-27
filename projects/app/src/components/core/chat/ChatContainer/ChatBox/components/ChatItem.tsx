@@ -1,5 +1,5 @@
 import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -26,6 +26,8 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -141,6 +143,18 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
+
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+
+  const { totalQuoteList: quoteList = [] } = useMemo(
+    () => addStatisticalDataToHistoryItem(chat),
+    [chat]
+  );
+
   const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
@@ -207,6 +221,59 @@ const ChatItem = (props: Props) => {
 
     return groupedValues;
   }, [chat.obj, chat.value, isChatting]);
+
+  const handleOpenQuoteReader = useCallback(
+    ({
+      collectionId,
+      sourceId,
+      sourceName,
+      datasetId
+    }: {
+      collectionId?: string;
+      sourceId?: string;
+      sourceName?: string;
+      datasetId?: string;
+    }) => {
+      if (!setQuoteData) return;
+
+      const collectionIdList = collectionId
+        ? [collectionId]
+        : [...new Set(quoteList.map((item) => item.collectionId))];
+
+      setQuoteData({
+        rawSearch: quoteList,
+        metadata:
+          collectionId && isShowReadRawSource
+            ? {
+                appId: appId,
+                chatId: chatId,
+                chatItemDataId: chat.dataId,
+                collectionId: collectionId,
+                sourceId: sourceId || '',
+                sourceName: sourceName || '',
+                datasetId: datasetId || '',
+                outLinkAuthData
+              }
+            : {
+                appId: appId,
+                chatId: chatId,
+                chatItemDataId: chat.dataId,
+                collectionIdList,
+                sourceId: sourceId,
+                sourceName: sourceName,
+                outLinkAuthData
+              }
+      });
+    },
+    [setQuoteData, quoteList, isShowReadRawSource, appId, chatId, chat.dataId, outLinkAuthData]
+  );
+
+  useEffect(() => {
+    eventBus.on(EventNameEnum.openQuoteReader, handleOpenQuoteReader);
+    return () => {
+      eventBus.off(EventNameEnum.openQuoteReader);
+    };
+  }, [handleOpenQuoteReader]);
 
   return (
     <Box

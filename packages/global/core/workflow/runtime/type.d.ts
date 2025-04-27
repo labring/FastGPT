@@ -24,6 +24,7 @@ import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
 import { CompletionFinishReason } from '../../ai/type';
 import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import { SearchDataResponseItemType } from '../../dataset/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
@@ -62,6 +63,8 @@ export type ChatDispatchProps = {
   workflowStreamResponse?: WorkflowResponseType;
   workflowDispatchDeep?: number;
   version?: 'v1' | 'v2';
+
+  responseAllData?: boolean;
   responseDetail?: boolean;
 };
 
@@ -136,12 +139,15 @@ export type DispatchNodeResponseType = {
   finishReason?: CompletionFinishReason;
 
   // dataset search
+  embeddingModel?: string;
+  embeddingTokens?: number;
   similarity?: number;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
   embeddingWeight?: number;
   rerankModel?: string;
   rerankWeight?: number;
+  reRankInputTokens?: number;
   searchUsingReRank?: boolean;
   queryExtensionResult?: {
     model: string;
@@ -180,7 +186,6 @@ export type DispatchNodeResponseType = {
   ifElseResult?: string;
 
   // tool
-  toolCallTokens?: number;
   toolCallInputTokens?: number;
   toolCallOutputTokens?: number;
   toolDetail?: ChatHistoryItemResType[];

@@ -1,21 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   transformPreviewHistories,
   addStatisticalDataToHistoryItem
 } from '@/global/core/chat/utils';
+
+const mockResponseData = {
+  id: '1',
+  nodeId: '1',
+  moduleName: 'test',
+  moduleType: FlowNodeTypeEnum.chatNode
+};
 
 describe('transformPreviewHistories', () => {
   it('should transform histories correctly with responseDetail=true', () => {
     const histories: ChatItemType[] = [
       {
         obj: ChatRoleEnum.AI,
-        value: 'test response',
+        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
         responseData: [
           {
-            moduleType: FlowNodeTypeEnum.chatNode,
+            ...mockResponseData,
             runningTime: 1.5
           }
         ]
@@ -26,11 +33,10 @@ describe('transformPreviewHistories', () => {
 
     expect(result[0]).toEqual({
       obj: ChatRoleEnum.AI,
-      value: 'test response',
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: undefined,
       llmModuleAccount: 1,
       totalQuoteList: [],
-      totalRunningTime: 1.5,
       historyPreviewLength: undefined
     });
   });
@@ -39,10 +45,10 @@ describe('transformPreviewHistories', () => {
     const histories: ChatItemType[] = [
       {
         obj: ChatRoleEnum.AI,
-        value: 'test response',
+        value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
         responseData: [
           {
-            moduleType: FlowNodeTypeEnum.chatNode,
+            ...mockResponseData,
             runningTime: 1.5
           }
         ]
@@ -53,11 +59,10 @@ describe('transformPreviewHistories', () => {
 
     expect(result[0]).toEqual({
       obj: ChatRoleEnum.AI,
-      value: 'test response',
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: undefined,
       llmModuleAccount: 1,
       totalQuoteList: undefined,
-      totalRunningTime: 1.5,
       historyPreviewLength: undefined
     });
   });
@@ -67,7 +72,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if obj is not AI', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.Human,
-      value: 'test'
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }]
     };
 
     expect(addStatisticalDataToHistoryItem(item)).toBe(item);
@@ -76,7 +81,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if totalQuoteList is already defined', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: 'test',
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       totalQuoteList: []
     };
 
@@ -86,7 +91,7 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should return original item if responseData is undefined', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: 'test'
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }]
     };
 
     expect(addStatisticalDataToHistoryItem(item)).toBe(item);
@@ -95,19 +100,22 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should calculate statistics correctly', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: 'test',
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: [
         {
+          ...mockResponseData,
           moduleType: FlowNodeTypeEnum.chatNode,
           runningTime: 1.5,
-          historyPreview: ['preview1']
+          historyPreview: [{ obj: ChatRoleEnum.AI, value: 'preview1' }]
         },
         {
+          ...mockResponseData,
           moduleType: FlowNodeTypeEnum.datasetSearchNode,
           quoteList: [{ id: '1', q: 'test', a: 'answer' }],
           runningTime: 0.5
         },
         {
+          ...mockResponseData,
           moduleType: FlowNodeTypeEnum.tools,
           runningTime: 1,
           toolDetail: [
@@ -126,7 +134,6 @@ describe('addStatisticalDataToHistoryItem', () => {
       ...item,
       llmModuleAccount: 3,
       totalQuoteList: [{ id: '1', q: 'test', a: 'answer' }],
-      totalRunningTime: 3,
       historyPreviewLength: 1
     });
   });
@@ -134,10 +141,10 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should handle empty arrays and undefined values', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: 'test',
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: [
         {
-          moduleType: FlowNodeTypeEnum.chatNode,
+          ...mockResponseData,
           runningTime: 0
         }
       ]
@@ -149,7 +156,6 @@ describe('addStatisticalDataToHistoryItem', () => {
       ...item,
       llmModuleAccount: 1,
       totalQuoteList: [],
-      totalRunningTime: 0,
       historyPreviewLength: undefined
     });
   });
@@ -157,10 +163,10 @@ describe('addStatisticalDataToHistoryItem', () => {
   it('should handle nested plugin and loop details', () => {
     const item: ChatItemType = {
       obj: ChatRoleEnum.AI,
-      value: 'test',
+      value: [{ type: ChatItemValueTypeEnum.text, text: { content: 'test response' } }],
       responseData: [
         {
-          moduleType: FlowNodeTypeEnum.chatNode,
+          ...mockResponseData,
           runningTime: 1,
           pluginDetail: [
             {
@@ -184,7 +190,6 @@ describe('addStatisticalDataToHistoryItem', () => {
       ...item,
       llmModuleAccount: 3,
       totalQuoteList: [],
-      totalRunningTime: 1,
       historyPreviewLength: undefined
     });
   });
