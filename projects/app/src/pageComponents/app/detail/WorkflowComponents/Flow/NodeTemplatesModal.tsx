@@ -72,6 +72,7 @@ type RenderHeaderProps = {
   onUpdateParentId: (parentId: ParentIdType) => void;
 };
 type RenderListProps = {
+  templateType: TemplateTypeEnum;
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
   onClose: () => void;
@@ -247,6 +248,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           setSearchKey={setSearchKey}
         />
         <RenderList
+          templateType={templateType}
           templates={templates}
           type={templateType}
           onClose={onClose}
@@ -402,6 +404,7 @@ const RenderHeader = React.memo(function RenderHeader({
 });
 
 const RenderList = React.memo(function RenderList({
+  templateType,
   templates,
   type,
   onClose,
@@ -712,7 +715,7 @@ const RenderList = React.memo(function RenderList({
                           {t(template.name as any)}
                         </Box>
 
-                        {template.isFolder && (
+                        {template.isFolder && templateType === TemplateTypeEnum.teamPlugin && (
                           <Box
                             color={'myGray.500'}
                             _hover={{

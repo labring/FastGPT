@@ -348,17 +348,7 @@ async function filterDatasetQuote({
   model: LLMModelItemType;
   quoteTemplate: string;
 }) {
-  function getValue({
-    item,
-    index,
-    sourceList
-  }: {
-    item: SearchDataResponseItemType;
-    index: number;
-    sourceList: { sourceName: string; sourceId: string; sourceIndex: number }[];
-  }) {
-    const source = sourceList.find((source) => source.sourceId === item.sourceId);
-
+  function getValue({ item, index }: { item: SearchDataResponseItemType; index: number }) {
     return replaceVariable(quoteTemplate, {
       id: item.id,
       q: item.q,
@@ -366,7 +356,6 @@ async function filterDatasetQuote({
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || ''),
-      sourceIndex: source?.sourceIndex || 1,
       index: index + 1
     });
   }
@@ -374,24 +363,9 @@ async function filterDatasetQuote({
   // slice filterSearch
   const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
-  const sourceList = Object.values(
-    filterQuoteQA.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
-      if (!acc[cur.collectionId]) {
-        acc[cur.collectionId] = [cur];
-      }
-      return acc;
-    }, {})
-  )
-    .flat()
-    .map((item, index) => ({
-      sourceName: item.sourceName || '',
-      sourceId: item.sourceId || '',
-      sourceIndex: index + 1
-    }));
-
   const datasetQuoteText =
     filterQuoteQA.length > 0
-      ? `${filterQuoteQA.map((item, index) => getValue({ item, index, sourceList }).trim()).join('\n------\n')}`
+      ? `${filterQuoteQA.map((item, index) => getValue({ item, index }).trim()).join('\n------\n')}`
       : '';
 
   return {

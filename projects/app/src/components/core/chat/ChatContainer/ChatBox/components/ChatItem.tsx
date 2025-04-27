@@ -227,12 +227,14 @@ const ChatItem = (props: Props) => {
       collectionId,
       sourceId,
       sourceName,
-      datasetId
+      datasetId,
+      quoteId
     }: {
       collectionId?: string;
       sourceId?: string;
       sourceName?: string;
       datasetId?: string;
+      quoteId?: string;
     }) => {
       if (!setQuoteData) return;
 
@@ -252,7 +254,8 @@ const ChatItem = (props: Props) => {
                 sourceId: sourceId || '',
                 sourceName: sourceName || '',
                 datasetId: datasetId || '',
-                outLinkAuthData
+                outLinkAuthData,
+                quoteId
               }
             : {
                 appId: appId,

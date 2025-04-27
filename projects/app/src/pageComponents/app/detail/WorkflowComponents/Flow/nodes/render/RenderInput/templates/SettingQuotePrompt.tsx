@@ -94,8 +94,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         icon: 'core/app/simpleMode/variable'
       },
       {
-        key: 'sourceIndex',
-        label: t('common:core.dataset.search.Source index'),
+        key: 'sourceId',
+        label: t('common:core.dataset.search.Source id'),
         icon: 'core/app/simpleMode/variable'
       },
       {
