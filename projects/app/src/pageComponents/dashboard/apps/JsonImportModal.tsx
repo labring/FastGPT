@@ -75,7 +75,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         });
 
         if (proxyResponse) {
-          console.log('工作流数据获取成功');
           return proxyResponse;
         } else {
           return Promise.reject(new Error('后端代理请求返回空数据'));
