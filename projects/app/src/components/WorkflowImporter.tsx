@@ -92,7 +92,7 @@ const WorkflowImporter = () => {
   }, [userInfo, toast]);
 
   // 处理导入工作流
-  const handleImportWorkflow = async (jsonConfig) => {
+  const handleImportWorkflow = async (jsonConfig: string) => {
     try {
       setShowJsonImporter(false);
       setIsLoading(true);

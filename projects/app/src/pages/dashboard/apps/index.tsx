@@ -33,6 +33,7 @@ import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
+import WorkflowImporter from '@/components/WorkflowImporter';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(

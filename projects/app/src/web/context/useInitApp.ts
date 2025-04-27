@@ -92,9 +92,9 @@ export const useInitApp = () => {
       if (utm_medium) utmParams.medium = utm_medium;
       if (utm_content) utmParams.content = utm_content;
 
-      // 将UTM参数存入localStorage以便登录和注册时使用
+      // 将UTM参数存入sessionStorage以便登录和注册时使用
       if (Object.keys(utmParams).length > 0) {
-        localStorage.setItem('utm_params', JSON.stringify(utmParams));
+        sessionStorage.setItem('utm_params', JSON.stringify(utmParams));
       }
 
       // 获取现有的fastgpt_sem

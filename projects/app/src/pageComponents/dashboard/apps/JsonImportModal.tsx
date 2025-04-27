@@ -25,6 +25,13 @@ type FormType = {
   workflowStr: string;
 };
 
+type UTMParams = {
+  keyword?: string;
+  source?: string;
+  medium?: string;
+  content?: string;
+};
+
 const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
@@ -62,9 +69,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           setValue('workflowStr', JSON.stringify(workflowData, null, 2));
 
           try {
-            const utmParams = localStorage.getItem('utm_params');
-            if (utmParams) {
-              const params = JSON.parse(utmParams);
+            const utmParamsStr = localStorage.getItem('utm_params');
+            if (utmParamsStr) {
+              const params = JSON.parse(utmParamsStr) as UTMParams;
               if (params.content) setValue('name', params.content);
             }
           } catch (error) {
@@ -111,6 +118,17 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest2(
     async ({ name, workflowStr }: FormType) => {
+      const utmParamsStr = sessionStorage.getItem('utm_params');
+      let utmParams: UTMParams | null = null;
+      sessionStorage.removeItem('utm_params');
+      try {
+        if (utmParamsStr) {
+          utmParams = JSON.parse(utmParamsStr);
+        }
+      } catch (error) {
+        console.error('解析utm_params出错:', error);
+      }
+
       const { workflow, appType } = await (async () => {
         try {
           const workflow = JSON.parse(workflowStr);
@@ -143,7 +161,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         type: appType,
         modules: workflow.nodes,
         edges: workflow.edges,
-        chatConfig: workflow.chatConfig
+        chatConfig: workflow.chatConfig,
+        utm_platform: utmParams?.medium,
+        utm_projectcode: utmParams?.content
       });
     },
     {
