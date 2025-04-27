@@ -84,7 +84,7 @@ export const useInitApp = () => {
   });
 
   // Marketing data track
-  useEffect(() => {
+  useMount(() => {
     setInviterId(hiId);
     setBdVId(bd_vid);
     setUtmWorkflow(utm_workflow);
@@ -97,7 +97,9 @@ export const useInitApp = () => {
     };
     setUtmParams(utmParams);
     setFastGPTSem({ keyword: k, ...utmParams });
-  }, [bd_vid, hiId, k, utm_workflow, sourceDomain, utm_source, utm_medium, utm_content]);
+
+    router.replace(router.pathname);
+  });
 
   return {
     feConfigs,

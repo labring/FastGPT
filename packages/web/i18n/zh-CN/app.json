@@ -196,7 +196,6 @@
   "type.Plugin": "插件",
   "type.Simple bot": "简易应用",
   "type.Workflow bot": "工作流",
-  "type.error.URLempty": "URL不能为空",
   "type.error.Workflow data is empty": "没有获取到工作流数据",
   "type.error.workflowresponseempty": "响应内容为空",
   "type_not_recognized": "未识别到应用类型",
