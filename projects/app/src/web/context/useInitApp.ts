@@ -7,15 +7,29 @@ import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
+import {
+  setBdVId,
+  setFastGPTSem,
+  setInviterId,
+  setSourceDomain,
+  setUtmParams,
+  setUtmWorkflow
+} from '../support/marketing/utils';
+import { ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 
 export const useInitApp = () => {
   const router = useRouter();
-  const { hiId, bd_vid, k, sourceDomain } = router.query as {
-    hiId?: string;
-    bd_vid?: string;
-    k?: string;
-    sourceDomain?: string;
-  };
+  const { hiId, bd_vid, k, sourceDomain, utm_source, utm_medium, utm_content, utm_workflow } =
+    router.query as {
+      hiId?: string;
+      bd_vid?: string;
+      k?: string;
+      sourceDomain?: string;
+      utm_source?: string;
+      utm_medium?: string;
+      utm_content?: string;
+      utm_workflow?: string;
+    };
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
@@ -69,20 +83,21 @@ export const useInitApp = () => {
     pollingInterval: 300000 // 5 minutes refresh
   });
 
+  // Marketing data track
   useEffect(() => {
-    hiId && localStorage.setItem('inviterId', hiId);
-    bd_vid && sessionStorage.setItem('bd_vid', bd_vid);
-    k && sessionStorage.setItem('fastgpt_sem', JSON.stringify({ keyword: k }));
+    setInviterId(hiId);
+    setBdVId(bd_vid);
+    setUtmWorkflow(utm_workflow);
+    setSourceDomain(sourceDomain);
 
-    const formatSourceDomain = (() => {
-      if (sourceDomain) return sourceDomain;
-      return document.referrer;
-    })();
-
-    if (formatSourceDomain && !sessionStorage.getItem('sourceDomain')) {
-      sessionStorage.setItem('sourceDomain', formatSourceDomain);
-    }
-  }, [bd_vid, hiId, k, sourceDomain]);
+    const utmParams: ShortUrlParams = {
+      ...(utm_source && { shortUrlSource: utm_source }),
+      ...(utm_medium && { shortUrlMedium: utm_medium }),
+      ...(utm_content && { shortUrlContent: utm_content })
+    };
+    setUtmParams(utmParams);
+    setFastGPTSem({ keyword: k, ...utmParams });
+  }, [bd_vid, hiId, k, utm_workflow, sourceDomain, utm_source, utm_medium, utm_content]);
 
   return {
     feConfigs,

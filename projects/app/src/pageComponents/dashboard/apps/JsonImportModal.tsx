@@ -16,6 +16,14 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getFetchWorkflow } from '@/web/core/app/api/app';
+import {
+  getUtmParams,
+  getUtmWorkflow,
+  removeUtmParams,
+  removeUtmWorkflow
+} from '@/web/support/marketing/utils';
 
 type FormType = {
   avatar: string;
@@ -36,6 +44,24 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
   const workflowStr = watch('workflowStr');
+
+  const { loading: isFetching } = useRequest2(
+    async () => {
+      const url = getUtmWorkflow();
+      if (!url) return;
+
+      const workflowData = await getFetchWorkflow({ url });
+
+      setValue('workflowStr', JSON.stringify(workflowData, null, 2));
+
+      const utmParams = getUtmParams();
+      if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
+
+      removeUtmWorkflow();
+      removeUtmParams();
+    },
+    { manual: false }
+  );
 
   const avatar = watch('avatar');
   const {
@@ -97,7 +123,8 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         type: appType,
         modules: workflow.nodes,
         edges: workflow.edges,
-        chatConfig: workflow.chatConfig
+        chatConfig: workflow.chatConfig,
+        utmParams: getUtmParams()
       });
     },
     {
@@ -116,7 +143,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       <MyModal
         isOpen
         onClose={onClose}
-        isLoading={isCreating}
+        isLoading={isCreating || isFetching}
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
         iconColor={'primary.600'}

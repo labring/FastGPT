@@ -5,6 +5,7 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
+import { ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
@@ -27,10 +28,11 @@ export type CreateAppBody = {
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
+  utmParams?: ShortUrlParams;
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, type, modules, edges, chatConfig } = req.body;
+  const { parentId, name, avatar, type, modules, edges, chatConfig, utmParams } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
     return Promise.reject(CommonErrEnum.inheritPermissionError);
@@ -66,7 +68,9 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     type,
     uid: userId,
     teamId,
-    tmbId
+    tmbId,
+    appId,
+    ...utmParams
   });
 
   return appId;
