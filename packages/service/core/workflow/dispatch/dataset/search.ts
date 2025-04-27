@@ -17,6 +17,7 @@ import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { addEndpointToImageUrl } from '../../../../common/file/image/utils';
+import { getDatasetSearchToolResponsePrompt } from '../../../../../global/core/ai/prompt/dataset';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -264,10 +265,14 @@ export async function dispatchDatasetSearch(
     quoteQA: searchRes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
-    [DispatchNodeResponseKeyEnum.toolResponses]: searchRes.map((item) => ({
-      sourceName: item.sourceName,
-      updateTime: item.updateTime,
-      content: addEndpointToImageUrl(`${item.q}\n${item.a}`.trim())
-    }))
+    [DispatchNodeResponseKeyEnum.toolResponses]: {
+      prompt: getDatasetSearchToolResponsePrompt(),
+      quotes: searchRes.map((item) => ({
+        id: item.id,
+        sourceName: item.sourceName,
+        updateTime: item.updateTime,
+        content: addEndpointToImageUrl(`${item.q}\n${item.a}`.trim())
+      }))
+    }
   };
 }

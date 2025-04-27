@@ -25,14 +25,6 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 const A = ({ children, ...props }: any) => {
   const { t } = useTranslation();
 
-  const {
-    data: quoteData,
-    loading,
-    runAsync
-  } = useRequest2(getQuoteData, {
-    manual: true
-  });
-
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // empty href link
@@ -56,6 +48,13 @@ const A = ({ children, ...props }: any) => {
 
   // Quote
   if (props.href?.startsWith('QUOTE') && typeof children?.[0] === 'string') {
+    const {
+      data: quoteData,
+      loading,
+      runAsync: getQuoteDataById
+    } = useRequest2(getQuoteData, {
+      manual: true
+    });
     const sourceData = useMemo(
       () => getCollectionSourceData(quoteData?.collection),
       [quoteData?.collection]
@@ -75,7 +74,7 @@ const A = ({ children, ...props }: any) => {
         onClose={onClose}
         onOpen={() => {
           onOpen();
-          runAsync(String(children));
+          getQuoteDataById(String(children));
         }}
         trigger={'hover'}
         gutter={4}
