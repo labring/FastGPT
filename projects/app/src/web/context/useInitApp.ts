@@ -7,6 +7,15 @@ import { useMemoizedFn, useMount } from 'ahooks';
 import { TrackEventName } from '../common/system/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useUserStore } from '../support/user/useUserStore';
+import {
+  setBdVId,
+  setFastGPTSem,
+  setInviterId,
+  setSourceDomain,
+  setUtmParams,
+  setUtmWorkflow
+} from '../support/marketing/utils';
+import { ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 
 export const useInitApp = () => {
   const router = useRouter();
@@ -74,34 +83,21 @@ export const useInitApp = () => {
     pollingInterval: 300000 // 5 minutes refresh
   });
 
+  // Marketing data track
   useEffect(() => {
-    hiId && localStorage.setItem('inviterId', hiId);
-    bd_vid && sessionStorage.setItem('bd_vid', bd_vid);
-    utm_workflow && sessionStorage.setItem('utm_workflow', utm_workflow);
+    setInviterId(hiId);
+    setBdVId(bd_vid);
+    setUtmWorkflow(utm_workflow);
+    setSourceDomain(sourceDomain);
 
-    try {
-      const utmParams: Record<string, any> = {};
-      if (utm_source) utmParams.source = utm_source;
-      if (utm_medium) utmParams.medium = utm_medium;
-      if (utm_content) utmParams.content = utm_content;
-
-      if (Object.keys(utmParams).length > 0) {
-        sessionStorage.setItem('utm_params', JSON.stringify(utmParams));
-      }
-      k && sessionStorage.setItem('fastgpt_sem', JSON.stringify({ keyword: k, ...utmParams }));
-    } catch (error) {
-      console.error('处理UTM参数出错:', error);
-    }
-
-    const formatSourceDomain = (() => {
-      if (sourceDomain) return sourceDomain;
-      return document.referrer;
-    })();
-
-    if (formatSourceDomain && !sessionStorage.getItem('sourceDomain')) {
-      sessionStorage.setItem('sourceDomain', formatSourceDomain);
-    }
-  }, [bd_vid, hiId, k, utm_content, utm_medium, utm_source, utm_workflow, sourceDomain]);
+    const utmParams: ShortUrlParams = {
+      ...(utm_source && { shortUrlSource: utm_source }),
+      ...(utm_medium && { shortUrlMedium: utm_medium }),
+      ...(utm_content && { shortUrlContent: utm_content })
+    };
+    setUtmParams(utmParams);
+    setFastGPTSem({ keyword: k, ...utmParams });
+  }, [bd_vid, hiId, k, utm_workflow, sourceDomain, utm_source, utm_medium, utm_content]);
 
   return {
     feConfigs,

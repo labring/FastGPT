@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { appTypeMap } from '@/pageComponents/app/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -18,6 +18,12 @@ import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getFetchWorkflow } from '@/web/core/app/api/app';
+import {
+  getUtmParams,
+  getUtmWorkflow,
+  removeUtmParams,
+  removeUtmWorkflow
+} from '@/web/support/marketing/utils';
 
 type FormType = {
   avatar: string;
@@ -25,26 +31,10 @@ type FormType = {
   workflowStr: string;
 };
 
-type UTMParams = {
-  source?: string;
-  medium?: string;
-  content?: string;
-};
-
-const getUtmParams = () => {
-  try {
-    const params = JSON.parse(sessionStorage.getItem('utm_params') || '{}');
-    return params as UTMParams;
-  } catch (error) {
-    return {} as UTMParams;
-  }
-};
-
 const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
-  const { toast } = useToast();
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -55,42 +45,23 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   });
   const workflowStr = watch('workflowStr');
 
-  const { runAsync: fetchWorkflow, loading: isFetching } = useRequest2(
-    async (url?: string) => {
-      if (!url) return Promise.reject(t('app:type.error.URLempty'));
+  const { loading: isFetching } = useRequest2(
+    async () => {
+      const url = getUtmWorkflow();
+      if (!url) return;
 
-      let fetchUrl = url.trim();
-      if (fetchUrl.endsWith('/')) fetchUrl = fetchUrl.slice(0, -1);
-      if (!fetchUrl.startsWith('http')) fetchUrl = `https://${fetchUrl}`;
+      const workflowData = await getFetchWorkflow({ url });
 
-      return getFetchWorkflow({ url: fetchUrl });
+      setValue('workflowStr', JSON.stringify(workflowData, null, 2));
+
+      const utmParams = getUtmParams();
+      if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
+
+      removeUtmWorkflow();
+      removeUtmParams();
     },
     { manual: false }
   );
-
-  useEffect(() => {
-    const url = sessionStorage.getItem('utm_workflow');
-    if (!url) return;
-
-    toast({ title: t('app:type.Import from json_loading'), status: 'info' });
-
-    fetchWorkflow(url)
-      .then((workflowData) => {
-        if (!workflowData) return Promise.reject(t('app:type.error.Workflow data is empty'));
-
-        setValue('workflowStr', JSON.stringify(workflowData, null, 2));
-
-        const utmParams = getUtmParams();
-        if (utmParams.content) setValue('name', utmParams.content);
-
-        sessionStorage.removeItem('utm_params');
-        sessionStorage.removeItem('utm_workflow');
-      })
-      .catch(() => {
-        toast({ title: t('app:type.Import from json_error'), status: 'error' });
-        onClose();
-      });
-  }, [fetchWorkflow, onClose, t, toast]);
 
   const avatar = watch('avatar');
   const {
@@ -120,9 +91,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest2(
     async ({ name, workflowStr }: FormType) => {
-      // 处理UTM参数
-      const utmParams = getUtmParams();
-
       const { workflow, appType } = await (async () => {
         try {
           const workflow = JSON.parse(workflowStr);
@@ -156,10 +124,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         modules: workflow.nodes,
         edges: workflow.edges,
         chatConfig: workflow.chatConfig,
-        utmParams: {
-          utm_platform: utmParams?.medium,
-          utm_projectcode: utmParams?.content
-        }
+        utmParams: getUtmParams()
       });
     },
     {

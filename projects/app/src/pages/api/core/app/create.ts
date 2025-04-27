@@ -5,6 +5,7 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
+import { ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
@@ -27,10 +28,7 @@ export type CreateAppBody = {
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
-  utmParams?: {
-    utm_platform?: string;
-    utm_projectcode?: string;
-  };
+  utmParams?: ShortUrlParams;
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
@@ -72,9 +70,8 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     teamId,
     tmbId,
     appId,
-    shorUrlPlatform: utmParams?.utm_platform,
-    shorUrlProjectCode: utmParams?.utm_projectcode
-  } as any);
+    ...utmParams
+  });
 
   return appId;
 }

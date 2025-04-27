@@ -13,7 +13,8 @@ import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constan
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
-import { GET, POST } from '@/web/common/api/request';
+import { POST } from '@/web/common/api/request';
+import { getBdVId } from '@/web/support/marketing/utils';
 
 interface Props {
   children: React.ReactNode;
@@ -107,7 +108,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   ];
 
   const show_oauth = useMemo(
-    () => !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0),
+    () => !getBdVId() && !!(feConfigs?.sso?.url || oAuthList.length > 0),
     [feConfigs?.sso?.url, oAuthList.length]
   );
 
