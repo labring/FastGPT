@@ -27,11 +27,7 @@ const FastLogin = ({
       setUserInfo(res.user);
 
       setTimeout(() => {
-        router.push(
-          sessionStorage.getItem('utm_workflow')
-            ? '/dashboard/apps'
-            : decodeURIComponent(callbackUrl)
-        );
+        router.push(decodeURIComponent(callbackUrl));
       }, 100);
     },
     [setUserInfo, router, callbackUrl]

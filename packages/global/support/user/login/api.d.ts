@@ -8,9 +8,9 @@ export type TrackRegisterParams = {
   bd_vid?: string;
   fastgpt_sem?: {
     keyword?: string;
-    source?: string;
-    medium?: string;
-    content?: string;
+    shortUrlSource?: string;
+    shortUrlMedium?: string;
+    shortUrlContent?: string;
   };
   sourceDomain?: string;
 };

@@ -40,10 +40,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/input';
 import { workflowStartNodeId } from './constants';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getAppType } from '@fastgpt/global/core/app/utils';
-import { postCreateApp } from './api';
-import { appTypeMap } from '@/pageComponents/app/constants';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];

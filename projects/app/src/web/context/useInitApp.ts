@@ -75,12 +75,8 @@ export const useInitApp = () => {
   });
 
   useEffect(() => {
-    const isBrowser = typeof window !== 'undefined';
-    if (!isBrowser) return;
-
     hiId && localStorage.setItem('inviterId', hiId);
     bd_vid && sessionStorage.setItem('bd_vid', bd_vid);
-    k && sessionStorage.setItem('fastgpt_sem', JSON.stringify({ keyword: k }));
     utm_workflow && sessionStorage.setItem('utm_workflow', utm_workflow);
 
     try {
@@ -92,19 +88,7 @@ export const useInitApp = () => {
       if (Object.keys(utmParams).length > 0) {
         sessionStorage.setItem('utm_params', JSON.stringify(utmParams));
       }
-
-      const existingSem = sessionStorage.getItem('fastgpt_sem')
-        ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
-        : {};
-
-      const newSem = {
-        ...existingSem,
-        ...utmParams
-      };
-
-      if (Object.keys(newSem).length > 0) {
-        sessionStorage.setItem('fastgpt_sem', JSON.stringify(newSem));
-      }
+      k && sessionStorage.setItem('fastgpt_sem', JSON.stringify({ keyword: k, ...utmParams }));
     } catch (error) {
       console.error('处理UTM参数出错:', error);
     }

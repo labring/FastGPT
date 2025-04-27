@@ -78,10 +78,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
 
+  //if there is a workflow url in the session storage, open the json import modal and import the workflow
   useEffect(() => {
-    const isBrowser = typeof window !== 'undefined';
-    if (!isBrowser) return;
-
     const hasWorkflowUrl = !!sessionStorage.getItem('utm_workflow');
     if (hasWorkflowUrl) {
       onOpenJsonImportModal();

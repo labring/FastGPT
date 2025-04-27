@@ -9,6 +9,7 @@ import type {
   transitionWorkflowResponse
 } from '@/pages/api/core/app/transitionWorkflow';
 import type { copyAppQuery, copyAppResponse } from '@/pages/api/core/app/copy';
+
 import type {
   FetchWorkflowQuery,
   FetchWorkflowResponseType
@@ -29,5 +30,5 @@ export const postTransition2Workflow = (data: transitionWorkflowBody) =>
 
 export const postCopyApp = (data: copyAppQuery) => POST<copyAppResponse>('/core/app/copy', data);
 
-export const postFetchWorkflow = (data: FetchWorkflowQuery) =>
+export const getFetchWorkflow = (data: FetchWorkflowQuery) =>
   GET<FetchWorkflowResponseType>('/core/app/fetchWorkflow', data);

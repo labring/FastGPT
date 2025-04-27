@@ -65,9 +65,8 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 
       const decodeLastRoute = decodeURIComponent(lastRoute);
 
-      const navigateTo = sessionStorage.getItem('utm_workflow')
-        ? '/dashboard/apps'
-        : decodeLastRoute && !decodeLastRoute.includes('/login')
+      const navigateTo =
+        decodeLastRoute && !decodeLastRoute.includes('/login')
           ? decodeLastRoute
           : '/dashboard/apps';
       router.push(navigateTo);

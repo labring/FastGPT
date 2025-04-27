@@ -27,11 +27,7 @@ const provider = () => {
       setUserInfo(res.user);
 
       router.push(
-        sessionStorage.getItem('utm_workflow')
-          ? '/dashboard/apps'
-          : loginStore?.lastRoute
-            ? decodeURIComponent(loginStore?.lastRoute)
-            : '/dashboard/apps'
+        loginStore?.lastRoute ? decodeURIComponent(loginStore?.lastRoute) : '/dashboard/apps'
       );
     },
     [setUserInfo, router, loginStore?.lastRoute]

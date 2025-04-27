@@ -17,7 +17,7 @@ import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { postFetchWorkflow } from '@/web/core/app/api/app';
+import { getFetchWorkflow } from '@/web/core/app/api/app';
 
 type FormType = {
   avatar: string;
@@ -26,10 +26,18 @@ type FormType = {
 };
 
 type UTMParams = {
-  keyword?: string;
   source?: string;
   medium?: string;
   content?: string;
+};
+
+const getUtmParams = () => {
+  try {
+    const params = JSON.parse(sessionStorage.getItem('utm_params') || '{}');
+    return params as UTMParams;
+  } catch (error) {
+    return {} as UTMParams;
+  }
 };
 
 const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
@@ -37,7 +45,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -48,104 +55,42 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   });
   const workflowStr = watch('workflowStr');
 
-  const fetchWorkflowFromUrl = async (url: string) => {
-    try {
-      if (!url || typeof url !== 'string') {
-        return Promise.reject(new Error('WORKFLOW_IMPORT_ERROR: URL为空或格式错误'));
-      }
+  const { runAsync: fetchWorkflow, loading: isFetching } = useRequest2(
+    async (url?: string) => {
+      if (!url) return Promise.reject(t('app:type.error.URLempty'));
 
       let fetchUrl = url.trim();
+      if (fetchUrl.endsWith('/')) fetchUrl = fetchUrl.slice(0, -1);
+      if (!fetchUrl.startsWith('http')) fetchUrl = `https://${fetchUrl}`;
 
-      if (fetchUrl.endsWith('/')) {
-        fetchUrl = fetchUrl.slice(0, -1);
-      }
-
-      if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) {
-        fetchUrl = `https://${fetchUrl}`;
-      }
-
-      try {
-        const encodedUrl = encodeURIComponent(fetchUrl);
-
-        const proxyResponse = await postFetchWorkflow({
-          url: encodedUrl
-        }).catch((e) => {
-          console.error(`获取失败: ${e.message || 'UNKNOWN_ERROR'}`);
-          return null;
-        });
-
-        if (proxyResponse) {
-          return proxyResponse;
-        } else {
-          return Promise.reject(new Error('后端代理请求返回空数据'));
-        }
-      } catch (err: any) {
-        console.error(`获取失败: ${err.message || 'UNKNOWN_ERROR'}`);
-        return Promise.reject(new Error('无法获取工作流数据'));
-      }
-    } catch (error) {
-      console.error('获取工作流数据失败:', error);
-      return Promise.reject(
-        new Error(`获取工作流失败: ${error instanceof Error ? error.message : String(error)}`)
-      );
-    }
-  };
+      return getFetchWorkflow({ url: fetchUrl });
+    },
+    { manual: false }
+  );
 
   useEffect(() => {
-    const isBrowser = typeof window !== 'undefined';
-    if (!isBrowser) return;
+    const url = sessionStorage.getItem('utm_workflow');
+    if (!url) return;
 
-    const checkWorkflow = async () => {
-      try {
-        const url = sessionStorage.getItem('utm_workflow');
-        if (!url) return;
+    toast({ title: t('app:type.Import from json_loading'), status: 'info' });
 
-        setIsLoading(true);
-        toast({
-          title: t('app:type.Import from json_loading'),
-          status: 'info'
-        });
+    fetchWorkflow(url)
+      .then((workflowData) => {
+        if (!workflowData) return Promise.reject(t('app:type.error.Workflow data is empty'));
 
-        try {
-          const workflowData = await fetchWorkflowFromUrl(url);
+        setValue('workflowStr', JSON.stringify(workflowData, null, 2));
 
-          if (!workflowData) {
-            return Promise.reject(new Error('无法获取工作流数据'));
-          }
+        const utmParams = getUtmParams();
+        if (utmParams.content) setValue('name', utmParams.content);
 
-          setValue('workflowStr', JSON.stringify(workflowData, null, 2));
-
-          try {
-            const utmParamsStr = sessionStorage.getItem('utm_params');
-            if (utmParamsStr) {
-              const params = JSON.parse(utmParamsStr) as UTMParams;
-              if (params.content) setValue('name', params.content);
-            }
-            sessionStorage.removeItem('utm_params');
-          } catch (error) {
-            console.error('解析utm_params出错:', error);
-          }
-
-          sessionStorage.removeItem('utm_workflow');
-
-          setIsLoading(false);
-        } catch (error) {
-          console.error('获取工作流数据失败:', error);
-          toast({
-            title: t('app:type.Import from json_error'),
-            status: 'error'
-          });
-          onClose();
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error('检查工作流URL出错:', error);
-        setIsLoading(false);
-      }
-    };
-
-    checkWorkflow();
-  }, []);
+        sessionStorage.removeItem('utm_params');
+        sessionStorage.removeItem('utm_workflow');
+      })
+      .catch(() => {
+        toast({ title: t('app:type.Import from json_error'), status: 'error' });
+        onClose();
+      });
+  }, [fetchWorkflow, onClose, t, toast]);
 
   const avatar = watch('avatar');
   const {
@@ -175,16 +120,8 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest2(
     async ({ name, workflowStr }: FormType) => {
-      const utmParamsStr = sessionStorage.getItem('utm_params');
-      let utmParams: UTMParams | null = null;
-      sessionStorage.removeItem('utm_params');
-      try {
-        if (utmParamsStr) {
-          utmParams = JSON.parse(utmParamsStr);
-        }
-      } catch (error) {
-        console.error('解析utm_params出错:', error);
-      }
+      // 处理UTM参数
+      const utmParams = getUtmParams();
 
       const { workflow, appType } = await (async () => {
         try {
@@ -219,8 +156,10 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         modules: workflow.nodes,
         edges: workflow.edges,
         chatConfig: workflow.chatConfig,
-        utm_platform: utmParams?.medium,
-        utm_projectcode: utmParams?.content
+        utmParams: {
+          utm_platform: utmParams?.medium,
+          utm_projectcode: utmParams?.content
+        }
       });
     },
     {
@@ -239,54 +178,50 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       <MyModal
         isOpen
         onClose={onClose}
-        isLoading={isCreating || isLoading}
+        isLoading={isCreating || isFetching}
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
         iconColor={'primary.600'}
       >
         <ModalBody>
-          <>
-            <Box color={'myGray.800'} fontWeight={'bold'}>
-              {t('common:common.Set Name')}
-            </Box>
-            <Flex mt={2} alignItems={'center'}>
-              <MyTooltip label={t('common:common.Set Avatar')}>
-                <Avatar
-                  flexShrink={0}
-                  src={selectedAvatar}
-                  w={['1.75rem', '2.25rem']}
-                  h={['1.75rem', '2.25rem']}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  onClick={onOpenSelectFile}
-                />
-              </MyTooltip>
-              <Input
-                flex={1}
-                ml={3}
-                autoFocus
-                bg={'myWhite.600'}
-                {...register('name', {
-                  required: t('common:core.app.error.App name can not be empty')
-                })}
+          <Box color={'myGray.800'} fontWeight={'bold'}>
+            {t('common:common.Set Name')}
+          </Box>
+          <Flex mt={2} alignItems={'center'}>
+            <MyTooltip label={t('common:common.Set Avatar')}>
+              <Avatar
+                flexShrink={0}
+                src={selectedAvatar}
+                w={['1.75rem', '2.25rem']}
+                h={['1.75rem', '2.25rem']}
+                cursor={'pointer'}
+                borderRadius={'md'}
+                onClick={onOpenSelectFile}
               />
-            </Flex>
-            <Box mt={5}>
-              <ImportAppConfigEditor
-                value={workflowStr}
-                onChange={(e) => setValue('workflowStr', e)}
-                rows={10}
-              />
-            </Box>
-          </>
+            </MyTooltip>
+            <Input
+              flex={1}
+              ml={3}
+              autoFocus
+              bg={'myWhite.600'}
+              {...register('name', {
+                required: t('common:core.app.error.App name can not be empty')
+              })}
+            />
+          </Flex>
+          <Box mt={5}>
+            <ImportAppConfigEditor
+              value={workflowStr}
+              onChange={(e) => setValue('workflowStr', e)}
+              rows={10}
+            />
+          </Box>
         </ModalBody>
         <ModalFooter gap={4}>
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:common.Cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)} isDisabled={isLoading}>
-            {t('common:common.Confirm')}
-          </Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       <File
