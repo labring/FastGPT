@@ -1,5 +1,5 @@
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter, Spinner, Text } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { appTypeMap } from '@/pageComponents/app/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -16,6 +16,8 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
+import { fetchWorkflowFromUrl } from '@/web/core/app/workflow';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type FormType = {
   avatar: string;
@@ -27,6 +29,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('');
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -36,6 +41,47 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
   const workflowStr = watch('workflowStr');
+
+  // 检查并获取utm_workflow
+  useEffect(() => {
+    const isBrowser = typeof window !== 'undefined';
+    if (!isBrowser) return;
+
+    const checkWorkflow = async () => {
+      try {
+        const url = sessionStorage.getItem('utm_workflow');
+        if (!url) return;
+
+        try {
+          const workflowData = await fetchWorkflowFromUrl(url);
+
+          if (!workflowData) {
+            throw new Error('无法获取工作流数据');
+          }
+
+          setValue('workflowStr', JSON.stringify(workflowData, null, 2));
+
+          try {
+            const utmParams = localStorage.getItem('utm_params');
+            if (utmParams) {
+              const params = JSON.parse(utmParams);
+              if (params.content) setValue('name', params.content);
+            }
+          } catch (error) {
+            console.error('解析utm_params出错:', error);
+          }
+
+          sessionStorage.removeItem('utm_workflow');
+        } catch (error) {
+          console.error('获取工作流数据失败:', error);
+        }
+      } catch (error) {
+        console.error('检查工作流URL出错:', error);
+      }
+    };
+
+    checkWorkflow();
+  }, []);
 
   const avatar = watch('avatar');
   const {
@@ -122,44 +168,55 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         iconColor={'primary.600'}
       >
         <ModalBody>
-          <Box color={'myGray.800'} fontWeight={'bold'}>
-            {t('common:common.Set Name')}
-          </Box>
-          <Flex mt={2} alignItems={'center'}>
-            <MyTooltip label={t('common:common.Set Avatar')}>
-              <Avatar
-                flexShrink={0}
-                src={selectedAvatar}
-                w={['1.75rem', '2.25rem']}
-                h={['1.75rem', '2.25rem']}
-                cursor={'pointer'}
-                borderRadius={'md'}
-                onClick={onOpenSelectFile}
-              />
-            </MyTooltip>
-            <Input
-              flex={1}
-              ml={3}
-              autoFocus
-              bg={'myWhite.600'}
-              {...register('name', {
-                required: t('common:core.app.error.App name can not be empty')
-              })}
-            />
-          </Flex>
-          <Box mt={5}>
-            <ImportAppConfigEditor
-              value={workflowStr}
-              onChange={(e) => setValue('workflowStr', e)}
-              rows={10}
-            />
-          </Box>
+          {isLoading ? (
+            <Flex direction="column" align="center" justify="center" py={8}>
+              <Spinner size="xl" color="blue.500" mb={4} />
+              <Text>{loadingStatus}</Text>
+            </Flex>
+          ) : (
+            <>
+              <Box color={'myGray.800'} fontWeight={'bold'}>
+                {t('common:common.Set Name')}
+              </Box>
+              <Flex mt={2} alignItems={'center'}>
+                <MyTooltip label={t('common:common.Set Avatar')}>
+                  <Avatar
+                    flexShrink={0}
+                    src={selectedAvatar}
+                    w={['1.75rem', '2.25rem']}
+                    h={['1.75rem', '2.25rem']}
+                    cursor={'pointer'}
+                    borderRadius={'md'}
+                    onClick={onOpenSelectFile}
+                  />
+                </MyTooltip>
+                <Input
+                  flex={1}
+                  ml={3}
+                  autoFocus
+                  bg={'myWhite.600'}
+                  {...register('name', {
+                    required: t('common:core.app.error.App name can not be empty')
+                  })}
+                />
+              </Flex>
+              <Box mt={5}>
+                <ImportAppConfigEditor
+                  value={workflowStr}
+                  onChange={(e) => setValue('workflowStr', e)}
+                  rows={10}
+                />
+              </Box>
+            </>
+          )}
         </ModalBody>
         <ModalFooter gap={4}>
           <Button variant={'whiteBase'} onClick={onClose}>
             {t('common:common.Cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
+          <Button onClick={handleSubmit(onSubmit)} isDisabled={isLoading}>
+            {t('common:common.Confirm')}
+          </Button>
         </ModalFooter>
       </MyModal>
       <File

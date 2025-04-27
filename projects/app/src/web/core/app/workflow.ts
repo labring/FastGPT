@@ -239,24 +239,26 @@ export const fetchWorkflowFromUrl = async (url: string) => {
 export const importWorkflowFromUrl = async ({
   url,
   name,
-  parentId
+  parentId,
+  data
 }: {
   url: string;
   name?: string;
   parentId?: string;
+  data?: any; // 可选参数，允许直接传入已获取的工作流数据
 }) => {
   try {
     console.log(`开始从URL导入工作流: ${url}`);
 
-    // 获取工作流数据
-    const data = await fetchWorkflowFromUrl(url);
+    // 如果已提供data，则直接使用，否则从URL获取
+    const workflowData = data || (await fetchWorkflowFromUrl(url));
 
-    if (!data || !data.nodes || !data.edges) {
+    if (!workflowData || !workflowData.nodes || !workflowData.edges) {
       throw new Error('工作流数据格式不正确，缺少nodes或edges');
     }
 
     // 获取应用类型
-    const appType = getAppType(data);
+    const appType = getAppType(workflowData);
     if (!appType) {
       throw new Error('无法识别应用类型，请确保导入的是有效的工作流JSON');
     }
@@ -269,9 +271,9 @@ export const importWorkflowFromUrl = async ({
       avatar: appTypeMap[appType].avatar,
       name: name || `未命名 ${new Date().toLocaleString()}`,
       type: appType,
-      modules: data.nodes || [],
-      edges: data.edges || [],
-      chatConfig: data.chatConfig || {}
+      modules: workflowData.nodes || [],
+      edges: workflowData.edges || [],
+      chatConfig: workflowData.chatConfig || {}
     });
 
     console.log(`工作流导入成功，创建的应用ID: ${appId}`);

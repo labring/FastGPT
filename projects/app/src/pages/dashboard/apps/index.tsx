@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -77,6 +77,16 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     onClose: onCloseJsonImportModal
   } = useDisclosure();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+
+  useEffect(() => {
+    const isBrowser = typeof window !== 'undefined';
+    if (!isBrowser) return;
+
+    const hasWorkflowUrl = !!sessionStorage.getItem('utm_workflow');
+    if (hasWorkflowUrl) {
+      onOpenJsonImportModal();
+    }
+  }, [onOpenJsonImportModal]);
 
   const { runAsync: onCreateFolder } = useRequest2(postCreateAppFolder, {
     onSuccess() {

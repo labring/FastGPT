@@ -15,7 +15,6 @@ import { useDebounceEffect, useMount } from 'ahooks';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import WorkorderButton from './WorkorderButton';
-import WorkflowImporter from '@/components/WorkflowImporter';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -165,19 +164,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <WorkorderButton />
         </>
       )}
-      {(() => {
-        // 添加浏览器环境检查，避免服务器端渲染时的错误
-        const isBrowser = typeof window !== 'undefined';
-        if (isBrowser && sessionStorage.getItem('utm_workflow')) {
-          console.log(
-            'Layout: 准备渲染WorkflowImporter，userInfo =',
-            !!userInfo,
-            userInfo?.username
-          );
-          return !!userInfo && <WorkflowImporter />;
-        }
-        return null;
-      })()}
       <ManualCopyModal />
       <Loading loading={loading} zIndex={999999} />
     </>
