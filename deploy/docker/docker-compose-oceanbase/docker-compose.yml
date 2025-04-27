@@ -33,10 +33,10 @@ services:
     healthcheck:
       # obclient -h127.0.0.1 -P2881 -uroot@tenantname -ptenantpassword -e "SELECT 1;"
       test:
-         [
-           'CMD-SHELL',
-           'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"'
-         ]
+        [
+          'CMD-SHELL',
+          'obclient -h$${OB_SERVER_IP} -P2881 -uroot@$${OB_TENANT_NAME} -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"'
+        ]
       interval: 30s
       timeout: 10s
       retries: 1000
