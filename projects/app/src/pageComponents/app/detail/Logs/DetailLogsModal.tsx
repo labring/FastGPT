@@ -73,7 +73,6 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   return (
     <>
       <MyBox
-        isLoading={isFetching}
         display={'flex'}
         flexDirection={'column'}
         zIndex={3}

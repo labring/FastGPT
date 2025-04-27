@@ -10,3 +10,5 @@ FROM fholzer/nginx-brotli:latest
 LABEL org.opencontainers.image.source https://github.com/labring/FastGPT
 
 COPY --from=builder /app/hugo/public /usr/share/nginx/html
+
+COPY ./docSite/nginx.conf /etc/nginx/conf.d/default.conf

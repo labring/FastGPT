@@ -30,6 +30,8 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import TrainingStates from './CollectionCard/TrainingStates';
+import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -44,6 +46,7 @@ const DataCard = () => {
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
+  const [errorModalId, setErrorModalId] = useState('');
   const { toast } = useToast();
 
   const scrollParams = useMemo(
@@ -174,7 +177,7 @@ const DataCard = () => {
           <MyDivider my={'17px'} w={'100%'} />
         </Box>
         <Flex alignItems={'center'} px={6} pb={4}>
-          <Flex align={'center'} color={'myGray.500'}>
+          <Flex alignItems={'center'} color={'myGray.500'}>
             <MyIcon name="common/list" mr={2} w={'18px'} />
             <Box as={'span'} fontSize={['sm', '14px']} fontWeight={'500'}>
               {t('dataset:data_amount', {
@@ -182,6 +185,25 @@ const DataCard = () => {
                 indexAmount: collection?.indexAmount ?? '-'
               })}
             </Box>
+            {!!collection?.errorCount && (
+              <MyTag
+                colorSchema={'red'}
+                type={'fill'}
+                cursor={'pointer'}
+                rounded={'full'}
+                ml={2}
+                onClick={() => {
+                  setErrorModalId(collection._id);
+                }}
+              >
+                <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                  {t('dataset:data_error_amount', {
+                    errorAmount: collection?.errorCount
+                  })}
+                  <MyIcon name={'common/maximize'} w={'11px'} />
+                </Flex>
+              </MyTag>
+            )}
           </Flex>
           <Box flex={1} mr={1} />
           <MyInput
@@ -306,7 +328,7 @@ const DataCard = () => {
                       w={'14px'}
                       mr={1}
                     />
-                    {item.q.length + (item.a?.length || 0)}
+                    {getTextValidLength(item.q + item.a || '')}
                   </Flex>
                   {canWrite && (
                     <IconButton
@@ -352,6 +374,14 @@ const DataCard = () => {
               });
             });
           }}
+        />
+      )}
+      {errorModalId && (
+        <TrainingStates
+          datasetId={datasetId}
+          defaultTab={'errors'}
+          collectionId={errorModalId}
+          onClose={() => setErrorModalId('')}
         />
       )}
       <ConfirmModal />

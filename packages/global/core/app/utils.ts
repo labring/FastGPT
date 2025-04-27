@@ -26,7 +26,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       similarity: 0.4,
       limit: 3000,
       searchMode: DatasetSearchModeEnum.embedding,
-      usingReRank: false,
+      usingReRank: true,
       rerankModel: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
@@ -140,7 +140,9 @@ export const appWorkflow2Form = ({
       );
     } else if (
       node.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-      node.flowNodeType === FlowNodeTypeEnum.appModule
+      node.flowNodeType === FlowNodeTypeEnum.appModule ||
+      node.flowNodeType === FlowNodeTypeEnum.tool ||
+      node.flowNodeType === FlowNodeTypeEnum.toolSet
     ) {
       if (!node.pluginId) return;
 

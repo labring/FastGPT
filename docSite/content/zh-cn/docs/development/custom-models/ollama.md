@@ -76,7 +76,7 @@ ollama serve #安装完成并启动服务后，你可以在浏览器中访问 ht
 
 ### Ollama 拉取模型镜像
 
-在安装后 Ollama 后，本地是没有模型镜像的，需要自己去拉取 Ollama 中的模型镜像。命令如下：
+在安装 Ollama 后，本地是没有模型镜像的，需要自己去拉取 Ollama 中的模型镜像。命令如下：
 
 ```bash
 # Docker 部署需要先进容器，命令为： docker exec -it < Ollama 容器名 > /bin/sh

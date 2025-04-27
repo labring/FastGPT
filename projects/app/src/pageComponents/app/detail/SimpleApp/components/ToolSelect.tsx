@@ -9,7 +9,10 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { theme } from '@fastgpt/web/styles/theme';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import ToolSelectModal, { childAppSystemKey } from './ToolSelectModal';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from './ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
@@ -90,7 +93,9 @@ const ToolSelect = ({
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
                       ) ||
-                    hasError
+                    hasError ||
+                    item.flowNodeType === FlowNodeTypeEnum.tool ||
+                    item.flowNodeType === FlowNodeTypeEnum.toolSet
                   ) {
                     return;
                   }

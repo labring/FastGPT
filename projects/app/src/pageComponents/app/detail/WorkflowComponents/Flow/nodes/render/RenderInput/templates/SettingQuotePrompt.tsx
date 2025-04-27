@@ -94,6 +94,11 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         icon: 'core/app/simpleMode/variable'
       },
       {
+        key: 'sourceIndex',
+        label: t('common:core.dataset.search.Source index'),
+        icon: 'core/app/simpleMode/variable'
+      },
+      {
         key: 'q',
         label: 'q',
         icon: 'core/app/simpleMode/variable'
@@ -218,14 +223,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             </Box>
           </Flex>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
+            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
               <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
                   default: getQuoteTemplate(nodeVersion)
                 })}
-              ></QuestionTip>
+              />
               <Box flex={1} />
               <Box
                 {...selectTemplateBtn}
@@ -253,14 +258,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             />
           </Box>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
+            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
               <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_prompt_tip', {
                   default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
                 })}
-              ></QuestionTip>
+              />
             </Flex>
             <PromptEditor
               variables={quotePromptVariables}

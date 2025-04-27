@@ -34,14 +34,16 @@ const QuoteList = React.memo(function QuoteList({
 
   const { data: quoteList } = useRequest2(
     async () =>
-      await getQuoteDataList({
-        datasetDataIdList: rawSearch.map((item) => item.id),
-        collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
-        chatItemDataId,
-        appId,
-        chatId: RawSourceBoxProps.chatId,
-        ...outLinkAuthData
-      }),
+      !!chatItemDataId
+        ? await getQuoteDataList({
+            datasetDataIdList: rawSearch.map((item) => item.id),
+            collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
+            chatItemDataId,
+            appId,
+            chatId: RawSourceBoxProps.chatId,
+            ...outLinkAuthData
+          })
+        : [],
     {
       refreshDeps: [rawSearch, RawSourceBoxProps.chatId],
       manual: false
@@ -49,22 +51,25 @@ const QuoteList = React.memo(function QuoteList({
   );
 
   const formatedDataList = useMemo(() => {
-    return rawSearch
-      .map((item) => {
-        const currentFilterItem = quoteList?.find((res) => res._id === item.id);
-
+    const processedData = rawSearch.map((item) => {
+      if (chatItemDataId && quoteList) {
+        const currentFilterItem = quoteList.find((res) => res._id === item.id);
         return {
           ...item,
           q: currentFilterItem?.q || '',
           a: currentFilterItem?.a || ''
         };
-      })
-      .sort((a, b) => {
-        const aScore = formatScore(a.score);
-        const bScore = formatScore(b.score);
-        return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
-      });
-  }, [quoteList, rawSearch]);
+      }
+
+      return { ...item, q: item.q || '', a: item.a || '' };
+    });
+
+    return processedData.sort((a, b) => {
+      const aScore = formatScore(a.score);
+      const bScore = formatScore(b.score);
+      return (bScore.primaryScore?.value || 0) - (aScore.primaryScore?.value || 0);
+    });
+  }, [rawSearch, quoteList, chatItemDataId]);
 
   return (
     <>

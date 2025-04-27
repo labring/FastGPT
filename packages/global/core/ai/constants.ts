@@ -1,3 +1,14 @@
+import { i18nT } from '../../../web/i18n/utils';
+import type { CompletionUsage } from './type';
+
+export const getLLMDefaultUsage = (): CompletionUsage => {
+  return {
+    prompt_tokens: 0,
+    completion_tokens: 0,
+    total_tokens: 0
+  };
+};
+
 export enum ChatCompletionRequestMessageRoleEnum {
   'System' = 'system',
   'User' = 'user',
@@ -28,3 +39,13 @@ export enum EmbeddingTypeEnm {
   query = 'query',
   db = 'db'
 }
+
+export const completionFinishReasonMap = {
+  close: i18nT('chat:completion_finish_close'),
+  stop: i18nT('chat:completion_finish_stop'),
+  length: i18nT('chat:completion_finish_length'),
+  tool_calls: i18nT('chat:completion_finish_tool_calls'),
+  content_filter: i18nT('chat:completion_finish_content_filter'),
+  function_call: i18nT('chat:completion_finish_function_call'),
+  null: i18nT('chat:completion_finish_null')
+};

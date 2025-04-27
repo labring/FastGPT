@@ -2,9 +2,11 @@ import { FlowNodeInputTypeEnum } from '../node/constant';
 
 export enum SseResponseEventEnum {
   error = 'error',
+  workflowDuration = 'workflowDuration', // workflow duration
   answer = 'answer', // animation stream
   fastAnswer = 'fastAnswer', // direct answer text, not animation
   flowNodeStatus = 'flowNodeStatus', // update node status
+  flowNodeResponse = 'flowNodeResponse', // node response
 
   toolCall = 'toolCall', // tool start
   toolParams = 'toolParams', // tool params return

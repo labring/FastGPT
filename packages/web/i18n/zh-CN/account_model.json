@@ -30,7 +30,7 @@
   "log_status": "状态",
   "mapping": "模型映射",
   "mapping_tip": "需填写一个有效 Json。可在向实际地址发送请求时，对模型进行映射。例如：\n{\n  \"gpt-4o\": \"gpt-4o-test\"\n}\n当 FastGPT 请求 gpt-4o 模型时，会向实际地址发送 gpt-4o-test 的模型，而不是 gpt-4o。",
-  "maxToken_tip": "模型 max_tokens 参数，如果留空，则代表模型不支持该参数。",
+  "maxToken_tip": "模型 max_tokens 参数",
   "max_temperature_tip": "模型 temperature 参数，不填则代表模型不支持 temperature 参数。",
   "model": "模型",
   "model_name": "模型名",

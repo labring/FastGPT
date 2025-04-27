@@ -66,6 +66,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import TimeBox from './components/TimeBox';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -219,7 +220,9 @@ const ChatBox = ({
       tool,
       interactive,
       autoTTSResponse,
-      variables
+      variables,
+      nodeResponse,
+      durationSeconds
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatRecords((state) =>
         state.map((item, index) => {
@@ -232,7 +235,14 @@ const ChatBox = ({
             JSON.stringify(item.value[item.value.length - 1])
           );
 
-          if (event === SseResponseEventEnum.flowNodeStatus && status) {
+          if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
+            return {
+              ...item,
+              responseData: item.responseData
+                ? [...item.responseData, nodeResponse]
+                : [nodeResponse]
+            };
+          } else if (event === SseResponseEventEnum.flowNodeStatus && status) {
             return {
               ...item,
               status,
@@ -333,6 +343,13 @@ const ChatBox = ({
               ...item,
               value: item.value.concat(val)
             };
+          } else if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
+            return {
+              ...item,
+              durationSeconds: item.durationSeconds
+                ? +(item.durationSeconds + durationSeconds).toFixed(2)
+                : durationSeconds
+            };
           }
 
           return item;
@@ -432,12 +449,13 @@ const ChatBox = ({
           // Only declared variables are kept
           const requestVariables: Record<string, any> = {};
           allVariableList?.forEach((item) => {
-            requestVariables[item.key] =
+            const val =
               variables[item.key] === '' ||
               variables[item.key] === undefined ||
               variables[item.key] === null
                 ? item.defaultValue
                 : variables[item.key];
+            requestVariables[item.key] = valueTypeFormat(val, item.valueType);
           });
 
           const responseChatId = getNanoid(24);
@@ -518,36 +536,34 @@ const ChatBox = ({
               reserveTool: true
             });
 
-            const {
-              responseData,
-              responseText,
-              isNewChat = false
-            } = await onStartChat({
+            const { responseText } = await onStartChat({
               messages, // 保证最后一条是 Human 的消息
               responseChatItemId: responseChatId,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
             });
-            if (responseData?.[responseData.length - 1]?.error) {
-              toast({
-                title: t(responseData[responseData.length - 1].error?.message),
-                status: 'error'
-              });
-            }
 
             // Set last chat finish status
             let newChatHistories: ChatSiteItemType[] = [];
             setChatRecords((state) => {
               newChatHistories = state.map((item, index) => {
                 if (index !== state.length - 1) return item;
+
+                // Check node response error
+                const responseData = mergeChatResponseData(item.responseData || []);
+                if (responseData[responseData.length - 1]?.error) {
+                  toast({
+                    title: t(responseData[responseData.length - 1].error?.message),
+                    status: 'error'
+                  });
+                }
+
                 return {
                   ...item,
                   status: ChatStatusEnum.finish,
                   time: new Date(),
-                  responseData: item.responseData
-                    ? mergeChatResponseData([...item.responseData, ...responseData])
-                    : responseData
+                  responseData
                 };
               });
               return newChatHistories;
@@ -567,7 +583,7 @@ const ChatBox = ({
           } catch (err: any) {
             console.log(err);
             toast({
-              title: t(getErrText(err, 'core.chat.error.Chat error') as any),
+              title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
               status: 'error',
               duration: 5000,
               isClosable: true
@@ -807,12 +823,14 @@ const ChatBox = ({
       showEmptyIntro &&
       chatRecords.length === 0 &&
       !variableList?.length &&
+      !externalVariableList?.length &&
       !welcomeText,
     [
       chatRecords.length,
       feConfigs?.show_emptyChat,
       showEmptyIntro,
       variableList?.length,
+      externalVariableList?.length,
       welcomeText
     ]
   );

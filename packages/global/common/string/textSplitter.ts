@@ -1,5 +1,6 @@
 import { defaultMaxChunkSize } from '../../core/dataset/training/utils';
 import { getErrText } from '../error/utils';
+import { getTextValidLength } from './utils';
 
 export const CUSTOM_SPLIT_SIGN = '-----CUSTOM_SPLIT_SIGN-----';
 
@@ -73,7 +74,11 @@ ${mdSplitString}
 `;
 
   for (let i = 2; i < splitText2Lines.length; i++) {
-    if (chunk.length + splitText2Lines[i].length > chunkSize * 1.2) {
+    const chunkLength = getTextValidLength(chunk);
+    const nextLineLength = getTextValidLength(splitText2Lines[i]);
+
+    // Over size
+    if (chunkLength + nextLineLength > chunkSize) {
       chunks.push(chunk);
       chunk = `${header}
 ${mdSplitString}
@@ -112,10 +117,28 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkSize * overlapRatio);
 
+  // 特殊模块处理
+  // 1. 代码块处理 - 去除空字符
   // replace code block all \n to codeBlockMarker
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
     return match.replace(/\n/g, codeBlockMarker);
   });
+  // 2. 表格处理 - 单独提取表格出来，进行表头合并
+  const tableReg =
+    /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n?)*)(?:\n|$)/g;
+  const tableDataList = text.match(tableReg);
+  if (tableDataList) {
+    tableDataList.forEach((tableData) => {
+      const { chunks } = markdownTableSplit({
+        text: tableData.trim(),
+        chunkSize
+      });
+
+      const splitText = chunks.join('\n');
+      text = text.replace(tableData, `\n${splitText}\n`);
+    });
+  }
+
   // replace invalid \n
   text = text.replace(/(\r?\n|\r){3,}/g, '\n\n\n');
 
@@ -137,7 +160,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
     {
       reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
-      maxLen: maxSize
+      maxLen: Math.min(chunkSize * 1.5, maxSize)
     }, // Table 尽可能保证完整性
     { reg: /(\n{2,})/g, maxLen: chunkSize },
     { reg: /([\n])/g, maxLen: chunkSize },
@@ -230,7 +253,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     for (let i = splitTexts.length - 1; i >= 0; i--) {
       const currentText = splitTexts[i].text;
       const newText = currentText + overlayText;
-      const newTextLen = newText.length;
+      const newTextLen = getTextValidLength(newText);
 
       if (newTextLen > overlapLen) {
         if (newTextLen > maxOverlapLen) {
@@ -259,15 +282,16 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const isMarkdownStep = checkIsMarkdownSplit(step);
     const isCustomStep = checkIsCustomStep(step);
     const forbidConcat = isCustomStep; // forbid=true时候，lastText肯定为空
+    const textLength = getTextValidLength(text);
 
     // Over step
     if (step >= stepReges.length) {
-      if (text.length < maxSize) {
+      if (textLength < maxSize) {
         return [text];
       }
       // use slice-chunkSize to split text
       const chunks: string[] = [];
-      for (let i = 0; i < text.length; i += chunkSize - overlapLen) {
+      for (let i = 0; i < textLength; i += chunkSize - overlapLen) {
         chunks.push(text.slice(i, i + chunkSize));
       }
       return chunks;
@@ -282,10 +306,10 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
       const maxLen = item.chunkMaxSize; // 当前块最大长度
 
-      const lastTextLen = lastText.length;
+      const lastTextLen = getTextValidLength(lastText);
       const currentText = item.text;
       const newText = lastText + currentText;
-      const newTextLen = newText.length;
+      const newTextLen = getTextValidLength(newText);
 
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
       if (isMarkdownStep) {
@@ -349,7 +373,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         if (!lastChunk) continue;
 
         // last chunk is too small, concat it to lastText(next chunk start)
-        if (lastChunk.length < minChunkLen) {
+        if (getTextValidLength(lastChunk) < minChunkLen) {
           chunks.push(...innerChunks.slice(0, -1));
           lastText = lastChunk;
           continue;
@@ -378,7 +402,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     /* If the last chunk is independent, it needs to be push chunks. */
     if (lastText && chunks[chunks.length - 1] && !chunks[chunks.length - 1].endsWith(lastText)) {
-      if (lastText.length < chunkSize * 0.4) {
+      if (getTextValidLength(lastText) < chunkSize * 0.4) {
         chunks[chunks.length - 1] = chunks[chunks.length - 1] + lastText;
       } else {
         chunks.push(lastText);

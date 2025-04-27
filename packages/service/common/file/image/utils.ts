@@ -32,3 +32,13 @@ export const getImageBase64 = async (url: string) => {
     return Promise.reject(error);
   }
 };
+
+export const addEndpointToImageUrl = (text: string) => {
+  const baseURL = process.env.FE_DOMAIN;
+  if (!baseURL) return text;
+  // 匹配 /api/system/img/xxx.xx 的图片链接，并追加 baseURL
+  return text.replace(
+    /(?<!https?:\/\/[^\s]*)(?:\/api\/system\/img\/[^\s.]*\.[^\s]*)/g,
+    (match) => `${baseURL}${match}`
+  );
+};

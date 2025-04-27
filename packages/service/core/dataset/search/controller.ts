@@ -3,7 +3,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { recallFromVectorStore } from '../../../common/vectorStore/controller';
+import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
@@ -24,7 +24,6 @@ import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { POST } from '../../../common/api/plusRequest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -63,7 +62,8 @@ export type SearchDatasetDataProps = {
 
 export type SearchDatasetDataResponse = {
   searchRes: SearchDataResponseItemType[];
-  tokens: number;
+  embeddingTokens: number;
+  reRankInputTokens: number;
   searchMode: `${DatasetSearchModeEnum}`;
   limit: number;
   similarity: number;
@@ -87,8 +87,11 @@ export const datasetDataReRank = async ({
   rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
-}): Promise<SearchDataResponseItemType[]> => {
-  const results = await reRankRecall({
+}): Promise<{
+  results: SearchDataResponseItemType[];
+  inputTokens: number;
+}> => {
+  const { results, inputTokens } = await reRankRecall({
     model: rerankModel,
     query,
     documents: data.map((item) => ({
@@ -115,7 +118,10 @@ export const datasetDataReRank = async ({
     })
     .filter(Boolean) as SearchDataResponseItemType[];
 
-  return mergeResult;
+  return {
+    results: mergeResult,
+    inputTokens
+  };
 };
 export const filterDatasetDataByMaxTokens = async (
   data: SearchDataResponseItemType[],
@@ -695,14 +701,23 @@ export async function searchDatasetData(
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
+  const {
+    embeddingRecallResults,
+    fullTextRecallResults,
+    tokens: embeddingTokens
+  } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
 
   // ReRank results
-  const reRankResults = await (async () => {
-    if (!usingReRank) return [];
+  const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
+    if (!usingReRank) {
+      return {
+        results: [],
+        inputTokens: 0
+      };
+    }
 
     set = new Set<string>(embeddingRecallResults.map((item) => item.id));
     const concatRecallResults = embeddingRecallResults.concat(
@@ -726,7 +741,10 @@ export async function searchDatasetData(
       });
     } catch (error) {
       usingReRank = false;
-      return [];
+      return {
+        results: [],
+        inputTokens: 0
+      };
     }
   })();
 
@@ -791,7 +809,8 @@ export async function searchDatasetData(
 
   return {
     searchRes: filterMaxTokensResult,
-    tokens,
+    embeddingTokens,
+    reRankInputTokens,
     searchMode,
     limit: maxTokens,
     similarity,
@@ -850,5 +869,4 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
-export const deepRagSearch = (data: DeepRagSearchProps) =>
-  POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);

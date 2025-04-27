@@ -10,8 +10,9 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { removeSystemVariable, valueTypeFormat } from '../utils';
+import { removeSystemVariable } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
+import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];

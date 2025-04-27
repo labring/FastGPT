@@ -4,9 +4,9 @@ import {
   PatchIndexesProps,
   UpdateDatasetDataProps
 } from '@fastgpt/global/core/dataset/controller';
-import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
+import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
-import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
+import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -17,7 +17,7 @@ import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 
 const formatIndexes = async ({
-  indexes,
+  indexes = [],
   q,
   a = '',
   indexSize,
@@ -66,7 +66,6 @@ const formatIndexes = async ({
     ];
   };
 
-  indexes = indexes || [];
   // If index not type, set it to custom
   indexes = indexes
     .map((item) => ({
@@ -78,6 +77,7 @@ const formatIndexes = async ({
 
   // Recompute default indexes, Merge ids of the same index, reduce the number of rebuilds
   const defaultIndexes = getDefaultIndex({ q, a, indexSize });
+
   const concatDefaultIndexes = defaultIndexes.map((item) => {
     const oldIndex = indexes!.find((index) => index.text === item.text);
     if (oldIndex) {
@@ -93,7 +93,7 @@ const formatIndexes = async ({
   indexes = indexes.filter((item) => item.type !== DatasetDataIndexTypeEnum.default);
   indexes.push(...concatDefaultIndexes);
 
-  // Filter same text
+  // Remove same text
   indexes = indexes.filter(
     (item, index, self) => index === self.findIndex((t) => t.text === item.text)
   );
@@ -101,12 +101,16 @@ const formatIndexes = async ({
   const chekcIndexes = (
     await Promise.all(
       indexes.map(async (item) => {
+        if (item.type === DatasetDataIndexTypeEnum.default) {
+          return item;
+        }
+
         // If oversize tokens, split it
         const tokens = await countPromptTokens(item.text);
-        if (tokens > indexSize) {
+        if (tokens > maxIndexSize) {
           const splitText = splitText2Chunks({
             text: item.text,
-            chunkSize: 512,
+            chunkSize: indexSize,
             maxSize: maxIndexSize
           }).chunks;
           return splitText.map((text) => ({
@@ -114,6 +118,7 @@ const formatIndexes = async ({
             type: item.type
           }));
         }
+
         return item;
       })
     )
@@ -164,24 +169,30 @@ export async function insertData2Dataset({
   });
 
   // insert to vector store
-  const result = await Promise.all(
-    newIndexes.map(async (item) => {
-      const result = await insertDatasetDataVector({
-        query: item.text,
-        model: embModel,
-        teamId,
-        datasetId,
-        collectionId
-      });
-      return {
-        tokens: result.tokens,
-        index: {
-          ...item,
-          dataId: result.insertId
-        }
-      };
-    })
-  );
+  const results: {
+    tokens: number;
+    index: {
+      dataId: string;
+      type: `${DatasetDataIndexTypeEnum}`;
+      text: string;
+    };
+  }[] = [];
+  for await (const item of newIndexes) {
+    const result = await insertDatasetDataVector({
+      query: item.text,
+      model: embModel,
+      teamId,
+      datasetId,
+      collectionId
+    });
+    results.push({
+      tokens: result.tokens,
+      index: {
+        ...item,
+        dataId: result.insertId
+      }
+    });
+  }
 
   // 2. Create mongo data
   const [{ _id }] = await MongoDatasetData.create(
@@ -194,7 +205,7 @@ export async function insertData2Dataset({
         q,
         a,
         chunkIndex,
-        indexes: result.map((item) => item.index)
+        indexes: results.map((item) => item.index)
       }
     ],
     { session, ordered: true }
@@ -216,7 +227,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
+    tokens: results.reduce((acc, cur) => acc + cur.tokens, 0)
   };
 }
 
@@ -303,25 +314,27 @@ export async function updateData2Dataset({
   await mongoData.save();
 
   // 5. insert vector
-  const insertResult = await Promise.all(
-    patchResult
-      .filter((item) => item.type === 'create' || item.type === 'update')
-      .map(async (item) => {
-        // insert new vector and update dateId
-        const result = await insertDatasetDataVector({
-          query: item.index.text,
-          model: getEmbeddingModel(model),
-          teamId: mongoData.teamId,
-          datasetId: mongoData.datasetId,
-          collectionId: mongoData.collectionId
-        });
-        item.index.dataId = result.insertId;
-        return {
-          tokens: result.tokens
-        };
-      })
-  );
-  const tokens = insertResult.reduce((acc, cur) => acc + cur.tokens, 0);
+  const insertResults: {
+    tokens: number;
+  }[] = [];
+  for await (const item of patchResult) {
+    if (item.type === 'delete' || item.type === 'unChange') continue;
+
+    // insert new vector and update dateId
+    const result = await insertDatasetDataVector({
+      query: item.index.text,
+      model: getEmbeddingModel(model),
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      collectionId: mongoData.collectionId
+    });
+    item.index.dataId = result.insertId;
+    insertResults.push({
+      tokens: result.tokens
+    });
+  }
+
+  const tokens = insertResults.reduce((acc, cur) => acc + cur.tokens, 0);
 
   const newIndexes = patchResult
     .filter((item) => item.type !== 'delete')

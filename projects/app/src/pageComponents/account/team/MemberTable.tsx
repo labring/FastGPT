@@ -303,7 +303,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                       })()}
                     </Td>
                     <Td maxW={'300px'}>
-                      <VStack gap={0}>
+                      <VStack gap={0} align="start">
                         <Box>{format(new Date(member.createTime), 'yyyy-MM-dd HH:mm:ss')}</Box>
                         <Box>
                           {member.updateTime

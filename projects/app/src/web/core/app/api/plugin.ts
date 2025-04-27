@@ -13,13 +13,17 @@ import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreview
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
   GetPathProps,
-  ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import type { GetSystemPluginTemplatesBody } from '@/pages/api/core/app/plugin/getSystemPluginTemplates';
 import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
+import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
+import { ToolType } from '@fastgpt/global/core/app/type';
+import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
+import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
+import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -28,12 +32,17 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       tmbId: app.tmbId,
       id: app._id,
       pluginId: app._id,
-      isFolder: app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin,
+      isFolder:
+        app.type === AppTypeEnum.folder ||
+        app.type === AppTypeEnum.httpPlugin ||
+        app.type === AppTypeEnum.toolSet,
       templateType: FlowNodeTemplateTypeEnum.teamApp,
       flowNodeType:
         app.type === AppTypeEnum.workflow
           ? FlowNodeTypeEnum.appModule
-          : FlowNodeTypeEnum.pluginModule,
+          : app.type === AppTypeEnum.toolSet
+            ? FlowNodeTypeEnum.toolSet
+            : FlowNodeTypeEnum.pluginModule,
       avatar: app.avatar,
       name: app.name,
       intro: app.intro,
@@ -61,6 +70,18 @@ export const getSystemPluginPaths = (data: GetPathProps) => {
 
 export const getPreviewPluginNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/plugin/getPreviewNode', data);
+
+/* ============ mcp tools ============== */
+export const postCreateMCPTools = (data: createMCPToolsBody) =>
+  POST('/core/app/mcpTools/create', data);
+
+export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
+  POST('/core/app/mcpTools/update', data);
+
+export const getMCPTools = (data: getMCPToolsBody) =>
+  POST<ToolType[]>('/support/mcp/client/getTools', data);
+
+export const postRunMCPTool = (data: RunMCPToolBody) => POST('/support/mcp/client/runTool', data);
 
 /* ============ http plugin ============== */
 export const postCreateHttpPlugin = (data: createHttpPluginBody) =>

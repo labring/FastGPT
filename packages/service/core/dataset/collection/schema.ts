@@ -1,13 +1,8 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
-const { Schema, model, models } = connectionMongo;
+const { Schema } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import {
-  DatasetCollectionTypeMap,
-  DatasetCollectionDataProcessModeEnum,
-  ChunkSettingModeEnum,
-  DataChunkSplitModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import { DatasetCollectionName } from '../schema';
+import { DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { ChunkSettings, DatasetCollectionName } from '../schema';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -90,25 +85,7 @@ const DatasetCollectionSchema = new Schema({
   customPdfParse: Boolean,
 
   // Chunk settings
-  imageIndex: Boolean,
-  autoIndexes: Boolean,
-  trainingType: {
-    type: String,
-    enum: Object.values(DatasetCollectionDataProcessModeEnum)
-  },
-  chunkSettingMode: {
-    type: String,
-    enum: Object.values(ChunkSettingModeEnum)
-  },
-  chunkSplitMode: {
-    type: String,
-    enum: Object.values(DataChunkSplitModeEnum)
-  },
-  chunkSize: Number,
-  chunkSplitter: String,
-
-  indexSize: Number,
-  qaPrompt: String
+  ...ChunkSettings
 });
 
 DatasetCollectionSchema.virtual('dataset', {

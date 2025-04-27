@@ -1,16 +1,13 @@
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
+import { pushGenerateVectorUsage, pushRerankUsage } from '@/service/support/wallet/usage/push';
 import {
   deepRagSearch,
   defaultSearchDatasetData
 } from '@fastgpt/service/core/dataset/search/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import {
-  checkTeamAIPoints,
-  checkTeamReRankPermission
-} from '@fastgpt/service/support/permission/teamLimit';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -58,6 +55,8 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   // auth balance
   await checkTeamAIPoints(teamId);
 
+  const rerankModelData = getRerankModel(rerankModel);
+
   const searchData = {
     histories: [],
     teamId,
@@ -69,11 +68,19 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     datasetIds: [datasetId],
     searchMode,
     embeddingWeight,
-    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
-    rerankModel: getRerankModel(rerankModel),
+    usingReRank,
+    rerankModel: rerankModelData,
     rerankWeight
   };
-  const { searchRes, tokens, queryExtensionResult, deepSearchResult, ...result } = datasetDeepSearch
+  const {
+    searchRes,
+    embeddingTokens,
+    reRankInputTokens,
+    usingReRank: searchUsingReRank,
+    queryExtensionResult,
+    deepSearchResult,
+    ...result
+  } = datasetDeepSearch
     ? await deepRagSearch({
         ...searchData,
         datasetDeepSearchModel,
@@ -88,10 +95,10 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       });
 
   // push bill
-  const { totalPoints } = pushGenerateVectorUsage({
+  const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    inputTokens: tokens,
+    inputTokens: reRankInputTokens,
     model: dataset.vectorModel,
     source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
@@ -106,10 +113,19 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       deepSearchOutputTokens: deepSearchResult.outputTokens
     })
   });
+  const { totalPoints: reRankTotalPoints } = searchUsingReRank
+    ? pushRerankUsage({
+        teamId,
+        tmbId,
+        inputTokens: reRankInputTokens,
+        model: rerankModelData.model
+      })
+    : { totalPoints: 0 };
+
   if (apikey) {
     updateApiKeyUsage({
       apikey,
-      totalPoints: totalPoints
+      totalPoints: embeddingTotalPoints + reRankTotalPoints
     });
   }
 
@@ -117,6 +133,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     list: searchRes,
     duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
     queryExtensionModel: queryExtensionResult?.model,
+    usingReRank: searchUsingReRank,
     ...result
   };
 }

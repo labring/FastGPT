@@ -98,11 +98,9 @@
   "team.group.keep_admin": "保留管理员权限",
   "team.group.manage_member": "管理成员",
   "team.group.manage_tip": "可以管理成员、创建群组、管理所有群组、为群组和成员分配权限",
+  "team.group.permission_tip": "单独配置权限的成员，将遵循个人权限配置，不再受群组权限影响。\n若成员在多个权限组，则该成员的权限取并集。",
   "team.group.members": "成员",
   "team.group.name": "群组名称",
-  "team.group.permission.manage": "管理员",
-  "team.group.permission.write": "工作台/知识库创建",
-  "team.group.permission_tip": "单独配置权限的成员，将遵循个人权限配置，不再受群组权限影响。\n若成员在多个权限组，则该成员的权限取并集。",
   "team.group.role.admin": "管理员",
   "team.group.role.member": "成员",
   "team.group.role.owner": "所有者",
@@ -112,5 +110,6 @@
   "team.manage_collaborators": "管理协作者",
   "team.no_collaborators": "暂无协作者",
   "team.org.org": "部门",
-  "team.write_role_member": "可写权限"
+  "team.write_role_member": "可写权限",
+  "team.collaborator.added": "已添加"
 }

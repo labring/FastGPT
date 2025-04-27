@@ -6,11 +6,18 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { parseReasoningContent, parseReasoningStreamContent } from '../../../ai/utils';
 import { createChatCompletion } from '../../../ai/config';
-import type { ChatCompletionMessageParam, StreamChatType } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletionMessageParam,
+  CompletionFinishReason,
+  CompletionUsage,
+  StreamChatType
+} from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { postTextCensor } from '../../../../common/api/requestPlusApi';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  getLLMDefaultUsage
+} from '@fastgpt/global/core/ai/constants';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType
@@ -47,6 +54,7 @@ import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { postTextCensor } from '../../../chat/postTextCensor';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -101,7 +109,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const modelConstantsData = getLLMModel(model);
   if (!modelConstantsData) {
-    return Promise.reject('The chat model is undefined, you need to select a chat model.');
+    return Promise.reject(`Mode ${model} is undefined, you need to select a chat model.`);
   }
 
   aiChatVision = modelConstantsData.vision && aiChatVision;
@@ -195,16 +203,19 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   });
 
-  const { answerText, reasoningText } = await (async () => {
+  let { answerText, reasoningText, finish_reason, inputTokens, outputTokens } = await (async () => {
     if (isStreamResponse) {
-      if (!res) {
+      if (!res || res.closed) {
         return {
           answerText: '',
-          reasoningText: ''
+          reasoningText: '',
+          finish_reason: 'close' as const,
+          inputTokens: 0,
+          outputTokens: 0
         };
       }
       // sse response
-      const { answer, reasoning } = await streamResponse({
+      const { answer, reasoning, finish_reason, usage } = await streamResponse({
         res,
         stream: response,
         aiChatReasoning,
@@ -215,9 +226,15 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: answer,
-        reasoningText: reasoning
+        reasoningText: reasoning,
+        finish_reason,
+        inputTokens: usage?.prompt_tokens,
+        outputTokens: usage?.completion_tokens
       };
     } else {
+      const finish_reason = response.choices?.[0]?.finish_reason as CompletionFinishReason;
+      const usage = response.usage;
+
       const { content, reasoningContent } = (() => {
         const content = response.choices?.[0]?.message?.content || '';
         // @ts-ignore
@@ -260,7 +277,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: content,
-        reasoningText: reasoningContent
+        reasoningText: reasoningContent,
+        finish_reason,
+        inputTokens: usage?.prompt_tokens,
+        outputTokens: usage?.completion_tokens
       };
     }
   })();
@@ -280,8 +300,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const completeMessages = [...requestMessages, ...AIMessages];
   const chatCompleteMessages = GPTMessages2Chats(completeMessages);
 
-  const inputTokens = await countGptMessagesTokens(requestMessages);
-  const outputTokens = await countGptMessagesTokens(AIMessages);
+  inputTokens = inputTokens || (await countGptMessagesTokens(requestMessages));
+  outputTokens = outputTokens || (await countGptMessagesTokens(AIMessages));
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
@@ -296,14 +316,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: externalProvider.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
-      tokens: inputTokens + outputTokens,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
       reasoningText,
       historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
-      contextTotalLen: completeMessages.length
+      contextTotalLen: completeMessages.length,
+      finishReason: finish_reason
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
@@ -328,7 +348,17 @@ async function filterDatasetQuote({
   model: LLMModelItemType;
   quoteTemplate: string;
 }) {
-  function getValue(item: SearchDataResponseItemType, index: number) {
+  function getValue({
+    item,
+    index,
+    sourceList
+  }: {
+    item: SearchDataResponseItemType;
+    index: number;
+    sourceList: { sourceName: string; sourceId: string; sourceIndex: number }[];
+  }) {
+    const source = sourceList.find((source) => source.sourceId === item.sourceId);
+
     return replaceVariable(quoteTemplate, {
       id: item.id,
       q: item.q,
@@ -336,6 +366,7 @@ async function filterDatasetQuote({
       updateTime: formatTime2YMDHM(item.updateTime),
       source: item.sourceName,
       sourceId: String(item.sourceId || ''),
+      sourceIndex: source?.sourceIndex || 1,
       index: index + 1
     });
   }
@@ -343,9 +374,24 @@ async function filterDatasetQuote({
   // slice filterSearch
   const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
+  const sourceList = Object.values(
+    filterQuoteQA.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
+      if (!acc[cur.collectionId]) {
+        acc[cur.collectionId] = [cur];
+      }
+      return acc;
+    }, {})
+  )
+    .flat()
+    .map((item, index) => ({
+      sourceName: item.sourceName || '',
+      sourceId: item.sourceId || '',
+      sourceIndex: index + 1
+    }));
+
   const datasetQuoteText =
     filterQuoteQA.length > 0
-      ? `${filterQuoteQA.map((item, index) => getValue(item, index).trim()).join('\n------\n')}`
+      ? `${filterQuoteQA.map((item, index) => getValue({ item, index, sourceList }).trim()).join('\n------\n')}`
       : '';
 
   return {
@@ -528,15 +574,22 @@ async function streamResponse({
   });
   let answer = '';
   let reasoning = '';
+  let finish_reason: CompletionFinishReason = null;
+  let usage: CompletionUsage = getLLMDefaultUsage();
+
   const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
 
   for await (const part of stream) {
+    usage = part.usage || usage;
+
     if (res.closed) {
       stream.controller?.abort();
+      finish_reason = 'close';
       break;
     }
 
-    const [reasoningContent, content] = parsePart(part, parseThinkTag);
+    const { reasoningContent, content, finishReason } = parsePart(part, parseThinkTag);
+    finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;
 
@@ -575,5 +628,5 @@ async function streamResponse({
     }
   }
 
-  return { answer, reasoning };
+  return { answer, reasoning, finish_reason, usage };
 }

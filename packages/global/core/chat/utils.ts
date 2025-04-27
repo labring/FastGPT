@@ -84,18 +84,19 @@ export const filterPublicNodeResponseData = ({
   flowResponses?: ChatHistoryItemResType[];
   responseDetail?: boolean;
 }) => {
+  const publicNodeMap: Record<string, any> = {
+    [FlowNodeTypeEnum.pluginModule]: true,
+    [FlowNodeTypeEnum.datasetSearchNode]: true,
+    [FlowNodeTypeEnum.tools]: true,
+    [FlowNodeTypeEnum.pluginOutput]: true
+  };
+
   const filedList = responseDetail
     ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
     : ['moduleType', 'pluginOutput', 'runningTime'];
-  const filterModuleTypeList: any[] = [
-    FlowNodeTypeEnum.pluginModule,
-    FlowNodeTypeEnum.datasetSearchNode,
-    FlowNodeTypeEnum.tools,
-    FlowNodeTypeEnum.pluginOutput
-  ];
 
   return flowResponses
-    .filter((item) => filterModuleTypeList.includes(item.moduleType))
+    .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {
@@ -153,25 +154,54 @@ export const getChatSourceByPublishChannel = (publishChannel: PublishChannelEnum
 /* 
   Merge chat responseData
   1. Same tool mergeSignId (Interactive tool node)
+  2. Recursively merge plugin details with same mergeSignId
 */
-export const mergeChatResponseData = (responseDataList: ChatHistoryItemResType[]) => {
-  let lastResponse: ChatHistoryItemResType | undefined = undefined;
-
-  return responseDataList.reduce<ChatHistoryItemResType[]>((acc, curr) => {
-    if (lastResponse && lastResponse.mergeSignId && curr.mergeSignId === lastResponse.mergeSignId) {
-      // 替换 lastResponse
-      const concatResponse: ChatHistoryItemResType = {
-        ...curr,
-        runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
-        totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
-        childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
-        toolCallTokens: (lastResponse.toolCallTokens || 0) + (curr.toolCallTokens || 0),
-        toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])]
+export const mergeChatResponseData = (
+  responseDataList: ChatHistoryItemResType[]
+): ChatHistoryItemResType[] => {
+  // Merge children reponse data(Children has interactive response)
+  const responseWithMergedPlugins = responseDataList.map((item) => {
+    if (item.pluginDetail && item.pluginDetail.length > 1) {
+      return {
+        ...item,
+        pluginDetail: mergeChatResponseData(item.pluginDetail)
       };
-      return [...acc.slice(0, -1), concatResponse];
-    } else {
-      lastResponse = curr;
-      return [...acc, curr];
     }
-  }, []);
+    return item;
+  });
+
+  let lastResponse: ChatHistoryItemResType | undefined = undefined;
+  let hasMerged = false;
+
+  const firstPassResult = responseWithMergedPlugins.reduce<ChatHistoryItemResType[]>(
+    (acc, curr) => {
+      if (
+        lastResponse &&
+        lastResponse.mergeSignId &&
+        curr.mergeSignId === lastResponse.mergeSignId
+      ) {
+        const concatResponse: ChatHistoryItemResType = {
+          ...curr,
+          runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
+          totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
+          childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
+          toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])],
+          loopDetail: [...(lastResponse.loopDetail || []), ...(curr.loopDetail || [])],
+          pluginDetail: [...(lastResponse.pluginDetail || []), ...(curr.pluginDetail || [])]
+        };
+        hasMerged = true;
+        return [...acc.slice(0, -1), concatResponse];
+      } else {
+        lastResponse = curr;
+        return [...acc, curr];
+      }
+    },
+    []
+  );
+
+  if (hasMerged && firstPassResult.length > 1) {
+    return mergeChatResponseData(firstPassResult);
+  }
+
+  return firstPassResult;
 };

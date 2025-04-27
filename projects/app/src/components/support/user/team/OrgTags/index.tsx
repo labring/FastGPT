@@ -10,7 +10,14 @@ function OrgTags({ orgs, type = 'simple' }: { orgs?: string[]; type?: 'simple' |
       label={
         <VStack gap="1" alignItems={'start'}>
           {orgs.map((org, index) => (
-            <Box key={index} fontSize="sm" fontWeight={400} color="myGray.500">
+            <Box
+              key={index}
+              fontSize="sm"
+              fontWeight={400}
+              color="myGray.500"
+              maxW={'300px'}
+              className="textEllipsis"
+            >
               {org.slice(1)}
             </Box>
           ))}

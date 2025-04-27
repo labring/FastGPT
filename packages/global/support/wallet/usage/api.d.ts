@@ -7,8 +7,8 @@ export type CreateTrainingUsageProps = {
 };
 
 export type GetUsageProps = {
-  dateStart: Date;
-  dateEnd: Date;
+  dateStart: string;
+  dateEnd: string;
   sources?: UsageSourceEnum[];
   teamMemberIds?: string[];
   projectName?: string;

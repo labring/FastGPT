@@ -23,14 +23,14 @@ import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
 import {
-  ChatCompletionCreateParams,
   ChatCompletionMessageParam,
-  ChatCompletionTool
+  ChatCompletionTool,
+  UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { llmCompletionsBodyFormat } from '../../../ai/utils';
+import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../../../ai/utils';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
@@ -76,13 +76,6 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         extractModel
       });
     }
-    if (extractModel.functionCall) {
-      return functionCall({
-        ...props,
-        histories: chatHistories,
-        extractModel
-      });
-    }
     return completions({
       ...props,
       histories: chatHistories,
@@ -103,7 +96,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 
   // auto fill required fields
   extractKeys.forEach((item) => {
-    if (item.required && !arg[item.key]) {
+    if (item.required && arg[item.key] === undefined) {
       arg[item.key] = item.defaultValue || '';
     }
   });
@@ -233,9 +226,10 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
-  const { response } = await createChatCompletion({
+  const { response } = (await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
+        stream: false,
         model: extractModel.model,
         temperature: 0.01,
         messages: filterMessages,
@@ -245,7 +239,7 @@ const toolChoice = async (props: ActionProps) => {
       extractModel
     ),
     userKey: externalProvider.openaiAccount
-  });
+  })) as { response: UnStreamChatType };
 
   const arg: Record<string, any> = (() => {
     try {
@@ -267,66 +261,14 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
-  const inputTokens = await countGptMessagesTokens(filterMessages, tools);
-  const outputTokens = await countGptMessagesTokens(AIMessages);
+  const usage = response.usage;
+  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(filterMessages, tools));
+  const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(AIMessages));
   return {
     inputTokens,
     outputTokens,
     arg
   };
-};
-
-const functionCall = async (props: ActionProps) => {
-  const { externalProvider, extractModel } = props;
-
-  const { agentFunction, filterMessages } = await getFunctionCallSchema(props);
-  const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
-
-  const { response } = await createChatCompletion({
-    body: llmCompletionsBodyFormat(
-      {
-        model: extractModel.model,
-        temperature: 0.01,
-        messages: filterMessages,
-        function_call: {
-          name: agentFunName
-        },
-        functions
-      },
-      extractModel
-    ),
-    userKey: externalProvider.openaiAccount
-  });
-
-  try {
-    const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
-
-    const AIMessages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        function_call: response.choices?.[0]?.message?.function_call
-      }
-    ];
-
-    const inputTokens = await countGptMessagesTokens(filterMessages, undefined, functions);
-    const outputTokens = await countGptMessagesTokens(AIMessages);
-
-    return {
-      arg,
-      inputTokens,
-      outputTokens
-    };
-  } catch (error) {
-    console.log(response.choices?.[0]?.message);
-
-    console.log('Your model may not support toll_call', error);
-
-    return {
-      arg: {},
-      inputTokens: 0,
-      outputTokens: 0
-    };
-  }
 };
 
 const completions = async ({
@@ -373,7 +315,7 @@ Human: ${content}`
     useVision: false
   });
 
-  const { response: data } = await createChatCompletion({
+  const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
         model: extractModel.model,
@@ -385,7 +327,9 @@ Human: ${content}`
     ),
     userKey: externalProvider.openaiAccount
   });
-  const answer = data.choices?.[0].message?.content || '';
+  const { text: answer, usage } = await llmResponseToAnswerText(response);
+  const inputTokens = usage?.prompt_tokens || (await countMessagesTokens(messages));
+  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
   // parse response
   const jsonStr = sliceJsonStr(answer);
@@ -393,8 +337,8 @@ Human: ${content}`
   if (!jsonStr) {
     return {
       rawResponse: answer,
-      inputTokens: await countMessagesTokens(messages),
-      outputTokens: await countPromptTokens(answer),
+      inputTokens,
+      outputTokens,
       arg: {}
     };
   }
@@ -402,8 +346,8 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      inputTokens: await countMessagesTokens(messages),
-      outputTokens: await countPromptTokens(answer),
+      inputTokens,
+      outputTokens,
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
@@ -411,8 +355,8 @@ Human: ${content}`
     console.log(error);
     return {
       rawResponse: answer,
-      inputTokens: await countMessagesTokens(messages),
-      outputTokens: await countPromptTokens(answer),
+      inputTokens,
+      outputTokens,
       arg: {}
     };
   }

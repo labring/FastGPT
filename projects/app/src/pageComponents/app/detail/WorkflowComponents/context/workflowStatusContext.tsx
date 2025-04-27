@@ -7,7 +7,7 @@ import { AppContext } from '../../context';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useTranslation } from 'next-i18next';
-import { getNodesBounds, Node } from 'reactflow';
+import { Node } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
@@ -20,6 +20,22 @@ type WorkflowStatusContextType = {
   isSaved: boolean;
   leaveSaveSign: React.MutableRefObject<boolean>;
   resetParentNodeSizeAndPosition: (parentId: string) => void;
+  getParentNodeSizeAndPosition: ({
+    nodes,
+    parentId
+  }: {
+    nodes: Node<FlowNodeItemType>[];
+    parentId: string;
+  }) =>
+    | {
+        parentX: number;
+        parentY: number;
+        childWidth: number;
+        childHeight: number;
+        nodeWidth: number;
+        nodeHeight: number;
+      }
+    | undefined;
 };
 
 export const WorkflowStatusContext = createContext<WorkflowStatusContextType>({
@@ -94,30 +110,70 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
 
   const onNodesChange = useContextSelector(WorkflowNodeEdgeContext, (state) => state.onNodesChange);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const getParentNodeSizeAndPosition = useMemoizedFn(
+    ({ nodes, parentId }: { nodes: Node<FlowNodeItemType>[]; parentId: string }) => {
+      const { childNodes, loopNode } = nodes.reduce(
+        (acc, node) => {
+          if (node.data.parentNodeId === parentId) {
+            acc.childNodes.push(node);
+          }
+          if (node.id === parentId) {
+            acc.loopNode = node;
+          }
+          return acc;
+        },
+        { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
+      );
+
+      if (!loopNode) return;
+      const loopChilWidth =
+        loopNode.data.inputs.find((node) => node.key === NodeInputKeyEnum.nodeWidth)?.value ?? 0;
+      const loopChilHeight =
+        loopNode.data.inputs.find((node) => node.key === NodeInputKeyEnum.nodeHeight)?.value ?? 0;
+
+      // 初始化为第一个节点的边界
+      let minX = childNodes[0].position.x;
+      let minY = childNodes[0].position.y;
+      let maxX = childNodes[0].position.x + (childNodes[0].width || 0);
+      let maxY = childNodes[0].position.y + (childNodes[0].height || 0);
+
+      // 遍历所有节点找出最小/最大边界
+      childNodes.forEach((node) => {
+        const nodeWidth = node.width || 0;
+        const nodeHeight = node.height || 0;
+
+        minX = Math.min(minX, node.position.x);
+        minY = Math.min(minY, node.position.y);
+        maxX = Math.max(maxX, node.position.x + nodeWidth);
+        maxY = Math.max(maxY, node.position.y + nodeHeight);
+      });
+
+      const childWidth = Math.max(maxX - minX + 80, 840);
+      const childHeight = Math.max(maxY - minY + 80, 600);
+
+      const diffWidth = childWidth - loopChilWidth;
+      const diffHeight = childHeight - loopChilHeight;
+      const targetNodeWidth = (loopNode.width ?? 0) + diffWidth;
+      const targetNodeHeight = (loopNode.height ?? 0) + diffHeight;
+
+      const offsetHeight =
+        loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
+          ?.value ?? 83;
+
+      return {
+        parentX: Math.round(minX - 70),
+        parentY: Math.round(minY - offsetHeight - 240),
+        childWidth,
+        childHeight,
+        nodeWidth: targetNodeWidth,
+        nodeHeight: targetNodeHeight
+      };
+    }
+  );
   const resetParentNodeSizeAndPosition = useMemoizedFn((parentId: string) => {
-    const { childNodes, loopNode } = nodes.reduce(
-      (acc, node) => {
-        if (node.data.parentNodeId === parentId) {
-          acc.childNodes.push(node);
-        }
-        if (node.id === parentId) {
-          acc.loopNode = node;
-        }
-        return acc;
-      },
-      { childNodes: [] as Node[], loopNode: undefined as Node<FlowNodeItemType> | undefined }
-    );
-
-    if (!loopNode) return;
-
-    const rect = getNodesBounds(childNodes);
-    // Calculate parent node size with minimum width/height constraints
-    const width = Math.max(rect.width + 80, 840);
-    const height = Math.max(rect.height + 80, 600);
-
-    const offsetHeight =
-      loopNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.loopNodeInputHeight)
-        ?.value ?? 83;
+    const res = getParentNodeSizeAndPosition({ nodes, parentId });
+    if (!res) return;
+    const { parentX, parentY, childWidth, childHeight } = res;
 
     // Update parentNode size and position
     onChangeNode({
@@ -126,7 +182,7 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
       key: NodeInputKeyEnum.nodeWidth,
       value: {
         ...Input_Template_Node_Width,
-        value: width
+        value: childWidth
       }
     });
     onChangeNode({
@@ -135,7 +191,7 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
       key: NodeInputKeyEnum.nodeHeight,
       value: {
         ...Input_Template_Node_Height,
-        value: height
+        value: childHeight
       }
     });
     // Update parentNode position
@@ -144,8 +200,8 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
         id: parentId,
         type: 'position',
         position: {
-          x: Math.round(rect.x - 70),
-          y: Math.round(rect.y - offsetHeight - 240)
+          x: parentX,
+          y: parentY
         }
       }
     ]);
@@ -155,9 +211,10 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
     return {
       isSaved,
       leaveSaveSign,
-      resetParentNodeSizeAndPosition
+      resetParentNodeSizeAndPosition,
+      getParentNodeSizeAndPosition
     };
-  }, [isSaved, resetParentNodeSizeAndPosition]);
+  }, [isSaved, resetParentNodeSizeAndPosition, getParentNodeSizeAndPosition]);
   return (
     <WorkflowStatusContext.Provider value={contextValue}>{children}</WorkflowStatusContext.Provider>
   );

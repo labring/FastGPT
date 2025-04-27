@@ -18,12 +18,14 @@ weight: 852
 {{% alert icon="🤖 " context="success" %}}
 * 该接口的 API Key 需使用`应用特定的 key`，否则会报错。  
 
+<!-- * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 -->
+
 * 有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。
 {{% /alert %}}
 
 ## 请求简易应用和工作流
 
-对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
+`v1`对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：
 
 {{% alert icon="🤖 " context="success" %}}
 * 传入的`model`，`temperature`等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
@@ -65,7 +67,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 {{< markdownify >}}
 
 * 仅`messages`有部分区别，其他参数一致。
-* 目前不支持上次文件，需上传到自己的对象存储中，获取对应的文件链接。
+* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
@@ -116,13 +118,283 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
 {{% /alert %}}
 
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
 
+<!-- #### v2
+
+v1,v2 接口请求参数一致，仅请求地址不一样。
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="基础请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
+--header 'Authorization: fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "my_chatId",
+    "stream": false,
+    "detail": false,
+    "responseChatItemId": "my_responseChatItemId",
+    "variables": {
+        "uid": "asdfadsfasfd2323",
+        "name": "张三"
+    },
+    "messages": [
+        {
+            "role": "user",
+            "content": "你是谁"
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="图片/文件请求示例" >}}
+{{< markdownify >}}
+
+* 仅`messages`有部分区别，其他参数一致。
+* 目前不支持上传文件，需上传到自己的对象存储中，获取对应的文件链接。
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/v2/chat/completions' \
+--header 'Authorization: Bearer fastgpt-xxxxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "chatId": "abcd",
+    "stream": false,
+    "messages": [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "导演是谁"
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": "图片链接"
+                    }
+                },
+                {
+                    "type": "file_url",
+                    "name": "文件名",
+                    "url": "文档链接，支持 txt md html word pdf ppt csv excel"
+                }
+            ]
+        }
+    ]
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+{{% alert context="info" %}}
+- headers.Authorization: Bearer {{apikey}}
+- chatId: string | undefined 。
+  - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。
+  - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题，其余 message 会被忽略。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
+- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
+- responseChatItemId: string | undefined 。如果传入，则会将该值作为本次对话的响应消息的 ID，FastGPT 会自动将该 ID 存入数据库。请确保，在当前`chatId`下，`responseChatItemId`是唯一的。
+- detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
+- variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
+{{% /alert %}}
 
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
 
+#### v1
+
+
+
 ### 响应
+
+#### v2
+
+v2 接口比起 v1，主要变变化在于：会在每个节点运行结束后及时返回 response，而不是等工作流结束后再统一返回。
+
+{{< tabs tabTotal="5" >}}
+{{< tab tabName="detail=false,stream=false 响应" >}}
+{{< markdownify >}}
+
+```json
+{
+    "id": "",
+    "model": "",
+    "usage": {
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+        "total_tokens": 1
+    },
+    "choices": [
+        {
+            "message": {
+                "role": "assistant",
+                "content": "我是一个人工智能助手，旨在回答问题和提供信息。如果你有任何问题或者需要帮助，随时问我！"
+            },
+            "finish_reason": "stop",
+            "index": 0
+        }
+    ]
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="detail=false,stream=true 响应" >}}
+{{< markdownify >}}
+
+
+```bash
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"你好"},"index":0,"finish_reason":null}]}
+
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"！"},"index":0,"finish_reason":null}]}
+
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"今天"},"index":0,"finish_reason":null}]}
+
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"过得怎么样？"},"index":0,"finish_reason":null}]}
+
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+data: [DONE]
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="detail=true,stream=false 响应" >}}
+{{< markdownify >}}
+
+```json
+{
+    "responseData": [
+        {
+            "id": "iSol79OFrBH1I9kC",
+            "nodeId": "448745",
+            "moduleName": "common:core.module.template.work_start",
+            "moduleType": "workflowStart",
+            "runningTime": 0
+        },
+        {
+            "id": "t1T94WCy6Su3BK4V",
+            "nodeId": "fjLpE3XPegmoGtbU",
+            "moduleName": "AI 对话",
+            "moduleType": "chatNode",
+            "runningTime": 1.46,
+            "totalPoints": 0,
+            "model": "GPT-4o-mini",
+            "tokens": 64,
+            "inputTokens": 10,
+            "outputTokens": 54,
+            "query": "你是谁",
+            "reasoningText": "",
+            "historyPreview": [
+                {
+                    "obj": "Human",
+                    "value": "你是谁"
+                },
+                {
+                    "obj": "AI",
+                    "value": "我是一个人工智能助手，旨在帮助回答问题和提供信息。如果你有任何问题或需要帮助，请告诉我！"
+                }
+            ],
+            "contextTotalLen": 2
+        }
+    ],
+    "newVariables": {
+
+    },
+    "id": "",
+    "model": "",
+    "usage": {
+        "prompt_tokens": 1,
+        "completion_tokens": 1,
+        "total_tokens": 1
+    },
+    "choices": [
+        {
+            "message": {
+                "role": "assistant",
+                "content": "我是一个人工智能助手，旨在帮助回答问题和提供信息。如果你有任何问题或需要帮助，请告诉我！"
+            },
+            "finish_reason": "stop",
+            "index": 0
+        }
+    ]
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+
+{{< tab tabName="detail=true,stream=true 响应" >}}
+{{< markdownify >}}
+
+```bash
+event: flowNodeResponse
+data: {"id":"iYv2uA9rCWAtulWo","nodeId":"workflowStartNodeId","moduleName":"流程开始","moduleType":"workflowStart","runningTime":0}
+
+event: flowNodeStatus
+data: {"status":"running","name":"AI 对话"}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"你好"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"！"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"今天"},"index":0,"finish_reason":null}]}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":"过得怎么样？"},"index":0,"finish_reason":null}]}
+
+event: flowNodeResponse
+data: {"id":"pVzLBF7M3Ol4n7s6","nodeId":"ixe20AHN3jy74pKf","moduleName":"AI 对话","moduleType":"chatNode","runningTime":1.48,"totalPoints":0.0042,"model":"Qwen-plus","tokens":28,"inputTokens":8,"outputTokens":20,"query":"你好","reasoningText":"","historyPreview":[{"obj":"Human","value":"你好"},{"obj":"AI","value":"你好！今天过得怎么样？"}],"contextTotalLen":2}
+
+event: answer
+data: {"id":"","object":"","created":0,"model":"","choices":[{"delta":{"role":"assistant","content":null},"index":0,"finish_reason":"stop"}]}
+
+event: answer
+data: [DONE]
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="event值" >}}
+{{< markdownify >}}
+
+event取值：
+
+- answer: 返回给客户端的文本（最终会算作回答）
+- fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
+- toolCall: 执行工具
+- toolParams: 工具参数
+- toolResponse: 工具返回
+- flowNodeStatus: 运行到的节点状态
+- flowNodeResponse: 单个节点详细响应
+- updateVariables: 更新变量
+- error: 报错
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}} 
+
+#### v1 -->
 
 {{< tabs tabTotal="5" >}}
 {{< tab tabName="detail=false,stream=false 响应" >}}
@@ -647,8 +919,6 @@ event取值：
 {{< /markdownify >}}
 {{< /tab >}}
 {{< /tabs >}}
-
-
 
 # 对话 CRUD
 

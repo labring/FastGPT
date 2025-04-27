@@ -27,7 +27,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     embeddingWeight: 0.5,
     limit: 3000,
     similarity: 0.5,
-    usingReRank: false,
+    usingReRank: true,
     rerankModel: defaultModels.llm?.model,
     rerankWeight: 0.6,
     datasetSearchUsingExtensionQuery: true,

@@ -127,11 +127,11 @@ export const ModelEditModal = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel) return '/ 1k Tokens';
+    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
     if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(
     async (data: SystemModelItemType) => {
@@ -356,7 +356,12 @@ export const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                          <MyNumberInput
+                            min={2000}
+                            register={register}
+                            name="maxResponse"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -372,6 +377,7 @@ export const ModelEditModal = ({
                           <MyNumberInput
                             register={register}
                             name="maxTemperature"
+                            min={0}
                             step={0.1}
                             {...InputStyles}
                           />

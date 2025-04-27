@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import {
   RuntimeEdgeItemType,
+  RuntimeNodeItemType,
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
@@ -14,7 +15,8 @@ import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import json5 from 'json5';
+import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const getWorkflowResponseWrite = ({
   res,
@@ -53,7 +55,8 @@ export const getWorkflowResponseWrite = ({
       [SseResponseEventEnum.toolCall]: 1,
       [SseResponseEventEnum.toolParams]: 1,
       [SseResponseEventEnum.toolResponse]: 1,
-      [SseResponseEventEnum.updateVariables]: 1
+      [SseResponseEventEnum.updateVariables]: 1,
+      [SseResponseEventEnum.flowNodeResponse]: 1
     };
     if (!detail && detailEvent[event]) return;
 
@@ -101,49 +104,6 @@ export const getHistories = (history?: ChatItemType[] | number, histories: ChatI
   })();
 
   return [...systemHistories, ...filterHistories];
-};
-
-/* value type format */
-export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
-  if (value === undefined) return;
-  if (!type || type === WorkflowIOValueTypeEnum.any) return value;
-
-  if (type === 'string') {
-    if (typeof value !== 'object') return String(value);
-    return JSON.stringify(value);
-  }
-  if (type === 'number') return Number(value);
-  if (type === 'boolean') {
-    if (typeof value === 'string') return value === 'true';
-    return Boolean(value);
-  }
-  try {
-    if (type === WorkflowIOValueTypeEnum.arrayString && typeof value === 'string') {
-      return [value];
-    }
-    if (
-      type &&
-      [
-        WorkflowIOValueTypeEnum.object,
-        WorkflowIOValueTypeEnum.chatHistory,
-        WorkflowIOValueTypeEnum.datasetQuote,
-        WorkflowIOValueTypeEnum.selectApp,
-        WorkflowIOValueTypeEnum.selectDataset,
-        WorkflowIOValueTypeEnum.arrayString,
-        WorkflowIOValueTypeEnum.arrayNumber,
-        WorkflowIOValueTypeEnum.arrayBoolean,
-        WorkflowIOValueTypeEnum.arrayObject,
-        WorkflowIOValueTypeEnum.arrayAny
-      ].includes(type) &&
-      typeof value !== 'object'
-    ) {
-      return json5.parse(value);
-    }
-  } catch (error) {
-    return value;
-  }
-
-  return value;
 };
 
 export const checkQuoteQAValue = (quoteQA?: SearchDataResponseItemType[]) => {
@@ -197,4 +157,54 @@ export const formatHttpError = (error: any) => {
     code: error?.code,
     status: error?.status
   };
+};
+
+export const rewriteRuntimeWorkFlow = (
+  nodes: RuntimeNodeItemType[],
+  edges: RuntimeEdgeItemType[]
+) => {
+  const toolSetNodes = nodes.filter((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+
+  if (toolSetNodes.length === 0) {
+    return;
+  }
+
+  const nodeIdsToRemove = new Set<string>();
+
+  for (const toolSetNode of toolSetNodes) {
+    nodeIdsToRemove.add(toolSetNode.nodeId);
+    const toolList =
+      toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.toolList || [];
+    const url = toolSetNode.inputs.find((input) => input.key === 'toolSetData')?.value?.url;
+
+    const incomingEdges = edges.filter((edge) => edge.target === toolSetNode.nodeId);
+
+    for (const tool of toolList) {
+      const newToolNode = getMCPToolRuntimeNode({ avatar: toolSetNode.avatar, tool, url });
+
+      nodes.push({ ...newToolNode, name: `${toolSetNode.name} / ${tool.name}` });
+
+      for (const inEdge of incomingEdges) {
+        edges.push({
+          source: inEdge.source,
+          target: newToolNode.nodeId,
+          sourceHandle: inEdge.sourceHandle,
+          targetHandle: 'selectedTools',
+          status: inEdge.status
+        });
+      }
+    }
+  }
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(nodes[i].nodeId)) {
+      nodes.splice(i, 1);
+    }
+  }
+
+  for (let i = edges.length - 1; i >= 0; i--) {
+    if (nodeIdsToRemove.has(edges[i].target)) {
+      edges.splice(i, 1);
+    }
+  }
 };
