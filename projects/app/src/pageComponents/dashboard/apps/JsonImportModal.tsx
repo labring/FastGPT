@@ -1,5 +1,5 @@
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { Box, Button, Flex, Input, ModalBody, ModalFooter, Spinner, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -16,8 +16,8 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
-import { fetchWorkflowFromUrl } from '@/web/core/app/workflow';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { postFetchWorkflow } from '@/web/core/app/api/app';
 
 type FormType = {
   avatar: string;
@@ -38,7 +38,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingStatus, setLoadingStatus] = useState('');
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -49,7 +48,50 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   });
   const workflowStr = watch('workflowStr');
 
-  // 检查并获取utm_workflow
+  const fetchWorkflowFromUrl = async (url: string) => {
+    try {
+      if (!url || typeof url !== 'string') {
+        return Promise.reject(new Error('WORKFLOW_IMPORT_ERROR: URL为空或格式错误'));
+      }
+
+      let fetchUrl = url.trim();
+
+      if (fetchUrl.endsWith('/')) {
+        fetchUrl = fetchUrl.slice(0, -1);
+      }
+
+      if (!fetchUrl.startsWith('http://') && !fetchUrl.startsWith('https://')) {
+        fetchUrl = `https://${fetchUrl}`;
+      }
+
+      try {
+        const encodedUrl = encodeURIComponent(fetchUrl);
+
+        const proxyResponse = await postFetchWorkflow({
+          url: encodedUrl
+        }).catch((e) => {
+          console.error(`获取失败: ${e.message || 'UNKNOWN_ERROR'}`);
+          return null;
+        });
+
+        if (proxyResponse) {
+          console.log('工作流数据获取成功');
+          return proxyResponse;
+        } else {
+          return Promise.reject(new Error('后端代理请求返回空数据'));
+        }
+      } catch (err: any) {
+        console.error(`获取失败: ${err.message || 'UNKNOWN_ERROR'}`);
+        return Promise.reject(new Error('无法获取工作流数据'));
+      }
+    } catch (error) {
+      console.error('获取工作流数据失败:', error);
+      return Promise.reject(
+        new Error(`获取工作流失败: ${error instanceof Error ? error.message : String(error)}`)
+      );
+    }
+  };
+
   useEffect(() => {
     const isBrowser = typeof window !== 'undefined';
     if (!isBrowser) return;
@@ -59,7 +101,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         const url = sessionStorage.getItem('utm_workflow');
         if (!url) return;
 
-        // 显示加载状态
         setIsLoading(true);
         toast({
           title: t('app:type.Import from json_loading'),
@@ -88,11 +129,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
           sessionStorage.removeItem('utm_workflow');
 
-          // 加载成功，关闭加载状态
           setIsLoading(false);
         } catch (error) {
           console.error('获取工作流数据失败:', error);
-          // 显示错误信息
           toast({
             title: t('app:type.Import from json_error'),
             status: 'error'
