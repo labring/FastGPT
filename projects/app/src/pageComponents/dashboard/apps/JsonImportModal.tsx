@@ -16,8 +16,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getFetchWorkflow } from '@/web/core/app/api/app';
+import { postFetchWorkflow } from '@/web/support/marketing/api';
 import {
   getUtmParams,
   getUtmWorkflow,
@@ -50,7 +49,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       const url = getUtmWorkflow();
       if (!url) return;
 
-      const workflowData = await getFetchWorkflow({ url });
+      const workflowData = await postFetchWorkflow({ url });
 
       setValue('workflowStr', JSON.stringify(workflowData, null, 2));
 

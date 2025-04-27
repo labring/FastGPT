@@ -187,7 +187,6 @@
   "type.Plugin": "Plugin",
   "type.Simple bot": "Simple App",
   "type.Workflow bot": "Workflow",
-  "type.error.URLempty": "The URL cannot be empty",
   "type.error.Workflow data is empty": "No workflow data was obtained",
   "type.error.workflowresponseempty": "Response content is empty",
   "type_not_recognized": "App type not recognized",
