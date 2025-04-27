@@ -80,8 +80,8 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     teamId,
     tmbId,
     appId,
-    shorUrlId: utm_platform,
-    projectCode: utm_projectcode
+    shorUrlPlatform: utm_platform,
+    shorUrlProjectCode: utm_projectcode
   } as any);
 
   return appId;
