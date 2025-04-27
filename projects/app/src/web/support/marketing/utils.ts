@@ -1,0 +1,77 @@
+import { ShortUrlParams, TrackRegisterParams } from '@fastgpt/global/support/marketing/type';
+
+export const getInviterId = () => {
+  return localStorage.getItem('inviterId') || undefined;
+};
+export const setInviterId = (inviterId?: string) => {
+  if (!inviterId) return;
+  localStorage.setItem('inviterId', inviterId);
+};
+export const removeInviterId = () => {
+  localStorage.removeItem('inviterId');
+};
+
+export const getBdVId = () => {
+  return sessionStorage.getItem('bd_vid') || undefined;
+};
+export const setBdVId = (bdVid?: string) => {
+  if (!bdVid) return;
+  sessionStorage.setItem('bd_vid', bdVid);
+};
+
+export const getUtmWorkflow = () => {
+  return sessionStorage.getItem('utm_workflow') || undefined;
+};
+export const setUtmWorkflow = (utmWorkflow?: string) => {
+  if (!utmWorkflow) return;
+  sessionStorage.setItem('utm_workflow', utmWorkflow);
+};
+export const removeUtmWorkflow = () => {
+  sessionStorage.removeItem('utm_workflow');
+};
+
+export const getUtmParams = () => {
+  try {
+    const params = JSON.parse(localStorage.getItem('utm_params') || '{}');
+    return params as ShortUrlParams;
+  } catch (error) {
+    return {} as ShortUrlParams;
+  }
+};
+export const setUtmParams = (utmParams?: ShortUrlParams) => {
+  if (!utmParams || Object.keys(utmParams).length === 0) return;
+  localStorage.setItem('utm_params', JSON.stringify(utmParams));
+};
+export const removeUtmParams = () => {
+  localStorage.removeItem('utm_params');
+};
+
+export const getFastGPTSem = () => {
+  try {
+    return localStorage.getItem('fastgpt_sem')
+      ? JSON.parse(localStorage.getItem('fastgpt_sem')!)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) => {
+  if (!fastgptSem) return;
+  localStorage.setItem('fastgpt_sem', JSON.stringify(fastgptSem));
+};
+export const removeFastGPTSem = () => {
+  localStorage.removeItem('fastgpt_sem');
+};
+
+export const getSourceDomain = () => {
+  return sessionStorage.getItem('sourceDomain') || undefined;
+};
+export const setSourceDomain = (sourceDomain?: string) => {
+  const formatSourceDomain = (() => {
+    if (sourceDomain) return sourceDomain;
+    return document.referrer;
+  })();
+
+  if (!formatSourceDomain || getSourceDomain()) return;
+  sessionStorage.setItem('sourceDomain', formatSourceDomain);
+};

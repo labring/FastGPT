@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
@@ -33,6 +33,8 @@ import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
+import { getUtmWorkflow } from '@/web/support/marketing/utils';
+import { useMount } from 'ahooks';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -71,12 +73,20 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     onOpen: onOpenCreateMCPTools,
     onClose: onCloseCreateMCPTools
   } = useDisclosure();
+
+  const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+
   const {
     isOpen: isOpenJsonImportModal,
     onOpen: onOpenJsonImportModal,
     onClose: onCloseJsonImportModal
   } = useDisclosure();
-  const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+  //if there is a workflow url in the session storage, open the json import modal and import the workflow
+  useMount(() => {
+    if (getUtmWorkflow()) {
+      onOpenJsonImportModal();
+    }
+  });
 
   const { runAsync: onCreateFolder } = useRequest2(postCreateAppFolder, {
     onSuccess() {
