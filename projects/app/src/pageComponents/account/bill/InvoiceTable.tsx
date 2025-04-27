@@ -22,6 +22,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+
 const InvoiceTable = () => {
   const { t } = useTranslation();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType | ''>('');

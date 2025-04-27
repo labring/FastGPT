@@ -1,5 +1,5 @@
 import OpenAI from '@fastgpt/global/core/ai';
-import {
+import type {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
   StreamChatType,

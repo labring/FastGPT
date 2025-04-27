@@ -23,7 +23,7 @@ export async function register() {
         import('@fastgpt/service/common/mongo/index'),
         import('@fastgpt/service/common/system/tools'),
         import('@/service/common/system'),
-        import('@fastgpt/service/common/vectorStore/controller'),
+        import('@fastgpt/service/common/vectorDB/controller'),
         import('@/service/mongo'),
         import('@/service/core/app/plugin'),
         import('@/service/common/system/volumnMongoWatch'),

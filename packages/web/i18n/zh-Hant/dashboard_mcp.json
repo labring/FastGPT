@@ -2,7 +2,6 @@
   "app_alias_name": "工具名",
   "app_description": "應用描述",
   "app_name": "應用名",
-  "app_tool_name": "工具別名",
   "apps": "暴露的應用",
   "create_mcp": "創建 MCP 服務",
   "create_mcp_server": "新建服務",
@@ -19,5 +18,8 @@
   "search_app": "搜索應用",
   "select_app": "應用選擇",
   "start_use": "開始使用",
+  "tool_name": "工具名",
+  "tool_name_placeholder": "建議使用英文名",
+  "tool_name_tip": "部分 Client 僅支持英文，可以將該值修改成英文的工具名",
   "usage_way": "MCP 服務使用"
 }

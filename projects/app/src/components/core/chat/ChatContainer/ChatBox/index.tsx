@@ -226,7 +226,8 @@ const ChatBox = ({
       interactive,
       autoTTSResponse,
       variables,
-      nodeResponse
+      nodeResponse,
+      durationSeconds
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatRecords((state) =>
         state.map((item, index) => {
@@ -346,6 +347,13 @@ const ChatBox = ({
             return {
               ...item,
               value: item.value.concat(val)
+            };
+          } else if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
+            return {
+              ...item,
+              durationSeconds: item.durationSeconds
+                ? +(item.durationSeconds + durationSeconds).toFixed(2)
+                : durationSeconds
             };
           }
 

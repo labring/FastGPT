@@ -97,6 +97,7 @@ async function getFakeUser(username: string) {
     }
     return fakeUsers[username];
   }
+
   const owner = await getFakeUser('Owner');
   const ownerTeamId = owner.teamId;
   if (!fakeUsers[username]) {

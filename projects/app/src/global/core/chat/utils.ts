@@ -45,9 +45,6 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
       .map((item) => item.quoteList)
       .flat()
       .filter(Boolean) as SearchDataResponseItemType[],
-    totalRunningTime: Number(
-      historyItem.responseData?.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
-    ),
     historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length
   };
 }

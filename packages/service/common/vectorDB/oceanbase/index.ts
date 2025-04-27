@@ -1,8 +1,8 @@
-/* pg vector crud */
+/* oceanbase vector crud */
 import { DatasetVectorTableName } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
-import { PgClient, connectPg } from './index';
-import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
+import { ObClient } from './controller';
+import { RowDataPacket } from 'mysql2/promise';
 import {
   DelDatasetVectorCtrlProps,
   EmbeddingRecallCtrlProps,
@@ -12,15 +12,13 @@ import {
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';
 
-export class PgVectorCtrl {
+export class ObVectorCtrl {
   constructor() {}
   init = async () => {
     try {
-      await connectPg();
-      await PgClient.query(`
-        CREATE EXTENSION IF NOT EXISTS vector;
+      await ObClient.query(`
         CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
-            id BIGSERIAL PRIMARY KEY,
+            id BIGINT AUTO_INCREMENT PRIMARY KEY,
             vector VECTOR(1536) NOT NULL,
             team_id VARCHAR(50) NOT NULL,
             dataset_id VARCHAR(50) NOT NULL,
@@ -29,47 +27,26 @@ export class PgVectorCtrl {
         );
       `);
 
-      await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+      await ObClient.query(
+        `CREATE VECTOR INDEX IF NOT EXISTS vector_index ON ${DatasetVectorTableName}(vector) WITH (distance=inner_product, type=hnsw, m=32, ef_construction=128);`
       );
-      await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
+      await ObClient.query(
+        `CREATE INDEX IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName}(team_id, dataset_id, collection_id);`
       );
-      await PgClient.query(
-        `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
+      await ObClient.query(
+        `CREATE INDEX IF NOT EXISTS create_time_index ON ${DatasetVectorTableName}(createtime);`
       );
-      // 10w rows
-      // await PgClient.query(`
-      //   ALTER TABLE modeldata SET (
-      //     autovacuum_vacuum_scale_factor = 0.1,
-      //     autovacuum_analyze_scale_factor = 0.05,
-      //     autovacuum_vacuum_threshold = 50,
-      //     autovacuum_analyze_threshold = 50,
-      //     autovacuum_vacuum_cost_delay = 20,
-      //     autovacuum_vacuum_cost_limit = 200
-      //   );`);
 
-      // 100w rows
-      // await PgClient.query(`
-      //   ALTER TABLE modeldata SET (
-      //   autovacuum_vacuum_scale_factor = 0.01,
-      //   autovacuum_analyze_scale_factor = 0.02,
-      //   autovacuum_vacuum_threshold = 1000,
-      //   autovacuum_analyze_threshold = 1000,
-      //   autovacuum_vacuum_cost_delay = 10,
-      //   autovacuum_vacuum_cost_limit = 2000
-      // );`)
-
-      addLog.info('init pg successful');
+      addLog.info('init oceanbase successful');
     } catch (error) {
-      addLog.error('init pg error', error);
+      addLog.error('init oceanbase error', error);
     }
   };
   insert = async (props: InsertVectorControllerProps): Promise<{ insertId: string }> => {
     const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
 
     try {
-      const { rowCount, rows } = await PgClient.insert(DatasetVectorTableName, {
+      const { rowCount, rows } = await ObClient.insert(DatasetVectorTableName, {
         values: [
           [
             { key: 'vector', value: `[${vector}]` },
@@ -130,7 +107,7 @@ export class PgVectorCtrl {
     if (!where) return;
 
     try {
-      await PgClient.delete(DatasetVectorTableName, {
+      await ObClient.delete(DatasetVectorTableName, {
         where: [where]
       });
     } catch (error) {
@@ -185,33 +162,30 @@ export class PgVectorCtrl {
     }
 
     try {
-      const results: any = await PgClient.query(
+      const rows = await ObClient.query<
+        ({
+          id: string;
+          collection_id: string;
+          score: number;
+        } & RowDataPacket)[][]
+      >(
         `BEGIN;
-          SET LOCAL hnsw.ef_search = ${global.systemEnv?.hnswEfSearch || 100};
-          SET LOCAL hnsw.iterative_scan = relaxed_order;
-          WITH relaxed_results AS MATERIALIZED (
-            select id, collection_id, vector <#> '[${vector}]' AS score
-              from ${DatasetVectorTableName}
-              where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
-                ${filterCollectionIdSql}
-                ${forbidCollectionSql}
-              order by score limit ${limit}
-          ) SELECT id, collection_id, score FROM relaxed_results ORDER BY score;
+          SET ob_hnsw_ef_search = ${global.systemEnv?.hnswEfSearch || 100};
+          SELECT id, collection_id, inner_product(vector, [${vector}]) AS score
+            FROM ${DatasetVectorTableName}
+            WHERE team_id='${teamId}'
+              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+              ${filterCollectionIdSql}
+              ${forbidCollectionSql}
+            ORDER BY score desc APPROXIMATE LIMIT ${limit};
         COMMIT;`
-      );
-      const rows = results?.[3]?.rows as PgSearchRawType[];
-
-      if (!Array.isArray(rows)) {
-        return {
-          results: []
-        };
-      }
+      ).then(([rows]) => rows[2]);
 
       return {
         results: rows.map((item) => ({
           id: String(item.id),
           collectionId: item.collection_id,
-          score: item.score * -1
+          score: item.score
         }))
       };
     } catch (error) {
@@ -225,16 +199,20 @@ export class PgVectorCtrl {
     }
   };
   getVectorDataByTime = async (start: Date, end: Date) => {
-    const { rows } = await PgClient.query<{
-      id: string;
-      team_id: string;
-      dataset_id: string;
-    }>(`SELECT id, team_id, dataset_id
+    const rows = await ObClient.query<
+      ({
+        id: string;
+        team_id: string;
+        dataset_id: string;
+      } & RowDataPacket)[]
+    >(
+      `SELECT id, team_id, dataset_id
     FROM ${DatasetVectorTableName}
     WHERE createtime BETWEEN '${dayjs(start).format('YYYY-MM-DD HH:mm:ss')}' AND '${dayjs(
       end
     ).format('YYYY-MM-DD HH:mm:ss')}';
-    `);
+    `
+    ).then(([rows]) => rows);
 
     return rows.map((item) => ({
       id: String(item.id),
@@ -243,14 +221,14 @@ export class PgVectorCtrl {
     }));
   };
   getVectorCountByTeamId = async (teamId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
+    const total = await ObClient.count(DatasetVectorTableName, {
       where: [['team_id', String(teamId)]]
     });
 
     return total;
   };
   getVectorCountByDatasetId = async (teamId: string, datasetId: string) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
+    const total = await ObClient.count(DatasetVectorTableName, {
       where: [['team_id', String(teamId)], 'and', ['dataset_id', String(datasetId)]]
     });
 
@@ -261,7 +239,7 @@ export class PgVectorCtrl {
     datasetId: string,
     collectionId: string
   ) => {
-    const total = await PgClient.count(DatasetVectorTableName, {
+    const total = await ObClient.count(DatasetVectorTableName, {
       where: [
         ['team_id', String(teamId)],
         'and',

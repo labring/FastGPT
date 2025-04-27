@@ -17,7 +17,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getOperationLogs } from '@/web/support/user/team/operantionLog/api';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import { operationLogI18nMap } from '@fastgpt/service/support/operationLog/constants';
+import { operationLogMap } from '@fastgpt/service/support/operationLog/constants';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import UserBox from '@fastgpt/web/components/common/UserBox';
@@ -52,7 +52,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
   const eventOptions = useMemo(
     () =>
       Object.values(OperationLogEventEnum).map((event) => ({
-        label: t(operationLogI18nMap[event].typeLabel),
+        label: t(operationLogMap[event].typeLabel),
         value: event
       })),
     [t]
@@ -158,7 +158,7 @@ function OperationLogTable({ Tabs }: { Tabs: React.ReactNode }) {
               </Thead>
               <Tbody>
                 {operationLogs?.map((log) => {
-                  const i18nData = operationLogI18nMap[log.event];
+                  const i18nData = operationLogMap[log.event];
                   const metadata = { ...log.metadata };
 
                   if (log.event === OperationLogEventEnum.ASSIGN_PERMISSION) {

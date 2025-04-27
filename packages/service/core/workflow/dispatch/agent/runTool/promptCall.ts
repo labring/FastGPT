@@ -9,7 +9,10 @@ import { NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionRequestMessageRoleEnum,
+  getLLMDefaultUsage
+} from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
 import json5 from 'json5';
@@ -256,9 +259,18 @@ export const runToolWithPromptCall = async (
     }
   });
 
-  const { answer, reasoning, finish_reason } = await (async () => {
-    if (res && isStreamResponse) {
-      const { answer, reasoning, finish_reason } = await streamResponse({
+  let { answer, reasoning, finish_reason, inputTokens, outputTokens } = await (async () => {
+    if (isStreamResponse) {
+      if (!res || res.closed) {
+        return {
+          answer: '',
+          reasoning: '',
+          finish_reason: 'close' as const,
+          inputTokens: 0,
+          outputTokens: 0
+        };
+      }
+      const { answer, reasoning, finish_reason, usage } = await streamResponse({
         res,
         toolNodes,
         stream: aiResponse,
@@ -266,18 +278,28 @@ export const runToolWithPromptCall = async (
         aiChatReasoning
       });
 
-      return { answer, reasoning, finish_reason };
+      return {
+        answer,
+        reasoning,
+        finish_reason,
+        inputTokens: usage.prompt_tokens,
+        outputTokens: usage.completion_tokens
+      };
     } else {
       const finish_reason = aiResponse.choices?.[0]?.finish_reason as CompletionFinishReason;
       const content = aiResponse.choices?.[0]?.message?.content || '';
+      // @ts-ignore
       const reasoningContent: string = aiResponse.choices?.[0]?.message?.reasoning_content || '';
+      const usage = aiResponse.usage;
 
       // API already parse reasoning content
       if (reasoningContent || !aiChatReasoning) {
         return {
           answer: content,
           reasoning: reasoningContent,
-          finish_reason
+          finish_reason,
+          inputTokens: usage?.prompt_tokens,
+          outputTokens: usage?.completion_tokens
         };
       }
 
@@ -285,7 +307,9 @@ export const runToolWithPromptCall = async (
       return {
         answer,
         reasoning: think,
-        finish_reason
+        finish_reason,
+        inputTokens: usage?.prompt_tokens,
+        outputTokens: usage?.completion_tokens
       };
     }
   })();
@@ -336,8 +360,8 @@ export const runToolWithPromptCall = async (
       reasoning_text: undefined
     });
 
-    const inputTokens = await countGptMessagesTokens(requestMessages);
-    const outputTokens = await countGptMessagesTokens([gptAssistantResponse]);
+    inputTokens = inputTokens || (await countGptMessagesTokens(requestMessages));
+    outputTokens = outputTokens || (await countGptMessagesTokens([gptAssistantResponse]));
 
     // concat tool assistant
     const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
@@ -423,8 +447,8 @@ export const runToolWithPromptCall = async (
   };
 
   // Only toolCall tokens are counted here, Tool response tokens count towards the next reply
-  const inputTokens = await countGptMessagesTokens(requestMessages);
-  const outputTokens = await countGptMessagesTokens([assistantToolMsgParams]);
+  inputTokens = inputTokens || (await countGptMessagesTokens(requestMessages));
+  outputTokens = outputTokens || (await countGptMessagesTokens([assistantToolMsgParams]));
 
   /* 
     ...
@@ -559,9 +583,12 @@ async function streamResponse({
   let answer = '';
   let reasoning = '';
   let finish_reason: CompletionFinishReason = null;
+  let usage = getLLMDefaultUsage();
+
   const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
 
   for await (const part of stream) {
+    usage = part.usage || usage;
     if (res.closed) {
       stream.controller?.abort();
       finish_reason = 'close';
@@ -629,7 +656,7 @@ async function streamResponse({
     }
   }
 
-  return { answer, reasoning, finish_reason };
+  return { answer, reasoning, finish_reason, usage };
 }
 
 const parseAnswer = (

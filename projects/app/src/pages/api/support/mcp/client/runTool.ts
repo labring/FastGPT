@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import getMCPClient from '@fastgpt/service/core/app/mcp';
+import { MCPClient } from '@fastgpt/service/core/app/mcp';
 
 export type RunMCPToolQuery = {};
 
@@ -18,14 +18,9 @@ async function handler(
 ): Promise<RunMCPToolResponse> {
   const { url, toolName, params } = req.body;
 
-  const mcpClient = getMCPClient({ url });
+  const mcpClient = new MCPClient({ url });
 
-  try {
-    const result = await mcpClient.toolCall(toolName, params);
-    return result;
-  } catch (error) {
-    return Promise.reject(error);
-  }
+  return mcpClient.toolCall(toolName, params);
 }
 
 export default NextAPI(handler);

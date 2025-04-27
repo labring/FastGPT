@@ -77,13 +77,6 @@ export const getHistoryPreview = (
   });
 };
 
-export const filterModuleTypeList: any[] = [
-  FlowNodeTypeEnum.pluginModule,
-  FlowNodeTypeEnum.datasetSearchNode,
-  FlowNodeTypeEnum.tools,
-  FlowNodeTypeEnum.pluginOutput
-];
-
 export const filterPublicNodeResponseData = ({
   flowResponses = [],
   responseDetail = false
@@ -91,12 +84,19 @@ export const filterPublicNodeResponseData = ({
   flowResponses?: ChatHistoryItemResType[];
   responseDetail?: boolean;
 }) => {
+  const publicNodeMap: Record<string, any> = {
+    [FlowNodeTypeEnum.pluginModule]: true,
+    [FlowNodeTypeEnum.datasetSearchNode]: true,
+    [FlowNodeTypeEnum.tools]: true,
+    [FlowNodeTypeEnum.pluginOutput]: true
+  };
+
   const filedList = responseDetail
     ? ['quoteList', 'moduleType', 'pluginOutput', 'runningTime']
     : ['moduleType', 'pluginOutput', 'runningTime'];
 
   return flowResponses
-    .filter((item) => filterModuleTypeList.includes(item.moduleType))
+    .filter((item) => publicNodeMap[item.moduleType])
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {
@@ -185,7 +185,6 @@ export const mergeChatResponseData = (
           runningTime: +((lastResponse.runningTime || 0) + (curr.runningTime || 0)).toFixed(2),
           totalPoints: (lastResponse.totalPoints || 0) + (curr.totalPoints || 0),
           childTotalPoints: (lastResponse.childTotalPoints || 0) + (curr.childTotalPoints || 0),
-          toolCallTokens: (lastResponse.toolCallTokens || 0) + (curr.toolCallTokens || 0),
           toolDetail: [...(lastResponse.toolDetail || []), ...(curr.toolDetail || [])],
           loopDetail: [...(lastResponse.loopDetail || []), ...(curr.loopDetail || [])],
           pluginDetail: [...(lastResponse.pluginDetail || []), ...(curr.pluginDetail || [])]
