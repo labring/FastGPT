@@ -56,9 +56,6 @@ const A = ({ children, ...props }: any) => {
 
   // Quote
   if (props.href?.startsWith('QUOTE') && typeof children?.[0] === 'string') {
-    const indexMatch = props.href.match(/QUOTE(\d+)/);
-    const index = indexMatch ? indexMatch[1] : '1';
-
     const sourceData = useMemo(
       () => getCollectionSourceData(quoteData?.collection),
       [quoteData?.collection]
@@ -80,27 +77,17 @@ const A = ({ children, ...props }: any) => {
           onOpen();
           runAsync(String(children));
         }}
+        trigger={'hover'}
         gutter={4}
       >
         <PopoverTrigger>
           <Button variant={'unstyled'} minH={0} minW={0} h={'auto'}>
-            <MyTooltip label={t('common:read_quote')}>
-              <Box
-                w={'14px'}
-                h={'14px'}
-                borderRadius={'full'}
-                bg={'rgba(0, 0, 0, 0.08)'}
-                color={'myGray.600'}
-                fontSize={'10px'}
-                display={'flex'}
-                alignItems={'center'}
-                justifyContent={'center'}
-                ml={0.5}
-                transform={'translateY(-3px)'}
-              >
-                {index}
-              </Box>
-            </MyTooltip>
+            <MyIcon
+              name={'core/chat/quoteSign'}
+              w={'1rem'}
+              color={'primary.700'}
+              cursor={'pointer'}
+            />
           </Button>
         </PopoverTrigger>
         <PopoverContent boxShadow={'lg'} w={'500px'} py={4}>
@@ -118,19 +105,6 @@ const A = ({ children, ...props }: any) => {
                   height={6}
                   mr={1}
                 >
-                  <Flex
-                    color={'myGray.500'}
-                    bg={'myGray.150'}
-                    w={4}
-                    justifyContent={'center'}
-                    fontSize={'10px'}
-                    h={'full'}
-                    alignItems={'center'}
-                    mr={1}
-                    flexShrink={0}
-                  >
-                    {index}
-                  </Flex>
                   <Flex px={1.5}>
                     <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
                     <Box
@@ -151,7 +125,7 @@ const A = ({ children, ...props }: any) => {
                   onClick={() => {
                     onClose();
                     eventBus.emit(EventNameEnum.openQuoteReader, {
-                      // quoteId: String(children),
+                      quoteId: String(children),
                       sourceId: sourceData.sourceId,
                       sourceName: sourceData.sourceName,
                       datasetId: quoteData?.collection.datasetId,

@@ -35,7 +35,7 @@ const CollectionReader = ({
   const router = useRouter();
   const { userInfo } = useUserStore();
 
-  const { collectionId, datasetId, chatItemDataId, sourceId, sourceName } = metadata;
+  const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
@@ -45,11 +45,19 @@ const CollectionReader = ({
   });
 
   const filterResults = useMemo(() => {
-    setQuoteIndex(0);
-    return rawSearch
+    const res = rawSearch
       .filter((item) => item.collectionId === collectionId)
       .sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
-  }, [collectionId, rawSearch]);
+
+    if (quoteId) {
+      setQuoteIndex(res.findIndex((item) => item.id === quoteId));
+    } else {
+      setQuoteIndex(0);
+    }
+
+    return res;
+  }, [collectionId, quoteId, rawSearch]);
+
   const currentQuoteItem = useMemo(() => {
     const item = filterResults[quoteIndex];
     if (item) {

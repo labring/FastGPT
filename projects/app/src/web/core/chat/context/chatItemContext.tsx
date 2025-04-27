@@ -41,6 +41,7 @@ export type GetQuoteDataBasicProps = {
 };
 // 获取单个集合引用
 export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
+  quoteId?: string;
   collectionId: string;
   sourceId: string;
   sourceName: string;
