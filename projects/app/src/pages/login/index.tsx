@@ -64,7 +64,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
       setUserInfo(res.user);
 
       const decodeLastRoute = decodeURIComponent(lastRoute);
-      // 检查是否是当前的 route
+
       const navigateTo =
         decodeLastRoute && !decodeLastRoute.includes('/login')
           ? decodeLastRoute

@@ -27,10 +27,14 @@ export type CreateAppBody = {
   modules: AppSchema['modules'];
   edges?: AppSchema['edges'];
   chatConfig?: AppSchema['chatConfig'];
+  utmParams?: {
+    utm_platform?: string;
+    utm_projectcode?: string;
+  };
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, type, modules, edges, chatConfig } = req.body;
+  const { parentId, name, avatar, type, modules, edges, chatConfig, utmParams } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
     return Promise.reject(CommonErrEnum.inheritPermissionError);
@@ -66,8 +70,11 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     type,
     uid: userId,
     teamId,
-    tmbId
-  });
+    tmbId,
+    appId,
+    shorUrlPlatform: utmParams?.utm_platform,
+    shorUrlProjectCode: utmParams?.utm_projectcode
+  } as any);
 
   return appId;
 }

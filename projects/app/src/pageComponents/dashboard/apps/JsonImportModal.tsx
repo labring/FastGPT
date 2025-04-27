@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { appTypeMap } from '@/pageComponents/app/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getAppType } from '@fastgpt/global/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
@@ -16,6 +16,8 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getFetchWorkflow } from '@/web/core/app/api/app';
 
 type FormType = {
   avatar: string;
@@ -23,10 +25,26 @@ type FormType = {
   workflowStr: string;
 };
 
+type UTMParams = {
+  source?: string;
+  medium?: string;
+  content?: string;
+};
+
+const getUtmParams = () => {
+  try {
+    const params = JSON.parse(sessionStorage.getItem('utm_params') || '{}');
+    return params as UTMParams;
+  } catch (error) {
+    return {} as UTMParams;
+  }
+};
+
 const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
+  const { toast } = useToast();
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -36,6 +54,43 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
   const workflowStr = watch('workflowStr');
+
+  const { runAsync: fetchWorkflow, loading: isFetching } = useRequest2(
+    async (url?: string) => {
+      if (!url) return Promise.reject(t('app:type.error.URLempty'));
+
+      let fetchUrl = url.trim();
+      if (fetchUrl.endsWith('/')) fetchUrl = fetchUrl.slice(0, -1);
+      if (!fetchUrl.startsWith('http')) fetchUrl = `https://${fetchUrl}`;
+
+      return getFetchWorkflow({ url: fetchUrl });
+    },
+    { manual: false }
+  );
+
+  useEffect(() => {
+    const url = sessionStorage.getItem('utm_workflow');
+    if (!url) return;
+
+    toast({ title: t('app:type.Import from json_loading'), status: 'info' });
+
+    fetchWorkflow(url)
+      .then((workflowData) => {
+        if (!workflowData) return Promise.reject(t('app:type.error.Workflow data is empty'));
+
+        setValue('workflowStr', JSON.stringify(workflowData, null, 2));
+
+        const utmParams = getUtmParams();
+        if (utmParams.content) setValue('name', utmParams.content);
+
+        sessionStorage.removeItem('utm_params');
+        sessionStorage.removeItem('utm_workflow');
+      })
+      .catch(() => {
+        toast({ title: t('app:type.Import from json_error'), status: 'error' });
+        onClose();
+      });
+  }, [fetchWorkflow, onClose, t, toast]);
 
   const avatar = watch('avatar');
   const {
@@ -65,6 +120,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
   const { runAsync: onSubmit, loading: isCreating } = useRequest2(
     async ({ name, workflowStr }: FormType) => {
+      // 处理UTM参数
+      const utmParams = getUtmParams();
+
       const { workflow, appType } = await (async () => {
         try {
           const workflow = JSON.parse(workflowStr);
@@ -97,7 +155,11 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         type: appType,
         modules: workflow.nodes,
         edges: workflow.edges,
-        chatConfig: workflow.chatConfig
+        chatConfig: workflow.chatConfig,
+        utmParams: {
+          utm_platform: utmParams?.medium,
+          utm_projectcode: utmParams?.content
+        }
       });
     },
     {
@@ -116,7 +178,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       <MyModal
         isOpen
         onClose={onClose}
-        isLoading={isCreating}
+        isLoading={isCreating || isFetching}
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
         iconColor={'primary.600'}
