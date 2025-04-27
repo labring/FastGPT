@@ -59,31 +59,50 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         const url = sessionStorage.getItem('utm_workflow');
         if (!url) return;
 
+        // 显示加载状态
+        setIsLoading(true);
+        toast({
+          title: t('app:type.Import from json_loading'),
+          status: 'info'
+        });
+
         try {
           const workflowData = await fetchWorkflowFromUrl(url);
 
           if (!workflowData) {
-            throw new Error('无法获取工作流数据');
+            return Promise.reject(new Error('无法获取工作流数据'));
           }
 
           setValue('workflowStr', JSON.stringify(workflowData, null, 2));
 
           try {
-            const utmParamsStr = localStorage.getItem('utm_params');
+            const utmParamsStr = sessionStorage.getItem('utm_params');
             if (utmParamsStr) {
               const params = JSON.parse(utmParamsStr) as UTMParams;
               if (params.content) setValue('name', params.content);
             }
+            sessionStorage.removeItem('utm_params');
           } catch (error) {
             console.error('解析utm_params出错:', error);
           }
 
           sessionStorage.removeItem('utm_workflow');
+
+          // 加载成功，关闭加载状态
+          setIsLoading(false);
         } catch (error) {
           console.error('获取工作流数据失败:', error);
+          // 显示错误信息
+          toast({
+            title: t('app:type.Import from json_error'),
+            status: 'error'
+          });
+          onClose();
+          setIsLoading(false);
         }
       } catch (error) {
         console.error('检查工作流URL出错:', error);
+        setIsLoading(false);
       }
     };
 
@@ -182,53 +201,46 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       <MyModal
         isOpen
         onClose={onClose}
-        isLoading={isCreating}
+        isLoading={isCreating || isLoading}
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
         iconColor={'primary.600'}
       >
         <ModalBody>
-          {isLoading ? (
-            <Flex direction="column" align="center" justify="center" py={8}>
-              <Spinner size="xl" color="blue.500" mb={4} />
-              <Text>{loadingStatus}</Text>
+          <>
+            <Box color={'myGray.800'} fontWeight={'bold'}>
+              {t('common:common.Set Name')}
+            </Box>
+            <Flex mt={2} alignItems={'center'}>
+              <MyTooltip label={t('common:common.Set Avatar')}>
+                <Avatar
+                  flexShrink={0}
+                  src={selectedAvatar}
+                  w={['1.75rem', '2.25rem']}
+                  h={['1.75rem', '2.25rem']}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  onClick={onOpenSelectFile}
+                />
+              </MyTooltip>
+              <Input
+                flex={1}
+                ml={3}
+                autoFocus
+                bg={'myWhite.600'}
+                {...register('name', {
+                  required: t('common:core.app.error.App name can not be empty')
+                })}
+              />
             </Flex>
-          ) : (
-            <>
-              <Box color={'myGray.800'} fontWeight={'bold'}>
-                {t('common:common.Set Name')}
-              </Box>
-              <Flex mt={2} alignItems={'center'}>
-                <MyTooltip label={t('common:common.Set Avatar')}>
-                  <Avatar
-                    flexShrink={0}
-                    src={selectedAvatar}
-                    w={['1.75rem', '2.25rem']}
-                    h={['1.75rem', '2.25rem']}
-                    cursor={'pointer'}
-                    borderRadius={'md'}
-                    onClick={onOpenSelectFile}
-                  />
-                </MyTooltip>
-                <Input
-                  flex={1}
-                  ml={3}
-                  autoFocus
-                  bg={'myWhite.600'}
-                  {...register('name', {
-                    required: t('common:core.app.error.App name can not be empty')
-                  })}
-                />
-              </Flex>
-              <Box mt={5}>
-                <ImportAppConfigEditor
-                  value={workflowStr}
-                  onChange={(e) => setValue('workflowStr', e)}
-                  rows={10}
-                />
-              </Box>
-            </>
-          )}
+            <Box mt={5}>
+              <ImportAppConfigEditor
+                value={workflowStr}
+                onChange={(e) => setValue('workflowStr', e)}
+                rows={10}
+              />
+            </Box>
+          </>
         </ModalBody>
         <ModalFooter gap={4}>
           <Button variant={'whiteBase'} onClick={onClose}>

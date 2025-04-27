@@ -182,6 +182,8 @@
   "type.Http plugin": "HTTP 外掛",
   "type.Import from json": "匯入 JSON 設定",
   "type.Import from json tip": "透過 JSON 設定文件，直接建立應用",
+  "type.Import from json_error": "獲取工作流數據失敗，請檢查URL或手動粘貼JSON數據",
+  "type.Import from json_loading": "正在獲取工作流數據，請稍候...",
   "type.Plugin": "外掛",
   "type.Simple bot": "簡易應用程式",
   "type.Workflow bot": "工作流程",

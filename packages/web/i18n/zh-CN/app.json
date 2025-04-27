@@ -189,6 +189,8 @@
   "type.Http plugin": "HTTP 插件",
   "type.Import from json": "导入 JSON 配置",
   "type.Import from json tip": "通过 JSON 配置文件，直接创建应用",
+  "type.Import from json_error": "获取工作流数据失败，请检查URL或手动粘贴JSON数据",
+  "type.Import from json_loading": "正在获取工作流数据，请稍候...",
   "type.MCP tools": "MCP 工具集",
   "type.MCP_tools_url": "MCP 地址",
   "type.Plugin": "插件",

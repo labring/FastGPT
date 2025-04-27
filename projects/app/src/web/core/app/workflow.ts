@@ -6,7 +6,7 @@ import { postFetchWorkflow } from './api/app';
 export const fetchWorkflowFromUrl = async (url: string) => {
   try {
     if (!url || typeof url !== 'string') {
-      throw new Error('WORKFLOW_IMPORT_ERROR: URL为空或格式错误');
+      return Promise.reject(new Error('WORKFLOW_IMPORT_ERROR: URL为空或格式错误'));
     }
 
     let fetchUrl = url.trim();
@@ -21,7 +21,6 @@ export const fetchWorkflowFromUrl = async (url: string) => {
 
     try {
       const encodedUrl = encodeURIComponent(fetchUrl);
-      console.log('正在通过后端代理获取工作流数据...');
 
       const proxyResponse = await postFetchWorkflow({
         url: encodedUrl
@@ -34,7 +33,7 @@ export const fetchWorkflowFromUrl = async (url: string) => {
         console.log('工作流数据获取成功');
         return proxyResponse;
       } else {
-        throw new Error('后端代理请求返回空数据');
+        return Promise.reject(new Error('后端代理请求返回空数据'));
       }
     } catch (err: any) {
       console.error(`获取失败: ${err.message || 'UNKNOWN_ERROR'}`);
@@ -73,8 +72,6 @@ export const importWorkflowFromUrl = async ({
     if (!appType) {
       return Promise.reject(new Error('无法识别应用类型，请确保导入的是有效的工作流JSON'));
     }
-
-    console.log(`识别到工作流类型: ${appType}`);
 
     const appId = await postCreateApp({
       parentId,

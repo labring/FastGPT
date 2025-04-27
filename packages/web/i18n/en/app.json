@@ -182,6 +182,8 @@
   "type.Http plugin": "HTTP Plugin",
   "type.Import from json": "Import JSON",
   "type.Import from json tip": "Create applications directly through JSON configuration files",
+  "type.Import from json_error": "Failed to get workflow data, please check the URL or manually paste the JSON data",
+  "type.Import from json_loading": "Workflow data is being retrieved, please wait...",
   "type.Plugin": "Plugin",
   "type.Simple bot": "Simple App",
   "type.Workflow bot": "Workflow",
