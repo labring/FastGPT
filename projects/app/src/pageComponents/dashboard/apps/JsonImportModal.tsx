@@ -55,12 +55,15 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
 
       const utmParams = getUtmParams();
       if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
-
-      removeUtmWorkflow();
-      removeUtmParams();
     },
     { manual: false }
   );
+
+  const handleCloseJsonImportModal = () => {
+    onClose();
+    removeUtmParams();
+    removeUtmWorkflow();
+  };
 
   const avatar = watch('avatar');
   const {
@@ -132,6 +135,8 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         router.push(`/app/detail?appId=${id}`);
         loadMyApps();
         onClose();
+        removeUtmParams();
+        removeUtmWorkflow();
       },
       successToast: t('common:common.Create Success')
     }
@@ -141,7 +146,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     <>
       <MyModal
         isOpen
-        onClose={onClose}
         isLoading={isCreating || isFetching}
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
@@ -182,7 +186,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           </Box>
         </ModalBody>
         <ModalFooter gap={4}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
             {t('common:common.Cancel')}
           </Button>
           <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
