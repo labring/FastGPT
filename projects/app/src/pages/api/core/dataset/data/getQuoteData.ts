@@ -1,8 +1,9 @@
 import type { NextApiRequest } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 
 export type GetQuoteDataResponse = {
   collection: CollectionWithDatasetType;
@@ -10,19 +11,46 @@ export type GetQuoteDataResponse = {
   a: string;
 };
 
+export type GetQuoteDataProps = {
+  id: string;
+  appId: string;
+  chatId: string;
+  shareId?: string;
+  outLinkUid?: string;
+  teamId?: string;
+  teamToken?: string;
+};
 async function handler(req: NextApiRequest): Promise<GetQuoteDataResponse> {
-  const { id: dataId } = req.query as {
-    id: string;
-  };
+  const {
+    id: dataId,
+    appId,
+    chatId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken
+  } = req.body as GetQuoteDataProps;
 
-  // 凭证校验
-  const { datasetData, collection } = await authDatasetData({
+  await authChatCrud({
     req,
     authToken: true,
-    authApiKey: true,
-    dataId,
-    per: ReadPermissionVal
+    appId,
+    chatId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken
   });
+
+  const datasetData = await MongoDatasetData.findById(dataId);
+  if (!datasetData) {
+    return Promise.reject('core.dataset.error.Data not found');
+  }
+
+  const collection = await getCollectionWithDataset(datasetData.collectionId);
+  if (!collection) {
+    return Promise.reject('core.dataset.error.Collection not found');
+  }
 
   return {
     collection,

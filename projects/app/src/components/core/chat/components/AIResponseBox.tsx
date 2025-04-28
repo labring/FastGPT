@@ -31,6 +31,7 @@ import { SelectOptionsComponent, FormInputComponent } from './Interactive/Intera
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -94,6 +95,10 @@ const RenderText = React.memo(function RenderText({
 }) {
   const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
 
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+
   const source = useMemo(() => {
     if (!text) return '';
 
@@ -104,7 +109,13 @@ const RenderText = React.memo(function RenderText({
   // First empty line
   // if (!source && !isLastChild) return null;
 
-  return <Markdown source={source} showAnimation={showAnimation} />;
+  return (
+    <Markdown
+      source={source}
+      showAnimation={showAnimation}
+      metadata={{ appId, chatId, ...outLinkAuthData }}
+    />
+  );
 });
 
 const RenderTool = React.memo(

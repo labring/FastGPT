@@ -52,7 +52,7 @@ const A = ({ children, ...props }: any) => {
       data: quoteData,
       loading,
       runAsync: getQuoteDataById
-    } = useRequest2(getQuoteData, {
+    } = useRequest2((id: string) => getQuoteData({ id, ...props.metadata }), {
       manual: true
     });
     const sourceData = useMemo(
