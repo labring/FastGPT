@@ -133,6 +133,7 @@ const ChatBox = ({
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
 
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.avatar);
+  const appIntro = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app?.intro);
   const userAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.userAvatar);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const ChatBoxRef = useContextSelector(ChatItemContext, (v) => v.ChatBoxRef);
@@ -413,6 +414,13 @@ const ChatBox = ({
     pluginController.current?.abort(signal);
   });
 
+  const router = useRouter();
+  const inGateRoute = useMemo(() => {
+    return (
+      router.pathname.startsWith('/chat/gate') &&
+      !router.pathname.includes('/chat/gate/application')
+    );
+  }, [router.pathname]);
   /**
    * user confirm send prompt
    */
@@ -1098,7 +1106,6 @@ const ChatBox = ({
     welcomeText
   ]);
 
-  const router = useRouter();
   const { gateConfig, copyRightConfig } = useGateStore();
   const { userInfo } = useUserStore();
 
@@ -1126,7 +1133,7 @@ const ChatBox = ({
             <ChatWelcome
               teamName={copyRightConfig?.name || chatBoxData?.app?.name}
               teamAvatar={userInfo?.team?.teamAvatar}
-              slogan={gateConfig?.slogan}
+              slogan={appIntro}
             />
           }
           {/* message input */}
@@ -1157,14 +1164,25 @@ const ChatBox = ({
               justifyContent="center"
               alignItems="center"
             >
-              <GateChatInput
-                onSendMessage={sendPrompt}
-                onStop={() => chatController.current?.abort('stop')}
-                TextareaDom={TextareaDom}
-                resetInputVal={resetInputVal}
-                chatForm={chatForm}
-                placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
-              />
+              {inGateRoute && (
+                <GateChatInput
+                  onSendMessage={sendPrompt}
+                  onStop={() => chatController.current?.abort('stop')}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                  placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+                />
+              )}
+              {!inGateRoute && (
+                <ChatInput
+                  onSendMessage={sendPrompt}
+                  onStop={() => chatController.current?.abort('stop')}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                />
+              )}
             </Box>
           )}
         </>

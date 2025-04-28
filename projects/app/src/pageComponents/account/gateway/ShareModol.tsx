@@ -22,7 +22,9 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   const teamId = userInfo?.team?.teamId || '';
 
   // 门户链接和自定义域名
-  const [defaultGateUrl, setDefaultGateUrl] = useState(`${window.location.origin}/gate/${teamId}`);
+  const [defaultGateUrl, setDefaultGateUrl] = useState(
+    `${window.location.origin}/chat/gate?teamid=${teamId}`
+  );
   const [customDomain, setCustomDomain] = useState('');
 
   // 复制链接

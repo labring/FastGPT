@@ -14,7 +14,7 @@ import {
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export const emptyTemplates: Record<
-  AppTypeEnum.simple | AppTypeEnum.plugin | AppTypeEnum.workflow,
+  AppTypeEnum.simple | AppTypeEnum.plugin | AppTypeEnum.workflow | AppTypeEnum.gate,
   {
     name: string;
     avatar: string;
@@ -413,6 +413,249 @@ export const emptyTemplates: Record<
     ],
     edges: [],
     chatConfig: {}
+  },
+  [AppTypeEnum.gate]: {
+    avatar: 'core/workflow/template/aiChat',
+    name: i18nT('app:template.gate'),
+    nodes: [
+      {
+        nodeId: 'userGuide',
+        name: i18nT('common:core.module.template.system_config'),
+        intro: i18nT('common:core.module.template.config_params'),
+        avatar: 'core/workflow/template/systemConfig',
+        flowNodeType: FlowNodeTypeEnum.systemConfig,
+        position: {
+          x: 531.2422736065552,
+          y: -486.7611729549753
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'welcomeText',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.string,
+            label: 'core.app.Welcome Text',
+            value: ''
+          },
+          {
+            key: 'variables',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: 'core.app.Chat Variable',
+            value: []
+          },
+          {
+            key: 'questionGuide',
+            valueType: WorkflowIOValueTypeEnum.object,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: 'core.app.Question Guide',
+            value: {
+              open: false
+            }
+          },
+          {
+            key: 'tts',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: {
+              type: 'web'
+            }
+          },
+          {
+            key: 'whisper',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: {
+              open: false,
+              autoSend: false,
+              autoTTSResponse: false
+            }
+          },
+          {
+            key: 'scheduleTrigger',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            valueType: WorkflowIOValueTypeEnum.any,
+            label: '',
+            value: null
+          }
+        ],
+        outputs: []
+      },
+      {
+        nodeId: '448745',
+        name: i18nT('common:core.module.template.work_start'),
+        intro: '',
+        avatar: 'core/workflow/template/workflowStart',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        position: {
+          x: 558.4082376415505,
+          y: 123.72387429194112
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'userChatInput',
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+            valueType: WorkflowIOValueTypeEnum.string,
+            label: i18nT('common:core.module.input.label.user question'),
+            required: true,
+            toolDescription: i18nT('common:core.module.input.label.user question')
+          }
+        ],
+        outputs: [
+          {
+            id: 'userChatInput',
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
+      },
+      {
+        nodeId: 'loOvhld2ZTKa',
+        name: i18nT('common:core.module.template.ai_chat'),
+        intro: i18nT('common:core.module.template.ai_chat_intro'),
+        avatar: 'core/workflow/template/aiChat',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        showStatus: true,
+        position: {
+          x: 1097.7317280958762,
+          y: -244.16014496351386
+        },
+        version: '481',
+        inputs: [
+          {
+            key: 'model',
+            renderTypeList: [
+              FlowNodeInputTypeEnum.settingLLMModel,
+              FlowNodeInputTypeEnum.reference
+            ],
+            label: 'core.module.input.label.aiModel',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: 'gpt-4o-mini'
+          },
+          {
+            key: 'temperature',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.number,
+            min: 0,
+            max: 10,
+            step: 1
+          },
+          {
+            key: 'maxToken',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            value: undefined,
+            valueType: WorkflowIOValueTypeEnum.number,
+            min: 100,
+            max: 4000,
+            step: 50
+          },
+          {
+            key: 'isResponseAnswerText',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            value: true,
+            valueType: WorkflowIOValueTypeEnum.boolean
+          },
+          {
+            key: 'quoteTemplate',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: 'quotePrompt',
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.string
+          },
+          {
+            key: 'systemPrompt',
+            renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+            max: 3000,
+            valueType: WorkflowIOValueTypeEnum.string,
+            label: 'core.ai.Prompt',
+            description: 'core.app.tip.systemPromptTip',
+            placeholder: 'core.app.tip.chatNodeSystemPromptTip',
+            value: ''
+          },
+          {
+            key: 'history',
+            renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+            valueType: WorkflowIOValueTypeEnum.chatHistory,
+            label: 'core.module.input.label.chat history',
+            required: true,
+            min: 0,
+            max: 30,
+            value: 6
+          },
+          {
+            key: 'userChatInput',
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+            valueType: WorkflowIOValueTypeEnum.string,
+            label: i18nT('common:core.module.input.label.user question'),
+            required: true,
+            toolDescription: i18nT('common:core.module.input.label.user question'),
+            value: ['448745', 'userChatInput']
+          },
+          {
+            key: 'quoteQA',
+            renderTypeList: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+            label: '',
+            debugLabel: i18nT('common:core.module.Dataset quote.label'),
+            description: '',
+            valueType: WorkflowIOValueTypeEnum.datasetQuote
+          },
+          {
+            key: NodeInputKeyEnum.aiChatReasoning,
+            renderTypeList: [FlowNodeInputTypeEnum.hidden],
+            label: '',
+            valueType: WorkflowIOValueTypeEnum.boolean,
+            value: true
+          }
+        ],
+        outputs: [
+          {
+            id: 'history',
+            key: 'history',
+            label: 'core.module.output.label.New context',
+            description: 'core.module.output.description.New context',
+            valueType: WorkflowIOValueTypeEnum.chatHistory,
+            type: FlowNodeOutputTypeEnum.static
+          },
+          {
+            id: 'answerText',
+            key: 'answerText',
+            label: 'core.module.output.label.Ai response content',
+            description: 'core.module.output.description.Ai response content',
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
+      }
+    ],
+    edges: [
+      {
+        source: '448745',
+        target: 'loOvhld2ZTKa',
+        sourceHandle: '448745-source-right',
+        targetHandle: 'loOvhld2ZTKa-target-left'
+      }
+    ],
+    chatConfig: {
+      fileSelectConfig: {
+        canSelectFile: true,
+        canSelectImg: true,
+        maxFiles: 10
+      }
+    }
   }
 };
 

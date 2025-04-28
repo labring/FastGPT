@@ -22,6 +22,7 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 export type CreateAppBody = {
   parentId?: ParentIdType;
   name?: string;
+  intro?: string;
   avatar?: string;
   type?: AppTypeEnum;
   modules: AppSchema['modules'];
@@ -30,7 +31,7 @@ export type CreateAppBody = {
 };
 
 async function handler(req: ApiRequestProps<CreateAppBody>) {
-  const { parentId, name, avatar, type, modules, edges, chatConfig } = req.body;
+  const { parentId, name, avatar, intro, type, modules, edges, chatConfig } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
     return Promise.reject(CommonErrEnum.inheritPermissionError);
@@ -51,6 +52,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
   const appId = await onCreateApp({
     parentId,
     name,
+    intro,
     avatar,
     type,
     modules,

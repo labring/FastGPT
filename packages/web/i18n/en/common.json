@@ -3,7 +3,7 @@
   "Click_to_expand": "Click to expand",
   "Download": "Download",
   "Error": "mistake",
-  "Gate.service.is.unavailable": "The portal is not available",
+  "Gate.service.is.unavailable": "The Gate is not available",
   "Export": "Export",
   "FAQ.ai_point_a": "Each time an AI model is called, a certain amount of AI points will be consumed. \nFor specific calculation standards, please refer to the \"AI integral calculation standards\" above. \nThe system will give priority to the actual usage returned by the model manufacturer. If it is empty, the calculation method of GPT3.5 is used for estimation. 1Token≈0.7 Chinese characters ≈0.9 English words, and the characters that appear continuously may be considered as 1 Tokens.",
   "FAQ.ai_point_expire_a": "Yes, they will expire. After the current package expires, the AI points will be reset to the new package's AI points. Annual package AI points are valid for one year, not monthly.",

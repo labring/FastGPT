@@ -26,6 +26,7 @@ type ChatBoxDataType = {
   app: {
     chatConfig?: AppChatConfigType;
     name: string;
+    intro: string;
     avatar: string;
     type: `${AppTypeEnum}`;
     pluginInputs: FlowNodeInputItemType[];

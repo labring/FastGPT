@@ -16,7 +16,7 @@
   "gateway.cname_tip": "Please go to your domain name service provider, such as adding the domain name, and parsing the CNAME to Ixjgiwggswmb.sealoshzh.site. After the resolution takes effect, you can bind the custom domain name.",
   "gateway.save_config": "save",
   "gateway.share": "share",
-  "gateways": "Portal Management",
+  "gateways": "Gate Management",
   "logout": "Sign out",
   "model.active": "Active",
   "model.alias": "Alias",

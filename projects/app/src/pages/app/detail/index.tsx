@@ -44,6 +44,7 @@ const AppDetail = () => {
         ) : (
           <>
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
+            {appDetail.type === AppTypeEnum.gate && <SimpleEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
             {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}

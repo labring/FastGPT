@@ -26,7 +26,7 @@ const ConfigButtons = ({ tab }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { saveGateConfig, saveCopyRightConfig, copyRightConfig } = useGateStore();
+  const { saveGateConfig, saveCopyRightConfig, copyRightConfig, gateConfig } = useGateStore();
   const { userInfo } = useUserStore();
 
   // 保存配置
@@ -83,13 +83,17 @@ const ConfigButtons = ({ tab }: Props) => {
     try {
       // 获取应用列表
       const apps = await getMyApps();
-      const gateApp = apps.find((app) => app.name === 'gate');
+      const gateApp = apps.find(
+        (app) => app.type === AppTypeEnum.gate && app.tmbId === userInfo?.team?.tmbId
+      );
       const currentTeamAvatar = copyRightConfig?.avatar || userInfo?.team?.teamAvatar;
+      const currentSlogan = gateConfig?.slogan;
 
       if (gateApp) {
-        if (gateApp.avatar !== currentTeamAvatar) {
+        if (gateApp.avatar !== currentTeamAvatar || gateApp.intro !== currentSlogan) {
           await putAppById(gateApp._id, {
-            avatar: currentTeamAvatar
+            avatar: currentTeamAvatar,
+            intro: gateConfig?.slogan
           });
           toast({
             title: t('common:common.Update Success'),
@@ -100,16 +104,11 @@ const ConfigButtons = ({ tab }: Props) => {
         await postCreateApp({
           avatar: currentTeamAvatar,
           name: 'gate',
-          type: AppTypeEnum.simple,
-          modules: emptyTemplates[AppTypeEnum.simple].nodes,
-          edges: emptyTemplates[AppTypeEnum.simple].edges,
-          chatConfig: {
-            fileSelectConfig: {
-              canSelectFile: true,
-              canSelectImg: true,
-              maxFiles: 10
-            }
-          }
+          intro: gateConfig?.slogan,
+          type: AppTypeEnum.gate,
+          modules: emptyTemplates[AppTypeEnum.gate].nodes,
+          edges: emptyTemplates[AppTypeEnum.gate].edges,
+          chatConfig: emptyTemplates[AppTypeEnum.gate].chatConfig
         });
         toast({
           title: t('common:common.Create Success'),

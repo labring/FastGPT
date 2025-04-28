@@ -99,6 +99,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     const map: Record<AppTypeEnum | 'all', string> = {
       all: t('common:core.module.template.Team app'),
       [AppTypeEnum.simple]: t('app:type.Simple bot'),
+      [AppTypeEnum.gate]: t('app:type.Gate'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.plugin]: t('app:type.Plugin'),
       [AppTypeEnum.httpPlugin]: t('app:type.Http plugin'),
@@ -217,6 +218,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                         label: t('app:type.MCP tools'),
                         description: t('app:type.Create mcp tools tip'),
                         onClick: onOpenCreateMCPTools
+                      },
+                      {
+                        icon: 'support/gate/gateLight',
+                        label: t('app:type.Gate'),
+                        description: t('app:type.Create gate tip'),
+                        onClick: () => setCreateAppType(AppTypeEnum.gate)
                       }
                     ]
                   },

@@ -6,10 +6,9 @@ import {
   getTeamGateConfigCopyRight,
   updateTeamGateConfigCopyRight
 } from './api';
-import type {
-  putUpdateGateConfigData,
-  putUpdateGateConfigCopyRightData
-} from '@fastgpt/global/support/user/team/gate/api.d';
+import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api.d';
+import { getMyApps } from '@/web/core/app/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type State = {
   gateConfig?: GateSchemaType;
@@ -53,6 +52,14 @@ export const useGateStore = create<State>()(
         initGateConfig: async () => {
           try {
             const gateConfig = await getTeamGateConfig();
+            // 获取应用列表，查找 gate 应用
+            const apps = await getMyApps();
+            const gateApp = apps.find((app) => app.type === AppTypeEnum.gate);
+
+            // 如果找到 gate 应用，并且有 intro 字段，则使用它作为 slogan
+            if (gateApp && gateApp.intro) {
+              gateConfig.slogan = gateApp.intro;
+            }
             set((state) => {
               state.gateConfig = gateConfig;
             });
@@ -106,7 +113,6 @@ export const useGateStore = create<State>()(
 
           await updateTeamGateConfig({
             tools: gateConfig.tools,
-            slogan: gateConfig.slogan,
             placeholderText: gateConfig.placeholderText,
             status: gateConfig.status
           });

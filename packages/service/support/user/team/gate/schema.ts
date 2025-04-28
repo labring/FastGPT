@@ -17,9 +17,6 @@ const GateConfigSchema = new Schema({
     type: [String],
     enum: Object.values(['webSearch', 'deepThinking', 'fileUpload', 'imageUpload', 'voiceInput'])
   },
-  slogan: {
-    type: String
-  },
   placeholderText: {
     type: String
   }

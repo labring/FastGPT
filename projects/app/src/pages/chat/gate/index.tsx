@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
+import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -12,8 +12,6 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
-import SliderApps from '@/pageComponents/chat/SliderApps';
-import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -33,9 +31,7 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import ChatRecordContextProvider, {
-  ChatRecordContext
-} from '@/web/core/chat/context/chatRecordContext';
+import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
@@ -44,7 +40,6 @@ const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPlu
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
-  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -63,9 +58,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
-
-  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
   // Load chat init data
   const { loading } = useRequest2(
@@ -245,14 +237,13 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
   const { gateConfig, initGateConfig } = useGateStore();
 
-  const {
-    data: myApps = [],
-    loading: loadingApps,
-    runAsync: loadMyApps
-  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: false,
-    refreshDeps: [appId]
-  });
+  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
+    () => getMyApps({ getRecentlyChat: true }),
+    {
+      manual: false,
+      refreshDeps: [appId]
+    }
+  );
 
   // 初始化聊天框
   useMount(async () => {
