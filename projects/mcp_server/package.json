@@ -14,7 +14,7 @@
     "mcp_test": "npx @modelcontextprotocol/inspector"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.9.0",
+    "@modelcontextprotocol/sdk": "^1.10.2",
     "axios": "^1.8.2",
     "chalk": "^5.3.0",
     "dayjs": "^1.11.7",

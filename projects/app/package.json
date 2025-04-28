@@ -24,7 +24,7 @@
     "@fastgpt/templates": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
-    "@modelcontextprotocol/sdk": "^1.10.0",
+    "@modelcontextprotocol/sdk": "^1.10.2",
     "@node-rs/jieba": "2.0.1",
     "@tanstack/react-query": "^4.24.10",
     "ahooks": "^3.7.11",
