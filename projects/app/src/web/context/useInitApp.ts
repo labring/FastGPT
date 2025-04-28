@@ -128,7 +128,9 @@ export const useInitApp = () => {
       ...(utm_medium && { shortUrlMedium: utm_medium }),
       ...(utm_content && { shortUrlContent: utm_content })
     };
-    setUtmParams(utmParams);
+    if (utm_workflow) {
+      setUtmParams(utmParams);
+    }
     setFastGPTSem({ keyword: k, ...utmParams });
 
     const newPath = getPathWithoutMarketingParams();
