@@ -1,0 +1,16 @@
+{
+  "name": "runtime",
+  "scripts": {
+    "build:node": "bun build --outfile=dist/index.js --target=node --minify ./index.ts",
+    "build:bun": "bun build --outfile=dist/index.js --target=bun --minify ./index.ts",
+    "build": "bun run build:node",
+    "dev": "bun run --watch index.ts"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "zod": "^3.24.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1"
+  }
+}
