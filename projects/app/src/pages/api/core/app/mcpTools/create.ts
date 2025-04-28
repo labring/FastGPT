@@ -35,7 +35,7 @@ async function handler(
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await mongoSessionRun(async (session) => {
+  const mcpToolsId = await mongoSessionRun(async (session) => {
     const mcpToolsId = await onCreateApp({
       name,
       avatar,
@@ -60,10 +60,13 @@ async function handler(
         session
       });
     }
+
+    return mcpToolsId;
   });
 
   pushTrack.createApp({
     type: AppTypeEnum.toolSet,
+    appId: mcpToolsId,
     uid: userId,
     teamId,
     tmbId

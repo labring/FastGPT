@@ -251,6 +251,7 @@ const ChatItem = (props: Props) => {
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionId: collectionId,
+                collectionIdList,
                 sourceId: sourceId || '',
                 sourceName: sourceName || '',
                 datasetId: datasetId || '',
@@ -272,11 +273,12 @@ const ChatItem = (props: Props) => {
   );
 
   useEffect(() => {
+    if (chat.obj !== ChatRoleEnum.AI) return;
     eventBus.on(EventNameEnum.openQuoteReader, handleOpenQuoteReader);
     return () => {
       eventBus.off(EventNameEnum.openQuoteReader);
     };
-  }, [handleOpenQuoteReader]);
+  }, [chat.obj, handleOpenQuoteReader]);
 
   return (
     <Box

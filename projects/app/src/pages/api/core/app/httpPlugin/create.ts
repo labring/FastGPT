@@ -35,9 +35,9 @@ async function handler(
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
-  await mongoSessionRun(async (session) => {
+  const httpPluginId = await mongoSessionRun(async (session) => {
     // create http plugin folder
-    const httpPluginIid = await onCreateApp({
+    const httpPluginId = await onCreateApp({
       parentId,
       name,
       avatar,
@@ -51,7 +51,7 @@ async function handler(
 
     // compute children plugins
     const childrenPlugins = await httpApiSchema2Plugins({
-      parentId: httpPluginIid,
+      parentId: httpPluginId,
       apiSchemaStr: pluginData.apiSchemaStr,
       customHeader: pluginData.customHeaders
     });
@@ -65,10 +65,13 @@ async function handler(
         session
       });
     }
+
+    return httpPluginId;
   });
 
   pushTrack.createApp({
     type: AppTypeEnum.httpPlugin,
+    appId: httpPluginId,
     uid: userId,
     teamId,
     tmbId

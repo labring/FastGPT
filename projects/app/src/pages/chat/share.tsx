@@ -50,6 +50,7 @@ type Props = {
   authToken: string;
   customUid: string;
   showRawSource: boolean;
+  responseDetail: boolean;
   // showFullText: boolean;
   showNodeStatus: boolean;
 };
@@ -369,6 +370,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
+        isResponseDetail={props.responseDetail}
         // isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
@@ -395,7 +397,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showRawSource showNodeStatus'
+        'appId showRawSource showNodeStatus responseDetail'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
@@ -412,6 +414,7 @@ export async function getServerSideProps(context: any) {
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
+      responseDetail: app?.responseDetail ?? false,
       // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
