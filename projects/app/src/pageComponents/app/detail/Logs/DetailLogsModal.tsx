@@ -213,6 +213,7 @@ const Render = (props: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >

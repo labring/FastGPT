@@ -29,6 +29,8 @@ import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { useContextSelector } from 'use-context-selector';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -228,9 +230,18 @@ const AIResponseBox = ({
   isLastResponseValue: boolean;
   isChatting: boolean;
 }) => {
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
-      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
+      <RenderText
+        showAnimation={isChatting && isLastResponseValue}
+        text={
+          isResponseDetail
+            ? value.text.content
+            : value.text.content.replace(/\[[a-f0-9]{24}\]\(QUOTE\)/g, '')
+        }
+      />
     );
   }
   if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {

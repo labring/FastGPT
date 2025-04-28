@@ -15,6 +15,7 @@ type ContextProps = {
   showRouteToAppDetail: boolean;
   showRouteToDatasetDetail: boolean;
   isShowReadRawSource: boolean;
+  isResponseDetail: boolean;
   // isShowFullText: boolean;
   showNodeStatus: boolean;
 };
@@ -115,6 +116,7 @@ const ChatItemContextProvider = ({
   showRouteToAppDetail,
   showRouteToDatasetDetail,
   isShowReadRawSource,
+  isResponseDetail,
   // isShowFullText,
   showNodeStatus
 }: {
@@ -177,6 +179,7 @@ const ChatItemContextProvider = ({
       showRouteToAppDetail,
       showRouteToDatasetDetail,
       isShowReadRawSource,
+      isResponseDetail,
       // isShowFullText,
       showNodeStatus,
 
@@ -195,6 +198,7 @@ const ChatItemContextProvider = ({
     showRouteToAppDetail,
     showRouteToDatasetDetail,
     isShowReadRawSource,
+    isResponseDetail,
     // isShowFullText,
     showNodeStatus,
     quoteData,
