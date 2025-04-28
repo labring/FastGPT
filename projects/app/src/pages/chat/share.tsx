@@ -38,6 +38,7 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -314,6 +315,8 @@ const OutLink = (props: Props) => {
 };
 
 const Render = (props: Props) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
@@ -363,6 +366,14 @@ const Render = (props: Props) => {
   useEffect(() => {
     setAppId(appId);
   }, [appId, setAppId]);
+  useMount(() => {
+    if (!appId) {
+      toast({
+        status: 'warning',
+        title: t('chat:invalid_share_url')
+      });
+    }
+  });
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
@@ -409,7 +420,7 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appId: String(app?.appId) ?? '',
+      appId: app?.appId ? String(app?.appId) : '',
       appName: app?.associatedApp?.name ?? 'AI',
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
