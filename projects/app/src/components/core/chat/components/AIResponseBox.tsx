@@ -90,9 +90,17 @@ const RenderText = React.memo(function RenderText({
   text
 }: {
   showAnimation: boolean;
-  text?: string;
+  text: string;
 }) {
-  let source = text || '';
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+
+  const source = useMemo(() => {
+    if (!text) return '';
+
+    // Remove quote references if not showing response detail
+    return isResponseDetail ? text : text.replace(/\[[a-f0-9]{24}\]\(QUOTE\)/g, '');
+  }, [text, isResponseDetail]);
+
   // First empty line
   // if (!source && !isLastChild) return null;
 
@@ -230,18 +238,9 @@ const AIResponseBox = ({
   isLastResponseValue: boolean;
   isChatting: boolean;
 }) => {
-  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
-
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
-      <RenderText
-        showAnimation={isChatting && isLastResponseValue}
-        text={
-          isResponseDetail
-            ? value.text.content
-            : value.text.content.replace(/\[[a-f0-9]{24}\]\(QUOTE\)/g, '')
-        }
-      />
+      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
     );
   }
   if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
