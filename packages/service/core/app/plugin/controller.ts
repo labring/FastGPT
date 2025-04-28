@@ -180,7 +180,12 @@ export async function getChildAppPreviewNode({
         flowNodeType: FlowNodeTypeEnum.tool,
         nodeIOConfig: {
           inputs: app.inputs!,
-          outputs: app.outputs!
+          outputs: app.outputs!,
+          toolConfig: {
+            systemToolConfig: {
+              toolId: app.id
+            }
+          }
         }
       };
     return {

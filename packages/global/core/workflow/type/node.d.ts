@@ -26,7 +26,11 @@ export type FlowNodeCommonType = {
   pluginData?: PluginDataType;
 
   // Tool config: systemTool, mcpTool, httpTool, etc.
-  systemToolConfig?: {};
+  toolConfig?: {
+    systemToolConfig?: {
+      toolId: string;
+    };
+  };
 };
 
 export type PluginDataType = {

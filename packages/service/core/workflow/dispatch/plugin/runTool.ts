@@ -15,49 +15,50 @@ type RunToolProps = ModuleDispatchProps<{
   };
 }>;
 
-type RunToolResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]?: any;
-}>;
+type RunToolResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.rawResponse]?: any;
+  } & Record<string, any>
+>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
-    node: { avatar, systemToolConfig, pluginId }
+    node: { avatar, toolConfig }
   } = props;
-
-  const { toolData, ...restParams } = params;
-  const { name: toolName, url } = toolData;
-
-  if (systemToolConfig && pluginId) {
+  if (toolConfig && toolConfig.systemToolConfig) {
     // run system tool
-    const { error, output } = await runTool(pluginId, restParams);
+    const { error, output } = await runTool(toolConfig.systemToolConfig.toolId, params);
     if (error) {
       return Promise.reject(error);
     }
-    return {
-      [NodeOutputKeyEnum.rawResponse]: output
-    };
-  }
-  const mcpClient = new MCPClient({ url });
+    return output;
+  } else {
+    // mcp tool
+    const { toolData, ...restParams } = params;
+    const { name: toolName, url } = toolData;
 
-  try {
-    const result = await mcpClient.toolCall(toolName, restParams);
+    const mcpClient = new MCPClient({ url });
 
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        toolRes: result,
-        moduleLogo: avatar
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: result,
-      [NodeOutputKeyEnum.rawResponse]: result
-    };
-  } catch (error) {
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        moduleLogo: avatar,
-        error: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
-    };
+    try {
+      const result = await mcpClient.toolCall(toolName, restParams);
+
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        [NodeOutputKeyEnum.rawResponse]: result
+      };
+    } catch (error) {
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          moduleLogo: avatar,
+          error: getErrText(error)
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
+      };
+    }
   }
 };
