@@ -132,7 +132,7 @@ async function handler(
     ),
     MongoChat.countDocuments(where, { ...readFromSecondary })
   ]);
-  console.log(list);
+
   const listWithSourceMember = await addSourceMember({
     list: list
   });
