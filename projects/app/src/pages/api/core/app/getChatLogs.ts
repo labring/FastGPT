@@ -74,108 +74,37 @@ async function handler(
                   }
                 }
               },
-              { $count: 'messageCount' }
-            ],
-            as: 'messageCountData'
-          }
-        },
-        {
-          $lookup: {
-            from: ChatItemCollectionName,
-            let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
-            pipeline: [
               {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$appId', '$$appId'] },
-                      { $eq: ['$chatId', '$$chatId'] },
-                      { $eq: ['$userGoodFeedback', true] }
-                    ]
-                  }
+                $group: {
+                  _id: null,
+                  messageCount: { $sum: 1 },
+                  goodFeedback: { $sum: { $cond: [{ $eq: ['$userGoodFeedback', true] }, 1, 0] } },
+                  badFeedback: { $sum: { $cond: [{ $eq: ['$userBadFeedback', true] }, 1, 0] } },
+                  customFeedback: {
+                    $sum: {
+                      $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
+                    }
+                  },
+                  adminMark: { $sum: { $cond: [{ $eq: ['$adminFeedback', true] }, 1, 0] } }
                 }
-              },
-              { $count: 'count' }
+              }
             ],
-            as: 'userGoodFeedbackData'
-          }
-        },
-        {
-          $lookup: {
-            from: ChatItemCollectionName,
-            let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$appId', '$$appId'] },
-                      { $eq: ['$chatId', '$$chatId'] },
-                      { $eq: ['$userBadFeedback', true] }
-                    ]
-                  }
-                }
-              },
-              { $count: 'count' }
-            ],
-            as: 'userBadFeedbackData'
-          }
-        },
-        {
-          $lookup: {
-            from: ChatItemCollectionName,
-            let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$appId', '$$appId'] },
-                      { $eq: ['$chatId', '$$chatId'] },
-                      { $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }
-                    ]
-                  }
-                }
-              },
-              { $count: 'count' }
-            ],
-            as: 'customFeedbacksData'
-          }
-        },
-        {
-          $lookup: {
-            from: ChatItemCollectionName,
-            let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$appId', '$$appId'] },
-                      { $eq: ['$chatId', '$$chatId'] },
-                      { $eq: ['$adminFeedback', true] }
-                    ]
-                  }
-                }
-              },
-              { $count: 'count' }
-            ],
-            as: 'markData'
+            as: 'chatItemsData'
           }
         },
         {
           $addFields: {
+            messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
             userGoodFeedbackCount: {
-              $ifNull: [{ $arrayElemAt: ['$userGoodFeedbackData.count', 0] }, 0]
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
             },
             userBadFeedbackCount: {
-              $ifNull: [{ $arrayElemAt: ['$userBadFeedbackData.count', 0] }, 0]
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
             },
             customFeedbacksCount: {
-              $ifNull: [{ $arrayElemAt: ['$customFeedbacksData.count', 0] }, 0]
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
             },
-            markCount: { $ifNull: [{ $arrayElemAt: ['$markData.count', 0] }, 0] },
-            messageCount: { $ifNull: [{ $arrayElemAt: ['$messageCountData.messageCount', 0] }, 0] }
+            markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] }
           }
         },
         {

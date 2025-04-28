@@ -43,6 +43,7 @@ export const useInitApp = () => {
   const router = useRouter();
   const { hiId, bd_vid, k, sourceDomain, utm_source, utm_medium, utm_content, utm_workflow } =
     router.query as MarketingQueryParams;
+
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);

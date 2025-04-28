@@ -134,9 +134,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       onSuccess(id: string) {
         router.push(`/app/detail?appId=${id}`);
         loadMyApps();
-        onClose();
-        removeUtmParams();
-        removeUtmWorkflow();
+        handleCloseJsonImportModal();
       },
       successToast: t('common:common.Create Success')
     }
