@@ -8,7 +8,7 @@ import ShareGateModal from './ShareModol';
 import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getMyApps, postCreateApp, putAppById } from '@/web/core/app/api';
+import { getMyAppsGate, postCreateApp, putAppById } from '@/web/core/app/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { emptyTemplates } from '@/web/core/app/templates';
 import { putUpdateTeam } from '@/web/support/user/team/api';
@@ -82,10 +82,8 @@ const ConfigButtons = ({ tab }: Props) => {
   const checkAndCreateGateApp = async () => {
     try {
       // 获取应用列表
-      const apps = await getMyApps();
-      const gateApp = apps.find(
-        (app) => app.type === AppTypeEnum.gate && app.tmbId === userInfo?.team?.tmbId
-      );
+      const apps = await getMyAppsGate();
+      const gateApp = apps.find((app) => app.type === AppTypeEnum.gate);
       const currentTeamAvatar = copyRightConfig?.avatar || userInfo?.team?.teamAvatar;
       const currentSlogan = gateConfig?.slogan;
 
@@ -93,7 +91,7 @@ const ConfigButtons = ({ tab }: Props) => {
         if (gateApp.avatar !== currentTeamAvatar || gateApp.intro !== currentSlogan) {
           await putAppById(gateApp._id, {
             avatar: currentTeamAvatar,
-            intro: gateConfig?.slogan
+            intro: currentSlogan
           });
           toast({
             title: t('common:common.Update Success'),

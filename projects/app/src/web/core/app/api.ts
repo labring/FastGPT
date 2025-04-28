@@ -17,6 +17,13 @@ export const getMyApps = (data?: ListAppBody) =>
   });
 
 /**
+ * 获取门户
+ */
+export const getMyAppsGate = (data?: ListAppBody) =>
+  POST<AppListItemType[]>('/core/app/gate/list', data, {
+    maxQuantity: 1
+  });
+/**
  * 创建一个应用
  */
 export const postCreateApp = (data: CreateAppBody) => POST<string>('/core/app/create', data);

@@ -5,21 +5,16 @@ import {
   Text,
   Radio,
   RadioGroup,
-  Checkbox,
-  CheckboxGroup,
   Stack,
   Input,
   FormControl,
   FormLabel,
   Link,
   useTheme,
-  Wrap,
-  WrapItem,
   useBreakpointValue
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 
 type Props = {

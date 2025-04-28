@@ -7,7 +7,7 @@ import {
   updateTeamGateConfigCopyRight
 } from './api';
 import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api.d';
-import { getMyApps } from '@/web/core/app/api';
+import { getMyAppsGate } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type State = {
@@ -53,7 +53,7 @@ export const useGateStore = create<State>()(
           try {
             const gateConfig = await getTeamGateConfig();
             // 获取应用列表，查找 gate 应用
-            const apps = await getMyApps();
+            const apps = await getMyAppsGate();
             const gateApp = apps.find((app) => app.type === AppTypeEnum.gate);
 
             // 如果找到 gate 应用，并且有 intro 字段，则使用它作为 slogan

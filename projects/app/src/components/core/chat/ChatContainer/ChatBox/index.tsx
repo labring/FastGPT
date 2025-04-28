@@ -416,10 +416,7 @@ const ChatBox = ({
 
   const router = useRouter();
   const inGateRoute = useMemo(() => {
-    return (
-      router.pathname.startsWith('/chat/gate') &&
-      !router.pathname.includes('/chat/gate/application')
-    );
+    return router.pathname.startsWith('/chat/gate');
   }, [router.pathname]);
   /**
    * user confirm send prompt
