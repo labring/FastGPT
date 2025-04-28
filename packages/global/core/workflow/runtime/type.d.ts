@@ -94,7 +94,7 @@ export type RuntimeNodeItemType = {
   intro?: StoreNodeItemType['intro'];
   flowNodeType: StoreNodeItemType['flowNodeType'];
   showStatus?: StoreNodeItemType['showStatus'];
-  systemToolConfig?: StoreNodeItemType['systemToolConfig'];
+  toolConfig?: StoreNodeItemType['toolConfig'];
   isEntry?: boolean;
 
   inputs: FlowNodeInputItemType[];

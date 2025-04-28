@@ -8,7 +8,7 @@ import {
   type StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import { type TFunction } from 'i18next';
-import { type Node, type Edge } from 'reactflow';
+import { type Edge, type Node } from 'reactflow';
 
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
@@ -30,7 +30,8 @@ export const uiWorkflow2StoreWorkflow = ({
     inputs: item.data.inputs,
     outputs: item.data.outputs,
     pluginId: item.data.pluginId,
-    isFolded: item.data.isFolded
+    isFolded: item.data.isFolded,
+    toolConfig: item.data.toolConfig
   }));
 
   // get all handle

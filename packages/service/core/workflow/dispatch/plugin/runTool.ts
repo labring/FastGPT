@@ -16,55 +16,58 @@ type RunToolProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.toolData]: McpToolDataType;
 }>;
 
-type RunToolResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]?: any;
-}>;
+type RunToolResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.rawResponse]?: any;
+  } & Record<string, any>
+>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
-    node: { avatar, systemToolConfig, pluginId }
+    node: { avatar, toolConfig }
   } = props;
 
-  const { toolData, system_toolData, ...restParams } = params;
-  const { name: toolName, url, headerSecret } = toolData || system_toolData;
-
-  if (systemToolConfig && pluginId) {
+  if (toolConfig && toolConfig.systemTool) {
     // run system tool
-    const { error, output } = await runTool(pluginId, restParams);
+    const { error, output } = await runTool(toolConfig.systemTool.toolId, params);
     if (error) {
       return Promise.reject(error);
     }
     return {
       [NodeOutputKeyEnum.rawResponse]: output
     };
-  }
+  } else {
+    // mcp tool
+    const { toolData, system_toolData, ...restParams } = params;
+    const { name: toolName, url, headerSecret } = toolData || system_toolData;
 
-  const mcpClient = new MCPClient({
-    url,
-    headers: getSecretValue({
-      storeSecret: headerSecret
-    })
-  });
+    const mcpClient = new MCPClient({
+      url,
+      headers: getSecretValue({
+        storeSecret: headerSecret
+      })
+    });
 
-  try {
-    const result = await mcpClient.toolCall(toolName, restParams);
+    try {
+      const result = await mcpClient.toolCall(toolName, restParams);
 
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        toolRes: result,
-        moduleLogo: avatar
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: result,
-      [NodeOutputKeyEnum.rawResponse]: result
-    };
-  } catch (error) {
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        moduleLogo: avatar,
-        error: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
-    };
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        [NodeOutputKeyEnum.rawResponse]: result
+      };
+    } catch (error) {
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          moduleLogo: avatar,
+          error: getErrText(error)
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
+      };
+    }
   }
 };
