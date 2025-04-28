@@ -89,7 +89,7 @@ const A = ({ children, ...props }: any) => {
             />
           </Button>
         </PopoverTrigger>
-        <PopoverContent boxShadow={'lg'} w={'500px'} py={4}>
+        <PopoverContent boxShadow={'lg'} w={'500px'} maxW={'90vw'} py={4}>
           <MyBox isLoading={loading}>
             <PopoverArrow />
             <PopoverBody py={0} px={0} fontSize={'sm'}>

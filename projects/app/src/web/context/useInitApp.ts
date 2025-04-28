@@ -17,23 +17,56 @@ import {
 } from '../support/marketing/utils';
 import { ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 
+type MarketingQueryParams = {
+  hiId?: string;
+  bd_vid?: string;
+  k?: string;
+  sourceDomain?: string;
+  utm_source?: string;
+  utm_medium?: string;
+  utm_content?: string;
+  utm_workflow?: string;
+};
+
+const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
+  'hiId',
+  'bd_vid',
+  'k',
+  'sourceDomain',
+  'utm_source',
+  'utm_medium',
+  'utm_content',
+  'utm_workflow'
+];
+
 export const useInitApp = () => {
   const router = useRouter();
   const { hiId, bd_vid, k, sourceDomain, utm_source, utm_medium, utm_content, utm_workflow } =
-    router.query as {
-      hiId?: string;
-      bd_vid?: string;
-      k?: string;
-      sourceDomain?: string;
-      utm_source?: string;
-      utm_medium?: string;
-      utm_content?: string;
-      utm_workflow?: string;
-    };
+    router.query as MarketingQueryParams;
   const { loadGitStar, setInitd, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
+
+  const getPathWithoutMarketingParams = () => {
+    const filteredQuery = { ...router.query };
+    MARKETING_PARAMS.forEach((param) => {
+      delete filteredQuery[param];
+    });
+
+    const newQuery = new URLSearchParams();
+    Object.entries(filteredQuery).forEach(([key, value]) => {
+      if (value) {
+        if (Array.isArray(value)) {
+          value.forEach((v) => newQuery.append(key, v));
+        } else {
+          newQuery.append(key, value);
+        }
+      }
+    });
+
+    return `${router.pathname}${newQuery.toString() ? `?${newQuery.toString()}` : ''}`;
+  };
 
   const initFetch = useMemoizedFn(async () => {
     const {
@@ -98,7 +131,8 @@ export const useInitApp = () => {
     setUtmParams(utmParams);
     setFastGPTSem({ keyword: k, ...utmParams });
 
-    router.replace(router.pathname);
+    const newPath = getPathWithoutMarketingParams();
+    router.replace(newPath);
   });
 
   return {
