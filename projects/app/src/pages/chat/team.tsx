@@ -314,6 +314,7 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={true}
+        isResponseDetail={true}
         // isShowFullText={true}
         showNodeStatus
       >

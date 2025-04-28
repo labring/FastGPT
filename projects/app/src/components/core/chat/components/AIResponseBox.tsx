@@ -29,6 +29,8 @@ import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
+import { useContextSelector } from 'use-context-selector';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -88,9 +90,17 @@ const RenderText = React.memo(function RenderText({
   text
 }: {
   showAnimation: boolean;
-  text?: string;
+  text: string;
 }) {
-  let source = text || '';
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+
+  const source = useMemo(() => {
+    if (!text) return '';
+
+    // Remove quote references if not showing response detail
+    return isResponseDetail ? text : text.replace(/\[[a-f0-9]{24}\]\(QUOTE\)/g, '');
+  }, [text, isResponseDetail]);
+
   // First empty line
   // if (!source && !isLastChild) return null;
 

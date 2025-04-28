@@ -152,6 +152,7 @@ const Render = ({ currentTool, url }: { currentTool: ToolType | null; url: strin
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >

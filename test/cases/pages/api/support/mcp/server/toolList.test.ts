@@ -1,8 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import {
-  pluginNodes2InputSchema,
-  workflow2InputSchema
-} from '@/pages/api/support/mcp/server/toolList';
+import { pluginNodes2InputSchema, workflow2InputSchema } from '@/service/support/mcp/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   VariableInputEnum,
@@ -22,7 +19,8 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
     find: vi.fn().mockReturnValue({
       lean: vi.fn()
     })
-  }
+  },
+  AppCollectionName: 'apps'
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({

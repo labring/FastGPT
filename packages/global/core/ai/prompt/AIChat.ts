@@ -8,7 +8,6 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     desc: i18nT('app:template.standard_template_des'),
     value: {
       ['4.9.7']: `{
-  "sourceIndex": "{{sourceIndex}}",
   "id": "{{id}}",
   "sourceName": "{{source}}",
   "content": "{{q}}\n{{a}}"
@@ -39,7 +38,6 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     desc: i18nT('app:template.standard_strict_des'),
     value: {
       ['4.9.7']: `{
-  "sourceIndex": "{{sourceIndex}}",
   "id": "{{id}}",
   "sourceName": "{{source}}",
   "content": "{{q}}\n{{a}}"
@@ -90,8 +88,8 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
       ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
@@ -148,8 +146,8 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。
 
 问题:"""{{question}}"""`,
@@ -219,8 +217,8 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
       ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
@@ -273,8 +271,8 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE{{sourceIndex}}) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 和 sourceIndex 分别为引文中的值。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE1)。"
+- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。
 
 问题:"""{{question}}"""`,

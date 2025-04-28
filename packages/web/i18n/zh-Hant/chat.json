@@ -41,6 +41,7 @@
   "input_guide_tip": "您可以設定一些預設問題。當使用者輸入問題時，系統會從這些預設問題中提供相關問題作為提示。",
   "input_placeholder_phone": "請輸入問題",
   "insert_input_guide,_some_data_already_exists": "偵測到重複資料，已自動過濾，共插入 {{len}} 筆資料",
+  "invalid_share_url": "無效的分享鏈接",
   "is_chatting": "對話進行中...請稍候",
   "items": "筆",
   "llm_tokens": "LLM tokens",
