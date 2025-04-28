@@ -23,6 +23,7 @@ import {
   removeUtmParams,
   removeUtmWorkflow
 } from '@/web/support/marketing/utils';
+import { removeImageByPath } from '@fastgpt/service/common/file/image/controller';
 
 type FormType = {
   avatar: string;
@@ -34,6 +35,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
+  const utmParams = useMemo(() => getUtmParams(), []);
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
@@ -49,13 +51,13 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       const url = getUtmWorkflow();
       if (!url) return;
 
-      const utmParams = getUtmParams();
       const workflowData = await postFetchWorkflow({ url });
 
       setValue('workflowStr', JSON.stringify(workflowData, null, 2));
 
       if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
 
+      removeUtmParams();
       removeUtmWorkflow();
     },
     { manual: false }
@@ -113,6 +115,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           return Promise.reject(t('app:invalid_json_format'));
         }
       })();
+      console.log('utmParams2', utmParams);
 
       return postCreateApp({
         parentId,
@@ -122,7 +125,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         modules: workflow.nodes,
         edges: workflow.edges,
         chatConfig: workflow.chatConfig,
-        utmParams: getUtmParams()
+        utmParams: utmParams
       });
     },
     {
