@@ -38,84 +38,82 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 
-export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
-  const pluginNodes2InputSchema = (
-    nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
-  ) => {
-    const pluginInput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
+export const pluginNodes2InputSchema = (
+  nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
+) => {
+  const pluginInput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
 
-    const schema: Tool['inputSchema'] = {
-      type: 'object',
-      properties: {},
-      required: []
+  const schema: Tool['inputSchema'] = {
+    type: 'object',
+    properties: {},
+    required: []
+  };
+
+  pluginInput?.inputs.forEach((input) => {
+    const jsonSchema = (
+      toolValueTypeList.find((type) => type.value === input.valueType) || toolValueTypeList[0]
+    )?.jsonSchema;
+
+    schema.properties![input.key] = {
+      ...jsonSchema,
+      description: input.description,
+      enum: input.enum?.split('\n').filter(Boolean) || undefined
     };
 
-    pluginInput?.inputs.forEach((input) => {
-      const jsonSchema = (
-        toolValueTypeList.find((type) => type.value === input.valueType) || toolValueTypeList[0]
-      )?.jsonSchema;
+    if (input.required) {
+      // @ts-ignore
+      schema.required.push(input.key);
+    }
+  });
 
-      schema.properties![input.key] = {
-        ...jsonSchema,
-        description: input.description,
-        enum: input.enum?.split('\n').filter(Boolean) || undefined
-      };
-
-      if (input.required) {
-        // @ts-ignore
-        schema.required.push(input.key);
-      }
-    });
-
-    return schema;
-  };
-  const workflow2InputSchema = (chatConfig?: {
-    fileSelectConfig?: AppChatConfigType['fileSelectConfig'];
-    variables?: AppChatConfigType['variables'];
-  }) => {
-    const schema: Tool['inputSchema'] = {
-      type: 'object',
-      properties: {
-        question: {
-          type: 'string',
-          description: 'Question from user'
-        },
-        ...(chatConfig?.fileSelectConfig?.canSelectFile ||
-        chatConfig?.fileSelectConfig?.canSelectImg
-          ? {
-              fileUrlList: {
-                type: 'array',
-                items: {
-                  type: 'string'
-                },
-                description: 'File linkage'
-              }
-            }
-          : {})
+  return schema;
+};
+export const workflow2InputSchema = (chatConfig?: {
+  fileSelectConfig?: AppChatConfigType['fileSelectConfig'];
+  variables?: AppChatConfigType['variables'];
+}) => {
+  const schema: Tool['inputSchema'] = {
+    type: 'object',
+    properties: {
+      question: {
+        type: 'string',
+        description: 'Question from user'
       },
-      required: ['question']
-    };
-
-    chatConfig?.variables?.forEach((item) => {
-      const jsonSchema = (
-        toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
-      )?.jsonSchema;
-
-      schema.properties![item.key] = {
-        ...jsonSchema,
-        description: item.description,
-        enum: item.enums?.map((enumItem) => enumItem.value) || undefined
-      };
-
-      if (item.required) {
-        // @ts-ignore
-        schema.required!.push(item.key);
-      }
-    });
-
-    return schema;
+      ...(chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg
+        ? {
+            fileUrlList: {
+              type: 'array',
+              items: {
+                type: 'string'
+              },
+              description: 'File linkage'
+            }
+          }
+        : {})
+    },
+    required: ['question']
   };
 
+  chatConfig?.variables?.forEach((item) => {
+    const jsonSchema = (
+      toolValueTypeList.find((type) => type.value === item.valueType) || toolValueTypeList[0]
+    )?.jsonSchema;
+
+    schema.properties![item.key] = {
+      ...jsonSchema,
+      description: item.description,
+      enum: item.enums?.map((enumItem) => enumItem.value) || undefined
+    };
+
+    if (item.required) {
+      // @ts-ignore
+      schema.required!.push(item.key);
+    }
+  });
+
+  return schema;
+};
+export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
   const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();
   if (!mcp) {
     return Promise.reject(CommonErrEnum.invalidResource);
