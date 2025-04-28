@@ -34,7 +34,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
   const router = useRouter();
-  // const utmParams = useMemo(() => getUtmParams(), []);
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
