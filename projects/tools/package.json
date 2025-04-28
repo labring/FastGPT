@@ -1,0 +1,35 @@
+{
+  "name": "fastgpt-tools",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "new": "bun run scripts/new.ts",
+    "build": "bun run scripts/build.ts",
+    "dev": "bun --cwd=./runtime run dev",
+    "lint": "bun eslint --fix",
+    "test": "vitest"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.24.0",
+    "@eslint/json": "^0.11.0",
+    "@types/archiver": "^6.0.3",
+    "@types/bun": "latest",
+    "@vitest/coverage-v8": "^3.1.2",
+    "archiver": "^7.0.1",
+    "commander": "^13.1.0",
+    "eslint": "^9.24.0",
+    "globals": "^16.0.0",
+    "typescript-eslint": "^8.29.1",
+    "vitest": "^3.1.1",
+    "@fastgpt/service": "link:@fastgpt/service"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "workspaces": [
+    "tools/**/*",
+    "runtime"
+  ],
+  "packageManager": "bun@1.2.2",
+  "dependencies": {}
+}
