@@ -184,16 +184,12 @@ const DashboardContainer = ({
             : [])
         ]
       },
-      ...(feConfigs?.mcpServerProxyEndpoint
-        ? [
-            {
-              groupId: TabEnum.mcp_server,
-              groupAvatar: 'key',
-              groupName: t('common:mcp_server'),
-              children: []
-            }
-          ]
-        : [])
+      {
+        groupId: TabEnum.mcp_server,
+        groupAvatar: 'key',
+        groupName: t('common:mcp_server'),
+        children: []
+      }
     ];
   }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
 
