@@ -6,6 +6,7 @@
   "back_to_text": "返回输入",
   "chat.quote.No Data": "找不到该文件",
   "chat.quote.deleted": "该数据已被删除～",
+  "chat.waiting_for_response": "请等待对话完成",
   "chat_history": "聊天记录",
   "chat_input_guide_lexicon_is_empty": "还没有配置词库",
   "chat_test_app": "调试-{{name}}",
