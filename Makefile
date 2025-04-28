@@ -17,7 +17,7 @@ dev:
 
 build:
 ifeq ($(proxy), taobao)
-	docker build -f $(filePath) -t $(image) . --build-arg proxy=taobao 
+	docker build -f $(filePath) -t $(image) . --build-arg proxy=taobao
 else ifeq ($(proxy), clash)
 	docker build -f $(filePath) -t $(image) . --network host --build-arg HTTP_PROXY=http://127.0.0.1:7890 --build-arg HTTPS_PROXY=http://127.0.0.1:7890
 else

@@ -49,7 +49,7 @@ const DefaultPermissionList = ({
         <MySelect
           list={defaultPermissionSelectList}
           value={per}
-          onchange={(per) => {
+          onChange={(per) => {
             if (isInheritPermission && hasParent) {
               openConfirm(
                 () => onRequestChange(per),

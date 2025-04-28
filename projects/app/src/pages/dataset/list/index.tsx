@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import ParentPaths from '@/components/common/folder/Path';
 import List from '@/pageComponents/dataset/list/List';
 import { DatasetsContext } from './context';
@@ -29,6 +29,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -70,7 +71,7 @@ const Dataset = () => {
       ) {
         return toast({
           status: 'warning',
-          title: t('common:common.system.Commercial version function')
+          title: t('common:commercial_function_tip')
         });
       }
       setCreateDatasetType(e);
@@ -138,7 +139,7 @@ const Dataset = () => {
 
             {(folderDetail
               ? folderDetail.permission.hasWritePer
-              : userInfo?.team?.permission.hasWritePer) && (
+              : userInfo?.team?.permission.hasDatasetCreatePer) && (
               <Box pl={[0, 4]}>
                 <MyMenu
                   size="md"
@@ -248,7 +249,7 @@ const Dataset = () => {
                 }: {
                   members?: string[];
                   groups?: string[];
-                  permission: number;
+                  permission: PermissionValueType;
                 }) =>
                   postUpdateDatasetCollaborators({
                     members,

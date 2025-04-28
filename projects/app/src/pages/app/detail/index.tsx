@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
@@ -18,6 +18,10 @@ const Workflow = dynamic(() => import('@/pageComponents/app/detail/Workflow'), {
   loading: () => <Loading fixed={false} />
 });
 const Plugin = dynamic(() => import('@/pageComponents/app/detail/Plugin'), {
+  ssr: false,
+  loading: () => <Loading fixed={false} />
+});
+const MCPTools = dynamic(() => import('@/pageComponents/app/detail/MCPTools'), {
   ssr: false,
   loading: () => <Loading fixed={false} />
 });
@@ -42,6 +46,7 @@ const AppDetail = () => {
             {appDetail.type === AppTypeEnum.simple && <SimpleEdit />}
             {appDetail.type === AppTypeEnum.workflow && <Workflow />}
             {appDetail.type === AppTypeEnum.plugin && <Plugin />}
+            {appDetail.type === AppTypeEnum.toolSet && <MCPTools />}
           </>
         )}
       </Box>

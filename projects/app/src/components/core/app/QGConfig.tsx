@@ -14,8 +14,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import CustomPromptEditor from '@fastgpt/web/components/common/Textarea/CustomPromptEditor';
 import {
-  PROMPT_QUESTION_GUIDE,
-  PROMPT_QUESTION_GUIDE_FOOTER
+  QuestionGuideFooterPrompt,
+  QuestionGuidePrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 
 // question generator config
@@ -38,7 +38,7 @@ const QGConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <FormLabel>{t('common:core.app.Question Guide')}</FormLabel>
+      <FormLabel color={'myGray.600'}>{t('common:core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <MyTooltip label={t('app:config_question_guide')}>
@@ -125,7 +125,7 @@ const QGConfigModal = ({
                       value: item.model,
                       label: item.name
                     }))}
-                    onchange={(e) => {
+                    onChange={(e) => {
                       onChange({
                         ...value,
                         model: e
@@ -168,7 +168,7 @@ const QGConfigModal = ({
                     }
                   }}
                 >
-                  {customPrompt || PROMPT_QUESTION_GUIDE}
+                  {customPrompt || QuestionGuidePrompt}
                 </Box>
               </Box>
             </>
@@ -178,8 +178,8 @@ const QGConfigModal = ({
       {isOpenCustomPrompt && (
         <CustomPromptEditor
           defaultValue={customPrompt}
-          defaultPrompt={PROMPT_QUESTION_GUIDE}
-          footerPrompt={PROMPT_QUESTION_GUIDE_FOOTER}
+          defaultPrompt={QuestionGuidePrompt}
+          footerPrompt={QuestionGuideFooterPrompt}
           onChange={(e) => {
             onChange({
               ...value,

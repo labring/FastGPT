@@ -16,6 +16,16 @@ import { FlowNodeInputTypeEnum } from '../../core/workflow/node/constant';
 import { WorkflowTemplateBasicType } from '@fastgpt/global/core/workflow/type';
 import { SourceMemberType } from '../../support/user/type';
 
+export type ToolType = {
+  name: string;
+  description: string;
+  inputSchema: {
+    type: string;
+    properties?: Record<string, { type: string; description?: string }>;
+    required?: string[];
+  };
+};
+
 export type AppSchema = {
   _id: string;
   parentId?: ParentIdType;
@@ -71,6 +81,20 @@ export type AppDetailType = AppSchema & {
   permission: AppPermission;
 };
 
+export type AppDatasetSearchParamsType = {
+  searchMode: `${DatasetSearchModeEnum}`;
+  limit?: number; // limit max tokens
+  similarity?: number;
+  embeddingWeight?: number; // embedding weight, fullText weight = 1 - embeddingWeight
+
+  usingReRank?: boolean;
+  rerankModel?: string;
+  rerankWeight?: number;
+
+  datasetSearchUsingExtensionQuery?: boolean;
+  datasetSearchExtensionModel?: string;
+  datasetSearchExtensionBg?: string;
+};
 export type AppSimpleEditFormType = {
   // templateId: string;
   aiSettings: {
@@ -88,14 +112,7 @@ export type AppSimpleEditFormType = {
   };
   dataset: {
     datasets: SelectedDatasetType;
-    searchMode: `${DatasetSearchModeEnum}`;
-    similarity?: number;
-    limit?: number;
-    usingReRank?: boolean;
-    datasetSearchUsingExtensionQuery?: boolean;
-    datasetSearchExtensionModel?: string;
-    datasetSearchExtensionBg?: string;
-  };
+  } & AppDatasetSearchParamsType;
   selectedTools: FlowNodeTemplateType[];
   chatConfig: AppChatConfigType;
 };

@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 import { useState, useMemo } from 'react';
 import WorkflowVariableModal from '@/pageComponents/account/thirdParty/WorkflowVariableModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { GET } from '@/web/common/api/request';
 import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';

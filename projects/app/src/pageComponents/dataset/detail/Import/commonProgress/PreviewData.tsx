@@ -16,6 +16,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ const PreviewData = () => {
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -32,21 +34,25 @@ const PreviewData = () => {
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
 
-  const { data = [], loading: isLoading } = useRequest2(
+  const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
-      if (!previewFile) return;
+      if (!previewFile) return { chunks: [], total: 0 };
       if (importSource === ImportDataSourceEnum.fileCustom) {
-        const customSplitChar = processParamsForm.getValues('customSplitChar');
+        const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
-          chunkLen: chunkSize,
+          chunkSize,
+          maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
           overlapRatio: chunkOverlapRatio,
-          customReg: customSplitChar ? [customSplitChar] : []
+          customReg: chunkSplitter ? [chunkSplitter] : []
         });
-        return chunks.map((chunk) => ({
-          q: chunk,
-          a: ''
-        }));
+        return {
+          chunks: chunks.map((chunk) => ({
+            q: chunk,
+            a: ''
+          })),
+          total: chunks.length
+        };
       }
 
       return getPreviewChunks({
@@ -61,9 +67,12 @@ const PreviewData = () => {
 
         customPdfParse: processParamsForm.getValues('customPdfParse'),
 
+        trainingType: processParamsForm.getValues('trainingType'),
+        chunkSettingMode: processParamsForm.getValues('chunkSettingMode'),
+        chunkSplitMode: processParamsForm.getValues('chunkSplitMode'),
         chunkSize,
+        chunkSplitter: processParamsForm.getValues('chunkSplitter'),
         overlapRatio: chunkOverlapRatio,
-        customSplitChar: processParamsForm.getValues('customSplitChar'),
 
         selector: processParamsForm.getValues('webSelector'),
         isQAImport: importSource === ImportDataSourceEnum.csvTable,
@@ -75,7 +84,7 @@ const PreviewData = () => {
       manual: false,
       onSuccess(result) {
         if (!previewFile) return;
-        if (!result || result.length === 0) {
+        if (!result || result.total === 0) {
           toast({
             title: t('dataset:preview_chunk_empty'),
             status: 'error'
@@ -124,14 +133,14 @@ const PreviewData = () => {
           <Flex py={4} px={5} borderBottom={'base'} justifyContent={'space-between'}>
             <FormLabel fontSize={'md'}>{t('dataset:preview_chunk')}</FormLabel>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('dataset:preview_chunk_intro')}
+              {t('dataset:preview_chunk_intro', { total: data.total })}
             </Box>
           </Flex>
           <MyBox isLoading={isLoading} flex={'1 0 0'} h={0}>
             <Box h={'100%'} overflowY={'auto'} px={5} py={3}>
               {previewFile ? (
                 <>
-                  {data.map((item, index) => (
+                  {data.chunks.map((item, index) => (
                     <Box
                       key={index}
                       fontSize={'sm'}

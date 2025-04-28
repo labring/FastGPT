@@ -25,7 +25,7 @@ weight: 707
     "qaMaxProcess": 15, // 问答拆分线程数量
     "vlmMaxProcess": 15, // 图片理解模型最大处理进程
     "tokenWorkers": 50, // Token 计算线程保持数，会持续占用内存，不能设置太大。
-    "pgHNSWEfSearch": 100, // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "hnswEfSearch": 100, // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
     "customPdfParse": { // 4.9.0 新增配置
       "url": "", // 自定义 PDF 解析服务地址
       "key": "", // 自定义 PDF 解析服务密钥
@@ -44,7 +44,7 @@ weight: 707
 
 #### 1. 申请 Sealos AI proxy API Key
 
-[点击打开 Sealos Pdf parser 官网](https://cloud.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
+[点击打开 Sealos Pdf parser 官网](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy)，并进行对应 API Key 的申请。
 
 #### 2. 修改 FastGPT 配置文件
 

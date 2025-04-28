@@ -16,6 +16,7 @@ import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export type SelectFileItemType = {
   fileId: string;
@@ -71,39 +72,53 @@ const FileSelector = ({
       {
         await Promise.all(
           files.map(async ({ fileId, file }) => {
-            const { fileId: uploadFileId } = await uploadFile2DB({
-              file,
-              bucketName: BucketNameEnum.dataset,
-              data: {
-                datasetId
-              },
-              percentListen: (e) => {
-                setSelectFiles((state) =>
-                  state.map((item) =>
-                    item.id === fileId
-                      ? {
-                          ...item,
-                          uploadedFileRate: item.uploadedFileRate
-                            ? Math.max(e, item.uploadedFileRate)
-                            : e
-                        }
-                      : item
-                  )
-                );
-              }
-            });
-            setSelectFiles((state) =>
-              state.map((item) =>
-                item.id === fileId
-                  ? {
-                      ...item,
-                      dbFileId: uploadFileId,
-                      isUploading: false,
-                      uploadedFileRate: 100
-                    }
-                  : item
-              )
-            );
+            try {
+              const { fileId: uploadFileId } = await uploadFile2DB({
+                file,
+                bucketName: BucketNameEnum.dataset,
+                data: {
+                  datasetId
+                },
+                percentListen: (e) => {
+                  setSelectFiles((state) =>
+                    state.map((item) =>
+                      item.id === fileId
+                        ? {
+                            ...item,
+                            uploadedFileRate: item.uploadedFileRate
+                              ? Math.max(e, item.uploadedFileRate)
+                              : e
+                          }
+                        : item
+                    )
+                  );
+                }
+              });
+              setSelectFiles((state) =>
+                state.map((item) =>
+                  item.id === fileId
+                    ? {
+                        ...item,
+                        dbFileId: uploadFileId,
+                        isUploading: false,
+                        uploadedFileRate: 100
+                      }
+                    : item
+                )
+              );
+            } catch (error) {
+              setSelectFiles((state) =>
+                state.map((item) =>
+                  item.id === fileId
+                    ? {
+                        ...item,
+                        isUploading: false,
+                        errorMsg: getErrText(error)
+                      }
+                    : item
+                )
+              );
+            }
           })
         );
       }

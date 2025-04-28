@@ -3,7 +3,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { recallFromVectorStore } from '../../../common/vectorStore/controller';
+import { recallFromVectorStore } from '../../../common/vectorDB/controller';
 import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
@@ -16,7 +16,7 @@ import { reRankRecall } from '../../../core/ai/rerank';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { jiebaSplit } from '../../../common/string/jieba';
+import { jiebaSplit } from '../../../common/string/jieba/index';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { Types } from '../../../common/mongo';
 import json5 from 'json5';
@@ -24,9 +24,9 @@ import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { POST } from '../../../common/api/plusRequest';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
+import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export type SearchDatasetDataProps = {
   histories: ChatItemType[];
@@ -39,7 +39,11 @@ export type SearchDatasetDataProps = {
   [NodeInputKeyEnum.datasetSimilarity]?: number; // min distance
   [NodeInputKeyEnum.datasetMaxTokens]: number; // max Token limit
   [NodeInputKeyEnum.datasetSearchMode]?: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+
   [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: RerankModelItemType;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
 
   /* 
     {
@@ -58,7 +62,8 @@ export type SearchDatasetDataProps = {
 
 export type SearchDatasetDataResponse = {
   searchRes: SearchDataResponseItemType[];
-  tokens: number;
+  embeddingTokens: number;
+  reRankInputTokens: number;
   searchMode: `${DatasetSearchModeEnum}`;
   limit: number;
   similarity: number;
@@ -75,13 +80,19 @@ export type SearchDatasetDataResponse = {
 };
 
 export const datasetDataReRank = async ({
+  rerankModel,
   data,
   query
 }: {
+  rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
-}): Promise<SearchDataResponseItemType[]> => {
-  const results = await reRankRecall({
+}): Promise<{
+  results: SearchDataResponseItemType[];
+  inputTokens: number;
+}> => {
+  const { results, inputTokens } = await reRankRecall({
+    model: rerankModel,
     query,
     documents: data.map((item) => ({
       id: item.id,
@@ -107,7 +118,10 @@ export const datasetDataReRank = async ({
     })
     .filter(Boolean) as SearchDataResponseItemType[];
 
-  return mergeResult;
+  return {
+    results: mergeResult,
+    inputTokens
+  };
 };
 export const filterDatasetDataByMaxTokens = async (
   data: SearchDataResponseItemType[],
@@ -126,12 +140,10 @@ export const filterDatasetDataByMaxTokens = async (
     let totalTokens = 0;
 
     for await (const item of tokensScoreFilter) {
+      results.push(item);
+
       totalTokens += item.tokens;
 
-      if (totalTokens > maxTokens + 500) {
-        break;
-      }
-      results.push(item);
       if (totalTokens > maxTokens) {
         break;
       }
@@ -154,7 +166,10 @@ export async function searchDatasetData(
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
+    embeddingWeight = 0.5,
     usingReRank = false,
+    rerankModel,
+    rerankWeight = 0.5,
     datasetIds = [],
     collectionFilterMatch
   } = props;
@@ -276,50 +291,64 @@ export async function searchDatasetData(
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
 
-      // Tag
-      let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      let orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
-      // get andTagIds
       if (andTags && andTags.length > 0) {
-        // tag 去重
-        andTags = Array.from(new Set(andTags));
-
-        if (andTags.includes(null) && andTags.some((tag) => typeof tag === 'string')) {
+        const uniqueAndTags = Array.from(new Set(andTags));
+        if (uniqueAndTags.includes(null) && uniqueAndTags.some((tag) => typeof tag === 'string')) {
           return [];
         }
-
-        if (andTags.every((tag) => typeof tag === 'string')) {
-          // Get tagId by tag string
-          const andTagIdList = await MongoDatasetCollectionTags.find(
+        if (uniqueAndTags.every((tag) => typeof tag === 'string')) {
+          const matchedTags = await MongoDatasetCollectionTags.find(
             {
               teamId,
               datasetId: { $in: datasetIds },
-              tag: { $in: andTags }
+              tag: { $in: uniqueAndTags as string[] }
             },
-            '_id',
-            {
-              ...readFromSecondary
-            }
+            '_id datasetId tag',
+            { ...readFromSecondary }
           ).lean();
 
-          // If you enter a tag that does not exist, none will be found
-          if (andTagIdList.length !== andTags.length) return [];
+          // Group tags by dataset
+          const datasetTagMap = new Map<string, { tagIds: string[]; tagNames: Set<string> }>();
 
-          // Get collectionId by tagId
-          const collections = await MongoDatasetCollection.find(
-            {
-              teamId,
-              datasetId: { $in: datasetIds },
-              tags: { $all: andTagIdList.map((item) => String(item._id)) }
-            },
-            '_id',
-            {
-              ...readFromSecondary
+          matchedTags.forEach((tag) => {
+            const datasetId = String(tag.datasetId);
+            if (!datasetTagMap.has(datasetId)) {
+              datasetTagMap.set(datasetId, {
+                tagIds: [],
+                tagNames: new Set()
+              });
             }
-          ).lean();
-          tagCollectionIdList = collections.map((item) => String(item._id));
-        } else if (andTags.every((tag) => tag === null)) {
+
+            const datasetData = datasetTagMap.get(datasetId)!;
+            datasetData.tagIds.push(String(tag._id));
+            datasetData.tagNames.add(tag.tag);
+          });
+
+          const validDatasetIds = Array.from(datasetTagMap.entries())
+            .filter(([_, data]) => uniqueAndTags.every((tag) => data.tagNames.has(tag as string)))
+            .map(([datasetId]) => datasetId);
+
+          if (validDatasetIds.length === 0) return [];
+
+          const collectionsPromises = validDatasetIds.map((datasetId) => {
+            const { tagIds } = datasetTagMap.get(datasetId)!;
+            return MongoDatasetCollection.find(
+              {
+                teamId,
+                datasetId,
+                tags: { $all: tagIds }
+              },
+              '_id',
+              { ...readFromSecondary }
+            ).lean();
+          });
+
+          const collectionsResults = await Promise.all(collectionsPromises);
+          tagCollectionIdList = collectionsResults.flat().map((item) => String(item._id));
+        } else if (uniqueAndTags.every((tag) => tag === null)) {
           const collections = await MongoDatasetCollection.find(
             {
               teamId,
@@ -327,9 +356,7 @@ export async function searchDatasetData(
               $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
             },
             '_id',
-            {
-              ...readFromSecondary
-            }
+            { ...readFromSecondary }
           ).lean();
           tagCollectionIdList = collections.map((item) => String(item._id));
         }
@@ -526,7 +553,7 @@ export async function searchDatasetData(
                 $match: {
                   teamId: new Types.ObjectId(teamId),
                   datasetId: new Types.ObjectId(id),
-                  $text: { $search: jiebaSplit({ text: query }) },
+                  $text: { $search: await jiebaSplit({ text: query }) },
                   ...(filterCollectionIdList
                     ? {
                         collectionId: {
@@ -686,14 +713,23 @@ export async function searchDatasetData(
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
+  const {
+    embeddingRecallResults,
+    fullTextRecallResults,
+    tokens: embeddingTokens
+  } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
 
   // ReRank results
-  const reRankResults = await (async () => {
-    if (!usingReRank) return [];
+  const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
+    if (!usingReRank) {
+      return {
+        results: [],
+        inputTokens: 0
+      };
+    }
 
     set = new Set<string>(embeddingRecallResults.map((item) => item.id));
     const concatRecallResults = embeddingRecallResults.concat(
@@ -711,21 +747,40 @@ export async function searchDatasetData(
     });
     try {
       return await datasetDataReRank({
+        rerankModel,
         query: reRankQuery,
         data: filterSameDataResults
       });
     } catch (error) {
       usingReRank = false;
-      return [];
+      return {
+        results: [],
+        inputTokens: 0
+      };
     }
   })();
 
   // embedding recall and fullText recall rrf concat
-  const rrfConcatResults = datasetSearchResultConcat([
-    { k: 60, list: embeddingRecallResults },
-    { k: 60, list: fullTextRecallResults },
-    { k: 58, list: reRankResults }
+  const baseK = 120;
+  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
+  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
+
+  const rrfSearchResult = datasetSearchResultConcat([
+    { k: embK, list: embeddingRecallResults },
+    { k: fullTextK, list: fullTextRecallResults }
   ]);
+  const rrfConcatResults = (() => {
+    if (reRankResults.length === 0) return rrfSearchResult;
+    if (rerankWeight === 1) return reRankResults;
+
+    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
+    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
+
+    return datasetSearchResultConcat([
+      { k: searchK, list: rrfSearchResult },
+      { k: rerankK, list: reRankResults }
+    ]);
+  })();
 
   // remove same q and a data
   set = new Set<string>();
@@ -766,7 +821,8 @@ export async function searchDatasetData(
 
   return {
     searchRes: filterMaxTokensResult,
-    tokens,
+    embeddingTokens,
+    reRankInputTokens,
     searchMode,
     limit: maxTokens,
     similarity,
@@ -825,5 +881,4 @@ export type DeepRagSearchProps = SearchDatasetDataProps & {
   [NodeInputKeyEnum.datasetDeepSearchMaxTimes]?: number;
   [NodeInputKeyEnum.datasetDeepSearchBg]?: string;
 };
-export const deepRagSearch = (data: DeepRagSearchProps) =>
-  POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+export const deepRagSearch = (data: DeepRagSearchProps) => global.deepRagHandler(data);

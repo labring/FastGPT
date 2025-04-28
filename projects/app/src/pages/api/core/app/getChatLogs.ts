@@ -57,9 +57,6 @@ async function handler(
         { $match: where },
         {
           $sort: {
-            userBadFeedbackCount: -1,
-            userGoodFeedbackCount: -1,
-            customFeedbacksCount: -1,
             updateTime: -1
           }
         },
@@ -68,68 +65,46 @@ async function handler(
         {
           $lookup: {
             from: ChatItemCollectionName,
-            let: { chatId: '$chatId' },
+            let: { chatId: '$chatId', appId: new Types.ObjectId(appId) },
             pipeline: [
               {
                 $match: {
                   $expr: {
-                    $and: [
-                      { $eq: ['$appId', new Types.ObjectId(appId)] },
-                      { $eq: ['$chatId', '$$chatId'] }
-                    ]
+                    $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
                   }
                 }
               },
               {
-                $project: {
-                  userGoodFeedback: 1,
-                  userBadFeedback: 1,
-                  customFeedbacks: 1,
-                  adminFeedback: 1
+                $group: {
+                  _id: null,
+                  messageCount: { $sum: 1 },
+                  goodFeedback: { $sum: { $cond: [{ $eq: ['$userGoodFeedback', true] }, 1, 0] } },
+                  badFeedback: { $sum: { $cond: [{ $eq: ['$userBadFeedback', true] }, 1, 0] } },
+                  customFeedback: {
+                    $sum: {
+                      $cond: [{ $gt: [{ $size: { $ifNull: ['$customFeedbacks', []] } }, 0] }, 1, 0]
+                    }
+                  },
+                  adminMark: { $sum: { $cond: [{ $eq: ['$adminFeedback', true] }, 1, 0] } }
                 }
               }
             ],
-            as: 'chatitems'
+            as: 'chatItemsData'
           }
         },
         {
           $addFields: {
+            messageCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.messageCount', 0] }, 0] },
             userGoodFeedbackCount: {
-              $size: {
-                $filter: {
-                  input: '$chatitems',
-                  as: 'item',
-                  cond: { $ifNull: ['$$item.userGoodFeedback', false] }
-                }
-              }
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.goodFeedback', 0] }, 0]
             },
             userBadFeedbackCount: {
-              $size: {
-                $filter: {
-                  input: '$chatitems',
-                  as: 'item',
-                  cond: { $ifNull: ['$$item.userBadFeedback', false] }
-                }
-              }
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.badFeedback', 0] }, 0]
             },
             customFeedbacksCount: {
-              $size: {
-                $filter: {
-                  input: '$chatitems',
-                  as: 'item',
-                  cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
-                }
-              }
+              $ifNull: [{ $arrayElemAt: ['$chatItemsData.customFeedback', 0] }, 0]
             },
-            markCount: {
-              $size: {
-                $filter: {
-                  input: '$chatitems',
-                  as: 'item',
-                  cond: { $ifNull: ['$$item.adminFeedback', false] }
-                }
-              }
-            }
+            markCount: { $ifNull: [{ $arrayElemAt: ['$chatItemsData.adminMark', 0] }, 0] }
           }
         },
         {
@@ -141,7 +116,7 @@ async function handler(
             source: 1,
             sourceName: 1,
             time: '$updateTime',
-            messageCount: { $size: '$chatitems' },
+            messageCount: 1,
             userGoodFeedbackCount: 1,
             userBadFeedbackCount: 1,
             customFeedbacksCount: 1,

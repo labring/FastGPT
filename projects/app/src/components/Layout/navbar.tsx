@@ -55,8 +55,14 @@ const Navbar = ({ unread }: { unread: number }) => {
         label: t('common:navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
-        link: `/app/list`,
-        activeLink: ['/app/list', '/app/detail']
+        link: `/dashboard/apps`,
+        activeLink: [
+          '/dashboard/apps',
+          '/app/detail',
+          '/dashboard/templateMarket',
+          '/dashboard/[pluginGroupId]',
+          '/dashboard/mcpServer'
+        ]
       },
       {
         label: t('common:navbar.Datasets'),
@@ -64,13 +70,6 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
-      },
-      {
-        label: t('common:navbar.Toolkit'),
-        icon: 'phoneTabbar/tool',
-        activeIcon: 'phoneTabbar/toolFill',
-        link: `/toolkit`,
-        activeLink: ['/toolkit']
       },
       {
         label: t('common:navbar.Account'),
@@ -125,6 +124,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       <Box flex={1}>
         {navbarList.map((item) => {
           const isActive = item.activeLink.includes(router.pathname);
+
           return (
             <Box
               key={item.link}

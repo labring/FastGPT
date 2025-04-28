@@ -1,4 +1,4 @@
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
 import { Box, Flex } from '@chakra-ui/react';
 import Icon from '@fastgpt/web/components/common/Icon';
@@ -13,32 +13,58 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { TeamContext, TeamModalContextProvider } from '@/pageComponents/account/team/context';
 import dynamic from 'next/dynamic';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const MemberTable = dynamic(() => import('@/pageComponents/account/team/MemberTable'));
 const PermissionManage = dynamic(
   () => import('@/pageComponents/account/team/PermissionManage/index')
 );
+const OperationLogTable = dynamic(() => import('@/pageComponents/account/team/OperationLog/index'));
 const GroupManage = dynamic(() => import('@/pageComponents/account/team/GroupManage/index'));
 const OrgManage = dynamic(() => import('@/pageComponents/account/team/OrgManage/index'));
+const HandleInviteModal = dynamic(
+  () => import('@/pageComponents/account/team/Invite/HandleInviteModal')
+);
 
 export enum TeamTabEnum {
   member = 'member',
   org = 'org',
   group = 'group',
-  permission = 'permission'
+  permission = 'permission',
+  operationLog = 'operationLog'
 }
 
 const Team = () => {
   const router = useRouter();
+
+  const invitelinkid = useMemo(() => {
+    const _id = router.query.invitelinkid;
+    if (!_id && typeof _id !== 'string') {
+      return '';
+    } else {
+      return _id as string;
+    }
+  }, [router.query.invitelinkid]);
+
   const { teamTab = TeamTabEnum.member } = router.query as { teamTab: `${TeamTabEnum}` };
 
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
+  const { userInfo, teamPlanStatus } = useUserStore();
+  const standardPlan = teamPlanStatus?.standard;
+  const level = standardPlan?.currentSubLevel;
+  const { subPlans } = useSystemStore();
+  const planContent = useMemo(() => {
+    const plan = level !== undefined ? subPlans?.standard?.[level] : undefined;
 
-  const { setEditTeamData, isLoading, teamSize, refetchMembers } = useContextSelector(
-    TeamContext,
-    (v) => v
-  );
+    if (!plan) return;
+    return {
+      permissionTeamOperationLog: plan.permissionTeamOperationLog
+    };
+  }, [subPlans?.standard, level]);
+  const { toast } = useToast();
+
+  const { setEditTeamData, teamSize } = useContextSelector(TeamContext, (v) => v);
 
   const Tabs = useMemo(
     () => (
@@ -47,11 +73,19 @@ const Team = () => {
           { label: t('account_team:member'), value: TeamTabEnum.member },
           { label: t('account_team:org'), value: TeamTabEnum.org },
           { label: t('account_team:group'), value: TeamTabEnum.group },
-          { label: t('account_team:permission'), value: TeamTabEnum.permission }
+          { label: t('account_team:permission'), value: TeamTabEnum.permission },
+          { label: t('account_team:operation_log'), value: TeamTabEnum.operationLog }
         ]}
         px={'1rem'}
         value={teamTab}
         onChange={(e) => {
+          if (e === TeamTabEnum.operationLog && !planContent?.permissionTeamOperationLog) {
+            toast({
+              status: 'warning',
+              title: t('common:not_permission')
+            });
+            return;
+          }
           router.replace({
             query: {
               ...router.query,
@@ -65,7 +99,7 @@ const Team = () => {
   );
 
   return (
-    <AccountContainer isLoading={isLoading}>
+    <AccountContainer>
       <Flex h={'100%'} flexDirection={'column'}>
         {/* header */}
         <Flex
@@ -88,7 +122,7 @@ const Team = () => {
               </Box>
             </Flex>
             <Flex align={'center'} ml={6}>
-              <TeamSelector height={'28px'} onChange={refetchMembers} />
+              <TeamSelector height={'28px'} />
             </Flex>
             {userInfo?.team?.role === TeamMemberRoleEnum.owner && (
               <Flex align={'center'} justify={'center'} ml={2} p={'0.44rem'}>
@@ -140,8 +174,10 @@ const Team = () => {
           {teamTab === TeamTabEnum.org && <OrgManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.group && <GroupManage Tabs={Tabs} />}
           {teamTab === TeamTabEnum.permission && <PermissionManage Tabs={Tabs} />}
+          {teamTab === TeamTabEnum.operationLog && <OperationLogTable Tabs={Tabs} />}
         </Box>
       </Flex>
+      {invitelinkid && <HandleInviteModal invitelinkid={invitelinkid} />}
     </AccountContainer>
   );
 };

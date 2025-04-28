@@ -8,7 +8,7 @@ import {
   EmbeddingModelItemType,
   TTSModelType,
   STTModelType,
-  ReRankModelItemType
+  RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
 import {
@@ -23,23 +23,23 @@ import {
 } from '../../../common/system/config/controller';
 import { delay } from '@fastgpt/global/common/system/utils';
 
+const getModelConfigBaseUrl = () => {
+  const currentFileUrl = new URL(import.meta.url);
+  const filePath = decodeURIComponent(
+    process.platform === 'win32'
+      ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
+      : currentFileUrl.pathname
+  );
+  const modelsPath = path.join(path.dirname(filePath), 'provider');
+  return modelsPath;
+};
+
 /* 
   TODO: 分优先级读取：
   1. 有外部挂载目录，则读取外部的
   2. 没有外部挂载目录，则读取本地的。然后试图拉取云端的进行覆盖。
 */
 export const loadSystemModels = async (init = false) => {
-  const getProviderList = () => {
-    const currentFileUrl = new URL(import.meta.url);
-    const filePath = decodeURIComponent(
-      process.platform === 'win32'
-        ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
-        : currentFileUrl.pathname
-    );
-    const modelsPath = path.join(path.dirname(filePath), 'provider');
-
-    return fs.readdirSync(modelsPath) as string[];
-  };
   const pushModel = (model: SystemModelItemType) => {
     global.systemModelList.push(model);
 
@@ -94,15 +94,16 @@ export const loadSystemModels = async (init = false) => {
   global.embeddingModelMap = new Map<string, EmbeddingModelItemType>();
   global.ttsModelMap = new Map<string, TTSModelType>();
   global.sttModelMap = new Map<string, STTModelType>();
-  global.reRankModelMap = new Map<string, ReRankModelItemType>();
+  global.reRankModelMap = new Map<string, RerankModelItemType>();
   // @ts-ignore
   global.systemDefaultModel = {};
 
   try {
     const dbModels = await MongoSystemModel.find({}).lean();
-    const providerList = getProviderList();
 
-    // System model
+    // Load system model from local
+    const modelsPath = getModelConfigBaseUrl();
+    const providerList = fs.readdirSync(modelsPath) as string[];
     await Promise.all(
       providerList.map(async (name) => {
         const fileContent = (await import(`./provider/${name}`))?.default as {

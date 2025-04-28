@@ -77,7 +77,7 @@ const SettingLLMModel = ({
               value: item.model,
               label: item.name
             }))}
-            onchange={(e) => {
+            onChange={(e) => {
               onChange({
                 ...defaultData,
                 model: e
@@ -99,7 +99,6 @@ const SettingLLMModel = ({
         <AISettingModal
           onClose={onCloseAIChatSetting}
           onSuccess={(e) => {
-            console.log(e);
             onChange(e);
             onCloseAIChatSetting();
           }}

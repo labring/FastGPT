@@ -9,7 +9,7 @@ weight: 951
 
 ## 登录 Sealos
 
-[Sealos](https://cloud.sealos.io/)
+[Sealos](https://cloud.sealos.io?uid=fnWRt09fZP)
 
 ## 创建应用
 

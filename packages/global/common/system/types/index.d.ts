@@ -6,7 +6,7 @@ import type {
   EmbeddingModelItemType,
   AudioSpeechModels,
   STTModelType,
-  ReRankModelItemType
+  RerankModelItemType
 } from '../../../core/ai/model.d';
 import { SubTypeEnum } from '../../../support/wallet/sub/constants';
 
@@ -35,7 +35,7 @@ export type FastGPTConfigFileType = {
   // Abandon
   llmModels?: ChatModelItemType[];
   vectorModels?: EmbeddingModelItemType[];
-  reRankModels?: ReRankModelItemType[];
+  reRankModels?: RerankModelItemType[];
   audioSpeechModels?: TTSModelType[];
   whisperModel?: STTModelType;
 };
@@ -49,6 +49,7 @@ export type FastGPTFeConfigsType = {
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
   googleClientVerKey?: string;
+  mcpServerProxyEndpoint?: string;
 
   show_emptyChat?: boolean;
   show_appStore?: boolean;
@@ -59,6 +60,7 @@ export type FastGPTFeConfigsType = {
   show_team_chat?: boolean;
   show_compliance_copywriting?: boolean;
   show_aiproxy?: boolean;
+  show_coupon?: boolean;
   concatMd?: string;
 
   concatMd?: string;
@@ -84,11 +86,6 @@ export type FastGPTFeConfigsType = {
     github?: string;
     google?: string;
     wechat?: string;
-    dingtalk?: string;
-    wecom?: {
-      corpid?: string;
-      agentid?: string;
-    };
     microsoft?: {
       clientId?: string;
       tenantId?: string;
@@ -110,6 +107,12 @@ export type FastGPTFeConfigsType = {
   lafEnv?: string;
   navbarItems?: NavbarItemType[];
   externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
+
+  payConfig?: {
+    wx?: boolean;
+    alipay?: boolean;
+    bank?: boolean;
+  };
 };
 
 export type SystemEnvType = {
@@ -117,17 +120,18 @@ export type SystemEnvType = {
   vectorMaxProcess: number;
   qaMaxProcess: number;
   vlmMaxProcess: number;
-  pgHNSWEfSearch: number;
+  hnswEfSearch: number;
   tokenWorkers: number; // token count max worker
 
   oneapiUrl?: string;
   chatApiKey?: string;
 
-  customPdfParse?: {
-    url?: string;
-    key?: string;
+  customPdfParse?: customPdfParseType;
+};
 
-    doc2xKey?: string;
-    price?: number; // n points/1 page
-  };
+export type customPdfParseType = {
+  url?: string;
+  key?: string;
+  doc2xKey?: string;
+  price?: number;
 };

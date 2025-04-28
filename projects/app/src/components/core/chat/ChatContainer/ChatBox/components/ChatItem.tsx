@@ -1,5 +1,5 @@
 import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
-import React, { useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
@@ -26,6 +26,9 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -59,7 +62,7 @@ type Props = BasicProps & {
 const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) => {
   return (
     <Markdown
-      source={`\`\`\`${CodeClassNameEnum.questionGuide}
+      source={`\`\`\`${CodeClassNameEnum.questionguide}
 ${JSON.stringify(questionGuides)}`}
     />
   );
@@ -115,6 +118,7 @@ const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { isPc } = useSystem();
+  const { toast } = useToast();
 
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
@@ -141,6 +145,18 @@ const ChatItem = (props: Props) => {
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
+
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
+
+  const { totalQuoteList: quoteList = [] } = useMemo(
+    () => addStatisticalDataToHistoryItem(chat),
+    [chat]
+  );
+
   const isChatLog = chatType === 'log';
 
   const { copyData } = useCopyData();
@@ -207,6 +223,80 @@ const ChatItem = (props: Props) => {
 
     return groupedValues;
   }, [chat.obj, chat.value, isChatting]);
+
+  const handleOpenQuoteReader = useCallback(
+    ({
+      collectionId,
+      sourceId,
+      sourceName,
+      datasetId,
+      quoteId
+    }: {
+      collectionId?: string;
+      sourceId?: string;
+      sourceName?: string;
+      datasetId?: string;
+      quoteId?: string;
+    }) => {
+      if (!setQuoteData) return;
+      if (isChatting)
+        return toast({
+          title: t('chat:chat.waiting_for_response'),
+          status: 'info'
+        });
+
+      const collectionIdList = collectionId
+        ? [collectionId]
+        : [...new Set(quoteList.map((item) => item.collectionId))];
+
+      setQuoteData({
+        rawSearch: quoteList,
+        metadata:
+          collectionId && isShowReadRawSource
+            ? {
+                appId: appId,
+                chatId: chatId,
+                chatItemDataId: chat.dataId,
+                collectionId: collectionId,
+                collectionIdList,
+                sourceId: sourceId || '',
+                sourceName: sourceName || '',
+                datasetId: datasetId || '',
+                outLinkAuthData,
+                quoteId
+              }
+            : {
+                appId: appId,
+                chatId: chatId,
+                chatItemDataId: chat.dataId,
+                collectionIdList,
+                sourceId: sourceId,
+                sourceName: sourceName,
+                outLinkAuthData
+              }
+      });
+    },
+    [
+      setQuoteData,
+      isChatting,
+      toast,
+      t,
+      quoteList,
+      isShowReadRawSource,
+      appId,
+      chatId,
+      chat.dataId,
+      outLinkAuthData
+    ]
+  );
+
+  useEffect(() => {
+    if (chat.obj !== ChatRoleEnum.AI) return;
+    eventBus.on(EventNameEnum.openQuoteReader, handleOpenQuoteReader);
+    return () => {
+      eventBus.off(EventNameEnum.openQuoteReader);
+    };
+  }, [chat.obj, handleOpenQuoteReader]);
 
   return (
     <Box

@@ -11,6 +11,19 @@ import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/c
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
+import { POST } from '@fastgpt/service/common/api/plusRequest';
+import {
+  DeepRagSearchProps,
+  SearchDatasetDataResponse
+} from '@fastgpt/service/core/dataset/search/controller';
+import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
+import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import {
+  getProApiDatasetFileContentRequest,
+  getProApiDatasetFileListRequest,
+  getProApiDatasetFilePreviewUrlRequest
+} from '@/service/core/dataset/apiDataset/controller';
+import { isProVersion } from './constants';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -25,8 +38,9 @@ export const readConfigData = async (name: string) => {
       }
       return `data/${name}`;
     }
-    // production path
-    return `/app/data/${name}`;
+    // Fallback to default production path
+    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
+    return `${envPath}/${name}`;
   })();
 
   const content = await fs.promises.readFile(filename, 'utf-8');
@@ -36,12 +50,41 @@ export const readConfigData = async (name: string) => {
 
 /* Init global variables */
 export function initGlobalVariables() {
-  if (global.communityPlugins) return;
+  function initPlusRequest() {
+    global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
+      if (!isProVersion()) return Promise.resolve({ code: 200 });
+      return POST<{ code: number; message?: string }>('/common/censor/check', { text });
+    };
+
+    global.deepRagHandler = function deepRagHandler(data: DeepRagSearchProps) {
+      return POST<SearchDatasetDataResponse>('/core/dataset/deepRag', data);
+    };
+
+    global.authOpenApiHandler = function authOpenApiHandler(data: AuthOpenApiLimitProps) {
+      if (!isProVersion()) return Promise.resolve();
+      return POST<AuthOpenApiLimitProps>('/support/openapi/authLimit', data);
+    };
+
+    global.createUsageHandler = function createUsageHandler(data: CreateUsageProps) {
+      if (!isProVersion()) return;
+      return POST('/support/wallet/usage/createUsage', data);
+    };
+
+    global.concatUsageHandler = function concatUsageHandler(data: ConcatUsageProps) {
+      if (!isProVersion()) return;
+      return POST('/support/wallet/usage/concatUsage', data);
+    };
+
+    global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
+    global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
+    global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
+  }
 
   global.communityPlugins = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   initHttpAgent();
+  initPlusRequest();
 }
 
 /* Init system data(Need to connected db). It only needs to run once */
@@ -84,7 +127,8 @@ export async function initSystemConfig() {
       ...defaultFeConfigs,
       ...(dbConfig.feConfigs || {}),
       isPlus: !!FastGPTProUrl,
-      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT
+      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
+      show_coupon: process.env.SHOW_COUPON === 'true'
     },
     systemEnv: {
       ...fileRes.systemEnv,

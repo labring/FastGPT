@@ -74,14 +74,3 @@ export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
     return Promise.reject(TeamErrEnum.appAmountNotEnough);
   }
 };
-
-export const checkTeamReRankPermission = async (teamId: string) => {
-  const { standardConstants } = await getTeamStandPlan({
-    teamId
-  });
-
-  if (standardConstants && !standardConstants?.permissionReRank) {
-    return false;
-  }
-  return true;
-};

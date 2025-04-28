@@ -47,6 +47,8 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowNodeItemType>) => (
     <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
   ),
+  [FlowNodeTypeEnum.tool]: dynamic(() => import('./nodes/NodeTool')),
+  [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),
   [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),
   [FlowNodeTypeEnum.ifElseNode]: dynamic(() => import('./nodes/NodeIfElse')),
@@ -71,6 +73,7 @@ const Workflow = () => {
     WorkflowEventContext,
     (v) => v.workflowControlMode
   );
+  const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
 
   const {
     handleNodesChange,
@@ -161,7 +164,7 @@ const Workflow = () => {
             : {})}
           onNodeDragStop={onNodeDragStop}
         >
-          <ContextMenu />
+          {!!menu && <ContextMenu />}
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>

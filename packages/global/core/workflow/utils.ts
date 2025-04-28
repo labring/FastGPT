@@ -311,6 +311,38 @@ export const appData2FlowNodeIO = ({
   };
 };
 
+export const toolData2FlowNodeIO = ({
+  nodes
+}: {
+  nodes: StoreNodeItemType[];
+}): {
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+} => {
+  const toolNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool);
+
+  return {
+    inputs: toolNode?.inputs || [],
+    outputs: toolNode?.outputs || []
+  };
+};
+
+export const toolSetData2FlowNodeIO = ({
+  nodes
+}: {
+  nodes: StoreNodeItemType[];
+}): {
+  inputs: FlowNodeInputItemType[];
+  outputs: FlowNodeOutputItemType[];
+} => {
+  const toolSetNode = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet);
+
+  return {
+    inputs: toolSetNode?.inputs || [],
+    outputs: toolSetNode?.outputs || []
+  };
+};
+
 export const formatEditorVariablePickerIcon = (
   variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
 ): EditorVariablePickerType[] => {

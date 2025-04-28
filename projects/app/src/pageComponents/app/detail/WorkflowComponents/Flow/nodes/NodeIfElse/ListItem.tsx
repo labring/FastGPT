@@ -396,7 +396,7 @@ const ConditionSelect = ({
       w={'100%'}
       list={filterQuiredConditionList}
       value={condition}
-      onchange={onSelect}
+      onChange={onSelect}
       placeholder={t('common:chose_condition')}
     />
   );
@@ -441,7 +441,7 @@ const ConditionValueInput = ({
             { label: 'True', value: 'true' },
             { label: 'False', value: 'false' }
           ]}
-          onchange={onChange}
+          onChange={onChange}
           value={value}
           placeholder={workflowT('ifelse.Select value')}
           isDisabled={

@@ -1,7 +1,7 @@
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import {
   STTModelType,
-  ReRankModelItemType,
+  RerankModelItemType,
   TTSModelType,
   EmbeddingModelItemType,
   LLMModelItemType
@@ -18,7 +18,7 @@ export type SystemModelItemType =
   | EmbeddingModelItemType
   | TTSModelType
   | STTModelType
-  | ReRankModelItemType;
+  | RerankModelItemType;
 
 export type SystemDefaultModelType = {
   [ModelTypeEnum.llm]?: LLMModelItemType;
@@ -28,7 +28,7 @@ export type SystemDefaultModelType = {
   [ModelTypeEnum.embedding]?: EmbeddingModelItemType;
   [ModelTypeEnum.tts]?: TTSModelType;
   [ModelTypeEnum.stt]?: STTModelType;
-  [ModelTypeEnum.rerank]?: ReRankModelItemType;
+  [ModelTypeEnum.rerank]?: RerankModelItemType;
 };
 
 declare global {
@@ -38,7 +38,7 @@ declare global {
   var embeddingModelMap: Map<string, EmbeddingModelItemType>;
   var ttsModelMap: Map<string, TTSModelType>;
   var sttModelMap: Map<string, STTModelType>;
-  var reRankModelMap: Map<string, ReRankModelItemType>;
+  var reRankModelMap: Map<string, RerankModelItemType>;
 
   var systemActiveModelList: SystemModelItemType[];
   var systemDefaultModel: SystemDefaultModelType;

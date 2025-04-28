@@ -42,7 +42,6 @@ import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -185,6 +184,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                                 name: item.name,
                                 responseDetail: item.responseDetail ?? false,
                                 showRawSource: item.showRawSource ?? false,
+                                // showFullText: item.showFullText ?? false,
                                 showNodeStatus: item.showNodeStatus ?? false,
                                 limit: item.limit
                               })
@@ -270,7 +270,6 @@ function EditLinkModal({
 }) {
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
-  const { publishT } = useI18n();
   const {
     register,
     setValue,
@@ -281,6 +280,7 @@ function EditLinkModal({
   });
 
   const responseDetail = watch('responseDetail');
+  // const showFullText = watch('showFullText');
   const showRawSource = watch('showRawSource');
 
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
@@ -306,7 +306,7 @@ function EditLinkModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/shareFill.svg"
-      title={isEdit ? publishT('edit_link') : publishT('create_link')}
+      title={isEdit ? t('publish:edit_link') : t('publish:create_link')}
       maxW={['90vw', '700px']}
       w={'100%'}
       h={['90vh', 'auto']}
@@ -325,10 +325,10 @@ function EditLinkModal({
           <Flex alignItems={'center'} mt={4}>
             <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
             <Input
-              placeholder={publishT('link_name')}
-              maxLength={20}
+              placeholder={t('publish:link_name')}
+              maxLength={100}
               {...register('name', {
-                required: t('common:common.name_is_empty') || 'name_is_empty'
+                required: t('common:common.name_is_empty')
               })}
             />
           </Flex>
@@ -353,7 +353,7 @@ function EditLinkModal({
               <Flex alignItems={'center'} mt={4}>
                 <Flex flex={'0 0 90px'} alignItems={'center'}>
                   <FormLabel>QPM</FormLabel>
-                  <QuestionTip ml={1} label={publishT('qpm_tips')}></QuestionTip>
+                  <QuestionTip ml={1} label={t('publish:qpm_tips')}></QuestionTip>
                 </Flex>
                 <Input
                   max={1000}
@@ -361,7 +361,7 @@ function EditLinkModal({
                     min: 0,
                     max: 1000,
                     valueAsNumber: true,
-                    required: publishT('qpm_is_empty') || ''
+                    required: t('publish:qpm_is_empty')
                   })}
                 />
               </Flex>
@@ -385,11 +385,11 @@ function EditLinkModal({
 
               <Flex alignItems={'center'} mt={4}>
                 <Flex flex={'0 0 90px'} alignItems={'center'}>
-                  <FormLabel>{publishT('token_auth')}</FormLabel>
-                  <QuestionTip ml={1} label={publishT('token_auth_tips') || ''}></QuestionTip>
+                  <FormLabel>{t('publish:token_auth')}</FormLabel>
+                  <QuestionTip ml={1} label={t('publish:token_auth_tips')}></QuestionTip>
                 </Flex>
                 <Input
-                  placeholder={publishT('token_auth_tips') || ''}
+                  placeholder={t('publish:token_auth_tips')}
                   fontSize={'sm'}
                   {...register('limit.hookUrl')}
                 />
@@ -400,7 +400,7 @@ function EditLinkModal({
                 fontSize={'xs'}
                 color={'myGray.500'}
               >
-                {publishT('token_auth_use_cases')}
+                {t('publish:token_auth_use_cases')}
               </Link>
             </>
           )}
@@ -421,8 +421,39 @@ function EditLinkModal({
                 label={t('common:support.outlink.share.Response Quote tips')}
               ></QuestionTip>
             </Flex>
-            <Switch {...register('responseDetail')} isChecked={responseDetail} />
+            <Switch
+              {...register('responseDetail', {
+                onChange(e) {
+                  if (!e.target.checked) {
+                    // setValue('showFullText', false);
+                    setValue('showRawSource', false);
+                  }
+                }
+              })}
+              isChecked={responseDetail}
+            />
           </Flex>
+          {/* <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+            <Flex alignItems={'center'}>
+              <FormLabel>{t('common:support.outlink.share.Chat_quote_reader')}</FormLabel>
+              <QuestionTip
+                ml={1}
+                label={t('common:support.outlink.share.Full_text tips')}
+              ></QuestionTip>
+            </Flex>
+            <Switch
+              {...register('showFullText', {
+                onChange(e) {
+                  if (e.target.checked) {
+                    setValue('responseDetail', true);
+                  } else {
+                    setValue('showRawSource', false);
+                  }
+                }
+              })}
+              isChecked={showFullText}
+            />
+          </Flex> */}
           <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('common:support.outlink.share.show_complete_quote')}</FormLabel>
@@ -436,6 +467,7 @@ function EditLinkModal({
                 onChange(e) {
                   if (e.target.checked) {
                     setValue('responseDetail', true);
+                    // setValue('showFullText', true);
                   }
                 }
               })}

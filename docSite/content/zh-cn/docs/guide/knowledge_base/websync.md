@@ -25,24 +25,26 @@ curl https://doc.tryfastgpt.ai/docs/intro/
 
 ### 1. 新建知识库，选择 Web 站点同步
 
-![](/imgs/webSync2.png)
+![](/imgs/webSync2.jpg)
 
-![](/imgs/webSync3.png)
+![](/imgs/webSync3.jpg)
 
 ### 2. 点击配置站点信息
 
-![](/imgs/webSync4.png)
+![](/imgs/webSync4.jpg)
 
 ### 3. 填写网址和选择器
 
 ![](/imgs/webSync5.jpg)
+
+![](/imgs/webSync5-1.jpg)
 
 好了， 现在点击开始同步，静等系统自动抓取网站信息即可。
 
 
 ## 创建应用，绑定知识库
 
-![](/imgs/webSync6.webp)
+![](/imgs/webSync6.jpg)
 
 ## 选择器如何使用
 

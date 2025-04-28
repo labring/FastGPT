@@ -76,6 +76,7 @@ const TrainingDataSchema = new Schema({
     type: Number,
     default: 0
   },
+  indexSize: Number,
   weight: {
     type: Number,
     default: 0
@@ -97,7 +98,9 @@ const TrainingDataSchema = new Schema({
       }
     ],
     default: []
-  }
+  },
+
+  errorMsg: String
 });
 
 TrainingDataSchema.virtual('dataset', {

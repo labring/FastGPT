@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -6,10 +6,11 @@ import { useRouter } from 'next/router';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
-import { useI18n } from '@/web/context/I18n';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import ParentPaths from '@/components/common/ParentPaths';
+import { getTrainingQueueLen } from '@/web/core/dataset/api';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -22,12 +23,71 @@ export enum TabEnum {
 const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
   const theme = useTheme();
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
   const { isPc } = useSystem();
-  const { datasetDetail, vectorTrainingMap, agentTrainingMap, rebuildingCount, paths } =
-    useContextSelector(DatasetPageContext, (v) => v);
+  const { datasetDetail, rebuildingCount, paths } = useContextSelector(
+    DatasetPageContext,
+    (v) => v
+  );
+
+  // global queue
+  const {
+    data: {
+      vectorTrainingCount = 0,
+      qaTrainingCount = 0,
+      autoTrainingCount = 0,
+      imageTrainingCount = 0
+    } = {}
+  } = useRequest2(getTrainingQueueLen, {
+    manual: false,
+    retryInterval: 10000
+  });
+  const { vectorTrainingMap, qaTrainingMap, autoTrainingMap, imageTrainingMap } = useMemo(() => {
+    const vectorTrainingMap = (() => {
+      if (vectorTrainingCount < 1000)
+        return {
+          colorSchema: 'green',
+          tip: t('common:core.dataset.training.Leisure')
+        };
+      if (vectorTrainingCount < 20000)
+        return {
+          colorSchema: 'yellow',
+          tip: t('common:core.dataset.training.Waiting')
+        };
+      return {
+        colorSchema: 'red',
+        tip: t('common:core.dataset.training.Full')
+      };
+    })();
+
+    const countLLMMap = (count: number) => {
+      if (count < 100)
+        return {
+          colorSchema: 'green',
+          tip: t('common:core.dataset.training.Leisure')
+        };
+      if (count < 1000)
+        return {
+          colorSchema: 'yellow',
+          tip: t('common:core.dataset.training.Waiting')
+        };
+      return {
+        colorSchema: 'red',
+        tip: t('common:core.dataset.training.Full')
+      };
+    };
+    const qaTrainingMap = countLLMMap(qaTrainingCount);
+    const autoTrainingMap = countLLMMap(autoTrainingCount);
+    const imageTrainingMap = countLLMMap(imageTrainingCount);
+
+    return {
+      vectorTrainingMap,
+      qaTrainingMap,
+      autoTrainingMap,
+      imageTrainingMap
+    };
+  }, [qaTrainingCount, autoTrainingCount, imageTrainingCount, vectorTrainingCount, t]);
 
   const tabList = [
     {
@@ -168,18 +228,44 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                 {rebuildingCount > 0 && (
                   <Box mb={3}>
                     <Box fontSize={'sm'}>
-                      {datasetT('rebuilding_index_count', { count: rebuildingCount })}
+                      {t('dataset:rebuilding_index_count', { count: rebuildingCount })}
                     </Box>
                   </Box>
                 )}
                 <Box mb={3}>
                   <Box fontSize={'sm'} pb={1}>
-                    {t('common:core.dataset.training.Agent queue')}({agentTrainingMap.tip})
+                    {t('common:core.dataset.training.Agent queue')}({qaTrainingMap.tip})
                   </Box>
                   <Progress
                     value={100}
                     size={'xs'}
-                    colorScheme={agentTrainingMap.colorSchema}
+                    colorScheme={qaTrainingMap.colorSchema}
+                    borderRadius={'md'}
+                    isAnimated
+                    hasStripe
+                  />
+                </Box>
+                <Box mb={3}>
+                  <Box fontSize={'sm'} pb={1}>
+                    {t('dataset:auto_training_queue')}({autoTrainingMap.tip})
+                  </Box>
+                  <Progress
+                    value={100}
+                    size={'xs'}
+                    colorScheme={autoTrainingMap.colorSchema}
+                    borderRadius={'md'}
+                    isAnimated
+                    hasStripe
+                  />
+                </Box>
+                <Box mb={3}>
+                  <Box fontSize={'sm'} pb={1}>
+                    {t('dataset:image_training_queue')}({imageTrainingMap.tip})
+                  </Box>
+                  <Progress
+                    value={100}
+                    size={'xs'}
+                    colorScheme={imageTrainingMap.colorSchema}
                     borderRadius={'md'}
                     isAnimated
                     hasStripe

@@ -5,7 +5,8 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
-  initWorkflowEdgeStatus,
+  storeEdges2RuntimeEdges,
+  rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -18,6 +19,7 @@ import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
+import { ChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -27,6 +29,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
 }>;
 type Response = DispatchNodeResultType<{
+  [DispatchNodeResponseKeyEnum.interactive]?: ChildrenInteractive;
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -36,6 +39,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     runningAppInfo,
     histories,
     query,
+    lastInteractive,
     node: { pluginId: appId, version },
     workflowStreamResponse,
     params,
@@ -100,30 +104,47 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     appId: String(appData._id)
   };
 
-  const { flowResponses, flowUsages, assistantResponses, runTimes } = await dispatchWorkFlow({
-    ...props,
-    // Rewrite stream mode
-    ...(system_forbid_stream
-      ? {
-          stream: false,
-          workflowStreamResponse: undefined
-        }
-      : {}),
-    runningAppInfo: {
-      id: String(appData._id),
-      teamId: String(appData.teamId),
-      tmbId: String(appData.tmbId)
-    },
-    runtimeNodes: storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)),
-    runtimeEdges: initWorkflowEdgeStatus(edges),
-    histories: chatHistories,
-    variables: childrenRunVariables,
-    query: runtimePrompt2ChatsValue({
-      files: userInputFiles,
-      text: userChatInput
-    }),
-    chatConfig
-  });
+  const childrenInteractive =
+    lastInteractive?.type === 'childrenInteractive'
+      ? lastInteractive.params.childrenResponse
+      : undefined;
+  const runtimeNodes = rewriteNodeOutputByHistories(
+    storeNodes2RuntimeNodes(
+      nodes,
+      getWorkflowEntryNodeIds(nodes, childrenInteractive || undefined)
+    ),
+    childrenInteractive
+  );
+
+  const runtimeEdges = storeEdges2RuntimeEdges(edges, childrenInteractive);
+  const theQuery = childrenInteractive
+    ? query
+    : runtimePrompt2ChatsValue({ files: userInputFiles, text: userChatInput });
+
+  const { flowResponses, flowUsages, assistantResponses, runTimes, workflowInteractiveResponse } =
+    await dispatchWorkFlow({
+      ...props,
+      lastInteractive: childrenInteractive,
+      // Rewrite stream mode
+      ...(system_forbid_stream
+        ? {
+            stream: false,
+            workflowStreamResponse: undefined
+          }
+        : {}),
+      runningAppInfo: {
+        id: String(appData._id),
+        teamId: String(appData.teamId),
+        tmbId: String(appData.tmbId),
+        isChildApp: true
+      },
+      runtimeNodes,
+      runtimeEdges,
+      histories: chatHistories,
+      variables: childrenRunVariables,
+      query: theQuery,
+      chatConfig
+    });
 
   const completeMessages = chatHistories.concat([
     {
@@ -141,6 +162,14 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
   const usagePoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   return {
+    [DispatchNodeResponseKeyEnum.interactive]: workflowInteractiveResponse
+      ? {
+          type: 'childrenInteractive',
+          params: {
+            childrenResponse: workflowInteractiveResponse
+          }
+        }
+      : undefined,
     assistantResponses: system_forbid_stream ? [] : assistantResponses,
     [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -148,7 +177,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
       totalPoints: usagePoints,
       query: userChatInput,
       textOutput: text,
-      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined
+      pluginDetail: appData.permission.hasWritePer ? flowResponses : undefined,
+      mergeSignId: props.node.nodeId
     },
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {

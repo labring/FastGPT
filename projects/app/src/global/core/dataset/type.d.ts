@@ -29,6 +29,7 @@ export type DatasetCollectionsListItemType = {
 
   dataAmount: number;
   trainingAmount: number;
+  hasError?: boolean;
 };
 
 /* ================= data ===================== */
@@ -39,5 +40,6 @@ export type DatasetDataListItemType = {
   q: string; // embedding content
   a: string; // bonus content
   chunkIndex?: number;
+  updated?: boolean;
   // indexes: DatasetDataSchemaType['indexes'];
 };

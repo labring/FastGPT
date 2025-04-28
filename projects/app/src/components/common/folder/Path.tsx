@@ -11,6 +11,7 @@ const FolderPath = (props: {
   onClick: (parentId: string) => void;
   fontSize?: string;
   hoverStyle?: BoxProps;
+  forbidLastClick?: boolean;
 }) => {
   const { t } = useTranslation();
   const {
@@ -19,7 +20,8 @@ const FolderPath = (props: {
     FirstPathDom,
     onClick,
     fontSize,
-    hoverStyle
+    hoverStyle,
+    forbidLastClick = false
   } = props;
 
   const concatPaths = useMemo(
@@ -37,39 +39,46 @@ const FolderPath = (props: {
     <>{FirstPathDom}</>
   ) : (
     <Flex flex={1}>
-      {concatPaths.map((item, i) => (
-        <Flex key={item.parentId || i} alignItems={'center'}>
-          <Box
-            fontSize={['xs', fontSize || 'sm']}
-            py={0.5}
-            px={1.5}
-            borderRadius={'md'}
-            {...(i === concatPaths.length - 1
-              ? {
-                  cursor: 'default',
-                  color: 'myGray.700',
-                  fontWeight: 'bold'
-                }
-              : {
-                  cursor: 'pointer',
-                  fontWeight: 'medium',
-                  color: 'myGray.500',
-                  _hover: {
-                    bg: 'myGray.100',
-                    ...hoverStyle
-                  },
-                  onClick: () => {
-                    onClick(item.parentId);
+      {concatPaths.map((item, i) => {
+        const clickStyles = {
+          cursor: 'pointer',
+          _hover: {
+            bg: 'myGray.100',
+            ...hoverStyle
+          },
+          onClick: () => {
+            onClick(item.parentId);
+          }
+        };
+        return (
+          <Flex key={item.parentId || i} alignItems={'center'}>
+            <Box
+              fontSize={['xs', fontSize || 'sm']}
+              py={0.5}
+              px={1.5}
+              borderRadius={'md'}
+              maxW={'45vw'}
+              className={'textEllipsis'}
+              {...(i === concatPaths.length - 1 && concatPaths.length > 1
+                ? {
+                    color: 'myGray.700',
+                    fontWeight: 'bold'
                   }
-                })}
-          >
-            {item.parentName}
-          </Box>
-          {i !== concatPaths.length - 1 && (
-            <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />
-          )}
-        </Flex>
-      ))}
+                : {
+                    fontWeight: 'medium',
+                    color: 'myGray.500',
+                    ...clickStyles
+                  })}
+              {...(i === concatPaths.length - 1 && !forbidLastClick && clickStyles)}
+            >
+              {item.parentName}
+            </Box>
+            {i !== concatPaths.length - 1 && (
+              <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />
+            )}
+          </Flex>
+        );
+      })}
     </Flex>
   );
 };

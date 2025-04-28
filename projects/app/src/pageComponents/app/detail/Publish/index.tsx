@@ -99,7 +99,7 @@ const OutLink = () => {
             if (!feConfigs.isPlus && config.isProFn) {
               toast({
                 status: 'warning',
-                title: t('common:common.system.Commercial version function')
+                title: t('common:commercial_function_tip')
               });
             } else {
               setLinkType(e as PublishChannelEnum);

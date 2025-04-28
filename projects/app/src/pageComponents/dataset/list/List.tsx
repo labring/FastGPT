@@ -48,7 +48,8 @@ function List() {
     onDelDataset,
     onUpdateDataset,
     myDatasets,
-    folderDetail
+    folderDetail,
+    setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const router = useRouter();
@@ -201,6 +202,7 @@ function List() {
                   }}
                   onClick={() => {
                     if (dataset.type === DatasetTypeEnum.folder) {
+                      setSearchKey('');
                       router.push({
                         pathname: '/dataset/list',
                         query: {
@@ -239,8 +241,8 @@ function List() {
                   <Box
                     flex={1}
                     className={'textEllipsis3'}
+                    whiteSpace={'pre-wrap'}
                     py={3}
-                    wordBreak={'break-all'}
                     fontSize={'xs'}
                     color={'myGray.500'}
                   >

@@ -8,7 +8,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import {
   deleteDatasetDataVector,
   getVectorDataByTime
-} from '@fastgpt/service/common/vectorStore/controller';
+} from '@fastgpt/service/common/vectorDB/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -71,8 +71,10 @@ export async function checkInvalidDatasetFiles(start: Date, end: Date) {
 export const removeExpiredChatFiles = async () => {
   let deleteFileAmount = 0;
   const collection = getGFSCollection(BucketNameEnum.chat);
+
+  const expireTime = Number(process.env.CHAT_FILE_EXPIRE_TIME || 7);
   const where = {
-    uploadDate: { $lte: addDays(new Date(), -7) }
+    uploadDate: { $lte: addDays(new Date(), -expireTime) }
   };
 
   // get all file _id

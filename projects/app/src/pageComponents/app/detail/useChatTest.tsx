@@ -48,7 +48,7 @@ export const useChatTest = ({
       const histories = messages.slice(-1);
 
       // 流请求，获取数据
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         url: '/api/core/chat/chatTest',
         data: {
           // Send histories and user messages
@@ -66,7 +66,7 @@ export const useChatTest = ({
         abortCtrl: controller
       });
 
-      return { responseText, responseData };
+      return { responseText };
     }
   );
 
@@ -126,7 +126,7 @@ export const useChatTest = ({
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.plugin ? (
-      <Box p={5}>
+      <Box p={5} pb={16}>
         <PluginRunBox
           appId={appId}
           chatId={chatId}
@@ -140,7 +140,7 @@ export const useChatTest = ({
         appId={appId}
         chatId={chatId}
         showMarkIcon
-        chatType="chat"
+        chatType={'chat'}
         onStartChat={startChat}
       />
     )

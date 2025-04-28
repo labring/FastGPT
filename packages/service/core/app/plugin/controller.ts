@@ -1,6 +1,11 @@
 import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
-import { appData2FlowNodeIO, pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
+import {
+  appData2FlowNodeIO,
+  pluginData2FlowNodeIO,
+  toolData2FlowNodeIO,
+  toolSetData2FlowNodeIO
+} from '@fastgpt/global/core/workflow/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
@@ -37,11 +42,12 @@ export async function splitCombinePluginId(id: string) {
   return { source, pluginId: id };
 }
 
-type ChildAppType = SystemPluginTemplateItemType & { teamId?: string };
+type ChildAppType = SystemPluginTemplateItemType & { teamId?: string; tmbId?: string };
+
 const getSystemPluginTemplateById = async (
   pluginId: string,
   versionId?: string
-): Promise<SystemPluginTemplateItemType> => {
+): Promise<ChildAppType> => {
   const item = getSystemPluginTemplates().find((plugin) => plugin.id === pluginId);
   if (!item) return Promise.reject(PluginErrEnum.unAuth);
 
@@ -67,12 +73,17 @@ const getSystemPluginTemplateById = async (
       : await getAppLatestVersion(plugin.associatedPluginId, app);
     if (!version.versionId) return Promise.reject('App version not found');
 
-    plugin.workflow = {
-      nodes: version.nodes,
-      edges: version.edges,
-      chatConfig: version.chatConfig
+    return {
+      ...plugin,
+      workflow: {
+        nodes: version.nodes,
+        edges: version.edges,
+        chatConfig: version.chatConfig
+      },
+      version: versionId || String(version.versionId),
+      teamId: String(app.teamId),
+      tmbId: String(app.tmbId)
     };
-    plugin.version = versionId || String(version.versionId);
   }
   return plugin;
 };
@@ -122,11 +133,41 @@ export async function getChildAppPreviewNode({
     (node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput
   );
 
+  const isTool =
+    !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.tool) &&
+    app.workflow.nodes.length === 1;
+
+  const isToolSet =
+    !!app.workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.toolSet) &&
+    app.workflow.nodes.length === 1;
+
+  const { flowNodeType, nodeIOConfig } = (() => {
+    if (isToolSet)
+      return {
+        flowNodeType: FlowNodeTypeEnum.toolSet,
+        nodeIOConfig: toolSetData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    if (isTool)
+      return {
+        flowNodeType: FlowNodeTypeEnum.tool,
+        nodeIOConfig: toolData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    if (isPlugin)
+      return {
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        nodeIOConfig: pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
+      };
+    return {
+      flowNodeType: FlowNodeTypeEnum.appModule,
+      nodeIOConfig: appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig })
+    };
+  })();
+
   return {
     id: getNanoid(),
     pluginId: app.id,
     templateType: app.templateType,
-    flowNodeType: isPlugin ? FlowNodeTypeEnum.pluginModule : FlowNodeTypeEnum.appModule,
+    flowNodeType,
     avatar: app.avatar,
     name: app.name,
     intro: app.intro,
@@ -135,11 +176,13 @@ export async function getChildAppPreviewNode({
     showStatus: app.showStatus,
     isTool: true,
     version: app.version,
-    sourceHandle: getHandleConfig(true, true, true, true),
-    targetHandle: getHandleConfig(true, true, true, true),
-    ...(isPlugin
-      ? pluginData2FlowNodeIO({ nodes: app.workflow.nodes })
-      : appData2FlowNodeIO({ chatConfig: app.workflow.chatConfig }))
+    sourceHandle: isToolSet
+      ? getHandleConfig(false, false, false, false)
+      : getHandleConfig(true, true, true, true),
+    targetHandle: isToolSet
+      ? getHandleConfig(false, false, false, false)
+      : getHandleConfig(true, true, true, true),
+    ...nodeIOConfig
   };
 }
 
@@ -168,6 +211,7 @@ export async function getChildAppRuntimeById(
       return {
         id: String(item._id),
         teamId: String(item.teamId),
+        tmbId: String(item.tmbId),
         name: item.name,
         avatar: item.avatar,
         intro: item.intro,
@@ -187,6 +231,7 @@ export async function getChildAppRuntimeById(
         pluginOrder: 0
       };
     } else {
+      // System
       return getSystemPluginTemplateById(pluginId, versionId);
     }
   })();
@@ -194,6 +239,7 @@ export async function getChildAppRuntimeById(
   return {
     id: app.id,
     teamId: app.teamId,
+    tmbId: app.tmbId,
     name: app.name,
     avatar: app.avatar,
     showStatus: app.showStatus,

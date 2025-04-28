@@ -112,8 +112,9 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const { data: paths = [] } = useRequest2(
     () => {
-      if (templateType === TemplateTypeEnum.teamPlugin) return getAppFolderPath(parentId);
-      return getSystemPluginPaths(parentId);
+      if (templateType === TemplateTypeEnum.teamPlugin)
+        return getAppFolderPath({ sourceId: parentId, type: 'current' });
+      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
@@ -186,7 +187,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       {/* route components */}
       {!searchKey && parentId && (
         <Flex mt={2} px={[3, 6]}>
-          <FolderPath paths={paths} FirstPathDom={null} onClick={() => onUpdateParentId(null)} />
+          <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
       <MyBox isLoading={isLoading} mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
@@ -470,6 +471,31 @@ const RenderList = React.memo(function RenderList({
                           >
                             {t('common:common.Remove')}
                           </Button>
+                        ) : template.flowNodeType === 'toolSet' ? (
+                          <Flex gap={2}>
+                            <Button
+                              size={'sm'}
+                              variant={'whiteBase'}
+                              isLoading={isLoading}
+                              leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
+                              onClick={() => setParentId(template.id)}
+                              px={2}
+                              fontSize={'mini'}
+                            >
+                              {t('common:common.Open')}
+                            </Button>
+                            <Button
+                              size={'sm'}
+                              variant={'primaryOutline'}
+                              leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
+                              isLoading={isLoading}
+                              onClick={() => onClickAdd(template)}
+                              px={2}
+                              fontSize={'mini'}
+                            >
+                              {t('common:common.Add')}
+                            </Button>
+                          </Flex>
                         ) : template.isFolder ? (
                           <Button
                             size={'sm'}

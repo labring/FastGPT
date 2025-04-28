@@ -7,24 +7,29 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeState } from 'ahooks';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
-import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatTest } from '../useChatTest';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { cardStyles } from '../constants';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 
-type Props = { appForm: AppSimpleEditFormType };
-const ChatTest = ({ appForm }: Props) => {
+type Props = {
+  appForm: AppSimpleEditFormType;
+  setRenderEdit: React.Dispatch<React.SetStateAction<boolean>>;
+};
+const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   const { t } = useTranslation();
-  const { appT } = useI18n();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
   // form2AppWorkflow dependent allDatasets
-  const { allDatasets } = useDatasetStore();
+  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
@@ -33,9 +38,12 @@ const ChatTest = ({ appForm }: Props) => {
 
   useEffect(() => {
     const { nodes, edges } = form2AppWorkflow(appForm, t);
-    // console.log(form2AppWorkflow(appForm, t));
     setWorkflowData({ nodes, edges });
-  }, [appForm, setWorkflowData, allDatasets, t]);
+  }, [appForm, setWorkflowData, t]);
+
+  useEffect(() => {
+    setRenderEdit(!quoteData);
+  }, [quoteData, setRenderEdit]);
 
   const { ChatContainer, restartChat, loading } = useChatTest({
     ...workflowData,
@@ -44,41 +52,57 @@ const ChatTest = ({ appForm }: Props) => {
   });
 
   return (
-    <MyBox
-      isLoading={loading}
-      display={'flex'}
-      position={'relative'}
-      flexDirection={'column'}
-      h={'100%'}
-      py={4}
-    >
-      <Flex px={[2, 5]}>
-        <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1} color={'myGray.900'}>
-          {appT('chat_debug')}
+    <Flex h={'full'} gap={2}>
+      <MyBox
+        flex={'1 0 0'}
+        w={0}
+        display={'flex'}
+        position={'relative'}
+        flexDirection={'column'}
+        h={'full'}
+        py={4}
+        {...cardStyles}
+        boxShadow={'3'}
+      >
+        <Flex px={[2, 5]} pb={2}>
+          <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
+            {t('app:chat_debug')}
+          </Box>
+          {!isVariableVisible && <VariablePopover showExternalVariables />}
+          <Box flex={1} />
+          <MyTooltip label={t('common:core.chat.Restart')}>
+            <IconButton
+              className="chat"
+              size={'smSquare'}
+              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
+              variant={'whiteDanger'}
+              borderRadius={'md'}
+              aria-label={'delete'}
+              onClick={(e) => {
+                e.stopPropagation();
+                restartChat();
+              }}
+            />
+          </MyTooltip>
+        </Flex>
+        <Box flex={1}>
+          <ChatContainer />
         </Box>
-        <MyTooltip label={t('common:core.chat.Restart')}>
-          <IconButton
-            className="chat"
-            size={'smSquare'}
-            icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-            variant={'whiteDanger'}
-            borderRadius={'md'}
-            aria-label={'delete'}
-            onClick={(e) => {
-              e.stopPropagation();
-              restartChat();
-            }}
+      </MyBox>
+      {quoteData && (
+        <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
+          <ChatQuoteList
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
           />
-        </MyTooltip>
-      </Flex>
-      <Box flex={1}>
-        <ChatContainer />
-      </Box>
-    </MyBox>
+        </Box>
+      )}
+    </Flex>
   );
 };
 
-const Render = ({ appForm }: Props) => {
+const Render = ({ appForm, setRenderEdit }: Props) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -95,10 +119,12 @@ const Render = ({ appForm }: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      isResponseDetail={true}
+      // isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatTest appForm={appForm} />
+        <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

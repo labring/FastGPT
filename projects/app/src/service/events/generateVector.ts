@@ -9,11 +9,12 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
   deleteDatasetDataVector,
   insertDatasetDataVector
-} from '@fastgpt/service/common/vectorStore/controller';
+} from '@fastgpt/service/common/vectorDB/controller';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { Document } from '@fastgpt/service/common/mongo';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -34,6 +35,8 @@ const reduceQueueAndReturn = (delay = 0) => {
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
   const max = global.systemEnv?.vectorMaxProcess || 10;
+  addLog.debug(`[Vector Queue] Queue size: ${global.vectorQueueLen}`);
+
   if (global.vectorQueueLen >= max) return;
   global.vectorQueueLen++;
   const start = Date.now();
@@ -48,7 +51,7 @@ export async function generateVector(): Promise<any> {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
           mode: TrainingModeEnum.chunk,
-          retryCount: { $gte: 0 },
+          retryCount: { $gt: 0 },
           lockTime: { $lte: addMinutes(new Date(), -3) }
         },
         {
@@ -117,6 +120,16 @@ export async function generateVector(): Promise<any> {
     return reduceQueueAndReturn();
   } catch (err: any) {
     addLog.error(`[Vector Queue] Error`, err);
+    await MongoDatasetTraining.updateOne(
+      {
+        teamId: data.teamId,
+        datasetId: data.datasetId,
+        _id: data._id
+      },
+      {
+        errorMsg: getErrText(err, 'unknown error')
+      }
+    );
     return reduceQueueAndReturn(1000);
   }
 }
@@ -189,19 +202,24 @@ const rebuildData = async ({
 
   // update vector, update dataset_data rebuilding status, delete data from training
   // 1. Insert new vector to dataset_data
-  const updateResult = await Promise.all(
-    mongoData.indexes.map(async (index, i) => {
-      const result = await insertDatasetDataVector({
-        query: index.text,
-        model: getEmbeddingModel(trainingData.model),
-        teamId: mongoData.teamId,
-        datasetId: mongoData.datasetId,
-        collectionId: mongoData.collectionId
-      });
-      mongoData.indexes[i].dataId = result.insertId;
-      return result;
-    })
-  );
+  const updateResult: {
+    tokens: number;
+    insertId: string;
+  }[] = [];
+  let i = 0;
+  for await (const index of mongoData.indexes) {
+    const result = await insertDatasetDataVector({
+      query: index.text,
+      model: getEmbeddingModel(trainingData.model),
+      teamId: mongoData.teamId,
+      datasetId: mongoData.datasetId,
+      collectionId: mongoData.collectionId
+    });
+    mongoData.indexes[i].dataId = result.insertId;
+    updateResult.push(result);
+    i++;
+  }
+
   const { tokens } = await mongoSessionRun(async (session) => {
     // 2. Ensure that the training data is deleted after the Mongo update is successful
     await mongoData.save({ session });
@@ -245,7 +263,7 @@ const insertData = async ({
       a: trainingData.a,
       chunkIndex: trainingData.chunkIndex,
       indexes: trainingData.indexes,
-      model: trainingData.model,
+      embeddingModel: trainingData.model,
       session
     });
     // delete data from training

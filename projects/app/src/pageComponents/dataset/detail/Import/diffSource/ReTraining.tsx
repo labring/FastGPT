@@ -8,10 +8,11 @@ import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionById } from '@/web/core/dataset/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { ChunkSettingModeEnum } from '@/web/core/dataset/constants';
+import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
-import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { Box } from '@chakra-ui/react';
+import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
@@ -23,7 +24,6 @@ const ReTraining = () => {
     collectionId: string;
   };
 
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
   const setSources = useContextSelector(DatasetImportContext, (v) => v.setSources);
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
@@ -46,18 +46,21 @@ const ReTraining = () => {
           uploadedFileRate: 100
         }
       ]);
+
       processParamsForm.reset({
         customPdfParse: collection.customPdfParse,
         trainingType: collection.trainingType,
         imageIndex: collection.imageIndex,
         autoIndexes: collection.autoIndexes,
 
-        chunkSettingMode: ChunkSettingModeEnum.auto,
+        chunkSettingMode: collection.chunkSettingMode || ChunkSettingModeEnum.auto,
+        chunkSplitMode: collection.chunkSplitMode || DataChunkSplitModeEnum.size,
         embeddingChunkSize: collection.chunkSize,
         qaChunkSize: collection.chunkSize,
-        customSplitChar: collection.chunkSplitter,
-        qaPrompt: collection.qaPrompt,
-        webSelector: collection.metadata?.webSelector
+        indexSize: collection.indexSize || 512,
+        chunkSplitter: collection.chunkSplitter,
+        webSelector: collection.metadata?.webPageSelector,
+        qaPrompt: collection.qaPrompt || Prompt_AgentQA.description
       });
     }
   });

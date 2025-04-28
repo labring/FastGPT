@@ -17,7 +17,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -35,29 +34,19 @@ export const DatasetSelectModal = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { allDatasets } = useDatasetStore();
-  const [selectedDatasets, setSelectedDatasets] = useState<SelectedDatasetType>(
-    defaultSelectedDatasets.filter((dataset) => {
-      return allDatasets.find((item) => item._id === dataset.datasetId);
-    })
-  );
+  const [selectedDatasets, setSelectedDatasets] =
+    useState<SelectedDatasetType>(defaultSelectedDatasets);
   const { toast } = useToast();
   const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
   const { Loading } = useLoading();
 
-  const filterDatasets = useMemo(() => {
-    return {
-      selected: allDatasets.filter((item) =>
-        selectedDatasets.find((dataset) => dataset.datasetId === item._id)
-      ),
-      unSelected: datasets.filter(
-        (item) => !selectedDatasets.find((dataset) => dataset.datasetId === item._id)
-      )
-    };
-  }, [datasets, allDatasets, selectedDatasets]);
-  const activeVectorModel = allDatasets.find(
-    (dataset) => dataset._id === selectedDatasets[0]?.datasetId
-  )?.vectorModel?.model;
+  const unSelectedDatasets = useMemo(() => {
+    return datasets.filter(
+      (item) => !selectedDatasets.some((dataset) => dataset.datasetId === item._id)
+    );
+  }, [datasets, selectedDatasets]);
+
+  const activeVectorModel = selectedDatasets[0]?.vectorModel?.model;
 
   return (
     <DatasetSelectContainer
@@ -77,40 +66,46 @@ export const DatasetSelectModal = ({
             ]}
             gridGap={3}
           >
-            {filterDatasets.selected.map((item) =>
+            {selectedDatasets.map((item) =>
               (() => {
                 return (
-                  <Card
-                    key={item._id}
-                    p={3}
-                    border={theme.borders.base}
-                    boxShadow={'sm'}
-                    bg={'primary.200'}
-                  >
-                    <Flex alignItems={'center'} h={'38px'}>
-                      <Avatar src={item.avatar} w={['1.25rem', '1.75rem']}></Avatar>
-                      <Box flex={'1 0 0'} w={0} className="textEllipsis" mx={3}>
-                        {item.name}
-                      </Box>
-                      <MyIcon
-                        name={'delete'}
-                        w={'14px'}
-                        cursor={'pointer'}
-                        _hover={{ color: 'red.500' }}
-                        onClick={() => {
-                          setSelectedDatasets((state) =>
-                            state.filter((dataset) => dataset.datasetId !== item._id)
-                          );
-                        }}
-                      />
-                    </Flex>
-                  </Card>
+                  <MyTooltip label={item.name}>
+                    <Card
+                      key={item.datasetId}
+                      p={3}
+                      border={'base'}
+                      boxShadow={'sm'}
+                      bg={'primary.200'}
+                    >
+                      <Flex alignItems={'center'} h={'38px'}>
+                        <Avatar
+                          src={item.avatar}
+                          w={['1.25rem', '1.75rem']}
+                          borderRadius={'sm'}
+                        ></Avatar>
+                        <Box flex={'1 0 0'} w={0} className="textEllipsis" mx={3} fontSize={'sm'}>
+                          {item.name}
+                        </Box>
+                        <MyIcon
+                          name={'delete'}
+                          w={'14px'}
+                          cursor={'pointer'}
+                          _hover={{ color: 'red.500' }}
+                          onClick={() => {
+                            setSelectedDatasets((state) =>
+                              state.filter((dataset) => dataset.datasetId !== item.datasetId)
+                            );
+                          }}
+                        />
+                      </Flex>
+                    </Card>
+                  </MyTooltip>
                 );
               })()
             )}
           </Grid>
 
-          {filterDatasets.selected.length > 0 && <Divider my={3} />}
+          {selectedDatasets.length > 0 && <Divider my={3} />}
 
           <Grid
             gridTemplateColumns={[
@@ -120,7 +115,7 @@ export const DatasetSelectModal = ({
             ]}
             gridGap={3}
           >
-            {filterDatasets.unSelected.map((item) =>
+            {unSelectedDatasets.map((item) =>
               (() => {
                 return (
                   <MyTooltip
@@ -128,7 +123,7 @@ export const DatasetSelectModal = ({
                     label={
                       item.type === DatasetTypeEnum.folder
                         ? t('common:dataset.Select Folder')
-                        : t('common:dataset.Select Dataset')
+                        : item.name
                     }
                   >
                     <Card
@@ -150,19 +145,31 @@ export const DatasetSelectModal = ({
                               title: t('common:dataset.Select Dataset Tips')
                             });
                           }
-                          setSelectedDatasets((state) => [...state, { datasetId: item._id }]);
+                          setSelectedDatasets((state) => [
+                            ...state,
+                            {
+                              datasetId: item._id,
+                              avatar: item.avatar,
+                              name: item.name,
+                              vectorModel: item.vectorModel
+                            }
+                          ]);
                         }
                       }}
                     >
                       <Flex alignItems={'center'} h={'38px'}>
-                        <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>
+                        <Avatar
+                          src={item.avatar}
+                          w={['1.25rem', '1.75rem']}
+                          borderRadius={'sm'}
+                        ></Avatar>
                         <Box
                           flex={'1 0 0'}
                           w={0}
                           className="textEllipsis"
                           ml={3}
-                          fontSize={'md'}
                           color={'myGray.900'}
+                          fontSize={'sm'}
                         >
                           {item.name}
                         </Box>
@@ -172,7 +179,9 @@ export const DatasetSelectModal = ({
                         alignItems={'center'}
                         fontSize={'sm'}
                         color={
-                          activeVectorModel === item.vectorModel.name ? 'primary.600' : 'myGray.500'
+                          activeVectorModel === item.vectorModel.model
+                            ? 'primary.600'
+                            : 'myGray.500'
                         }
                       >
                         {item.type === DatasetTypeEnum.folder ? (
@@ -190,21 +199,14 @@ export const DatasetSelectModal = ({
               })()
             )}
           </Grid>
-          {filterDatasets.unSelected.length === 0 && (
-            <EmptyTip text={t('common:common.folder.empty')} />
-          )}
+          {unSelectedDatasets.length === 0 && <EmptyTip text={t('common:common.folder.empty')} />}
         </ModalBody>
 
         <ModalFooter>
           <Button
             onClick={() => {
-              // filter out the dataset that is not in the kList
-              const filterDatasets = selectedDatasets.filter((dataset) => {
-                return allDatasets.find((item) => item._id === dataset.datasetId);
-              });
-
               onClose();
-              onChange(filterDatasets);
+              onChange(selectedDatasets);
             }}
           >
             {t('common:common.Done')}

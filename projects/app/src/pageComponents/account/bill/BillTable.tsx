@@ -20,13 +20,14 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import {
+  BillStatusEnum,
   BillTypeEnum,
   billPayWayMap,
   billStatusMap,
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -68,39 +69,33 @@ const BillTable = () => {
     defaultRequest: false
   });
 
-  const { mutate: handleRefreshPayOrder, isLoading: isRefreshing } = useRequest({
-    mutationFn: async (payId: string) => {
-      try {
-        const data = await checkBalancePayResult(payId);
+  const { runAsync: handleRefreshPayOrder, loading: isRefreshing } = useRequest2(
+    async (payId: string) => {
+      const { status, description } = await checkBalancePayResult(payId);
+      if (status === BillStatusEnum.SUCCESS) {
         toast({
-          title: data,
+          title: t('common:pay_success'),
           status: 'success'
         });
-      } catch (error: any) {
+      } else {
         toast({
-          title: error?.message,
+          title: t(description as any),
           status: 'warning'
         });
-        console.log(error);
       }
-      try {
+
+      if (status === BillStatusEnum.SUCCESS || status === BillStatusEnum.CLOSED) {
         getData(1);
-      } catch (error) {}
+      }
     }
-  });
+  );
 
   useEffect(() => {
     getData(1);
   }, [billType]);
 
   return (
-    <MyBox
-      isLoading={isLoading || isRefreshing}
-      position={'relative'}
-      h={'100%'}
-      minH={'50vh'}
-      overflow={'overlay'}
-    >
+    <MyBox isLoading={isLoading} position={'relative'} h={'100%'} minH={'50vh'}>
       <TableContainer>
         <Table>
           <Thead>
@@ -111,7 +106,7 @@ const BillTable = () => {
                   list={billTypeList}
                   value={billType}
                   size={'sm'}
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setBillType(e);
                   }}
                   w={'130px'}
@@ -135,7 +130,12 @@ const BillTable = () => {
                 <Td>{t(billStatusMap[item.status]?.label as any)}</Td>
                 <Td>
                   {item.status === 'NOTPAY' && (
-                    <Button mr={4} onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
+                    <Button
+                      isLoading={isRefreshing}
+                      mr={4}
+                      onClick={() => handleRefreshPayOrder(item._id)}
+                      size={'sm'}
+                    >
                       {t('account_bill:update')}
                     </Button>
                   )}
@@ -210,23 +210,19 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
             <Box>{t(billPayWayMap[bill.metadata.payWay]?.label as any)}</Box>
           </Flex>
         )}
-        <Flex alignItems={'center'} pb={4}>
-          <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
-          <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
-        </Flex>
-        {bill.metadata && (
+        {!!bill.price && (
+          <Flex alignItems={'center'} pb={4}>
+            <FormLabel flex={'0 0 120px'}>{t('account_bill:support_wallet_amount')}:</FormLabel>
+            <Box>{t('account_bill:yuan', { amount: formatStorePrice2Read(bill.price) })}</Box>
+          </Flex>
+        )}
+        {bill.metadata && !!bill.price && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:has_invoice')}:</FormLabel>
             {bill.metadata.payWay === 'balance' ? (
               t('user:bill.not_need_invoice')
             ) : (
-              <Box>
-                {
-                  (bill.metadata.payWay = bill.hasInvoice
-                    ? t('account_bill:yes')
-                    : t('account_bill:no'))
-                }
-              </Box>
+              <Box>{bill.hasInvoice ? t('account_bill:yes') : t('account_bill:no')}</Box>
             )}
           </Flex>
         )}
@@ -245,7 +241,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {bill.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <FormLabel flex={'0 0 120px'}>{t('account_bill:subscription_mode_month')}:</FormLabel>
-            <Box>{bill.metadata?.month}</Box>
+            <Box>{`${bill.metadata?.month} ${t('account_bill:month')}`}</Box>
           </Flex>
         )}
         {bill.metadata?.datasetSize !== undefined && (

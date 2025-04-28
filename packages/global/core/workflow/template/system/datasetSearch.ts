@@ -31,7 +31,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   showStatus: true,
   isTool: true,
   courseUrl: '/docs/guide/workbench/workflow/dataset_search/',
-  version: '481',
+  version: '4.9.2',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetSelectList,
@@ -65,12 +65,34 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       value: DatasetSearchModeEnum.embedding
     },
     {
+      key: NodeInputKeyEnum.datasetSearchEmbeddingWeight,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: 0.5
+    },
+    // Rerank
+    {
       key: NodeInputKeyEnum.datasetSearchUsingReRank,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
       valueType: WorkflowIOValueTypeEnum.boolean,
       value: false
     },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankModel,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      key: NodeInputKeyEnum.datasetSearchRerankWeight,
+      renderTypeList: [FlowNodeInputTypeEnum.hidden],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.number,
+      value: 0.5
+    },
+    // Query Extension
     {
       key: NodeInputKeyEnum.datasetSearchUsingExtensionQuery,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
@@ -91,6 +113,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       value: ''
     },
+
     {
       key: NodeInputKeyEnum.authTmbId,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],

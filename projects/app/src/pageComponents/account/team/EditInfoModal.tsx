@@ -117,7 +117,7 @@ function EditModal({
             ml={4}
             autoFocus
             bg={'myWhite.600'}
-            maxLength={20}
+            maxLength={100}
             placeholder={t('user:team.Team Name')}
             {...register('name', {
               required: t('common:common.Please Input Name')
@@ -142,7 +142,7 @@ function EditModal({
                 width={'fit-content'}
               >
                 <Icon name="common/info" w="1rem" />
-                <Box width="fit-content">{t('account_info:please_bind_contact')}</Box>
+                <Box width="fit-content">{t('account_team:please_bind_contact')}</Box>
               </HStack>
             );
           })()}
@@ -190,8 +190,9 @@ function EditModal({
       />
       {isOpenContact && (
         <UpdateContact
-          onClose={() => {
-            onCloseContact();
+          onClose={onCloseContact}
+          onSuccess={(val) => {
+            setValue('notificationAccount', val);
           }}
           mode="notification_account"
         />

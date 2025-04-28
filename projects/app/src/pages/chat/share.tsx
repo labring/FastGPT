@@ -11,13 +11,13 @@ import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { connectToDatabase } from '@/service/mongo';
+
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
@@ -37,6 +37,8 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
 import { AppSchema } from '@fastgpt/global/core/app/type';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -49,6 +51,8 @@ type Props = {
   authToken: string;
   customUid: string;
   showRawSource: boolean;
+  responseDetail: boolean;
+  // showFullText: boolean;
   showNodeStatus: boolean;
 };
 
@@ -81,6 +85,8 @@ const OutLink = (props: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -147,7 +153,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      const { responseText, responseData } = await streamFetch({
+      const { responseText } = await streamFetch({
         data: {
           messages: histories,
           variables: {
@@ -188,7 +194,7 @@ const OutLink = (props: Props) => {
         '*'
       );
 
-      return { responseText, responseData, isNewChat: forbidLoadChat.current };
+      return { responseText, isNewChat: forbidLoadChat.current };
     },
     [
       chatId,
@@ -217,7 +223,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -232,7 +238,7 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, showHistory, t]);
+  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
     <>
@@ -241,68 +247,83 @@ const OutLink = (props: Props) => {
         desc={props.appIntro || data?.app?.intro}
         icon={props.appAvatar || data?.app?.avatar}
       />
-      <PageContainer
-        isLoading={loading}
-        {...(isEmbed
-          ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
-          : { p: [0, 5] })}
+      <Flex
+        h={'full'}
+        gap={4}
+        {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
-        <Flex h={'100%'} flexDirection={['column', 'row']}>
-          {RenderHistoryList}
+        {(!quoteData || isPc) && (
+          <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
+            <Flex h={'100%'} flexDirection={['column', 'row']}>
+              {RenderHistoryList}
 
-          {/* chat container */}
-          <Flex
-            position={'relative'}
-            h={[0, '100%']}
-            w={['100%', 0]}
-            flex={'1 0 0'}
-            flexDirection={'column'}
-          >
-            {/* header */}
-            {showHead === '1' ? (
-              <ChatHeader
-                history={chatRecords}
-                totalRecordsCount={totalRecordsCount}
-                showHistory={showHistory === '1'}
-              />
-            ) : null}
-            {/* chat box */}
-            <Box flex={1} bg={'white'}>
-              {isPlugin ? (
-                <CustomPluginRunBox
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  onNewChat={() => onChangeChatId(getNanoid())}
-                  onStartChat={startChat}
-                />
-              ) : (
-                <ChatBox
-                  isReady={!loading}
-                  appId={appId}
-                  chatId={chatId}
-                  outLinkAuthData={outLinkAuthData}
-                  feedbackType={'user'}
-                  onStartChat={startChat}
-                  chatType="share"
-                />
-              )}
-            </Box>
-          </Flex>
-        </Flex>
-      </PageContainer>
+              {/* chat container */}
+              <Flex
+                position={'relative'}
+                h={[0, '100%']}
+                w={['100%', 0]}
+                flex={'1 0 0'}
+                flexDirection={'column'}
+              >
+                {/* header */}
+                {showHead === '1' ? (
+                  <ChatHeader
+                    history={chatRecords}
+                    totalRecordsCount={totalRecordsCount}
+                    showHistory={showHistory === '1'}
+                  />
+                ) : null}
+                {/* chat box */}
+                <Box flex={1} bg={'white'}>
+                  {isPlugin ? (
+                    <CustomPluginRunBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      onNewChat={() => onChangeChatId(getNanoid())}
+                      onStartChat={startChat}
+                    />
+                  ) : (
+                    <ChatBox
+                      isReady={!loading}
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      feedbackType={'user'}
+                      onStartChat={startChat}
+                      chatType="share"
+                    />
+                  )}
+                </Box>
+              </Flex>
+            </Flex>
+          </PageContainer>
+        )}
+
+        {quoteData && (
+          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
+            <ChatQuoteList
+              rawSearch={quoteData.rawSearch}
+              metadata={quoteData.metadata}
+              onClose={() => setQuoteData(undefined)}
+            />
+          </PageContainer>
+        )}
+      </Flex>
     </>
   );
 };
 
 const Render = (props: Props) => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
-  const { localUId } = useShareChatStore();
+  const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
   const { setUserDefaultLng } = useI18nLng();
 
   const chatHistoryProviderParams = useMemo(() => {
-    return { shareId, outLinkUid: authToken || customUid || localUId };
+    return { shareId, outLinkUid: authToken || customUid || localUId || '' };
   }, [authToken, customUid, localUId, shareId]);
   const chatRecordProviderParams = useMemo(() => {
     return {
@@ -319,20 +340,40 @@ const Render = (props: Props) => {
     setUserDefaultLng(true);
   });
 
-  // Set outLinkAuthData
+  // Set default localUId
   useEffect(() => {
-    setOutLinkAuthData({
-      shareId,
-      outLinkUid: chatHistoryProviderParams.outLinkUid
-    });
+    if (loaded) {
+      if (!localUId) {
+        setLocalUId(`shareChat-${Date.now()}-${getNanoid(24)}`);
+      }
+    }
+  }, [loaded, localUId, setLocalUId]);
+
+  // Init outLinkAuthData
+  useEffect(() => {
+    if (chatHistoryProviderParams.outLinkUid) {
+      setOutLinkAuthData({
+        shareId,
+        outLinkUid: chatHistoryProviderParams.outLinkUid
+      });
+    }
     return () => {
       setOutLinkAuthData({});
     };
-  }, [chatHistoryProviderParams.outLinkUid, shareId]);
+  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+
   // Watch appId
   useEffect(() => {
     setAppId(appId);
-  }, [appId]);
+  }, [appId, setAppId]);
+  useMount(() => {
+    if (!appId) {
+      toast({
+        status: 'warning',
+        title: t('chat:invalid_share_url')
+      });
+    }
+  });
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
@@ -340,6 +381,8 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
+        isResponseDetail={props.responseDetail}
+        // isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
@@ -361,12 +404,11 @@ export async function getServerSideProps(context: any) {
 
   const app = await (async () => {
     try {
-      await connectToDatabase();
       return MongoOutLink.findOne(
         {
           shareId
         },
-        'appId showRawSource showNodeStatus'
+        'appId showRawSource showNodeStatus responseDetail'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
@@ -378,11 +420,13 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appId: String(app?.appId) ?? '',
+      appId: app?.appId ? String(app?.appId) : '',
       appName: app?.associatedApp?.name ?? 'AI',
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
+      responseDetail: app?.responseDetail ?? false,
+      // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',
       authToken: authToken ?? '',

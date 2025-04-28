@@ -10,7 +10,9 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Prompt_userQuotePromptList,
   Prompt_QuoteTemplateList,
-  Prompt_systemQuotePromptList
+  Prompt_systemQuotePromptList,
+  getQuoteTemplate,
+  getQuotePrompt
 } from '@fastgpt/global/core/ai/prompt/AIChat';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
@@ -48,6 +50,8 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const node = nodeList.find((item) => item.id === nodeId);
+  const nodeVersion = node?.version;
 
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
@@ -87,6 +91,11 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
       {
         key: 'source',
         label: t('common:core.dataset.search.Source name'),
+        icon: 'core/app/simpleMode/variable'
+      },
+      {
+        key: 'sourceId',
+        label: t('common:core.dataset.search.Source id'),
         icon: 'core/app/simpleMode/variable'
       },
       {
@@ -201,7 +210,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
                   description: t('workflow:dataset_quote_role_user_option_desc')
                 }
               ]}
-              onchange={(e) => {
+              onChange={(e) => {
                 setValue('quoteRole', e);
               }}
             />
@@ -214,14 +223,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             </Box>
           </Flex>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
+            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
               <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
-                  default: Prompt_QuoteTemplateList[0].value
+                  default: getQuoteTemplate(nodeVersion)
                 })}
-              ></QuestionTip>
+              />
               <Box flex={1} />
               <Box
                 {...selectTemplateBtn}
@@ -249,21 +258,21 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             />
           </Box>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
+            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
               <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_prompt_tip', {
-                  default: quotePromptTemplates[0].value
+                  default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
                 })}
-              ></QuestionTip>
+              />
             </Flex>
             <PromptEditor
               variables={quotePromptVariables}
               title={t('common:core.app.Quote prompt')}
               minH={300}
               placeholder={t('workflow:quote_prompt_tip', {
-                default: quotePromptTemplates[0].value
+                default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
               })}
               value={aiChatQuotePrompt}
               onChange={(e) => {
@@ -288,10 +297,10 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
           onSuccess={(e) => {
             const quoteVal = e.value;
 
-            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value;
+            const promptVal = quotePromptTemplates.find((item) => item.title === e.title)?.value!;
 
-            setValue('quoteTemplate', quoteVal);
-            setValue('quotePrompt', promptVal);
+            setValue('quoteTemplate', Object.values(quoteVal)[0]);
+            setValue('quotePrompt', Object.values(promptVal)[0]);
           }}
         />
       )}

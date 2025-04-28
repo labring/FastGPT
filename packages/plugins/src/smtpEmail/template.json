@@ -1,0 +1,651 @@
+{
+  "author": "cloudpense",
+  "version": "1.0.0",
+  "name": "Email 邮件发送",
+  "avatar": "plugins/email",
+  "intro": "通过SMTP协议发送电子邮件(nodemailer)",
+  "showStatus": true,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "workflow:template.plugin_start",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 595.3456736313964,
+          "y": -323.02524442647456
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "smtpHost",
+            "label": "smtpHost",
+            "description": "",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "customInputConfig": {
+              "selectValueTypeList": ["string"]
+            }
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "smtpPort",
+            "label": "smtpPort",
+            "description": "SMTP端口",
+            "defaultValue": "465",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": ["select", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "SSL",
+            "label": "SSL",
+            "description": "SSL",
+            "defaultValue": "true",
+            "list": [
+              {
+                "label": "true",
+                "value": "true"
+              },
+              {
+                "label": "false",
+                "value": "false"
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "smtpUser",
+            "label": "smtpUser",
+            "description": "SMTP用户名, 邮箱账号",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "smtpPass",
+            "label": "smtpPass",
+            "description": "邮箱密码或授权码",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "fromName",
+            "label": "fromName",
+            "description": "显示的发件人名称",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "to",
+            "label": "to",
+            "description": "请输入收件人邮箱，多个邮箱用逗号分隔",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "请输入收件人邮箱，多个邮箱用逗号分隔"
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "subject",
+            "label": "subject",
+            "description": "请输入邮件主题",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "请输入邮件主题"
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "content",
+            "label": "content",
+            "description": "请输入邮件内容，支持HTML格式",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "toolDescription": "请输入邮件内容，支持HTML格式"
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "cc",
+            "label": "cc",
+            "description": "请输入抄送邮箱，多个邮箱用逗号分隔",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "请输入抄送邮箱，多个邮箱用逗号分隔"
+          },
+          {
+            "renderTypeList": ["input", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "bcc",
+            "label": "bcc",
+            "description": "请输入密送邮箱，多个邮箱用逗号分隔",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "toolDescription": "请输入密送邮箱，多个邮箱用逗号分隔"
+          },
+          {
+            "renderTypeList": ["JSONEditor", "reference"],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "attachments",
+            "label": "attachments",
+            "description": "必须是json数组格式\n[{\"filename\":\"附件名\",\"path\":\"附件url\"}]",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false,
+            "customInputConfig": {
+              "selectValueTypeList": ["arrayObject"]
+            },
+            "toolDescription": "必须是json数组格式\n[{\"filename\":\"附件名\",\"path\":\"附件url\"}]",
+            "maxLength": 0
+          }
+        ],
+        "outputs": [
+          {
+            "id": "smtpHost",
+            "valueType": "string",
+            "key": "smtpHost",
+            "label": "smtpHost",
+            "type": "hidden"
+          },
+          {
+            "id": "smtpPort",
+            "valueType": "string",
+            "key": "smtpPort",
+            "label": "smtpPort",
+            "type": "hidden"
+          },
+          {
+            "id": "SSL",
+            "valueType": "string",
+            "key": "SSL",
+            "label": "SSL",
+            "type": "hidden"
+          },
+          {
+            "id": "smtpUser",
+            "valueType": "string",
+            "key": "smtpUser",
+            "label": "smtpUser",
+            "type": "hidden"
+          },
+          {
+            "id": "smtpPass",
+            "valueType": "string",
+            "key": "smtpPass",
+            "label": "smtpPass",
+            "type": "hidden"
+          },
+          {
+            "id": "fromName",
+            "valueType": "string",
+            "key": "fromName",
+            "label": "fromName",
+            "type": "hidden"
+          },
+          {
+            "id": "to",
+            "valueType": "string",
+            "key": "to",
+            "label": "to",
+            "type": "hidden"
+          },
+          {
+            "id": "subject",
+            "valueType": "string",
+            "key": "subject",
+            "label": "subject",
+            "type": "hidden"
+          },
+          {
+            "id": "content",
+            "valueType": "string",
+            "key": "content",
+            "label": "content",
+            "type": "hidden"
+          },
+          {
+            "id": "cc",
+            "valueType": "string",
+            "key": "cc",
+            "label": "cc",
+            "type": "hidden"
+          },
+          {
+            "id": "bcc",
+            "valueType": "string",
+            "key": "bcc",
+            "label": "bcc",
+            "type": "hidden"
+          },
+          {
+            "id": "attachments",
+            "valueType": "string",
+            "key": "attachments",
+            "label": "attachments",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "common:core.module.template.self_output",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 2135.4991928806685,
+          "y": -98.02524442647456
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": ["reference"],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "发送结果",
+            "label": "发送结果",
+            "isToolOutput": true,
+            "description": "",
+            "required": true,
+            "value": ["uOX6ITvPWm9O", "httpRawResponse"]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "pluginConfig",
+        "name": "common:core.module.template.system_config",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": 184.66337662472682,
+          "y": -216.05298493910115
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "uOX6ITvPWm9O",
+        "name": "HTTP 请求",
+        "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+        "avatar": "core/workflow/template/httpRequest",
+        "flowNodeType": "httpRequest468",
+        "showStatus": true,
+        "position": {
+          "x": 1340.0519095857342,
+          "y": -393.02524442647456
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": ["addInputParam"],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "common:core.module.input.description.HTTP Dynamic Input",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpMethod",
+            "renderTypeList": ["custom"],
+            "valueType": "string",
+            "label": "",
+            "value": "POST",
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpTimeout",
+            "renderTypeList": ["custom"],
+            "valueType": "number",
+            "label": "",
+            "value": 30,
+            "min": 5,
+            "max": 600,
+            "required": true,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpReqUrl",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Url",
+            "placeholder": "https://api.ai.com/getInventory",
+            "required": false,
+            "value": "smtpEmail",
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpHeader",
+            "renderTypeList": ["custom"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "description": "common:core.module.input.description.Http Request Header",
+            "placeholder": "common:core.module.input.description.Http Request Header",
+            "required": false,
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpParams",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpJsonBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": "{\n\"smtpHost\": \"{{$pluginInput.smtpHost$}}\",\n\"smtpPort\": \"{{$pluginInput.smtpPort$}}\",\n\"SSL\": {{$pluginInput.SSL$}},\n\"smtpUser\": \"{{$pluginInput.smtpUser$}}\",\n\"smtpPass\": \"{{$pluginInput.smtpPass$}}\",\n\"fromName\": \"{{$pluginInput.fromName$}}\",\n\"to\": \"{{$pluginInput.to$}}\",\n\"subject\": \"{{$pluginInput.subject$}}\",\n\"content\": \"{{$pluginInput.content$}}\",\n\"cc\": \"{{$pluginInput.cc$}}\",\n\"bcc\": \"{{$pluginInput.bcc$}}\",\n\"attachments\":'{{$pluginInput.attachments$}}'\n}",
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpFormBody",
+            "renderTypeList": ["hidden"],
+            "valueType": "any",
+            "value": [],
+            "label": "",
+            "required": false,
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "system_httpContentType",
+            "renderTypeList": ["hidden"],
+            "valueType": "string",
+            "value": "json",
+            "label": "",
+            "required": false,
+            "debugLabel": "",
+            "toolDescription": ""
+          }
+        ],
+        "outputs": [
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:request_error",
+            "description": "HTTP请求错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "httpRawResponse",
+            "key": "httpRawResponse",
+            "required": true,
+            "label": "workflow:raw_response",
+            "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+            "valueType": "any",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "输出字段提取",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectApp",
+                "selectDataset"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "可以通过 JSONPath 语法来提取响应值中的指定字段",
+            "valueDesc": ""
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "uOX6ITvPWm9O",
+        "target": "pluginOutput",
+        "sourceHandle": "uOX6ITvPWm9O-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      },
+      {
+        "source": "pluginInput",
+        "target": "uOX6ITvPWm9O",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "uOX6ITvPWm9O-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": ""
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "通过SMTP协议发送电子邮件",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "67ad649ea4b6b8eefa9d3d0d"
+    }
+  }
+}

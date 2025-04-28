@@ -10,8 +10,7 @@ import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflo
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { Prompt_CQJson } from '@fastgpt/global/core/ai/prompt/agent';
+import { getCQPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
@@ -20,9 +19,10 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
-import { llmCompletionsBodyFormat } from '../../../ai/utils';
+import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
@@ -99,7 +99,8 @@ const completions = async ({
   cqModel,
   externalProvider,
   histories,
-  params: { agents, systemPrompt = '', userChatInput }
+  params: { agents, systemPrompt = '', userChatInput },
+  node: { version }
 }: ActionProps) => {
   const messages: ChatItemType[] = [
     {
@@ -108,7 +109,7 @@ const completions = async ({
         {
           type: ChatItemValueTypeEnum.text,
           text: {
-            content: replaceVariable(cqModel.customCQPrompt || Prompt_CQJson, {
+            content: replaceVariable(cqModel.customCQPrompt || getCQPrompt(version), {
               systemPrompt: systemPrompt || 'null',
               typeList: agents
                 .map((item) => `{"类型ID":"${item.key}", "问题类型":"${item.value}"}`)
@@ -128,7 +129,7 @@ const completions = async ({
     useVision: false
   });
 
-  const { response: data } = await createChatCompletion({
+  const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
         model: cqModel.model,
@@ -140,7 +141,7 @@ const completions = async ({
     ),
     userKey: externalProvider.openaiAccount
   });
-  const answer = data.choices?.[0].message?.content || '';
+  const { text: answer, usage } = await llmResponseToAnswerText(response);
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
   // console.log(answer, '----');
@@ -155,8 +156,8 @@ const completions = async ({
   }
 
   return {
-    inputTokens: await countGptMessagesTokens(requestMessages),
-    outputTokens: await countPromptTokens(answer),
+    inputTokens: usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages)),
+    outputTokens: usage?.completion_tokens || (await countPromptTokens(answer)),
     arg: { type: id }
   };
 };

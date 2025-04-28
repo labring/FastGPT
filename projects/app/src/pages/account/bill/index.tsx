@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import ApplyInvoiceModal from '@/pageComponents/account/bill/ApplyInvoiceModal';
 import { useRouter } from 'next/router';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 
 export enum InvoiceTabEnum {
   bill = 'bill',

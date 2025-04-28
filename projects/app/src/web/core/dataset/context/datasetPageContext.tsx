@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Dispatch, ReactNode, SetStateAction, useMemo, useState } from 'react';
+import { Dispatch, ReactNode, SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import {
@@ -8,7 +8,6 @@ import {
   getDatasetCollectionTags,
   getDatasetPaths,
   getDatasetTrainingQueue,
-  getTrainingQueueLen,
   postCreateDatasetCollectionTag,
   putDatasetById
 } from '../api';
@@ -37,28 +36,13 @@ type DatasetPageContextType = {
   setSearchTagKey: Dispatch<SetStateAction<string>>;
   paths: ParentTreePathItemType[];
   refetchPaths: () => void;
-  vectorTrainingMap: {
-    colorSchema: string;
-    tip: string;
-  };
-  agentTrainingMap: {
-    colorSchema: string;
-    tip: string;
-  };
+
   rebuildingCount: number;
   trainingCount: number;
   refetchDatasetTraining: () => void;
 };
 
 export const DatasetPageContext = createContext<DatasetPageContextType>({
-  vectorTrainingMap: {
-    colorSchema: '',
-    tip: ''
-  },
-  agentTrainingMap: {
-    colorSchema: '',
-    tip: ''
-  },
   rebuildingCount: 0,
   trainingCount: 0,
   refetchDatasetTraining: function (): void {
@@ -191,57 +175,6 @@ export const DatasetPageContextProvider = ({
     }
   );
 
-  // global queue
-  const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
-    ['getTrainingQueueLen'],
-    () =>
-      getTrainingQueueLen({
-        vectorModel: datasetDetail.vectorModel.model,
-        agentModel: datasetDetail.agentModel.model
-      }),
-    {
-      refetchInterval: 10000
-    }
-  );
-  const { vectorTrainingMap, agentTrainingMap } = useMemo(() => {
-    const vectorTrainingMap = (() => {
-      if (vectorTrainingCount < 1000)
-        return {
-          colorSchema: 'green',
-          tip: t('common:core.dataset.training.Leisure')
-        };
-      if (vectorTrainingCount < 10000)
-        return {
-          colorSchema: 'yellow',
-          tip: t('common:core.dataset.training.Waiting')
-        };
-      return {
-        colorSchema: 'red',
-        tip: t('common:core.dataset.training.Full')
-      };
-    })();
-    const agentTrainingMap = (() => {
-      if (agentTrainingCount < 100)
-        return {
-          colorSchema: 'green',
-          tip: t('common:core.dataset.training.Leisure')
-        };
-      if (agentTrainingCount < 1000)
-        return {
-          colorSchema: 'yellow',
-          tip: t('common:core.dataset.training.Waiting')
-        };
-      return {
-        colorSchema: 'red',
-        tip: t('common:core.dataset.training.Full')
-      };
-    })();
-    return {
-      vectorTrainingMap,
-      agentTrainingMap
-    };
-  }, [agentTrainingCount, t, vectorTrainingCount]);
-
   // training and rebuild queue
   const { data: { rebuildingCount = 0, trainingCount = 0 } = {}, refetch: refetchDatasetTraining } =
     useQuery(['getDatasetTrainingQueue'], () => getDatasetTrainingQueue(datasetId), {
@@ -250,7 +183,10 @@ export const DatasetPageContextProvider = ({
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
     () =>
-      getDatasetPaths(datasetDetail.parentId).then((res) => {
+      getDatasetPaths({
+        sourceId: datasetDetail?._id,
+        type: 'parent'
+      }).then((res) => {
         res.push({
           parentId: '',
           parentName: datasetDetail.name
@@ -270,8 +206,7 @@ export const DatasetPageContextProvider = ({
     updateDataset,
     paths,
     refetchPaths,
-    vectorTrainingMap,
-    agentTrainingMap,
+
     rebuildingCount,
     trainingCount,
     refetchDatasetTraining,

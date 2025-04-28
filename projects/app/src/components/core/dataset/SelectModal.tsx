@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import ParentPaths from '@/components/common/ParentPaths';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type PathItemType = {
   parentId: string;
@@ -70,8 +71,16 @@ const DatasetSelectContainer = ({
 export function useDatasetSelect() {
   const [parentId, setParentId] = useState<string>('');
 
-  const { data, isFetching } = useQuery(['loadDatasetData', parentId], () =>
-    Promise.all([getDatasets({ parentId }), getDatasetPaths(parentId)])
+  const { data, loading: isFetching } = useRequest2(
+    () =>
+      Promise.all([
+        getDatasets({ parentId }),
+        getDatasetPaths({ sourceId: parentId, type: 'current' })
+      ]),
+    {
+      manual: false,
+      refreshDeps: [parentId]
+    }
   );
 
   const paths = useMemo(() => [...(data?.[1] || [])], [data]);

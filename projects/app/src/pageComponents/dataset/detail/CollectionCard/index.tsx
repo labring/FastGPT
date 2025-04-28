@@ -29,7 +29,6 @@ import {
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap,
-  DatasetTypeEnum,
   DatasetCollectionDataProcessModeMap
 } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
@@ -45,10 +44,14 @@ import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { checkCollectionIsFolder } from '@fastgpt/global/core/dataset/collection/utils';
+import {
+  checkCollectionIsFolder,
+  collectionCanSync
+} from '@fastgpt/global/core/dataset/collection/utils';
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import TagsPopOver from './TagsPopOver';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import TrainingStates from './TrainingStates';
 
 const Header = dynamic(() => import('./Header'));
 const EmptyCollectionTip = dynamic(() => import('./EmptyCollectionTip'));
@@ -61,26 +64,25 @@ const CollectionCard = () => {
   const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
   const { feConfigs } = useSystemStore();
 
-  const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
-    content: t('common:dataset.Confirm to delete the file'),
-    type: 'delete'
-  });
-
-  const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('common:Rename')
-  });
-
-  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
+  const [trainingStatesCollection, setTrainingStatesCollection] = useState<{
+    collectionId: string;
+  }>();
 
   const { collections, Pagination, total, getData, isGetting, pageNum, pageSize } =
     useContextSelector(CollectionPageContext, (v) => v);
 
-  // Ad file status icon
+  // Add file status icon
   const formatCollections = useMemo(
     () =>
       collections.map((collection) => {
         const icon = getCollectionIcon(collection.type, collection.name);
         const status = (() => {
+          if (collection.hasError) {
+            return {
+              statusText: t('common:core.dataset.collection.status.error'),
+              colorSchema: 'red'
+            };
+          }
           if (collection.trainingAmount > 0) {
             return {
               statusText: t('common:dataset.collections.Collection Embedding', {
@@ -104,6 +106,11 @@ const CollectionCard = () => {
     [collections, t]
   );
 
+  const [moveCollectionData, setMoveCollectionData] = useState<{ collectionId: string }>();
+
+  const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
+    title: t('common:Rename')
+  });
   const { runAsync: onUpdateCollection, loading: isUpdating } = useRequest2(
     putDatasetCollectionById,
     {
@@ -113,7 +120,12 @@ const CollectionCard = () => {
       successToast: t('common:common.Update Success')
     }
   );
-  const { runAsync: onDelCollection, loading: isDeleting } = useRequest2(
+
+  const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
+    content: t('common:dataset.Confirm to delete the file'),
+    type: 'delete'
+  });
+  const { runAsync: onDelCollection } = useRequest2(
     (collectionId: string) => {
       return delDatasetCollectionById({
         id: collectionId
@@ -151,14 +163,14 @@ const CollectionCard = () => {
     ['refreshCollection'],
     () => {
       getData(pageNum);
-      if (datasetDetail.status === DatasetStatusEnum.syncing) {
+      if (datasetDetail.status !== DatasetStatusEnum.active) {
         loadDatasetDetail(datasetDetail._id);
       }
       return null;
     },
     {
       refetchInterval: 6000,
-      enabled: hasTrainingData || datasetDetail.status === DatasetStatusEnum.syncing
+      enabled: hasTrainingData || datasetDetail.status !== DatasetStatusEnum.active
     }
   );
 
@@ -178,13 +190,13 @@ const CollectionCard = () => {
   });
 
   const isLoading =
-    isUpdating || isDeleting || isSyncing || (isGetting && collections.length === 0) || isDropping;
+    isUpdating || isSyncing || (isGetting && collections.length === 0) || isDropping;
 
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 0]} h={'100%'} px={[2, 6]}>
         {/* header */}
-        <Header />
+        <Header hasTrainingData={hasTrainingData} />
 
         {/* collection table */}
         <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'}>
@@ -267,9 +279,22 @@ const CollectionCard = () => {
                     <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTag showDot colorSchema={collection.colorSchema as any} type={'borderFill'}>
-                      {t(collection.statusText as any)}
-                    </MyTag>
+                    <MyTooltip label={t('common:Click_to_expand')}>
+                      <MyTag
+                        showDot
+                        colorSchema={collection.colorSchema as any}
+                        type={'fill'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setTrainingStatesCollection({ collectionId: collection._id });
+                        }}
+                      >
+                        <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                          {t(collection.statusText as any)}
+                          <MyIcon name={'common/maximize'} w={'11px'} />
+                        </Flex>
+                      </MyTag>
+                    </MyTooltip>
                   </Td>
                   <Td py={2} onClick={(e) => e.stopPropagation()}>
                     <Switch
@@ -315,8 +340,7 @@ const CollectionCard = () => {
                         menuList={[
                           {
                             children: [
-                              ...(collection.type === DatasetCollectionTypeEnum.link ||
-                              datasetDetail.type === DatasetTypeEnum.apiDataset
+                              ...(collectionCanSync(collection.type)
                                 ? [
                                     {
                                       label: (
@@ -382,9 +406,7 @@ const CollectionCard = () => {
                                 type: 'danger',
                                 onClick: () =>
                                   openDeleteConfirm(
-                                    () => {
-                                      onDelCollection(collection._id);
-                                    },
+                                    () => onDelCollection(collection._id),
                                     undefined,
                                     collection.type === DatasetCollectionTypeEnum.folder
                                       ? t('common:dataset.collections.Confirm to delete the folder')
@@ -412,6 +434,14 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
+
+        {!!trainingStatesCollection && (
+          <TrainingStates
+            datasetId={datasetDetail._id}
+            collectionId={trainingStatesCollection.collectionId}
+            onClose={() => setTrainingStatesCollection(undefined)}
+          />
+        )}
 
         {!!moveCollectionData && (
           <SelectCollections

@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Markdown from '@/components/Markdown';
-import { QuoteList } from '../ChatContainer/ChatBox/components/QuoteModal';
+import QuoteList from '../ChatContainer/ChatBox/components/QuoteList';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -17,6 +17,7 @@ import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
 
 type sideTabItemType = {
   moduleLogo?: string;
@@ -32,11 +33,13 @@ type sideTabItemType = {
 export const WholeResponseContent = ({
   activeModule,
   hideTabs,
-  dataId
+  dataId,
+  chatTime
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
+  chatTime?: Date;
 }) => {
   const { t } = useTranslation();
 
@@ -151,30 +154,21 @@ export const WholeResponseContent = ({
           value={`${activeModule?.runningTime || 0}s`}
         />
         <Row label={t('common:core.chat.response.module model')} value={activeModule?.model} />
-        <Row
-          label={t('common:core.chat.response.module tokens')}
-          value={`${activeModule?.tokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.module input tokens')}
-          value={`${activeModule?.inputTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.module output tokens')}
-          value={`${activeModule?.outputTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.Tool call tokens')}
-          value={`${activeModule?.toolCallTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.Tool call input tokens')}
-          value={`${activeModule?.toolCallInputTokens}`}
-        />
-        <Row
-          label={t('common:core.chat.response.Tool call output tokens')}
-          value={`${activeModule?.toolCallOutputTokens}`}
-        />
+        {activeModule?.tokens && (
+          <Row label={t('chat:llm_tokens')} value={`${activeModule?.tokens}`} />
+        )}
+        {(!!activeModule?.inputTokens || !!activeModule?.outputTokens) && (
+          <Row
+            label={t('chat:llm_tokens')}
+            value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
+          />
+        )}
+        {(!!activeModule?.toolCallInputTokens || !!activeModule?.toolCallOutputTokens) && (
+          <Row
+            label={t('common:core.chat.response.Tool call tokens')}
+            value={`Input/Output = ${activeModule?.toolCallInputTokens || 0}/${activeModule?.toolCallOutputTokens || 0}`}
+          />
+        )}
 
         <Row label={t('common:core.chat.response.module query')} value={activeModule?.query} />
         <Row
@@ -194,6 +188,13 @@ export const WholeResponseContent = ({
           label={t('common:core.chat.response.module maxToken')}
           value={activeModule?.maxToken}
         />
+        {activeModule?.finishReason && (
+          <Row
+            label={t('chat:completion_finish_reason')}
+            value={t(completionFinishReasonMap[activeModule?.finishReason])}
+          />
+        )}
+
         <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
         <Row
           label={t('common:core.chat.response.module historyPreview')}
@@ -226,8 +227,20 @@ export const WholeResponseContent = ({
         {activeModule?.searchMode && (
           <Row
             label={t('common:core.dataset.search.search mode')}
-            // @ts-ignore
-            value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+            rawDom={
+              <Flex border={'base'} borderRadius={'md'} p={2}>
+                <Box>
+                  {/* @ts-ignore */}
+                  {t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+                </Box>
+                {activeModule.embeddingWeight && (
+                  <>{`(${t('chat:response_hybrid_weight', {
+                    emb: activeModule.embeddingWeight,
+                    text: 1 - activeModule.embeddingWeight
+                  })})`}</>
+                )}
+              </Flex>
+            }
           />
         )}
         <Row
@@ -235,10 +248,35 @@ export const WholeResponseContent = ({
           value={activeModule?.similarity}
         />
         <Row label={t('common:core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row label={t('chat:response_embedding_model')} value={activeModule?.embeddingModel} />
         <Row
-          label={t('common:core.chat.response.search using reRank')}
-          value={`${activeModule?.searchUsingReRank}`}
+          label={t('chat:response_embedding_model_tokens')}
+          value={`${activeModule?.embeddingTokens}`}
         />
+        {activeModule?.searchUsingReRank !== undefined && (
+          <>
+            <Row
+              label={t('common:core.chat.response.search using reRank')}
+              rawDom={
+                <Box border={'base'} borderRadius={'md'} p={2}>
+                  {activeModule?.searchUsingReRank ? (
+                    activeModule?.rerankModel ? (
+                      <Box>{`${activeModule.rerankModel}: ${activeModule.rerankWeight}`}</Box>
+                    ) : (
+                      'True'
+                    )
+                  ) : (
+                    `False`
+                  )}
+                </Box>
+              }
+            />
+            <Row
+              label={t('chat:response_rerank_tokens')}
+              value={`${activeModule?.reRankInputTokens}`}
+            />
+          </>
+        )}
         {activeModule.queryExtensionResult && (
           <>
             <Row
@@ -263,7 +301,7 @@ export const WholeResponseContent = ({
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
             label={t('common:core.chat.response.module quoteList')}
-            rawDom={<QuoteList chatItemId={dataId} rawSearch={activeModule.quoteList} />}
+            rawDom={<QuoteList chatItemDataId={dataId} rawSearch={activeModule.quoteList} />}
           />
         )}
       </>
@@ -401,6 +439,9 @@ export const WholeResponseContent = ({
         label={t('workflow:tool_params.tool_params_result')}
         value={activeModule?.toolParamsResult}
       />
+
+      {/* tool */}
+      <Row label={t('workflow:tool.tool_result')} value={activeModule?.toolRes} />
     </Box>
   ) : null;
 };
@@ -562,11 +603,13 @@ const SideTabItem = ({
 export const ResponseBox = React.memo(function ResponseBox({
   response,
   dataId,
+  chatTime,
   hideTabs = false,
   useMobile = false
 }: {
   response: ChatHistoryItemResType[];
   dataId?: string;
+  chatTime: Date;
   hideTabs?: boolean;
   useMobile?: boolean;
 }) {
@@ -689,7 +732,12 @@ export const ResponseBox = React.memo(function ResponseBox({
             </Box>
           </Box>
           <Box flex={'5 0 0'} w={0} height={'100%'}>
-            <WholeResponseContent dataId={dataId} activeModule={activeModule} hideTabs={hideTabs} />
+            <WholeResponseContent
+              dataId={dataId}
+              activeModule={activeModule}
+              hideTabs={hideTabs}
+              chatTime={chatTime}
+            />
           </Box>
         </Flex>
       ) : (
@@ -753,6 +801,7 @@ export const ResponseBox = React.memo(function ResponseBox({
                   dataId={dataId}
                   activeModule={activeModule}
                   hideTabs={hideTabs}
+                  chatTime={chatTime}
                 />
               </Box>
             </Flex>
@@ -763,7 +812,15 @@ export const ResponseBox = React.memo(function ResponseBox({
   );
 });
 
-const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: string }) => {
+const WholeResponseModal = ({
+  onClose,
+  dataId,
+  chatTime
+}: {
+  onClose: () => void;
+  dataId: string;
+  chatTime: Date;
+}) => {
   const { t } = useTranslation();
 
   const { getHistoryResponseData } = useContextSelector(ChatBoxContext, (v) => v);
@@ -792,7 +849,7 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
       }
     >
       {!!response?.length ? (
-        <ResponseBox response={response} dataId={dataId} />
+        <ResponseBox response={response} dataId={dataId} chatTime={chatTime} />
       ) : (
         <EmptyTip text={t('chat:no_workflow_response')} />
       )}

@@ -6,32 +6,36 @@
     "prepare": "husky install",
     "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
     "format-doc": "zhlint --dir ./docSite *.md --fix",
+    "gen:llms": "node ./docSite/doc-generate-llms.js",
     "gen:theme-typings": "chakra-cli tokens packages/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
     "postinstall": "pnpm gen:theme-typings",
     "initIcon": "node ./scripts/icon/init.js",
     "previewIcon": "node ./scripts/icon/index.js",
     "api:gen": "tsc ./scripts/openapi/index.ts && node ./scripts/openapi/index.js && npx @redocly/cli build-docs ./scripts/openapi/openapi.json -o ./projects/app/public/openapi/index.html",
     "create:i18n": "node ./scripts/i18n/index.js",
-    "test": "vitest run --exclude './projects/app/src/test/**'",
-    "test:all": "vitest run",
+    "test": "vitest run",
     "test:workflow": "vitest run workflow"
   },
   "devDependencies": {
     "@chakra-ui/cli": "^2.4.1",
-    "@vitest/coverage-v8": "^3.0.2",
+    "@vitest/coverage-v8": "^3.0.9",
     "husky": "^8.0.3",
-    "i18next": "23.11.5",
+    "i18next": "23.16.8",
     "lint-staged": "^13.3.0",
-    "next-i18next": "15.3.0",
+    "next-i18next": "15.4.2",
     "prettier": "3.2.4",
     "react-i18next": "14.1.2",
-    "vitest": "^3.0.2",
-    "vitest-mongodb": "^1.0.1",
+    "vitest": "^3.0.9",
+    "js-yaml": "^4.1.0",
+    "mongodb-memory-server": "^10.1.4",
     "zhlint": "^0.7.4"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",
-    "./docSite/**/**/*.md": "npm run format-doc"
+    "./docSite/**/**/*.md": "npm run format-doc && npm run gen:llms"
+  },
+  "resolutions": {
+    "mdast-util-gfm-autolink-literal": "2.0.0"
   },
   "engines": {
     "node": ">=18.16.0",

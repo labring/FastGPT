@@ -1,6 +1,4 @@
-import { create } from 'zustand';
-import { createJSONStorage, devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create, createJSONStorage, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';

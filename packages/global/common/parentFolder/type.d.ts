@@ -1,3 +1,8 @@
+export type GetPathProps = {
+  sourceId?: ParentIdType;
+  type: 'current' | 'parent';
+};
+
 export type ParentTreePathItemType = {
   parentId: string;
   parentName: string;

@@ -40,12 +40,16 @@ export const defaultChannel: ChannelInfoType = {
   priority: 0
 };
 
-export const aiproxyIdMap: Record<number, { label: string; provider: ModelProviderIdType }> = {
+export const aiproxyIdMap: Record<
+  number,
+  { label: string; provider: ModelProviderIdType; avatar?: string }
+> = {
   1: {
     label: 'OpenAI',
     provider: 'OpenAI'
   },
   3: {
+    avatar: 'model/azure',
     label: i18nT('account_model:azure'),
     provider: 'OpenAI'
   },
@@ -124,5 +128,28 @@ export const aiproxyIdMap: Record<number, { label: string; provider: ModelProvid
   30: {
     label: 'Ollama',
     provider: 'Ollama'
+  },
+  23: {
+    label: i18nT('account_model:Hunyuan'),
+    provider: 'Hunyuan'
+  },
+  44: {
+    label: 'doubao audio',
+    provider: 'Doubao'
+  },
+  33: {
+    label: 'AWS',
+    provider: 'Other',
+    avatar: 'model/aws'
+  },
+  35: {
+    label: 'Cohere',
+    provider: 'Other',
+    avatar: 'model/cohere'
+  },
+  37: {
+    label: 'Cloudflare',
+    provider: 'Other',
+    avatar: 'model/cloudflare'
   }
 };

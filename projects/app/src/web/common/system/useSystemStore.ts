@@ -1,12 +1,10 @@
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import axios from 'axios';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import type {
   TTSModelType,
   LLMModelItemType,
-  ReRankModelItemType,
+  RerankModelItemType,
   EmbeddingModelItemType,
   STTModelType
 } from '@fastgpt/global/core/ai/model.d';
@@ -56,7 +54,7 @@ type State = {
   getVlmModelList: () => LLMModelItemType[];
   embeddingModelList: EmbeddingModelItemType[];
   ttsModelList: TTSModelType[];
-  reRankModelList: ReRankModelItemType[];
+  reRankModelList: RerankModelItemType[];
   sttModelList: STTModelType[];
   initStaticData: (e: InitDateResponse) => void;
   appType?: string;
@@ -79,7 +77,7 @@ export const useSystemStore = create<State>()(
             state.initd = true;
           });
         },
-        lastRoute: '/app/list',
+        lastRoute: '/dashboard/apps',
         setLastRoute(e) {
           set((state) => {
             state.lastRoute = e;

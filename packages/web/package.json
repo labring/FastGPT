@@ -4,8 +4,8 @@
   "dependencies": {
     "@chakra-ui/anatomy": "2.2.1",
     "@chakra-ui/icons": "2.1.1",
-    "@chakra-ui/next-js": "2.1.5",
-    "@chakra-ui/react": "2.8.1",
+    "@chakra-ui/next-js": "2.4.2",
+    "@chakra-ui/react": "2.10.7",
     "@chakra-ui/styled-system": "2.9.1",
     "@chakra-ui/system": "2.6.1",
     "@emotion/react": "11.11.1",
@@ -21,11 +21,11 @@
     "ahooks": "^3.7.11",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
-    "i18next": "23.11.5",
+    "i18next": "23.16.8",
     "js-cookie": "^3.0.5",
     "lexical": "0.12.6",
     "lodash": "^4.17.21",
-    "next-i18next": "15.3.0",
+    "next-i18next": "15.4.2",
     "papaparse": "^5.4.1",
     "react": "18.3.1",
     "react-beautiful-dnd": "^13.1.1",
@@ -34,7 +34,8 @@
     "react-hook-form": "7.43.1",
     "react-i18next": "14.1.2",
     "react-photo-view": "^1.2.6",
-    "use-context-selector": "^1.4.4"
+    "use-context-selector": "^1.4.4",
+    "zustand": "^4.3.5"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.5",

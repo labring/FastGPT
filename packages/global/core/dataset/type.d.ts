@@ -2,6 +2,7 @@ import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/mod
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import {
+  DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
   DatasetStatusEnum,
@@ -14,6 +15,21 @@ import { Permission } from '../../support/permission/controller';
 import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
 import { SourceMemberType } from 'support/user/type';
 import { DatasetDataIndexTypeEnum } from './data/constants';
+import { ChunkSettingModeEnum } from './constants';
+
+export type ChunkSettingsType = {
+  trainingType: DatasetCollectionDataProcessModeEnum;
+  autoIndexes?: boolean;
+  imageIndex?: boolean;
+
+  chunkSettingMode?: ChunkSettingModeEnum;
+  chunkSplitMode?: DataChunkSplitModeEnum;
+
+  chunkSize?: number;
+  indexSize?: number;
+  chunkSplitter?: string;
+  qaPrompt?: string;
+};
 
 export type DatasetSchemaType = {
   _id: string;
@@ -27,7 +43,6 @@ export type DatasetSchemaType = {
   name: string;
   intro: string;
   type: `${DatasetTypeEnum}`;
-  status: `${DatasetStatusEnum}`;
 
   vectorModel: string;
   agentModel: string;
@@ -37,14 +52,16 @@ export type DatasetSchemaType = {
     url: string;
     selector: string;
   };
+
+  chunkSettings?: ChunkSettingsType;
+
   inheritPermission: boolean;
   apiServer?: APIFileServer;
   feishuServer?: FeishuServer;
   yuqueServer?: YuqueServer;
 
-  autoSync?: boolean;
-
   // abandon
+  autoSync?: boolean;
   externalReadUrl?: string;
   defaultPermission?: number;
 };
@@ -88,7 +105,12 @@ export type DatasetCollectionSchemaType = {
   autoIndexes?: boolean;
   imageIndex?: boolean;
   trainingType: DatasetCollectionDataProcessModeEnum;
-  chunkSize: number;
+
+  chunkSettingMode?: ChunkSettingModeEnum;
+  chunkSplitMode?: DataChunkSplitModeEnum;
+
+  chunkSize?: number;
+  indexSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
 };
@@ -112,12 +134,15 @@ export type DatasetDataSchemaType = {
   tmbId: string;
   datasetId: string;
   collectionId: string;
-  datasetId: string;
-  collectionId: string;
   chunkIndex: number;
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  history?: {
+    q: string;
+    a: string;
+    updateTime: Date;
+  }[];
   forbid?: boolean;
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
@@ -153,6 +178,7 @@ export type DatasetTrainingSchemaType = {
   weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
   retryCount: number;
+  errorMsg?: string;
 };
 
 export type CollectionWithDatasetType = DatasetCollectionSchemaType & {
@@ -182,6 +208,8 @@ export type DatasetListItemType = {
 };
 
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel' | 'vlmModel'> & {
+  status: `${DatasetStatusEnum}`;
+  errorMsg?: string;
   vectorModel: EmbeddingModelItemType;
   agentModel: LLMModelItemType;
   vlmModel?: LLMModelItemType;
@@ -206,6 +234,7 @@ export type DatasetCollectionItemType = CollectionWithDatasetType & {
   file?: DatasetFileSchema;
   permission: DatasetPermission;
   indexAmount: number;
+  errorCount?: number;
 };
 
 /* ================= data ===================== */

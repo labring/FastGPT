@@ -14,8 +14,8 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
-const QuoteModal = dynamic(() => import('./QuoteModal'));
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
@@ -31,24 +31,18 @@ const ResponseTags = ({
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
 
+  const chatTime = historyItem.time || new Date();
+  const durationSeconds = historyItem.durationSeconds || 0;
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
-    totalRunningTime: runningTime = 0,
     historyPreviewLength = 0
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
 
-  const [quoteModalData, setQuoteModalData] = useState<{
-    rawSearch: SearchDataResponseItemType[];
-    metadata?: {
-      collectionId: string;
-      sourceId?: string;
-      sourceName: string;
-    };
-  }>();
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
   const {
@@ -81,15 +75,25 @@ const ResponseTags = ({
         sourceName: item.sourceName,
         sourceId: item.sourceId,
         icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-        collectionId: item.collectionId
+        collectionId: item.collectionId,
+        datasetId: item.datasetId
       }));
   }, [quoteList]);
+
+  const openQuoteReader = (item?: {
+    collectionId?: string;
+    sourceId?: string;
+    sourceName?: string;
+    datasetId?: string;
+  }) => {
+    eventBus.emit(EventNameEnum.openQuoteReader, item);
+  };
 
   const notEmptyTags =
     quoteList.length > 0 ||
     (llmModuleAccount === 1 && notSharePage) ||
     (llmModuleAccount > 1 && notSharePage) ||
-    (isPc && runningTime > 0) ||
+    (isPc && durationSeconds > 0) ||
     notSharePage;
 
   return !showTags ? null : (
@@ -99,7 +103,11 @@ const ResponseTags = ({
         <>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             <Box width={'100%'}>
-              <ChatBoxDivider icon="core/chat/quoteFill" text={t('common:core.chat.Quote')} />
+              <ChatBoxDivider
+                icon="core/chat/quoteFill"
+                text={t('common:core.chat.Quote')}
+                iconColor="#E82F72"
+              />
             </Box>
             {quoteFolded && quoteIsOverflow && (
               <MyIcon
@@ -135,15 +143,13 @@ const ResponseTags = ({
                 : {}
             }
           >
-            {sourceList.map((item) => {
+            {sourceList.map((item, index) => {
               return (
                 <MyTooltip key={item.collectionId} label={t('common:core.chat.quote.Read Quote')}>
                   <Flex
                     alignItems={'center'}
                     fontSize={'xs'}
                     border={'sm'}
-                    py={1.5}
-                    px={2}
                     borderRadius={'sm'}
                     _hover={{
                       '.controller': {
@@ -155,20 +161,32 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      setQuoteModalData({
-                        rawSearch: quoteList,
-                        metadata: {
-                          collectionId: item.collectionId,
-                          sourceId: item.sourceId,
-                          sourceName: item.sourceName
-                        }
-                      });
+                      openQuoteReader(item);
                     }}
+                    height={6}
                   >
-                    <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
-                    <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
-                      {item.sourceName}
-                    </Box>
+                    <Flex
+                      color={'myGray.500'}
+                      bg={'myGray.150'}
+                      w={4}
+                      justifyContent={'center'}
+                      fontSize={'10px'}
+                      h={'full'}
+                      alignItems={'center'}
+                    >
+                      {index + 1}
+                    </Flex>
+                    <Flex px={1.5}>
+                      <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
+                      <Box
+                        className="textEllipsis3"
+                        wordBreak={'break-all'}
+                        flex={'1 0 0'}
+                        fontSize={'mini'}
+                      >
+                        {item.sourceName}
+                      </Box>
+                    </Flex>
                   </Flex>
                 </MyTooltip>
               );
@@ -196,7 +214,10 @@ const ResponseTags = ({
                 colorSchema="blue"
                 type="borderSolid"
                 cursor={'pointer'}
-                onClick={() => setQuoteModalData({ rawSearch: quoteList })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openQuoteReader();
+                }}
               >
                 {t('chat:citations', { num: quoteList.length })}
               </MyTag>
@@ -223,10 +244,10 @@ const ResponseTags = ({
               {t('chat:multiple_AI_conversations')}
             </MyTag>
           )}
-          {isPc && runningTime > 0 && (
+          {isPc && durationSeconds > 0 && (
             <MyTooltip label={t('chat:module_runtime_and')}>
               <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
-                {runningTime}s
+                {durationSeconds.toFixed(2)}s
               </MyTag>
             </MyTooltip>
           )}
@@ -246,15 +267,10 @@ const ResponseTags = ({
         </Flex>
       )}
 
-      {!!quoteModalData && (
-        <QuoteModal
-          {...quoteModalData}
-          chatItemId={historyItem.dataId}
-          onClose={() => setQuoteModalData(undefined)}
-        />
-      )}
       {isOpenContextModal && <ContextModal dataId={dataId} onClose={onCloseContextModal} />}
-      {isOpenWholeModal && <WholeResponseModal dataId={dataId} onClose={onCloseWholeModal} />}
+      {isOpenWholeModal && (
+        <WholeResponseModal dataId={dataId} chatTime={chatTime} onClose={onCloseWholeModal} />
+      )}
     </>
   );
 };

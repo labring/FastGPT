@@ -15,6 +15,7 @@ import { ReactElement, useEffect } from 'react';
 import { NextPage } from 'next';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
+import { useRouter } from 'next/router';
 
 type NextPageWithLayout = NextPage & {
   setLayout?: (page: ReactElement) => JSX.Element;
@@ -22,6 +23,15 @@ type NextPageWithLayout = NextPage & {
 type AppPropsWithLayout = AppProps & {
   Component: NextPageWithLayout;
 };
+
+// 哪些路由有自定义 Head
+const routesWithCustomHead = [
+  '/chat',
+  '/chat/share',
+  'chat/team',
+  '/app/detail/',
+  '/dataset/detail'
+];
 
 function App({ Component, pageProps }: AppPropsWithLayout) {
   const { feConfigs, scripts, title } = useInitApp();
@@ -42,17 +52,23 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
   const setLayout = Component.setLayout || ((page) => <>{page}</>);
 
+  const router = useRouter();
+  const showHead = !router?.pathname || !routesWithCustomHead.includes(router.pathname);
+
   return (
     <>
-      <NextHead
-        title={title}
-        desc={
-          feConfigs?.systemDescription ||
-          process.env.SYSTEM_DESCRIPTION ||
-          `${title}${t('app:intro')}`
-        }
-        icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
-      />
+      {showHead && (
+        <NextHead
+          title={title}
+          desc={
+            feConfigs?.systemDescription ||
+            process.env.SYSTEM_DESCRIPTION ||
+            `${title}${t('app:intro')}`
+          }
+          icon={getWebReqUrl(feConfigs?.favicon || process.env.SYSTEM_FAVICON)}
+        />
+      )}
+
       {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
 
       <QueryClientContext>

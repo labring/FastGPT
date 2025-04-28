@@ -144,6 +144,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
       FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect,
       VariableInputEnum.custom
     ];
 
@@ -157,7 +158,8 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.numberInput,
       FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select
+      FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect
     ];
     return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
   }, [inputType, type]);
@@ -209,7 +211,7 @@ const InputTypeConfig = ({
                     (item) => item.value !== WorkflowIOValueTypeEnum.arrayAny
                   )}
                   value={valueType}
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setValue('valueType', e);
                   }}
                 />
@@ -297,8 +299,10 @@ const InputTypeConfig = ({
             <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
               {t('common:core.module.Default Value')}
             </FormLabel>
-            <Flex alignItems={'start'} flex={1} h={10}>
-              {inputType === FlowNodeInputTypeEnum.numberInput && (
+            <Flex flex={1} h={10}>
+              {(inputType === FlowNodeInputTypeEnum.numberInput ||
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.number)) && (
                 <MyNumberInput
                   value={defaultValue}
                   min={min}
@@ -310,7 +314,8 @@ const InputTypeConfig = ({
                 />
               )}
               {(inputType === FlowNodeInputTypeEnum.input ||
-                inputType === VariableInputEnum.custom) && (
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.string)) && (
                 <MyTextarea
                   {...register('defaultValue')}
                   bg={'myGray.50'}
@@ -319,7 +324,13 @@ const InputTypeConfig = ({
                   maxH={100}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.JSONEditor && (
+              {(inputType === FlowNodeInputTypeEnum.JSONEditor ||
+                (inputType === VariableInputEnum.custom &&
+                  ![
+                    WorkflowIOValueTypeEnum.number,
+                    WorkflowIOValueTypeEnum.string,
+                    WorkflowIOValueTypeEnum.boolean
+                  ].includes(valueType))) && (
                 <JsonEditor
                   bg={'myGray.50'}
                   resize
@@ -330,7 +341,9 @@ const InputTypeConfig = ({
                   defaultValue={defaultValue}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.switch && (
+              {(inputType === FlowNodeInputTypeEnum.switch ||
+                (inputType === VariableInputEnum.custom &&
+                  valueType === WorkflowIOValueTypeEnum.boolean)) && (
                 <Switch {...register('defaultValue')} />
               )}
               {inputType === FlowNodeInputTypeEnum.select && (
@@ -346,10 +359,31 @@ const InputTypeConfig = ({
                       ? defaultValue
                       : ''
                   }
-                  onchange={(e) => {
+                  onChange={(e) => {
                     setValue('defaultValue', e);
                   }}
                   w={'200px'}
+                />
+              )}
+              {inputType === FlowNodeInputTypeEnum.multipleSelect && (
+                <MultipleSelect<string>
+                  flex={'1 0 0'}
+                  itemWrap={true}
+                  bg={'myGray.50'}
+                  list={listValue
+                    .filter((item: any) => item.label !== '')
+                    .map((item: any) => ({
+                      label: item.label,
+                      value: item.value
+                    }))}
+                  placeholder={t('workflow:select_default_option')}
+                  value={defaultValue || []}
+                  onSelect={(val) => setValue('defaultValue', val)}
+                  isSelectAll={
+                    defaultValue &&
+                    defaultValue.length ===
+                      listValue.filter((item: any) => item.label !== '').length
+                  }
                 />
               )}
             </Flex>
@@ -379,7 +413,8 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {inputType === FlowNodeInputTypeEnum.select && (
+        {(inputType === FlowNodeInputTypeEnum.select ||
+          inputType == FlowNodeInputTypeEnum.multipleSelect) && (
           <>
             <DndDrag<{ id: string; value: string }>
               onDragEndCb={(list) => {

@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Button, Flex, useTheme } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -7,12 +7,32 @@ import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
-import { serviceSideProps } from '@fastgpt/web/common/system/nextjs';
+import { serviceSideProps } from '@/web/common/i18n/utils';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
+import Markdown from '@/components/Markdown';
+import NotificationDetailsModal from '@/pageComponents/account/NotificationDetailsModal';
 
 const InformTable = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { Loading } = useLoading();
+  const [selectedInform, setSelectedInform] = useState<any>(null);
+
+  const textStyles = {
+    title: {
+      color: '#111824',
+      fontSize: 'md',
+      fontWeight: 'bold',
+      lineHeight: 6,
+      letterSpacing: '0.15px'
+    },
+    time: {
+      color: '#667085',
+      fontSize: 'sm',
+      lineHeight: 5,
+      letterSpacing: '0.25px'
+    }
+  };
 
   const {
     data: informs,
@@ -28,63 +48,105 @@ const InformTable = () => {
 
   return (
     <AccountContainer>
-      <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
-        <Box px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <Flex flexDirection="column" py={[0, 5]} h="100%" position="relative">
+        <Box
+          px={[3, 8]}
+          position="relative"
+          flex="1 0 0"
+          h={0}
+          overflowY="auto"
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+        >
           {informs.map((item) => (
             <Box
               key={item._id}
               border={theme.borders.md}
-              py={2}
-              px={4}
-              borderRadius={'md'}
-              position={'relative'}
-              _notLast={{ mb: 3 }}
+              py={5}
+              px={6}
+              maxH="168px"
+              maxW="800px"
+              minW="200px"
+              width="100%"
+              borderRadius="md"
+              position="relative"
+              _notLast={{ mb: 4 }}
+              _hover={{
+                border: '1px solid #94B5FF',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                if (!item.read) {
+                  readInform(item._id).then(() => getData(pageNum));
+                }
+                setSelectedInform(item);
+              }}
             >
-              <Flex alignItems={'center'}>
-                <Box fontWeight={'bold'}>{item.title}</Box>
-                <Box ml={2} color={'myGray.500'} flex={'1 0 0'}>
-                  ({t(formatTimeToChatTime(item.time) as any).replace('#', ':')})
+              <Flex alignItems="center">
+                <Box {...textStyles.title}>
+                  {item.teamId ? `【${item.teamName}】` : ''}
+                  {item.title}
                 </Box>
-                {!item.read && (
-                  <Button
-                    variant={'whitePrimary'}
-                    size={'xs'}
-                    onClick={async () => {
-                      if (!item.read) {
-                        await readInform(item._id);
-                        getData(pageNum);
-                      }
-                    }}
-                  >
-                    {t('account_inform:read')}
-                  </Button>
-                )}
+                <Flex ml={3} flex={1} alignItems="center">
+                  <Box {...textStyles.time}>
+                    {t(formatTimeToChatTime(item.time) as any).replace('#', ':')}
+                  </Box>
+                  {!item.read && <Box w={2} h={2} borderRadius="full" bg="red.600" ml={3} />}
+                </Flex>
+
+                <MyTag
+                  colorSchema={item.teamId ? 'green' : 'blue'}
+                  mr={2}
+                  fontSize="xs"
+                  fontWeight="medium"
+                  showDot={false}
+                  type="fill"
+                >
+                  {item.teamId ? t('account_inform:team') : t('account_inform:system')}
+                </MyTag>
               </Flex>
-              <Box mt={2} fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
-                {item.content}
+
+              <Box
+                mt={2}
+                fontSize="sm"
+                fontWeight={400}
+                color="#485264"
+                overflow="hidden"
+                maxHeight={24}
+                sx={{
+                  lineHeight: '16px',
+                  '& h1, & h2, & h3, & h4, & h5, & h6': {
+                    my: '0 !important',
+                    py: 0.5,
+                    display: 'block',
+                    lineHeight: 'normal'
+                  },
+                  '& p': {
+                    my: 0
+                  }
+                }}
+                noOfLines={6}
+              >
+                <Markdown source={item.content} />
               </Box>
-              {!item.read && (
-                <>
-                  <Box
-                    w={'5px'}
-                    h={'5px'}
-                    borderRadius={'10px'}
-                    bg={'red.600'}
-                    position={'absolute'}
-                    top={'8px'}
-                    left={'8px'}
-                  />
-                </>
-              )}
             </Box>
           ))}
+
           {!isLoading && informs.length === 0 && (
-            <EmptyTip text={t('account_inform:no_notifications')}></EmptyTip>
+            <EmptyTip text={t('account_inform:no_notifications')} />
           )}
         </Box>
 
+        {selectedInform && (
+          <NotificationDetailsModal
+            inform={selectedInform}
+            onClose={() => setSelectedInform(null)}
+          />
+        )}
+
         {total > pageSize && (
-          <Flex w={'100%'} mt={4} px={[3, 8]} justifyContent={'flex-end'}>
+          <Flex w="100%" mt={4} px={[3, 8]} justifyContent="flex-end">
             <Pagination />
           </Flex>
         )}

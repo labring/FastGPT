@@ -1,43 +1,36 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';
-import { getTeamList, getTeamMembers, putSwitchTeam } from '@/web/support/user/team/api';
+import {
+  getTeamList,
+  getTeamMemberCount,
+  getTeamMembers,
+  putSwitchTeam
+} from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { getGroupList } from '@/web/support/user/team/group/api';
-import { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import { getOrgList } from '@/web/support/user/team/org/api';
-import { OrgType } from '@fastgpt/global/support/user/team/org/type';
+import { useRouter } from 'next/router';
 
 const EditInfoModal = dynamic(() => import('./EditInfoModal'));
 
 type TeamModalContextType = {
   myTeams: TeamTmbItemType[];
-  members: TeamMemberItemType[];
-  groups: MemberGroupListType;
-  orgs: OrgType[];
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;
   setEditTeamData: React.Dispatch<React.SetStateAction<EditTeamFormDataType | undefined>>;
 
-  refetchMembers: () => void;
+  refetchTeamSize: () => void;
   refetchTeams: () => void;
-  refetchGroups: () => void;
-  refetchOrgs: () => void;
   teamSize: number;
-  MemberScrollData: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
 export const TeamContext = createContext<TeamModalContextType>({
   myTeams: [],
-  groups: [],
-  members: [],
-  orgs: [],
   isLoading: false,
   onSwitchTeam: function (_teamId: string): void {
     throw new Error('Function not implemented.');
@@ -48,21 +41,16 @@ export const TeamContext = createContext<TeamModalContextType>({
   refetchTeams: function (): void {
     throw new Error('Function not implemented.');
   },
-  refetchMembers: function (): void {
+  refetchTeamSize: function (): void {
     throw new Error('Function not implemented.');
   },
-  refetchGroups: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  refetchOrgs: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  teamSize: 0,
-  MemberScrollData: () => <></>
+  teamSize: 0
 });
 
 export const TeamModalContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
+  const router = useRouter();
+
   const [editTeamData, setEditTeamData] = useState<EditTeamFormDataType>();
   const { userInfo, initUserInfo } = useUserStore();
 
@@ -75,27 +63,9 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     refreshDeps: [userInfo?._id]
   });
 
-  const {
-    data: orgs = [],
-    loading: isLoadingOrgs,
-    refresh: refetchOrgs
-  } = useRequest2(getOrgList, {
+  const { data: teamMemberCountData, refresh: refetchTeamSize } = useRequest2(getTeamMemberCount, {
     manual: false,
     refreshDeps: [userInfo?.team?.teamId]
-  });
-
-  // member action
-  const {
-    data: members = [],
-    isLoading: loadingMembers,
-    refreshList: refetchMembers,
-    total: memberTotal,
-    ScrollData: MemberScrollData
-  } = useScrollPagination(getTeamMembers, {
-    pageSize: 1000,
-    params: {
-      withLeaved: true
-    }
   });
 
   const { runAsync: onSwitchTeam, loading: isSwitchingTeam } = useRequest2(
@@ -104,38 +74,25 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
       return initUserInfo();
     },
     {
+      onSuccess: () => {
+        router.reload();
+      },
       errorToast: t('common:user.team.Switch Team Failed')
     }
   );
 
-  const {
-    data: groups = [],
-    loading: isLoadingGroups,
-    refresh: refetchGroups
-  } = useRequest2(getGroupList, {
-    manual: false,
-    refreshDeps: [userInfo?.team?.teamId]
-  });
-
-  const isLoading =
-    isLoadingTeams || isSwitchingTeam || loadingMembers || isLoadingGroups || isLoadingOrgs;
+  const isLoading = isLoadingTeams || isSwitchingTeam;
 
   const contextValue = {
     myTeams,
     refetchTeams,
     isLoading,
     onSwitchTeam,
-    orgs,
-    refetchOrgs,
 
     // create | update team
     setEditTeamData,
-    members,
-    refetchMembers,
-    groups,
-    refetchGroups,
-    teamSize: memberTotal,
-    MemberScrollData
+    teamSize: teamMemberCountData?.count || 0,
+    refetchTeamSize
   };
 
   return (

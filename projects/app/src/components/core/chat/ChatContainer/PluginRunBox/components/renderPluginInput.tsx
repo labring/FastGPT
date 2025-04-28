@@ -157,12 +157,9 @@ const RenderPluginInput = ({
   const { llmModelList } = useSystemStore();
 
   const render = (() => {
-    if (inputType === FlowNodeInputTypeEnum.customVariable) {
-      return null;
-    }
     if (inputType === FlowNodeInputTypeEnum.select && input.list) {
       return (
-        <MySelect list={input.list} value={value} onchange={onChange} isDisabled={isDisabled} />
+        <MySelect list={input.list} value={value} onChange={onChange} isDisabled={isDisabled} />
       );
     }
     if (inputType === FlowNodeInputTypeEnum.fileSelect) {
@@ -179,7 +176,7 @@ const RenderPluginInput = ({
             value: item.model,
             label: item.name
           }))}
-          onchange={onChange}
+          onChange={onChange}
         />
       );
     }
@@ -246,6 +243,21 @@ const RenderPluginInput = ({
             <FormLabel fontWeight={'500'}>{t(input.label as any)}</FormLabel>
           </Box>
           {input.description && <QuestionTip ml={2} label={t(input.description as any)} />}
+          {inputType === FlowNodeInputTypeEnum.customVariable && (
+            <Flex
+              color={'primary.600'}
+              bg={'primary.100'}
+              px={2}
+              py={1}
+              gap={1}
+              ml={2}
+              fontSize={'mini'}
+              rounded={'sm'}
+            >
+              <MyIcon name={'common/info'} color={'primary.600'} w={4} />
+              {t('chat:variable_invisable_in_share')}
+            </Flex>
+          )}
         </Flex>
       )}
 

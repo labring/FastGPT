@@ -6,7 +6,7 @@ import {
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
 import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type.d';
-import { getVectorCountByTeamId } from '../../../common/vectorStore/controller';
+import { getVectorCountByTeamId } from '../../../common/vectorDB/controller';
 import dayjs from 'dayjs';
 import { ClientSession } from '../../../common/mongo';
 import { addMonths } from 'date-fns';

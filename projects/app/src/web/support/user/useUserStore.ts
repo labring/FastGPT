@@ -1,16 +1,13 @@
+import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
+
 import type { UserUpdateParams } from '@/types/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
-import type { MemberGroupListType } from '@fastgpt/global/support/permission/memberGroup/type';
 import type { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import type { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
-import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
 import { getTeamPlanStatus } from './team/api';
 import { getGroupList } from './team/group/api';
-import { getOrgList } from './team/org/api';
 
 type State = {
   systemMsgReadId: string;
@@ -28,13 +25,7 @@ type State = {
   teamPlanStatus: FeTeamPlanStatusType | null;
   initTeamPlanStatus: () => Promise<any>;
 
-  teamMemberGroups: MemberGroupListType;
-  myGroups: MemberGroupListType;
-  loadAndGetGroups: (init?: boolean) => Promise<MemberGroupListType>;
-
   teamOrgs: OrgType[];
-  myOrgs: OrgType[];
-  loadAndGetOrgs: (init?: boolean) => Promise<OrgType[]>;
 };
 
 export const useUserStore = create<State>()(
@@ -106,42 +97,7 @@ export const useUserStore = create<State>()(
           });
         },
         teamMemberGroups: [],
-        teamOrgs: [],
-        myGroups: [],
-        loadAndGetGroups: async (init = false) => {
-          if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
-
-          const randomRefresh = Math.random() > 0.7;
-          if (!randomRefresh && !init && get().teamMemberGroups.length)
-            return Promise.resolve(get().teamMemberGroups);
-
-          const res = await getGroupList();
-          set((state) => {
-            state.teamMemberGroups = res;
-            state.myGroups = res.filter((item) =>
-              item.members.map((i) => String(i.tmbId)).includes(String(state.userInfo?.team?.tmbId))
-            );
-          });
-
-          return res;
-        },
-        myOrgs: [],
-        loadAndGetOrgs: async (init = false) => {
-          if (!useSystemStore.getState()?.feConfigs?.isPlus) return [];
-
-          const randomRefresh = Math.random() > 0.7;
-          if (!randomRefresh && !init && get().myOrgs.length) return Promise.resolve(get().myOrgs);
-
-          const res = await getOrgList();
-          set((state) => {
-            state.teamOrgs = res;
-            state.myOrgs = res.filter((item) =>
-              item.members.map((i) => String(i.tmbId)).includes(String(state.userInfo?.team?.tmbId))
-            );
-          });
-
-          return res;
-        }
+        teamOrgs: []
       })),
       {
         name: 'userStore',

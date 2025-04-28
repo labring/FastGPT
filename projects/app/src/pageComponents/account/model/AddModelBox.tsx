@@ -36,9 +36,9 @@ import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { Prompt_CQJson, Prompt_ExtractJson } from '@fastgpt/global/core/ai/prompt/agent';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { getCQPrompt, getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 
 export const AddModelButton = ({
   onCreate,
@@ -127,11 +127,11 @@ export const ModelEditModal = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel) return '/ 1k Tokens';
+    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
     if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(
     async (data: SystemModelItemType) => {
@@ -213,7 +213,7 @@ export const ModelEditModal = ({
                   <Td textAlign={'right'}>
                     <MySelect
                       value={provider}
-                      onchange={(value) => setValue('provider', value)}
+                      onChange={(value) => setValue('provider', value)}
                       list={providerList.current}
                       {...InputStyles}
                     />
@@ -356,7 +356,12 @@ export const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
+                          <MyNumberInput
+                            min={2000}
+                            register={register}
+                            name="maxResponse"
+                            {...InputStyles}
+                          />
                         </Flex>
                       </Td>
                     </Tr>
@@ -372,6 +377,7 @@ export const ModelEditModal = ({
                           <MyNumberInput
                             register={register}
                             name="maxTemperature"
+                            min={0}
                             step={0.1}
                             {...InputStyles}
                           />
@@ -677,7 +683,9 @@ export const ModelEditModal = ({
                       <HStack spacing={1}>
                         <Box>{t('account:model.custom_cq_prompt')}</Box>
                         <QuestionTip
-                          label={t('account:model.custom_cq_prompt_tip', { prompt: Prompt_CQJson })}
+                          label={t('account:model.custom_cq_prompt_tip', {
+                            prompt: getCQPrompt()
+                          })}
                         />
                       </HStack>
                     </Td>
@@ -691,7 +699,7 @@ export const ModelEditModal = ({
                         <Box>{t('account:model.custom_extract_prompt')}</Box>
                         <QuestionTip
                           label={t('account:model.custom_extract_prompt_tip', {
-                            prompt: Prompt_ExtractJson
+                            prompt: getExtractJsonPrompt()
                           })}
                         />
                       </HStack>

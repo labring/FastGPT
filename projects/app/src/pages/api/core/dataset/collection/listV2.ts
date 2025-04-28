@@ -93,6 +93,7 @@ async function handler(
           dataAmount: 0,
           indexAmount: 0,
           trainingAmount: 0,
+          hasError: false,
           permission
         }))
       ),
@@ -113,7 +114,7 @@ async function handler(
 
   // Compute data amount
   const [trainingAmount, dataAmount]: [
-    { _id: string; count: number }[],
+    { _id: string; count: number; hasError: boolean }[],
     { _id: string; count: number }[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
@@ -128,7 +129,8 @@ async function handler(
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            hasError: { $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] } }
           }
         }
       ],
@@ -168,6 +170,7 @@ async function handler(
       trainingAmount:
         trainingAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
       dataAmount: dataAmount.find((amount) => String(amount._id) === String(item._id))?.count || 0,
+      hasError: trainingAmount.find((amount) => String(amount._id) === String(item._id))?.hasError,
       permission
     }))
   );

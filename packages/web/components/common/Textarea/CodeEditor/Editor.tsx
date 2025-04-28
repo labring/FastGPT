@@ -1,9 +1,9 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useEffect } from 'react';
 import Editor, { Monaco, loader } from '@monaco-editor/react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { getWebReqUrl } from '../../../../common/system/utils';
-
+import usePythonCompletion from './usePythonCompletion';
 loader.config({
   paths: { vs: getWebReqUrl('/js/monaco-editor.0.45.0/vs') }
 });
@@ -21,6 +21,7 @@ export type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   onOpenModal?: () => void;
   variables?: EditorVariablePickerType[];
   defaultHeight?: number;
+  language?: string;
 };
 
 const options = {
@@ -53,10 +54,13 @@ const MyEditor = ({
   variables = [],
   defaultHeight = 200,
   onOpenModal,
+  language = 'typescript',
   ...props
 }: Props) => {
   const [height, setHeight] = useState(defaultHeight);
   const initialY = useRef(0);
+
+  const registerPythonCompletion = usePythonCompletion();
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     initialY.current = e.clientY;
@@ -76,34 +80,46 @@ const MyEditor = ({
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
-  const beforeMount = useCallback((monaco: Monaco) => {
-    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
-      validate: false,
-      allowComments: false,
-      schemas: [
-        {
-          uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
-          fileMatch: ['*'], // 匹配所有文件
-          schema: {} // 空的 Schema
-        }
-      ]
-    });
+  const editorRef = useRef<any>(null);
+  const monacoRef = useRef<Monaco | null>(null);
 
-    monaco.editor.defineTheme('JSONEditorTheme', {
-      base: 'vs', // 可以基于已有的主题进行定制
-      inherit: true, // 继承基础主题的设置
-      rules: [{ token: 'variable', foreground: '2B5FD9' }],
-      colors: {
-        'editor.background': '#ffffff00',
-        'editorLineNumber.foreground': '#aaa',
-        'editorOverviewRuler.border': '#ffffff00',
-        'editor.lineHighlightBackground': '#F7F8FA',
-        'scrollbarSlider.background': '#E8EAEC',
-        'editorIndentGuide.activeBackground': '#ddd',
-        'editorIndentGuide.background': '#eee'
-      }
-    });
+  const handleEditorDidMount = useCallback((editor: any, monaco: Monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
   }, []);
+
+  const beforeMount = useCallback(
+    (monaco: Monaco) => {
+      monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+        validate: false,
+        allowComments: false,
+        schemas: [
+          {
+            uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
+            fileMatch: ['*'], // 匹配所有文件
+            schema: {} // 空的 Schema
+          }
+        ]
+      });
+
+      monaco.editor.defineTheme('JSONEditorTheme', {
+        base: 'vs', // 可以基于已有的主题进行定制
+        inherit: true, // 继承基础主题的设置
+        rules: [{ token: 'variable', foreground: '2B5FD9' }],
+        colors: {
+          'editor.background': '#ffffff00',
+          'editorLineNumber.foreground': '#aaa',
+          'editorOverviewRuler.border': '#ffffff00',
+          'editor.lineHighlightBackground': '#F7F8FA',
+          'scrollbarSlider.background': '#E8EAEC',
+          'editorIndentGuide.activeBackground': '#ddd',
+          'editorIndentGuide.background': '#eee'
+        }
+      });
+      registerPythonCompletion(monaco);
+    },
+    [registerPythonCompletion]
+  );
 
   return (
     <Box
@@ -118,7 +134,7 @@ const MyEditor = ({
     >
       <Editor
         height={'100%'}
-        defaultLanguage="typescript"
+        language={language}
         options={options as any}
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
@@ -127,6 +143,7 @@ const MyEditor = ({
         onChange={(e) => {
           onChange?.(e || '');
         }}
+        onMount={handleEditorDidMount}
       />
       {resize && (
         <Box

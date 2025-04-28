@@ -110,6 +110,7 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   tmbId: string;
   appId: string;
   time: Date;
+  durationSeconds?: number;
 };
 
 export type AdminFbkType = {
@@ -122,7 +123,6 @@ export type AdminFbkType = {
 
 /* --------- chat item ---------- */
 export type ResponseTagItemType = {
-  totalRunningTime?: number;
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
@@ -134,12 +134,14 @@ export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemTy
 
 // Frontend type
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
+  _id?: string;
   dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
   time?: Date;
+  durationSeconds?: number;
 } & ChatBoxInputType &
   ResponseTagItemType;
 

@@ -17,7 +17,6 @@ import { publishStatusStyle } from '../constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import SaveButton from '../Workflow/components/SaveButton';
 import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
@@ -61,16 +60,18 @@ const Header = ({
   const currentTab = useContextSelector(AppContext, (v) => v.currentTab);
 
   const { lastAppListRouteType } = useSystemStore();
-  const { allDatasets } = useDatasetStore();
 
-  const { data: paths = [] } = useRequest2(() => getAppFolderPath(appId), {
-    manual: false,
-    refreshDeps: [appId]
-  });
+  const { data: paths = [] } = useRequest2(
+    () => getAppFolderPath({ sourceId: appId, type: 'parent' }),
+    {
+      manual: false,
+      refreshDeps: [appId]
+    }
+  );
   const onClickRoute = useCallback(
     (parentId: string) => {
       router.push({
-        pathname: '/app/list',
+        pathname: '/dashboard/apps',
         query: {
           parentId,
           type: lastAppListRouteType
@@ -159,7 +160,7 @@ const Header = ({
       const val = compareSimpleAppSnapshot(savedSnapshot?.appForm, appForm);
       setIsSaved(val);
     },
-    [past, allDatasets],
+    [past],
     { wait: 500 }
   );
 

@@ -1,4 +1,4 @@
-import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
+import { ChatCompletionMessageParam, CompletionFinishReason } from '@fastgpt/global/core/ai/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ModuleDispatchProps,
@@ -36,13 +36,13 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 
 export type RunToolResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
-  toolNodeTokens?: number; // deprecated
   toolNodeInputTokens: number;
   toolNodeOutputTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
   assistantResponses?: AIChatItemValueItemType[];
   toolWorkflowInteractiveResponse?: WorkflowInteractiveResponseType;
   [DispatchNodeResponseKeyEnum.runTimes]: number;
+  finish_reason?: CompletionFinishReason;
 };
 export type ToolNodeItemType = RuntimeNodeItemType & {
   toolParams: RuntimeNodeItemType['inputs'];

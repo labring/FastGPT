@@ -9,7 +9,6 @@ import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from './apiDataset/api';
-import { POST } from '../../common/api/plusRequest';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -79,9 +78,12 @@ export const readDatasetSourceRawText = async ({
   apiServer?: APIFileServer; // api dataset
   feishuServer?: FeishuServer; // feishu dataset
   yuqueServer?: YuqueServer; // yuque dataset
-}): Promise<string> => {
+}): Promise<{
+  title?: string;
+  rawText: string;
+}> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
-    const { rawText } = await readFileContentFromMongo({
+    const { filename, rawText } = await readFileContentFromMongo({
       teamId,
       tmbId,
       bucketName: BucketNameEnum.dataset,
@@ -89,14 +91,20 @@ export const readDatasetSourceRawText = async ({
       isQAImport,
       customPdfParse
     });
-    return rawText;
+    return {
+      title: filename,
+      rawText
+    };
   } else if (type === DatasetSourceReadTypeEnum.link) {
     const result = await urlsFetch({
       urlList: [sourceId],
       selector
     });
 
-    return result[0]?.content || '';
+    return {
+      title: result[0]?.title,
+      rawText: result[0]?.content || ''
+    };
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     if (!externalFileId) return Promise.reject('FileId not found');
     const rawText = await readFileRawTextByUrl({
@@ -106,9 +114,11 @@ export const readDatasetSourceRawText = async ({
       relatedId: externalFileId,
       customPdfParse
     });
-    return rawText;
+    return {
+      rawText
+    };
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
-    const rawText = await readApiServerFileContent({
+    const { title, rawText } = await readApiServerFileContent({
       apiServer,
       feishuServer,
       yuqueServer,
@@ -116,9 +126,15 @@ export const readDatasetSourceRawText = async ({
       teamId,
       tmbId
     });
-    return rawText;
+    return {
+      title,
+      rawText
+    };
   }
-  return '';
+  return {
+    title: '',
+    rawText: ''
+  };
 };
 
 export const readApiServerFileContent = async ({
@@ -127,7 +143,8 @@ export const readApiServerFileContent = async ({
   yuqueServer,
   apiFileId,
   teamId,
-  tmbId
+  tmbId,
+  customPdfParse
 }: {
   apiServer?: APIFileServer;
   feishuServer?: FeishuServer;
@@ -135,14 +152,22 @@ export const readApiServerFileContent = async ({
   apiFileId: string;
   teamId: string;
   tmbId: string;
-}) => {
+  customPdfParse?: boolean;
+}): Promise<{
+  title?: string;
+  rawText: string;
+}> => {
   if (apiServer) {
-    return useApiDatasetRequest({ apiServer }).getFileContent({ teamId, tmbId, apiFileId });
+    return useApiDatasetRequest({ apiServer }).getFileContent({
+      teamId,
+      tmbId,
+      apiFileId,
+      customPdfParse
+    });
   }
 
   if (feishuServer || yuqueServer) {
-    return POST<string>(`/core/dataset/systemApiDataset`, {
-      type: 'content',
+    return global.getProApiDatasetFileContent({
       feishuServer,
       yuqueServer,
       apiFileId
@@ -155,7 +180,7 @@ export const readApiServerFileContent = async ({
 export const rawText2Chunks = ({
   rawText,
   isQAImport,
-  chunkLen = 512,
+  chunkSize = 512,
   ...splitProps
 }: {
   rawText: string;
@@ -168,7 +193,7 @@ export const rawText2Chunks = ({
 
   const { chunks } = splitText2Chunks({
     text: rawText,
-    chunkLen,
+    chunkSize,
     ...splitProps
   });
 

@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Flex,
-  HStack,
   Table,
   TableContainer,
   Tbody,
@@ -16,20 +15,18 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '../context';
 import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { deleteGroup } from '@/web/support/user/team/group/api';
+import { deleteGroup, getGroupList } from '@/web/support/user/team/group/api';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import MemberTag from '../../../../components/support/user/team/Info/MemberTag';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import IconButton from '../OrgManage/IconButton';
-import { MemberGroupType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
@@ -39,19 +36,23 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
-  const { groups, refetchGroups, members, refetchMembers } = useContextSelector(
-    TeamContext,
-    (v) => v
-  );
+  const {
+    data: groups = [],
+    loading: isLoadingGroups,
+    refresh: refetchGroups
+  } = useRequest2(() => getGroupList<true>({ withMembers: true }), {
+    manual: false,
+    refreshDeps: [userInfo?.team?.teamId]
+  });
 
-  const [editGroup, setEditGroup] = useState<MemberGroupType>();
+  const [editGroup, setEditGroup] = useState<MemberGroupListItemType<true>>();
+
   const {
     isOpen: isOpenGroupInfo,
     onOpen: onOpenGroupInfo,
     onClose: onCloseGroupInfo
   } = useDisclosure();
-
-  const onEditGroupInfo = (e: MemberGroupType) => {
+  const onEditGroupInfo = (e: MemberGroupListItemType<true>) => {
     setEditGroup(e);
     onOpenGroupInfo();
   };
@@ -60,11 +61,9 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     type: 'delete',
     content: t('account_team:confirm_delete_group')
   });
-
   const { runAsync: delDeleteGroup } = useRequest2(deleteGroup, {
     onSuccess: () => {
       refetchGroups();
-      refetchMembers();
     }
   });
 
@@ -73,26 +72,17 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     onOpen: onOpenManageGroupMember,
     onClose: onCloseManageGroupMember
   } = useDisclosure();
-  const onManageMember = (e: MemberGroupType) => {
+  const onManageMember = (e: MemberGroupListItemType<true>) => {
     setEditGroup(e);
     onOpenManageGroupMember();
   };
-
-  const hasGroupManagePer = (group: (typeof groups)[0]) =>
-    userInfo?.team.permission.hasManagePer ||
-    ['admin', 'owner'].includes(
-      group.members.find((item) => item.tmbId === userInfo?.team.tmbId)?.role ?? ''
-    );
-  const isGroupOwner = (group: (typeof groups)[0]) =>
-    userInfo?.team.permission.hasManagePer ||
-    group.members.find((item) => item.role === 'owner')?.tmbId === userInfo?.team.tmbId;
 
   const {
     isOpen: isOpenChangeOwner,
     onOpen: onOpenChangeOwner,
     onClose: onCloseChangeOwner
   } = useDisclosure();
-  const onChangeOwner = (e: MemberGroupType) => {
+  const onChangeOwner = (e: MemberGroupListItemType<true>) => {
     setEditGroup(e);
     onOpenChangeOwner();
   };
@@ -115,7 +105,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
         )}
       </Flex>
 
-      <MyBox flex={'1 0 0'} overflow={'auto'}>
+      <MyBox flex={'1 0 0'} overflow={'auto'} isLoading={isLoadingGroups}>
         <TableContainer overflow={'unset'} fontSize={'sm'}>
           <Table overflow={'unset'}>
             <Thead>
@@ -134,67 +124,37 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               {groups?.map((group) => (
                 <Tr key={group._id} overflow={'unset'}>
                   <Td>
-                    <HStack>
-                      <MemberTag
-                        name={
-                          group.name === DefaultGroupName
-                            ? userInfo?.team.teamName ?? ''
-                            : group.name
-                        }
-                        avatar={group.avatar}
-                      />
-                      <Box>
-                        ({group.name === DefaultGroupName ? members.length : group.members.length})
-                      </Box>
-                    </HStack>
-                  </Td>
-                  <Td>
                     <MemberTag
                       name={
-                        group.name === DefaultGroupName
-                          ? members.find((item) => item.role === 'owner')?.memberName ?? ''
-                          : members.find(
-                              (item) =>
-                                item.tmbId ===
-                                group.members.find((item) => item.role === 'owner')?.tmbId
-                            )?.memberName ?? ''
+                        group.name === DefaultGroupName ? userInfo?.team.teamName ?? '' : group.name
                       }
-                      avatar={
-                        group.name === DefaultGroupName
-                          ? members.find((item) => item.role === 'owner')?.avatar ?? ''
-                          : members.find(
-                              (i) =>
-                                i.tmbId ===
-                                group.members.find((item) => item.role === 'owner')?.tmbId
-                            )?.avatar ?? ''
-                      }
+                      avatar={group.avatar}
                     />
                   </Td>
                   <Td>
-                    {group.name === DefaultGroupName ? (
-                      <AvatarGroup avatars={members.map((v) => v.avatar)} groupId={group._id} />
-                    ) : hasGroupManagePer(group) ? (
-                      <MyTooltip label={t('account_team:manage_member')}>
-                        <Box cursor="pointer" onClick={() => onManageMember(group)}>
-                          <AvatarGroup
-                            avatars={group.members.map(
-                              (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
-                            )}
-                            groupId={group._id}
-                          />
-                        </Box>
-                      </MyTooltip>
-                    ) : (
-                      <AvatarGroup
-                        avatars={group.members.map(
-                          (v) => members.find((m) => m.tmbId === v.tmbId)?.avatar ?? ''
-                        )}
-                        groupId={group._id}
-                      />
-                    )}
+                    <MemberTag name={group.owner?.name} avatar={group.owner?.avatar} />
                   </Td>
                   <Td>
-                    {hasGroupManagePer(group) && group.name !== DefaultGroupName && (
+                    <MyTooltip
+                      label={group.permission?.hasManagePer ? t('account_team:manage_member') : ''}
+                    >
+                      <Box
+                        {...(group.permission?.hasManagePer
+                          ? {
+                              cursor: 'pointer',
+                              onClick: () => onManageMember(group)
+                            }
+                          : {})}
+                      >
+                        <AvatarGroup
+                          avatars={group?.members.map((v) => v.avatar)}
+                          total={group.count}
+                        />
+                      </Box>
+                    </MyTooltip>
+                  </Td>
+                  <Td>
+                    {group.permission?.hasManagePer && (
                       <MyMenu
                         Button={<IconButton name={'more'} />}
                         menuList={[
@@ -214,7 +174,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                   onManageMember(group);
                                 }
                               },
-                              ...(isGroupOwner(group)
+                              ...(group.permission?.isOwner
                                 ? [
                                     {
                                       label: t('account_team:transfer_ownership'),
@@ -248,25 +208,33 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       </MyBox>
 
       <ConfirmDeleteGroupModal />
-      {isOpenChangeOwner && editGroup && (
-        <ChangeOwnerModal groupId={editGroup._id} onClose={onCloseChangeOwner} />
-      )}
+
       {isOpenGroupInfo && (
         <GroupInfoModal
+          editGroup={editGroup}
+          onSuccess={refetchGroups}
           onClose={() => {
             onCloseGroupInfo();
             setEditGroup(undefined);
           }}
-          editGroupId={editGroup?._id}
         />
       )}
+      {isOpenChangeOwner && editGroup && (
+        <ChangeOwnerModal
+          group={editGroup}
+          onClose={onCloseChangeOwner}
+          onSuccess={refetchGroups}
+        />
+      )}
+
       {isOpenManageGroupMember && editGroup && (
         <GroupManageMember
+          group={editGroup}
           onClose={() => {
             onCloseManageGroupMember();
             setEditGroup(undefined);
           }}
-          editGroupId={editGroup._id}
+          onSuccess={refetchGroups}
         />
       )}
     </>

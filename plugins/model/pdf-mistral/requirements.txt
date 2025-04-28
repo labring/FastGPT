@@ -1,0 +1,8 @@
+fastapi==0.115.5
+uvicorn==0.32.1
+mistralai>=1.5.0
+PyMuPDF==1.24.14
+python-multipart==0.0.18
+python-dotenv==1.0.1
+loguru==0.7.2
+requests==2.32.3

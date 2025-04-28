@@ -76,7 +76,7 @@ export const refreshSourceAvatar = async (
   const newId = getIdFromPath(path);
   const oldId = getIdFromPath(oldPath);
 
-  if (!newId) return;
+  if (!newId || newId === oldId) return;
 
   await MongoImage.updateOne({ _id: newId }, { $unset: { expiredTime: 1 } }, { session });
 

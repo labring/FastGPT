@@ -29,7 +29,7 @@ weight: 744
 
 {{% alert icon=" " context="info" %}}
 - [SiliconCloud(硅基流动)](https://cloud.siliconflow.cn/i/TR9Ym0c4): 提供开源模型调用的平台。
-- [Sealos AIProxy](https://cloud.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy): 提供国内各家模型代理，无需逐一申请 api。
+- [Sealos AIProxy](https://hzh.sealos.run/?uid=fnWRt09fZP&openapp=system-aiproxy): 提供国内各家模型代理，无需逐一申请 api。
 {{% /alert %}}
 
 在 OneAPI 配置好模型后，你就可以打开 FastGPT 页面，启用对应模型了。
@@ -302,7 +302,7 @@ OneAPI 的语言识别接口，无法正确的识别其他模型（会始终识�
     "vectorMaxProcess": 15, // 向量处理线程数量
     "qaMaxProcess": 15, // 问答拆分线程数量
     "tokenWorkers": 50, // Token 计算线程保持数，会持续占用内存，不能设置太大。
-    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
+    "hnswEfSearch": 100 // 向量搜索参数，仅对 PG 和 OB 生效。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
   },
   "llmModels": [
     {

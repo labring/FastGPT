@@ -25,6 +25,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 type ModelTestItem = {
   label: React.ReactNode;
@@ -32,9 +33,18 @@ type ModelTestItem = {
   status: 'waiting' | 'running' | 'success' | 'error';
   message?: string;
   duration?: number;
+  loading?: boolean; // 单个模型的loading状态
 };
 
-const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void }) => {
+const ModelTest = ({
+  channelId,
+  models,
+  onClose
+}: {
+  channelId: number;
+  models: string[];
+  onClose: () => void;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [testModelList, setTestModelList] = useState<ModelTestItem[]>([]);
@@ -57,6 +67,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
       colorSchema: 'red'
     }
   });
+
   const { loading: loadingModels } = useRequest2(getSystemModelList, {
     manual: false,
     refreshDeps: [models],
@@ -75,7 +86,8 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
               </HStack>
             ),
             model: modelData.model,
-            status: 'waiting'
+            status: 'waiting',
+            loading: false
           };
         })
         .filter(Boolean) as ModelTestItem[];
@@ -83,51 +95,51 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
     }
   });
 
-  const { runAsync: onStartTest, loading: isTesting } = useRequest2(
+  const { runAsync: onStartTest, loading: isAnyModelLoading } = useRequest2(
     async () => {
-      {
-        let errorNum = 0;
-        const testModel = async (model: string) => {
+      let errorNum = 0;
+      setTestModelList((prev) => prev.map((item) => ({ ...item, loading: true })));
+
+      const testModel = async (model: string) => {
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model ? { ...item, status: 'running', message: '' } : item
+          )
+        );
+        const start = Date.now();
+        try {
+          await getTestModel({ model, channelId });
+          const duration = Date.now() - start;
           setTestModelList((prev) =>
             prev.map((item) =>
-              item.model === model ? { ...item, status: 'running', message: '' } : item
+              item.model === model
+                ? { ...item, status: 'success', duration: duration / 1000, loading: false }
+                : item
             )
           );
-          const start = Date.now();
-          try {
-            await getTestModel(model);
-            const duration = Date.now() - start;
-            setTestModelList((prev) =>
-              prev.map((item) =>
-                item.model === model
-                  ? { ...item, status: 'success', duration: duration / 1000 }
-                  : item
-              )
-            );
-          } catch (error) {
-            setTestModelList((prev) =>
-              prev.map((item) =>
-                item.model === model
-                  ? { ...item, status: 'error', message: getErrText(error) }
-                  : item
-              )
-            );
-            errorNum++;
-          }
-        };
-
-        await batchRun(
-          testModelList.map((item) => item.model),
-          testModel,
-          5
-        );
-
-        if (errorNum > 0) {
-          toast({
-            status: 'warning',
-            title: t('account_model:test_failed', { num: errorNum })
-          });
+        } catch (error) {
+          setTestModelList((prev) =>
+            prev.map((item) =>
+              item.model === model
+                ? { ...item, status: 'error', message: getErrText(error), loading: false }
+                : item
+            )
+          );
+          errorNum++;
         }
+      };
+
+      await batchRun(
+        testModelList.map((item) => item.model),
+        testModel,
+        5
+      );
+
+      if (errorNum > 0) {
+        toast({
+          status: 'warning',
+          title: t('account_model:test_failed', { num: errorNum })
+        });
       }
     },
     {
@@ -135,12 +147,51 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
     }
   );
 
+  const { runAsync: onTestOneModel, loading: testingOneModel } = useRequest2(
+    async (model: string) => {
+      const start = Date.now();
+
+      setTestModelList((prev) =>
+        prev.map((item) =>
+          item.model === model ? { ...item, status: 'running', message: '', loading: true } : item
+        )
+      );
+
+      try {
+        await getTestModel({ model, channelId });
+        const duration = Date.now() - start;
+
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model
+              ? { ...item, status: 'success', duration: duration / 1000, loading: false }
+              : item
+          )
+        );
+      } catch (error) {
+        setTestModelList((prev) =>
+          prev.map((item) =>
+            item.model === model
+              ? { ...item, status: 'error', message: getErrText(error), loading: false }
+              : item
+          )
+        );
+      }
+    },
+    {
+      manual: true
+    }
+  );
+
+  const isTesting = isAnyModelLoading || testingOneModel;
+
   return (
     <MyModal
       iconSrc={'core/chat/sendLight'}
       isLoading={loadingModels}
       title={t('account_model:model_test')}
-      w={'600px'}
+      w={'100%'}
+      maxW={['90vw', '1090px']}
       isOpen
     >
       <ModalBody>
@@ -148,8 +199,10 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
           <Table>
             <Thead>
               <Tr>
-                <Th>{t('account_model:model')}</Th>
+                <Th>{t('account_model:model_name')}</Th>
+                <Th>{t('account:model.model_id')}</Th>
                 <Th>{t('account_model:channel_status')}</Th>
+                <Th></Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -158,6 +211,7 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
                 return (
                   <Tr key={item.model}>
                     <Td>{item.label}</Td>
+                    <Td>{item.model}</Td>
                     <Td>
                       <Flex alignItems={'center'}>
                         <MyTag mr={1} type="borderSolid" colorSchema={data.colorSchema as any}>
@@ -172,6 +226,16 @@ const ModelTest = ({ models, onClose }: { models: string[]; onClose: () => void 
                           </Box>
                         )}
                       </Flex>
+                    </Td>
+                    <Td>
+                      {(!isAnyModelLoading || item.loading) && (
+                        <MyIconButton
+                          isLoading={item.loading}
+                          icon={'core/chat/sendLight'}
+                          tip={t('account:model.test_model')}
+                          onClick={() => onTestOneModel(item.model)}
+                        />
+                      )}
                     </Td>
                   </Tr>
                 );

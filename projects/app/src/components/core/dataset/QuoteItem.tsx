@@ -14,8 +14,8 @@ import Markdown from '@/components/Markdown';
 
 const InputDataModal = dynamic(() => import('@/pageComponents/dataset/detail/InputDataModal'));
 
-type ScoreItemType = SearchDataResponseItemType['score'][0];
-const scoreTheme: Record<
+export type ScoreItemType = SearchDataResponseItemType['score'][0];
+export const scoreTheme: Record<
   string,
   {
     color: string;
@@ -44,6 +44,47 @@ const scoreTheme: Record<
   }
 };
 
+export const formatScore = (score: ScoreItemType[]) => {
+  if (!Array.isArray(score)) {
+    return {
+      primaryScore: undefined,
+      secondaryScore: []
+    };
+  }
+
+  // rrf -> rerank -> embedding -> fullText 优先级
+  let rrfScore: ScoreItemType | undefined = undefined;
+  let reRankScore: ScoreItemType | undefined = undefined;
+  let embeddingScore: ScoreItemType | undefined = undefined;
+  let fullTextScore: ScoreItemType | undefined = undefined;
+
+  score.forEach((item) => {
+    if (item.type === SearchScoreTypeEnum.rrf) {
+      rrfScore = item;
+    } else if (item.type === SearchScoreTypeEnum.reRank) {
+      reRankScore = item;
+    } else if (item.type === SearchScoreTypeEnum.embedding) {
+      embeddingScore = item;
+    } else if (item.type === SearchScoreTypeEnum.fullText) {
+      fullTextScore = item;
+    }
+  });
+
+  const primaryScore = (rrfScore ||
+    reRankScore ||
+    embeddingScore ||
+    fullTextScore) as unknown as ScoreItemType;
+  const secondaryScore = [rrfScore, reRankScore, embeddingScore, fullTextScore].filter(
+    // @ts-ignore
+    (item) => item && primaryScore && item.type !== primaryScore.type
+  ) as unknown as ScoreItemType[];
+
+  return {
+    primaryScore,
+    secondaryScore
+  };
+};
+
 const QuoteItem = ({
   quoteItem,
   canViewSource,
@@ -58,44 +99,7 @@ const QuoteItem = ({
   const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 
   const score = useMemo(() => {
-    if (!Array.isArray(quoteItem.score)) {
-      return {
-        primaryScore: undefined,
-        secondaryScore: []
-      };
-    }
-
-    // rrf -> rerank -> embedding -> fullText 优先级
-    let rrfScore: ScoreItemType | undefined = undefined;
-    let reRankScore: ScoreItemType | undefined = undefined;
-    let embeddingScore: ScoreItemType | undefined = undefined;
-    let fullTextScore: ScoreItemType | undefined = undefined;
-
-    quoteItem.score.forEach((item) => {
-      if (item.type === SearchScoreTypeEnum.rrf) {
-        rrfScore = item;
-      } else if (item.type === SearchScoreTypeEnum.reRank) {
-        reRankScore = item;
-      } else if (item.type === SearchScoreTypeEnum.embedding) {
-        embeddingScore = item;
-      } else if (item.type === SearchScoreTypeEnum.fullText) {
-        fullTextScore = item;
-      }
-    });
-
-    const primaryScore = (rrfScore ||
-      reRankScore ||
-      embeddingScore ||
-      fullTextScore) as unknown as ScoreItemType;
-    const secondaryScore = [rrfScore, reRankScore, embeddingScore, fullTextScore].filter(
-      // @ts-ignore
-      (item) => item && primaryScore && item.type !== primaryScore.type
-    ) as unknown as ScoreItemType[];
-
-    return {
-      primaryScore,
-      secondaryScore
-    };
+    return formatScore(quoteItem.score);
   }, [quoteItem.score]);
 
   return (
@@ -239,7 +243,7 @@ const QuoteItem = ({
               color={'primary.500'}
               href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}
             >
-              {t('common:core.dataset.Go Dataset')}
+              {t('chat:to_dataset')}
               <MyIcon name={'common/rightArrowLight'} w={'10px'} />
             </Link>
           )}

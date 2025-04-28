@@ -35,6 +35,8 @@ import WorkflowInitContextProvider, { WorkflowNodeEdgeContext } from './workflow
 import WorkflowEventContextProvider from './workflowEventContext';
 import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
+import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 /* 
   Context
@@ -156,24 +158,22 @@ type WorkflowContextType = {
     | undefined;
 
   // debug
-  workflowDebugData:
-    | {
-        runtimeNodes: RuntimeNodeItemType[];
-        runtimeEdges: RuntimeEdgeItemType[];
-        nextRunNodes: RuntimeNodeItemType[];
-      }
-    | undefined;
-  onNextNodeDebug: () => Promise<void>;
+  workflowDebugData?: DebugDataType;
+  onNextNodeDebug: (params: DebugDataType) => Promise<void>;
   onStartNodeDebug: ({
     entryNodeId,
     runtimeNodes,
     runtimeEdges,
-    variables
+    variables,
+    query,
+    history
   }: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
     variables: Record<string, any>;
+    query?: UserChatItemValueItemType[];
+    history?: ChatItemType[];
   }) => Promise<void>;
   onStopNodeDebug: () => void;
 
@@ -189,11 +189,14 @@ type WorkflowContextType = {
   >;
 };
 
-type DebugDataType = {
+export type DebugDataType = {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
   nextRunNodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
+  history?: ChatItemType[];
+  query?: UserChatItemValueItemType[];
+  workflowInteractiveResponse?: WorkflowInteractiveResponseType;
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
@@ -236,17 +239,25 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   workflowDebugData: undefined,
-  onNextNodeDebug: function (): Promise<void> {
+  onNextNodeDebug: function (params?: {
+    history?: ChatItemType[];
+    query?: UserChatItemValueItemType[];
+    debugData?: DebugDataType;
+  }): Promise<void> {
     throw new Error('Function not implemented.');
   },
   onStartNodeDebug: function ({
     entryNodeId,
     runtimeNodes,
-    runtimeEdges
+    runtimeEdges,
+    query,
+    history
   }: {
     entryNodeId: string;
     runtimeNodes: RuntimeNodeItemType[];
     runtimeEdges: RuntimeEdgeItemType[];
+    query?: UserChatItemValueItemType[];
+    history?: ChatItemType[];
   }): Promise<void> {
     throw new Error('Function not implemented.');
   },
@@ -551,8 +562,7 @@ const WorkflowContextProvider = ({
   /* debug */
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const onNextNodeDebug = useCallback(
-    async (debugData = workflowDebugData) => {
-      if (!debugData) return;
+    async (debugData: DebugDataType) => {
       // 1. Cancel node selected status and debugResult.showStatus
       setNodes((state) =>
         state.map((node) => ({
@@ -612,26 +622,35 @@ const WorkflowContextProvider = ({
 
       try {
         // 4. Run one step
-        const { finishedEdges, finishedNodes, nextStepRunNodes, flowResponses, newVariables } =
-          await postWorkflowDebug({
-            nodes: runtimeNodes,
-            edges: debugData.runtimeEdges,
-            variables: {
-              appId,
-              cTime: formatTime2YMDHMW(),
-              ...debugData.variables
-            },
-            appId
-          });
+        const {
+          finishedEdges,
+          finishedNodes,
+          nextStepRunNodes,
+          flowResponses,
+          newVariables,
+          workflowInteractiveResponse
+        } = await postWorkflowDebug({
+          nodes: runtimeNodes,
+          edges: debugData.runtimeEdges,
+          variables: {
+            appId,
+            cTime: formatTime2YMDHMW(),
+            ...debugData.variables
+          },
+          query: debugData.query, // 添加 query 参数
+          history: debugData.history,
+          appId
+        });
+
         // 5. Store debug result
-        const newStoreDebugData = {
+        setWorkflowDebugData({
           runtimeNodes: finishedNodes,
           // edges need to save status
           runtimeEdges: finishedEdges,
           nextRunNodes: nextStepRunNodes,
-          variables: newVariables
-        };
-        setWorkflowDebugData(newStoreDebugData);
+          variables: newVariables,
+          workflowInteractiveResponse: workflowInteractiveResponse
+        });
 
         // 6. selected entry node and Update entry node debug result
         setNodes((state) =>
@@ -665,16 +684,21 @@ const WorkflowContextProvider = ({
                   status: 'success',
                   response: result,
                   showResult: true,
-                  isExpired: false
+                  isExpired: false,
+                  workflowInteractiveResponse: workflowInteractiveResponse
                 }
               }
             };
           })
         );
 
-        // Check for an empty response
-        if (flowResponses.length === 0 && nextStepRunNodes.length > 0) {
-          onNextNodeDebug(newStoreDebugData);
+        // Check for an empty response(Skip node)
+        if (
+          !workflowInteractiveResponse &&
+          flowResponses.length === 0 &&
+          nextStepRunNodes.length > 0
+        ) {
+          onNextNodeDebug(debugData);
         }
       } catch (error) {
         entryNodes.forEach((node) => {
@@ -692,7 +716,7 @@ const WorkflowContextProvider = ({
         console.log(error);
       }
     },
-    [appId, onChangeNode, setNodes, workflowDebugData]
+    [appId, onChangeNode, setNodes]
   );
   const onStopNodeDebug = useMemoizedFn(() => {
     setWorkflowDebugData(undefined);
@@ -712,18 +736,24 @@ const WorkflowContextProvider = ({
       entryNodeId,
       runtimeNodes,
       runtimeEdges,
-      variables
+      variables,
+      query,
+      history
     }: {
       entryNodeId: string;
       runtimeNodes: RuntimeNodeItemType[];
       runtimeEdges: RuntimeEdgeItemType[];
       variables: Record<string, any>;
+      query?: UserChatItemValueItemType[];
+      history?: ChatItemType[];
     }) => {
-      const data = {
+      const data: DebugDataType = {
         runtimeNodes,
         runtimeEdges,
         nextRunNodes: runtimeNodes.filter((node) => node.nodeId === entryNodeId),
-        variables
+        variables,
+        query,
+        history
       };
       onStopNodeDebug();
       setWorkflowDebugData(data);

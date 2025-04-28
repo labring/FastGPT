@@ -8,7 +8,7 @@ import { i18nT } from '../../../../web/i18n/utils';
 export const Input_Template_History: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.history,
   renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-  valueType: WorkflowIOValueTypeEnum.chatHistory,
+  valueType: WorkflowIOValueTypeEnum.chatHistory, // Array / Number
   label: i18nT('common:core.module.input.label.chat history'),
   description: i18nT('workflow:max_dialog_rounds'),
 
@@ -76,16 +76,9 @@ export const Input_Template_Text_Quote: FlowNodeInputItemType = {
   valueType: WorkflowIOValueTypeEnum.string
 };
 
-export const Input_Template_File_Link_Prompt: FlowNodeInputItemType = {
-  key: NodeInputKeyEnum.fileUrlList,
-  renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
-  label: i18nT('app:file_quote_link'),
-  debugLabel: i18nT('app:file_quote_link'),
-  valueType: WorkflowIOValueTypeEnum.arrayString
-};
 export const Input_Template_File_Link: FlowNodeInputItemType = {
   key: NodeInputKeyEnum.fileUrlList,
-  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
   label: i18nT('app:workflow.user_file_input'),
   debugLabel: i18nT('app:workflow.user_file_input'),
   description: i18nT('app:workflow.user_file_input_desc'),

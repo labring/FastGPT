@@ -1,11 +1,6 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type {
-  ChatHistoryItemType,
-  ChatHistoryItemResType,
-  ChatSiteItemType,
-  ChatItemType
-} from '@fastgpt/global/core/chat/type.d';
-import { getResDataQuery } from '@/pages/api/core/chat/getResData';
+import type { ChatHistoryItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type { getResDataQuery } from '@/pages/api/core/chat/getResData';
 import type {
   CloseCustomFeedbackParams,
   InitChatProps,
@@ -22,14 +17,19 @@ import type {
   DeleteChatItemProps,
   UpdateHistoryProps
 } from '@/global/core/chat/api.d';
-import { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
-import { AuthTeamTagTokenProps } from '@fastgpt/global/support/user/team/tag';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import type { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
+import type { AuthTeamTagTokenProps } from '@fastgpt/global/support/user/team/tag';
+import type { AppListItemType } from '@fastgpt/global/core/app/type';
+import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type {
   getPaginationRecordsBody,
   getPaginationRecordsResponse
 } from '@/pages/api/core/chat/getPaginationRecords';
+import type { GetQuoteDataProps, GetQuoteDataRes } from '@/pages/api/core/chat/quote/getQuote';
+import type {
+  GetCollectionQuoteProps,
+  GetCollectionQuoteRes
+} from '@/pages/api/core/chat/quote/getCollectionQuote';
 
 /**
  * 获取初始化聊天内容
@@ -100,3 +100,9 @@ export const getMyTokensApps = (data: AuthTeamTagTokenProps) =>
  */
 export const getinitTeamChat = (data: { teamId: string; authToken: string; appId: string }) =>
   GET(`/proApi/core/chat/initTeamChat`, data);
+
+export const getQuoteDataList = (data: GetQuoteDataProps) =>
+  POST<GetQuoteDataRes>(`/core/chat/quote/getQuote`, data);
+
+export const getCollectionQuote = (data: GetCollectionQuoteProps) =>
+  POST<GetCollectionQuoteRes>(`/core/chat/quote/getCollectionQuote`, data);

@@ -166,6 +166,7 @@ export const getChannelLog = (params: {
     logs: ChannelLogListItemType[];
     total: number;
   }>(`/logs/search`, {
+    result_only: true,
     request_id: params.request_id,
     channel: params.channel,
     model_name: params.model_name,

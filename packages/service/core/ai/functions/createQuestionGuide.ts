@@ -2,10 +2,10 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { createChatCompletion } from '../config';
 import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
-import { llmCompletionsBodyFormat } from '../utils';
+import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../utils';
 import {
-  PROMPT_QUESTION_GUIDE,
-  PROMPT_QUESTION_GUIDE_FOOTER
+  QuestionGuidePrompt,
+  QuestionGuideFooterPrompt
 } from '@fastgpt/global/core/ai/prompt/agent';
 import { addLog } from '../../../common/system/log';
 import json5 from 'json5';
@@ -27,7 +27,7 @@ export async function createQuestionGuide({
     ...messages,
     {
       role: 'user',
-      content: `${customPrompt || PROMPT_QUESTION_GUIDE}\n${PROMPT_QUESTION_GUIDE_FOOTER}`
+      content: `${customPrompt || QuestionGuidePrompt}\n${QuestionGuideFooterPrompt}`
     }
   ];
   const requestMessages = await loadRequestMessages({
@@ -35,7 +35,7 @@ export async function createQuestionGuide({
     useVision: false
   });
 
-  const { response: data } = await createChatCompletion({
+  const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
         model,
@@ -47,21 +47,20 @@ export async function createQuestionGuide({
       model
     )
   });
-
-  const answer = data.choices?.[0]?.message?.content || '';
+  const { text: answer, usage } = await llmResponseToAnswerText(response);
 
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
 
-  const inputTokens = await countGptMessagesTokens(requestMessages);
-  const outputTokens = await countPromptTokens(answer);
+  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages));
+  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 
   if (start === -1 || end === -1) {
     addLog.warn('Create question guide error', { answer });
     return {
       result: [],
-      inputTokens: 0,
-      outputTokens: 0
+      inputTokens,
+      outputTokens
     };
   }
 
@@ -81,8 +80,8 @@ export async function createQuestionGuide({
 
     return {
       result: [],
-      inputTokens: 0,
-      outputTokens: 0
+      inputTokens,
+      outputTokens
     };
   }
 }

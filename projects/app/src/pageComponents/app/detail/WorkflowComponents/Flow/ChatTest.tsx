@@ -20,6 +20,8 @@ import ChatRecordContextProvider, {
 } from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
+import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 
 type Props = {
   isOpen: boolean;
@@ -41,10 +43,14 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+
+  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   return (
-    <>
+    <Flex h={'full'}>
       <Box
         zIndex={300}
         display={isOpen ? 'block' : 'none'}
@@ -53,10 +59,12 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         left={0}
         bottom={0}
         right={0}
-        onClick={onClose}
+        onClick={() => {
+          setQuoteData(undefined);
+          onClose();
+        }}
       />
       <MyBox
-        isLoading={loading}
         zIndex={300}
         display={'flex'}
         flexDirection={'column'}
@@ -64,7 +72,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         top={5}
         right={0}
         h={isOpen ? '95%' : '0'}
-        w={isOpen ? ['100%', '460px'] : '0'}
+        w={isOpen ? (quoteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -108,10 +116,12 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
             bg={'myGray.25'}
             borderBottom={'1px solid #F4F4F7'}
           >
-            <Flex fontSize={'16px'} fontWeight={'bold'} flex={1} alignItems={'center'}>
+            <Flex fontSize={'16px'} fontWeight={'bold'} alignItems={'center'} mr={3}>
               <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
               {t('common:core.chat.Run test')}
             </Flex>
+            {!isVariableVisible && <VariablePopover showExternalVariables />}
+            <Box flex={1} />
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
                 className="chat"
@@ -137,11 +147,34 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           </Flex>
         )}
 
-        <Box flex={'1 0 0'} overflow={'auto'}>
-          <ChatContainer />
-        </Box>
+        <Flex flex={'1 0 0'} alignItems={'end'} h={'100%'}>
+          <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
+            <ChatContainer />
+          </Box>
+
+          {quoteData && (
+            <Box
+              flex={'1 0 0'}
+              w={0}
+              mr={4}
+              maxW={'440px'}
+              h={'98%'}
+              bg={'white'}
+              boxShadow={
+                '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)'
+              }
+              borderRadius={'md'}
+            >
+              <ChatQuoteList
+                rawSearch={quoteData.rawSearch}
+                metadata={quoteData.metadata}
+                onClose={() => setQuoteData(undefined)}
+              />
+            </Box>
+          )}
+        </Flex>
       </MyBox>
-    </>
+    </Flex>
   );
 };
 
@@ -162,6 +195,8 @@ const Render = (Props: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
+      isResponseDetail={true}
+      // isShowFullText={true}
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
