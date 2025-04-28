@@ -35,6 +35,7 @@ import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
+import { removeUtmParams, removeUtmWorkflow } from '@/web/support/marketing/utils';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -75,6 +76,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   } = useDisclosure();
 
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
+
+  const handleCloseJsonImportModal = () => {
+    onCloseJsonImportModal();
+    removeUtmParams();
+    removeUtmWorkflow();
+  };
 
   const {
     isOpen: isOpenJsonImportModal,
@@ -348,7 +355,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
       {isOpenCreateMCPTools && <MCPToolsEditModal onClose={onCloseCreateMCPTools} />}
-      {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
+      {isOpenJsonImportModal && <JsonImportModal onClose={handleCloseJsonImportModal} />}
     </Flex>
   );
 };
