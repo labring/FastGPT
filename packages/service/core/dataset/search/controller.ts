@@ -291,50 +291,64 @@ export async function searchDatasetData(
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
 
-      // Tag
-      let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      let orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
-      // get andTagIds
       if (andTags && andTags.length > 0) {
-        // tag 去重
-        andTags = Array.from(new Set(andTags));
-
-        if (andTags.includes(null) && andTags.some((tag) => typeof tag === 'string')) {
+        const uniqueAndTags = Array.from(new Set(andTags));
+        if (uniqueAndTags.includes(null) && uniqueAndTags.some((tag) => typeof tag === 'string')) {
           return [];
         }
-
-        if (andTags.every((tag) => typeof tag === 'string')) {
-          // Get tagId by tag string
-          const andTagIdList = await MongoDatasetCollectionTags.find(
+        if (uniqueAndTags.every((tag) => typeof tag === 'string')) {
+          const matchedTags = await MongoDatasetCollectionTags.find(
             {
               teamId,
               datasetId: { $in: datasetIds },
-              tag: { $in: andTags }
+              tag: { $in: uniqueAndTags as string[] }
             },
-            '_id',
-            {
-              ...readFromSecondary
-            }
+            '_id datasetId tag',
+            { ...readFromSecondary }
           ).lean();
 
-          // If you enter a tag that does not exist, none will be found
-          if (andTagIdList.length !== andTags.length) return [];
+          // Group tags by dataset
+          const datasetTagMap = new Map<string, { tagIds: string[]; tagNames: Set<string> }>();
 
-          // Get collectionId by tagId
-          const collections = await MongoDatasetCollection.find(
-            {
-              teamId,
-              datasetId: { $in: datasetIds },
-              tags: { $all: andTagIdList.map((item) => String(item._id)) }
-            },
-            '_id',
-            {
-              ...readFromSecondary
+          matchedTags.forEach((tag) => {
+            const datasetId = String(tag.datasetId);
+            if (!datasetTagMap.has(datasetId)) {
+              datasetTagMap.set(datasetId, {
+                tagIds: [],
+                tagNames: new Set()
+              });
             }
-          ).lean();
-          tagCollectionIdList = collections.map((item) => String(item._id));
-        } else if (andTags.every((tag) => tag === null)) {
+
+            const datasetData = datasetTagMap.get(datasetId)!;
+            datasetData.tagIds.push(String(tag._id));
+            datasetData.tagNames.add(tag.tag);
+          });
+
+          const validDatasetIds = Array.from(datasetTagMap.entries())
+            .filter(([_, data]) => uniqueAndTags.every((tag) => data.tagNames.has(tag as string)))
+            .map(([datasetId]) => datasetId);
+
+          if (validDatasetIds.length === 0) return [];
+
+          const collectionsPromises = validDatasetIds.map((datasetId) => {
+            const { tagIds } = datasetTagMap.get(datasetId)!;
+            return MongoDatasetCollection.find(
+              {
+                teamId,
+                datasetId,
+                tags: { $all: tagIds }
+              },
+              '_id',
+              { ...readFromSecondary }
+            ).lean();
+          });
+
+          const collectionsResults = await Promise.all(collectionsPromises);
+          tagCollectionIdList = collectionsResults.flat().map((item) => String(item._id));
+        } else if (uniqueAndTags.every((tag) => tag === null)) {
           const collections = await MongoDatasetCollection.find(
             {
               teamId,
@@ -342,9 +356,7 @@ export async function searchDatasetData(
               $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
             },
             '_id',
-            {
-              ...readFromSecondary
-            }
+            { ...readFromSecondary }
           ).lean();
           tagCollectionIdList = collections.map((item) => String(item._id));
         }
