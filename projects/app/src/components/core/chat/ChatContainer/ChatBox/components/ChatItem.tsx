@@ -28,6 +28,7 @@ import dayjs from 'dayjs';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -117,6 +118,7 @@ const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { isPc } = useSystem();
+  const { toast } = useToast();
 
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
@@ -237,6 +239,11 @@ const ChatItem = (props: Props) => {
       quoteId?: string;
     }) => {
       if (!setQuoteData) return;
+      if (isChatting)
+        return toast({
+          title: t('chat:chat.waiting_for_response'),
+          status: 'info'
+        });
 
       const collectionIdList = collectionId
         ? [collectionId]
@@ -269,7 +276,18 @@ const ChatItem = (props: Props) => {
               }
       });
     },
-    [setQuoteData, quoteList, isShowReadRawSource, appId, chatId, chat.dataId, outLinkAuthData]
+    [
+      setQuoteData,
+      isChatting,
+      toast,
+      t,
+      quoteList,
+      isShowReadRawSource,
+      appId,
+      chatId,
+      chat.dataId,
+      outLinkAuthData
+    ]
   );
 
   useEffect(() => {
