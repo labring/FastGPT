@@ -19,7 +19,7 @@ const UsageWay = ({ mcp, onClose }: { mcp: McpKeyType; onClose: () => void }) =>
   const { url, jsonConfig } = (() => {
     if (linkWay === 'http') {
       const baseUrl = feConfigs?.customApiDomain || `${location.origin}/api`;
-      const url = `${baseUrl}/mcp/${mcp.key}/mcp`;
+      const url = `${baseUrl}/mcp/app/${mcp.key}/mcp`;
       const jsonConfig = `{
   "mcpServers": {
     "${feConfigs?.systemTitle}-mcp-${mcp._id}": {
