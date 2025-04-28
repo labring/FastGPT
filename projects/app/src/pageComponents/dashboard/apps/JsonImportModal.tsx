@@ -49,15 +49,14 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       const url = getUtmWorkflow();
       if (!url) return;
 
+      const utmParams = getUtmParams();
       const workflowData = await postFetchWorkflow({ url });
 
       setValue('workflowStr', JSON.stringify(workflowData, null, 2));
 
-      const utmParams = getUtmParams();
       if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
 
       removeUtmWorkflow();
-      removeUtmParams();
     },
     { manual: false }
   );
@@ -132,6 +131,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         router.push(`/app/detail?appId=${id}`);
         loadMyApps();
         onClose();
+        removeUtmParams();
       },
       successToast: t('common:common.Create Success')
     }
