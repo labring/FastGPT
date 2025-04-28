@@ -59,6 +59,12 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     { manual: false }
   );
 
+  const handleCloseJsonImportModal = () => {
+    onClose();
+    removeUtmParams();
+    removeUtmWorkflow();
+  };
+
   const avatar = watch('avatar');
   const {
     File,
@@ -180,7 +186,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           </Box>
         </ModalBody>
         <ModalFooter gap={4}>
-          <Button variant={'whiteBase'} onClick={onClose}>
+          <Button variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
             {t('common:common.Cancel')}
           </Button>
           <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>

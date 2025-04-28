@@ -77,12 +77,6 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
 
-  const handleCloseJsonImportModal = () => {
-    onCloseJsonImportModal();
-    removeUtmParams();
-    removeUtmWorkflow();
-  };
-
   const {
     isOpen: isOpenJsonImportModal,
     onOpen: onOpenJsonImportModal,
@@ -355,7 +349,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
       {isOpenCreateMCPTools && <MCPToolsEditModal onClose={onCloseCreateMCPTools} />}
-      {isOpenJsonImportModal && <JsonImportModal onClose={handleCloseJsonImportModal} />}
+      {isOpenJsonImportModal && <JsonImportModal onClose={onCloseJsonImportModal} />}
     </Flex>
   );
 };
