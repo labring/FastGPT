@@ -87,7 +87,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     this.maxReservedThreads = maxReservedThreads;
   }
 
-  runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
+  private runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
     // Get idle worker or create a new worker
     const runningWorker = (() => {
       const worker = this.workerQueue.find((item) => item.status === 'idle');
@@ -140,7 +140,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     });
   }
 
-  createWorker() {
+  private createWorker() {
     // Create a new worker and push it queue.
     const workerId = `${Date.now()}${Math.random()}`;
     const worker = getWorker(this.name);
@@ -191,7 +191,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     return item;
   }
 
-  deleteWorker(workerId: string) {
+  private deleteWorker(workerId: string) {
     const item = this.workerQueue.find((item) => item.id === workerId);
     if (item) {
       item.reject?.('error');

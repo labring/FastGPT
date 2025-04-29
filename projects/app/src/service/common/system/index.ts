@@ -24,6 +24,7 @@ import {
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
+import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -145,6 +146,13 @@ export async function initSystemConfig() {
     systemEnv: global.systemEnv,
     subPlans: global.subPlans
   });
+
+  // 模拟大量 worker 创建
+  console.log('开始创建 worker');
+  for (let i = 0; i < 100; i++) {
+    await countPromptTokens('1');
+  }
+  console.log('完成');
 }
 
 async function getSystemVersion() {
