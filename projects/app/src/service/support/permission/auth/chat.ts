@@ -244,3 +244,5 @@ export const authCollectionInChat = async ({
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
 };
+
+export { defaultResponseShow };
