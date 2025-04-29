@@ -46,6 +46,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
     "chatId": "my_chatId",
     "stream": false,
     "detail": false,
+    "parseQuote": false,
     "responseChatItemId": "my_responseChatItemId",
     "variables": {
         "uid": "asdfadsfasfd2323",
@@ -117,6 +118,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
 - variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
 {{% /alert %}}
+- parseQuote: 是否解析知识库引用 id 到回答中（用于展示引用 icon）
 
 {{< /markdownify >}}
 {{< /tab >}}
