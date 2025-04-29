@@ -14,8 +14,7 @@ const GateConfigSchema = new Schema({
     default: false
   },
   tools: {
-    type: [String],
-    enum: Object.values(['webSearch', 'deepThinking', 'fileUpload', 'imageUpload', 'voiceInput'])
+    type: [String]
   },
   placeholderText: {
     type: String

@@ -8,10 +8,10 @@ export type putUpdateGateConfigData = {
 };
 
 export type putUpdateGateConfigResponse = {
-  status: boolean;
-  tools: string[];
-  slogan: string;
-  placeholderText: string;
+  status?: boolean;
+  tools?: string[];
+  slogan?: string;
+  placeholderText?: string;
 };
 
 export type putUpdateGateConfigCopyRightData = {

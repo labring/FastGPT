@@ -1,9 +1,7 @@
-export type GateTool = 'webSearch' | 'deepThinking' | 'fileUpload' | 'imageUpload' | 'voiceInput';
-
 export type GateSchemaType = {
   teamId: string;
   status: boolean;
-  tools: GateTool[];
+  tools: string[];
   slogan: string;
   placeholderText: string;
 };
