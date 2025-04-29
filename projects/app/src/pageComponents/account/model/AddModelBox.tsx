@@ -583,13 +583,6 @@ export const ModelEditModal = ({
                     </Td>
                   </Tr>
                   <Tr>
-                    <Td textAlign={'right'}>
-                      <Flex justifyContent={'flex-end'}>
-                        <Switch {...register('functionCall')} />
-                      </Flex>
-                    </Td>
-                  </Tr>
-                  <Tr>
                     <Td>
                       <HStack spacing={1}>
                         <Box>{t('account:model.vision')}</Box>
