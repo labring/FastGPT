@@ -172,11 +172,12 @@ export const parseReasoningStreamContent = () => {
   // 添加Quote解析相关变量
   let isInQuoteTag: boolean | undefined = undefined;
   let quoteBuffer = '';
-  const mongoIdLength = 24;
-  const fullQuoteLength = 1 + mongoIdLength + 8; // '[mongoId](QUOTE)'.lenght = 33
+  const mongoIdLength = 24; // MongoDB ID长度
+  const fullQuoteLength = 1 + mongoIdLength + 8; // [mongoId](QUOTE)总长度为33
+
   /* 
     parseThinkTag - 只控制是否主动解析 <think></think>，如果接口已经解析了，则不再解析。
-    parseQuote - 控制是否解析 [mongoId](QUOTE) 格式
+    parseQuoteFlag - 控制是否保留 [mongoId](QUOTE) 格式的引用。为true时保留引用，为false时移除引用。
   */
   const parsePart = (
     part: {
@@ -189,7 +190,7 @@ export const parseReasoningStreamContent = () => {
       }[];
     },
     parseThinkTag = false,
-    parseQuote = false
+    parseQuoteFlag = false
   ): {
     reasoningContent: string;
     content: string;
@@ -200,6 +201,9 @@ export const parseReasoningStreamContent = () => {
 
     // @ts-ignore
     const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+
+    // 检查是否是流结束信号
+    const isStreamEnd = !!finishReason;
 
     // 先处理think标签
     let processedContent = '';
@@ -292,15 +296,19 @@ export const parseReasoningStreamContent = () => {
       }
     }
 
-    if (!parseQuote && processedContent) {
-      console.log('quoteBuffer', quoteBuffer);
+    // 处理Quote引用格式
+    if (!parseQuoteFlag && (processedContent || (isStreamEnd && isInQuoteTag))) {
+      // 如果已在Quote缓冲区中
       if (isInQuoteTag === true) {
-        quoteBuffer += processedContent;
+        if (processedContent) {
+          quoteBuffer += processedContent;
+        }
 
-        // 检查缓冲区长度是否达到完整Quote长度
-        if (quoteBuffer.length >= fullQuoteLength) {
+        // 检查缓冲区长度是否达到完整Quote长度或已经流结束
+        if (quoteBuffer.length >= fullQuoteLength || isStreamEnd) {
           // 检查格式是否符合[mongoId](QUOTE)
           if (
+            !isStreamEnd &&
             quoteBuffer.startsWith('[') &&
             quoteBuffer.substring(mongoIdLength + 1, mongoIdLength + 9) === '](QUOTE)'
           ) {
@@ -309,7 +317,7 @@ export const parseReasoningStreamContent = () => {
             quoteBuffer = '';
             processedContent = '';
           } else {
-            // 不符合格式，返回累积内容
+            // 不符合格式或流结束，返回累积内容
             processedContent = quoteBuffer;
             isInQuoteTag = false;
             quoteBuffer = '';
@@ -320,7 +328,7 @@ export const parseReasoningStreamContent = () => {
         }
       }
       // 检测是否有Quote开始标记
-      else if (processedContent.includes('[')) {
+      else if (processedContent && processedContent.includes('[')) {
         const parts = processedContent.split('[');
         const beforeTag = parts[0];
         const afterTag = parts.slice(1).join('[');
@@ -328,9 +336,10 @@ export const parseReasoningStreamContent = () => {
         isInQuoteTag = true;
         quoteBuffer = '[' + afterTag;
 
-        // 如果缓冲区已达到完整长度，立即处理
-        if (quoteBuffer.length >= fullQuoteLength) {
+        // 如果缓冲区已达到完整长度或已经流结束
+        if (quoteBuffer.length >= fullQuoteLength || isStreamEnd) {
           if (
+            !isStreamEnd &&
             quoteBuffer.startsWith('[') &&
             quoteBuffer.substring(mongoIdLength + 1, mongoIdLength + 9) === '](QUOTE)'
           ) {
@@ -339,7 +348,7 @@ export const parseReasoningStreamContent = () => {
             quoteBuffer = '';
             processedContent = beforeTag;
           } else {
-            // 不符合格式，返回累积内容
+            // 不符合格式或流结束，返回累积内容
             processedContent = beforeTag + quoteBuffer;
             isInQuoteTag = false;
             quoteBuffer = '';
