@@ -7,6 +7,7 @@ import {
 
 export const config: Omit<ToolType, 'cb'> = {
   toolId: 'community-getTime',
+  version: '4.9.6',
   type: 'tools',
   name: {
     'zh-CN': '获取当前时间',
@@ -16,7 +17,6 @@ export const config: Omit<ToolType, 'cb'> = {
     'zh-CN': '获取当前时间',
     en: 'Get current time'
   },
-  isTool: true,
   icon: '',
   inputs: [
     {

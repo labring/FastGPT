@@ -273,23 +273,31 @@ export const InfoString = z.object({
   'zh-Hant': z.string().optional()
 });
 
-export const ToolSchema = z.object({
-  toolId: z.string(),
-  name: InfoString,
-  description: InfoString,
-  type: z.string(),
-  icon: z.string(),
-  cb: ToolCallbackType,
-  isTool: z.boolean(),
-  author: z.string().optional(),
-  docURL: z.string().optional(),
-  tokenCost: z.number().optional()
-});
+export const ToolSchema = z
+  .object({
+    toolId: z.string().optional(),
+    name: InfoString,
+    description: InfoString,
+    type: z.string(),
+    icon: z.string(),
+    cb: ToolCallbackType.optional(),
+    author: z.string().optional(),
+    docURL: z.string().optional(),
+    version: z.string(),
+    parentId: z.string().optional(),
+    isFolder: z.boolean().optional()
+  })
+  .refine((data) => {
+    if (!data.isFolder && !data.cb) return { message: 'cb is required' };
+  });
 
 export type ToolType = z.infer<typeof ToolSchema> & {
   inputs: InputType[];
   outputs: OutputType[];
 };
+
+export type ToolConfigType = Omit<ToolType, 'cb'>;
+export type FolderConfigType = Omit<ToolType, 'cb' | 'inputs' | 'outputs'>;
 
 export type CustomFieldConfigType = {
   // reference

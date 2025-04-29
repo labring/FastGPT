@@ -1,6 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import type { ToolType } from '../../type';
+export async function downloadFile(url: string, filename: string) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  const file = new File([blob], filename);
+  return file;
+}
 
 const tools: ToolType[] = [];
 const toolsDir = process.env.TOOLS_DIR || path.join(process.cwd(), 'tools');
@@ -17,6 +23,17 @@ async function LoadToolsProd() {
     }
   }
   // 2. 读取 tools.json 文件中的配置（通过网络挂载）
+  const toolConfigPath = path.join(toolsDir, 'tools.json');
+  if (fs.existsSync(toolConfigPath)) {
+    const toolConfig = JSON.parse(fs.readFileSync(toolConfigPath, 'utf-8')) as {
+      toolId: string;
+      url: string;
+    }[];
+    // every string is a url to get a .pkg file
+    for (const tool of toolConfig) {
+      const file = await downloadFile(tool.url, tool.toolId); // TODO
+    }
+  }
   // TODO
 
   console.log(
@@ -35,9 +52,30 @@ async function LoadToolsDev() {
   const toolDirs = fs.readdirSync(toolsPath);
   for (const tool of toolDirs) {
     const toolPath = path.join(toolsPath, tool);
-    tools.push((await import(toolPath)).default as ToolType);
+    const mod = (await import(toolPath)).default as ToolType;
+    if (!mod.toolId) mod.toolId = tool;
+    if (!mod.isFolder) tools.push(mod);
+    else {
+      // is folder
+      const subTools = fs.readdirSync(path.join(toolPath)).filter((i) => i !== 'index.ts');
+      for (const subTool of subTools) {
+        const subToolPath = path.join(toolPath, subTool);
+        const subMod = (await import(subToolPath)).default as ToolType;
+        if (!subMod.toolId) subMod.toolId = `${mod.toolId}/${subTool}`;
+        tools.push(subMod);
+      }
+    }
   }
-  console.log(`reading tools from ${toolsPath} in dev mode, toolFiles: ${toolDirs}`);
+  console.log(
+    `\
+=================
+reading tools from ${toolsPath} in dev mode
+tool amount: ${tools.length}
+tools:
+${tools.map((tool) => tool.toolId).join('\n')}
+=================
+    `
+  );
 }
 
 export function getTool(toolId: string): ToolType | undefined {
