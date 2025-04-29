@@ -22,7 +22,7 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 
-const A = ({ children, ...props }: any) => {
+const A = ({ children, chatAuthData, ...props }: any) => {
   const { t } = useTranslation();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -52,7 +52,7 @@ const A = ({ children, ...props }: any) => {
       data: quoteData,
       loading,
       runAsync: getQuoteDataById
-    } = useRequest2(getQuoteData, {
+    } = useRequest2((id: string) => getQuoteData({ id, ...chatAuthData }), {
       manual: true
     });
     const sourceData = useMemo(
@@ -149,4 +149,4 @@ const A = ({ children, ...props }: any) => {
   return <Link {...props}>{children}</Link>;
 };
 
-export default A;
+export default React.memo(A);

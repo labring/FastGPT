@@ -100,6 +100,7 @@ const AIContentCard = React.memo(function AIContentCard({
 
         return (
           <AIResponseBox
+            chatItemDataId={dataId}
             key={key}
             value={value}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}

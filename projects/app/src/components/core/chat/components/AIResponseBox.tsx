@@ -31,6 +31,8 @@ import { SelectOptionsComponent, FormInputComponent } from './Interactive/Intera
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
+import { useCreation } from 'ahooks';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -87,24 +89,33 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 });
 const RenderText = React.memo(function RenderText({
   showAnimation,
-  text
+  text,
+  chatItemDataId
 }: {
   showAnimation: boolean;
   text: string;
+  chatItemDataId: string;
 }) {
   const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
 
   const source = useMemo(() => {
     if (!text) return '';
 
     // Remove quote references if not showing response detail
-    return isResponseDetail ? text : text.replace(/\[[a-f0-9]{24}\]\(QUOTE\)/g, '');
+    return isResponseDetail
+      ? text
+      : text.replace(/\[([a-f0-9]{24})\]\(QUOTE\)/g, '').replace(/\[([a-f0-9]{24})\](?!\()/g, '');
   }, [text, isResponseDetail]);
 
-  // First empty line
-  // if (!source && !isLastChild) return null;
+  const chatAuthData = useCreation(() => {
+    return { appId, chatId, chatItemDataId, ...outLinkAuthData };
+  }, [appId, chatId, chatItemDataId, outLinkAuthData]);
 
-  return <Markdown source={source} showAnimation={showAnimation} />;
+  return <Markdown source={source} showAnimation={showAnimation} chatAuthData={chatAuthData} />;
 });
 
 const RenderTool = React.memo(
@@ -230,17 +241,23 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 });
 
 const AIResponseBox = ({
+  chatItemDataId,
   value,
   isLastResponseValue,
   isChatting
 }: {
+  chatItemDataId: string;
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastResponseValue: boolean;
   isChatting: boolean;
 }) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
-      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
+      <RenderText
+        chatItemDataId={chatItemDataId}
+        showAnimation={isChatting && isLastResponseValue}
+        text={value.text.content}
+      />
     );
   }
   if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {
