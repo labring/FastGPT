@@ -131,7 +131,8 @@ export const streamFetch = ({
           ...data,
           variables,
           detail: true,
-          stream: true
+          stream: true,
+          parseQuote: true
         })
       };
 
