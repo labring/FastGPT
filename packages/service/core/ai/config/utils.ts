@@ -110,6 +110,12 @@ export const loadSystemModels = async (init = false) => {
           provider: ModelProviderIdType;
           list: SystemModelItemType[];
         };
+        const mergeObject = (obj1: any, obj2: any) => {
+          if (!obj1 && !obj2) return undefined;
+          const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
+          const formatObj2 = typeof obj2 === 'object' ? obj2 : {};
+          return { ...formatObj1, ...formatObj2 };
+        };
 
         fileContent.list.forEach((fileModel) => {
           const dbModel = dbModels.find((item) => item.model === fileModel.model);
@@ -117,6 +123,10 @@ export const loadSystemModels = async (init = false) => {
           const modelData: any = {
             ...fileModel,
             ...dbModel?.metadata,
+            // @ts-ignore
+            defaultConfig: mergeObject(fileModel.defaultConfig, dbModel?.metadata?.defaultConfig),
+            // @ts-ignore
+            fieldMap: mergeObject(fileModel.fieldMap, dbModel?.metadata?.fieldMap),
             provider: getModelProvider(dbModel?.metadata?.provider || fileContent.provider).id,
             type: dbModel?.metadata?.type || fileModel.type,
             isCustom: false
