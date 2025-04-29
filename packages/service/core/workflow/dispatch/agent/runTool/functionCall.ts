@@ -26,7 +26,12 @@ import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  llmCompletionsBodyFormat,
+  parseQuoteContent,
+  parseReasoningStreamContent
+} from '../../../../ai/utils';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -48,6 +53,7 @@ export const runToolWithFunctionCall = async (
     runtimeEdges,
     externalProvider,
     stream,
+    parseQuote = true,
     workflowStreamResponse,
     params: {
       temperature,
@@ -261,7 +267,8 @@ export const runToolWithFunctionCall = async (
         res,
         toolNodes,
         stream: aiResponse,
-        workflowStreamResponse
+        workflowStreamResponse,
+        parseQuote
       });
 
       return {
@@ -288,8 +295,10 @@ export const runToolWithFunctionCall = async (
           ]
         : [];
 
+      const answer = parseQuoteContent(result.choices?.[0]?.message?.content || '', parseQuote);
+
       return {
-        answer: result.choices?.[0]?.message?.content || '',
+        answer,
         functionCalls: toolCalls,
         inputTokens: usage?.prompt_tokens,
         outputTokens: usage?.completion_tokens
@@ -509,12 +518,14 @@ async function streamResponse({
   res,
   toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  parseQuote
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  parseQuote?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -526,6 +537,8 @@ async function streamResponse({
   let functionId = getNanoid();
   let usage = getLLMDefaultUsage();
 
+  const { parsePart } = parseReasoningStreamContent();
+
   for await (const part of stream) {
     usage = part.usage || usage;
     if (res.closed) {
@@ -533,10 +546,12 @@ async function streamResponse({
       break;
     }
 
+    const { content: toolChoiceContent } = parsePart(part, false, parseQuote);
+
     const responseChoice = part.choices?.[0]?.delta;
 
-    if (responseChoice.content) {
-      const content = responseChoice?.content || '';
+    if (toolChoiceContent) {
+      const content = toolChoiceContent || '';
       textAnswer += content;
 
       workflowStreamResponse?.({

@@ -114,7 +114,6 @@ export async function dispatchDatasetSearch(
   if (datasetIds.length === 0) {
     return emptyResult;
   }
-  // console.log(concatQueries, rewriteQuery, aiExtensionResult);
 
   // get vector
   const vectorModel = getEmbeddingModel(
@@ -267,7 +266,7 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: {
-      prompt: getDatasetSearchToolResponsePrompt(parseQuote),
+      prompt: getDatasetSearchToolResponsePrompt(),
       quotes: searchRes.map((item) => ({
         id: item.id,
         sourceName: item.sourceName,

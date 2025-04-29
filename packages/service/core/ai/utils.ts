@@ -155,18 +155,27 @@ export const parseReasoningContent = (text: string): [string, string] => {
   return [thinkContent, answerContent];
 };
 
+export const parseQuoteContent = (text: string, parseQuote: boolean) => {
+  return !parseQuote ? text.replace(/\[([a-f0-9]{24})\]\(QUOTE\)/g, '') : text;
+};
+
 // Parse <think></think> tags to think and answer - stream response
 export const parseReasoningStreamContent = () => {
-  let isInThinkTag: boolean | undefined;
+  let isInThinkTag: boolean | undefined = undefined;
+  let startTagBuffer = '';
+  let endTagBuffer = '';
 
   const startTag = '<think>';
-  let startTagBuffer = '';
-
   const endTag = '</think>';
-  let endTagBuffer = '';
+
+  let isInQuoteTag: boolean | undefined = undefined;
+  let quoteBuffer = '';
+  const mongoIdLength = 24; // MongoDB ID长度
+  const fullQuoteLength = 1 + mongoIdLength + 8; // [mongoId](QUOTE)总长度为33
 
   /* 
     parseThinkTag - 只控制是否主动解析 <think></think>，如果接口已经解析了，则不再解析。
+    parseQuoteFlag - 控制是否保留 [mongoId](QUOTE) 格式的引用。为true时保留引用，为false时移除引用。
   */
   const parsePart = (
     part: {
@@ -178,7 +187,8 @@ export const parseReasoningStreamContent = () => {
         finish_reason?: CompletionFinishReason;
       }[];
     },
-    parseThinkTag = false
+    parseThinkTag = false,
+    parseQuoteFlag = false
   ): {
     reasoningContent: string;
     content: string;
@@ -189,61 +199,42 @@ export const parseReasoningStreamContent = () => {
 
     // @ts-ignore
     const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+
+    const isStreamEnd = !!finishReason;
+
+    // 先处理think标签
+    let processedContent = '';
+    let processedReasoningContent = '';
+
     if (reasoningContent || !parseThinkTag) {
       isInThinkTag = false;
-      return { reasoningContent, content, finishReason };
-    }
-
-    if (!content) {
-      return {
-        reasoningContent: '',
-        content: '',
-        finishReason
-      };
-    }
-
-    // 如果不在 think 标签中，或者有 reasoningContent(接口已解析），则返回 reasoningContent 和 content
-    if (isInThinkTag === false) {
-      return {
-        reasoningContent: '',
-        content,
-        finishReason
-      };
-    }
-
-    // 检测是否为 think 标签开头的数据
-    if (isInThinkTag === undefined) {
+      processedContent = content;
+      processedReasoningContent = reasoningContent;
+    } else if (!content) {
+      processedContent = '';
+      processedReasoningContent = '';
+    } else if (isInThinkTag === false) {
+      processedContent = content;
+      processedReasoningContent = '';
+    } else if (isInThinkTag === undefined) {
       // Parse content think and answer
       startTagBuffer += content;
       // 太少内容时候，暂时不解析
       if (startTagBuffer.length < startTag.length) {
-        return {
-          reasoningContent: '',
-          content: '',
-          finishReason
-        };
-      }
-
-      if (startTagBuffer.startsWith(startTag)) {
+        processedContent = '';
+        processedReasoningContent = '';
+      } else if (startTagBuffer.startsWith(startTag)) {
         isInThinkTag = true;
-        return {
-          reasoningContent: startTagBuffer.slice(startTag.length),
-          content: '',
-          finishReason
-        };
+        processedContent = '';
+        processedReasoningContent = startTagBuffer.slice(startTag.length);
+      } else {
+        isInThinkTag = false;
+        processedContent = startTagBuffer;
+        processedReasoningContent = '';
       }
-
-      // 如果未命中 think 标签，则认为不在 think 标签中，返回 buffer 内容作为 content
-      isInThinkTag = false;
-      return {
-        reasoningContent: '',
-        content: startTagBuffer,
-        finishReason
-      };
-    }
-
-    // 确认是 think 标签内容，开始返回 think 内容，并实时检测 </think>
-    /* 
+    } else if (endTagBuffer) {
+      // 确认是 think 标签内容，开始返回 think 内容，并实时检测 </think>
+      /* 
       检测 </think> 方案。
       存储所有疑似 </think> 的内容，直到检测到完整的 </think> 标签或超出 </think> 长度。
       content 返回值包含以下几种情况:
@@ -254,62 +245,117 @@ export const parseReasoningStreamContent = () => {
         </think>abc - 完全命中尾标签
         k>abc - 命中一部分尾标签
     */
-    // endTagBuffer 专门用来记录疑似尾标签的内容
-    if (endTagBuffer) {
+      // endTagBuffer 专门用来记录疑似尾标签的内容
       endTagBuffer += content;
       if (endTagBuffer.includes(endTag)) {
         isInThinkTag = false;
-        const answer = endTagBuffer.slice(endTag.length);
-        return {
-          reasoningContent: '',
-          content: answer,
-          finishReason
-        };
+        processedContent = endTagBuffer.slice(endTag.length);
+        processedReasoningContent = '';
       } else if (endTagBuffer.length >= endTag.length) {
         // 缓存内容超出尾标签长度，且仍未命中 </think>，则认为本次猜测 </think> 失败，仍处于 think 阶段。
         const tmp = endTagBuffer;
         endTagBuffer = '';
-        return {
-          reasoningContent: tmp,
-          content: '',
-          finishReason
-        };
+        processedContent = '';
+        processedReasoningContent = tmp;
+      } else {
+        processedContent = '';
+        processedReasoningContent = '';
       }
-      return {
-        reasoningContent: '',
-        content: '',
-        finishReason
-      };
     } else if (content.includes(endTag)) {
       // 返回内容，完整命中</think>，直接结束
       isInThinkTag = false;
       const [think, answer] = content.split(endTag);
-      return {
-        reasoningContent: think,
-        content: answer,
-        finishReason
-      };
+      processedContent = answer;
+      processedReasoningContent = think;
     } else {
       // 无 buffer，且未命中 </think>，开始疑似 </think> 检测。
+      let foundPartialEndTag = false;
       for (let i = 1; i < endTag.length; i++) {
         const partialEndTag = endTag.slice(0, i);
         // 命中一部分尾标签
         if (content.endsWith(partialEndTag)) {
           const think = content.slice(0, -partialEndTag.length);
           endTagBuffer += partialEndTag;
-          return {
-            reasoningContent: think,
-            content: '',
-            finishReason
-          };
+          processedContent = '';
+          processedReasoningContent = think;
+          foundPartialEndTag = true;
+          break;
+        }
+      }
+
+      if (!foundPartialEndTag) {
+        // 完全未命中尾标签，还是 think 阶段。
+        processedContent = '';
+        processedReasoningContent = content;
+      }
+    }
+
+    // 处理Quote引用格式
+    if (!parseQuoteFlag && (processedContent || (isStreamEnd && isInQuoteTag))) {
+      // 如果已在Quote缓冲区中
+      if (isInQuoteTag === true) {
+        if (processedContent) {
+          quoteBuffer += processedContent;
+        }
+
+        // 检查缓冲区长度是否达到完整Quote长度或已经流结束
+        if (quoteBuffer.length >= fullQuoteLength || isStreamEnd) {
+          // 检查格式是否符合[mongoId](QUOTE)
+          if (
+            !isStreamEnd &&
+            quoteBuffer.startsWith('[') &&
+            quoteBuffer.substring(mongoIdLength + 1, mongoIdLength + 9) === '](QUOTE)'
+          ) {
+            // 符合格式，不返回内容
+            isInQuoteTag = false;
+            quoteBuffer = '';
+            processedContent = '';
+          } else {
+            // 不符合格式或流结束，返回累积内容
+            processedContent = quoteBuffer;
+            isInQuoteTag = false;
+            quoteBuffer = '';
+          }
+        } else {
+          // 还未达到完整长度，继续缓冲
+          processedContent = '';
+        }
+      }
+      // 检测是否有Quote开始标记
+      else if (processedContent && processedContent.includes('[')) {
+        const parts = processedContent.split('[');
+        const beforeTag = parts[0];
+        const afterTag = parts.slice(1).join('[');
+
+        isInQuoteTag = true;
+        quoteBuffer = '[' + afterTag;
+
+        // 如果缓冲区已达到完整长度或已经流结束
+        if (quoteBuffer.length >= fullQuoteLength || isStreamEnd) {
+          if (
+            !isStreamEnd &&
+            quoteBuffer.startsWith('[') &&
+            quoteBuffer.substring(mongoIdLength + 1, mongoIdLength + 9) === '](QUOTE)'
+          ) {
+            // 符合格式，不返回内容
+            isInQuoteTag = false;
+            quoteBuffer = '';
+            processedContent = beforeTag;
+          } else {
+            // 不符合格式或流结束，返回累积内容
+            processedContent = beforeTag + quoteBuffer;
+            isInQuoteTag = false;
+            quoteBuffer = '';
+          }
+        } else {
+          processedContent = beforeTag;
         }
       }
     }
 
-    // 完全未命中尾标签，还是 think 阶段。
     return {
-      reasoningContent: content,
-      content: '',
+      reasoningContent: processedReasoningContent,
+      content: processedContent,
       finishReason
     };
   };

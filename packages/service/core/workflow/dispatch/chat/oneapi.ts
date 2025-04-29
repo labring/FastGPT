@@ -4,7 +4,11 @@ import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/co
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { parseReasoningContent, parseReasoningStreamContent } from '../../../ai/utils';
+import {
+  parseQuoteContent,
+  parseReasoningContent,
+  parseReasoningStreamContent
+} from '../../../ai/utils';
 import { createChatCompletion } from '../../../ai/config';
 import type {
   ChatCompletionMessageParam,
@@ -159,8 +163,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput,
       systemPrompt,
       userFiles,
-      documentQuoteText,
-      parseQuote
+      documentQuoteText
     }),
     // Censor = true and system key, will check content
     (() => {
@@ -223,7 +226,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         aiChatReasoning,
         parseThinkTag: modelConstantsData.reasoning,
         isResponseAnswerText,
-        workflowStreamResponse
+        workflowStreamResponse,
+        parseQuote
       });
 
       return {
@@ -245,14 +249,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         // API already parse reasoning content
         if (reasoningContent || !aiChatReasoning) {
           return {
-            content,
+            content: parseQuoteContent(content, parseQuote),
             reasoningContent
           };
         }
 
         const [think, answer] = parseReasoningContent(content);
         return {
-          content: answer,
+          content: parseQuoteContent(answer, parseQuote),
           reasoningContent: think
         };
       })();
@@ -452,8 +456,7 @@ async function getChatMessages({
   systemPrompt,
   userChatInput,
   userFiles,
-  documentQuoteText,
-  parseQuote = true
+  documentQuoteText
 }: {
   model: LLMModelItemType;
   maxTokens?: number;
@@ -470,14 +473,13 @@ async function getChatMessages({
 
   userFiles: UserChatItemValueItemType['file'][];
   documentQuoteText?: string; // document quote
-  parseQuote?: boolean;
 }) {
   // Dataset prompt ====>
   // User role or prompt include question
   const quoteRole =
     aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
 
-  const defaultQuotePrompt = getQuotePrompt(version, quoteRole, parseQuote);
+  const defaultQuotePrompt = getQuotePrompt(version, quoteRole);
 
   const datasetQuotePromptTemplate = datasetQuotePrompt || defaultQuotePrompt;
 
@@ -539,7 +541,8 @@ async function streamResponse({
   workflowStreamResponse,
   aiChatReasoning,
   parseThinkTag,
-  isResponseAnswerText
+  isResponseAnswerText,
+  parseQuote = true
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
@@ -547,6 +550,7 @@ async function streamResponse({
   aiChatReasoning?: boolean;
   parseThinkTag?: boolean;
   isResponseAnswerText?: boolean;
+  parseQuote?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -568,7 +572,7 @@ async function streamResponse({
       break;
     }
 
-    const { reasoningContent, content, finishReason } = parsePart(part, parseThinkTag);
+    const { reasoningContent, content, finishReason } = parsePart(part, parseThinkTag, parseQuote);
     finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;
