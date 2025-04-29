@@ -24,6 +24,8 @@ import {
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
+import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
+import { preLoadWorker } from '../../../../../../packages/service/worker/preload';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -89,7 +91,12 @@ export function initGlobalVariables() {
 
 /* Init system data(Need to connected db). It only needs to run once */
 export async function getInitConfig() {
-  return Promise.all([initSystemConfig(), getSystemVersion(), loadSystemModels()]);
+  await Promise.all([initSystemConfig(), getSystemVersion(), loadSystemModels()]);
+  try {
+    await preLoadWorker();
+  } catch (error) {
+    console.error('Preload worker error', error);
+  }
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
