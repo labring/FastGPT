@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Flex, Input, Button, Box, Text } from '@chakra-ui/react';
@@ -12,6 +12,7 @@ import type {
 import BaseUrlSelector from '@/pageComponents/dataset/detail/Import/diffSource/baseUrl';
 import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
 import { GetResourceFolderListProps, ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const ApiDatasetForm = ({
   type,
@@ -28,26 +29,43 @@ const ApiDatasetForm = ({
   >;
 }) => {
   const { t } = useTranslation();
-  const [isDirectoryModalOpen, setIsDirectoryModalOpen] = useState(false);
+  const router = useRouter();
   const { register, setValue, watch } = form;
 
-  const yuqueUserId = watch('yuqueServer.userId');
-  const yuqueToken = watch('yuqueServer.token');
-  const yuqueBaseUrl = watch('yuqueServer.baseUrl');
-
-  const feishuAppId = watch('feishuServer.appId');
-  const feishuAppSecret = watch('feishuServer.appSecret');
-  const feishuFolderToken = watch('feishuServer.folderToken');
-
-  const apiBaseUrl = watch('apiServer.baseUrl');
+  const yuqueServer = watch('yuqueServer');
+  const feishuServer = watch('feishuServer');
+  const apiServer = watch('apiServer');
 
   const [currentPath, setCurrentPath] = useState(t('dataset:loading'));
-  const router = useRouter();
+  const [isDirectoryModalOpen, setIsDirectoryModalOpen] = useState(false);
+
   const datasetId = router.query.datasetId as string;
-  const parentId = yuqueBaseUrl || feishuFolderToken || apiBaseUrl;
+  const parentId = yuqueServer?.baseUrl || feishuServer?.folderToken || apiServer?.baseUrl;
+
+  const isButtonDisabled = useMemo(() => {
+    switch (type) {
+      case DatasetTypeEnum.yuque:
+        return !yuqueServer?.userId || !yuqueServer?.token;
+      case DatasetTypeEnum.feishu:
+        return !feishuServer?.appId || !feishuServer?.appSecret;
+      case DatasetTypeEnum.apiDataset:
+        return !apiServer?.baseUrl;
+      default:
+        return true;
+    }
+  }, [
+    type,
+    yuqueServer?.token,
+    yuqueServer?.userId,
+    yuqueServer?.baseUrl,
+    feishuServer?.appId,
+    feishuServer?.appSecret,
+    feishuServer?.folderToken,
+    apiServer?.baseUrl
+  ]);
 
   // Unified function to get the current path
-  const fetchCurrentPath = async () => {
+  const { runAsync: fetchCurrentPath, loading: isFetching } = useRequest2(async () => {
     if (!parentId) {
       setCurrentPath(t('dataset:rootdirectory'));
       return;
@@ -58,26 +76,16 @@ const ApiDatasetForm = ({
 
       switch (type) {
         case DatasetTypeEnum.yuque:
-          if (!yuqueUserId || !yuqueToken) return;
-          params.yuqueServer = {
-            userId: yuqueUserId,
-            token: yuqueToken,
-            baseUrl: yuqueBaseUrl || ''
-          };
+          if (!yuqueServer?.userId || !yuqueServer?.token) return;
+          params.yuqueServer = yuqueServer;
           break;
         case DatasetTypeEnum.feishu:
-          if (!feishuAppId || !feishuAppSecret) return;
-          params.feishuServer = {
-            appId: feishuAppId,
-            appSecret: feishuAppSecret,
-            folderToken: feishuFolderToken || ''
-          };
+          if (!feishuServer?.appId || !feishuServer?.appSecret) return;
+          params.feishuServer = feishuServer;
           break;
         case DatasetTypeEnum.apiDataset:
-          if (!apiBaseUrl) return;
-          params.apiServer = {
-            baseUrl: apiBaseUrl
-          };
+          if (!apiServer?.baseUrl) return;
+          params.apiServer = apiServer;
           break;
       }
 
@@ -86,7 +94,7 @@ const ApiDatasetForm = ({
     } catch (error) {
       setCurrentPath(t('dataset:rootdirectory'));
     }
-  };
+  });
 
   // Get the path when initialized
   useEffect(() => {
@@ -96,27 +104,24 @@ const ApiDatasetForm = ({
   }, [datasetId]);
 
   useEffect(() => {
-    if (type === DatasetTypeEnum.yuque) {
-      // Update the path when all the required fields are complete, or when the baseUrl changes
-      if (
-        (yuqueUserId && yuqueToken) ||
-        yuqueBaseUrl !== undefined ||
-        (feishuAppId && feishuAppSecret) ||
-        feishuFolderToken !== undefined ||
-        apiBaseUrl
-      ) {
-        fetchCurrentPath();
-      }
+    // Update the path when all the required fields are complete, or when the baseUrl changes
+    if (
+      (yuqueServer?.userId && yuqueServer?.token) ||
+      yuqueServer?.baseUrl !== undefined ||
+      (feishuServer?.appId && feishuServer?.appSecret) ||
+      feishuServer?.folderToken !== undefined ||
+      apiServer?.baseUrl
+    ) {
+      fetchCurrentPath();
     }
   }, [
-    yuqueUserId,
-    yuqueToken,
-    yuqueBaseUrl,
-    feishuAppId,
-    feishuAppSecret,
-    feishuFolderToken,
-    apiBaseUrl,
-    type
+    yuqueServer?.token,
+    yuqueServer?.userId,
+    yuqueServer?.baseUrl,
+    feishuServer?.appId,
+    feishuServer?.appSecret,
+    feishuServer?.folderToken,
+    apiServer?.baseUrl
   ]);
 
   // Unified handling of directory selection
@@ -156,28 +161,17 @@ const ApiDatasetForm = ({
       <Box
         px={2}
         py={1}
-        borderRadius="md"
-        fontSize="sm"
-        overflow="auto"
+        flex={'1 0 0'}
         width="220px"
-        display="flex"
+        borderRadius="md"
         alignItems="center"
+        overflow="auto"
         style={{ whiteSpace: 'nowrap' }}
       >
-        <Text fontSize={'sm'} fontWeight={500}>
-          {currentPath}
-        </Text>
+        {isFetching ? t('dataset:loading') : currentPath}
       </Box>
 
-      <Button
-        ml={2}
-        onClick={openDirectorySelector}
-        isDisabled={
-          (type === DatasetTypeEnum.yuque && (!yuqueUserId || !yuqueToken)) ||
-          (type === DatasetTypeEnum.feishu && (!feishuAppId || !feishuAppSecret)) ||
-          (type === DatasetTypeEnum.apiDataset && !apiBaseUrl)
-        }
-      >
+      <Button ml={2} onClick={openDirectorySelector} isDisabled={isButtonDisabled}>
         {t('dataset:selectDirectory')}
       </Button>
     </Flex>
@@ -187,15 +181,15 @@ const ApiDatasetForm = ({
   const renderDirectoryModal = () =>
     isDirectoryModalOpen && (
       <BaseUrlSelector
-        selectId={type === DatasetTypeEnum.yuque ? yuqueBaseUrl || 'root' : 'root'}
+        selectId={type === DatasetTypeEnum.yuque ? yuqueServer?.baseUrl || 'root' : 'root'}
         server={async (e: GetResourceFolderListProps) => {
           const params: any = { parentId: e.parentId };
 
           switch (type) {
             case DatasetTypeEnum.yuque:
               params.yuqueServer = {
-                userId: yuqueUserId,
-                token: yuqueToken,
+                userId: yuqueServer?.userId,
+                token: yuqueServer?.token,
                 baseUrl: ''
               };
               break;
