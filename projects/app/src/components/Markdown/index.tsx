@@ -31,6 +31,14 @@ type Props = {
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
+  metadata?: {
+    appId: string;
+    chatId: string;
+    shareId?: string;
+    outLinkUid?: string;
+    teamId?: string;
+    teamToken?: string;
+  };
 };
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -41,15 +49,21 @@ const Markdown = (props: Props) => {
 
   return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
 };
-const MarkdownRender = ({ source = '', showAnimation, isDisabled, forbidZhFormat }: Props) => {
+const MarkdownRender = ({
+  source = '',
+  showAnimation,
+  isDisabled,
+  forbidZhFormat,
+  metadata
+}: Props) => {
   const components = useMemo<any>(
     () => ({
       img: Image,
       pre: RewritePre,
       code: Code,
-      a: A
+      a: (props: any) => <A {...props} metadata={metadata} />
     }),
-    []
+    [metadata]
   );
 
   const formatSource = useMemo(() => {
