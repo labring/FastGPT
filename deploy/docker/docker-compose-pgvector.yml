@@ -79,6 +79,12 @@ services:
     restart: always
     command: |
       redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "mypassword", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s     
     volumes:
       - ./redis/data:/data
 
