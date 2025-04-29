@@ -161,7 +161,6 @@ export const parseQuoteContent = (text: string, parseQuote: boolean) => {
 
 // Parse <think></think> tags to think and answer - stream response
 export const parseReasoningStreamContent = () => {
-  // 初始化状态，相当于自动reset
   let isInThinkTag: boolean | undefined = undefined;
   let startTagBuffer = '';
   let endTagBuffer = '';
@@ -169,7 +168,6 @@ export const parseReasoningStreamContent = () => {
   const startTag = '<think>';
   const endTag = '</think>';
 
-  // 添加Quote解析相关变量
   let isInQuoteTag: boolean | undefined = undefined;
   let quoteBuffer = '';
   const mongoIdLength = 24; // MongoDB ID长度
@@ -202,7 +200,6 @@ export const parseReasoningStreamContent = () => {
     // @ts-ignore
     const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
 
-    // 检查是否是流结束信号
     const isStreamEnd = !!finishReason;
 
     // 先处理think标签
@@ -217,11 +214,9 @@ export const parseReasoningStreamContent = () => {
       processedContent = '';
       processedReasoningContent = '';
     } else if (isInThinkTag === false) {
-      // 如果不在 think 标签中，或者有 reasoningContent(接口已解析），则返回 reasoningContent 和 content
       processedContent = content;
       processedReasoningContent = '';
     } else if (isInThinkTag === undefined) {
-      // 检测是否为 think 标签开头的数据
       // Parse content think and answer
       startTagBuffer += content;
       // 太少内容时候，暂时不解析
@@ -233,7 +228,6 @@ export const parseReasoningStreamContent = () => {
         processedContent = '';
         processedReasoningContent = startTagBuffer.slice(startTag.length);
       } else {
-        // 如果未命中 think 标签，则认为不在 think 标签中，返回 buffer 内容作为 content
         isInThinkTag = false;
         processedContent = startTagBuffer;
         processedReasoningContent = '';
