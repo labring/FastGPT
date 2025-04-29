@@ -81,7 +81,6 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   maxReservedThreads: number;
   workerQueue: WorkerQueueItem[] = [];
   waitQueue: WorkerRunTaskType<Props>[] = [];
-  createWorkerQueue: WorkerQueueItem[] = [];
 
   constructor({ name, maxReservedThreads }: { name: WorkerNameEnum; maxReservedThreads: number }) {
     this.name = name;
