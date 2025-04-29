@@ -29,6 +29,7 @@ import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import {
   computedMaxToken,
   llmCompletionsBodyFormat,
+  parseQuoteContent,
   parseReasoningContent,
   parseReasoningStreamContent
 } from '../../../../ai/utils';
@@ -60,6 +61,7 @@ export const runToolWithPromptCall = async (
     runtimeEdges,
     externalProvider,
     stream,
+    parseQuote = true,
     workflowStreamResponse,
     params: {
       temperature,
@@ -305,7 +307,7 @@ export const runToolWithPromptCall = async (
 
       const [think, answer] = parseReasoningContent(content);
       return {
-        answer,
+        answer: parseQuoteContent(answer, parseQuote),
         reasoning: think,
         finish_reason,
         inputTokens: usage?.prompt_tokens,
@@ -566,13 +568,15 @@ async function streamResponse({
   res,
   stream,
   workflowStreamResponse,
-  aiChatReasoning
+  aiChatReasoning,
+  parseQuote = false
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
   aiChatReasoning?: boolean;
+  parseQuote?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -595,7 +599,11 @@ async function streamResponse({
       break;
     }
 
-    const { reasoningContent, content, finishReason } = parsePart(part, aiChatReasoning);
+    const { reasoningContent, content, finishReason } = parsePart(
+      part,
+      aiChatReasoning,
+      parseQuote
+    );
     finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;

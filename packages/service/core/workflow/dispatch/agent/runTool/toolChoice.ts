@@ -26,7 +26,12 @@ import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/in
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  llmCompletionsBodyFormat,
+  parseQuoteContent,
+  parseReasoningStreamContent
+} from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -95,6 +100,7 @@ export const runToolWithToolChoice = async (
     runtimeNodes,
     runtimeEdges,
     stream,
+    parseQuote = true,
     externalProvider,
     workflowStreamResponse,
     params: {
@@ -320,7 +326,8 @@ export const runToolWithToolChoice = async (
         res,
         workflowStreamResponse,
         toolNodes,
-        stream: aiResponse
+        stream: aiResponse,
+        parseQuote
       });
 
       return {
@@ -373,7 +380,7 @@ export const runToolWithToolChoice = async (
       }
 
       return {
-        answer,
+        answer: parseQuoteContent(answer, parseQuote),
         toolCalls: toolCalls,
         finish_reason,
         inputTokens: usage?.prompt_tokens,
@@ -627,12 +634,14 @@ async function streamResponse({
   res,
   toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  parseQuote
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  parseQuote?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -642,23 +651,26 @@ async function streamResponse({
   let textAnswer = '';
   let callingTool: { name: string; arguments: string } | null = null;
   let toolCalls: ChatCompletionMessageToolCall[] = [];
-  let finishReason: CompletionFinishReason = null;
+  let finish_reason: CompletionFinishReason = null;
   let usage = getLLMDefaultUsage();
+
+  const { parsePart } = parseReasoningStreamContent();
 
   for await (const part of stream) {
     usage = part.usage || usage;
     if (res.closed) {
       stream.controller?.abort();
-      finishReason = 'close';
+      finish_reason = 'close';
       break;
     }
 
-    const responseChoice = part.choices?.[0]?.delta;
-    const finish_reason = part.choices?.[0]?.finish_reason as CompletionFinishReason;
-    finishReason = finishReason || finish_reason;
+    const { content: toolChoiceContent, finishReason } = parsePart(part, false, parseQuote);
 
-    if (responseChoice?.content) {
-      const content = responseChoice.content || '';
+    const responseChoice = part.choices?.[0]?.delta;
+    finish_reason = finishReason || finish_reason;
+
+    if (toolChoiceContent) {
+      const content = toolChoiceContent || '';
       textAnswer += content;
 
       workflowStreamResponse?.({
@@ -742,5 +754,5 @@ async function streamResponse({
     }
   }
 
-  return { answer: textAnswer, toolCalls, finish_reason: finishReason, usage };
+  return { answer: textAnswer, toolCalls, finish_reason, usage };
 }

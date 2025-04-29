@@ -134,7 +134,7 @@ test('Parse reasoning stream content test', async () => {
           }
         ]
       };
-      const [reasoningContent, content] = parsePart(formatPart, true);
+      const { reasoningContent, content } = parsePart(formatPart, true);
       answer += content;
       reasoning += reasoningContent;
     });
