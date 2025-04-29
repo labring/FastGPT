@@ -55,6 +55,7 @@ export async function dispatchDatasetSearch(
     runningUserInfo: { tmbId },
     histories,
     node,
+    parseQuote = true,
     params: {
       datasets = [],
       similarity,
@@ -266,7 +267,7 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: {
-      prompt: getDatasetSearchToolResponsePrompt(),
+      prompt: getDatasetSearchToolResponsePrompt(parseQuote),
       quotes: searchRes.map((item) => ({
         id: item.id,
         sourceName: item.sourceName,
