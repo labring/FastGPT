@@ -236,7 +236,7 @@ export const authCollectionInChat = async ({
         .flat()
     );
 
-    if (collectionIds.every((id) => quoteListSet.has(id))) {
+    if (collectionIds.every((id) => quoteListSet.has(String(id)))) {
       return {
         chatItem
       };
