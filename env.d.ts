@@ -35,6 +35,7 @@ declare global {
       ALLOWED_ORIGINS?: string;
       SHOW_COUPON?: string;
       CONFIG_JSON_PATH?: string;
+      PASSWORD_LOGIN_LOCK_SECONDS?: string;
     }
   }
 }
