@@ -74,6 +74,7 @@ export type Props = ChatCompletionCreateParams &
     responseChatItemId?: string;
     stream?: boolean;
     detail?: boolean;
+    parseQuote?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
   };
 
@@ -106,6 +107,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     stream = false,
     detail = false,
+    parseQuote = false,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
@@ -288,6 +290,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             chatConfig,
             histories: newHistories,
             stream,
+            parseQuote,
             maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             workflowStreamResponse: workflowResponseWrite,
             version: 'v2',
