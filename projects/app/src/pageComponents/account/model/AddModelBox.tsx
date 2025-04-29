@@ -143,6 +143,7 @@ export const ModelEditModal = ({
           data[key] = '';
         }
       }
+
       return putSystemModel({
         model: data.model,
         metadata: data
@@ -490,7 +491,7 @@ export const ModelEditModal = ({
                             value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                             onChange={(e) => {
                               if (!e) {
-                                setValue('defaultConfig', {});
+                                setValue('defaultConfig', undefined);
                                 return;
                               }
                               try {
@@ -582,12 +583,6 @@ export const ModelEditModal = ({
                     </Td>
                   </Tr>
                   <Tr>
-                    <Td>
-                      <HStack spacing={1}>
-                        <Box>{t('account:model.function_call')}</Box>
-                        <QuestionTip label={t('account:model.function_call_tip')} />
-                      </HStack>
-                    </Td>
                     <Td textAlign={'right'}>
                       <Flex justifyContent={'flex-end'}>
                         <Switch {...register('functionCall')} />
@@ -720,12 +715,13 @@ export const ModelEditModal = ({
                         value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                         resize
                         onChange={(e) => {
+                          console.log(e, '===');
                           if (!e) {
-                            setValue('defaultConfig', {});
+                            setValue('defaultConfig', undefined);
                             return;
                           }
                           try {
-                            setValue('defaultConfig', JSON.parse(e));
+                            setValue('defaultConfig', JSON.parse(e.trim()));
                           } catch (error) {
                             console.error(error);
                           }
