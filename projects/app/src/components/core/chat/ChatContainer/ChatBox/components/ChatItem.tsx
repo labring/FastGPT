@@ -240,11 +240,6 @@ const ChatItem = (props: Props) => {
       quoteId?: string;
     }) => {
       if (!setQuoteData) return;
-      if (isChatting)
-        return toast({
-          title: t('chat:chat.waiting_for_response'),
-          status: 'info'
-        });
 
       const collectionIdList = collectionId
         ? [collectionId]
@@ -277,18 +272,7 @@ const ChatItem = (props: Props) => {
               }
       });
     },
-    [
-      setQuoteData,
-      isChatting,
-      toast,
-      t,
-      quoteList,
-      isShowReadRawSource,
-      appId,
-      chatId,
-      chat.dataId,
-      outLinkAuthData
-    ]
+    [setQuoteData, quoteList, isShowReadRawSource, appId, chatId, chat.dataId, outLinkAuthData]
   );
 
   useEffect(() => {

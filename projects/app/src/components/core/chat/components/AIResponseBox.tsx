@@ -106,9 +106,7 @@ const RenderText = React.memo(function RenderText({
     if (!text) return '';
 
     // Remove quote references if not showing response detail
-    return isResponseDetail
-      ? text
-      : text.replace(/\[([a-f0-9]{24})\]\(QUOTE\)/g, '').replace(/\[([a-f0-9]{24})\](?!\()/g, '');
+    return isResponseDetail ? text : text.replace(/\[([a-f0-9]{24})\]\(QUOTE\)/g, '');
   }, [text, isResponseDetail]);
 
   const chatAuthData = useCreation(() => {
