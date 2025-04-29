@@ -107,7 +107,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     stream = false,
     detail = false,
-    parseQuote = true,
+    parseQuote = false,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
