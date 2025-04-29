@@ -81,6 +81,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   maxReservedThreads: number;
   workerQueue: WorkerQueueItem[] = [];
   waitQueue: WorkerRunTaskType<Props>[] = [];
+  createWorkerQueue: WorkerQueueItem[] = [];
 
   constructor({ name, maxReservedThreads }: { name: WorkerNameEnum; maxReservedThreads: number }) {
     this.name = name;
@@ -90,6 +91,12 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
   private runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
     // Get idle worker or create a new worker
     const runningWorker = (() => {
+      // @ts-ignore
+      if (data.workerId) {
+        // @ts-ignore
+        const worker = this.workerQueue.find((item) => item.id === data.workerId);
+        if (worker) return worker;
+      }
       const worker = this.workerQueue.find((item) => item.status === 'idle');
       if (worker) return worker;
 
@@ -140,7 +147,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     });
   }
 
-  private createWorker() {
+  createWorker() {
     // Create a new worker and push it queue.
     const workerId = `${Date.now()}${Math.random()}`;
     const worker = getWorker(this.name);
@@ -157,23 +164,15 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
     // watch response
     worker.on('message', ({ id, type, data }: WorkerResponse<Response>) => {
-      // Run callback
-      const workerItem = this.workerQueue.find((item) => item.id === id);
-
-      if (!workerItem) {
-        addLog.warn('Invalid worker', { id, type, data });
-        return;
-      }
-
       if (type === 'success') {
-        workerItem.resolve(data);
+        item.resolve(data);
       } else if (type === 'error') {
-        workerItem.reject(data);
+        item.reject(data);
       }
 
       // Clear timeout timer and update worker status
-      clearTimeout(workerItem.timeoutId);
-      workerItem.status = 'idle';
+      clearTimeout(item.timeoutId);
+      item.status = 'idle';
     });
 
     // Worker error, terminate and delete it.（Un catch error)

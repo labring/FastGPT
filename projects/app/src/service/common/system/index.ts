@@ -25,6 +25,7 @@ import {
 } from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
+import { preLoadWorker } from '../../../../../../packages/service/worker/preload';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -90,7 +91,12 @@ export function initGlobalVariables() {
 
 /* Init system data(Need to connected db). It only needs to run once */
 export async function getInitConfig() {
-  return Promise.all([initSystemConfig(), getSystemVersion(), loadSystemModels()]);
+  await Promise.all([initSystemConfig(), getSystemVersion(), loadSystemModels()]);
+  try {
+    await preLoadWorker();
+  } catch (error) {
+    console.error('Preload worker error', error);
+  }
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
@@ -146,11 +152,6 @@ export async function initSystemConfig() {
     systemEnv: global.systemEnv,
     subPlans: global.subPlans
   });
-
-  // 模拟大量 worker 创建
-  console.log('开始创建 worker');
-  await Promise.all(new Array(100).fill(0).map(async () => countPromptTokens('1')));
-  console.log('完成');
 }
 
 async function getSystemVersion() {
