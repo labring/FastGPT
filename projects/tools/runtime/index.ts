@@ -10,11 +10,11 @@ program
   .name('fastgpt-tools')
   .description('Run tools for FastGPT')
   .option('-p, --prod', 'Run in production mode')
+  .option('-P, --port <port>', 'Specify the port to run on', '')
   .parse();
 
-const PORT = parseInt(process.env.PORT || '3000');
-
 const prod = program.opts().prod as boolean;
+const PORT = parseInt(program.opts().port || process.env.PORT || '3000');
 
 init(prod); // init the tool
 

@@ -4,6 +4,8 @@
     "build:node": "bun build --outfile=dist/index.js --target=node --minify ./index.ts",
     "build:bun": "bun build --outfile=dist/index.js --target=bun --minify ./index.ts",
     "build": "bun run build:node",
+    "start": "cd dist && node index.js -p",
+    "start:bun": "bun --cwd=dist index.js -p",
     "dev": "bun run --watch index.ts"
   },
   "dependencies": {
