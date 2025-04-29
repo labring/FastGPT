@@ -126,7 +126,8 @@ const ApiDatasetForm = ({
 
   // Unified handling of directory selection
   const handleSelectDirectory = async (id: ParentIdType) => {
-    const value = id === 'root' || id === null || id === undefined ? '' : String(id);
+    const value = id === 'root' || id === null || id === undefined ? '' : id;
+    console.log('value', value);
     switch (type) {
       case DatasetTypeEnum.yuque:
         setValue('yuqueServer.baseUrl', value);
