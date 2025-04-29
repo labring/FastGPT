@@ -16,6 +16,8 @@ import {
 import { useTranslation } from 'next-i18next';
 import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import ToolSelect from './ToolSelect';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type Props = {
   tools: GateTool[];
@@ -160,7 +162,22 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
             </Stack>
           </RadioGroup>
         </FormControl>
-
+        {/* 可用工具选择 */}
+        <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
+          <Flex alignItems="center" gap={spacing.xs}>
+            <Text
+              fontWeight={formStyles.fontWeight}
+              fontSize={formStyles.fontSize}
+              lineHeight={formStyles.lineHeight}
+              letterSpacing={formStyles.letterSpacing}
+              color="myGray.700"
+            >
+              {t('common:core.app.Tool call')}
+            </Text>
+            <QuestionTip ml={1} label={t('app:plugin_dispatch_tip')} />
+          </Flex>
+          <ToolSelect />
+        </FormControl>
         {/* 可用工具 */}
         {/* <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
           <Flex gap={spacing.xs}>
