@@ -27,8 +27,9 @@ export const countGptMessagesTokens = async (
       name: WorkerNameEnum.countGptMessagesTokens,
       maxReservedThreads: global.systemEnv?.tokenWorkers || 30
     });
-
+    console.log('worker 创建');
     const total = await workerController.run({ messages, tools, functionCall });
+    console.log('tokens', total);
 
     return total;
   } catch (error) {

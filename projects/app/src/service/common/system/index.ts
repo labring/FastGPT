@@ -149,9 +149,7 @@ export async function initSystemConfig() {
 
   // 模拟大量 worker 创建
   console.log('开始创建 worker');
-  for (let i = 0; i < 100; i++) {
-    await countPromptTokens('1');
-  }
+  await Promise.all(new Array(100).fill(0).map(async () => countPromptTokens('1')));
   console.log('完成');
 }
 
