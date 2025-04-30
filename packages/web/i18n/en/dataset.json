@@ -166,5 +166,5 @@
   "yuque_dataset": "Yuque Dataset",
   "yuque_dataset_config": "Yuque Dataset Config",
   "yuque_dataset_desc": "Can build a dataset using Yuque documents by configuring permissions, without secondary storage",
-  "yuque_field": "Please fill in UserID and Token"
+  "yuque_field": "Please fill in User ID and Token"
 }

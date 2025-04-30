@@ -167,5 +167,5 @@
   "yuque_dataset": "语雀知识库",
   "yuque_dataset_config": "配置语雀知识库",
   "yuque_dataset_desc": "可通过配置语雀文档权限，使用语雀文档构建知识库，文档不会进行二次存储",
-  "yuque_field": "请填写UserID和Token"
+  "yuque_field": "请填写 User ID 和 Token"
 }
