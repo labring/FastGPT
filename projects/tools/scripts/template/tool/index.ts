@@ -14,6 +14,8 @@ export const main = async (props: z.infer<typeof InputType>) => {
   }
 };
 
+config.toolId = config.toolId ?? __dirname.split('/').pop()?.split('.').shift();
+
 const tool: ToolType = {
   ...config,
   cb: main
