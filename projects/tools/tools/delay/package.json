@@ -1,5 +1,5 @@
 {
-  "name": "template-toolset",
+  "name": "fastgpt-tools-delay",
   "module": "index.ts",
   "type": "module",
   "scripts": {
