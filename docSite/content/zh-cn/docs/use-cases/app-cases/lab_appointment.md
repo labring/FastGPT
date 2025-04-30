@@ -563,7 +563,7 @@ HTTP模块中，需要设置 3 个工具参数：
             "hidden"
           ],
           "label": "",
-          "value": 6000,
+          "value": 5000,
           "valueType": "number"
         },
         {
