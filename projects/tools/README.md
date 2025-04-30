@@ -30,9 +30,21 @@ FastGPT 系统工具服务
 
 编译后在 `runtime/dist` 目录下可以直接运行（默认为 node 运行时）
 
-### 通过 docker 部署
+#### 使用 docker 编译
+在 tools 目录下执行 `docker build -t fastgpt-tools .` 即可构建镜像
+构建完成后，可以使用 `docker run -p 3010:3000 fastgpt-tools` 启动容器
 
-<!-- TODO -->
+### 部署
+
+使用 docker 部署后，使用 tools.json 配置文件动态挂载系统工具。
+
+```bash
+docker run -p 3010:3000 -v /path/to/tools.json:/app/tools.json fastgpt-tools
+```
+
+tools.json 格式见 `tools.template.json`。
+
+> 每次修改 json 后需要重启容器才能生效。
 
 ## 贡献指南
 
@@ -48,7 +60,9 @@ FastGPT 系统工具服务
 6. 编写测试样例并通过测试
 7. 提交代码并发起 PR 到 labring/FastGPT
 
-### 私有化插件
+### 私有化插件（热插拔）
 
 按照上述步骤开发完毕后，执行 `bun run build` 将构建执行工具构建。
-请参考**部署**中的步骤进行部署。
+1. 将bundle 好的 js 文件上传到对象存储。
+2. 在 tools.json 中配置工具的 url
+> 参考**部署**中的步骤进行部署。
