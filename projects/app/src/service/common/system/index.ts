@@ -24,8 +24,7 @@ import {
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
-import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
-import { preLoadWorker } from '../../../../../../packages/service/worker/preload';
+import { preLoadWorker } from '@fastgpt/service/worker/preload';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
