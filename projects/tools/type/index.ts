@@ -21,7 +21,7 @@ export const ToolSchema = z
     description: InfoString,
     type: ToolTypeEnum,
     icon: z.string(),
-    cb: ToolCallbackType.optional(),
+    cb: ToolCallbackType,
     author: z.string().optional(),
     docURL: z.string().optional(),
     version: z.string(),

@@ -4,6 +4,14 @@ FastGPT 系统工具服务
 
 ## 架构说明
 
+### 技术栈
+
+- TypeScript
+- Bun
+- express (后续会改为 tRPC)
+
+### 目录结构
+
 - `dev` 调试工具时可以使用的 Web 工具
 - `runtime` 工具的运行时
 - `scripts` 脚本
@@ -11,14 +19,16 @@ FastGPT 系统工具服务
 - `tools` 系统工具目录
 
 系统工具可以分为两种：
-1. 系统工具
-2. 工具集，工具集内包括功能相似的多个工具
+1. 系统工具 `tool`
+2. 工具集，工具集内包括功能相似的多个工具 `toolset`
 
 ## 部署
 
 ### 编译
 1. `bun i`
 2. `bun run build`
+
+编译后在 `runtime/dist` 目录下可以直接运行（默认为 node 运行时）
 
 ### 通过 docker 部署
 
@@ -29,7 +39,9 @@ FastGPT 系统工具服务
 ### 贡献社区插件
 
 1. 安装依赖: `bun i`
-2. 创建新的工具/工具集 `bun run new tool <name>` 或 `bun run new folder <name>`
+2. 创建新的工具/工具集
+  1. 工具 `bun run new <name>`
+  2. 工具集 `bun run new --toolset <name>`
 3. `cd tools/<name>`
 4. 修改配置文件 `config.ts`
 5. 在 `src` 目录下实现工具逻辑
