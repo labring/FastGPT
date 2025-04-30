@@ -19,7 +19,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../../../ai/utils';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -135,13 +135,13 @@ const completions = async ({
         model: cqModel.model,
         temperature: 0.01,
         messages: requestMessages,
-        stream: false
+        stream: true
       },
       cqModel
     ),
     userKey: externalProvider.openaiAccount
   });
-  const { text: answer, usage } = await llmResponseToAnswerText(response);
+  const { text: answer, usage } = await formatLLMResponse(response);
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
   // console.log(answer, '----');

@@ -5,10 +5,12 @@ import {
   CompletionFinishReason,
   StreamChatType,
   UnStreamChatType,
-  CompletionUsage
+  CompletionUsage,
+  ChatCompletionMessageToolCall
 } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from './model';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 /* 
   Count response max token
@@ -105,33 +107,84 @@ export const llmStreamResponseToAnswerText = async (
 ): Promise<{
   text: string;
   usage?: CompletionUsage;
+  toolCalls?: ChatCompletionMessageToolCall[];
 }> => {
   let answer = '';
   let usage = getLLMDefaultUsage();
+  let toolCalls: ChatCompletionMessageToolCall[] = [];
+  let callingTool: { name: string; arguments: string } | null = null;
+
   for await (const part of response) {
     usage = part.usage || usage;
+    const responseChoice = part.choices?.[0]?.delta;
 
-    const content = part.choices?.[0]?.delta?.content || '';
+    const content = responseChoice?.content || '';
     answer += content;
+
+    // Tool calls
+    if (responseChoice?.tool_calls?.length) {
+      responseChoice.tool_calls.forEach((toolCall) => {
+        const index = toolCall.index;
+
+        if (toolCall.id || callingTool) {
+          // 有 id，代表新 call 工具
+          if (toolCall.id) {
+            callingTool = {
+              name: toolCall.function?.name || '',
+              arguments: toolCall.function?.arguments || ''
+            };
+          } else if (callingTool) {
+            // Continue call(Perhaps the name of the previous function was incomplete)
+            callingTool.name += toolCall.function?.name || '';
+            callingTool.arguments += toolCall.function?.arguments || '';
+          }
+
+          if (!callingTool) {
+            return;
+          }
+
+          // New tool, add to list.
+          const toolId = getNanoid();
+          toolCalls[index] = {
+            ...toolCall,
+            id: toolId,
+            type: 'function',
+            function: callingTool
+          };
+          callingTool = null;
+        } else {
+          /* arg 追加到当前工具的参数里 */
+          const arg: string = toolCall?.function?.arguments ?? '';
+          const currentTool = toolCalls[index];
+          if (currentTool && arg) {
+            currentTool.function.arguments += arg;
+          }
+        }
+      });
+    }
   }
   return {
     text: parseReasoningContent(answer)[1],
-    usage
+    usage,
+    toolCalls
   };
 };
 export const llmUnStreamResponseToAnswerText = async (
   response: UnStreamChatType
 ): Promise<{
   text: string;
+  toolCalls?: ChatCompletionMessageToolCall[];
   usage?: CompletionUsage;
 }> => {
   const answer = response.choices?.[0]?.message?.content || '';
+  const toolCalls = response.choices?.[0]?.message?.tool_calls;
   return {
     text: answer,
-    usage: response.usage
+    usage: response.usage,
+    toolCalls
   };
 };
-export const llmResponseToAnswerText = async (response: StreamChatType | UnStreamChatType) => {
+export const formatLLMResponse = async (response: StreamChatType | UnStreamChatType) => {
   if ('iterator' in response) {
     return llmStreamResponseToAnswerText(response);
   }
