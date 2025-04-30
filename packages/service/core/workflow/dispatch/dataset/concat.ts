@@ -21,7 +21,7 @@ export async function dispatchDatasetConcat(
   props: DatasetConcatProps
 ): Promise<DatasetConcatResponse> {
   const {
-    params: { limit = 1500, ...quoteMap }
+    params: { limit = 6000, ...quoteMap }
   } = props as DatasetConcatProps;
 
   const quoteList = Object.values(quoteMap).filter((list) => Array.isArray(list));

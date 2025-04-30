@@ -19,7 +19,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   const {
     datasetId,
     text,
-    limit = 1500,
+    limit = 5000,
     similarity,
     searchMode,
     embeddingWeight,

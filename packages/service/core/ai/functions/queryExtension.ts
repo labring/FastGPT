@@ -4,7 +4,7 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../utils';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '../utils';
 import { addLog } from '../../../common/system/log';
 import { filterGPTMessageByMaxContext } from '../../chat/utils';
 import json5 from 'json5';
@@ -170,7 +170,7 @@ assistant: ${chatBg}
   const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
-        stream: false,
+        stream: true,
         model: modelData.model,
         temperature: 0.1,
         messages
@@ -178,7 +178,7 @@ assistant: ${chatBg}
       modelData
     )
   });
-  const { text: answer, usage } = await llmResponseToAnswerText(response);
+  const { text: answer, usage } = await formatLLMResponse(response);
   const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
   const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 

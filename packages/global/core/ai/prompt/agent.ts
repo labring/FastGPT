@@ -60,7 +60,7 @@ export const getExtractJsonToolPrompt = (version?: string) => {
 """
 - {{description}}
 - 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
-- 需要结合前面的对话内容，一起生成合适的参数。
+- 需要结合历史记录，一起生成合适的参数。
 """
 
 本次输入内容: """{{content}}"""

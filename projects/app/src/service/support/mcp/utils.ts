@@ -37,6 +37,7 @@ import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
 
 export const pluginNodes2InputSchema = (
   nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
@@ -288,7 +289,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     })();
 
     // Format response content
-    responseContent = responseContent.trim().replace(/\[\w+\]\(QUOTE\)/g, '');
+    responseContent = removeDatasetCiteText(responseContent.trim(), false);
 
     return responseContent;
   };

@@ -16,7 +16,7 @@ describe('Markdown utils', () => {
 
     it('should convert quote references to proper markdown links', () => {
       const input = '[123456789012345678901234]';
-      const expected = '[123456789012345678901234](QUOTE)';
+      const expected = '[123456789012345678901234](CITE)';
       expect(mdTextFormat(input)).toBe(expected);
     });
 
@@ -35,7 +35,7 @@ describe('Markdown utils', () => {
       const input =
         'Math \\[x^2\\] with link https://test.com，and quote [123456789012345678901234]';
       const expected =
-        'Math $$x^2$$ with link https://test.com ，and quote [123456789012345678901234](QUOTE)';
+        'Math $$x^2$$ with link https://test.com ，and quote [123456789012345678901234](CITE)';
       expect(mdTextFormat(input)).toBe(expected);
     });
   });

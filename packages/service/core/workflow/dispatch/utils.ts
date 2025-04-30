@@ -1,10 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeOutputKeyEnum
-} from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   RuntimeEdgeItemType,
   RuntimeNodeItemType,
@@ -34,31 +31,22 @@ export const getWorkflowResponseWrite = ({
   return ({
     write,
     event,
-    data,
-    stream
+    data
   }: {
     write?: (text: string) => void;
     event: SseResponseEventEnum;
     data: Record<string, any>;
-    stream?: boolean; // Focus set stream response
   }) => {
-    const useStreamResponse = stream ?? streamResponse;
+    const useStreamResponse = streamResponse;
 
     if (!res || res.closed || !useStreamResponse) return;
 
     // Forbid show detail
-    const detailEvent: Record<string, 1> = {
-      [SseResponseEventEnum.error]: 1,
-      [SseResponseEventEnum.flowNodeStatus]: 1,
-      [SseResponseEventEnum.flowResponses]: 1,
-      [SseResponseEventEnum.interactive]: 1,
-      [SseResponseEventEnum.toolCall]: 1,
-      [SseResponseEventEnum.toolParams]: 1,
-      [SseResponseEventEnum.toolResponse]: 1,
-      [SseResponseEventEnum.updateVariables]: 1,
-      [SseResponseEventEnum.flowNodeResponse]: 1
+    const notDetailEvent: Record<string, 1> = {
+      [SseResponseEventEnum.answer]: 1,
+      [SseResponseEventEnum.fastAnswer]: 1
     };
-    if (!detail && detailEvent[event]) return;
+    if (!detail && !notDetailEvent[event]) return;
 
     // Forbid show running status
     const statusEvent: Record<string, 1> = {

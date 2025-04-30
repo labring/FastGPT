@@ -26,7 +26,12 @@ import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/in
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  llmCompletionsBodyFormat,
+  removeDatasetCiteText,
+  parseLLMStreamResponse
+} from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -89,12 +94,13 @@ export const runToolWithToolChoice = async (
     interactiveEntryToolParams,
     ...workflowProps
   } = props;
-  const {
+  let {
     res,
     requestOrigin,
     runtimeNodes,
     runtimeEdges,
     stream,
+    retainDatasetCite = true,
     externalProvider,
     workflowStreamResponse,
     params: {
@@ -104,9 +110,11 @@ export const runToolWithToolChoice = async (
       aiChatTopP,
       aiChatStopSign,
       aiChatResponseFormat,
-      aiChatJsonSchema
+      aiChatJsonSchema,
+      aiChatReasoning
     }
   } = workflowProps;
+  aiChatReasoning = !!aiChatReasoning && !!toolModel.reasoning;
 
   if (maxRunToolTimes <= 0 && response) {
     return response;
@@ -279,6 +287,7 @@ export const runToolWithToolChoice = async (
       messages: requestMessages,
       tools,
       tool_choice: 'auto',
+      parallel_tool_calls: true,
       temperature,
       max_tokens,
       top_p: aiChatTopP,
@@ -288,7 +297,7 @@ export const runToolWithToolChoice = async (
     },
     toolModel
   );
-  // console.log(JSON.stringify(filterMessages, null, 2), '==requestMessages');
+  // console.log(JSON.stringify(requestBody, null, 2), '==requestMessages');
   /* Run llm */
   const {
     response: aiResponse,
@@ -320,7 +329,9 @@ export const runToolWithToolChoice = async (
         res,
         workflowStreamResponse,
         toolNodes,
-        stream: aiResponse
+        stream: aiResponse,
+        aiChatReasoning,
+        retainDatasetCite
       });
 
       return {
@@ -335,11 +346,38 @@ export const runToolWithToolChoice = async (
       const finish_reason = result.choices?.[0]?.finish_reason as CompletionFinishReason;
       const calls = result.choices?.[0]?.message?.tool_calls || [];
       const answer = result.choices?.[0]?.message?.content || '';
+      // @ts-ignore
+      const reasoningContent = result.choices?.[0]?.message?.reasoning_content || '';
       const usage = result.usage;
 
-      // 加上name和avatar
+      if (aiChatReasoning && reasoningContent) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            reasoning_content: removeDatasetCiteText(reasoningContent, retainDatasetCite)
+          })
+        });
+      }
+
+      // 格式化 toolCalls
       const toolCalls = calls.map((tool) => {
         const toolNode = toolNodes.find((item) => item.nodeId === tool.function?.name);
+
+        // 不支持 stream 模式的模型的这里需要补一个响应给客户端
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: tool.id,
+              toolName: toolNode?.name || '',
+              toolAvatar: toolNode?.avatar || '',
+              functionName: tool.function.name,
+              params: tool.function?.arguments ?? '',
+              response: ''
+            }
+          }
+        });
+
         return {
           ...tool,
           toolName: toolNode?.name || '',
@@ -347,27 +385,11 @@ export const runToolWithToolChoice = async (
         };
       });
 
-      // 不支持 stream 模式的模型的流失响应
-      toolCalls.forEach((tool) => {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.toolCall,
-          data: {
-            tool: {
-              id: tool.id,
-              toolName: tool.toolName,
-              toolAvatar: tool.toolAvatar,
-              functionName: tool.function.name,
-              params: tool.function?.arguments ?? '',
-              response: ''
-            }
-          }
-        });
-      });
       if (answer) {
         workflowStreamResponse?.({
           event: SseResponseEventEnum.fastAnswer,
           data: textAdaptGptResponse({
-            text: answer
+            text: removeDatasetCiteText(answer, retainDatasetCite)
           })
         });
       }
@@ -627,12 +649,16 @@ async function streamResponse({
   res,
   toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  aiChatReasoning,
+  retainDatasetCite
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  aiChatReasoning: boolean;
+  retainDatasetCite?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -642,105 +668,130 @@ async function streamResponse({
   let textAnswer = '';
   let callingTool: { name: string; arguments: string } | null = null;
   let toolCalls: ChatCompletionMessageToolCall[] = [];
-  let finishReason: CompletionFinishReason = null;
+  let finish_reason: CompletionFinishReason = null;
   let usage = getLLMDefaultUsage();
+
+  const { parsePart } = parseLLMStreamResponse();
 
   for await (const part of stream) {
     usage = part.usage || usage;
     if (res.closed) {
       stream.controller?.abort();
-      finishReason = 'close';
+      finish_reason = 'close';
       break;
     }
 
+    const {
+      reasoningContent,
+      content: toolChoiceContent,
+      responseContent,
+      finishReason
+    } = parsePart({
+      part,
+      parseThinkTag: true,
+      retainDatasetCite
+    });
+    textAnswer += toolChoiceContent;
+    finish_reason = finishReason || finish_reason;
+
     const responseChoice = part.choices?.[0]?.delta;
-    const finish_reason = part.choices?.[0]?.finish_reason as CompletionFinishReason;
-    finishReason = finishReason || finish_reason;
 
-    if (responseChoice?.content) {
-      const content = responseChoice.content || '';
-      textAnswer += content;
-
+    // Reasoning response
+    if (aiChatReasoning && reasoningContent) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
+          reasoning_content: reasoningContent
         })
       });
     }
-    if (responseChoice?.tool_calls?.[0]) {
-      // @ts-ignore
-      const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
-      // In a stream response, only one tool is returned at a time.  If have id, description is executing a tool
-      if (toolCall.id || callingTool) {
-        // Start call tool
-        if (toolCall.id) {
-          callingTool = {
-            name: toolCall.function?.name || '',
-            arguments: toolCall.function?.arguments || ''
-          };
-        } else if (callingTool) {
-          // Continue call
-          callingTool.name += toolCall.function.name || '';
-          callingTool.arguments += toolCall.function.arguments || '';
-        }
+    if (responseContent) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: responseContent
+        })
+      });
+    }
+    // Parse tool calls
+    if (responseChoice?.tool_calls?.length) {
+      responseChoice.tool_calls.forEach((toolCall) => {
+        const index = toolCall.index;
 
-        const toolFunction = callingTool!;
+        // Call new tool
+        if (toolCall.id || callingTool) {
+          // 有 id，代表新 call 工具
+          if (toolCall.id) {
+            callingTool = {
+              name: toolCall.function?.name || '',
+              arguments: toolCall.function?.arguments || ''
+            };
+          } else if (callingTool) {
+            // Continue call(Perhaps the name of the previous function was incomplete)
+            callingTool.name += toolCall.function?.name || '';
+            callingTool.arguments += toolCall.function?.arguments || '';
+          }
 
-        const toolNode = toolNodes.find((item) => item.nodeId === toolFunction.name);
+          if (!callingTool) {
+            return;
+          }
 
-        if (toolNode) {
-          // New tool, add to list.
-          const toolId = getNanoid();
-          toolCalls.push({
-            ...toolCall,
-            id: toolId,
-            type: 'function',
-            function: toolFunction,
-            toolName: toolNode.name,
-            toolAvatar: toolNode.avatar
-          });
+          const toolNode = toolNodes.find((item) => item.nodeId === callingTool!.name);
 
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.toolCall,
-            data: {
-              tool: {
-                id: toolId,
-                toolName: toolNode.name,
-                toolAvatar: toolNode.avatar,
-                functionName: toolFunction.name,
-                params: toolFunction?.arguments ?? '',
-                response: ''
+          if (toolNode) {
+            // New tool, add to list.
+            const toolId = getNanoid();
+            toolCalls[index] = {
+              ...toolCall,
+              id: toolId,
+              type: 'function',
+              function: callingTool,
+              toolName: toolNode.name,
+              toolAvatar: toolNode.avatar
+            };
+
+            workflowStreamResponse?.({
+              event: SseResponseEventEnum.toolCall,
+              data: {
+                tool: {
+                  id: toolId,
+                  toolName: toolNode.name,
+                  toolAvatar: toolNode.avatar,
+                  functionName: callingTool.name,
+                  params: callingTool?.arguments ?? '',
+                  response: ''
+                }
               }
-            }
-          });
-          callingTool = null;
-        }
-      } else {
-        /* arg 插入最后一个工具的参数里 */
-        const arg: string = toolCall?.function?.arguments ?? '';
-        const currentTool = toolCalls[toolCalls.length - 1];
-        if (currentTool && arg) {
-          currentTool.function.arguments += arg;
+            });
+            callingTool = null;
+          }
+        } else {
+          /* arg 追加到当前工具的参数里 */
+          const arg: string = toolCall?.function?.arguments ?? '';
+          const currentTool = toolCalls[index];
+          if (currentTool && arg) {
+            currentTool.function.arguments += arg;
 
-          workflowStreamResponse?.({
-            write,
-            event: SseResponseEventEnum.toolParams,
-            data: {
-              tool: {
-                id: currentTool.id,
-                toolName: '',
-                toolAvatar: '',
-                params: arg,
-                response: ''
+            workflowStreamResponse?.({
+              write,
+              event: SseResponseEventEnum.toolParams,
+              data: {
+                tool: {
+                  id: currentTool.id,
+                  toolName: '',
+                  toolAvatar: '',
+                  params: arg,
+                  response: ''
+                }
               }
-            }
-          });
+            });
+          }
         }
-      }
+      });
     }
   }
 
-  return { answer: textAnswer, toolCalls, finish_reason: finishReason, usage };
+  return { answer: textAnswer, toolCalls: toolCalls.filter(Boolean), finish_reason, usage };
 }
