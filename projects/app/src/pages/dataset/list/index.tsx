@@ -242,39 +242,16 @@ const Dataset = () => {
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: DatasetPermissionList,
-                onUpdateCollaborators: ({
-                  members,
-                  groups,
-                  permission
-                }: {
-                  members?: string[];
-                  groups?: string[];
-                  permission: PermissionValueType;
-                }) =>
+                onUpdateCollaborators: (params) =>
                   postUpdateDatasetCollaborators({
-                    members,
-                    groups,
-                    permission,
+                    ...params,
                     datasetId: folderDetail._id
                   }),
-                onDelOneCollaborator: async ({ tmbId, groupId, orgId }) => {
-                  if (tmbId) {
-                    return deleteDatasetCollaborators({
-                      datasetId: folderDetail._id,
-                      tmbId
-                    });
-                  } else if (groupId) {
-                    return deleteDatasetCollaborators({
-                      datasetId: folderDetail._id,
-                      groupId
-                    });
-                  } else if (orgId) {
-                    return deleteDatasetCollaborators({
-                      datasetId: folderDetail._id,
-                      orgId
-                    });
-                  }
-                },
+                onDelOneCollaborator: async (params) =>
+                  deleteDatasetCollaborators({
+                    ...params,
+                    datasetId: folderDetail._id
+                  }),
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission]
               }}
             />
