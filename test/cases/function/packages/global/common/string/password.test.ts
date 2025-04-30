@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkPasswordRule } from '@/web/support/user/login/constants';
+import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 describe('PasswordRule', () => {
   it('should be a valid password', () => {

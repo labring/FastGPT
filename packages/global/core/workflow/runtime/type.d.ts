@@ -58,7 +58,7 @@ export type ChatDispatchProps = {
   chatConfig: AppSchema['chatConfig'];
   lastInteractive?: WorkflowInteractiveResponseType; // last interactive response
   stream: boolean;
-  parseQuote?: boolean;
+  retainDatasetCite?: boolean;
   maxRunTimes: number;
   isToolCall?: boolean;
   workflowStreamResponse?: WorkflowResponseType;

@@ -9,7 +9,10 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  filterPublicNodeResponseData,
+  removeAIResponseCite
+} from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
@@ -80,6 +83,13 @@ async function handler(
         if (showNodeStatus === false) {
           item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
         }
+      }
+    });
+  }
+  if (!responseDetail) {
+    histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI) {
+        item.value = removeAIResponseCite(item.value, false);
       }
     });
   }
