@@ -1,9 +1,9 @@
 {
-  "name": "fastgpt-tools-get-current-time",
+  "name": "template-tool",
   "module": "index.ts",
   "type": "module",
   "scripts": {
-    "build": "bun build index.ts --minify --outdir dist --outFile index.js && cp metadata.json dist && cp -r assets dist"
+    "build": "bun build index.ts --minify --outdir dist --outFile index.js"
   },
   "devDependencies": {
     "@types/bun": "latest"
@@ -12,6 +12,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "date-fns": "^4.1.0",
     "zod": "^3.24.2"
   }
 }
