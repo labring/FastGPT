@@ -54,7 +54,9 @@
   "phone_label": "Phone number",
   "please_bind_notification_receiving_path": "Please bind the notification receiving method first",
   "purchase_extra_package": "Upgrade",
+  "redeem_coupon": "Redeem coupon",
   "reminder_create_bound_notification_account": "Remind the creator to bind the notification account",
+  "reset_password": "reset password",
   "resource_usage": "Usages",
   "select_avatar": "Click to select avatar",
   "standard_package_and_extra_resource_package": "Includes standard and extra plans",
@@ -74,6 +76,5 @@
   "user_team_team_name": "Team",
   "verification_code": "Verification code",
   "you_can_convert": "you can redeem",
-  "yuan": "Yuan",
-  "redeem_coupon": "Redeem coupon"
+  "yuan": "Yuan"
 }

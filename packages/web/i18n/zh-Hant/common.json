@@ -1260,6 +1260,7 @@
   "user.Old password is error": "舊密碼錯誤",
   "user.OpenAI Account Setting": "OpenAI 帳戶設定",
   "user.Password": "密碼",
+  "user.Password has no change": "新密碼和舊密碼重複",
   "user.Pay": "儲值",
   "user.Promotion": "促銷",
   "user.Promotion Rate": "回饋比例",

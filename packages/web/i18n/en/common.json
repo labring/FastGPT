@@ -1261,6 +1261,7 @@
   "user.Old password is error": "Old Password is Incorrect",
   "user.OpenAI Account Setting": "OpenAI Account Configuration",
   "user.Password": "Password",
+  "user.Password has no change": "new password is smae as the old",
   "user.Pay": "Recharge",
   "user.Promotion": "Promotion",
   "user.Promotion Rate": "Cashback Rate",

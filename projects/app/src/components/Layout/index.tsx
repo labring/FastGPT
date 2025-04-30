@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -6,8 +6,11 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getPasswordUpdateTime } from '@/web/support/user/api';
 import dynamic from 'next/dynamic';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
+import ResetPswModal from '@/pageComponents/account/info/UpdatePswModal2';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -61,11 +64,29 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
+  const [reset_password, setResetPassword] = useState(false);
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
     [router.pathname, router.query]
   );
+
+  const { runAsync: updatePswTime } = useRequest2(async (data: { userid: string }) => {
+    const res = await getPasswordUpdateTime(data);
+    return res;
+  });
+
+  useEffect(() => {
+    if (userInfo?._id) {
+      updatePswTime({ userid: userInfo._id }).then((time) => {
+        console.log('userInfo', userInfo);
+        console.log('time', time.updateTime);
+        if (!time.updateTime) {
+          setResetPassword(true);
+        }
+      });
+    }
+  }, [userInfo?.username, updatePswTime]);
 
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
@@ -164,6 +185,8 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <WorkorderButton />
         </>
       )}
+
+      {reset_password && <ResetPswModal onClose={() => setResetPassword(false)} />}
 
       <ManualCopyModal />
       <Loading loading={loading} zIndex={999999} />

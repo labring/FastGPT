@@ -3,34 +3,26 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
-
-    if (!oldPsw || !newPsw) {
-      throw new Error('Params is missing');
-    }
-
-    const { tmbId } = await authCert({ req, authToken: true });
-    const tmb = await MongoTeamMember.findById(tmbId);
-    if (!tmb) {
-      throw new Error('can not find it');
-    }
-    const userId = tmb.userId;
+    await authCert({ req, authToken: true });
+    const userId = req.body.userId;
+    const newPsw = req.body.newPsw;
     // auth old password
     const user = await MongoUser.findOne({
-      _id: userId,
-      password: oldPsw
+      _id: userId
     });
 
     if (!user) {
-      throw new Error('user.Old password is error');
+      throw new Error('can not find it');
     }
 
-    if (oldPsw === newPsw) {
-      throw new Error('user.Password has no change');
+    if (user.password === newPsw || user.password === hashStr(newPsw)) {
+      throw new Error('new password is same as old password');
+    }
+
+    if (user.passwordUpdateTime) {
+      throw new Error('no right to reset password');
     }
 
     // 更新对应的记录

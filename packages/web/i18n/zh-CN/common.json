@@ -1272,6 +1272,7 @@
   "user.Update Password": "修改密码",
   "user.Update password failed": "修改密码异常",
   "user.Update password successful": "修改密码成功",
+  "user.Password has no change": "新密码和旧密码重复",
   "user.apikey.key": "API 密钥",
   "user.confirm_password": "确认密码",
   "user.new_password": "新密码",
