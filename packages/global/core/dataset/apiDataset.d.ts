@@ -1,8 +1,9 @@
 import { RequireOnlyOne } from '../../common/type/utils';
+import type { ParentIdType } from '../../common/parentFolder/type.d';
 
 export type APIFileItem = {
   id: string;
-  parentId: string | null;
+  parentId: ParentIdType;
   name: string;
   type: 'file' | 'folder';
   updateTime: Date;
