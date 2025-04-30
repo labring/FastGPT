@@ -293,6 +293,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
+        isResponseDetail={false}
         showRouteToAppDetail={isStandalone !== '1'}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
