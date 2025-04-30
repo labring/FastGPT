@@ -5,17 +5,22 @@ type WorkerQueueItem = {
   status: 'running' | 'idle';
   taskTime: number;
   timeoutId?: NodeJS.Timeout;
-  resolve: (e: any) => void;
-  reject: (e: any) => void;
+  resolve: (e: unknown) => void;
+  reject: (e: unknown) => void;
 };
-type WorkerResponse<T = any> = {
+type WorkerResponse<T = unknown> = {
   id: string;
   type: 'success' | 'error';
   data: T;
 };
-type WorkerRunTaskType<T> = { data: T; resolve: (e: any) => void; reject: (e: any) => void };
 
-export class WorkerPool<Props = Record<string, any>, Response = any> {
+type WorkerRunTaskType<T> = {
+  data: T;
+  resolve: (e: unknown) => void;
+  reject: (e: unknown) => void;
+};
+
+export class WorkerPool<Props = Record<string, unknown>, Response = unknown> {
   maxReservedThreads: number;
   workerQueue: WorkerQueueItem[] = [];
   waitQueue: WorkerRunTaskType<Props>[] = [];
@@ -61,11 +66,11 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
     return new Promise<Response>((resolve, reject) => {
       /*
-        Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
-      */
+          Whether the task is executed immediately or delayed, the promise callback will dispatch after task complete.
+        */
       this.runTask({
         data,
-        resolve,
+        resolve: (result: unknown) => resolve(result as Response),
         reject
       });
     }).finally(() => {
@@ -139,6 +144,6 @@ const maxReservedThreads = parseInt(process.env.MAX_WORKER || '8');
 
 const workerPool = new WorkerPool({ maxReservedThreads });
 
-export async function dispatch(data: Record<string, any>) {
+export async function dispatch(data: Record<string, unknown>) {
   return await workerPool.run(data);
 }
