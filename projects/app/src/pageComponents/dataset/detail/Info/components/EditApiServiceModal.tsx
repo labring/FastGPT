@@ -59,7 +59,7 @@ const EditAPIDatasetInfoModal = ({
         {datasetTypeCourseMap[type] && (
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <Box color={'myGray.900'} fontSize={'sm'} fontWeight={500}>
-              配置信息
+              {t('dataset:apidataset_configuration')}
             </Box>
             <Flex
               alignItems={'center'}

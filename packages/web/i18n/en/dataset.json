@@ -3,6 +3,7 @@
   "add_file": "Import",
   "api_file": "API Dataset",
   "api_url": "API Url",
+  "apidataset_configuration": "Configuration information",
   "auto_indexes": "Automatically generate supplementary indexes",
   "auto_indexes_tips": "Additional index generation is performed through large models to improve semantic richness and improve retrieval accuracy.",
   "auto_training_queue": "Enhanced index queueing",

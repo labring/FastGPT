@@ -3,6 +3,7 @@
   "add_file": "新增文件",
   "api_file": "API 檔案庫",
   "api_url": "介面位址",
+  "apidataset_configuration": "配寘資訊",
   "auto_indexes": "自動生成補充索引",
   "auto_indexes_tips": "透過大模型進行額外索引生成，提高語義豐富度，提高檢索的精度。",
   "auto_training_queue": "增強索引排隊",
