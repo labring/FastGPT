@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { APIFileServer, YuqueServer, FeishuServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { getProApiDatasetFileDetailRequest } from '@/service/core/dataset/apiDataset/controller';
 import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
@@ -27,12 +27,10 @@ async function handler(
   try {
     await authCert({ req, authToken: true });
 
-    // 验证服务器配置
     if (!apiServer && !feishuServer && !yuqueServer) {
       return Promise.reject(new Error(DatasetErrEnum.noApiServer));
     }
 
-    // API 类型文件路径处理
     if (apiServer) {
       if (!parentId) return '';
 
@@ -55,7 +53,6 @@ async function handler(
       return await getApiFullPath(parentId);
     }
 
-    // 飞书/语雀 文件路径处理
     if (feishuServer || yuqueServer) {
       const getFullPath = async (currentId?: string): Promise<string> => {
         if (!currentId) return '';

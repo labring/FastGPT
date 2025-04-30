@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
-import {
+import type {
   GetResourceFolderListProps,
   GetResourceFolderListItemResponse,
   ParentIdType

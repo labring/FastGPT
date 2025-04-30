@@ -11,7 +11,10 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset';
 import BaseUrlSelector from '@/pageComponents/dataset/detail/Import/diffSource/baseUrl';
 import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
-import { GetResourceFolderListProps, ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type {
+  GetResourceFolderListProps,
+  ParentIdType
+} from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import type { GetApiDatasetCataLogProps } from '@/pages/api/core/dataset/apiDataset/getCatalog';
 import type { GetApiDatasetPathBody } from '@/pages/api/core/dataset/apiDataset/getPath';
@@ -221,7 +224,7 @@ const ApiDatasetForm = ({
                 baseUrl: ''
               };
               break;
-            // 飞书语雀暂时没有这种baseurl
+            // Currently, only Yuque is using it
             case DatasetTypeEnum.feishu:
               params.feishuServer = {
                 appId: feishuServer?.appId || '',
