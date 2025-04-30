@@ -2,10 +2,14 @@ import { getProApiDatasetFileListRequest } from '@/service/core/dataset/apiDatas
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import {
+  APIFileItem,
+  APIFileServer,
+  YuqueServer,
+  FeishuServer
+} from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 import { NextApiRequest } from 'next';
-import { YuqueServer, FeishuServer } from '@fastgpt/global/core/dataset/apiDataset';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export type GetApiDatasetCataLogProps = {
@@ -13,7 +17,7 @@ export type GetApiDatasetCataLogProps = {
   parentId?: ParentIdType;
   yuqueServer?: YuqueServer;
   feishuServer?: FeishuServer;
-  apiServer?: string;
+  apiServer?: APIFileServer;
 };
 
 export type GetApiDatasetCataLogResponse = APIFileItem[];

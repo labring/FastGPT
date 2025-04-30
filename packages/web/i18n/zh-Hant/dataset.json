@@ -164,5 +164,6 @@
   "website_info": "網站資訊",
   "yuque_dataset": "語雀知識庫",
   "yuque_dataset_config": "設定語雀知識庫",
-  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存"
+  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存",
+  "yuque_field": "請填寫UserID和Token"
 }

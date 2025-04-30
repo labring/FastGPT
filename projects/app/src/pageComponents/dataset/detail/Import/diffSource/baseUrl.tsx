@@ -34,7 +34,7 @@ const BaseUrlSelector = ({ selectId, server, onConfirm, onClose }: Props) => {
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
   const [folderList, setFolderList] = useState<FolderItemType[]>([]);
 
-  const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
+  const { runAsync: requestServer } = useRequest2(async (e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
 
     setRequestingIdList((state) => [...state, e.parentId]);

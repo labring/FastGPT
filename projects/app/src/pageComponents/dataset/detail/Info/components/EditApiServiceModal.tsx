@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModalFooter, ModalBody, Button, Flex } from '@chakra-ui/react';
+import { ModalFooter, ModalBody, Button, Flex, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -57,16 +57,21 @@ const EditAPIDatasetInfoModal = ({
     <MyModal isOpen onClose={onClose} w={'450px'} iconSrc="modal/edit" title={title}>
       <ModalBody>
         {datasetTypeCourseMap[type] && (
-          <Flex
-            alignItems={'center'}
-            justifyContent={'flex-end'}
-            color={'primary.600'}
-            fontSize={'sm'}
-            cursor={'pointer'}
-            onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
-          >
-            <MyIcon name={'book'} w={4} mr={0.5} />
-            {t('common:Instructions')}
+          <Flex alignItems={'center'} justifyContent={'space-between'}>
+            <Box color={'myGray.900'} fontSize={'sm'} fontWeight={500}>
+              配置信息
+            </Box>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'flex-end'}
+              color={'primary.600'}
+              fontSize={'sm'}
+              cursor={'pointer'}
+              onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
+            >
+              <MyIcon name={'book'} w={4} mr={0.5} />
+              {t('common:Instructions')}
+            </Flex>
           </Flex>
         )}
         {/* @ts-ignore */}

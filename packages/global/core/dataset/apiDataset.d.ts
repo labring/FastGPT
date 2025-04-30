@@ -30,7 +30,7 @@ export type APIFileReadResponse = {
 export type ApiDatasetDetailResponse = {
   id: string;
   name: string;
-  parentId: string | null;
+  parentId: ParentIdType;
 };
 
 export type FeishuServer = {

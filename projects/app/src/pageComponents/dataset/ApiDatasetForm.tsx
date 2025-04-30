@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { Flex, Input, Button, Box, Text } from '@chakra-ui/react';
+import { Flex, Input, Button, Spinner } from '@chakra-ui/react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import type {
@@ -13,6 +13,9 @@ import BaseUrlSelector from '@/pageComponents/dataset/detail/Import/diffSource/b
 import { getApiDatasetPaths, getApiDatasetCatalog } from '@/web/core/dataset/api';
 import { GetResourceFolderListProps, ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import type { GetApiDatasetCataLogProps } from '@/pages/api/core/dataset/apiDataset/getCatalog';
+import type { GetApiDatasetPathBody } from '@/pages/api/core/dataset/apiDataset/getPath';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const ApiDatasetForm = ({
   type,
@@ -36,7 +39,7 @@ const ApiDatasetForm = ({
   const feishuServer = watch('feishuServer');
   const apiServer = watch('apiServer');
 
-  const [currentPath, setCurrentPath] = useState(t('dataset:loading'));
+  const [currentPath, setCurrentPath] = useState(t('dataset:yuque_field'));
   const [isDirectoryModalOpen, setIsDirectoryModalOpen] = useState(false);
 
   const datasetId = router.query.datasetId as string;
@@ -57,10 +60,8 @@ const ApiDatasetForm = ({
     type,
     yuqueServer?.token,
     yuqueServer?.userId,
-    yuqueServer?.baseUrl,
     feishuServer?.appId,
     feishuServer?.appSecret,
-    feishuServer?.folderToken,
     apiServer?.baseUrl
   ]);
 
@@ -72,7 +73,7 @@ const ApiDatasetForm = ({
     }
 
     try {
-      const params: any = { parentId };
+      const params: GetApiDatasetPathBody = { parentId };
 
       switch (type) {
         case DatasetTypeEnum.yuque:
@@ -101,7 +102,7 @@ const ApiDatasetForm = ({
     if (datasetId) {
       fetchCurrentPath();
     }
-  }, [datasetId]);
+  }, [datasetId, fetchCurrentPath]);
 
   useEffect(() => {
     // Update the path when all the required fields are complete, or when the baseUrl changes
@@ -121,7 +122,8 @@ const ApiDatasetForm = ({
     feishuServer?.appId,
     feishuServer?.appSecret,
     feishuServer?.folderToken,
-    apiServer?.baseUrl
+    apiServer?.baseUrl,
+    fetchCurrentPath
   ]);
 
   // Unified handling of directory selection
@@ -158,20 +160,46 @@ const ApiDatasetForm = ({
       >
         Base URL
       </Flex>
-      <Box
+      <MyBox
         px={2}
         py={1}
+        fontSize={'sm'}
         flex={'1 0 0'}
         width="220px"
         borderRadius="md"
+        display={'flex'}
         alignItems="center"
         overflow="auto"
-        style={{ whiteSpace: 'nowrap' }}
+        style={{
+          whiteSpace: 'nowrap',
+          scrollbarWidth: 'thin',
+          scrollbarColor: 'rgba(0,0,0,0.1) transparent'
+        }}
+        sx={{
+          '&::-webkit-scrollbar': {
+            width: '2px',
+            height: '2px'
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: 'rgba(0,0,0,0.2)',
+            borderRadius: '2px'
+          },
+          '&::-webkit-scrollbar-button': {
+            display: 'none'
+          }
+        }}
+        isLoading={isFetching}
+        size={'sm'}
       >
-        {isFetching ? t('dataset:loading') : currentPath}
-      </Box>
+        {isFetching ? ' ' : currentPath}
+      </MyBox>
 
-      <Button ml={2} onClick={openDirectorySelector} isDisabled={isButtonDisabled}>
+      <Button
+        ml={2}
+        variant={'whiteBase'}
+        onClick={openDirectorySelector}
+        isDisabled={isButtonDisabled}
+      >
         {t('dataset:selectDirectory')}
       </Button>
     </Flex>
@@ -183,21 +211,29 @@ const ApiDatasetForm = ({
       <BaseUrlSelector
         selectId={type === DatasetTypeEnum.yuque ? yuqueServer?.baseUrl || 'root' : 'root'}
         server={async (e: GetResourceFolderListProps) => {
-          const params: any = { parentId: e.parentId };
+          const params: GetApiDatasetCataLogProps = { parentId: e.parentId };
 
           switch (type) {
             case DatasetTypeEnum.yuque:
               params.yuqueServer = {
-                userId: yuqueServer?.userId,
-                token: yuqueServer?.token,
+                userId: yuqueServer?.userId || '',
+                token: yuqueServer?.token || '',
                 baseUrl: ''
               };
               break;
+            // 飞书语雀暂时没有这种baseurl
             case DatasetTypeEnum.feishu:
-              params.feishuServer = watch('feishuServer');
+              params.feishuServer = {
+                appId: feishuServer?.appId || '',
+                appSecret: feishuServer?.appSecret || '',
+                folderToken: feishuServer?.folderToken || ''
+              };
               break;
             case DatasetTypeEnum.apiDataset:
-              params.apiServer = watch('apiServer');
+              params.apiServer = {
+                baseUrl: apiServer?.baseUrl || '',
+                authorization: apiServer?.authorization || ''
+              };
               break;
           }
 

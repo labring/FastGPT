@@ -7,21 +7,21 @@ import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/a
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
-export type GetPathQuery = {};
+export type GetApiDatasetPathQuery = {};
 
-export type GetPathBody = {
+export type GetApiDatasetPathBody = {
   parentId?: ParentIdType;
   yuqueServer?: YuqueServer;
   feishuServer?: FeishuServer;
   apiServer?: APIFileServer;
 };
 
-export type GetPathResponse = string;
+export type GetApiDatasetPathResponse = string;
 
 async function handler(
-  req: ApiRequestProps<GetPathBody, any>,
-  res: ApiResponseType<GetPathResponse>
-): Promise<GetPathResponse> {
+  req: ApiRequestProps<GetApiDatasetPathBody, any>,
+  res: ApiResponseType<GetApiDatasetPathResponse>
+): Promise<GetApiDatasetPathResponse> {
   const { parentId, yuqueServer, feishuServer, apiServer } = req.body;
 
   try {
