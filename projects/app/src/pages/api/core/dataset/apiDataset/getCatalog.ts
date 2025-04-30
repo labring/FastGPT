@@ -1,8 +1,8 @@
 import { getProApiDatasetFileListRequest } from '@/service/core/dataset/apiDataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import {
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type {
   APIFileItem,
   APIFileServer,
   YuqueServer,

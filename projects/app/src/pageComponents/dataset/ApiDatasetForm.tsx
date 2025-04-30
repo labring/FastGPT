@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { Flex, Input, Button, Spinner } from '@chakra-ui/react';
+import { Flex, Input, Button } from '@chakra-ui/react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import type {
