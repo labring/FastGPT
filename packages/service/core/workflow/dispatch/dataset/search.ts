@@ -55,7 +55,6 @@ export async function dispatchDatasetSearch(
     runningUserInfo: { tmbId },
     histories,
     node,
-    parseQuote = true,
     params: {
       datasets = [],
       similarity,

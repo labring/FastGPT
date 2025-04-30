@@ -5,9 +5,9 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
-  parseQuoteContent,
+  removeDatasetCiteText,
   parseReasoningContent,
-  parseReasoningStreamContent
+  parseLLMStreamResponse
 } from '../../../ai/utils';
 import { createChatCompletion } from '../../../ai/config';
 import type {
@@ -79,7 +79,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     res,
     requestOrigin,
     stream = false,
-    parseQuote = true,
+    retainDatasetCite = true,
     externalProvider,
     histories,
     node: { name, version },
@@ -227,7 +227,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         parseThinkTag: modelConstantsData.reasoning,
         isResponseAnswerText,
         workflowStreamResponse,
-        parseQuote
+        retainDatasetCite
       });
 
       return {
@@ -249,36 +249,34 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         // API already parse reasoning content
         if (reasoningContent || !aiChatReasoning) {
           return {
-            content: parseQuoteContent(content, parseQuote),
+            content,
             reasoningContent
           };
         }
 
         const [think, answer] = parseReasoningContent(content);
         return {
-          content: parseQuoteContent(answer, parseQuote),
+          content: answer,
           reasoningContent: think
         };
       })();
 
       // Some models do not support streaming
-      if (stream) {
-        if (aiChatReasoning && reasoningContent) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              reasoning_content: reasoningContent
-            })
-          });
-        }
-        if (isResponseAnswerText && content) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: content
-            })
-          });
-        }
+      if (aiChatReasoning && reasoningContent) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            reasoning_content: removeDatasetCiteText(reasoningContent, retainDatasetCite)
+          })
+        });
+      }
+      if (isResponseAnswerText && content) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: removeDatasetCiteText(content, retainDatasetCite)
+          })
+        });
       }
 
       return {
@@ -542,7 +540,7 @@ async function streamResponse({
   aiChatReasoning,
   parseThinkTag,
   isResponseAnswerText,
-  parseQuote = true
+  retainDatasetCite = true
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
@@ -550,7 +548,7 @@ async function streamResponse({
   aiChatReasoning?: boolean;
   parseThinkTag?: boolean;
   isResponseAnswerText?: boolean;
-  parseQuote?: boolean;
+  retainDatasetCite: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -561,7 +559,7 @@ async function streamResponse({
   let finish_reason: CompletionFinishReason = null;
   let usage: CompletionUsage = getLLMDefaultUsage();
 
-  const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
+  const { parsePart } = parseLLMStreamResponse();
 
   for await (const part of stream) {
     usage = part.usage || usage;
@@ -572,7 +570,11 @@ async function streamResponse({
       break;
     }
 
-    const { reasoningContent, content, finishReason } = parsePart(part, parseThinkTag, parseQuote);
+    const { reasoningContent, content, responseContent, finishReason } = parsePart({
+      part,
+      parseThinkTag,
+      retainDatasetCite
+    });
     finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;
@@ -587,26 +589,12 @@ async function streamResponse({
       });
     }
 
-    if (isResponseAnswerText && content) {
+    if (isResponseAnswerText && responseContent) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
-        })
-      });
-    }
-  }
-
-  // if answer is empty, try to get value from startTagBuffer. (Cause: The response content is too short to exceed the minimum parse length)
-  if (answer === '') {
-    answer = getStartTagBuffer();
-    if (isResponseAnswerText && answer) {
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: answer
+          text: responseContent
         })
       });
     }

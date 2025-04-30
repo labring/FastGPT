@@ -164,7 +164,7 @@ const OutLink = (props: Props) => {
           responseChatItemId,
           chatId: completionChatId,
           ...outLinkAuthData,
-          parseQuote: isResponseDetail
+          retainDatasetCite: isResponseDetail
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -202,6 +202,7 @@ const OutLink = (props: Props) => {
       chatId,
       customVariables,
       outLinkAuthData,
+      isResponseDetail,
       onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChat,

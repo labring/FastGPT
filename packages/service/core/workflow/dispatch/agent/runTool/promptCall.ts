@@ -29,9 +29,9 @@ import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import {
   computedMaxToken,
   llmCompletionsBodyFormat,
-  parseQuoteContent,
+  removeDatasetCiteText,
   parseReasoningContent,
-  parseReasoningStreamContent
+  parseLLMStreamResponse
 } from '../../../../ai/utils';
 import { WorkflowResponseType } from '../../type';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
@@ -61,7 +61,7 @@ export const runToolWithPromptCall = async (
     runtimeEdges,
     externalProvider,
     stream,
-    parseQuote = true,
+    retainDatasetCite = true,
     workflowStreamResponse,
     params: {
       temperature,
@@ -277,7 +277,8 @@ export const runToolWithPromptCall = async (
         toolNodes,
         stream: aiResponse,
         workflowStreamResponse,
-        aiChatReasoning
+        aiChatReasoning,
+        retainDatasetCite
       });
 
       return {
@@ -307,7 +308,7 @@ export const runToolWithPromptCall = async (
 
       const [think, answer] = parseReasoningContent(content);
       return {
-        answer: parseQuoteContent(answer, parseQuote),
+        answer,
         reasoning: think,
         finish_reason,
         inputTokens: usage?.prompt_tokens,
@@ -320,7 +321,7 @@ export const runToolWithPromptCall = async (
     workflowStreamResponse?.({
       event: SseResponseEventEnum.fastAnswer,
       data: textAdaptGptResponse({
-        reasoning_content: reasoning
+        reasoning_content: removeDatasetCiteText(reasoning, retainDatasetCite)
       })
     });
   }
@@ -346,7 +347,7 @@ export const runToolWithPromptCall = async (
       workflowStreamResponse?.({
         event: SseResponseEventEnum.fastAnswer,
         data: textAdaptGptResponse({
-          text: replaceAnswer
+          text: removeDatasetCiteText(replaceAnswer, retainDatasetCite)
         })
       });
     }
@@ -569,14 +570,14 @@ async function streamResponse({
   stream,
   workflowStreamResponse,
   aiChatReasoning,
-  parseQuote = false
+  retainDatasetCite
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
   aiChatReasoning?: boolean;
-  parseQuote?: boolean;
+  retainDatasetCite?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -589,7 +590,7 @@ async function streamResponse({
   let finish_reason: CompletionFinishReason = null;
   let usage = getLLMDefaultUsage();
 
-  const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
+  const { parsePart } = parseLLMStreamResponse();
 
   for await (const part of stream) {
     usage = part.usage || usage;
@@ -599,15 +600,16 @@ async function streamResponse({
       break;
     }
 
-    const { reasoningContent, content, finishReason } = parsePart(
+    const { reasoningContent, content, responseContent, finishReason } = parsePart({
       part,
-      aiChatReasoning,
-      parseQuote
-    );
+      parseThinkTag: aiChatReasoning,
+      retainDatasetCite
+    });
     finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;
 
+    // Reasoning response
     if (aiChatReasoning && reasoningContent) {
       workflowStreamResponse?.({
         write,
@@ -620,13 +622,15 @@ async function streamResponse({
 
     if (content) {
       if (startResponseWrite) {
-        workflowStreamResponse?.({
-          write,
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: content
-          })
-        });
+        if (responseContent) {
+          workflowStreamResponse?.({
+            write,
+            event: SseResponseEventEnum.answer,
+            data: textAdaptGptResponse({
+              text: responseContent
+            })
+          });
+        }
       } else if (answer.length >= 3) {
         answer = answer.trimStart();
         if (/0(:|：)/.test(answer)) {
@@ -645,22 +649,6 @@ async function streamResponse({
           });
         }
       }
-    }
-  }
-
-  if (answer === '') {
-    answer = getStartTagBuffer();
-    if (/0(:|：)/.test(answer)) {
-      // find first : index
-      const firstIndex = answer.indexOf('0:') !== -1 ? answer.indexOf('0:') : answer.indexOf('0：');
-      answer = answer.substring(firstIndex + 2).trim();
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: answer
-        })
-      });
     }
   }
 

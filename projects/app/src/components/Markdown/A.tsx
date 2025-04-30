@@ -21,16 +21,16 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import { Types } from 'mongoose';
 
 const A = ({ children, chatAuthData, showAnimation, ...props }: any) => {
   const { t } = useTranslation();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const content = useMemo(() => String(children), [children]);
 
   // empty href link
   if (!props.href && typeof children?.[0] === 'string') {
-    const text = useMemo(() => String(children), [children]);
-
     return (
       <MyTooltip label={t('common:core.chat.markdown.Quick Question')}>
         <Button
@@ -38,16 +38,23 @@ const A = ({ children, chatAuthData, showAnimation, ...props }: any) => {
           size={'xs'}
           borderRadius={'md'}
           my={1}
-          onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+          onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text: content })}
         >
-          {text}
+          {content}
         </Button>
       </MyTooltip>
     );
   }
 
-  // Quote
-  if (props.href?.startsWith('QUOTE') && typeof children?.[0] === 'string') {
+  // Cite
+  if (
+    (props.href?.startsWith('CITE') || props.href?.startsWith('QUOTE')) &&
+    typeof children?.[0] === 'string'
+  ) {
+    if (!Types.ObjectId.isValid(content)) {
+      return <></>;
+    }
+
     const {
       data: quoteData,
       loading,

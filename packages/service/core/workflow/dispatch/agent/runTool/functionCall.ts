@@ -29,8 +29,8 @@ import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import {
   computedMaxToken,
   llmCompletionsBodyFormat,
-  parseQuoteContent,
-  parseReasoningStreamContent
+  removeDatasetCiteText,
+  parseLLMStreamResponse
 } from '../../../../ai/utils';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -53,7 +53,7 @@ export const runToolWithFunctionCall = async (
     runtimeEdges,
     externalProvider,
     stream,
-    parseQuote = true,
+    retainDatasetCite = true,
     workflowStreamResponse,
     params: {
       temperature,
@@ -268,7 +268,7 @@ export const runToolWithFunctionCall = async (
         toolNodes,
         stream: aiResponse,
         workflowStreamResponse,
-        parseQuote
+        retainDatasetCite
       });
 
       return {
@@ -295,7 +295,15 @@ export const runToolWithFunctionCall = async (
           ]
         : [];
 
-      const answer = parseQuoteContent(result.choices?.[0]?.message?.content || '', parseQuote);
+      const answer = result.choices?.[0]?.message?.content || '';
+      if (answer) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: removeDatasetCiteText(answer, retainDatasetCite)
+          })
+        });
+      }
 
       return {
         answer,
@@ -519,13 +527,13 @@ async function streamResponse({
   toolNodes,
   stream,
   workflowStreamResponse,
-  parseQuote
+  retainDatasetCite
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
-  parseQuote?: boolean;
+  retainDatasetCite?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -537,7 +545,7 @@ async function streamResponse({
   let functionId = getNanoid();
   let usage = getLLMDefaultUsage();
 
-  const { parsePart } = parseReasoningStreamContent();
+  const { parsePart } = parseLLMStreamResponse();
 
   for await (const part of stream) {
     usage = part.usage || usage;
@@ -546,19 +554,21 @@ async function streamResponse({
       break;
     }
 
-    const { content: toolChoiceContent } = parsePart(part, false, parseQuote);
+    const { content: toolChoiceContent, responseContent } = parsePart({
+      part,
+      parseThinkTag: false,
+      retainDatasetCite
+    });
 
     const responseChoice = part.choices?.[0]?.delta;
+    textAnswer += toolChoiceContent;
 
-    if (toolChoiceContent) {
-      const content = toolChoiceContent || '';
-      textAnswer += content;
-
+    if (responseContent) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
+          text: responseContent
         })
       });
     } else if (responseChoice.function_call) {

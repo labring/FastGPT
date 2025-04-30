@@ -30,6 +30,7 @@ import {
   concatHistories,
   filterPublicNodeResponseData,
   getChatTitleFromChatMessage,
+  removeAIResponseCite,
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -74,7 +75,7 @@ export type Props = ChatCompletionCreateParams &
     responseChatItemId?: string;
     stream?: boolean;
     detail?: boolean;
-    parseQuote?: boolean;
+    retainDatasetCite?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
   };
 
@@ -107,7 +108,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     stream = false,
     detail = false,
-    parseQuote = false,
+    retainDatasetCite = false,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
@@ -187,6 +188,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId
       });
     })();
+    retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     // Check message type
@@ -290,7 +292,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             chatConfig,
             histories: newHistories,
             stream,
-            parseQuote,
+            retainDatasetCite,
             maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             workflowStreamResponse: workflowResponseWrite,
             version: 'v2',
@@ -401,6 +403,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         return assistantResponses;
       })();
+      const formatResponseContent = removeAIResponseCite(responseContent, retainDatasetCite);
       const error = flowResponses[flowResponses.length - 1]?.error;
 
       res.json({
@@ -411,7 +414,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: responseContent },
+            message: { role: 'assistant', content: formatResponseContent },
             finish_reason: 'stop',
             index: 0
           }

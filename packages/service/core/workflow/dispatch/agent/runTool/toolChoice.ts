@@ -29,8 +29,8 @@ import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import {
   computedMaxToken,
   llmCompletionsBodyFormat,
-  parseQuoteContent,
-  parseReasoningStreamContent
+  removeDatasetCiteText,
+  parseLLMStreamResponse
 } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
@@ -94,13 +94,13 @@ export const runToolWithToolChoice = async (
     interactiveEntryToolParams,
     ...workflowProps
   } = props;
-  const {
+  let {
     res,
     requestOrigin,
     runtimeNodes,
     runtimeEdges,
     stream,
-    parseQuote = true,
+    retainDatasetCite = true,
     externalProvider,
     workflowStreamResponse,
     params: {
@@ -110,9 +110,11 @@ export const runToolWithToolChoice = async (
       aiChatTopP,
       aiChatStopSign,
       aiChatResponseFormat,
-      aiChatJsonSchema
+      aiChatJsonSchema,
+      aiChatReasoning
     }
   } = workflowProps;
+  aiChatReasoning = !!aiChatReasoning && !!toolModel.reasoning;
 
   if (maxRunToolTimes <= 0 && response) {
     return response;
@@ -327,7 +329,8 @@ export const runToolWithToolChoice = async (
         workflowStreamResponse,
         toolNodes,
         stream: aiResponse,
-        parseQuote
+        aiChatReasoning,
+        retainDatasetCite
       });
 
       return {
@@ -342,6 +345,8 @@ export const runToolWithToolChoice = async (
       const finish_reason = result.choices?.[0]?.finish_reason as CompletionFinishReason;
       const calls = result.choices?.[0]?.message?.tool_calls || [];
       const answer = result.choices?.[0]?.message?.content || '';
+      // @ts-ignore
+      const reasoningContent = result.choices?.[0]?.message?.reasoning_content || '';
       const usage = result.usage;
 
       // 加上name和avatar
@@ -354,6 +359,14 @@ export const runToolWithToolChoice = async (
         };
       });
 
+      if (aiChatReasoning && reasoningContent) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            reasoning_content: removeDatasetCiteText(reasoningContent, retainDatasetCite)
+          })
+        });
+      }
       // 不支持 stream 模式的模型的流失响应
       toolCalls.forEach((tool) => {
         workflowStreamResponse?.({
@@ -374,13 +387,13 @@ export const runToolWithToolChoice = async (
         workflowStreamResponse?.({
           event: SseResponseEventEnum.fastAnswer,
           data: textAdaptGptResponse({
-            text: answer
+            text: removeDatasetCiteText(answer, retainDatasetCite)
           })
         });
       }
 
       return {
-        answer: parseQuoteContent(answer, parseQuote),
+        answer,
         toolCalls: toolCalls,
         finish_reason,
         inputTokens: usage?.prompt_tokens,
@@ -635,13 +648,15 @@ async function streamResponse({
   toolNodes,
   stream,
   workflowStreamResponse,
-  parseQuote
+  aiChatReasoning,
+  retainDatasetCite
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
-  parseQuote?: boolean;
+  aiChatReasoning: boolean;
+  retainDatasetCite?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -654,7 +669,7 @@ async function streamResponse({
   let finish_reason: CompletionFinishReason = null;
   let usage = getLLMDefaultUsage();
 
-  const { parsePart } = parseReasoningStreamContent();
+  const { parsePart } = parseLLMStreamResponse();
 
   for await (const part of stream) {
     usage = part.usage || usage;
@@ -664,20 +679,37 @@ async function streamResponse({
       break;
     }
 
-    const { content: toolChoiceContent, finishReason } = parsePart(part, false, parseQuote);
-
-    const responseChoice = part.choices?.[0]?.delta;
+    const {
+      reasoningContent,
+      content: toolChoiceContent,
+      responseContent,
+      finishReason
+    } = parsePart({
+      part,
+      parseThinkTag: true,
+      retainDatasetCite
+    });
+    textAnswer += toolChoiceContent;
     finish_reason = finishReason || finish_reason;
 
-    if (toolChoiceContent) {
-      const content = toolChoiceContent || '';
-      textAnswer += content;
+    const responseChoice = part.choices?.[0]?.delta;
 
+    // Reasoning response
+    if (aiChatReasoning && reasoningContent) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
+          reasoning_content: reasoningContent
+        })
+      });
+    }
+    if (responseContent) {
+      workflowStreamResponse?.({
+        write,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: responseContent
         })
       });
     }

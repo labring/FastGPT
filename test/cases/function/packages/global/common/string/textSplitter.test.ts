@@ -1,6 +1,5 @@
 import { it, expect } from 'vitest'; // 必须显式导入
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import * as fs from 'fs';
 
 const simpleChunks = (chunks: string[]) => {
   return chunks.map((chunk) => chunk.replace(/\s+/g, ''));
