@@ -1,5 +1,16 @@
-import React, { useRef, useCallback, useMemo, useState } from 'react';
-import { Box, Flex, Textarea, IconButton, useBreakpointValue } from '@chakra-ui/react';
+import React, { useRef, useCallback, useMemo, useState, useEffect, useContext } from 'react';
+import {
+  Box,
+  Flex,
+  Textarea,
+  IconButton,
+  useBreakpointValue,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Button
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
@@ -18,6 +29,19 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import { useRouter } from 'next/router';
+import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { getMyAppsGate } from '@/web/core/app/api';
+import { form2AppWorkflow } from '@/web/core/app/utils';
+import dynamic from 'next/dynamic';
+import { ChevronDownIcon } from '@chakra-ui/icons';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import { AppContext } from '@/pageComponents/app/detail/context';
+import { AppFormContext } from '@/pages/chat/gate/index';
+
+const ToolSelect = dynamic(() => import('@/pageComponents/app/detail/Gate/components/ToolSelect'), {
+  ssr: false
+});
 
 const fileTypeFilter = (file: File) => {
   return (
@@ -49,6 +73,9 @@ const GateChatInput = ({
   const buttonSize = useBreakpointValue({ base: 'sm', md: 'md' });
   const VoiceInputRef = useRef<VoiceInputComponentRef>(null);
 
+  // 使用AppFormContext替代本地appForm状态
+  const { appForm, setAppForm } = useContext(AppFormContext);
+
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
 
@@ -59,6 +86,9 @@ const GateChatInput = ({
   const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
 
+  const [showToolSelect, setShowToolSelect] = useState(false);
+  const [selectedTool, setSelectedTool] = useState<string | null>(null);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const { llmModelList } = useSystemStore();
   const modelList = useMemo(
     () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
@@ -73,6 +103,54 @@ const GateChatInput = ({
       !router.pathname.includes('/chat/gate/application')
     );
   }, [router.pathname]);
+
+  // 是否显示工具选择器
+  const showTools = useMemo(() => {
+    return router.pathname === '/chat/gate';
+  }, [router.pathname]);
+
+  // 初始化加载appForm - 从Gate应用获取配置
+  useEffect(() => {
+    if (!appId || !showTools) return;
+
+    const fetchAppForm = async () => {
+      try {
+        // 加载Gate应用列表
+        // 获取当前应用或第一个可用的Gate应用
+        const currentApp = appDetail;
+
+        if (currentApp && currentApp.modules) {
+          // 将模块转换为appForm格式
+          const form = appWorkflow2Form({
+            nodes: currentApp.modules,
+            chatConfig: currentApp.chatConfig || {}
+          });
+          setAppForm(form);
+          // 如果选择了模型，设置为默认模型
+          if (form.aiSettings.model) {
+            setSelectedModel(form.aiSettings.model);
+          }
+        }
+      } catch (error) {
+        console.error('加载Gate应用信息失败:', error);
+      }
+    };
+
+    fetchAppForm();
+  }, [appId, showTools, appDetail, setAppForm]);
+
+  // 当模型选择变化时更新appForm
+  useEffect(() => {
+    if (!showTools) return;
+
+    setAppForm((prevAppForm) => ({
+      ...prevAppForm,
+      aiSettings: {
+        ...prevAppForm.aiSettings,
+        model: selectedModel
+      }
+    }));
+  }, [selectedModel, showTools, setAppForm]);
 
   const fileCtrl = useFieldArray({
     control,
@@ -116,7 +194,8 @@ const GateChatInput = ({
       onSendMessage({
         text: textareaValue.trim(),
         files: fileList,
-        gateModel: showModelSelector ? selectedModel : undefined
+        gateModel: showModelSelector ? selectedModel : undefined,
+        selectedTool // 传递选中的工具ID
       });
       replaceFiles([]);
     },
@@ -127,9 +206,57 @@ const GateChatInput = ({
       onSendMessage,
       replaceFiles,
       showModelSelector,
-      selectedModel
+      selectedModel,
+      selectedTool
     ]
   );
+
+  // 工具列表菜单
+  const ToolsMenu = useMemo(() => {
+    if (!showTools || appForm.selectedTools.length === 0) return null;
+
+    return (
+      <Menu>
+        <MenuButton
+          as={Button}
+          size="sm"
+          rightIcon={<ChevronDownIcon />}
+          variant="outline"
+          bg="#F9F9F9"
+          border="0.5px solid #E0E0E0"
+          borderRadius="10px"
+          color={selectedTool ? 'primary.600' : '#485264'}
+          h="36px"
+          fontSize="14px"
+          px={3}
+        >
+          {selectedTool
+            ? appForm.selectedTools.find((tool) => tool.id === selectedTool)?.name || t('Tools')
+            : t('Tools')}
+        </MenuButton>
+        <MenuList>
+          <MenuItem
+            onClick={() => setSelectedTool(null)}
+            fontWeight={!selectedTool ? 'bold' : 'normal'}
+          >
+            {t('None')}
+          </MenuItem>
+          {appForm.selectedTools.map((tool) => (
+            <MenuItem
+              key={tool.id}
+              onClick={() => setSelectedTool(tool.id)}
+              fontWeight={selectedTool === tool.id ? 'bold' : 'normal'}
+            >
+              <Flex align="center">
+                <MyIcon name="core/app/toolCall" w={'16px'} mr={2} />
+                {tool.name}
+              </Flex>
+            </MenuItem>
+          ))}
+        </MenuList>
+      </Menu>
+    );
+  }, [appForm.selectedTools, selectedTool, showTools, t]);
 
   return (
     <Box
@@ -144,6 +271,13 @@ const GateChatInput = ({
       p={4}
       pb="56px"
     >
+      {/* Tool select configuration */}
+      {showToolSelect && (
+        <Box mb={4} p={3} bg="gray.50" borderRadius="md">
+          <ToolSelect appForm={appForm} setAppForm={setAppForm} />
+        </Box>
+      )}
+
       {/* file preview */}
       <Box px={[1, 3]}>
         <FilePreview fileList={fileList} removeFiles={removeFiles} />
@@ -236,25 +370,26 @@ const GateChatInput = ({
             fontSize="14px"
           />
         )}
+        {showTools && ToolsMenu}
       </Flex>
 
       <Flex position="absolute" right="4" bottom="3" align="center" gap={2}>
-        {showSelectFile && (
+        {showTools && (
           <IconButton
-            aria-label="Upload file"
-            icon={<MyIcon name={'support/gate/chat/fileGray'} w={'20px'} />}
+            aria-label="Configure Tools"
+            icon={<MyIcon name={'core/app/toolCall'} w={'20px'} />}
             size={buttonSize}
             variant="ghost"
             borderRadius="6px"
             w="36px"
             h="36px"
-            onClick={() => onOpenSelectFile()}
+            onClick={() => setShowToolSelect(!showToolSelect)}
           />
         )}
-        {showSelectImg && (
+        {(showSelectFile || showSelectImg) && (
           <IconButton
-            aria-label="Upload image"
-            icon={<MyIcon name={'support/gate/chat/imageGray'} w={'20px'} />}
+            aria-label="Upload file"
+            icon={<MyIcon name={'support/gate/chat/fileGray'} w={'20px'} />}
             size={buttonSize}
             variant="ghost"
             borderRadius="6px"

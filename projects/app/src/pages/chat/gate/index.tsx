@@ -1,8 +1,16 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Drawer,
+  DrawerOverlay,
+  DrawerContent,
+  Button,
+  useDisclosure
+} from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -16,7 +24,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { getMyApps } from '@/web/core/app/api';
+import { getMyApps, getMyAppsGate } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 import { useMount } from 'ahooks';
@@ -24,7 +32,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { AppListItemType, AppSchema, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
@@ -35,8 +43,22 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+import { AppContext } from '@/pageComponents/app/detail/context';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
+const ChatTest = dynamic(() => import('@/pageComponents/app/detail/Gate/ChatTest'));
+
+// AppForm共享上下文
+export const AppFormContext = React.createContext<{
+  appForm: AppSimpleEditFormType;
+  setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+}>({
+  appForm: getDefaultAppForm(),
+  setAppForm: () => {}
+});
 
 const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
@@ -59,6 +81,24 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
+  // 添加appForm共享状态
+  const [appForm, setAppForm] = useState<AppSimpleEditFormType>(getDefaultAppForm());
+  const [renderEdit, setRenderEdit] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  // 为ChatTest准备正确的appDetail
+  const [localAppDetail, setLocalAppDetail] = useState<AppSchema>({
+    _id: '',
+    userId: '',
+    teamId: '',
+    name: '',
+    type: AppTypeEnum.gate,
+    avatar: '',
+    modules: [],
+    edges: []
+  });
+
   // Load chat init data
   const { loading } = useRequest2(
     async () => {
@@ -75,6 +115,23 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         variables: res.variables,
         variableList: res.app?.chatConfig?.variables
       });
+
+      // 添加AppForm初始化
+      if (appDetail?.modules) {
+        const form = appWorkflow2Form({
+          nodes: appDetail.modules,
+          chatConfig: appDetail.chatConfig || {}
+        });
+        setAppForm(form);
+
+        // 更新本地appDetail，用于ChatTest
+        setLocalAppDetail({
+          ...appDetail,
+          _id: appId,
+          name: res.app.name,
+          avatar: res.app.avatar
+        });
+      }
     },
     {
       manual: false,
@@ -106,7 +163,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       responseChatItemId,
       controller,
       generatingMessage,
-      variables
+      variables,
+      selectedTool
     }: StartChatFnProps) => {
       // Just send a user prompt
       const histories = messages.slice(-1);
@@ -117,7 +175,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           variables,
           responseChatItemId,
           appId,
-          chatId
+          chatId,
+          selectedTool
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -160,72 +219,85 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
 
   return (
-    <Flex h={'100%'}>
-      <NextHead
-        title={userInfo?.team.teamName + t('account_gate:Gate')}
-        icon={chatBoxData.app.avatar}
-      ></NextHead>
-      {isPc && <GateSideBar apps={myApps} activeAppId={appId} />}
+    <AppFormContext.Provider value={{ appForm, setAppForm }}>
+      <Flex h={'100%'}>
+        <NextHead
+          title={userInfo?.team.teamName + t('account_gate:Gate')}
+          icon={chatBoxData.app.avatar}
+        ></NextHead>
+        {isPc && <GateSideBar apps={myApps} activeAppId={appId} />}
 
-      {(!quoteData || isPc) && (
-        <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
-          <Flex h={'100%'} flexDirection={['column', 'row']}>
-            {/* pc always show history. */}
-            {RenderHistorySlider}
-            {/* chat container */}
-            <Flex
-              position={'relative'}
-              h={[0, '100%']}
-              w={['100%', 0]}
-              flex={'1 0 0'}
-              flexDirection={'column'}
-            >
-              {/* header */}
-              {/* <ChatHeader
-                totalRecordsCount={totalRecordsCount}
-                apps={myApps}
-                history={chatRecords}
-                showHistory
-              /> */}
-
-              {/* chat box */}
-              <Box flex={'1 0 0'} bg={'white'}>
-                {isPlugin ? (
-                  <CustomPluginRunBox
-                    appId={appId}
-                    chatId={chatId}
-                    outLinkAuthData={outLinkAuthData}
-                    onNewChat={() => onChangeChatId(getNanoid())}
-                    onStartChat={onStartChat}
-                  />
-                ) : (
-                  <ChatBox
-                    appId={appId}
-                    chatId={chatId}
-                    outLinkAuthData={outLinkAuthData}
-                    showEmptyIntro
-                    feedbackType={'user'}
-                    onStartChat={onStartChat}
-                    chatType={'chat'}
-                    isReady={!loading}
-                  />
+        {(!quoteData || isPc) && (
+          <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
+            <Flex h={'100%'} flexDirection={['column', 'row']}>
+              {/* pc always show history. */}
+              {RenderHistorySlider}
+              {/* chat container */}
+              <Flex
+                position={'relative'}
+                h={[0, '100%']}
+                w={['100%', 0]}
+                flex={'1 0 0'}
+                flexDirection={'column'}
+              >
+                {/* 添加调试模式切换按钮 */}
+                {isPc && (
+                  <Flex justifyContent="flex-end" p={2}>
+                    <Button
+                      leftIcon={<MyIcon name="text" w="16px" />}
+                      size="sm"
+                      onClick={() => setShowDebug(!showDebug)}
+                      colorScheme="blue"
+                      variant={showDebug ? 'solid' : 'outline'}
+                    >
+                      {showDebug ? t('app:chat_debug') : t('app:chat_debug')}
+                    </Button>
+                  </Flex>
                 )}
-              </Box>
-            </Flex>
-          </Flex>
-        </PageContainer>
-      )}
 
-      {quoteData && (
-        <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
-          <ChatQuoteList
-            rawSearch={quoteData.rawSearch}
-            metadata={quoteData.metadata}
-            onClose={() => setQuoteData(undefined)}
-          />
-        </PageContainer>
-      )}
-    </Flex>
+                {/* chat box or test box */}
+                <Box flex={'1 0 0'} bg={'white'}>
+                  {showDebug ? (
+                    <AppContext.Provider value={{ appDetail: localAppDetail }}>
+                      <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
+                    </AppContext.Provider>
+                  ) : isPlugin ? (
+                    <CustomPluginRunBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      onNewChat={() => onChangeChatId(getNanoid())}
+                      onStartChat={onStartChat}
+                    />
+                  ) : (
+                    <ChatBox
+                      appId={appId}
+                      chatId={chatId}
+                      outLinkAuthData={outLinkAuthData}
+                      showEmptyIntro
+                      feedbackType={'user'}
+                      onStartChat={onStartChat}
+                      chatType={'chat'}
+                      isReady={!loading}
+                    />
+                  )}
+                </Box>
+              </Flex>
+            </Flex>
+          </PageContainer>
+        )}
+
+        {quoteData && (
+          <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
+            <ChatQuoteList
+              rawSearch={quoteData.rawSearch}
+              metadata={quoteData.metadata}
+              onClose={() => setQuoteData(undefined)}
+            />
+          </PageContainer>
+        )}
+      </Flex>
+    </AppFormContext.Provider>
   );
 };
 
@@ -235,7 +307,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
-  const { gateConfig, initGateConfig } = useGateStore();
+  const { gateConfig, initGateConfig, loadGateApps } = useGateStore();
 
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     () => getMyApps({ getRecentlyChat: true }),
@@ -262,18 +334,33 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
     // pc: redirect to latest model chat
     if (!appId) {
-      const apps = await loadMyApps();
-      if (apps.length === 0) {
-        toast({
-          status: 'error',
-          title: t('common:core.chat.You need to a chat app')
-        });
-        router.replace('/dashboard/apps');
+      // 获取Gate应用
+      const gateApps = await getMyAppsGate();
+      const gateApp = gateApps[0]; // 获取第一个Gate应用
+
+      // 如果找不到Gate应用，则加载普通应用
+      if (!gateApp) {
+        const apps = await loadMyApps();
+        if (apps.length === 0) {
+          toast({
+            status: 'error',
+            title: t('common:core.chat.You need to a chat app')
+          });
+          router.replace('/dashboard/apps');
+        } else {
+          router.replace({
+            query: {
+              ...router.query,
+              appId: lastChatAppId || apps[0]._id
+            }
+          });
+        }
       } else {
+        // 使用Gate应用
         router.replace({
           query: {
             ...router.query,
-            appId: lastChatAppId || apps[0]._id
+            appId: gateApp._id
           }
         });
       }

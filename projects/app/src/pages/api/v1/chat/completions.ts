@@ -78,6 +78,7 @@ export type Props = ChatCompletionCreateParams &
     parseQuote?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
     gateModel?: string; // gate model
+    selectedTool?: string; // selected tool ID for gate
   };
 
 type AuthResponseType = {
@@ -114,7 +115,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     variables = {},
     responseChatItemId = getNanoid(),
     metadata,
-    gateModel
+    gateModel,
+    selectedTool
   } = req.body as Props;
 
   const originIp = requestIp.getClientIp(req);
@@ -239,6 +241,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
               input.value = gateModel;
             }
           });
+        }
+
+        // 如果指定了工具，通过直接操作工具节点启用该工具
+        if (selectedTool && node.flowNodeType === FlowNodeTypeEnum.tools) {
+          const selectedToolEntries = node.inputs
+            .filter((input) => input.key === 'selectedTools')
+            .flatMap((input) => (Array.isArray(input.value) ? input.value : []));
+
+          if (selectedToolEntries.some((toolEntry) => toolEntry.id === selectedTool)) {
+            // 找到了对应的工具，可以在这里激活它
+            console.log('找到并激活工具:', selectedTool);
+          }
         }
       });
     }

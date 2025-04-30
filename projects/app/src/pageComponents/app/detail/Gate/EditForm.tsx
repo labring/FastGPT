@@ -281,7 +281,7 @@ const EditForm = ({
 
         {/* tool choice */}
         <Box {...BoxStyles}>
-          <ToolSelect />
+          <ToolSelect appForm={appForm} setAppForm={setAppForm} />
         </Box>
 
         {/* File select */}
@@ -295,38 +295,6 @@ const EditForm = ({
                 chatConfig: {
                   ...state.chatConfig,
                   fileSelectConfig: e
-                }
-              }));
-            }}
-          />
-        </Box>
-
-        {/* variable */}
-        <Box {...BoxStyles}>
-          <VariableEdit
-            variables={appForm.chatConfig.variables}
-            onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  variables: e
-                }
-              }));
-            }}
-          />
-        </Box>
-
-        {/* welcome */}
-        <Box {...BoxStyles}>
-          <WelcomeTextConfig
-            value={appForm.chatConfig.welcomeText}
-            onChange={(e) => {
-              setAppForm((state) => ({
-                ...state,
-                chatConfig: {
-                  ...state.chatConfig,
-                  welcomeText: e.target.value
                 }
               }));
             }}

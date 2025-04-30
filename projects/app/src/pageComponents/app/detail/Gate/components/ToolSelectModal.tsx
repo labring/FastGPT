@@ -18,12 +18,14 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import {
+  FlowNodeTemplateType,
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getPluginGroups,
+  getPreviewPluginNode,
   getSystemPlugTemplates,
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
@@ -34,28 +36,43 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { workflowStartNodeId } from '@/web/core/app/constants';
+import ConfigToolModal from './ConfigToolModal';
 
 type Props = {
-  selectedPluginIds: string[];
-  onSelectPlugins: (plugins: NodeTemplateListItemType[]) => void;
-  onCancel: () => void;
+  selectedTools: FlowNodeTemplateType[];
+  chatConfig: AppSimpleEditFormType['chatConfig'];
+  selectedModel: LLMModelItemType;
+  onAddTool: (tool: FlowNodeTemplateType) => void;
+  onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };
+
+export const childAppSystemKey: string[] = [
+  NodeInputKeyEnum.forbidStream,
+  NodeInputKeyEnum.history,
+  NodeInputKeyEnum.historyMaxAmount,
+  NodeInputKeyEnum.userChatInput
+];
 
 enum TemplateTypeEnum {
   'systemPlugin' = 'systemPlugin',
   'teamPlugin' = 'teamPlugin'
 }
 
-const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props) => {
+const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const [tempSelectedIds, setTempSelectedIds] = useState<string[]>([...selectedPluginIds]);
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemPlugin);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
@@ -120,35 +137,12 @@ const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props
     refreshDeps: [searchKey]
   });
 
-  // 处理保存选择
-  const handleConfirm = () => {
-    console.log('即将保存的插件选择:', tempSelectedIds);
-    // 获取选中插件的完整信息
-    const selectedPlugins = templates.filter((template) => tempSelectedIds.includes(template.id));
-    // 传递完整的插件信息而不只是ID
-    onSelectPlugins(selectedPlugins);
-    onCancel();
-  };
-
-  // 添加或移除插件ID
-  const togglePluginSelection = (pluginId: string) => {
-    console.log('切换插件选择状态:', pluginId);
-    setTempSelectedIds((prev) => {
-      const newSelection = prev.includes(pluginId)
-        ? prev.filter((id) => id !== pluginId)
-        : [...prev, pluginId];
-
-      console.log('更新后的临时选择:', newSelection);
-      return newSelection;
-    });
-  };
-
   return (
     <MyModal
       isOpen
       title={t('common:core.app.Tool call')}
       iconSrc="core/app/toolCall"
-      onClose={onCancel}
+      onClose={onClose}
       maxW={['90vw', '700px']}
       w={'700px'}
       h={['90vh', '80vh']}
@@ -201,28 +195,9 @@ const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props
           templates={templates}
           type={templateType}
           setParentId={onUpdateParentId}
-          selectedIds={tempSelectedIds}
-          toggleSelection={togglePluginSelection}
+          {...props}
         />
       </MyBox>
-
-      {/* Footer buttons - 改用内部内容替代 footer 属性 */}
-      <Flex
-        px={[3, 6]}
-        py={4}
-        justify="flex-end"
-        w="full"
-        gap={3}
-        borderTop="1px solid"
-        borderColor="gray.100"
-      >
-        <Button variant="outline" onClick={onCancel}>
-          {t('common:common.Cancel')}
-        </Button>
-        <Button colorScheme="blue" onClick={handleConfirm}>
-          {t('common:common.Confirm')}
-        </Button>
-      </Flex>
     </MyModal>
   );
 };
@@ -232,17 +207,121 @@ export default React.memo(ToolSelectModal);
 const RenderList = React.memo(function RenderList({
   templates,
   type,
+  onAddTool,
+  onRemoveTool,
   setParentId,
-  selectedIds,
-  toggleSelection
-}: {
+  selectedTools,
+  chatConfig,
+  selectedModel
+}: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
   setParentId: (parentId: ParentIdType) => any;
-  selectedIds: string[];
-  toggleSelection: (id: string) => void;
 }) {
   const { t } = useTranslation();
+  const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
+  const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
+  const { toast } = useToast();
+
+  const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
+    async (template: NodeTemplateListItemType) => {
+      const res = await getPreviewPluginNode({ appId: template.id });
+
+      /* Invalid plugin check
+        1. Reference type. but not tool description;
+        2. Has dataset select
+        3. Has dynamic external data
+      */
+      const oneFileInput =
+        res.inputs.filter((input) =>
+          input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
+        ).length === 1;
+      const canUploadFile =
+        chatConfig?.fileSelectConfig?.canSelectFile || chatConfig?.fileSelectConfig?.canSelectImg;
+      const invalidFileInput = oneFileInput && !!canUploadFile;
+      if (
+        res.inputs.some(
+          (input) =>
+            (input.renderTypeList.length === 1 &&
+              input.renderTypeList[0] === FlowNodeInputTypeEnum.reference &&
+              !input.toolDescription) ||
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.selectDataset) ||
+            input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam) ||
+            (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) && !invalidFileInput)
+        )
+      ) {
+        return toast({
+          title: t('app:simple_tool_tips'),
+          status: 'warning'
+        });
+      }
+
+      // 判断是否可以直接添加工具,满足以下任一条件:
+      // 1. 有工具描述
+      // 2. 是模型选择类型
+      // 3. 是文件上传类型且:已开启文件上传、非必填、只有一个文件上传输入
+      const hasInputForm =
+        res.inputs.length > 0 &&
+        res.inputs.some((input) => {
+          if (input.toolDescription) {
+            return false;
+          }
+          if (input.key === NodeInputKeyEnum.forbidStream) {
+            return false;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.input)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.textarea)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.numberInput)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.switch)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.select)) {
+            return true;
+          }
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.JSONEditor)) {
+            return true;
+          }
+          return false;
+        });
+
+      // 构建默认表单数据
+      const defaultForm = {
+        ...res,
+        inputs: res.inputs.map((input) => {
+          // 如果是模型选择类型,使用当前选中的模型
+          // if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
+          //   return {
+          //     ...input,
+          //     value: selectedModel.model
+          //   };
+          // }
+          // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
+          if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
+            return {
+              ...input,
+              value: [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]]
+            };
+          }
+          return input;
+        })
+      };
+
+      if (hasInputForm) {
+        setConfigTool(defaultForm);
+      } else {
+        onAddTool(defaultForm);
+      }
+    },
+    {
+      errorToast: t('common:core.module.templates.Load plugin error')
+    }
+  );
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
@@ -322,7 +401,7 @@ const RenderList = React.memo(function RenderList({
               </Flex>
               <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2} columnGap={3}>
                 {item.list.map((template) => {
-                  const selected = selectedIds.includes(template.id);
+                  const selected = selectedTools.some((tool) => tool.pluginId === template.id);
 
                   return (
                     <MyTooltip
@@ -386,12 +465,37 @@ const RenderList = React.memo(function RenderList({
                             size={'sm'}
                             variant={'grayDanger'}
                             leftIcon={<MyIcon name={'delete'} w={'16px'} mr={-1} />}
-                            onClick={() => toggleSelection(template.id)}
+                            onClick={() => onRemoveTool(template)}
                             px={2}
                             fontSize={'mini'}
                           >
                             {t('common:common.Remove')}
                           </Button>
+                        ) : template.flowNodeType === 'toolSet' ? (
+                          <Flex gap={2}>
+                            <Button
+                              size={'sm'}
+                              variant={'whiteBase'}
+                              isLoading={isLoading}
+                              leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
+                              onClick={() => setParentId(template.id)}
+                              px={2}
+                              fontSize={'mini'}
+                            >
+                              {t('common:common.Open')}
+                            </Button>
+                            <Button
+                              size={'sm'}
+                              variant={'primaryOutline'}
+                              leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
+                              isLoading={isLoading}
+                              onClick={() => onClickAdd(template)}
+                              px={2}
+                              fontSize={'mini'}
+                            >
+                              {t('common:common.Add')}
+                            </Button>
+                          </Flex>
                         ) : template.isFolder ? (
                           <Button
                             size={'sm'}
@@ -408,7 +512,8 @@ const RenderList = React.memo(function RenderList({
                             size={'sm'}
                             variant={'primaryOutline'}
                             leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
-                            onClick={() => toggleSelection(template.id)}
+                            isLoading={isLoading}
+                            onClick={() => onClickAdd(template)}
                             px={2}
                             fontSize={'mini'}
                           >
@@ -458,6 +563,14 @@ const RenderList = React.memo(function RenderList({
           <PluginListRender list={formatTemplatesArray?.[0]?.list} />
         )}
       </Accordion>
+
+      {!!configTool && (
+        <ConfigToolModal
+          configTool={configTool}
+          onCloseConfigTool={onCloseConfigTool}
+          onAddTool={onAddTool}
+        />
+      )}
     </Box>
   );
 });

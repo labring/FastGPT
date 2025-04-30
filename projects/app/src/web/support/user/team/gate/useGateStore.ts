@@ -9,22 +9,27 @@ import {
 import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api.d';
 import { getMyAppsGate } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
 
 type State = {
   gateConfig?: GateSchemaType;
   copyRightConfig?: any;
+  gateApps: AppListItemType[];
 
   // init methods
   initGateConfig: () => Promise<void>;
   initCopyRightConfig: () => Promise<void>;
+  loadGateApps: () => Promise<AppListItemType[]>;
 
   // clear methods
   clearGateConfig: () => void;
   clearCopyRightConfig: () => void;
+  clearGateApps: () => void;
 
   // local update methods
   updateLocalGateConfig: (data: Partial<GateSchemaType>) => void;
   updateLocalCopyRightConfig: (data: Partial<putUpdateGateConfigCopyRightData>) => void;
+  updateGateApps: (apps: AppListItemType[]) => void;
 
   // save methods (API calls)
   saveGateConfig: () => Promise<void>;
@@ -37,6 +42,7 @@ export const useGateStore = create<State>()(
       immer((set, get) => ({
         gateConfig: undefined,
         copyRightConfig: undefined,
+        gateApps: [],
 
         clearGateConfig: () => {
           set((state) => {
@@ -46,6 +52,11 @@ export const useGateStore = create<State>()(
         clearCopyRightConfig: () => {
           set((state) => {
             state.copyRightConfig = undefined;
+          });
+        },
+        clearGateApps: () => {
+          set((state) => {
+            state.gateApps = [];
           });
         },
 
@@ -88,6 +99,25 @@ export const useGateStore = create<State>()(
             });
             console.error(error);
           }
+        },
+
+        loadGateApps: async () => {
+          try {
+            const apps = await getMyAppsGate();
+            set((state) => {
+              state.gateApps = apps;
+            });
+            return apps;
+          } catch (error) {
+            console.error('Failed to load gate apps:', error);
+            return get().gateApps; // 出错时返回当前存储的应用列表
+          }
+        },
+
+        updateGateApps: (apps: AppListItemType[]) => {
+          set((state) => {
+            state.gateApps = apps;
+          });
         },
 
         // 本地更新方法
@@ -136,7 +166,8 @@ export const useGateStore = create<State>()(
         name: 'gateStore',
         partialize: (state) => ({
           gateConfig: state.gateConfig,
-          copyRightConfig: state.copyRightConfig
+          copyRightConfig: state.copyRightConfig,
+          gateApps: state.gateApps
         })
       }
     )

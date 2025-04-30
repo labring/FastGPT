@@ -7,10 +7,12 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import ShareGateModal from './ShareModol';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { getMyAppsGate, postCreateApp, putAppById } from '@/web/core/app/api';
+import { getMyAppsGate, postCreateApp, putAppById, delAppById } from '@/web/core/app/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { emptyTemplates } from '@/web/core/app/templates';
 import { putUpdateTeam } from '@/web/support/user/team/api';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRouter } from 'next/router';
 
 type Props = {
   tab: 'home' | 'copyright';
@@ -24,9 +26,16 @@ type Props = {
 const ConfigButtons = ({ tab }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const router = useRouter();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { saveGateConfig, saveCopyRightConfig, copyRightConfig, gateConfig } = useGateStore();
   const { userInfo } = useUserStore();
+
+  // 确认删除门户
+  const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
+    content: t('account_gate:confirm_delete_gate'),
+    type: 'delete'
+  });
 
   // 保存配置
   const { runAsync: saveHomeConfig, loading: savingHome } = useRequest2(
@@ -78,6 +87,41 @@ const ConfigButtons = ({ tab }: Props) => {
       }
     }
   );
+
+  // 删除门户应用
+  const { runAsync: deleteGateApp, loading: deletingGate } = useRequest2(
+    async () => {
+      try {
+        // 获取应用列表
+        const apps = await getMyAppsGate();
+        const gateApp = apps.find((app) => app.type === AppTypeEnum.gate);
+
+        if (gateApp) {
+          // 删除门户应用
+          await delAppById(gateApp._id);
+          toast({
+            title: t('common:common.Delete Success'),
+            status: 'success'
+          });
+        } else {
+          toast({
+            title: t('account_gate:no_gate_to_delete'),
+            status: 'info'
+          });
+        }
+      } catch (error) {
+        toast({
+          title: t('common:common.Delete Failed'),
+          status: 'error',
+          description: (error as Error)?.message
+        });
+      }
+    },
+    {
+      manual: true
+    }
+  );
+
   const checkAndCreateGateApp = async () => {
     try {
       // 获取应用列表
@@ -148,9 +192,18 @@ const ConfigButtons = ({ tab }: Props) => {
       >
         {t('account:gateway.share')}
       </Button>
+      <Button
+        variant={'dangerFill'}
+        leftIcon={<MyIcon className="delete" name={'delete' as any} w={'18px'} color={'inherit'} />}
+        onClick={() => openConfirmDel(deleteGateApp)()}
+        isLoading={deletingGate}
+      >
+        {t('account_gate:delete_gate')}
+      </Button>
 
       {/* 分享门户弹窗 */}
       <ShareGateModal isOpen={isOpen} onClose={onClose} />
+      <ConfirmDelModal />
     </Flex>
   );
 };

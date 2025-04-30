@@ -31,6 +31,7 @@ export type ChatBoxInputType = {
   isInteractivePrompt?: boolean;
   hideInUI?: boolean;
   gateModel?: string;
+  selectedTool?: string | null;
 };
 
 export type SendPromptFnType = (
