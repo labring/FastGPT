@@ -1,7 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { APIFileServer, YuqueServer, FeishuServer } from '@fastgpt/global/core/dataset/apiDataset';
+import type {
+  APIFileServer,
+  YuqueServer,
+  FeishuServer
+} from '@fastgpt/global/core/dataset/apiDataset';
 import { getProApiDatasetFileDetailRequest } from '@/service/core/dataset/apiDataset/controller';
 import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
