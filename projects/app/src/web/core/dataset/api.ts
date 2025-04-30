@@ -72,6 +72,7 @@ import type {
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
 import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
+import { GetQuoteDataProps } from '@/pages/api/core/chat/quote/getQuote';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -216,8 +217,8 @@ export const delOneDatasetDataById = (id: string) =>
   DELETE<string>(`/core/dataset/data/delete`, { id });
 
 // Get quote data
-export const getQuoteData = (id: string) =>
-  GET<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, { id });
+export const getQuoteData = (data: GetQuoteDataProps) =>
+  POST<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, data);
 
 /* ================ training ==================== */
 export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>

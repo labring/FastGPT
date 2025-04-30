@@ -20,14 +20,14 @@ export const setBdVId = (bdVid?: string) => {
 };
 
 export const getUtmWorkflow = () => {
-  return sessionStorage.getItem('utm_workflow') || undefined;
+  return localStorage.getItem('utm_workflow') || undefined;
 };
 export const setUtmWorkflow = (utmWorkflow?: string) => {
   if (!utmWorkflow) return;
-  sessionStorage.setItem('utm_workflow', utmWorkflow);
+  localStorage.setItem('utm_workflow', utmWorkflow);
 };
 export const removeUtmWorkflow = () => {
-  sessionStorage.removeItem('utm_workflow');
+  localStorage.removeItem('utm_workflow');
 };
 
 export const getUtmParams = () => {

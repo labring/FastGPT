@@ -12,6 +12,8 @@ import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
 import { CodeClassNameEnum, mdTextFormat } from './utils';
+import { useCreation } from 'ahooks';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -31,6 +33,11 @@ type Props = {
   showAnimation?: boolean;
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
+  chatAuthData?: {
+    appId: string;
+    chatId: string;
+    chatItemDataId: string;
+  } & OutLinkChatAuthProps;
 };
 const Markdown = (props: Props) => {
   const source = props.source || '';
@@ -41,16 +48,21 @@ const Markdown = (props: Props) => {
 
   return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
 };
-const MarkdownRender = ({ source = '', showAnimation, isDisabled, forbidZhFormat }: Props) => {
-  const components = useMemo<any>(
-    () => ({
+const MarkdownRender = ({
+  source = '',
+  showAnimation,
+  isDisabled,
+  forbidZhFormat,
+  chatAuthData
+}: Props) => {
+  const components = useCreation(() => {
+    return {
       img: Image,
       pre: RewritePre,
       code: Code,
-      a: A
-    }),
-    []
-  );
+      a: (props: any) => <A {...props} chatAuthData={chatAuthData} />
+    };
+  }, [chatAuthData]);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;

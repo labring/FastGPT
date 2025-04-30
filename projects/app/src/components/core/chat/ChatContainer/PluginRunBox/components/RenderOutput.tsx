@@ -35,6 +35,7 @@ const RenderOutput = () => {
                 const key = `${histories[1].dataId}-ai-${i}`;
                 return (
                   <AIResponseBox
+                    chatItemDataId={histories[1].dataId}
                     key={key}
                     value={value}
                     isLastResponseValue={true}

@@ -58,11 +58,14 @@ const ListItem = () => {
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
-  const [editPerAppIndex, setEditPerAppIndex] = useState<number>();
+  const [editPerAppId, setEditPerAppId] = useState<string>();
 
   const editPerApp = useMemo(
-    () => (editPerAppIndex !== undefined ? myApps[editPerAppIndex] : undefined),
-    [editPerAppIndex, myApps]
+    () =>
+      editPerAppId !== undefined
+        ? myApps.find((item) => String(item._id) === String(editPerAppId))
+        : undefined,
+    [editPerAppId, myApps]
   );
 
   const parentApp = useMemo(() => myApps.find((item) => item._id === parentId), [parentId, myApps]);
@@ -340,7 +343,7 @@ const ListItem = () => {
                                               icon: 'key',
                                               type: 'grayBg' as MenuItemType,
                                               label: t('common:permission.Permission'),
-                                              onClick: () => setEditPerAppIndex(index)
+                                              onClick: () => setEditPerAppId(app._id)
                                             }
                                           ]
                                         : [])
@@ -452,7 +455,7 @@ const ListItem = () => {
               }),
             refreshDeps: [editPerApp.inheritPermission]
           }}
-          onClose={() => setEditPerAppIndex(undefined)}
+          onClose={() => setEditPerAppId(undefined)}
         />
       )}
       {!!editHttpPlugin && (
