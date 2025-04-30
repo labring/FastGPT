@@ -58,7 +58,7 @@ export async function dispatchDatasetSearch(
     params: {
       datasets = [],
       similarity,
-      limit = 1500,
+      limit = 6000,
       userChatInput = '',
       authTmbId = false,
       collectionFilterMatch,
