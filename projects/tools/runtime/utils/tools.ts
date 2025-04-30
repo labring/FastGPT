@@ -1,11 +1,15 @@
 import fs from 'fs';
 import path from 'path';
 import type { ToolType } from '../../type';
-export async function downloadFile(url: string, filename: string) {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  const file = new File([blob], filename);
-  return file;
+
+export async function saveFile(url: string, path: string) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to download file: ${response.statusText}`);
+  }
+  const buffer = await response.arrayBuffer();
+  fs.writeFileSync(path, Buffer.from(buffer));
+  return buffer;
 }
 
 const tools: ToolType[] = [];
@@ -19,7 +23,9 @@ async function LoadToolsProd() {
     const filePath = path.join(toolsDir, file);
     if (fs.statSync(filePath).isDirectory()) {
       const toolPath = path.join(filePath, 'index.js');
-      tools.push((await import(toolPath)).default as ToolType);
+      const mod = (await import(toolPath)).default as ToolType;
+      if (!mod.toolId) mod.toolId = file;
+      tools.push(mod);
     }
   }
   // 2. 读取 tools.json 文件中的配置（通过网络挂载）
@@ -29,13 +35,16 @@ async function LoadToolsProd() {
       toolId: string;
       url: string;
     }[];
-    // every string is a url to get a .pkg file
+    // every string is a url to get a .js file
     for (const tool of toolConfig) {
-      const file = await downloadFile(tool.url, tool.toolId); // TODO
+      await saveFile(tool.url, path.join(toolsDir, tool.toolId + '.js'));
+      const mod = (await import(path.join(toolsDir, tool.toolId + '.js'))).default as ToolType;
+      if (!mod.toolId) mod.toolId = tool.toolId;
+      tools.push(mod);
     }
+  } else {
+    console.log('no extra tools are mounted');
   }
-  // TODO
-
   console.log(
     `\
 =================

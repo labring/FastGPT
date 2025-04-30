@@ -1,1 +1,5 @@
-{}
+{
+  "scripts": {
+    "build": "bun build index.ts --minify --outdir dist --outFile index.js --target=node"
+  }
+}
