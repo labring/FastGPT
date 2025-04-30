@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { ToolType } from '../../type';
+import { randomUUID } from 'crypto';
 
 export async function saveFile(url: string, path: string) {
   const response = await fetch(url);
@@ -14,6 +15,7 @@ export async function saveFile(url: string, path: string) {
 
 const tools: ToolType[] = [];
 const toolsDir = process.env.TOOLS_DIR || path.join(process.cwd(), 'tools');
+const flushCode = randomUUID();
 
 async function LoadToolsProd() {
   // 两种方式：
@@ -96,6 +98,10 @@ export function getTools() {
     ...tool,
     cb: undefined
   }));
+}
+
+export function getFlushCode() {
+  return flushCode;
 }
 
 export async function init(prod: boolean) {
