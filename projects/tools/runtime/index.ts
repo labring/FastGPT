@@ -13,7 +13,7 @@ program
   .option('-P, --port <port>', 'Specify the port to run on', '')
   .parse();
 
-const prod = program.opts().prod as boolean;
+export const prod = program.opts().prod as boolean;
 const PORT = parseInt(program.opts().port || process.env.PORT || '3000');
 
 init(prod); // init the tool

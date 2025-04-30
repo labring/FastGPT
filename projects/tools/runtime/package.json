@@ -1,8 +1,9 @@
 {
   "name": "runtime",
+  "type": "module",
   "scripts": {
-    "build:node": "bun build --outfile=dist/index.js --target=node --minify ./index.ts",
-    "build:bun": "bun build --outfile=dist/index.js --target=bun --minify ./index.ts",
+    "build:node": "bun build --outfile=dist/index.js --target=node --minify ./index.ts && cp worker/worker.js dist/worker.js",
+    "build:bun": "bun build --outfile=dist/index.js --target=bun --minify ./index.ts && cp worker/worker.js dist/worker.js",
     "build": "bun run build:node",
     "start": "cd dist && node index.js -p",
     "start:bun": "bun --cwd=dist index.js -p",
