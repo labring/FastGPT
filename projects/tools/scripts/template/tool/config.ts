@@ -1,21 +1,20 @@
 import {
+  defineTool,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  WorkflowIOValueTypeEnum,
-  type ToolType
+  WorkflowIOValueTypeEnum
 } from '@/type';
 
-export const config: Omit<ToolType, 'cb'> = {
-  toolId: 'community-getTime',
-  version: '4.9.6',
+export default defineTool({
+  version: '1.0.0',
   type: 'tools',
   name: {
-    'zh-CN': '获取当前时间',
-    en: 'Get current time'
+    'zh-CN': '模版工具',
+    en: 'Template tool'
   },
   description: {
-    'zh-CN': '获取当前时间',
-    en: 'Get current time'
+    'zh-CN': '描述',
+    en: 'description'
   },
   icon: '',
   inputs: [
@@ -35,4 +34,4 @@ export const config: Omit<ToolType, 'cb'> = {
       description: '当前时间'
     }
   ]
-};
+});

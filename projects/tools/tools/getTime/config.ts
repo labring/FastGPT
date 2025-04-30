@@ -1,9 +1,9 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  WorkflowIOValueTypeEnum,
-  type ToolType
-} from '../../type';
+  WorkflowIOValueTypeEnum
+} from '@/type/fastgpt';
+import { type ToolType } from '../../type';
 
 export const config: Omit<ToolType, 'cb'> = {
   toolId: 'community-getTime',

@@ -1,5 +1,3 @@
-import { z } from 'zod';
-
 export enum NodeOutputKeyEnum {
   // common
   userChatInput = 'userChatInput',
@@ -248,7 +246,7 @@ export enum WorkflowIOValueTypeEnum {
   selectApp = 'selectApp'
 }
 
-enum LLMModelTypeEnum {
+export enum LLMModelTypeEnum {
   all = 'all',
   classify = 'classify',
   extractFields = 'extractFields',
@@ -261,50 +259,6 @@ export enum FlowNodeOutputTypeEnum {
   static = 'static',
   dynamic = 'dynamic'
 }
-
-export const ToolCallbackType = z
-  .function()
-  .args(z.any())
-  .returns(z.promise(z.object({ error: z.any().optional(), output: z.any() })));
-
-export const InfoString = z.object({
-  en: z.string().optional(),
-  'zh-CN': z.string(),
-  'zh-Hant': z.string().optional()
-});
-
-export const ToolSchema = z
-  .object({
-    toolId: z.string().optional(),
-    name: InfoString,
-    description: InfoString,
-    type: z.string(),
-    icon: z.string(),
-    cb: ToolCallbackType.optional(),
-    author: z.string().optional(),
-    docURL: z.string().optional(),
-    version: z.string(),
-    parentId: z.string().optional(),
-    isFolder: z.boolean().optional()
-  })
-  .refine((data) => {
-    if (!data.isFolder && !data.cb) return { message: 'cb is required' };
-  });
-
-export type ToolType = z.infer<typeof ToolSchema> & {
-  inputs: InputType[];
-  outputs: OutputType[];
-};
-
-export type ToolConfigType = Omit<ToolType, 'cb'>;
-export type FolderConfigType = Omit<ToolType, 'cb' | 'inputs' | 'outputs'>;
-
-export type CustomFieldConfigType = {
-  // reference
-  selectValueTypeList?: WorkflowIOValueTypeEnum[]; // 可以选哪个数据类型, 只有1个的话,则默认选择
-  showDefaultValue?: boolean;
-  showDescription?: boolean;
-};
 
 export type InputType = {
   referencePlaceholder?: string;
@@ -363,3 +317,12 @@ export type OutputType = {
   defaultValue?: unknown;
   required?: boolean;
 };
+
+export type CustomFieldConfigType = {
+  // reference
+  selectValueTypeList?: WorkflowIOValueTypeEnum[]; // 可以选哪个数据类型, 只有1个的话,则默认选择
+  showDefaultValue?: boolean;
+  showDescription?: boolean;
+};
+
+export * from './fastgpt';

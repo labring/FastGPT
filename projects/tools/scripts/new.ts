@@ -5,13 +5,13 @@ const program = new Command();
 
 program
   .name('new')
-  .description('Create a new tool or folder')
-  .option('-f --folder', 'Create a folder')
+  .description('Create a new tool or toolset')
+  .option('--toolset', 'Create a toolset')
   .argument('<name>', 'name');
 
 program.parse();
 
-const isFolder = program.opts().folder as boolean;
+const isToolset = program.opts().toolset as boolean;
 const name = program.args[0];
 
 // name validation:
@@ -27,15 +27,12 @@ if (!/^[a-z0-9-]+$/.test(name)) {
   process.exit(1);
 }
 
-console.log('Creating tool', name);
+console.log('Creating tool: ', name);
 // copy template to tools/<name>
 
-const templateDir = isFolder
-  ? path.join('scripts', 'template', 'folder')
-  : path.join('scripts', 'template', 'tool');
+const templateDir = path.join('scripts', 'template');
 
 const toolDir = path.join('tools', name);
-
 if (!fs.existsSync(toolDir)) {
   fs.mkdirSync(toolDir, { recursive: true });
 }
@@ -52,25 +49,20 @@ const copyTemplate = (src: string, dest: string) => {
   }
 };
 
-copyTemplate(templateDir, toolDir);
-
-// update package.json
-const packageJsonPath = path.join(toolDir, 'package.json');
-const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-packageJson.name = `fastgpt-tools-${name}`;
-packageJson.module = 'index.ts';
-packageJson.type = 'module';
-packageJson.devDependencies = {
-  '@types/bun': 'latest'
-};
-packageJson.peerDependencies = {
-  typescript: '^5.0.0'
-};
-packageJson.dependencies = {};
-fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+if (isToolset) {
+  copyTemplate(templateDir, toolDir);
+} else {
+  copyTemplate(path.join(templateDir, 'tool'), toolDir);
+  // update package.json
+  const packageJsonPath = path.join(templateDir, 'package.json');
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+  packageJson.name = `fastgpt-tools-${name}`;
+  fs.writeFileSync(toolDir + '/package.json', JSON.stringify(packageJson, null, 2));
+}
 
 // output success message
-console.log('Tool created successfully! 🎉');
-console.log('Next steps:');
-console.log('- cd tools/' + name);
-console.log('- bun i');
+console.log(`
+Tool/Toolset created successfully! 🎉Next steps:
+- cd tools/${name}
+- bun i
+`);
