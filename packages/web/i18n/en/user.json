@@ -28,6 +28,7 @@
   "login.success": "Login Successful",
   "manage_team": "Manage team",
   "name": "Name",
+  "new_password": "New Password",
   "notification.remind_owner_bind": "Please remind the creator to bind a notification account",
   "operations": "Actions",
   "owner": "owner",
@@ -87,6 +88,7 @@
   "team.add_writer": "Add writable members",
   "team.avatar_and_name": "avatar",
   "team.belong_to_group": "Member group",
+  "team.collaborator.added": "Added",
   "team.group.avatar": "Group avatar",
   "team.group.create": "Create group",
   "team.group.create_failed": "Failed to create group",
@@ -111,6 +113,5 @@
   "team.manage_collaborators": "Manage Collaborators",
   "team.no_collaborators": "No Collaborators",
   "team.org.org": "Organization",
-  "team.write_role_member": "Write Permission",
-  "team.collaborator.added": "Added"
+  "team.write_role_member": "Write Permission"
 }

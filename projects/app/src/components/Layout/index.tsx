@@ -86,7 +86,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         }
       });
     }
-  }, [userInfo?.username, updatePswTime]);
+  }, [userInfo?.username, updatePswTime, userInfo]);
 
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
@@ -182,11 +182,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
+          {reset_password && <ResetPswModal onClose={() => setResetPassword(false)} />}
           <WorkorderButton />
         </>
       )}
-
-      {reset_password && <ResetPswModal onClose={() => setResetPassword(false)} />}
 
       <ManualCopyModal />
       <Loading loading={loading} zIndex={999999} />

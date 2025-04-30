@@ -28,6 +28,7 @@
   "login.success": "登入成功",
   "manage_team": "管理團隊",
   "name": "名稱",
+  "new_password": "新密碼",
   "notification.remind_owner_bind": "請提醒建立者綁定通知帳號",
   "operations": "操作",
   "owner": "擁有者",
@@ -87,6 +88,7 @@
   "team.add_writer": "新增可寫入成員",
   "team.avatar_and_name": "頭像與名稱",
   "team.belong_to_group": "所屬成員群組",
+  "team.collaborator.added": "已新增",
   "team.group.avatar": "群組頭像",
   "team.group.create": "建立群組",
   "team.group.create_failed": "建立群組失敗",
@@ -111,6 +113,5 @@
   "team.manage_collaborators": "管理協作者",
   "team.no_collaborators": "目前沒有協作者",
   "team.org.org": "組織",
-  "team.write_role_member": "可寫入權限",
-  "team.collaborator.added": "已新增"
+  "team.write_role_member": "可寫入權限"
 }

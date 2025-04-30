@@ -65,21 +65,24 @@ const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <MyModal isOpen iconSrc="/imgs/modal/password.svg" title={t('account_info:reset_password')}>
+    <MyModal isOpen iconSrc="/imgs/modal/password.svg" title={t('common:user.reset_password')}>
       <ModalBody>
+        <Flex alignItems={'center'} color={'primary.600'} fontSize={'sm'}>
+          {t('common:user.reset_password_tip')}
+        </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 70px'} fontSize={'sm'}>
-            {t('account_info:new_password') + ':'}
+            {t('common:user.new_password') + ':'}
           </Box>
           <Input
             flex={1}
             type={'password'}
-            placeholder={t('account_info:password_tip')}
+            placeholder={t('common:user.password_tip')}
             {...register('newPsw', {
               required: true,
               validate: (val) => {
                 if (!checkPasswordRule(val)) {
-                  return t('login:password_tip');
+                  return t('common:user.password_tip');
                 }
                 return true;
               }
@@ -88,12 +91,12 @@ const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 70px'} fontSize={'sm'}>
-            {t('account_info:confirm_password') + ':'}
+            {t('common:user.confirm_password') + ':'}
           </Box>
           <Input
             flex={1}
             type={'password'}
-            placeholder={t('user:password.confirm')}
+            placeholder={t('common:user.confirm_password')}
             {...register('confirmPsw', {
               required: true,
               validate: (val) => (getValues('newPsw') === val ? true : t('user:password.not_match'))
@@ -103,7 +106,7 @@ const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data), onSubmitErr)}>
-          {t('account_info:confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

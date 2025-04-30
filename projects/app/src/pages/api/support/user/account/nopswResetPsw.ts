@@ -17,19 +17,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('can not find it');
     }
 
-    if (user.password === newPsw || user.password === hashStr(newPsw)) {
-      throw new Error('new password is same as old password');
-    }
-
     if (user.passwordUpdateTime) {
       throw new Error('no right to reset password');
     }
+
+    console.log('user', user);
 
     // 更新对应的记录
     await MongoUser.findByIdAndUpdate(userId, {
       password: newPsw,
       passwordUpdateTime: new Date()
     });
+
+    console.log('user', user);
 
     jsonRes(res, {
       data: {
