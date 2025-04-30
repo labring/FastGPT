@@ -24,7 +24,7 @@ const GatewayConfig = () => {
   useEffect(() => {
     initGateConfig();
     initCopyRightConfig();
-  }, []);
+  }, [initCopyRightConfig, initGateConfig]);
 
   const Tab = useMemo(() => {
     return (
@@ -75,7 +75,7 @@ const GatewayConfig = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_gate']))
+      ...(await serviceSideProps(content, ['app', 'account', 'account_gate']))
     }
   };
 }

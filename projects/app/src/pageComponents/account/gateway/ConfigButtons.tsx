@@ -5,7 +5,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ShareGateModal from './ShareModol';
-import { GateTool } from '@fastgpt/global/support/user/team/gate/type';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getMyAppsGate, postCreateApp, putAppById } from '@/web/core/app/api';
@@ -15,7 +14,7 @@ import { putUpdateTeam } from '@/web/support/user/team/api';
 
 type Props = {
   tab: 'home' | 'copyright';
-  tools: GateTool[];
+  tools: string[];
   slogan: string;
   placeholderText: string;
   status: boolean;

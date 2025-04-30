@@ -51,6 +51,11 @@ export const useGateStore = create<State>()(
 
         initGateConfig: async () => {
           try {
+            // 清除本地状态，确保从服务器获取最新数据
+            set((state) => {
+              state.gateConfig = undefined;
+            });
+
             const gateConfig = await getTeamGateConfig();
             // 获取应用列表，查找 gate 应用
             const apps = await getMyAppsGate();
@@ -112,7 +117,7 @@ export const useGateStore = create<State>()(
           if (!gateConfig) return;
 
           await updateTeamGateConfig({
-            tools: gateConfig.tools,
+            tools: gateConfig.tools || [],
             placeholderText: gateConfig.placeholderText,
             status: gateConfig.status
           });

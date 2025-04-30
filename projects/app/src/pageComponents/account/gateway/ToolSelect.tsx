@@ -1,18 +1,39 @@
-import { Box, Button, Flex, Grid, useDisclosure } from '@chakra-ui/react';
-import React, { useMemo, useState, useCallback } from 'react';
+import { Box, Button, Flex, Grid, useDisclosure, useMediaQuery, Text } from '@chakra-ui/react';
+import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { theme } from '@fastgpt/web/styles/theme';
-import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
+import { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import ToolSelectModal from './ToolSelectModal';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
-import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
+import { defaultNodeVersion, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { keyframes } from '@emotion/react';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { spacing, formStyles } from './HomeTable';
+
+// 定义粉碎动画关键帧
+const shatterKeyframes = keyframes`
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.7) rotate(5deg) translateY(10px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.2) rotate(-5deg) translateY(15px);
+    filter: blur(4px);
+  }
+`;
 
 // 定义工具项的类型
 export type ToolItemType = {
@@ -29,6 +50,7 @@ export type ToolItemType = {
   pluginData?: {
     error?: string;
   };
+  isDeleting?: boolean; // 添加删除状态标记
 };
 
 // 组件 ref 类型定义
@@ -38,12 +60,16 @@ export type ToolSelectRefType = {
 
 type ToolSelectProps = {
   defaultTools?: ToolItemType[];
+  onChange?: () => void;
+  isLoading?: boolean;
 };
 
 const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
-  ({ defaultTools = [] }, ref) => {
+  ({ defaultTools = [], onChange, isLoading = false }, ref) => {
     const { t } = useTranslation();
     const [selectedTools, setSelectedTools] = useState<ToolItemType[]>(defaultTools);
+    // 使用 ref 来跟踪选中工具变化
+    const prevToolsRef = useRef<string[]>([]);
 
     const {
       isOpen: isOpenToolsSelect,
@@ -57,6 +83,37 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
       [selectedTools]
     );
 
+    // 修改 useEffect，只在插件 ID 列表真正变化时才触发 onChange
+    useEffect(() => {
+      // 比较当前插件 ID 和前一次的插件 ID
+      const prevPluginIds = prevToolsRef.current;
+      const currentPluginIds = selectedPluginIds;
+
+      // 检查是否有变化
+      const hasChanged =
+        prevPluginIds.length !== currentPluginIds.length ||
+        prevPluginIds.some((id, index) => id !== currentPluginIds[index]);
+
+      // 只有在真正变化时才调用 onChange
+      if (hasChanged && onChange) {
+        onChange();
+        // 更新 ref 以保存当前值
+        prevToolsRef.current = [...currentPluginIds];
+      }
+    }, [selectedPluginIds, onChange]);
+
+    // 初始化 prevToolsRef
+    useEffect(() => {
+      prevToolsRef.current = selectedPluginIds;
+    }, [selectedPluginIds]);
+
+    // useEffect 监听 defaultTools 变化更新 selectedTools
+    useEffect(() => {
+      if (defaultTools && defaultTools.length > 0) {
+        setSelectedTools(defaultTools);
+      }
+    }, [defaultTools]);
+
     // 使用 useCallback 缓存函数，防止不必要的重新创建
     const handleSelectPlugins = useCallback((selectedPlugins: NodeTemplateListItemType[]) => {
       setSelectedTools((prevTools) => {
@@ -69,7 +126,7 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
           pluginMap.set(plugin.id, plugin);
         });
 
-        // 保留未被移除的工具
+        // 保留未被移除的工具s
         const remainingTools = prevTools.filter(
           (tool) => !tool.pluginId || newPluginIds.has(tool.pluginId)
         );
@@ -104,11 +161,22 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
     }, []);
 
     const handleDeleteTool = useCallback((toolId: string) => {
-      setSelectedTools((prevTools) => prevTools.filter((tool) => tool.id !== toolId));
+      // 先设置删除标记，触发动画
+      setSelectedTools((prevTools) =>
+        prevTools.map((tool) => (tool.id === toolId ? { ...tool, isDeleting: true } : tool))
+      );
+
+      // 设置延时，等待动画完成后再从数组中移除
+      setTimeout(() => {
+        setSelectedTools((prevTools) => prevTools.filter((tool) => tool.id !== toolId));
+      }, 150); // 动画持续时间缩短到150ms
     }, []);
 
     // 获取选中工具的方法
-    const getSelectedTools = useCallback(() => selectedTools, [selectedTools]);
+    const getSelectedTools = useCallback(
+      () => selectedTools.filter((tool) => !tool.isDeleting),
+      [selectedTools]
+    );
 
     // 添加到组件实例上，方便外部访问
     React.useImperativeHandle(
@@ -121,85 +189,201 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
 
     return (
       <>
-        <Flex alignItems={'center'}>
-          <Button
-            variant={'transparentBase'}
-            leftIcon={<SmallAddIcon />}
-            iconSpacing={1}
-            mr={'-5px'}
-            size={'sm'}
-            fontSize={'sm'}
-            onClick={onOpenToolsSelect}
-          >
-            {t('common:common.Choose')}
-          </Button>
+        {/* 标题区域 */}
+        <Flex alignItems="center" justifyContent="space-between" width="100%">
+          <Flex alignItems="center" gap={spacing.xs}>
+            <Text
+              fontWeight={formStyles.fontWeight}
+              fontSize={formStyles.fontSize}
+              lineHeight={formStyles.lineHeight}
+              letterSpacing={formStyles.letterSpacing}
+              color="myGray.700"
+            >
+              {t('common:core.app.Tool call')}
+            </Text>
+            <QuestionTip ml={1} label={t('app:plugin_dispatch_tip')} />
+          </Flex>
+
+          {/* 已有工具时显示新增按钮 */}
+          {selectedTools.length > 0 && (
+            <Button
+              size="sm"
+              colorScheme="primary"
+              variant="outline"
+              leftIcon={<SmallAddIcon />}
+              onClick={onOpenToolsSelect}
+              _hover={{ bg: 'blue.50' }}
+            >
+              {t('common:common.Add')}
+            </Button>
+          )}
         </Flex>
 
-        {/* 显示已选工具列表 */}
-        <Grid
-          mt={selectedTools.length > 0 ? 2 : 0}
-          gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
-          gridGap={[2, 4]}
-        >
-          {selectedTools.map((item) => {
-            const hasError = checkAppUnExistError(item.pluginData?.error);
+        {/* 工具容器 */}
+        {selectedTools.length > 0 ? (
+          <Box mt={2}>
+            <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
+              {selectedTools.map((item) => {
+                const hasError = checkAppUnExistError(item.pluginData?.error);
 
-            return (
-              <MyTooltip key={item.id} label={item.intro}>
-                <Flex
-                  overflow={'hidden'}
-                  alignItems={'center'}
-                  p={2.5}
-                  bg={'white'}
-                  boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                  borderRadius={'md'}
-                  border={theme.borders.base}
-                  borderColor={hasError ? 'red.600' : ''}
-                  _hover={{
-                    ...hoverDeleteStyles,
-                    borderColor: hasError ? 'red.600' : 'primary.300'
-                  }}
-                  cursor={'pointer'}
-                >
-                  <Avatar src={item.avatar} w={'1.5rem'} h={'1.5rem'} borderRadius={'sm'} />
-                  <Box
-                    flex={'1 0 0'}
-                    ml={2}
-                    gap={2}
-                    className={'textEllipsis'}
-                    fontSize={'sm'}
-                    color={'myGray.900'}
-                  >
-                    {item.name}
-                  </Box>
-                  {hasError && (
-                    <MyTooltip label={t('app:app.modules.not_found_tips')}>
-                      <Flex
-                        bg={'red.50'}
-                        alignItems={'center'}
-                        h={6}
-                        px={2}
-                        rounded={'6px'}
-                        fontSize={'xs'}
-                        fontWeight={'medium'}
+                return (
+                  <MyTooltip key={item.id} label={item.intro}>
+                    <Flex
+                      overflow={'hidden'}
+                      alignItems={'center'}
+                      p={3}
+                      bg={'white'}
+                      boxShadow={'0 2px 8px rgba(0,0,0,0.06)'}
+                      borderRadius={'lg'}
+                      border={'1px solid'}
+                      borderColor={hasError ? 'red.400' : 'gray.100'}
+                      _hover={{
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        borderColor: hasError ? 'red.400' : 'primary.300'
+                      }}
+                      cursor={'pointer'}
+                      transition="all 0.2s ease"
+                      position="relative"
+                      role="group"
+                      animation={
+                        item.isDeleting ? `${shatterKeyframes} 0.15s ease forwards` : undefined
+                      }
+                    >
+                      <Box position="relative" borderRadius="md" overflow="hidden">
+                        <Avatar src={item.avatar} w={'1.8rem'} h={'1.8rem'} borderRadius={'md'} />
+                      </Box>
+                      <Box
+                        flex={'1 0 0'}
+                        ml={3}
+                        gap={2}
+                        className={'textEllipsis'}
+                        fontSize={'sm'}
+                        fontWeight="medium"
+                        color={'myGray.900'}
                       >
-                        <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                        <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
+                        {item.name}
+                      </Box>
+                      {hasError && (
+                        <MyTooltip label={t('app:app.modules.not_found_tips')}>
+                          <Flex
+                            bg={'red.50'}
+                            alignItems={'center'}
+                            h={6}
+                            px={2}
+                            rounded={'md'}
+                            fontSize={'xs'}
+                            fontWeight={'medium'}
+                          >
+                            <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+                            <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
+                          </Flex>
+                        </MyTooltip>
+                      )}
+                      <Flex
+                        className="delete"
+                        alignItems="center"
+                        justifyContent="center"
+                        ml={2}
+                        w="22px"
+                        h="22px"
+                        borderRadius="sm"
+                        bg="myGray.50"
+                        cursor="pointer"
+                        transition="all 0.2s"
+                        _hover={{
+                          bg: 'red.50',
+                          color: 'red.500'
+                        }}
+                        onClick={(e) => {
+                          // 仅阻止删除按钮的点击事件冒泡
+                          e.stopPropagation();
+                          handleDeleteTool(item.id);
+                        }}
+                      >
+                        <MyIcon
+                          className="delete"
+                          name={'delete' as any}
+                          w={'14px'}
+                          color={'inherit'}
+                        />
                       </Flex>
-                    </MyTooltip>
-                  )}
-                  <DeleteIcon
-                    ml={2}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteTool(item.id);
-                    }}
+                    </Flex>
+                  </MyTooltip>
+                );
+              })}
+            </Grid>
+          </Box>
+        ) : (
+          <Box
+            mt={2}
+            p={3}
+            borderWidth="1px"
+            borderStyle="dashed"
+            borderColor="gray.300"
+            borderRadius="lg"
+            bg="gray.50"
+            cursor="pointer"
+            onClick={onOpenToolsSelect}
+            _hover={{
+              borderColor: 'primary.300',
+              bg: 'gray.100',
+              '.hoverContent': { color: 'primary.500' }
+            }}
+            transition="all 0.2s"
+            position="relative"
+            boxShadow="sm"
+          >
+            <Flex
+              alignItems="center"
+              justifyContent="center"
+              height="80px"
+              flexDirection="column"
+              color="gray.500"
+            >
+              {isLoading ? (
+                <Flex
+                  alignItems="center"
+                  justifyContent="center"
+                  flexDirection="column"
+                  h="full"
+                  py={4}
+                >
+                  <Box
+                    as="span"
+                    display="inline-block"
+                    width="30px"
+                    height="30px"
+                    borderRadius="full"
+                    borderWidth="2px"
+                    borderColor="primary.500"
+                    borderLeftColor="transparent"
+                    animation="spin 1s linear infinite"
+                    mb={2}
                   />
+                  <Text fontSize="sm" fontWeight="500">
+                    {t('common:common.Loading')}
+                  </Text>
                 </Flex>
-              </MyTooltip>
-            );
-          })}
-        </Grid>
+              ) : (
+                <>
+                  <Flex
+                    className="hoverContent"
+                    alignItems="center"
+                    justifyContent="center"
+                    flexDirection="column"
+                    gap={0}
+                  >
+                    <SmallAddIcon boxSize={5} mb={0.5} />
+                    <Box fontSize="sm" fontWeight="medium">
+                      {t('common:common.Choose')}
+                    </Box>
+                  </Flex>
+                </>
+              )}
+            </Flex>
+          </Box>
+        )}
 
         {/* 工具选择弹窗 */}
         {isOpenToolsSelect && (

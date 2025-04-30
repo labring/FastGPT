@@ -24,6 +24,7 @@ import { ToolType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
+import type { GetBatchPluginsBody } from '@/pages/api/core/app/plugin/getBatchPlugins';
 
 /* ============ team plugin ============== */
 export const getTeamPlugTemplates = (data?: ListAppBody) =>
@@ -98,3 +99,9 @@ export const getApiSchemaByUrl = (url: string) =>
       timeout: 30000
     }
   );
+
+// 批量获取插件信息的方法
+export const getBatchPlugins = (pluginIds: string[]) =>
+  POST<Record<string, FlowNodeTemplateType>>('/core/app/plugin/getBatchPlugins', {
+    pluginIds
+  } as GetBatchPluginsBody);

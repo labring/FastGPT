@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -24,7 +24,6 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   getPluginGroups,
-  getPreviewPluginNode,
   getSystemPlugTemplates,
   getSystemPluginPaths
 } from '@/web/core/app/api/plugin';
@@ -36,11 +35,10 @@ import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/pageComponents/app/detail/context';
+import { AppContext } from '../../context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type Props = {
   selectedPluginIds: string[];
@@ -61,23 +59,6 @@ const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemPlugin);
   const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
-
-  // 监听 ESC 键关闭弹窗
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onCancel();
-      }
-    };
-
-    // 添加事件监听
-    document.addEventListener('keydown', handleKeyDown);
-
-    // 组件卸载时清除事件监听
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [onCancel]);
 
   const {
     data: templates = [],
@@ -139,73 +120,27 @@ const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props
     refreshDeps: [searchKey]
   });
 
-  // 处理确认选择，获取完整的插件信息
-  const handleConfirm = async () => {
+  // 处理保存选择
+  const handleConfirm = () => {
     console.log('即将保存的插件选择:', tempSelectedIds);
+    // 获取选中插件的完整信息
+    const selectedPlugins = templates.filter((template) => tempSelectedIds.includes(template.id));
+    // 传递完整的插件信息而不只是ID
+    onSelectPlugins(selectedPlugins);
+    onCancel();
+  };
 
-    try {
-      // 从当前已加载的模板中直接获取信息，避免额外的 API 调用
-      const selectedPlugins = templates
-        .filter((template) => tempSelectedIds.includes(template.id))
-        .map((template) => ({
-          id: template.id,
-          name: template.name,
-          avatar: template.avatar,
-          intro: template.intro || '',
-          isFolder: template.isFolder || false,
-          flowNodeType: template.flowNodeType,
-          templateType: template.templateType
-        }));
+  // 添加或移除插件ID
+  const togglePluginSelection = (pluginId: string) => {
+    console.log('切换插件选择状态:', pluginId);
+    setTempSelectedIds((prev) => {
+      const newSelection = prev.includes(pluginId)
+        ? prev.filter((id) => id !== pluginId)
+        : [...prev, pluginId];
 
-      // 对于不在当前模板中的插件（可能来自其他路径或之前选择），需要获取信息
-      const missingIds = tempSelectedIds.filter(
-        (id) => !selectedPlugins.some((plugin) => plugin.id === id)
-      );
-
-      if (missingIds.length > 0) {
-        // 批量获取缺失的插件信息，而不是一个个调用 API
-        const promises = missingIds.map((pluginId) =>
-          getPreviewPluginNode({ appId: pluginId })
-            .then((template) => ({
-              id: pluginId,
-              name: template.name,
-              avatar: template.avatar,
-              intro: template.intro || '',
-              isFolder: false,
-              flowNodeType: template.flowNodeType,
-              templateType: template.templateType
-            }))
-            .catch((error) => {
-              console.error('获取插件信息失败:', pluginId, error);
-              return null;
-            })
-        );
-
-        // 明确指定类型，排除 null 值
-        const additionalPlugins = (await Promise.all(promises)).filter(
-          (
-            item
-          ): item is {
-            id: string;
-            name: string;
-            avatar: string | undefined;
-            intro: string;
-            isFolder: boolean;
-            flowNodeType: FlowNodeTypeEnum;
-            templateType: string;
-          } => Boolean(item)
-        );
-
-        selectedPlugins.push(...additionalPlugins);
-      }
-
-      console.log('处理后的插件列表:', selectedPlugins);
-      onSelectPlugins(selectedPlugins);
-    } catch (error) {
-      console.error('处理插件选择时出错:', error);
-    } finally {
-      onCancel();
-    }
+      console.log('更新后的临时选择:', newSelection);
+      return newSelection;
+    });
   };
 
   return (
@@ -267,11 +202,7 @@ const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props
           type={templateType}
           setParentId={onUpdateParentId}
           selectedIds={tempSelectedIds}
-          toggleSelection={(id) => {
-            setTempSelectedIds((prev) => {
-              return prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id];
-            });
-          }}
+          toggleSelection={togglePluginSelection}
         />
       </MyBox>
 
@@ -393,9 +324,6 @@ const RenderList = React.memo(function RenderList({
                 {item.list.map((template) => {
                   const selected = selectedIds.includes(template.id);
 
-                  // 判断是否是嵌套插件
-                  const isNestedPlugin = template.isFolder;
-
                   return (
                     <MyTooltip
                       key={template.id}
@@ -464,7 +392,7 @@ const RenderList = React.memo(function RenderList({
                           >
                             {t('common:common.Remove')}
                           </Button>
-                        ) : isNestedPlugin ? (
+                        ) : template.isFolder ? (
                           <Button
                             size={'sm'}
                             variant={'whiteBase'}
