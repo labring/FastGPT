@@ -30,7 +30,7 @@
     "mongoose": "^8.10.1",
     "multer": "1.4.5-lts.1",
     "mysql2": "^3.11.3",
-    "next": "14.2.26",
+    "next": "14.2.28",
     "nextjs-cors": "^2.2.0",
     "node-cron": "^3.0.3",
     "node-xlsx": "^0.24.0",
