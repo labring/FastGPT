@@ -40,8 +40,7 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { feConfigs, defaultModels, embeddingModelList, datasetModelList, getVlmModelList } =
-    useSystemStore();
+  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
   const { isPc } = useSystem();
 
   const datasetTypeMap = useMemo(() => {
@@ -50,13 +49,13 @@ const CreateModal = ({
         name: t('dataset:common_dataset'),
         icon: 'core/dataset/commonDatasetColor'
       },
-      [DatasetTypeEnum.apiDataset]: {
-        name: t('dataset:api_file'),
-        icon: 'core/dataset/externalDatasetColor'
-      },
       [DatasetTypeEnum.websiteDataset]: {
         name: t('dataset:website_dataset'),
         icon: 'core/dataset/websiteDatasetColor'
+      },
+      [DatasetTypeEnum.apiDataset]: {
+        name: t('dataset:api_file'),
+        icon: 'core/dataset/externalDatasetColor'
       },
       [DatasetTypeEnum.feishu]: {
         name: t('dataset:feishu_dataset'),

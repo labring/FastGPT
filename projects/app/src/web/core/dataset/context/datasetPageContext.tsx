@@ -113,7 +113,7 @@ export const DatasetPageContextProvider = ({
           ? {
               userId: data.yuqueServer.userId,
               token: '',
-              baseUrl: data.yuqueServer.baseUrl
+              basePath: data.yuqueServer.basePath
             }
           : state.yuqueServer,
         feishuServer: data.feishuServer

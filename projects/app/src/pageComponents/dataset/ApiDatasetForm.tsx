@@ -52,7 +52,7 @@ const ApiDatasetForm = ({
     { setTrue: openBaseurlSeletModal, setFalse: closeBaseurlSelectModal }
   ] = useBoolean();
 
-  const parentId = yuqueServer?.baseUrl || feishuServer?.folderToken || apiServer?.baseUrl;
+  const parentId = yuqueServer?.basePath || feishuServer?.folderToken || apiServer?.basePath;
 
   const canSelectBaseUrl = useMemo(() => {
     switch (type) {
@@ -61,7 +61,7 @@ const ApiDatasetForm = ({
       case DatasetTypeEnum.feishu:
         return feishuServer?.appId && feishuServer?.appSecret;
       case DatasetTypeEnum.apiDataset:
-        return !!apiServer?.baseUrl;
+        return !!apiServer?.basePath;
       default:
         return false;
     }
@@ -71,7 +71,7 @@ const ApiDatasetForm = ({
     yuqueServer?.userId,
     feishuServer?.appId,
     feishuServer?.appSecret,
-    apiServer?.baseUrl
+    apiServer?.basePath
   ]);
 
   // Unified function to get the current path
@@ -104,13 +104,13 @@ const ApiDatasetForm = ({
     const value = id === 'root' || id === null || id === undefined ? '' : id;
     switch (type) {
       case DatasetTypeEnum.yuque:
-        setValue('yuqueServer.baseUrl', value);
+        setValue('yuqueServer.basePath', value);
         break;
       case DatasetTypeEnum.feishu:
         setValue('feishuServer.folderToken', value);
         break;
       case DatasetTypeEnum.apiDataset:
-        setValue('apiServer.baseUrl', value);
+        setValue('apiServer.basePath', value);
         break;
     }
 
@@ -141,7 +141,7 @@ const ApiDatasetForm = ({
   const renderDirectoryModal = () =>
     isOpenBaseurlSeletModal ? (
       <BaseUrlSelector
-        selectId={type === DatasetTypeEnum.yuque ? yuqueServer?.baseUrl || 'root' : 'root'}
+        selectId={type === DatasetTypeEnum.yuque ? yuqueServer?.basePath || 'root' : 'root'}
         server={async (e: GetResourceFolderListProps) => {
           const params: GetApiDatasetCataLogProps = { parentId: e.parentId };
 
@@ -150,7 +150,7 @@ const ApiDatasetForm = ({
               params.yuqueServer = {
                 userId: yuqueServer?.userId || '',
                 token: yuqueServer?.token || '',
-                baseUrl: ''
+                basePath: ''
               };
               break;
             // Currently, only Yuque is using it
@@ -164,7 +164,8 @@ const ApiDatasetForm = ({
             case DatasetTypeEnum.apiDataset:
               params.apiServer = {
                 baseUrl: apiServer?.baseUrl || '',
-                authorization: apiServer?.authorization || ''
+                authorization: apiServer?.authorization || '',
+                basePath: ''
               };
               break;
           }

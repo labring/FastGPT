@@ -14,19 +14,18 @@ export type APIFileItem = {
 // Api dataset config
 export type APIFileServer = {
   baseUrl: string;
-  authorization: string;
-  baseUrl?: string;
+  authorization?: string;
+  basePath?: string;
 };
 export type FeishuServer = {
   appId: string;
-  appSecret: string;
+  appSecret?: string;
   folderToken: string;
-  baseUrl?: string;
 };
 export type YuqueServer = {
   userId: string;
-  token: string;
-  baseUrl?: string;
+  token?: string;
+  basePath?: string;
 };
 
 // Api dataset api

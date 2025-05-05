@@ -55,7 +55,7 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
       ? {
           userId: dataset.yuqueServer.userId,
           token: '',
-          baseUrl: dataset.yuqueServer.baseUrl
+          basePath: dataset.yuqueServer.basePath
         }
       : undefined,
     feishuServer: dataset.feishuServer
