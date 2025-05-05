@@ -16,7 +16,6 @@ import type { ChatInputGuideConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyInput from '@/components/MyInput';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { useI18n } from '@/web/context/I18n';
 import { fileDownload } from '@/web/common/file/utils';
 import { getDocPath } from '@/web/common/system/doc';
 import {
@@ -180,7 +179,6 @@ const InputGuideConfig = ({
 export default React.memo(InputGuideConfig);
 
 const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => void }) => {
-  const { commonT } = useI18n();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -315,7 +313,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
             bg={'myGray.50'}
             w={'full'}
             h={9}
-            placeholder={commonT('common.Search')}
+            placeholder={t('common:Search')}
             onChange={(e) => setSearchKey(e.target.value)}
           />
         </Box>
@@ -325,7 +323,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
           size={'sm'}
           leftIcon={<MyIcon name={'common/importLight'} boxSize={4} />}
         >
-          {commonT('common.Import')}
+          {t('common:Import')}
         </Button>
         <Box
           cursor={'pointer'}
@@ -355,7 +353,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
                 setSelectedRows([]);
               }}
             >
-              {commonT('common.Delete')}
+              {t('common:Delete')}
             </Button>
             <Button
               variant={'whiteBase'}
@@ -383,7 +381,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               size={'sm'}
               leftIcon={<MyIcon name={'common/addLight'} boxSize={4} />}
             >
-              {commonT('common.Add')}
+              {t('common:Add')}
             </Button>
           </Flex>
         </Flex>

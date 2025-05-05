@@ -2,7 +2,6 @@ import CollaboratorContextProvider from '@/components/support/permission/MemberM
 import ResumeInherit from '@/components/support/permission/ResumeInheritText';
 import { AppContext } from './context';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { useI18n } from '@/web/context/I18n';
 import { resumeInheritPer } from '@/web/core/app/api';
 import {
   deleteAppCollaborators,
@@ -35,7 +34,6 @@ import { useContextSelector } from 'use-context-selector';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { commonT } = useI18n();
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
@@ -212,7 +210,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                         justifyContent="space-between"
                         w="full"
                       >
-                        <Box fontSize={'sm'}>{commonT('permission.Collaborator')}</Box>
+                        <Box fontSize={'sm'}>{t('common:permission.Collaborator')}</Box>
                         <Flex flexDirection="row" gap="2">
                           <Button
                             size="sm"

@@ -178,7 +178,7 @@ const HttpPluginEditModal = ({
         <ModalBody flex={'1 0 0'} overflow={'auto'}>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'}>
-              {t('common:plugin.input_name')}
+              {t('common:input_name')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
               <MyTooltip label={t('common:set_avatar')}>

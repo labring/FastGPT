@@ -1,7 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useI18n } from '@/web/context/I18n';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { queryChatInputGuideList } from '@/web/core/chat/inputGuide/api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

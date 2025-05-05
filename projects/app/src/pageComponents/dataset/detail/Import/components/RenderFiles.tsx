@@ -15,10 +15,8 @@ import {
 import { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { useI18n } from '@/web/context/I18n';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
 export const RenderUploadFiles = ({
   files,
@@ -28,7 +26,6 @@ export const RenderUploadFiles = ({
   setFiles: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
 }) => {
   const { t } = useTranslation();
-  const { fileT } = useI18n();
 
   return files.length > 0 ? (
     <>
@@ -37,13 +34,13 @@ export const RenderUploadFiles = ({
           <Thead draggable={false}>
             <Tr bg={'myGray.100'} mb={2}>
               <Th borderLeftRadius={'md'} borderBottom={'none'} py={4}>
-                {fileT('file_name')}
+                {t('file:file_name')}
               </Th>
               <Th borderBottom={'none'} py={4}>
                 {t('common:core.dataset.import.Upload file progress')}
               </Th>
               <Th borderBottom={'none'} py={4}>
-                {fileT('file_size')}
+                {t('file:file_size')}
               </Th>
               <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
                 {t('common:Action')}
