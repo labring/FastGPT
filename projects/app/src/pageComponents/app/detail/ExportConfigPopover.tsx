@@ -100,7 +100,7 @@ const ExportConfigPopover = ({
             onClick={() => onExportWorkflow('copy')}
           >
             <MyIcon name={'copy'} w={'1rem'} mr={2} />
-            <Box fontSize={'mini'}>{t('common:common.copy_to_clipboard')}</Box>
+            <Box fontSize={'mini'}>{t('common:copy_to_clipboard')}</Box>
           </Flex>
           <Flex
             py={'0.38rem'}
@@ -115,7 +115,7 @@ const ExportConfigPopover = ({
             onClick={() => onExportWorkflow('json')}
           >
             <MyIcon name={'configmap'} w={'1rem'} mr={2} />
-            <Box fontSize={'mini'}>{t('common:common.export_to_json')}</Box>
+            <Box fontSize={'mini'}>{t('common:export_to_json')}</Box>
           </Flex>
         </Box>
       )}

@@ -35,7 +35,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             {agents.map((item, i) => (
               <Box key={item.key} mb={4}>
                 <Flex alignItems={'center'}>
-                  <MyTooltip label={t('common:common.Delete')}>
+                  <MyTooltip label={t('common:Delete')}>
                     <MyIcon
                       mt={1}
                       mr={2}

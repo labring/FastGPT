@@ -134,7 +134,7 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                     onClick={onDelApp}
                   >
                     <MyIcon name={'delete'} w={'16px'} mr={2} />
-                    <Box fontSize={'sm'}>{t('common:common.Delete')}</Box>
+                    <Box fontSize={'sm'}>{t('common:Delete')}</Box>
                   </MyBox>
                 </>
               )}

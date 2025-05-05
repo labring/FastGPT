@@ -44,7 +44,7 @@ const Header = ({ url, toolList }: { url: string; toolList: ToolType[] }) => {
       return await postUpdateMCPTools({ appId, url, toolList });
     },
     {
-      successToast: t('common:common.Update Success')
+      successToast: t('common:update_success')
     }
   );
 
@@ -71,7 +71,7 @@ const Header = ({ url, toolList }: { url: string; toolList: ToolType[] }) => {
           </Box>
         )} */}
         <Button size={'sm'} isLoading={isSavingMCPTools} onClick={() => saveMCPTools()}>
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </Flex>
     </Box>

@@ -219,7 +219,7 @@ const FieldEditModal = ({
         onSubmit(data);
         toast({
           status: 'success',
-          title: t('common:common.Add Success')
+          title: t('common:Add Success')
         });
         reset(defaultInput);
       }

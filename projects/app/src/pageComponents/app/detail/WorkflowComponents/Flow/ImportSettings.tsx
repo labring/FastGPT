@@ -58,7 +58,7 @@ const ImportSettings = ({ onClose }: Props) => {
           }}
           fontWeight={'500'}
         >
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </ModalFooter>
     </MyModal>

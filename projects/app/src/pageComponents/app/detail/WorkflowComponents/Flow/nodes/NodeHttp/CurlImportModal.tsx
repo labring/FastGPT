@@ -95,12 +95,12 @@ const CurlImportModal = ({
       onClose();
 
       toast({
-        title: t('common:common.Import success'),
+        title: t('common:import_success'),
         status: 'success'
       });
     } catch (error: any) {
       toast({
-        title: t('common:common.Import failed'),
+        title: t('common:import_failed'),
         description: error.message,
         status: 'error'
       });
@@ -126,7 +126,7 @@ const CurlImportModal = ({
       </ModalBody>
       <ModalFooter>
         <Button onClick={handleSubmit((data) => handleFileProcessing(data.curlContent))}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

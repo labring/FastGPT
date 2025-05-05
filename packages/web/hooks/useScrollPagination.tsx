@@ -126,7 +126,7 @@ export function useVirtualScrollPagination<
             {children}
             {noMore && list.length > 0 && (
               <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-                {t('common:common.No more data')}
+                {t('common:no_more_data')}
               </Box>
             )}
           </Box>
@@ -282,9 +282,9 @@ export function useScrollPagination<
     } & BoxProps) => {
       const ref = ScrollContainerRef || ScrollRef;
       const loadText = useMemo(() => {
-        if (isLoading || isLoadingProp) return t('common:common.is_requesting');
-        if (noMore) return t('common:common.request_end');
-        return t('common:common.request_more');
+        if (isLoading || isLoadingProp) return t('common:is_requesting');
+        if (noMore) return t('common:request_end');
+        return t('common:request_more');
       }, [isLoading, noMore]);
 
       const scroll = useScroll(ref);
@@ -317,7 +317,7 @@ export function useScrollPagination<
         >
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
           {children}
@@ -327,9 +327,9 @@ export function useScrollPagination<
               fontSize={'xs'}
               color={'blackAlpha.500'}
               textAlign={'center'}
-              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
+              cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
               onClick={() => {
-                if (loadText !== t('common:common.request_more')) return;
+                if (loadText !== t('common:request_more')) return;
                 loadData(false);
               }}
             >

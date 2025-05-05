@@ -1,6 +1,5 @@
 import React, { useRef } from 'react';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useI18n } from '@/web/context/I18n';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';

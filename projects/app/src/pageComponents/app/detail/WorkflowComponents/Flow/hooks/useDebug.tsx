@@ -362,9 +362,7 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>
-            {t('common:common.Run')}
-          </Button>
+          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>{t('common:Run')}</Button>
         </Flex>
       </MyRightDrawer>
     );

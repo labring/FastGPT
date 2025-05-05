@@ -78,7 +78,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 }
 
+const lockTime = Number(process.env.PASSWORD_LOGIN_LOCK_SECONDS || 120);
 export default NextAPI(
-  useIPFrequencyLimit({ id: 'login-by-password', seconds: 120, limit: 10, force: true }),
+  useIPFrequencyLimit({ id: 'login-by-password', seconds: lockTime, limit: 10, force: true }),
   handler
 );

@@ -16,7 +16,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ValueTypeLabel from '../render/ValueTypeLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -56,7 +55,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             size={'sm'}
             onClick={() => setEditField(defaultOutput)}
           >
-            {t('common:common.Add New')}
+            {t('common:add_new')}
           </Button>
         </Flex>
 
@@ -100,10 +99,9 @@ function Reference({
   input: FlowNodeInputItemType;
 }) {
   const { t } = useTranslation();
-  const { workflowT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: workflowT('confirm_delete_field_tip')
+    content: t('workflow:confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 

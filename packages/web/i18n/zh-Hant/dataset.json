@@ -128,7 +128,7 @@
   "sync_collection_failed": "同步集合錯誤，請檢查是否能正常存取來原始檔",
   "sync_schedule": "定時同步",
   "sync_schedule_tip": "只會同步已存在的集合。\n包括連結集合以及 API 知識庫裡所有集合。\n系統會每天進行輪詢更新，無法確定特定的更新時間。",
-  "tag.Add New": "新增",
+  "tag.add_new": "新增",
   "tag.Add_new_tag": "新增標籤",
   "tag.Edit_tag": "編輯標籤",
   "tag.add": "建立",

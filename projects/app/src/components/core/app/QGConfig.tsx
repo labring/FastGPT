@@ -146,7 +146,7 @@ const QGConfigModal = ({
                     leftIcon={<MyIcon name={'edit'} w={'14px'} />}
                     onClick={onOpenCustomPrompt}
                   >
-                    {t('common:common.Edit')}
+                    {t('common:Edit')}
                   </Button>
                 </Flex>
                 <Box

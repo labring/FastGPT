@@ -188,7 +188,7 @@ const FileSelect = ({
         </ModalBody>
         <ModalFooter>
           <Button onClick={onClose} px={8}>
-            {t('common:common.Confirm')}
+            {t('common:Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

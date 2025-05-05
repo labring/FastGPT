@@ -89,7 +89,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       );
       return [
         {
-          label: t('common:common.All'),
+          label: t('common:All'),
           value: ''
         },
         ...res
@@ -118,7 +118,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       .sort((a, b) => a.order - b.order);
     return [
       {
-        label: t('common:common.All'),
+        label: t('common:All'),
         value: ''
       },
       ...res
@@ -229,9 +229,9 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <MySelect<'all' | 'success' | 'error'>
               bg={'myGray.50'}
               list={[
-                { label: t('common:common.All'), value: 'all' },
-                { label: t('common:common.Success'), value: 'success' },
-                { label: t('common:common.failed'), value: 'error' }
+                { label: t('common:All'), value: 'all' },
+                { label: t('common:Success'), value: 'success' },
+                { label: t('common:failed'), value: 'error' }
               ]}
               value={filterProps.code_type}
               onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}

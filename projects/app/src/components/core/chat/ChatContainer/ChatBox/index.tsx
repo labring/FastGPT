@@ -841,7 +841,7 @@ const ChatBox = ({
 
     return {
       status: chatContent.status || ChatStatusEnum.loading,
-      name: t(chatContent.moduleName || ('' as any)) || t('common:common.Loading')
+      name: t(chatContent.moduleName || ('' as any)) || t('common:Loading')
     };
   }, [chatRecords, isChatting, t]);
 

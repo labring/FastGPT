@@ -115,7 +115,7 @@ const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
       </Container>
       <Container>
-        <IOTitle text={t('common:common.Output')} />
+        <IOTitle text={t('common:Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
     </NodeCard>
@@ -154,7 +154,7 @@ const OptionItem = ({
       }}
     >
       <HStack spacing={1} {...provided.dragHandleProps}>
-        <MyTooltip label={t('common:common.Delete')}>
+        <MyTooltip label={t('common:Delete')}>
           <MyIcon
             mt={0.5}
             name={'minus'}
