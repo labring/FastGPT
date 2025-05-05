@@ -1,4 +1,8 @@
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import {
+  ApiDatasetDetailResponse,
+  FeishuServer,
+  YuqueServer
+} from '@fastgpt/global/core/dataset/apiDataset';
 import {
   DeepRagSearchProps,
   SearchDatasetDataResponse
@@ -7,6 +11,7 @@ import { AuthOpenApiLimitProps } from '../../support/openapi/auth';
 import { CreateUsageProps, ConcatUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 import {
   GetProApiDatasetFileContentParams,
+  GetProApiDatasetFileDetailParams,
   GetProApiDatasetFileListParams,
   GetProApiDatasetFilePreviewUrlParams
 } from '../../core/dataset/apiDataset/proApi';
@@ -26,4 +31,7 @@ declare global {
   var getProApiDatasetFilePreviewUrl: (
     data: GetProApiDatasetFilePreviewUrlParams
   ) => Promise<string>;
+  var getProApiDatasetFileDetail: (
+    data: GetProApiDatasetFileDetailParams
+  ) => Promise<ApiDatasetDetailResponse>;
 }

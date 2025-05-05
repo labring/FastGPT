@@ -1,7 +1,12 @@
-import { APIFileItem, ApiFileReadContentResponse } from '@fastgpt/global/core/dataset/apiDataset';
+import type {
+  APIFileItem,
+  ApiFileReadContentResponse,
+  ApiDatasetDetailResponse
+} from '@fastgpt/global/core/dataset/apiDataset';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
   GetProApiDatasetFileContentParams,
+  GetProApiDatasetFileDetailParams,
   GetProApiDatasetFileListParams,
   GetProApiDatasetFilePreviewUrlParams,
   ProApiDatasetOperationTypeEnum
@@ -30,6 +35,14 @@ export const getProApiDatasetFilePreviewUrlRequest = async (
 ) => {
   const res = await POST<string>('/core/dataset/systemApiDataset', {
     type: ProApiDatasetOperationTypeEnum.READ,
+    ...data
+  });
+  return res;
+};
+
+export const getProApiDatasetFileDetailRequest = async (data: GetProApiDatasetFileDetailParams) => {
+  const res = await POST<ApiDatasetDetailResponse>('/core/dataset/systemApiDataset', {
+    type: ProApiDatasetOperationTypeEnum.DETAIL,
     ...data
   });
   return res;

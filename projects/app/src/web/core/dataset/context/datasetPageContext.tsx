@@ -101,27 +101,28 @@ export const DatasetPageContextProvider = ({
       setDatasetDetail((state) => ({
         ...state,
         ...data,
-        agentModel: getWebLLMModel(data.agentModel),
-        vlmModel: getWebLLMModel(data.vlmModel),
+        agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
+        vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
         apiServer: data.apiServer
           ? {
               baseUrl: data.apiServer.baseUrl,
               authorization: ''
             }
-          : undefined,
+          : state.apiServer,
         yuqueServer: data.yuqueServer
           ? {
               userId: data.yuqueServer.userId,
-              token: ''
+              token: '',
+              basePath: data.yuqueServer.basePath
             }
-          : undefined,
+          : state.yuqueServer,
         feishuServer: data.feishuServer
           ? {
               appId: data.feishuServer.appId,
               appSecret: '',
               folderToken: data.feishuServer.folderToken
             }
-          : undefined
+          : state.feishuServer
       }));
     }
   };

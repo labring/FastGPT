@@ -109,15 +109,9 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
-  apiServer: {
-    type: Object
-  },
-  feishuServer: {
-    type: Object
-  },
-  yuqueServer: {
-    type: Object
-  },
+  apiServer: Object,
+  feishuServer: Object,
+  yuqueServer: Object,
 
   // abandoned
   autoSync: Boolean,
