@@ -33,7 +33,6 @@
     "dayjs": "^1.11.7",
     "echarts": "5.4.1",
     "echarts-gl": "2.0.9",
-    "formidable": "^2.1.1",
     "framer-motion": "9.1.7",
     "hyperdown": "^2.4.29",
     "i18next": "23.16.8",
@@ -71,7 +70,6 @@
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
-    "@types/formidable": "^2.0.5",
     "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.3",
     "@types/lodash": "^4.14.191",
