@@ -75,7 +75,7 @@ const EditAPIDatasetInfoModal = ({
           </Flex>
         )}
         {/* @ts-ignore */}
-        <ApiDatasetForm type={type} form={form} />
+        <ApiDatasetForm datasetId={datasetDetail._id} type={type} form={form} />
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={form.handleSubmit(onSave)} px={6}>

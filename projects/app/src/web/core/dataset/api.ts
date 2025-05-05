@@ -79,9 +79,8 @@ import type {
 } from '@/pages/api/core/dataset/apiDataset/getCatalog';
 import type {
   GetApiDatasetPathBody,
-  GetApiDatasetPathQuery,
   GetApiDatasetPathResponse
-} from '@/pages/api/core/dataset/apiDataset/getPath';
+} from '@/pages/api/core/dataset/apiDataset/getPathNames';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -270,4 +269,4 @@ export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
   POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getCatalog', data);
 
 export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
-  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPath', data);
+  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);

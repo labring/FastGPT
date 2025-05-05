@@ -25,7 +25,7 @@ export type GetApiDatasetCataLogResponse = APIFileItem[];
 async function handler(req: NextApiRequest) {
   let { searchKey = '', parentId = null, yuqueServer, feishuServer, apiServer } = req.body;
 
-  const { userId } = await authCert({ req, authToken: true });
+  await authCert({ req, authToken: true });
 
   const data = await (async () => {
     if (apiServer) {

@@ -88,6 +88,7 @@
   "import_select_link": "輸入連結",
   "index_size": "索引大小",
   "index_size_tips": "向量化時內容的長度，系統會自動按該大小對分塊進行進一步的分割。",
+  "input_required_field_to_select_baseurl": "請先輸入必填信息",
   "is_open_schedule": "啟用定時同步",
   "keep_image": "保留圖片",
   "loading": "加載中...",
@@ -142,10 +143,10 @@
   "sync_collection_failed": "同步集合錯誤，請檢查是否能正常存取來原始檔",
   "sync_schedule": "定時同步",
   "sync_schedule_tip": "只會同步已存在的集合。\n包括連結集合以及 API 知識庫裡所有集合。\n系統會每天進行輪詢更新，無法確定特定的更新時間。",
-  "tag.add_new": "新增",
   "tag.Add_new_tag": "新增標籤",
   "tag.Edit_tag": "編輯標籤",
   "tag.add": "建立",
+  "tag.add_new": "新增",
   "tag.cancel": "取消",
   "tag.delete_tag_confirm": "確定要刪除標籤嗎？",
   "tag.manage": "標籤管理",
@@ -165,6 +166,5 @@
   "website_info": "網站資訊",
   "yuque_dataset": "語雀知識庫",
   "yuque_dataset_config": "設定語雀知識庫",
-  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存",
-  "yuque_field": "請填寫 User ID 和 Token"
+  "yuque_dataset_desc": "可透過設定語雀文件權限，使用語雀文件建構知識庫，文件不會進行二次儲存"
 }

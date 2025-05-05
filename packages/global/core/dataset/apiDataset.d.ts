@@ -11,10 +11,25 @@ export type APIFileItem = {
   hasChild?: boolean;
 };
 
+// Api dataset config
 export type APIFileServer = {
   baseUrl: string;
   authorization: string;
+  baseUrl?: string;
 };
+export type FeishuServer = {
+  appId: string;
+  appSecret: string;
+  folderToken: string;
+  baseUrl?: string;
+};
+export type YuqueServer = {
+  userId: string;
+  token: string;
+  baseUrl?: string;
+};
+
+// Api dataset api
 
 export type APIFileListResponse = APIFileItem[];
 
@@ -31,17 +46,4 @@ export type ApiDatasetDetailResponse = {
   id: string;
   name: string;
   parentId: ParentIdType;
-};
-
-export type FeishuServer = {
-  appId: string;
-  appSecret: string;
-  folderToken: string;
-  // baseUrl: string | undefined;
-};
-
-export type YuqueServer = {
-  userId: string;
-  token: string;
-  baseUrl: string | undefined;
 };
