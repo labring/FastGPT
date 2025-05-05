@@ -199,7 +199,7 @@ export const DatasetSelectModal = ({
               })()
             )}
           </Grid>
-          {unSelectedDatasets.length === 0 && <EmptyTip text={t('common:common.folder.empty')} />}
+          {unSelectedDatasets.length === 0 && <EmptyTip text={t('common:folder.empty')} />}
         </ModalBody>
 
         <ModalFooter>
@@ -209,7 +209,7 @@ export const DatasetSelectModal = ({
               onChange(selectedDatasets);
             }}
           >
-            {t('common:common.Done')}
+            {t('common:Done')}
           </Button>
         </ModalFooter>
 

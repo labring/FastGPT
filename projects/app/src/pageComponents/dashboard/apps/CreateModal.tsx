@@ -126,8 +126,8 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
         loadMyApps();
         onClose();
       },
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed')
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
     }
   );
 
@@ -142,10 +142,10 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
     >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('common:common.Set Name')}
+          {t('common:input_name')}
         </Box>
         <Flex mt={2} alignItems={'center'}>
-          <MyTooltip label={t('common:common.Set Avatar')}>
+          <MyTooltip label={t('common:set_avatar')}>
             <Avatar
               flexShrink={0}
               src={avatar}
@@ -313,10 +313,7 @@ const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => vo
 
       <ModalFooter gap={4}>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
-        </Button>
-        <Button variant={'primary'} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common:common.Confirm')}
+          {t('common:Close')}
         </Button>
       </ModalFooter>
 

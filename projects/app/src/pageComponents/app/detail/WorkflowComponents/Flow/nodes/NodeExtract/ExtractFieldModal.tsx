@@ -114,7 +114,7 @@ const ExtractFieldModal = ({
           <Box mt={5}>
             <Flex alignItems={'center'}>
               <FormLabel>
-                {t('common:core.module.extract.Enum Value')}({t('common:common.choosable')})
+                {t('common:core.module.extract.Enum Value')}({t('common:choosable')})
               </FormLabel>
               <QuestionTip
                 ml={1}
@@ -133,7 +133,7 @@ const ExtractFieldModal = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
+        <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
       </ModalFooter>
     </MyModal>
   );

@@ -113,7 +113,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
                 {`￥${extraDatasetPrice}/1000` + t('common:core.dataset.data.group')}
                 <Box ml={1} as={'span'} fontSize={'md'} color={'myGray.500'} fontWeight={'normal'}>
-                  /{t('common:common.month')}
+                  /{t('common:month')}
                 </Box>
               </Box>
             </Box>
@@ -143,7 +143,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                   size={'sm'}
                 />
                 <Box position={'absolute'} right={'30px'} color={'myGray.600'} fontSize={'xs'}>
-                  {t('common:common.month')}
+                  {t('common:month')}
                 </Box>
               </Flex>
             </Flex>
@@ -195,7 +195,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'} color={'black'}>
                 {`￥${extraPointsPrice}/1000` + t('common:support.wallet.subscription.point')}
                 <Box ml={1} as={'span'} fontSize={'md'} color={'myGray.500'} fontWeight={'normal'}>
-                  /{t('common:common.month')}
+                  /{t('common:month')}
                 </Box>
               </Box>
             </Box>
@@ -218,7 +218,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
                 <Box>1</Box>
-                <Box color={'myGray.600'}>{t('common:common.month')}</Box>
+                <Box color={'myGray.600'}>{t('common:month')}</Box>
               </Flex>
             </Flex>
             <Flex mt={4} alignItems={'center'}>

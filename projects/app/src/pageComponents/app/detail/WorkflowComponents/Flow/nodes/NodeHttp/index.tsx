@@ -845,7 +845,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput
             nodeId={nodeId}
             flowInputList={commonInputs}
@@ -855,7 +855,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
         </Container>
       </>

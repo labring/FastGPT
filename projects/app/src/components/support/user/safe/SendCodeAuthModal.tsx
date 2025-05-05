@@ -59,7 +59,7 @@ const SendCodeAuthModal = ({
       </ModalBody>
       <ModalFooter gap={2}>
         <Button isLoading={onSending} variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button
           isLoading={onSending}
@@ -74,7 +74,7 @@ const SendCodeAuthModal = ({
             }
           )}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -96,7 +96,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   });
                 }}
               >
-                {t('common:common.Add New')}
+                {t('common:add_new')}
               </Button>
             </HStack>
             <Box mt={2}>
@@ -120,7 +120,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           {/* {RenderQuoteList} */}
         </Container>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
       </NodeCard>

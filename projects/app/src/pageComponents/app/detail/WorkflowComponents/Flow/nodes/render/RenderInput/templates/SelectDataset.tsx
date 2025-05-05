@@ -66,7 +66,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
             leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
             onClick={onOpenDatasetSelect}
           >
-            {t('common:common.Choose')}
+            {t('common:Choose')}
           </Button>
           {selectedDatasets.map((item) => (
             <Flex

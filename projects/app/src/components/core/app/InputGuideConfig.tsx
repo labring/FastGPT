@@ -151,7 +151,7 @@ const InputGuideConfig = ({
                     cursor={'pointer'}
                   >
                     <MyIcon name={'book'} w={'17px'} ml={4} mr={1} color={'myGray.600'} />
-                    {t('common:common.Documents')}
+                    {t('common:Documents')}
                   </Flex>
                   <Box flex={'1 0 0'} />
                 </Flex>
@@ -236,7 +236,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
         } else {
           toast({
             status: 'success',
-            title: t('common:common.Add Success')
+            title: t('common:Add Success')
           });
         }
         fetchData(1);

@@ -46,7 +46,7 @@ export const RenderUploadFiles = ({
                 {fileT('file_size')}
               </Th>
               <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
-                {t('common:common.Action')}
+                {t('common:Action')}
               </Th>
             </Tr>
           </Thead>
@@ -63,7 +63,7 @@ export const RenderUploadFiles = ({
                   {item.errorMsg ? (
                     <MyTooltip label={item.errorMsg}>
                       <MyTag colorSchema={'red'}>
-                        <Box mr={1}>{t('common:common.Error')}</Box>
+                        <Box mr={1}>{t('common:Error')}</Box>
                         <MyIcon name={'help'} w={'0.9rem'} color={'red.500'} />
                       </MyTag>
                     </MyTooltip>

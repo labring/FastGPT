@@ -122,7 +122,7 @@ function MemberModal({
         permission: addOnly ? undefined : selectedPermission!
       } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
     {
-      successToast: t('common:common.Add Success'),
+      successToast: t('common:Add Success'),
       onSuccess() {
         onClose();
       }
@@ -255,7 +255,7 @@ function MemberModal({
                         onPathClick(parentId);
                       }
                     }}
-                    rootName={t('common:common.Team')}
+                    rootName={t('common:Team')}
                   />
                 </Box>
               )}
@@ -452,7 +452,7 @@ function MemberModal({
           </HStack>
         )}
         <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

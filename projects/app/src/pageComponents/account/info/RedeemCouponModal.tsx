@@ -22,7 +22,7 @@ const RedeemCouponModal = ({
       onSuccess();
       onClose();
     },
-    successToast: t('common:common.Success')
+    successToast: t('common:Success')
   });
 
   return (

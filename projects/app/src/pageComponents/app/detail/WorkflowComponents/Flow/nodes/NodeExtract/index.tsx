@@ -158,7 +158,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput
             nodeId={nodeId}
             flowInputList={commonInputs}
@@ -168,7 +168,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
       </>

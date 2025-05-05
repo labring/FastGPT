@@ -71,19 +71,19 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     {
       onSuccess() {
         toast({
-          title: t('common:common.Update Success'),
+          title: t('common:update_success'),
           status: 'success'
         });
         reloadApp();
       },
-      errorToast: t('common:common.Update Failed')
+      errorToast: t('common:update_failed')
     }
   );
 
   const saveSubmitError = useCallback(() => {
     // deep search message
     const deepSearch = (obj: any): string => {
-      if (!obj) return t('common:common.Submit failed');
+      if (!obj) return t('common:submit_failed');
       if (!!obj.message) {
         return obj.message;
       }
@@ -153,7 +153,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             cursor={'pointer'}
             borderRadius={'md'}
             mr={4}
-            title={t('common:common.Set Avatar')}
+            title={t('common:set_avatar')}
             onClick={() => onOpenSelectFile()}
           />
           <FormControl>
@@ -228,7 +228,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                             leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
                             onClick={onOpenAddMember}
                           >
-                            {t('common:common.Add')}
+                            {t('common:Add')}
                           </Button>
                         </Flex>
                       </Flex>
@@ -244,10 +244,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </ModalFooter>
 

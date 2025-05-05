@@ -105,7 +105,7 @@ const ConfigToolModal = ({
       </ModalBody>
       <ModalFooter gap={6}>
         <Button onClick={onCloseConfigTool} variant={'whiteBase'}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button
           variant={'primary'}
@@ -120,7 +120,7 @@ const ConfigToolModal = ({
             onCloseConfigTool();
           })}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>
