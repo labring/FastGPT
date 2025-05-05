@@ -181,12 +181,14 @@ export async function dispatchDatasetSearch(
     inputTokens: reRankInputTokens,
     modelType: ModelTypeEnum.rerank
   });
-  nodeDispatchUsages.push({
-    totalPoints: reRankTotalPoints,
-    moduleName: node.name,
-    model: reRankModelName,
-    inputTokens: reRankInputTokens
-  });
+  if (usingReRank) {
+    nodeDispatchUsages.push({
+      totalPoints: reRankTotalPoints,
+      moduleName: node.name,
+      model: reRankModelName,
+      inputTokens: reRankInputTokens
+    });
+  }
   // Query extension
   (() => {
     if (queryExtensionResult) {

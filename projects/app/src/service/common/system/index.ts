@@ -20,6 +20,7 @@ import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
 import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 import {
   getProApiDatasetFileContentRequest,
+  getProApiDatasetFileDetailRequest,
   getProApiDatasetFileListRequest,
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
@@ -79,6 +80,7 @@ export function initGlobalVariables() {
     global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
     global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
     global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
+    global.getProApiDatasetFileDetail = getProApiDatasetFileDetailRequest;
   }
 
   global.communityPlugins = [];
