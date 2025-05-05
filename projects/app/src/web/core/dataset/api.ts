@@ -73,6 +73,15 @@ import type {
 } from '@/pages/api/core/dataset/training/getTrainingError';
 import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
 import { GetQuoteDataProps } from '@/pages/api/core/chat/quote/getQuote';
+import type {
+  GetApiDatasetCataLogResponse,
+  GetApiDatasetCataLogProps
+} from '@/pages/api/core/dataset/apiDataset/getCatalog';
+import type {
+  GetApiDatasetPathBody,
+  GetApiDatasetPathQuery,
+  GetApiDatasetPathResponse
+} from '@/pages/api/core/dataset/apiDataset/getPath';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -256,3 +265,9 @@ export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
   POST<APIFileItem[]>('/core/dataset/apiDataset/list', data);
 export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
   GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
+
+export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
+  POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getCatalog', data);
+
+export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
+  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPath', data);
