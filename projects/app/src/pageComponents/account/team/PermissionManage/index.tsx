@@ -239,7 +239,7 @@ function PermissionManage({
                 </Th>
                 <Th bg="myGray.100" borderRightRadius="md">
                   <Box mx="auto" w="fit-content">
-                    {t('common:common.Action')}
+                    {t('common:Action')}
                   </Box>
                 </Th>
               </Tr>

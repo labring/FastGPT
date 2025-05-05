@@ -214,7 +214,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
       });
     },
     {
-      successToast: t('common:common.Sync success')
+      successToast: t('common:sync_success')
     }
   );
 
@@ -347,13 +347,13 @@ const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
         </Container>
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
         </Container>
       </>

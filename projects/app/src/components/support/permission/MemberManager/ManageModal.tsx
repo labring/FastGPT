@@ -27,7 +27,7 @@ function ManageModal({ onClose }: ManageModalProps) {
   const { runAsync: onDelete, loading: isDeleting } = useRequest2(onDelOneCollaborator);
 
   const { runAsync: onUpdate, loading: isUpdating } = useRequest2(onUpdateCollaborators, {
-    successToast: t('common.Update Success'),
+    successToast: t('common:update_success'),
     errorToast: 'Error'
   });
 

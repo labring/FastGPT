@@ -99,10 +99,10 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('common:common.Name')}</Th>
+              <Th>{t('common:Name')}</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>{t('common:common.Expired Time')}</Th>
+                  <Th>{t('common:expired_time')}</Th>
                 </>
               )}
               <Th>{t('common:support.outlink.Usage points')}</Th>
@@ -113,7 +113,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                   <Th>{t('common:core.app.share.Role check')}</Th>
                 </>
               )}
-              <Th>{t('common:common.Last use time')}</Th>
+              <Th>{t('common:last_use_time')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -136,7 +136,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                     ? `${
                         item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
                           ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common:common.Unlimited')}`
+                          : ` / ${t('common:Unlimited')}`
                       }`
                     : ''}
                 </Td>
@@ -151,7 +151,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                 <Td>
                   {item.lastTime
                     ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:common.Un used')}
+                    : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -176,7 +176,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                       {
                         children: [
                           {
-                            label: t('common:common.Edit'),
+                            label: t('common:Edit'),
                             icon: 'edit',
                             onClick: () =>
                               setEditLinkData({
@@ -190,7 +190,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                               })
                           },
                           {
-                            label: t('common:common.Delete'),
+                            label: t('common:Delete'),
                             icon: 'delete',
                             type: 'danger',
                             onClick: () =>
@@ -233,7 +233,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
           onEdit={() => {
             toast({
               status: 'success',
-              title: t('common:common.Update Success')
+              title: t('common:update_success')
             });
             refetchShareChatList();
             setEditLinkData(undefined);
@@ -293,12 +293,12 @@ function EditLinkModal({
         type
       }),
     {
-      errorToast: t('common:common.Create Failed'),
+      errorToast: t('common:create_failed'),
       onSuccess: onCreate
     }
   );
   const { runAsync: onclickUpdate, loading: updating } = useRequest2(putShareChat, {
-    errorToast: t('common:common.Update Failed'),
+    errorToast: t('common:update_failed'),
     onSuccess: onEdit
   });
 
@@ -328,7 +328,7 @@ function EditLinkModal({
               placeholder={t('publish:link_name')}
               maxLength={100}
               {...register('name', {
-                required: t('common:common.name_is_empty')
+                required: t('common:name_is_empty')
               })}
             />
           </Flex>
@@ -336,7 +336,7 @@ function EditLinkModal({
             <>
               <Flex alignItems={'center'} mt={4}>
                 <FormLabel flex={'0 0 90px'} alignItems={'center'}>
-                  {t('common:common.Expired Time')}
+                  {t('common:expired_time')}
                 </FormLabel>
                 <Input
                   type="datetime-local"
@@ -479,13 +479,13 @@ function EditLinkModal({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button
           isLoading={creating || updating}
           onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

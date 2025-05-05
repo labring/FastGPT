@@ -73,8 +73,8 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
         onClose();
         loadMyApps();
       },
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed')
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
     }
   );
 
@@ -109,10 +109,10 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
       >
         <ModalBody>
           <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'medium'}>
-            {t('common:common.Set Name')}
+            {t('common:input_name')}
           </Box>
           <Flex mt={2} alignItems={'center'}>
-            <MyTooltip label={t('common:common.Set Avatar')}>
+            <MyTooltip label={t('common:set_avatar')}>
               <Avatar
                 flexShrink={0}
                 src={avatar}
@@ -128,7 +128,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
               ml={4}
               bg={'myWhite.600'}
               {...register('name', {
-                required: t('common:common.name_is_empty')
+                required: t('common:name_is_empty')
               })}
             />
           </Flex>
@@ -153,7 +153,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
                 runGetMCPTools({ url: mcpData.url });
               }}
             >
-              {t('common:common.Parse')}
+              {t('common:Parse')}
             </Button>
           </Flex>
 
@@ -226,14 +226,14 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
         </ModalBody>
         <ModalFooter gap={2}>
           <Button variant={'whitePrimary'} onClick={onClose}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
           <Button
             isDisabled={mcpData.toolList.length === 0}
             isLoading={isCreating}
             onClick={handleSubmit(onCreate)}
           >
-            {t('common:common.Confirm Create')}
+            {t('common:comfirn_create')}
           </Button>
         </ModalFooter>
       </MyModal>

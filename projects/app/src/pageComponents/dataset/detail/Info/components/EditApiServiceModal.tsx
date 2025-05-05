@@ -45,7 +45,7 @@ const EditAPIDatasetInfoModal = ({
     {
       onSuccess: (res) => {
         toast({
-          title: t('common:common.Update Success'),
+          title: t('common:update_success'),
           status: 'success'
         });
         onClose();
@@ -74,7 +74,7 @@ const EditAPIDatasetInfoModal = ({
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={form.handleSubmit(onSave)} px={6}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

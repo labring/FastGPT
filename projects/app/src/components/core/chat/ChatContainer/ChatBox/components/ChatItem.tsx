@@ -381,7 +381,7 @@ const ChatItem = (props: Props) => {
                   right={0}
                   transform={'translateX(100%)'}
                 >
-                  <MyTooltip label={t('common:common.Copy')}>
+                  <MyTooltip label={t('common:Copy')}>
                     <MyIcon
                       w={'1rem'}
                       cursor="pointer"

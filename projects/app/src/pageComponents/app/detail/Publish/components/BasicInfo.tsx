@@ -28,7 +28,7 @@ function BasicInfo({
           placeholder={t('publish:publish_name')}
           maxLength={100}
           {...register('name', {
-            required: t('common:common.name_is_empty')
+            required: t('common:name_is_empty')
           })}
         />
       </Flex>
@@ -66,7 +66,7 @@ function BasicInfo({
       </Flex>
       <Flex alignItems={'center'}>
         <FormLabel flex={'0 0 6.25rem'} alignItems={'center'}>
-          {t('common:common.Expired Time')}
+          {t('common:expired_time')}
         </FormLabel>
         <Input
           type="datetime-local"

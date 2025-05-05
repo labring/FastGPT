@@ -54,7 +54,7 @@ const EditFolderModal = ({
       </ModalBody>
       <ModalFooter>
         <Button isLoading={isLoading} onClick={onSave}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

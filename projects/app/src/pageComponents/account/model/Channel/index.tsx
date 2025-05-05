@@ -215,7 +215,7 @@ const ChannelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                               {
                                 type: 'danger',
                                 icon: 'delete',
-                                label: t('common:common.Delete'),
+                                label: t('common:Delete'),
                                 onClick: () =>
                                   openConfirm(
                                     () => onDeleteChannel(item.id),

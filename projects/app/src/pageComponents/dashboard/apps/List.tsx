@@ -101,8 +101,8 @@ const ListItem = () => {
       onSuccess() {
         loadMyApps();
       },
-      successToast: t('common:common.Delete Success'),
-      errorToast: t('common:common.Delete Failed')
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
 
@@ -149,7 +149,7 @@ const ListItem = () => {
               h="100%"
               label={
                 app.type === AppTypeEnum.folder
-                  ? t('common:common.folder.Open folder')
+                  ? t('common:open_folder')
                   : app.permission.hasWritePer
                     ? t('app:edit_app')
                     : t('app:go_to_chat')
@@ -217,7 +217,7 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
-                    {app.intro || t('common:common.no_intro')}
+                    {app.intro || t('common:no_intro')}
                   </Box>
                 </Box>
                 <Flex
@@ -333,7 +333,7 @@ const ListItem = () => {
                                             {
                                               icon: 'common/file/move',
                                               type: 'grayBg' as MenuItemType,
-                                              label: t('common:common.folder.Move to'),
+                                              label: t('common:move_to'),
                                               onClick: () => setMoveAppId(app._id)
                                             }
                                           ]),
@@ -375,7 +375,7 @@ const ListItem = () => {
                                       {
                                         type: 'danger' as 'danger',
                                         icon: 'delete',
-                                        label: t('common:common.Delete'),
+                                        label: t('common:Delete'),
                                         onClick: () =>
                                           openConfirmDel(
                                             () => onclickDelApp(app._id),

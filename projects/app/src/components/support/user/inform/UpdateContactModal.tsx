@@ -115,14 +115,14 @@ const UpdateContactModal = ({
         </ModalBody>
         <ModalFooter>
           <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
           <Button
             isLoading={isLoading}
             isDisabled={!account || !verifyCode}
             onClick={handleSubmit((data) => onSubmit(data))}
           >
-            {t('common:common.Confirm')}
+            {t('common:Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

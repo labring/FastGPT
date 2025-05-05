@@ -49,7 +49,7 @@ function CreateInvitationModal({
 
   const { runAsync: createInvitationLink, loading } = useRequest2(postCreateInvitationLink, {
     manual: true,
-    errorToast: t('common:common.Create Failed'),
+    errorToast: t('common:create_failed'),
     onSuccess: (data) => {
       onSuccess(data);
       onClose();
@@ -100,10 +100,10 @@ function CreateInvitationModal({
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={() => onClose()} variant="outline">
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button isLoading={loading} onClick={handleSubmit(createInvitationLink)} ml="4">
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

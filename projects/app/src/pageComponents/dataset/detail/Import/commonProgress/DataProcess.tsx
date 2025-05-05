@@ -106,7 +106,7 @@ function DataProcess() {
                 goToNext();
               }}
             >
-              {t('common:common.Next Step')}
+              {t('common:next_step')}
             </Button>
           </Flex>
         </Accordion>

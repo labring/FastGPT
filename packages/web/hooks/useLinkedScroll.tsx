@@ -212,13 +212,13 @@ export function useLinkedScroll<
         <MyBox ref={ref} h={'100%'} overflow={'auto'} isLoading={isLoading} {...props}>
           {hasMorePrev && prevLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
           {children}
           {hasMoreNext && nextLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
         </MyBox>
