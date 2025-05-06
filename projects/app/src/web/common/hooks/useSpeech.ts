@@ -120,7 +120,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       if (!navigator?.mediaDevices?.getUserMedia) {
         return toast({
           status: 'warning',
-          title: t('common:speech.not support')
+          title: t('common:speech_not_support')
         });
       }
 
@@ -230,7 +230,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
             } catch (error) {
               toast({
                 status: 'warning',
-                title: getErrText(error, t('common:speech.error tip'))
+                title: getErrText(error, t('common:speech_error_tip'))
               });
             }
             setIsTransCription(false);
