@@ -18,7 +18,7 @@ import { Box } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
-import { EditorState, LexicalEditor } from 'lexical';
+import type { EditorState, LexicalEditor } from 'lexical';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
 import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
