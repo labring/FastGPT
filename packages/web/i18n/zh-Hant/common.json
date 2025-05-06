@@ -1261,6 +1261,7 @@
   "user.password_message": "密碼最少 4 位最多 60 位",
   "user.password_tip": "密碼至少 6 位，且至少包含兩種組合：數字、字母或特殊字元",
   "user.reset_password": "重置密碼",
+  "user.reset_password_tip": "太長時間未修改密碼，請及時修改密碼",
   "user.team.Balance": "團隊餘額",
   "user.team.Check Team": "切換",
   "user.team.Confirm Invite": "確認邀請",

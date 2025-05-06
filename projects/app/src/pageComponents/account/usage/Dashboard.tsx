@@ -1,5 +1,4 @@
 import { getDashboardData } from '@/web/support/wallet/usage/api';
-import { getPasswordUpdateTime } from '@/web/support/user/api';
 import { Box, Flex } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import MyBox from '@fastgpt/web/components/common/MyBox';

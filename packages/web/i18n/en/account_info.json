@@ -54,7 +54,6 @@
   "phone_label": "Phone number",
   "please_bind_notification_receiving_path": "Please bind the notification receiving method first",
   "purchase_extra_package": "Upgrade",
-  "redeem_coupon": "Redeem coupon",
   "reminder_create_bound_notification_account": "Remind the creator to bind the notification account",
   "reset_password": "reset password",
   "resource_usage": "Usages",
@@ -76,5 +75,6 @@
   "user_team_team_name": "Team",
   "verification_code": "Verification code",
   "you_can_convert": "you can redeem",
-  "yuan": "Yuan"
+  "yuan": "Yuan",
+  "redeem_coupon": "Redeem coupon"
 }
