@@ -1,5 +1,6 @@
-import { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
-import { BillTypeEnum, DrawBillQRItem } from './constants';
+import type { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
+import type { BillTypeEnum } from './constants';
+import { DrawBillQRItem } from './constants';
 
 export type CreateOrderResponse = {
   qrCode?: string;

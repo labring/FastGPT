@@ -1,7 +1,7 @@
-import { LLMModelItemType } from '../../ai/model.d';
-import { LLMModelTypeEnum } from '../../ai/constants';
-import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
-import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
+import type { LLMModelItemType } from '../../ai/model.d';
+import type { LLMModelTypeEnum } from '../../ai/constants';
+import type { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
+import type { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 
 // Dynamic input field configuration
 export type CustomFieldConfigType = {

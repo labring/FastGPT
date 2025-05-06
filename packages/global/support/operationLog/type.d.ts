@@ -1,5 +1,5 @@
-import { SourceMemberType } from '../user/type';
-import { OperationLogEventEnum } from './constants';
+import type { SourceMemberType } from '../user/type';
+import type { OperationLogEventEnum } from './constants';
 
 export type OperationLogSchema = {
   _id: string;

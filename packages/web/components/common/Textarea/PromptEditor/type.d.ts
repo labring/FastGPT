@@ -1,4 +1,4 @@
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export type EditorVariablePickerType = {
   key: string;

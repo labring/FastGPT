@@ -1,5 +1,5 @@
+import type { TmpDataEnum } from '@fastgpt/global/support/tmpData/constant';
 import {
-  TmpDataEnum,
   TmpDataExpireTime,
   type TmpDataMetadata,
   type TmpDataType

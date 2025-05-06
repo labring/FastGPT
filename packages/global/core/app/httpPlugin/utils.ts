@@ -1,7 +1,7 @@
 import { getNanoid } from '../../../common/string/tools';
 import { type OpenApiJsonSchema } from './type';
 import yaml from 'js-yaml';
-import { OpenAPIV3 } from 'openapi-types';
+import type { OpenAPIV3 } from 'openapi-types';
 import { type FlowNodeInputItemType, type FlowNodeOutputItemType } from '../../workflow/type/io';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../../workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '../../workflow/constants';

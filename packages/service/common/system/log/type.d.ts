@@ -1,4 +1,5 @@
-import { LogLevelEnum, LogSignEnum } from './constant';
+import type { LogLevelEnum } from './constant';
+import { LogSignEnum } from './constant';
 
 export type SystemLogType = {
   _id: string;

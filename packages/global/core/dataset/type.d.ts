@@ -1,7 +1,7 @@
 import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/model.d';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
-import {
+import type {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -10,12 +10,12 @@ import {
   SearchScoreTypeEnum,
   TrainingModeEnum
 } from './constants';
-import { DatasetPermission } from '../../support/permission/dataset/controller';
+import type { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
-import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
-import { SourceMemberType } from 'support/user/type';
-import { DatasetDataIndexTypeEnum } from './data/constants';
-import { ChunkSettingModeEnum } from './constants';
+import type { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
+import type { SourceMemberType } from 'support/user/type';
+import type { DatasetDataIndexTypeEnum } from './data/constants';
+import type { ChunkSettingModeEnum } from './constants';
 
 export type ChunkSettingsType = {
   trainingType: DatasetCollectionDataProcessModeEnum;

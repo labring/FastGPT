@@ -23,7 +23,7 @@ import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useRequest2 } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
-import { useScrollPagination } from '../../../hooks/useScrollPagination';
+import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
 
 /** 选择组件 Props 类型

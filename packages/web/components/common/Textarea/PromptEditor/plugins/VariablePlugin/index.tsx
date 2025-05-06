@@ -1,4 +1,4 @@
-import { TextNode } from 'lexical';
+import type { TextNode } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { useCallback, useEffect, useMemo } from 'react';

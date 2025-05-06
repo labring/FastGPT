@@ -1,5 +1,5 @@
 import { ModelTypeEnum } from 'packages/global/core/ai/model';
-import { ModelProviderIdType } from 'packages/global/core/ai/provider';
+import type { ModelProviderIdType } from 'packages/global/core/ai/provider';
 
 export default async function setupModels() {
   global.llmModelMap = new Map<string, any>();

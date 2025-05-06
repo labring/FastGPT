@@ -1,4 +1,4 @@
-import { EmbeddingModelItemType } from '../ai/model.d';
+import type { EmbeddingModelItemType } from '../ai/model.d';
 import { NodeInputKeyEnum } from './constants';
 
 export type SelectedDatasetType = {

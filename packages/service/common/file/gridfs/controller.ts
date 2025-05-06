@@ -1,5 +1,5 @@
 import { Types, connectionMongo, ReadPreference } from '../../mongo';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
 import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';

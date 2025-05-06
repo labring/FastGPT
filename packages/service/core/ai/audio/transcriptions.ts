@@ -1,4 +1,4 @@
-import fs from 'fs';
+import type fs from 'fs';
 import { getAxiosConfig } from '../config';
 import axios from 'axios';
 import FormData from 'form-data';

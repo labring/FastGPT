@@ -1,6 +1,7 @@
-import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from '../sub/constants';
-import { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
-import { TeamInvoiceHeaderType } from '../../user/team/type';
+import type { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
+import { SubTypeEnum } from '../sub/constants';
+import type { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
+import type { TeamInvoiceHeaderType } from '../../user/team/type';
 
 export type BillSchemaType = {
   _id: string;
