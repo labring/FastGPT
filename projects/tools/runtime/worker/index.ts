@@ -147,3 +147,45 @@ const workerPool = new WorkerPool({ maxReservedThreads });
 export async function dispatch(data: Record<string, unknown>) {
   return await workerPool.run(data);
 }
+
+export async function dispatchWithNewWorker(data: Record<string, unknown>) {
+  const worker = new Worker('./worker.js', {
+    env: {},
+    resourceLimits: {
+      maxOldGenerationSizeMb: parseInt(process.env.MAX_MEMORYMB || '1024')
+    }
+  });
+
+  const workerId = `${Date.now()}${Math.random()}`;
+
+  const resolvePromise = new Promise((resolve, reject) => {
+    worker.on('message', ({ type, data }: WorkerResponse<unknown>) => {
+      if (type === 'success') {
+        resolve(data);
+      } else if (type === 'error') {
+        reject(data);
+      }
+
+      worker.terminate();
+    });
+
+    worker.on('error', (err) => {
+      console.log(err);
+      reject('error');
+      worker.terminate();
+    });
+
+    worker.on('messageerror', (err) => {
+      console.log(err);
+      reject('error');
+      worker.terminate();
+    });
+
+    worker.postMessage({
+      id: workerId,
+      ...data
+    });
+  });
+
+  return resolvePromise;
+}

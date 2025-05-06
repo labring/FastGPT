@@ -13,7 +13,7 @@ export async function getSystemToolList() {
     parentId: item.parentId,
     name: item.name,
     avatar: item.icon,
-    version: item.version ?? '0',
+    version: item.version ?? '0.0.0',
     workflow: item.workflow ?? {
       nodes: [],
       edges: []
