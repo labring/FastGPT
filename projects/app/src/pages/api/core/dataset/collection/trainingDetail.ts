@@ -1,5 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import {
+import type {
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';

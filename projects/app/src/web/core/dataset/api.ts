@@ -30,7 +30,7 @@ import type {
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
-import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';

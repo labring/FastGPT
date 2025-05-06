@@ -6,7 +6,7 @@ import {
   type ChannelLogListItemType,
   type CreateChannelProps
 } from '@/global/aiproxy/type';
-import { ChannelStatusEnum } from '@/global/aiproxy/constants';
+import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
 
 interface ResponseDataType {
   success: boolean;

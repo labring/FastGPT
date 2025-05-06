@@ -26,7 +26,7 @@ import { useForm } from 'react-hook-form';
 import { AddModelButton } from '../AddModelBox';
 import dynamic from 'next/dynamic';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSystemModelList } from '@/web/core/ai/config';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';

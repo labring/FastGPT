@@ -10,7 +10,7 @@ import { postCreateApp } from '@/web/core/app/api';
 import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
   getBdVId,

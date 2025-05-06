@@ -47,7 +47,7 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { type CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
-import { Permission } from '@fastgpt/global/support/permission/controller';
+import type { Permission } from '@fastgpt/global/support/permission/controller';
 
 function PermissionManage({
   Tabs,

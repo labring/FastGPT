@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
-import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';

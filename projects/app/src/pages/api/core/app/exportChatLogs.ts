@@ -15,7 +15,8 @@ import { Types } from 'mongoose';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { ChatItemValueTypeEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 const formatJsonString = (data: any) => {

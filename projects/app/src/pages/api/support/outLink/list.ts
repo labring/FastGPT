@@ -4,7 +4,7 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
-import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
+import type { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
 export const ApiMetadata = {
   name: '获取应用内所有 Outlink',
