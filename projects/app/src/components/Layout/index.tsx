@@ -64,7 +64,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
-  const pswUpdateTime = process.env.NEXT_PUBLIC_PASSWORD_UPDATETIME ?? 0;
+  const pswUpdateTime = process.env.NEXT_PUBLIC_PASSWORD_UPDATETIME
+    ? process.env.NEXT_PUBLIC_PASSWORD_UPDATETIME
+    : '0';
   const [reset_password, setResetPassword] = useState(false);
   const [resetPswModal, setResetPswModal] = useState(false);
 
