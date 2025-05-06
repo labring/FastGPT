@@ -24,7 +24,7 @@ import { useTranslation } from 'next-i18next';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { ChannelInfoType } from '@/global/aiproxy/type';
+import { type ChannelInfoType } from '@/global/aiproxy/type';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import {
   aiproxyIdMap,

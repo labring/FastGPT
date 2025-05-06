@@ -3,7 +3,7 @@ import { POST } from '../api/request';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
   const { t } = useTranslation();

@@ -1,5 +1,5 @@
 import { getMongoLogModel as getMongoModel, Schema } from '../../../common/mongo';
-import { SystemLogType } from './type';
+import { type SystemLogType } from './type';
 import { LogLevelEnum } from './constant';
 
 export const LogCollectionName = 'system_logs';

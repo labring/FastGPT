@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 
 import { getHashtagRegexString } from './utils';
 import { registerLexicalTextEntity } from '../../utils';
-import { EditorVariablePickerType } from '../../type';
+import { type EditorVariablePickerType } from '../../type';
 import { $createVariableNode, VariableNode } from './node';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');

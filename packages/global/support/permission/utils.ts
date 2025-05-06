@@ -1,4 +1,4 @@
-import { PermissionValueType } from './type';
+import { type PermissionValueType } from './type';
 import { NullPermission, PermissionTypeEnum } from './constant';
 import { Permission } from './controller';
 

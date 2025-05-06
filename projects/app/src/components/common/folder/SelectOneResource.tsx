@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Box, BoxProps, Flex } from '@chakra-ui/react';
+import { Box, type BoxProps, Flex } from '@chakra-ui/react';
 import {
-  GetResourceFolderListProps,
-  GetResourceListItemResponse,
-  ParentIdType
+  type GetResourceFolderListProps,
+  type GetResourceListItemResponse,
+  type ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Loading from '@fastgpt/web/components/common/MyLoading';

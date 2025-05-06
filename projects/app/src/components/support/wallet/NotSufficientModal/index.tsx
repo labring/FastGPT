@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import { NotSufficientModalType, useSystemStore } from '@/web/common/system/useSystemStore';
+import { type NotSufficientModalType, useSystemStore } from '@/web/common/system/useSystemStore';
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
 import StandardPlan from '@/pageComponents/price/Standard';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';

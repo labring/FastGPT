@@ -14,10 +14,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  TooltipProps
+  type TooltipProps
 } from 'recharts';
-import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { UnitType, UsageFilterParams } from './type';
+import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { type UnitType, type UsageFilterParams } from './type';
 import dayjs from 'dayjs';
 
 export type usageFormType = {

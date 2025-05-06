@@ -1,6 +1,6 @@
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
-import { TFunction } from 'i18next';
+import { type TFunction } from 'i18next';
 
 type I18nContextType = {
   commonT: TFunction<['common'], undefined>;

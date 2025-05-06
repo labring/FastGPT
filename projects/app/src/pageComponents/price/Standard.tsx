@@ -6,7 +6,7 @@ import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/walle
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { type TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { postCreatePayBill } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';

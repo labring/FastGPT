@@ -1,7 +1,9 @@
 import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import CollaboratorContextProvider, { MemberManagerInputPropsType } from '../MemberManager/context';
+import CollaboratorContextProvider, {
+  type MemberManagerInputPropsType
+} from '../MemberManager/context';
 import { Box, Button, Flex, HStack, ModalBody, useDisclosure } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';

@@ -1,15 +1,15 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
-  AppFileSelectConfigType,
-  AppQGConfigType,
-  AppTTSConfigType,
-  AppWhisperConfigType,
-  ChatInputGuideConfigType,
-  VariableItemType
+  type AppFileSelectConfigType,
+  type AppQGConfigType,
+  type AppTTSConfigType,
+  type AppWhisperConfigType,
+  type ChatInputGuideConfigType,
+  type VariableItemType
 } from '@fastgpt/global/core/app/type';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
   defaultAppSelectFileConfig,
   defaultChatInputGuideConfig,

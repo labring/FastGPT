@@ -1,6 +1,6 @@
 import {
-  DispatchNodeResponseType,
-  DispatchNodeResultType
+  type DispatchNodeResponseType,
+  type DispatchNodeResultType
 } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
@@ -11,7 +11,7 @@ import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';

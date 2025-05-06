@@ -9,7 +9,7 @@ import {
   HStack,
   Switch,
   ModalFooter,
-  BoxProps,
+  type BoxProps,
   Checkbox
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';

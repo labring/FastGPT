@@ -1,6 +1,6 @@
 import { Box, Flex, Grid, Text } from '@chakra-ui/react';
 import MdImage from '@/components/Markdown/img/Image';
-import { UserInputFileItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { type UserInputFileItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { clone } from 'lodash';

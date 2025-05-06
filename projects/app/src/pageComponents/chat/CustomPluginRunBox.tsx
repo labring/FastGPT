@@ -1,4 +1,4 @@
-import { PluginRunBoxProps } from '@/components/core/chat/ChatContainer/PluginRunBox/type';
+import { type PluginRunBoxProps } from '@/components/core/chat/ChatContainer/PluginRunBox/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import React, { useEffect } from 'react';
 import PluginRunBox from '@/components/core/chat/ChatContainer/PluginRunBox';

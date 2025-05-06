@@ -5,12 +5,12 @@ import type {
   AuthOutLinkInitProps,
   AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api.d';
-import { ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ShareChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
-import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 
 export function authOutLinkInit(data: AuthOutLinkInitProps): Promise<AuthOutLinkResponse> {
   if (!global.feConfigs?.isPlus) return Promise.resolve({ uid: data.outLinkUid });

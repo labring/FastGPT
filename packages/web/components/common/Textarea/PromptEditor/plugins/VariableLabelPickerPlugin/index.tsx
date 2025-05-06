@@ -6,7 +6,7 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { EditorVariableLabelPickerType } from '../../type';
+import { type EditorVariableLabelPickerType } from '../../type';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import Avatar from '../../../../Avatar';

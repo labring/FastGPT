@@ -10,7 +10,7 @@ import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
+import { type InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';

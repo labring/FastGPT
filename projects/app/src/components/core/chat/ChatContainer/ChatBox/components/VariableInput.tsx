@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { Controller, UseFormReturn } from 'react-hook-form';
+import { Controller, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Flex, Switch, Textarea } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
@@ -10,10 +10,10 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { ChatBoxInputFormType } from '../type.d';
+import { type ChatBoxInputFormType } from '../type.d';
 import { useContextSelector } from 'use-context-selector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { VariableItemType } from '@fastgpt/global/core/app/type';
+import { type VariableItemType } from '@fastgpt/global/core/app/type';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';

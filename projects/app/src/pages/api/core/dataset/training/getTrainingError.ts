@@ -1,12 +1,12 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 export type getTrainingErrorBody = PaginationProps<{
   collectionId: string;

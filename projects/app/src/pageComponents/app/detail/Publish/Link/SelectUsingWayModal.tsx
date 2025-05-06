@@ -1,8 +1,8 @@
-import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
+import { type OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import React, { useCallback, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Flex, FlexProps, Grid, ModalBody, Switch, useTheme } from '@chakra-ui/react';
+import { Box, Flex, type FlexProps, Grid, ModalBody, Switch, useTheme } from '@chakra-ui/react';
 import MyRadio from '@/components/common/MyRadio';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';

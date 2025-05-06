@@ -1,5 +1,5 @@
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
-import { RenderInputProps } from '../type';
+import { type RenderInputProps } from '../type';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { useContextSelector } from 'use-context-selector';
 import React from 'react';

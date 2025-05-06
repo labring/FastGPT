@@ -35,7 +35,7 @@ import type { ChatBoxInputType, ChatBoxInputFormType, SendPromptFnType } from '.
 import type { StartChatFnProps, generatingMessageProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../../Divider';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   ChatItemValueTypeEnum,
@@ -49,7 +49,7 @@ import {
 } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import ChatProvider, { ChatBoxContext, ChatProviderProps } from './Provider';
+import ChatProvider, { ChatBoxContext, type ChatProviderProps } from './Provider';
 
 import ChatItem from './components/ChatItem';
 

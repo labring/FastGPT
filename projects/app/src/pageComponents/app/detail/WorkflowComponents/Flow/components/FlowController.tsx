@@ -3,7 +3,7 @@ import {
   Background,
   ControlButton,
   MiniMap,
-  MiniMapNodeProps,
+  type MiniMapNodeProps,
   Panel,
   useReactFlow,
   useViewport

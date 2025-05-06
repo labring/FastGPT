@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flex, Box, FlexProps } from '@chakra-ui/react';
+import { Flex, Box, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import { useTranslation } from 'next-i18next';
 

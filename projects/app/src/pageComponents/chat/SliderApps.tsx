@@ -4,13 +4,13 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
 import { getMyApps } from '@/web/core/app/api';
 import {
-  GetResourceFolderListProps,
-  GetResourceListItemResponse
+  type GetResourceFolderListProps,
+  type GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';

@@ -5,7 +5,10 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeInputItemType,
+  type ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { defaultInput } from '../../FieldEditModal';

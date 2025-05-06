@@ -1,4 +1,4 @@
-import { reTrainingDatasetFileCollectionParams } from '@fastgpt/global/core/dataset/api';
+import { type reTrainingDatasetFileCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -8,7 +8,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';

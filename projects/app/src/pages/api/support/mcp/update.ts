@@ -4,7 +4,7 @@ import { authMcp } from '../../../../../../../packages/service/support/permissio
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
-import { McpAppType } from '@fastgpt/global/support/mcp/type';
+import { type McpAppType } from '@fastgpt/global/support/mcp/type';
 
 export type updateQuery = {};
 

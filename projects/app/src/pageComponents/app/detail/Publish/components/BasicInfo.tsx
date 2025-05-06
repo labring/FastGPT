@@ -3,8 +3,8 @@ import { Box, Flex, Input } from '@chakra-ui/react';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import dayjs from 'dayjs';
 import { useTranslation } from 'next-i18next';
-import { UseFormRegister, UseFormSetValue } from 'react-hook-form';
-import { OutLinkEditType } from '@fastgpt/global/support/outLink/type';
+import { type UseFormRegister, type UseFormSetValue } from 'react-hook-form';
+import { type OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 function BasicInfo({

@@ -20,7 +20,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ModelProviderList,
-  ModelProviderIdType,
+  type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -40,7 +40,7 @@ import {
   putUpdateDefaultModels
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';

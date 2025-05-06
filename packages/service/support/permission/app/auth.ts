@@ -1,18 +1,18 @@
 /* Auth app permission */
 import { MongoApp } from '../../../core/app/schema';
-import { AppDetailType } from '@fastgpt/global/core/app/type.d';
+import { type AppDetailType } from '@fastgpt/global/core/app/type.d';
 import { parseHeaderCert } from '../controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getResourcePermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { splitCombinePluginId } from '../../../core/app/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { AuthModeType, AuthResponseType } from '../type';
+import { type AuthModeType, type AuthResponseType } from '../type';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 
 export const authPluginByTmbId = async ({

@@ -15,7 +15,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -26,7 +26,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import IconButton from '../OrgManage/IconButton';
-import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));

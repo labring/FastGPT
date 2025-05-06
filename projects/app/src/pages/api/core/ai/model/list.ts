@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
+import { type ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 

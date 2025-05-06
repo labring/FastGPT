@@ -5,9 +5,12 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import {
+  type AppTemplateSchemaType,
+  type TemplateTypeSchemaType
+} from '@fastgpt/global/core/app/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemDetail } from '@/web/core/app/api/template';

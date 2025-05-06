@@ -1,20 +1,20 @@
 import path from 'path';
 import * as fs from 'fs';
-import { SystemModelItemType } from '../type';
+import { type SystemModelItemType } from '../type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { MongoSystemModel } from './schema';
 import {
-  LLMModelItemType,
-  EmbeddingModelItemType,
-  TTSModelType,
-  STTModelType,
-  RerankModelItemType
+  type LLMModelItemType,
+  type EmbeddingModelItemType,
+  type TTSModelType,
+  type STTModelType,
+  type RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
 import {
   getModelProvider,
-  ModelProviderIdType,
-  ModelProviderType
+  type ModelProviderIdType,
+  type ModelProviderType
 } from '@fastgpt/global/core/ai/provider';
 import { findModelFromAlldata } from '../model';
 import {

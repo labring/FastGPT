@@ -6,15 +6,15 @@ import {
   NodeOutputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import {
-  RuntimeEdgeItemType,
-  RuntimeNodeItemType,
-  SystemVariablesType
+  type RuntimeEdgeItemType,
+  type RuntimeNodeItemType,
+  type SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
-import { NextApiResponse } from 'next';
+import { type NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 

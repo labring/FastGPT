@@ -5,7 +5,11 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import {
+  type APIFileServer,
+  type FeishuServer,
+  type YuqueServer
+} from '@fastgpt/global/core/dataset/apiDataset';
 import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';

@@ -27,7 +27,7 @@ import {
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
 import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
-import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));

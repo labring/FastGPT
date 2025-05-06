@@ -6,7 +6,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { readApiServerFileContent } from '@fastgpt/service/core/dataset/read';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';

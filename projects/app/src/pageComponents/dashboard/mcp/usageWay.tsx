@@ -1,4 +1,4 @@
-import { McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';

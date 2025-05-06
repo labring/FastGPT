@@ -7,7 +7,7 @@ import {
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
-import { Box, BoxProps, Button, Flex, Input } from '@chakra-ui/react';
+import { Box, type BoxProps, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';

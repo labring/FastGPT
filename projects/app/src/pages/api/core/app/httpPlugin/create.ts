@@ -6,7 +6,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { onCreateApp, type CreateAppBody } from '../create';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';

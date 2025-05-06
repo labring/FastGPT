@@ -1,4 +1,4 @@
-import { SystemPluginResponseType } from '../type';
+import { type SystemPluginResponseType } from '../type';
 import { parentPort } from 'worker_threads';
 
 const loadModule = async (name: string): Promise<(e: any) => SystemPluginResponseType> => {

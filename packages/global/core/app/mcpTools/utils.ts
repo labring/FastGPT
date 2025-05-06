@@ -5,9 +5,9 @@ import {
   FlowNodeTypeEnum
 } from '../../workflow/node/constant';
 import { nanoid } from 'nanoid';
-import { ToolType } from '../type';
+import { type ToolType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
-import { RuntimeNodeItemType } from '../../workflow/runtime/type';
+import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
 
 export const getMCPToolSetRuntimeNode = ({
   url,

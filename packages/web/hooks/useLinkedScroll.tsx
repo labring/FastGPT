@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, ReactNode } from 'react';
-import { LinkedListResponse, LinkedPaginationProps } from '../common/fetch/type';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { type LinkedListResponse, type LinkedPaginationProps } from '../common/fetch/type';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useScroll, useMemoizedFn, useDebounceEffect } from 'ahooks';
 import MyBox from '../components/common/MyBox';

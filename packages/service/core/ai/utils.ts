@@ -1,11 +1,11 @@
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
-  ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
-  CompletionFinishReason,
-  StreamChatType,
-  UnStreamChatType,
-  CompletionUsage
+  type ChatCompletionCreateParamsNonStreaming,
+  type ChatCompletionCreateParamsStreaming,
+  type CompletionFinishReason,
+  type StreamChatType,
+  type UnStreamChatType,
+  type CompletionUsage
 } from '@fastgpt/global/core/ai/type';
 import { getLLMModel } from './model';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';

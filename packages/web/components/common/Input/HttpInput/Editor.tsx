@@ -18,8 +18,8 @@ import styles from './index.module.scss';
 import { EditorState, LexicalEditor } from 'lexical';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType
+  type EditorVariableLabelPickerType,
+  type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
 import { textToEditorState } from '../../Textarea/PromptEditor/utils';

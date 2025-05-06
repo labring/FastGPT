@@ -1,7 +1,7 @@
 import { generateQA } from '@/service/events/generateQA';
 import { generateVector } from '@/service/events/generateVector';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 
 export const createDatasetTrainingMongoWatch = () => {

@@ -16,7 +16,7 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
@@ -34,9 +34,9 @@ import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {

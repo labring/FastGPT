@@ -8,7 +8,7 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
 
 const Header = ({ url, toolList }: { url: string; toolList: ToolType[] }) => {

@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { theme } from '@fastgpt/web/styles/theme';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';

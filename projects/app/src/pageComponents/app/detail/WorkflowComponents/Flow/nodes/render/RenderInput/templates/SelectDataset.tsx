@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure, useTheme } from '@chakra-ui/react';
-import { SelectedDatasetType } from '@fastgpt/global/core/workflow/api';
+import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';

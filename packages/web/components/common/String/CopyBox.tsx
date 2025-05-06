@@ -2,7 +2,7 @@ import { useCopyData } from '../../../hooks/useCopyData';
 import React from 'react';
 import MyTooltip from '../MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 
 const CopyBox = ({
   value,

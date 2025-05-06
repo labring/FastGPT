@@ -12,8 +12,8 @@ import {
   HStack
 } from '@chakra-ui/react';
 import {
-  InvitationLinkCreateType,
-  InvitationLinkExpiresType
+  type InvitationLinkCreateType,
+  type InvitationLinkExpiresType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';

@@ -32,7 +32,7 @@ import CollectionChunkForm, {
   type CollectionChunkFormType
 } from '../Form/CollectionChunkForm';
 import { getLLMDefaultChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
+import { type ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 
 export type WebsiteConfigFormType = {
   websiteConfig: {

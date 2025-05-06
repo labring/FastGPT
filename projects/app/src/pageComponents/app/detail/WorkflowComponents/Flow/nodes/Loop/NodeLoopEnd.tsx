@@ -1,5 +1,5 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { NodeProps } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Reference from '../render/RenderInput/templates/Reference';
 import { Box } from '@chakra-ui/react';

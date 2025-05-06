@@ -1,9 +1,22 @@
 import { createContext } from 'use-context-selector';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 import { useCreation, useMemoizedFn } from 'ahooks';
-import React, { Dispatch, SetStateAction, ReactNode, useEffect, useMemo } from 'react';
-import { Edge, EdgeChange, Node, NodeChange, useEdgesState, useNodesState } from 'reactflow';
+import React, {
+  type Dispatch,
+  type SetStateAction,
+  type ReactNode,
+  useEffect,
+  useMemo
+} from 'react';
+import {
+  type Edge,
+  type EdgeChange,
+  type Node,
+  type NodeChange,
+  useEdgesState,
+  useNodesState
+} from 'reactflow';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 

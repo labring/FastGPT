@@ -1,5 +1,5 @@
 import { useDebounceEffect, useLockFn, useMemoizedFn } from 'ahooks';
-import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { WorkflowInitContext, WorkflowNodeEdgeContext } from './workflowInitContext';
 import { WorkflowContext } from '.';
@@ -7,8 +7,8 @@ import { AppContext } from '../../context';
 import { compareSnapshot } from '@/web/core/workflow/utils';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useTranslation } from 'next-i18next';
-import { Node } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type Node } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   Input_Template_Node_Height,

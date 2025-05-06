@@ -1,6 +1,6 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { Flex, FlexProps, css, useTheme } from '@chakra-ui/react';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { Flex, type FlexProps, css, useTheme } from '@chakra-ui/react';
+import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';

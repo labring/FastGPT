@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flex, Box, CloseButton, FlexProps } from '@chakra-ui/react';
+import { Flex, Box, CloseButton, type FlexProps } from '@chakra-ui/react';
 import { useLoading } from '../../../hooks/useLoading';
 import Avatar from '../Avatar';
 

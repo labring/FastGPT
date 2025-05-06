@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { NextAPI } from '@/service/middleware/entry';
 

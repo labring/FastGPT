@@ -3,7 +3,7 @@ import {
   Box,
   Flex,
   Grid,
-  BoxProps,
+  type BoxProps,
   useTheme,
   useDisclosure,
   Button,

@@ -19,7 +19,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { McpAppType } from '@fastgpt/global/support/mcp/type';
+import { type McpAppType } from '@fastgpt/global/support/mcp/type';
 import { useTranslation } from 'next-i18next';
 import { useFieldArray, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -30,7 +30,7 @@ import Path from '@/components/common/folder/Path';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppBasicInfoByIds, getMyApps } from '@/web/core/app/api';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';

@@ -1,13 +1,13 @@
 import {
   Box,
   Button,
-  ButtonProps,
+  type ButtonProps,
   Checkbox,
   Flex,
   Menu,
   MenuButton,
   MenuItem,
-  MenuItemProps,
+  type MenuItemProps,
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';

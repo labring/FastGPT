@@ -1,9 +1,9 @@
 import type { NextApiResponse } from 'next';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
+import { type UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 /* 初始化我的聊天框，需要身份验证 */
 async function handler(req: ApiRequestProps<UpdateChatFeedbackProps>, res: NextApiResponse) {

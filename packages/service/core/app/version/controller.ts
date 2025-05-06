@@ -1,4 +1,4 @@
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 

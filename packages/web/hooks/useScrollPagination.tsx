@@ -1,8 +1,8 @@
-import React, { ReactNode, RefObject, useMemo, useRef, useState } from 'react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import React, { type ReactNode, type RefObject, useMemo, useRef, useState } from 'react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { PaginationProps, PaginationResponse } from '../common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 import {
   useBoolean,
   useLockFn,

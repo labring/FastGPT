@@ -72,7 +72,7 @@ import type {
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
 import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
-import { GetQuoteDataProps } from '@/pages/api/core/chat/quote/getQuote';
+import { type GetQuoteDataProps } from '@/pages/api/core/chat/quote/getQuote';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>

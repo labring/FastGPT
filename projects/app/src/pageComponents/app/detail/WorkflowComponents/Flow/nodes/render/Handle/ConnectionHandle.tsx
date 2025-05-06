@@ -6,7 +6,7 @@ import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
 import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 export const ConnectionSourceHandle = ({
   nodeId,

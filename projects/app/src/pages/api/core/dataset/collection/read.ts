@@ -5,7 +5,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';

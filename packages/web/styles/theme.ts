@@ -1,4 +1,4 @@
-import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
+import { extendTheme, defineStyleConfig, type ComponentStyleConfig } from '@chakra-ui/react';
 import {
   modalAnatomy,
   switchAnatomy,

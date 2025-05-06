@@ -7,7 +7,7 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import { queryExtension } from '../../../../core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 type Props = ModuleDispatchProps<{

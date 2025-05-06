@@ -1,9 +1,12 @@
-import { APIFileItem, ApiFileReadContentResponse } from '@fastgpt/global/core/dataset/apiDataset';
+import {
+  type APIFileItem,
+  type ApiFileReadContentResponse
+} from '@fastgpt/global/core/dataset/apiDataset';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  GetProApiDatasetFileContentParams,
-  GetProApiDatasetFileListParams,
-  GetProApiDatasetFilePreviewUrlParams,
+  type GetProApiDatasetFileContentParams,
+  type GetProApiDatasetFileListParams,
+  type GetProApiDatasetFilePreviewUrlParams,
   ProApiDatasetOperationTypeEnum
 } from '@fastgpt/service/core/dataset/apiDataset/proApi';
 

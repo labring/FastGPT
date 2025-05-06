@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ImportSourceItemType } from '@/web/core/dataset/type.d';
+import { type ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { Box, Button } from '@chakra-ui/react';
 import FileSelector from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';

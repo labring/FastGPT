@@ -1,6 +1,6 @@
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { UserUpdateParams } from '@/types/user';
+import { type UserUpdateParams } from '@/types/user';
 
 /* update user info */
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';

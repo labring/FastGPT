@@ -8,7 +8,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useEffect, useState } from 'react';
-import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
+import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';

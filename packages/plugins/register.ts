@@ -1,6 +1,6 @@
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { SystemPluginResponseType } from './type';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { type SystemPluginResponseType } from './type';
+import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { cloneDeep } from 'lodash';
 import { WorkerNameEnum, runWorker } from '@fastgpt/service/worker/utils';
 

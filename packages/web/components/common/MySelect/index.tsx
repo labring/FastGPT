@@ -4,7 +4,7 @@ import React, {
   useMemo,
   useEffect,
   useImperativeHandle,
-  ForwardedRef,
+  type ForwardedRef,
   useState
 } from 'react';
 import {
