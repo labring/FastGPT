@@ -1241,6 +1241,7 @@
   "user.OpenAI Account Setting": "OpenAI 账号配置",
   "user.Password": "密码",
   "user.Password has no change": "新密码和旧密码重复",
+  "user.No_right_to_reset_password": "没有重置密码的权限",
   "user.Pay": "充值",
   "user.Promotion": "促销",
   "user.Promotion Rate": "返现比例",

@@ -6,27 +6,22 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await authCert({ req, authToken: true });
-    console.log('req.query', req.query);
     const { userid } = req.query;
 
     if (!userid) {
-      throw new Error('用户名不能为空');
+      throw new Error('Params is missing');
     }
 
-    // 根据用户名查询用户
     const user = await MongoUser.findOne({
       _id: userid
     });
 
     if (!user) {
-      throw new Error('用户不存在');
+      throw new Error('can not find it');
     }
-    console.log('user', user);
 
     return jsonRes(res, {
-      data: {
-        updateTime: user.passwordUpdateTime
-      }
+      data: user.passwordUpdateTime
     });
   } catch (err) {
     jsonRes(res, {

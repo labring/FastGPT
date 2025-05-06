@@ -8,6 +8,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await authCert({ req, authToken: true });
     const userId = req.body.userId;
     const newPsw = req.body.newPsw;
+    const now = new Date();
+
     // auth old password
     const user = await MongoUser.findOne({
       _id: userId
@@ -17,19 +19,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('can not find it');
     }
 
-    if (user.passwordUpdateTime) {
-      throw new Error('no right to reset password');
-    }
+    const isResetPassword =
+      !user.passwordUpdateTime ||
+      new Date(user.passwordUpdateTime).getTime() < now.getTime() - 1000 * 60 * 60 * 24 * 30;
 
-    console.log('user', user);
+    if (!isResetPassword) {
+      throw new Error('user.No_right_to_reset_password');
+    }
 
     // 更新对应的记录
     await MongoUser.findByIdAndUpdate(userId, {
       password: newPsw,
       passwordUpdateTime: new Date()
     });
-
-    console.log('user', user);
 
     jsonRes(res, {
       data: {

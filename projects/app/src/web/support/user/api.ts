@@ -75,7 +75,7 @@ export const resetPassword = ({ userId, newPsw }: { userId: string; newPsw: stri
   });
 
 export const getPasswordUpdateTime = (data: { userid: string }) =>
-  GET('/support/user/account/getUpdataPassword', data);
+  GET('/support/user/account/getUpdataPasswordTime', data);
 
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);

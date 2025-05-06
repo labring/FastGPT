@@ -65,6 +65,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
   const [reset_password, setResetPassword] = useState(false);
+  const [resetPswModal, setResetPswModal] = useState(false);
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
@@ -78,10 +79,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   useEffect(() => {
     if (userInfo?._id) {
-      updatePswTime({ userid: userInfo._id }).then((time) => {
-        console.log('userInfo', userInfo);
-        console.log('time', time.updateTime);
-        if (!time.updateTime) {
+      updatePswTime({ userid: userInfo._id }).then((updateTime) => {
+        const now = new Date();
+        const isResetPassword =
+          !updateTime || new Date(updateTime).getTime() < now.getTime() - 1000 * 60 * 60 * 24 * 30;
+        if (!updateTime) {
+          setResetPswModal(true);
+        }
+        if (isResetPassword) {
           setResetPassword(true);
         }
       });
@@ -182,7 +187,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
-          {reset_password && <ResetPswModal onClose={() => setResetPassword(false)} />}
+          {reset_password && (
+            <ResetPswModal resetPswModal={resetPswModal} onClose={() => setResetPassword(false)} />
+          )}
           <WorkorderButton />
         </>
       )}

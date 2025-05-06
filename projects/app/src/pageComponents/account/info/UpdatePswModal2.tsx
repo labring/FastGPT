@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { resetPassword } from '@/web/support/user/api';
-import { checkPasswordRule } from '@/web/support/user/login/constants';
+import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
@@ -15,10 +15,17 @@ type FormType = {
   confirmPsw: string;
 };
 
-const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
+const ResetPswModal = ({
+  onClose,
+  resetPswModal
+}: {
+  onClose: () => void;
+  resetPswModal: boolean;
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
+  console.log('resetPswModal', resetPswModal);
 
   const { register, handleSubmit, getValues, setValue } = useForm<FormType>({
     defaultValues: {
@@ -39,15 +46,14 @@ const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
       if (!data.userId && userInfo?._id) {
         data.userId = userInfo._id;
       }
-      console.log('data', data);
       await resetPassword(data);
     },
     {
       onSuccess() {
         onClose();
       },
-      successToast: t('account_info:password_update_success'),
-      errorToast: t('account_info:password_update_error')
+      successToast: t('common:user.Update password successful'),
+      errorToast: t('common:user.Update password failed')
     }
   );
 
@@ -68,7 +74,7 @@ const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
     <MyModal isOpen iconSrc="/imgs/modal/password.svg" title={t('common:user.reset_password')}>
       <ModalBody>
         <Flex alignItems={'center'} color={'primary.600'} fontSize={'sm'}>
-          {t('common:user.reset_password_tip')}
+          {resetPswModal ? t('common:user.init_password') : t('common:user.reset_password_tip')}
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 70px'} fontSize={'sm'}>
@@ -106,7 +112,7 @@ const ResetPswModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data), onSubmitErr)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>
