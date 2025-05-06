@@ -95,8 +95,6 @@ try {
      close custom feedback; 
   */
   ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-  // admin charts
-  ChatItemSchema.index({ time: -1, obj: 1 });
   // timer, clear history
   ChatItemSchema.index({ teamId: 1, time: -1 });
 
