@@ -19,7 +19,9 @@ export const pluginTypeMap = {
 };
 
 export enum PluginSourceEnum {
-  personal = 'personal',
-  community = 'community',
-  commercial = 'commercial'
+  personal = 'personal', // APP
+  systemTool = 'systemTool', // FastGPT-Tool
+  commercial = 'commercial', // pro 后台配置的，有 associatedPluginId
+  // @deprecated
+  community = 'community'
 }

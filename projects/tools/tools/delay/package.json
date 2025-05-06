@@ -1,0 +1,17 @@
+{
+  "name": "fastgpt-tools-delay",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "build": "bun build index.ts --minify --outdir dist --outFile index.js --target=node"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
+  }
+}

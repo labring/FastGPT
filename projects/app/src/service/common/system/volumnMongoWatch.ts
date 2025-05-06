@@ -1,4 +1,3 @@
-import { getSystemPluginCb } from '@/service/core/app/plugin';
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
@@ -7,6 +6,7 @@ import { debounce } from 'lodash';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
+import { getSystemPlugins } from '@/service/core/app/plugin';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
@@ -37,7 +37,7 @@ const refetchSystemPlugins = () => {
     debounce(async (change) => {
       setTimeout(() => {
         try {
-          getSystemPluginCb(true);
+          getSystemPlugins(true);
         } catch (error) {}
       }, 5000);
     }, 500)

@@ -1,24 +1,24 @@
+import { SmallCloseIcon } from '@chakra-ui/icons';
+import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import React from 'react';
 import ReactFlow, { NodeProps, SelectionMode } from 'reactflow';
-import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
-import { SmallCloseIcon } from '@chakra-ui/icons';
-import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 
-import 'reactflow/dist/style.css';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
-import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
+import 'reactflow/dist/style.css';
 import { useContextSelector } from 'use-context-selector';
-import { useWorkflow } from './hooks/useWorkflow';
-import HelperLines from './components/HelperLines';
-import FlowController from './components/FlowController';
-import ContextMenu from './components/ContextMenu';
-import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../context/workflowInitContext';
+import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import { WorkflowEventContext } from '../context/workflowEventContext';
+import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
+import ContextMenu from './components/ContextMenu';
+import FlowController from './components/FlowController';
+import HelperLines from './components/HelperLines';
+import { useWorkflow } from './hooks/useWorkflow';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -47,7 +47,7 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowNodeItemType>) => (
     <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
   ),
-  [FlowNodeTypeEnum.tool]: dynamic(() => import('./nodes/NodeTool')),
+  [FlowNodeTypeEnum.tool]: NodeSimple,
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),
   [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),

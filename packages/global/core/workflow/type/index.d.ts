@@ -1,25 +1,17 @@
-import { FlowNodeTypeEnum } from '../node/constant';
-import {
-  WorkflowIOValueTypeEnum,
-  NodeOutputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  VariableInputEnum
-} from '../constants';
-import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { CustomInputItemType, FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
-import {
-  ChatHistoryItemResType,
-  ChatItemType,
-  ChatItemValueItemType,
-  ToolRunResponseItemType
-} from '../../chat/type';
-import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import { PluginTypeEnum } from '../../plugin/constants';
-import { StoreEdgeItemType } from './edge';
-import { AppChatConfigType } from '../../app/type';
 import { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from 'core/app/constants';
-import { FlowNodeTemplateType, StoreNodeItemType } from './node';
+import { AppChatConfigType } from '../../app/type';
+import { StoreEdgeItemType } from './edge';
+import { StoreNodeItemType } from './node';
+
+export type localeType = 'en' | 'zh-CN' | 'zh-Hant';
+export type I18nStringType =
+  | {
+      'zh-CN': string;
+      'zh-Hant'?: string;
+      en?: string;
+    }
+  | string;
 
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
@@ -31,9 +23,9 @@ export type WorkflowTemplateType = {
   parentId?: ParentIdType;
   isFolder?: boolean;
 
-  name: string;
+  name: I18nStringType;
   avatar: string;
-  intro?: string;
+  intro?: I18nStringType;
   author?: string;
   courseUrl?: string;
   version: string;

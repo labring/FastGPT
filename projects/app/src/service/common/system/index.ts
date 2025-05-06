@@ -83,7 +83,7 @@ export function initGlobalVariables() {
     global.getProApiDatasetFileDetail = getProApiDatasetFileDetailRequest;
   }
 
-  global.communityPlugins = [];
+  global.systemPlugins = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   initHttpAgent();

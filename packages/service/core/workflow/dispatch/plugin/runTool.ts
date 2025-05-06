@@ -1,11 +1,12 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   DispatchNodeResultType,
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { MCPClient } from '../../../app/mcp';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { runTool } from '../../../app/tool/api';
 
 type RunToolProps = ModuleDispatchProps<{
   toolData: {
@@ -14,39 +15,50 @@ type RunToolProps = ModuleDispatchProps<{
   };
 }>;
 
-type RunToolResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]?: any;
-}>;
+type RunToolResponse = DispatchNodeResultType<
+  {
+    [NodeOutputKeyEnum.rawResponse]?: any;
+  } & Record<string, any>
+>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
-    node: { avatar }
+    node: { avatar, toolConfig }
   } = props;
+  if (toolConfig && toolConfig.systemToolConfig) {
+    // run system tool
+    const { error, output } = await runTool(toolConfig.systemToolConfig.toolId, params);
+    if (error) {
+      return Promise.reject(error);
+    }
+    return output;
+  } else {
+    // mcp tool
+    const { toolData, ...restParams } = params;
+    const { name: toolName, url } = toolData;
 
-  const { toolData, ...restParams } = params;
-  const { name: toolName, url } = toolData;
+    const mcpClient = new MCPClient({ url });
 
-  const mcpClient = new MCPClient({ url });
+    try {
+      const result = await mcpClient.toolCall(toolName, restParams);
 
-  try {
-    const result = await mcpClient.toolCall(toolName, restParams);
-
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        toolRes: result,
-        moduleLogo: avatar
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: result,
-      [NodeOutputKeyEnum.rawResponse]: result
-    };
-  } catch (error) {
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        moduleLogo: avatar,
-        error: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
-    };
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          toolRes: result,
+          moduleLogo: avatar
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: result,
+        [NodeOutputKeyEnum.rawResponse]: result
+      };
+    } catch (error) {
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          moduleLogo: avatar,
+          error: getErrText(error)
+        },
+        [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
+      };
+    }
   }
 };

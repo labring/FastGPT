@@ -1,4 +1,15 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import FolderPath from '@/components/common/folder/Path';
+import CostTooltip from '@/components/core/app/plugin/CostTooltip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getAppFolderPath } from '@/web/core/app/api/app';
+import {
+  getPluginGroups,
+  getPreviewPluginNode,
+  getSystemPluginPaths,
+  getSystemPlugTemplates,
+  getTeamPlugTemplates
+} from '@/web/core/app/api/plugin';
+import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import {
   Accordion,
   AccordionButton,
@@ -6,57 +17,46 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  css,
   Flex,
   Grid,
   HStack,
   IconButton,
   Input,
   InputGroup,
-  InputLeftElement,
-  css
+  InputLeftElement
 } from '@chakra-ui/react';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
+import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import { useReactFlow, XYPosition } from 'reactflow';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { useTranslation } from 'next-i18next';
+import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  getPreviewPluginNode,
-  getSystemPlugTemplates,
-  getPluginGroups,
-  getSystemPluginPaths
-} from '@/web/core/app/api/plugin';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
-import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRouter } from 'next/router';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useMemoizedFn } from 'ahooks';
+import { cloneDeep } from 'lodash';
+import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useReactFlow, XYPosition } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
-import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import FolderPath from '@/components/common/folder/Path';
-import { getAppFolderPath } from '@/web/core/app/api/app';
-import { useWorkflowUtils } from './hooks/useUtils';
-import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { cloneDeep } from 'lodash';
-import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
-import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
-import CostTooltip from '@/components/core/app/plugin/CostTooltip';
-import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { useMemoizedFn } from 'ahooks';
+import { useWorkflowUtils } from './hooks/useUtils';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -478,6 +478,7 @@ const RenderList = React.memo(function RenderList({
           if (
             template.flowNodeType === FlowNodeTypeEnum.pluginModule ||
             template.flowNodeType === FlowNodeTypeEnum.appModule ||
+            template.flowNodeType === FlowNodeTypeEnum.tool ||
             template.flowNodeType === FlowNodeTypeEnum.toolSet
           ) {
             setLoading(true);
