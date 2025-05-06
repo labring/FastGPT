@@ -1,4 +1,4 @@
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getLLMModel } from '../ai/model';

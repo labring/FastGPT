@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, useDisclosure } from '@chakra-ui/react';
-import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
+import {
+  useSearchTestStore,
+  type SearchTestStoreItemType
+} from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -10,7 +13,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { SearchTestResponse } from '@/global/core/dataset/api';
+import { type SearchTestResponse } from '@/global/core/dataset/api';
 import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap

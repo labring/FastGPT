@@ -6,7 +6,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { upsertWebsiteSyncJobScheduler } from '@fastgpt/service/core/dataset/websiteSync';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { addHours } from 'date-fns';
-import { NextApiRequest, NextApiResponse } from 'next';
+import { type NextApiRequest, type NextApiResponse } from 'next';
 
 const initWebsiteSyncData = async () => {
   // find out all website dataset

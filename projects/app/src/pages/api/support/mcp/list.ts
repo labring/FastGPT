@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
-import { McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 
 export type listQuery = {};
 

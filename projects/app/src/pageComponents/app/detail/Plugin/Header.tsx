@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, WorkflowSnapshotsType } from '../WorkflowComponents/context';
+import { WorkflowContext, type WorkflowSnapshotsType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';

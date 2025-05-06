@@ -17,11 +17,14 @@ import {
 } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
-import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import { ScrollListType, useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import {
+  type ScrollListType,
+  useVirtualScrollPagination
+} from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();

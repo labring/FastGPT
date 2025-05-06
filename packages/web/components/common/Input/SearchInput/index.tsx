@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Input, InputProps, InputGroup, InputLeftElement } from '@chakra-ui/react';
+import { Input, type InputProps, InputGroup, InputLeftElement } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 
 const SearchInput = (props: InputProps) => {

@@ -15,12 +15,12 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import type { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import type { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { getWorkflowGlobalVariables } from './utils';
 import type { TFunction } from 'next-i18next';
 import type { AppChatConfigType } from '@fastgpt/global/core/app/type';

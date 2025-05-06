@@ -1,7 +1,7 @@
 import { jsonRes } from '../response';
 import type { NextApiResponse } from 'next';
 import { withNextCors } from './cors';
-import { ApiRequestProps } from '../../type/next';
+import { type ApiRequestProps } from '../../type/next';
 import { addLog } from '../system/log';
 
 export type NextApiHandler<T = any> = (

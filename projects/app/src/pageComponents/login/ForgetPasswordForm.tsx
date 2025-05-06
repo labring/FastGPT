@@ -1,4 +1,4 @@
-import React, { Dispatch } from 'react';
+import React, { type Dispatch } from 'react';
 import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';

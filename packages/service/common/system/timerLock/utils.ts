@@ -1,4 +1,4 @@
-import { ClientSession } from '../../mongo';
+import { type ClientSession } from '../../mongo';
 import { MongoTimerLock } from './schema';
 import { addMinutes } from 'date-fns';
 

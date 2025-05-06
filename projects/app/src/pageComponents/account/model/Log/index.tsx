@@ -16,10 +16,12 @@ import {
   ModalBody,
   Grid,
   GridItem,
-  BoxProps
+  type BoxProps
 } from '@chakra-ui/react';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -33,7 +35,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { ChannelLogUsageType } from '@/global/aiproxy/type';
+import { type ChannelLogUsageType } from '@/global/aiproxy/type';
 
 type LogDetailType = {
   id: number;

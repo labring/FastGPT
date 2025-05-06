@@ -1,7 +1,7 @@
 import { TeamMemberItemType } from 'support/user/team/type';
 import { TeamPermission } from '../user/controller';
-import { GroupMemberRole } from './constant';
-import { Permission } from '../controller';
+import type { GroupMemberRole } from './constant';
+import type { Permission } from '../controller';
 
 type MemberGroupSchemaType = {
   _id: string;

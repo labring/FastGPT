@@ -5,7 +5,8 @@ import { initGlobalVariables } from '@/service/common/system';
 import { afterAll, beforeAll, beforeEach, inject, onTestFinished, vi } from 'vitest';
 import setupModels from './setupModels';
 import { clean } from './datas/users';
-import { connectionLogMongo, connectionMongo, Mongoose } from '@fastgpt/service/common/mongo';
+import type { Mongoose } from '@fastgpt/service/common/mongo';
+import { connectionLogMongo, connectionMongo } from '@fastgpt/service/common/mongo';
 import { randomUUID } from 'crypto';
 import { delay } from '@fastgpt/global/common/system/utils';
 

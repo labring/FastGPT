@@ -3,9 +3,9 @@ import { isProduction } from '@fastgpt/global/common/system/constants';
 import { cloneDeep } from 'lodash';
 import { getCommunityCb, getCommunityPlugins } from '@fastgpt/plugins/register';
 import { GET, POST } from '@fastgpt/service/common/api/plusRequest';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { SystemPluginResponseType } from '@fastgpt/plugins/type';
+import { type SystemPluginResponseType } from '@fastgpt/plugins/type';
 
 /* Get plugins */
 const getCommercialPlugins = () => {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Skeleton, ImageProps } from '@chakra-ui/react';
+import { Skeleton, type ImageProps } from '@chakra-ui/react';
 import CustomImage from '@fastgpt/web/components/common/Image/MyImage';
 
 export const MyImage = (props: ImageProps) => {

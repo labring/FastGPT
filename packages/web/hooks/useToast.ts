@@ -1,5 +1,5 @@
-import { useToast as uToast, UseToastOptions } from '@chakra-ui/react';
-import { CSSProperties, useCallback } from 'react';
+import { useToast as uToast, type UseToastOptions } from '@chakra-ui/react';
+import { type CSSProperties, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 
 export const useToast = (props?: UseToastOptions & { containerStyle?: CSSProperties }) => {

@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { FileCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import { type FileCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -11,7 +11,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): CreateCollectionResponse {
   let filePaths: string[] = [];

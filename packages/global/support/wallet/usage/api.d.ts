@@ -1,5 +1,5 @@
-import { UsageSourceEnum } from './constants';
-import { UsageListItemCountType, UsageListItemType } from './type';
+import type { UsageSourceEnum } from './constants';
+import type { UsageListItemCountType, UsageListItemType } from './type';
 
 export type CreateTrainingUsageProps = {
   name: string;

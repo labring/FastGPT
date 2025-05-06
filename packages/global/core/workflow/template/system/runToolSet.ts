@@ -1,6 +1,6 @@
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
+import { type FlowNodeTemplateType } from '../../type/node';
 import { getHandleConfig } from '../utils';
 
 export const RunToolSetNode: FlowNodeTemplateType = {

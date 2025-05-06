@@ -1,4 +1,4 @@
-import { GroupMemberRole } from '../../../../support/permission/memberGroup/constant';
+import type { GroupMemberRole } from '../../../../support/permission/memberGroup/constant';
 
 export type postCreateGroupData = {
   name: string;

@@ -1,5 +1,5 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import {
@@ -7,8 +7,8 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';

@@ -1,6 +1,6 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { createChatCompletion } from '../config';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../model';

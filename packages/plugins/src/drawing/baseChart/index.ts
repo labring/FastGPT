@@ -1,6 +1,6 @@
 import * as echarts from 'echarts';
 import json5 from 'json5';
-import { SystemPluginSpecialResponse } from '../../../type.d';
+import { type SystemPluginSpecialResponse } from '../../../type.d';
 
 type Props = {
   title: string;

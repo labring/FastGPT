@@ -1,6 +1,6 @@
 import {
-  DispatchNodeResultType,
-  ModuleDispatchProps
+  type DispatchNodeResultType,
+  type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';

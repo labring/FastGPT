@@ -5,10 +5,10 @@ import type {
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  GetProApiDatasetFileContentParams,
-  GetProApiDatasetFileDetailParams,
-  GetProApiDatasetFileListParams,
-  GetProApiDatasetFilePreviewUrlParams,
+  type GetProApiDatasetFileContentParams,
+  type GetProApiDatasetFileDetailParams,
+  type GetProApiDatasetFileListParams,
+  type GetProApiDatasetFilePreviewUrlParams,
   ProApiDatasetOperationTypeEnum
 } from '@fastgpt/service/core/dataset/apiDataset/proApi';
 

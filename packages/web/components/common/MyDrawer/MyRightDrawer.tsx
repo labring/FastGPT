@@ -7,7 +7,7 @@ import {
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
-  DrawerContentProps,
+  type DrawerContentProps,
   Flex,
   Image,
   Box

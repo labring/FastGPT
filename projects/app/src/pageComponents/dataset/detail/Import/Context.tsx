@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { SetStateAction, useMemo, useState } from 'react';
+import { type SetStateAction, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import {
@@ -11,8 +11,8 @@ import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TabEnum } from '../NavBar';
 import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { UseFormReturn, useForm } from 'react-hook-form';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { type UseFormReturn, useForm } from 'react-hook-form';
+import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -25,7 +25,7 @@ import {
   getAutoIndexSize,
   getMaxIndexSize
 } from '@fastgpt/global/core/dataset/training/utils';
-import { CollectionChunkFormType } from '../Form/CollectionChunkForm';
+import { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
 
 type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
 export type ImportFormType = {

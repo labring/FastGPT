@@ -4,7 +4,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../../node/constant';
-import { FlowNodeTemplateType } from '../../../../type/node';
+import { type FlowNodeTemplateType } from '../../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,

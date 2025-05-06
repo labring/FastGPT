@@ -1,5 +1,5 @@
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type FeishuServer, type YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 
 export enum ProApiDatasetOperationTypeEnum {
   LIST = 'list',

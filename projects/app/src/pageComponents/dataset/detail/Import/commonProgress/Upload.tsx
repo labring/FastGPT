@@ -37,7 +37,7 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DatasetImportContext, type ImportFormType } from '../Context';
-import { ApiCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
+import { type ApiCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 
 const Upload = () => {
   const { t } = useTranslation();

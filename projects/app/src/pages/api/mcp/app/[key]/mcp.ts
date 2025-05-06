@@ -4,11 +4,11 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { addLog } from '@fastgpt/service/common/system/log';
 import {
   CallToolRequestSchema,
-  CallToolResult,
+  type CallToolResult,
   ListToolsRequestSchema
 } from '@modelcontextprotocol/sdk/types';
 import { callMcpServerTool, getMcpServerTools } from '@/service/support/mcp/utils';
-import { toolCallProps } from '@/service/support/mcp/type';
+import { type toolCallProps } from '@/service/support/mcp/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export type mcpQuery = { key: string };

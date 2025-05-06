@@ -1,5 +1,5 @@
-import { TeamSchema, TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
-import { ClientSession, Types } from '../../../common/mongo';
+import { type TeamSchema, type TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import { type ClientSession, Types } from '../../../common/mongo';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum,
@@ -7,7 +7,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
-import { UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
+import { type UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
 import { getResourcePermission } from '../../permission/controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';

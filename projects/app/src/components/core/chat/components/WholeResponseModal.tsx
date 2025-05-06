@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Flex, BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, type BoxProps, useDisclosure, HStack } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';

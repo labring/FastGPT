@@ -1,16 +1,16 @@
 import { createChatCompletion } from '../../../../ai/config';
 import { filterGPTMessageByMaxContext, loadRequestMessages } from '../../../../chat/utils';
 import {
-  ChatCompletion,
-  ChatCompletionMessageToolCall,
-  StreamChatType,
-  ChatCompletionToolMessageParam,
-  ChatCompletionMessageParam,
-  ChatCompletionTool,
-  ChatCompletionAssistantMessageParam,
-  CompletionFinishReason
+  type ChatCompletion,
+  type ChatCompletionMessageToolCall,
+  type StreamChatType,
+  type ChatCompletionToolMessageParam,
+  type ChatCompletionMessageParam,
+  type ChatCompletionTool,
+  type ChatCompletionAssistantMessageParam,
+  type CompletionFinishReason
 } from '@fastgpt/global/core/ai/type';
-import { NextApiResponse } from 'next';
+import { type NextApiResponse } from 'next';
 import { responseWriteController } from '../../../../../common/response';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -19,12 +19,16 @@ import {
   getLLMDefaultUsage
 } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
-import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
+import {
+  type DispatchToolModuleProps,
+  type RunToolResponse,
+  type ToolNodeItemType
+} from './type.d';
 import json5 from 'json5';
-import { DispatchFlowResponse, WorkflowResponseType } from '../../type';
+import { type DispatchFlowResponse, type WorkflowResponseType } from '../../type';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { AIChatItemType } from '@fastgpt/global/core/chat/type';
+import { type AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
 import {
   computedMaxToken,
@@ -34,7 +38,7 @@ import {
 } from '../../../../ai/utils';
 import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
-import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 

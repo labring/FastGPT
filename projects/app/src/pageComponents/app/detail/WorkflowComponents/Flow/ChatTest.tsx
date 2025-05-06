@@ -5,7 +5,7 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';

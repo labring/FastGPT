@@ -1,6 +1,6 @@
 import { FlowValueTypeMap } from '@fastgpt/global/core/workflow/node/constant';
 import { Box } from '@chakra-ui/react';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import type { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React from 'react';
 import { useTranslation } from 'next-i18next';

@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 export const addOutLinkUsage = ({
   shareId,

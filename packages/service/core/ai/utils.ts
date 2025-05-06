@@ -1,5 +1,5 @@
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import {
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
   CompletionFinishReason,

@@ -18,7 +18,7 @@ import {
 import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
 import { llmCompletionsBodyFormat, formatLLMResponse } from '@fastgpt/service/core/ai/utils';
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize

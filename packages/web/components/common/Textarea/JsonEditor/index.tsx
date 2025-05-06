@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
-import Editor, { Monaco, loader, useMonaco } from '@monaco-editor/react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import Editor, { type Monaco, loader, useMonaco } from '@monaco-editor/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';

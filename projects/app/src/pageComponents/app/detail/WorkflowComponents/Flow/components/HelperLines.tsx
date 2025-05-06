@@ -1,6 +1,6 @@
-import { THelperLine } from '@fastgpt/global/core/workflow/type';
-import { CSSProperties, useEffect, useRef } from 'react';
-import { ReactFlowState, useStore, useViewport } from 'reactflow';
+import { type THelperLine } from '@fastgpt/global/core/workflow/type';
+import { type CSSProperties, useEffect, useRef } from 'react';
+import { type ReactFlowState, useStore, useViewport } from 'reactflow';
 
 const canvasStyle: CSSProperties = {
   width: '100%',

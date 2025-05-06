@@ -1,5 +1,5 @@
 import { CUSTOM_SPLIT_SIGN } from '@fastgpt/global/common/string/textSplitter';
-import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
 

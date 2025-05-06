@@ -1,4 +1,4 @@
-import { CompletionFinishReason } from '@fastgpt/global/core/ai/type';
+import type { CompletionFinishReason } from '@fastgpt/global/core/ai/type';
 import { parseLLMStreamResponse } from '@fastgpt/service/core/ai/utils';
 import { describe, expect, it } from 'vitest';
 

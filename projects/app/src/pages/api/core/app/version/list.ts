@@ -1,11 +1,11 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { VersionListItemType } from '@fastgpt/global/core/app/version';
+import { type VersionListItemType } from '@fastgpt/global/core/app/version';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 

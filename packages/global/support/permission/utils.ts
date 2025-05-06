@@ -1,6 +1,6 @@
-import { PermissionValueType } from './type';
+import { type PermissionValueType } from './type';
 import { NullPermission, PermissionTypeEnum } from './constant';
-import { Permission } from './controller';
+import type { Permission } from './controller';
 
 /* team public source, or owner source in team */
 export function mongoRPermission({

@@ -1,4 +1,4 @@
-import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';

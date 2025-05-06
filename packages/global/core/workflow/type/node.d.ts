@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum } from '../node/constant';
+import type { FlowNodeTypeEnum } from '../node/constant';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -6,10 +6,10 @@ import {
   VariableInputEnum
 } from '../constants';
 import { DispatchNodeResponseKeyEnum } from '../runtime/constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from './io.d';
 import { UserModelSchema } from '../../../support/user/type';
+import type { ChatHistoryItemResType } from '../../chat/type';
 import {
-  ChatHistoryItemResType,
   ChatItemType,
   ChatItemValueItemType,
   ToolRunResponseItemType,
@@ -21,9 +21,9 @@ import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
 import { AppDetailType, AppSchema } from '../../app/type';
-import { ParentIdType } from 'common/parentFolder/type';
+import type { ParentIdType } from 'common/parentFolder/type';
 import { AppTypeEnum } from 'core/app/constants';
-import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
 
 export type FlowNodeCommonType = {
   parentNodeId?: string;

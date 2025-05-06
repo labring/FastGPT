@@ -9,7 +9,7 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import InputTypeConfig from './InputTypeConfig';
 

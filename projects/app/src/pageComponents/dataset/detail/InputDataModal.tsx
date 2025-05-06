@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack } from '@chakra-ui/react';
-import { UseFormRegister, useFieldArray, useForm } from 'react-hook-form';
+import { type UseFormRegister, useFieldArray, useForm } from 'react-hook-form';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
@@ -14,7 +14,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';

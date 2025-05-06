@@ -9,9 +9,9 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';

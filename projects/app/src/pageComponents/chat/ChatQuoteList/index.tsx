@@ -1,6 +1,6 @@
 import React from 'react';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { GetQuoteProps } from '@/web/core/chat/context/chatItemContext';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type GetQuoteProps } from '@/web/core/chat/context/chatItemContext';
 import CollectionQuoteReader from './CollectionQuoteReader';
 import QuoteReader from './QuoteReader';
 

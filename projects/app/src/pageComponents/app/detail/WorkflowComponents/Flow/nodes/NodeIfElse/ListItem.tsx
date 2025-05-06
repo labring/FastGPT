@@ -1,13 +1,13 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import {
-  DraggableProvided,
-  DraggableStateSnapshot
+  type DraggableProvided,
+  type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
 import { MinusIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
+import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';

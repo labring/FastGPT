@@ -1,12 +1,12 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { AppDetailType, ToolType } from '@fastgpt/global/core/app/type';
+import { type AppDetailType, type ToolType } from '@fastgpt/global/core/app/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isEqual } from 'lodash';
-import { ClientSession } from 'mongoose';
+import { type ClientSession } from 'mongoose';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { onDelOneApp } from '../del';
 import { onCreateApp } from '../create';
@@ -16,7 +16,7 @@ import {
   getMCPToolRuntimeNode,
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/mcpTools/utils';
-import { MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
+import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
 export type updateMCPToolsQuery = {};

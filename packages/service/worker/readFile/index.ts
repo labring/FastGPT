@@ -1,6 +1,6 @@
 import { parentPort } from 'worker_threads';
 import { readFileRawText } from './extension/rawText';
-import { ReadRawTextByBuffer, ReadRawTextProps } from './type';
+import { type ReadRawTextByBuffer, type ReadRawTextProps } from './type';
 import { readHtmlRawText } from './extension/html';
 import { readPdfFile } from './extension/pdf';
 import { readDocsFile } from './extension/docx';

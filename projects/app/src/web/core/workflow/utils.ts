@@ -13,26 +13,26 @@ import {
   defaultNodeVersion
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getGlobalVariableNode } from './adapt';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
   getGuideModule
 } from '@fastgpt/global/core/workflow/utils';
-import { TFunction } from 'next-i18next';
+import { type TFunction } from 'next-i18next';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType,
-  ReferenceItemValueType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType,
+  type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
 import { workflowSystemVariables } from '../app/utils';

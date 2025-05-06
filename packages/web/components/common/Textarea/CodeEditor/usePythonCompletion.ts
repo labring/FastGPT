@@ -1,4 +1,4 @@
-import { Monaco } from '@monaco-editor/react';
+import { type Monaco } from '@monaco-editor/react';
 import { useCallback } from 'react';
 let monacoInstance: Monaco | null = null;
 const usePythonCompletion = () => {

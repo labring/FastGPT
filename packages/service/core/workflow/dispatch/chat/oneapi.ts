@@ -45,15 +45,15 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
-import { WorkflowResponseType } from '../type';
+import { type WorkflowResponseType } from '../type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import { type AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';

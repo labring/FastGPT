@@ -3,7 +3,7 @@ import { ModalBody, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';

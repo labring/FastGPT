@@ -1,5 +1,5 @@
-import { ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
-import { ChannelInfoType } from './type';
+import { type ModelProviderIdType } from '@fastgpt/global/core/ai/provider';
+import { type ChannelInfoType } from './type';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export enum ChannelStatusEnum {

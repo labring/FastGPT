@@ -1,5 +1,5 @@
 import { findAIModel } from '../../../core/ai/model';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export const formatModelChars2Points = ({
   model,

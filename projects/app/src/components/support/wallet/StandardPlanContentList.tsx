@@ -1,5 +1,6 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { Box, Flex, Grid } from '@chakra-ui/react';

@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {

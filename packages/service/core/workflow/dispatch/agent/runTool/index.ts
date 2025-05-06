@@ -8,8 +8,8 @@ import type {
 import { getLLMModel } from '../../../../ai/model';
 import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
-import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
-import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type DispatchToolModuleProps, type ToolNodeItemType } from './type.d';
+import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   GPTMessages2Chats,
@@ -25,7 +25,7 @@ import { runToolWithPromptCall } from './promptCall';
 import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getMultiplePrompt, Prompt_Tool_Call } from './constants';
 import { filterToolResponseToPreview } from './utils';
-import { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

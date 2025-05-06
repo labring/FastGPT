@@ -1,4 +1,4 @@
-import { Box, Flex, TextareaProps } from '@chakra-ui/react';
+import { Box, Flex, type TextareaProps } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatFunctionTip from './Tip';

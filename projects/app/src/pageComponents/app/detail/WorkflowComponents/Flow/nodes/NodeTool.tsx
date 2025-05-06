@@ -1,6 +1,6 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';

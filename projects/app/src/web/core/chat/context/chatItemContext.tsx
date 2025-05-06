@@ -1,15 +1,15 @@
-import { ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { type ChatBoxInputFormType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
-import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
-import { ComponentRef as ChatComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
-import { useForm, UseFormReturn } from 'react-hook-form';
+import { type ComponentRef as ChatComponentRef } from '@/components/core/chat/ChatContainer/ChatBox/type';
+import { useForm, type UseFormReturn } from 'react-hook-form';
 import { defaultChatData } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppChatConfigType, VariableItemType } from '@fastgpt/global/core/app/type';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/core/app/type';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type ContextProps = {
   showRouteToAppDetail: boolean;

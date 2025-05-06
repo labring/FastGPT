@@ -18,13 +18,16 @@ import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { deleteMcpServer, getMcpServerList } from '@/web/support/mcp/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import EditMcpModal, { defaultForm, EditMcForm } from '@/pageComponents/dashboard/mcp/EditModal';
+import EditMcpModal, {
+  defaultForm,
+  type EditMcForm
+} from '@/pageComponents/dashboard/mcp/EditModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import dynamic from 'next/dynamic';
-import { McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 
 const UsageWay = dynamic(() => import('@/pageComponents/dashboard/mcp/usageWay'), {

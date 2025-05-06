@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -11,7 +11,7 @@ import {
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {

@@ -1,13 +1,13 @@
 import {
   Box,
   Button,
-  ButtonProps,
+  type ButtonProps,
   Checkbox,
   Flex,
   Menu,
   MenuButton,
   MenuItem,
-  MenuItemProps,
+  type MenuItemProps,
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
@@ -16,7 +16,7 @@ import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
 import { useTranslation } from 'next-i18next';
-import { useScrollPagination } from '../../../hooks/useScrollPagination';
+import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 
 export type SelectProps<T = any> = {

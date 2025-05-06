@@ -1,8 +1,8 @@
 import { getOrgChildrenPath } from '@fastgpt/global/support/user/team/org/constant';
-import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
+import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useUserStore } from '../../../useUserStore';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList, getOrgMembers } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';

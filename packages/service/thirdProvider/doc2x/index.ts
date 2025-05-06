@@ -1,10 +1,10 @@
 import { batchRun, delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../common/system/log';
 import { htmlTable2Md } from '@fastgpt/global/common/string/markdown';
-import axios, { Method } from 'axios';
+import axios, { type Method } from 'axios';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { ImageType } from '../../worker/readFile/type';
+import { type ImageType } from '../../worker/readFile/type';
 import { getImageBase64 } from '../../common/file/image/utils';
 
 type ApiResponseDataType<T = any> = {

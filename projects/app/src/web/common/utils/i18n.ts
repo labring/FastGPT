@@ -1,4 +1,4 @@
-import { I18nNsType } from '@fastgpt/web/types/i18next';
+import { type I18nNsType } from '@fastgpt/web/types/i18next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 export enum LangEnum {

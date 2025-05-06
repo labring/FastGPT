@@ -9,7 +9,7 @@ import PermissionIconText from '@/components/support/permission/IconText';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';

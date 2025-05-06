@@ -1,10 +1,10 @@
 import { MongoDatasetCollection } from './schema';
-import { ClientSession } from '../../../common/mongo';
+import { type ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
-  CollectionWithDatasetType,
-  DatasetCollectionSchemaType
+  type CollectionWithDatasetType,
+  type DatasetCollectionSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionDataProcessModeEnum,

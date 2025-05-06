@@ -1,30 +1,32 @@
-import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
-import {
+import type { ChatNodeUsageType } from '../../../support/wallet/bill/type';
+import type {
   ChatItemType,
   UserChatItemValueItemType,
   ToolRunResponseItemType,
-  NodeOutputItemType,
   AIChatItemValueItemType
 } from '../../chat/type';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
-import { StoreNodeItemType } from '../type/node';
-import { DispatchNodeResponseKeyEnum } from './constants';
-import { StoreEdgeItemType } from '../type/edge';
-import { NodeInputKeyEnum } from '../constants';
-import { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
-import { NextApiResponse } from 'next';
+import { NodeOutputItemType } from '../../chat/type';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
+import type { StoreNodeItemType } from '../type/node';
+import type { DispatchNodeResponseKeyEnum } from './constants';
+import type { StoreEdgeItemType } from '../type/edge';
+import type { NodeInputKeyEnum } from '../constants';
+import type { ClassifyQuestionAgentItemType } from '../template/system/classifyQuestion/type';
+import type { NextApiResponse } from 'next';
 import { UserModelSchema } from '../../../support/user/type';
-import { AppDetailType, AppSchema } from '../../app/type';
-import { RuntimeNodeItemType } from '../runtime/type';
-import { RuntimeEdgeItemType } from './edge';
-import { ReadFileNodeResponse } from '../template/system/readFiles/type';
+import type { AppSchema } from '../../app/type';
+import { AppDetailType } from '../../app/type';
+import type { RuntimeNodeItemType } from '../runtime/type';
+import type { RuntimeEdgeItemType } from './edge';
+import type { ReadFileNodeResponse } from '../template/system/readFiles/type';
 import { UserSelectOptionType } from '../template/system/userSelect/type';
-import { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
-import { AiChatQuoteRoleType } from '../template/system/aiChat/type';
-import { LafAccountType, OpenaiAccountType } from '../../../support/user/team/type';
-import { CompletionFinishReason } from '../../ai/type';
-import { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
-import { SearchDataResponseItemType } from '../../dataset/type';
+import type { WorkflowResponseType } from '../../../../service/core/workflow/dispatch/type';
+import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
+import type { OpenaiAccountType } from '../../../support/user/team/type';
+import { LafAccountType } from '../../../support/user/team/type';
+import type { CompletionFinishReason } from '../../ai/type';
+import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import type { SearchDataResponseItemType } from '../../dataset/type';
 export type ExternalProviderType = {
   openaiAccount?: OpenaiAccountType;
   externalWorkflowVariables?: Record<string, string>;
