@@ -136,7 +136,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         loadMyApps();
         handleCloseJsonImportModal();
       },
-      successToast: t('common:common.Create Success')
+      successToast: t('common:create_success')
     }
   );
 
@@ -151,10 +151,10 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       >
         <ModalBody>
           <Box color={'myGray.800'} fontWeight={'bold'}>
-            {t('common:common.Set Name')}
+            {t('common:input_name')}
           </Box>
           <Flex mt={2} alignItems={'center'}>
-            <MyTooltip label={t('common:common.Set Avatar')}>
+            <MyTooltip label={t('common:set_avatar')}>
               <Avatar
                 flexShrink={0}
                 src={selectedAvatar}
@@ -185,9 +185,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         </ModalBody>
         <ModalFooter gap={4}>
           <Button variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       <File

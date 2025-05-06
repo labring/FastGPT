@@ -25,7 +25,6 @@ import {
 import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
@@ -35,6 +34,7 @@ import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
+import { AppCollaboratorDeleteParams } from '@fastgpt/global/core/app/collaborator';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -286,49 +286,17 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
-                onUpdateCollaborators: ({
-                  members,
-                  groups,
-                  permission
-                }: {
-                  members?: string[];
-                  groups?: string[];
-                  permission: PermissionValueType;
-                }) => {
-                  return postUpdateAppCollaborators({
-                    members,
-                    groups,
-                    permission,
+                onUpdateCollaborators: (props) =>
+                  postUpdateAppCollaborators({
+                    ...props,
                     appId: folderDetail._id
-                  });
-                },
+                  }),
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
-                onDelOneCollaborator: async ({
-                  tmbId,
-                  groupId,
-                  orgId
-                }: {
-                  tmbId?: string;
-                  groupId?: string;
-                  orgId?: string;
-                }) => {
-                  if (tmbId) {
-                    return deleteAppCollaborators({
-                      appId: folderDetail._id,
-                      tmbId
-                    });
-                  } else if (groupId) {
-                    return deleteAppCollaborators({
-                      appId: folderDetail._id,
-                      groupId
-                    });
-                  } else if (orgId) {
-                    return deleteAppCollaborators({
-                      appId: folderDetail._id,
-                      orgId
-                    });
-                  }
-                }
+                onDelOneCollaborator: async (params) =>
+                  deleteAppCollaborators({
+                    ...params,
+                    appId: folderDetail._id
+                  })
               }}
             />
           </Box>

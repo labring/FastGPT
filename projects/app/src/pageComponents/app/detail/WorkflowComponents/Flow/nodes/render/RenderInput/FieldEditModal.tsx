@@ -167,10 +167,10 @@ const FieldModal = ({
       </ModalBody>
       <ModalFooter gap={3}>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button onClick={handleSubmit(onSubmitSuccess, onSubmitError)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

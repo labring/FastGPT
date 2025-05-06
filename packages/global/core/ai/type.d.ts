@@ -60,6 +60,7 @@ export type ChatCompletionAssistantToolParam = {
   tool_calls: ChatCompletionMessageToolCall[];
 };
 export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
+  index?: number;
   toolName?: string;
   toolAvatar?: string;
 };

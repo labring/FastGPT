@@ -67,8 +67,8 @@ function EditModal({
       onSuccess();
       onClose();
     },
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
+    successToast: t('common:create_success'),
+    errorToast: t('common:create_failed')
   });
   const { mutate: onclickUpdate, isLoading: updating } = useRequest({
     mutationFn: async (data: EditTeamFormDataType) => {
@@ -82,8 +82,8 @@ function EditModal({
       onSuccess();
       onClose();
     },
-    successToast: t('common:common.Update Success'),
-    errorToast: t('common:common.Update Failed')
+    successToast: t('common:update_success'),
+    errorToast: t('common:update_failed')
   });
 
   const { isOpen: isOpenContact, onClose: onCloseContact, onOpen: onOpenContact } = useDisclosure();
@@ -101,7 +101,7 @@ function EditModal({
           {t('account_team:set_name_avatar')}
         </Box>
         <Flex mt={3} alignItems={'center'}>
-          <MyTooltip label={t('common:common.Set Avatar')}>
+          <MyTooltip label={t('common:set_avatar')}>
             <Avatar
               flexShrink={0}
               src={avatar}
@@ -120,7 +120,7 @@ function EditModal({
             maxLength={100}
             placeholder={t('user:team.Team Name')}
             {...register('name', {
-              required: t('common:common.Please Input Name')
+              required: t('common:Please Input Name')
             })}
           />
         </Flex>
@@ -153,7 +153,7 @@ function EditModal({
               onOpenContact();
             }}
           >
-            {t('common:common.Setting')}
+            {t('common:Setting')}
           </Button>
         </HStack>
       </ModalBody>
@@ -163,10 +163,10 @@ function EditModal({
           <>
             <Box flex={1} />
             <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-              {t('common:common.Close')}
+              {t('common:Close')}
             </Button>
             <Button isLoading={updating} onClick={handleSubmit((data) => onclickUpdate(data))}>
-              {t('common:common.Confirm Update')}
+              {t('common:confirm_update')}
             </Button>
           </>
         ) : (
@@ -175,7 +175,7 @@ function EditModal({
             isLoading={creating}
             onClick={handleSubmit((data) => onclickCreate(data))}
           >
-            {t('common:common.Confirm Create')}
+            {t('common:comfirn_create')}
           </Button>
         )}
       </ModalFooter>

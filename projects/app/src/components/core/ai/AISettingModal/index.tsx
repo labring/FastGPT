@@ -220,8 +220,8 @@ const AIChatSettingsModal = ({
                 </Td>
                 <Td pt={0} pb={2}>
                   {selectedModel?.toolChoice || selectedModel?.functionCall
-                    ? t('common:common.support')
-                    : t('common:common.not_support')}
+                    ? t('common:support')
+                    : t('common:not_support')}
                 </Td>
               </Tr>
             </Tbody>
@@ -470,10 +470,10 @@ const AIChatSettingsModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button ml={4} onClick={handleSubmit(onSuccess)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

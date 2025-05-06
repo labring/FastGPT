@@ -47,7 +47,7 @@ export const cronString2Label = (
 ) => {
   const cronField = cronString2Fields(cronString);
   if (!cronField) {
-    return t('common:common.Not open');
+    return t('common:not_open');
   }
 
   if (cronField[0] === 'month') {
@@ -82,7 +82,7 @@ export const cronString2Label = (
     });
   }
 
-  return t('common:common.Not open');
+  return t('common:not_open');
 };
 
 const CronSelector = ({

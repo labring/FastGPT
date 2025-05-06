@@ -66,7 +66,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   // Member status selector
   const statusOptions = [
     {
-      label: t('common:common.All'),
+      label: t('common:All'),
       value: undefined
     },
     {
@@ -147,7 +147,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   });
   const { runAsync: onRestore } = useRequest2(postRestoreMember, {
     onSuccess: onRefreshMembers,
-    successToast: t('common:common.Success'),
+    successToast: t('common:Success'),
     errorToast: t('common:user.team.invite.Reject')
   });
 
@@ -276,7 +276,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                   </Th>
                   <Th bgColor="myGray.100">{t('account_team:join_update_time')}</Th>
                   <Th borderRightRadius="6px" bgColor="myGray.100">
-                    {t('common:common.Action')}
+                    {t('common:Action')}
                   </Th>
                 </Tr>
               </Thead>

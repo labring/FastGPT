@@ -41,11 +41,11 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
     onSuccess() {
       onClose();
       toast({
-        title: t('common:common.Update Success'),
+        title: t('common:update_success'),
         status: 'success'
       });
     },
-    errorToast: t('common:common.Update Failed')
+    errorToast: t('common:update_failed')
   });
 
   const { data: teamTags = [] } = useQuery(['getTeamsTags'], getTeamsTags);
@@ -131,10 +131,10 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button isLoading={btnLoading} onClick={(e) => saveSubmitSuccess(e)}>
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </ModalFooter>
     </MyModal>

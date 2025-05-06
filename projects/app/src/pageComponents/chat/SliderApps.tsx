@@ -110,7 +110,7 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                     bg: 'myGray.200'
                   }}
                 >
-                  <Box>{t('common:common.More')}</Box>
+                  <Box>{t('common:More')}</Box>
                   <MyIcon name={'common/select'} w={'1rem'} />
                 </HStack>
               }

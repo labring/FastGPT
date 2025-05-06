@@ -1,9 +1,15 @@
 import { DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum, ChatSourceEnum } from './constants';
-import { ChatHistoryItemResType, ChatItemType, UserChatItemValueItemType } from './type.d';
+import {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ChatItemType,
+  UserChatItemValueItemType
+} from './type.d';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
+import { removeDatasetCiteText } from '../../../service/core/ai/utils';
 
 // Concat 2 -> 1, and sort by role
 export const concatHistories = (histories1: ChatItemType[], histories2: ChatItemType[]) => {
@@ -77,6 +83,7 @@ export const getHistoryPreview = (
   });
 };
 
+// Filter workflow public response
 export const filterPublicNodeResponseData = ({
   flowResponses = [],
   responseDetail = false
@@ -110,6 +117,40 @@ export const filterPublicNodeResponseData = ({
       }
       return obj as ChatHistoryItemResType;
     });
+};
+
+// Remove dataset cite in ai response
+export const removeAIResponseCite = <T extends AIChatItemValueItemType[] | string>(
+  value: T,
+  retainCite: boolean
+): T => {
+  if (retainCite) return value;
+
+  if (typeof value === 'string') {
+    return removeDatasetCiteText(value, false) as T;
+  }
+
+  return value.map<AIChatItemValueItemType>((item) => {
+    if (item.text?.content) {
+      return {
+        ...item,
+        text: {
+          ...item.text,
+          content: removeDatasetCiteText(item.text.content, false)
+        }
+      };
+    }
+    if (item.reasoning?.content) {
+      return {
+        ...item,
+        reasoning: {
+          ...item.reasoning,
+          content: removeDatasetCiteText(item.reasoning.content, false)
+        }
+      };
+    }
+    return item;
+  }) as T;
 };
 
 export const removeEmptyUserInput = (input?: UserChatItemValueItemType[]) => {

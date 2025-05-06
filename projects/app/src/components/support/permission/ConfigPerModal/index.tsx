@@ -90,7 +90,7 @@ const ConfigPerModal = ({
                           leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
                           onClick={onOpenAddMember}
                         >
-                          {t('common:common.Add')}
+                          {t('common:Add')}
                         </Button>
                       </Flex>
                     </Flex>

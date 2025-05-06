@@ -102,7 +102,7 @@ const DataCard = () => {
           return prev.filter((data) => data._id !== dataId);
         });
         toast({
-          title: t('common:common.Delete Success'),
+          title: t('common:delete_success'),
           status: 'success'
         });
       } catch (error) {

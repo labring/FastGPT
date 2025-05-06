@@ -135,7 +135,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
       )}
       <Container>
-        <IOTitle text={t('common:common.Input')} mb={-1} />
+        <IOTitle text={t('common:Input')} mb={-1} />
         <RenderInput
           nodeId={nodeId}
           flowInputList={commonInputs}
@@ -143,7 +143,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         />
       </Container>
       <Container>
-        <IOTitle text={t('common:common.Output')} />
+        <IOTitle text={t('common:Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
       <ResetTemplateConfirm />

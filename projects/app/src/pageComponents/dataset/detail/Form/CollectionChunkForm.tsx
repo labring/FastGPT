@@ -77,7 +77,7 @@ const PromptTextarea = ({
             onClose();
           }}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

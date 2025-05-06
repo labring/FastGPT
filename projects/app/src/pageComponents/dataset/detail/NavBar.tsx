@@ -96,7 +96,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
     },
     { label: t('common:core.dataset.test.Search Test'), value: TabEnum.test },
     ...(datasetDetail.permission.hasManagePer && !isPc
-      ? [{ label: t('common:common.Config'), value: TabEnum.info }]
+      ? [{ label: t('common:Config'), value: TabEnum.info }]
       : [])
   ];
 

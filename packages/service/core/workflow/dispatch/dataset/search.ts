@@ -55,11 +55,10 @@ export async function dispatchDatasetSearch(
     runningUserInfo: { tmbId },
     histories,
     node,
-    parseQuote = true,
     params: {
       datasets = [],
       similarity,
-      limit = 1500,
+      limit = 5000,
       userChatInput = '',
       authTmbId = false,
       collectionFilterMatch,
@@ -114,7 +113,6 @@ export async function dispatchDatasetSearch(
   if (datasetIds.length === 0) {
     return emptyResult;
   }
-  // console.log(concatQueries, rewriteQuery, aiExtensionResult);
 
   // get vector
   const vectorModel = getEmbeddingModel(
@@ -183,12 +181,14 @@ export async function dispatchDatasetSearch(
     inputTokens: reRankInputTokens,
     modelType: ModelTypeEnum.rerank
   });
-  nodeDispatchUsages.push({
-    totalPoints: reRankTotalPoints,
-    moduleName: node.name,
-    model: reRankModelName,
-    inputTokens: reRankInputTokens
-  });
+  if (usingReRank) {
+    nodeDispatchUsages.push({
+      totalPoints: reRankTotalPoints,
+      moduleName: node.name,
+      model: reRankModelName,
+      inputTokens: reRankInputTokens
+    });
+  }
   // Query extension
   (() => {
     if (queryExtensionResult) {
@@ -267,7 +267,7 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: {
-      prompt: getDatasetSearchToolResponsePrompt(parseQuote),
+      prompt: getDatasetSearchToolResponsePrompt(),
       quotes: searchRes.map((item) => ({
         id: item.id,
         sourceName: item.sourceName,

@@ -180,10 +180,10 @@ export function ChangeOwnerModal({
       <ModalFooter>
         <HStack>
           <Button onClick={onClose} variant={'whiteBase'}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
           <Button isLoading={loading} isDisabled={!selectedMember} onClick={onConfirm}>
-            {t('common:common.Confirm')}
+            {t('common:Confirm')}
           </Button>
         </HStack>
       </ModalFooter>
