@@ -15,7 +15,7 @@ export async function saveFile(url: string, path: string) {
 
 const tools: ToolType[] = [];
 const toolsDir = process.env.TOOLS_DIR || path.join(process.cwd(), 'tools');
-const flushCode = randomUUID();
+const flushId = randomUUID();
 
 async function LoadTool(mod: ToolType | ToolSetType, defaultToolId: string) {
   if (!mod.toolId) mod.toolId = defaultToolId;
@@ -99,8 +99,8 @@ export function getTools() {
   }));
 }
 
-export function getFlushCode() {
-  return flushCode;
+export function getFlushId() {
+  return flushId;
 }
 
 export async function init(prod: boolean) {
