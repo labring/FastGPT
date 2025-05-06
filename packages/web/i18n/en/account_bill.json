@@ -33,6 +33,7 @@
   "organization_name": "Organization name",
   "payment_method": "Payment method",
   "payway_coupon": "Redeem code",
+  "rerank": "Rerank",
   "save": "save",
   "save_failed": "Save exception",
   "save_success": "Saved successfully",

@@ -300,7 +300,7 @@ export const pushRerankUsage = ({
   createUsage({
     teamId,
     tmbId,
-    appName: modelName,
+    appName: i18nT('account_bill:rerank'),
     totalPoints,
     source: UsageSourceEnum.fastgpt,
     list: [
