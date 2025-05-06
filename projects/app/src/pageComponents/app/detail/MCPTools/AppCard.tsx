@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import TagsEditModal from '../TagsEditModal';
 
 const AppCard = () => {

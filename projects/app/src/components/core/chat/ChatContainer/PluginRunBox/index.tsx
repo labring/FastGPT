@@ -1,6 +1,6 @@
 import React from 'react';
 import { PluginRunBoxTabEnum } from './constants';
-import { PluginRunBoxProps } from './type';
+import { type PluginRunBoxProps } from './type';
 import RenderInput from './components/RenderInput';
 import PluginRunContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';

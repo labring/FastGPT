@@ -1,27 +1,27 @@
 import React, { useMemo } from 'react';
-import { NodeProps, Position, useViewport } from 'reactflow';
+import { type NodeProps, Position, useViewport } from 'reactflow';
 import { Box, Button, HStack, Input } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type UserSelectOptionItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import IOTitle from '../components/IOTitle';
 import RenderOutput from './render/RenderOutput';
 import DndDrag, {
   Draggable,
-  DraggableProvided,
-  DraggableStateSnapshot
+  type DraggableProvided,
+  type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 
 const NodeUserSelect = ({ data, selected }: NodeProps<FlowNodeItemType>) => {

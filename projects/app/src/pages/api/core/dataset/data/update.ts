@@ -1,10 +1,10 @@
 import { updateData2Dataset } from '@/service/core/dataset/data/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
+import { type UpdateDatasetDataProps } from '@fastgpt/global/core/dataset/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 async function handler(req: ApiRequestProps<UpdateDatasetDataProps>) {
   const { dataId, q, a, indexes = [] } = req.body;

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PhotoProvider, PhotoView } from 'react-photo-view';
 import 'react-photo-view/dist/react-photo-view.css';
-import { ImageProps } from '@chakra-ui/react';
+import { type ImageProps } from '@chakra-ui/react';
 import { useSystem } from '../../../hooks/useSystem';
 import Loading from '../MyLoading';
 import MyImage from './MyImage';

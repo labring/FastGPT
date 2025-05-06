@@ -1,6 +1,6 @@
 import { GET, POST } from '@/web/common/api/request';
 import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
-import { AxiosProgressEvent } from 'axios';
+import { type AxiosProgressEvent } from 'axios';
 
 export const postUploadImg = (e: UploadImgProps) => POST<string>('/common/file/uploadImage', e);
 

@@ -1,4 +1,4 @@
-import { ChannelStatusEnum } from './constants';
+import type { ChannelStatusEnum } from './constants';
 
 export type ChannelInfoType = {
   model_mapping: Record<string, any>;

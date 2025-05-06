@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { toolCallProps } from '@/service/support/mcp/type';
+import { type toolCallProps } from '@/service/support/mcp/type';
 import { callMcpServerTool } from '@/service/support/mcp/utils';
 
 export type toolCallQuery = {};

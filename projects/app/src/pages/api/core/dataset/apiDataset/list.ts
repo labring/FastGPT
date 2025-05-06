@@ -1,10 +1,10 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { NextApiRequest } from 'next';
+import { type NextApiRequest } from 'next';
 
 export type GetApiDatasetFileListProps = {
   searchKey?: string;

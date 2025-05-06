@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback, RefObject, ReactNode, useMemo } from 'react';
-import { IconButton, Flex, Box, Input, BoxProps } from '@chakra-ui/react';
+import { useRef, useState, useCallback, type RefObject, type ReactNode, useMemo } from 'react';
+import { IconButton, Flex, Box, Input, type BoxProps } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
@@ -13,7 +13,7 @@ import {
   useThrottleEffect
 } from 'ahooks';
 
-import { PaginationProps, PaginationResponse } from '../common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 
 const thresholdVal = 200;
 

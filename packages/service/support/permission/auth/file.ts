@@ -1,5 +1,5 @@
-import { AuthModeType, AuthResponseType } from '../type';
-import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
+import { type AuthModeType, type AuthResponseType } from '../type';
+import { type DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { parseHeaderCert } from '../controller';
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';

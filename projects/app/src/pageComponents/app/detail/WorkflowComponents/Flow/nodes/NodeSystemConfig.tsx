@@ -1,7 +1,7 @@
-import React, { Dispatch, useMemo } from 'react';
-import { NodeProps, useViewport } from 'reactflow';
+import React, { type Dispatch, useMemo } from 'react';
+import { type NodeProps, useViewport } from 'reactflow';
 import { Box } from '@chakra-ui/react';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 
 import QGConfig from '@/components/core/app/QGConfig';
 import TTSSelect from '@/components/core/app/TTSSelect';
@@ -13,7 +13,11 @@ import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { AppChatConfigType, AppDetailType, VariableItemType } from '@fastgpt/global/core/app/type';
+import {
+  type AppChatConfigType,
+  type AppDetailType,
+  type VariableItemType
+} from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/pageComponents/app/detail/context';

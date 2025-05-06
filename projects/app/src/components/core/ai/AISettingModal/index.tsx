@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import {
   Box,
-  BoxProps,
+  type BoxProps,
   Button,
   Flex,
   HStack,
@@ -18,7 +18,7 @@ import {
   Thead,
   Tr,
   Table,
-  FlexProps,
+  type FlexProps,
   Input
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -26,7 +26,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';

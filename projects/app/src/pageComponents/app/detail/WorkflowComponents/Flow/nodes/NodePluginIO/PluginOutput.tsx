@@ -1,11 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import Container from '../../components/Container';
-import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeInputItemType,
+  type ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';

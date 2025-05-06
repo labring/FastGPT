@@ -14,7 +14,7 @@ import {
   DatasetTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { ClientSession } from 'mongoose';
+import { type ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
@@ -30,7 +30,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { addDays } from 'date-fns';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   removeWebsiteSyncJobScheduler,
   upsertWebsiteSyncJobScheduler

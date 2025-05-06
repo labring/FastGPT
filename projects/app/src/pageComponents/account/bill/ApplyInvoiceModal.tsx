@@ -1,6 +1,6 @@
 import {
   getInvoiceBillsList,
-  invoiceBillDataType,
+  type invoiceBillDataType,
   submitInvoice
 } from '@/web/support/wallet/bill/invoice/api';
 import {
@@ -28,7 +28,7 @@ import { useTranslation } from 'next-i18next';
 import { useCallback, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Divider from '@/pageComponents/app/detail/WorkflowComponents/Flow/components/Divider';
-import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
+import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import { InvoiceHeaderSingleForm } from './InvoiceHeaderForm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamInvoiceHeader } from '@/web/support/user/team/api';

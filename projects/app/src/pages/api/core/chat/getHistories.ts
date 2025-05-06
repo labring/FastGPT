@@ -4,9 +4,9 @@ import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { GetHistoriesProps } from '@/global/core/chat/api';
+import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type GetHistoriesProps } from '@/global/core/chat/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addMonths } from 'date-fns';
 

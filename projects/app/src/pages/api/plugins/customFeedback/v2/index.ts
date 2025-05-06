@@ -4,7 +4,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { addCustomFeedbacks } from '@fastgpt/service/core/chat/controller';
 import { authRequestFromLocal } from '@fastgpt/service/support/permission/auth/common';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { SystemVariablesType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type SystemVariablesType } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 
 type Props = HttpBodyType<

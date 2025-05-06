@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Flex, Input, Button, ModalBody, ModalFooter, Box } from '@chakra-ui/react';
-import { UseFormReturn } from 'react-hook-form';
+import type { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import type {
   APIFileServer,

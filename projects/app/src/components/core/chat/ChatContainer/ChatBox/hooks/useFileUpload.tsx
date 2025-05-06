@@ -9,12 +9,12 @@ import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { clone } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { UseFieldArrayReturn } from 'react-hook-form';
-import { ChatBoxInputFormType, UserInputFileItemType } from '../type';
-import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type UseFieldArrayReturn } from 'react-hook-form';
+import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;

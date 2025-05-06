@@ -6,7 +6,8 @@ import type {
   CreateOrderResponse,
   UpdatePaymentProps
 } from '@fastgpt/global/support/wallet/bill/api';
-import { BillStatusEnum, BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { BillStatusEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 

@@ -1,6 +1,6 @@
 import React from 'react';
-import { FieldArrayWithId } from 'react-hook-form';
-import { ChatBoxInputFormType } from '../ChatBox/type';
+import { type FieldArrayWithId } from 'react-hook-form';
+import { type ChatBoxInputFormType } from '../ChatBox/type';
 import { Box, CircularProgress, Flex, HStack } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';

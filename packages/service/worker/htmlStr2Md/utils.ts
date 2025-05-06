@@ -1,5 +1,5 @@
 import TurndownService from 'turndown';
-import { ImageType } from '../readFile/type';
+import { type ImageType } from '../readFile/type';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 // @ts-ignore

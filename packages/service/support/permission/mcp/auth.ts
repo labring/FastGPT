@@ -1,6 +1,6 @@
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { AuthModeType, AuthResponseType } from '../type';
-import { McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type AuthModeType, type AuthResponseType } from '../type';
+import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { authUserPer } from '../user/auth';
 import { MongoMcpKey } from '../../mcp/schema';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';

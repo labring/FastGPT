@@ -6,9 +6,9 @@ import {
   getChildAppPreviewNode,
   splitCombinePluginId
 } from '@fastgpt/service/core/app/plugin/controller';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';

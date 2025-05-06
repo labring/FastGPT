@@ -10,8 +10,8 @@ import type { DecoratorNode, Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
 import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
 import { useCallback } from 'react';
-import { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
-import { VariableNode } from './plugins/VariablePlugin/node';
+import type { VariableLabelNode } from './plugins/VariableLabelPlugin/node';
+import type { VariableNode } from './plugins/VariablePlugin/node';
 
 export function registerLexicalTextEntity<T extends TextNode | VariableLabelNode | VariableNode>(
   editor: LexicalEditor,

@@ -7,7 +7,7 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
 import { cardStyles } from '../constants';
 import { useTranslation } from 'react-i18next';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { Controller, useForm } from 'react-hook-form';

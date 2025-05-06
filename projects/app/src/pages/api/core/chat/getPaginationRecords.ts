@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { GetChatRecordsProps } from '@/global/core/chat/api';
+import { type GetChatRecordsProps } from '@/global/core/chat/api';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -14,8 +14,8 @@ import {
   removeAIResponseCite
 } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type getPaginationRecordsQuery = {};

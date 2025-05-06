@@ -3,9 +3,9 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter } from '@chakra-ui/react';
 import {
-  GetResourceFolderListProps,
-  GetResourceFolderListItemResponse,
-  ParentIdType
+  type GetResourceFolderListProps,
+  type GetResourceFolderListItemResponse,
+  type ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 import { useMemoizedFn, useMount } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';

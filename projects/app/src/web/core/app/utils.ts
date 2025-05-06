@@ -1,10 +1,10 @@
 import {
-  AppChatConfigType,
-  AppDetailType,
-  AppSchema,
-  AppSimpleEditFormType
+  type AppChatConfigType,
+  type AppDetailType,
+  type AppSchema,
+  type AppSimpleEditFormType
 } from '@fastgpt/global/core/app/type';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   chatHistoryValueDesc,
   defaultNodeVersion,
@@ -18,8 +18,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
 import {
   WorkflowStart,

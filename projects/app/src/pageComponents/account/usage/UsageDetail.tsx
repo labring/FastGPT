@@ -11,7 +11,7 @@ import {
   Td,
   TableContainer
 } from '@chakra-ui/react';
-import { UsageItemType } from '@fastgpt/global/support/wallet/usage/type.d';
+import { type UsageItemType } from '@fastgpt/global/support/wallet/usage/type.d';
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import MyModal from '@fastgpt/web/components/common/MyModal';

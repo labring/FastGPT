@@ -1,7 +1,7 @@
 import { detect } from 'jschardet';
 import { documentFileType } from './constants';
 import { ChatFileTypeEnum } from '../../core/chat/constants';
-import { UserChatItemValueItemType } from '../../core/chat/type';
+import { type UserChatItemValueItemType } from '../../core/chat/type';
 import * as fs from 'fs';
 
 export const formatFileSize = (bytes: number): string => {

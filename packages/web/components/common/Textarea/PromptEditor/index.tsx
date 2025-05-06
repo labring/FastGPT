@@ -4,8 +4,8 @@ import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
-import { EditorState, type LexicalEditor } from 'lexical';
-import { EditorVariableLabelPickerType, EditorVariablePickerType } from './type.d';
+import type { EditorState, LexicalEditor } from 'lexical';
+import { type EditorVariableLabelPickerType, type EditorVariablePickerType } from './type.d';
 import { useCallback } from 'react';
 
 const PromptEditor = ({

@@ -6,11 +6,11 @@ import {
   Box,
   useOutsideClick,
   MenuButton,
-  MenuItemProps,
-  PlacementWithLogical,
-  AvatarProps,
-  BoxProps,
-  DividerProps
+  type MenuItemProps,
+  type PlacementWithLogical,
+  type AvatarProps,
+  type BoxProps,
+  type DividerProps
 } from '@chakra-ui/react';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';

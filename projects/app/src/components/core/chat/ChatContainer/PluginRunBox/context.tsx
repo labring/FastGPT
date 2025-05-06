@@ -1,22 +1,25 @@
-import React, { ReactNode, useCallback, useMemo, useRef } from 'react';
+import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { PluginRunBoxProps } from './type';
-import { AIChatItemValueItemType, RuntimeUserPromptType } from '@fastgpt/global/core/chat/type';
-import { FieldValues } from 'react-hook-form';
+import { type PluginRunBoxProps } from './type';
+import {
+  type AIChatItemValueItemType,
+  type RuntimeUserPromptType
+} from '@fastgpt/global/core/chat/type';
+import { type FieldValues } from 'react-hook-form';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { generatingMessageProps } from '../type';
+import { type generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
-import { ChatBoxInputFormType } from '../ChatBox/type';
+import { type ChatBoxInputFormType } from '../ChatBox/type';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getPluginRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { cloneDeep } from 'lodash';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
+import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 

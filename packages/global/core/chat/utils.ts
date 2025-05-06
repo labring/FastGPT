@@ -1,11 +1,11 @@
-import { DispatchNodeResponseType } from '../workflow/runtime/type';
+import { type DispatchNodeResponseType } from '../workflow/runtime/type';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum, ChatSourceEnum } from './constants';
 import {
-  AIChatItemValueItemType,
-  ChatHistoryItemResType,
-  ChatItemType,
-  UserChatItemValueItemType
+  type AIChatItemValueItemType,
+  type ChatHistoryItemResType,
+  type ChatItemType,
+  type UserChatItemValueItemType
 } from './type.d';
 import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';

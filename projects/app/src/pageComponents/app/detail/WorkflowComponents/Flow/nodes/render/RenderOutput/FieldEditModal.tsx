@@ -14,8 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
-  CustomFieldConfigType,
-  FlowNodeOutputItemType
+  type CustomFieldConfigType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';

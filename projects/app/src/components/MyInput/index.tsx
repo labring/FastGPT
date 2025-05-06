@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flex, Input, InputProps } from '@chakra-ui/react';
+import { Flex, Input, type InputProps } from '@chakra-ui/react';
 
 interface Props extends InputProps {
   leftIcon?: React.ReactNode;

@@ -2,12 +2,12 @@
 import { DatasetVectorTableName } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { ObClient } from './controller';
-import { RowDataPacket } from 'mysql2/promise';
+import { type RowDataPacket } from 'mysql2/promise';
 import {
-  DelDatasetVectorCtrlProps,
-  EmbeddingRecallCtrlProps,
-  EmbeddingRecallResponse,
-  InsertVectorControllerProps
+  type DelDatasetVectorCtrlProps,
+  type EmbeddingRecallCtrlProps,
+  type EmbeddingRecallResponse,
+  type InsertVectorControllerProps
 } from '../controller.d';
 import dayjs from 'dayjs';
 import { addLog } from '../../system/log';

@@ -1,5 +1,5 @@
 import { SearchScoreTypeEnum } from '../constants';
-import { SearchDataResponseItemType } from '../type';
+import { type SearchDataResponseItemType } from '../type';
 
 /* dataset search result concat */
 export const datasetSearchResultConcat = (

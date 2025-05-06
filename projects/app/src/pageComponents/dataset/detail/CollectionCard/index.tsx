@@ -37,7 +37,7 @@ import dynamic from 'next/dynamic';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
+import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';

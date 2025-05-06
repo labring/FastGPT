@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { Flex, Box, BoxProps } from '@chakra-ui/react';
+import { Flex, Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
 type Props<T = string> = Omit<BoxProps, 'onChange'> & {

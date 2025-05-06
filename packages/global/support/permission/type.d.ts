@@ -1,6 +1,6 @@
-import { UserModelSchema } from '../user/type';
-import { RequireOnlyOne } from '../../common/type/utils';
-import { TeamMemberSchema } from '../user/team/type';
+import type { UserModelSchema } from '../user/type';
+import type { RequireOnlyOne } from '../../common/type/utils';
+import type { TeamMemberSchema } from '../user/team/type';
 import { MemberGroupSchemaType } from './memberGroup/type';
 import type { TeamMemberWithUserSchema } from '../user/team/type';
 import { AuthUserTypeEnum, type PermissionKeyEnum, type PerResourceTypeEnum } from './constant';

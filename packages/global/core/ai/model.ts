@@ -1,6 +1,6 @@
 import { i18nT } from '../../../web/i18n/utils';
 import type { LLMModelItemType, STTModelType, EmbeddingModelItemType } from './model.d';
-import { getModelProvider, ModelProviderIdType } from './provider';
+import { getModelProvider, type ModelProviderIdType } from './provider';
 
 export enum ModelTypeEnum {
   llm = 'llm',

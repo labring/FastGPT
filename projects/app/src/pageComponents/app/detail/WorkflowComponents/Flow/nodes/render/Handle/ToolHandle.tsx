@@ -1,8 +1,8 @@
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { Connection, Handle, Position } from 'reactflow';
+import { type Connection, Handle, Position } from 'reactflow';
 import { useCallback, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';

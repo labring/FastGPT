@@ -1,6 +1,6 @@
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { SystemPluginResponseType } from './type';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { type SystemPluginResponseType } from './type';
+import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { cloneDeep } from 'lodash';
 import { WorkerNameEnum, runWorker } from '@fastgpt/service/worker/utils';
 
@@ -68,8 +68,8 @@ export const getSystemPluginTemplates = () => {
 
 export const getCommunityCb = async () => {
   const loadCommunityModule = async (name: string) => {
-    const module = await import(`./src/${name}/index`);
-    return module.default;
+    const pluginModule = await import(`./src/${name}/index`);
+    return pluginModule.default;
   };
 
   const result = (

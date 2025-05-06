@@ -7,10 +7,10 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ClientSession } from '@fastgpt/service/common/mongo';
-import { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
+import { type ClientSession } from '@fastgpt/service/common/mongo';
+import { type CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export type UpdateDatasetCollectionParams = {

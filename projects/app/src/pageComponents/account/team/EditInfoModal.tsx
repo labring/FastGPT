@@ -17,7 +17,7 @@ import {
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { postCreateTeam, putUpdateTeam } from '@/web/support/user/team/api';
-import { CreateTeamProps } from '@fastgpt/global/support/user/team/controller.d';
+import { type CreateTeamProps } from '@fastgpt/global/support/user/team/controller.d';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import Icon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';

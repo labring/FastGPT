@@ -3,11 +3,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import {
-  EmbeddingModelItemType,
-  LLMModelItemType,
-  RerankModelItemType,
-  STTModelType,
-  TTSModelType
+  type EmbeddingModelItemType,
+  type LLMModelItemType,
+  type RerankModelItemType,
+  type STTModelType,
+  type TTSModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { createChatCompletion, getAIApi } from '@fastgpt/service/core/ai/config';
 import { addLog } from '@fastgpt/service/common/system/log';

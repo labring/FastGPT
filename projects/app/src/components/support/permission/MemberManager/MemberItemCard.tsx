@@ -3,7 +3,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Checkbox, HStack, VStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import PermissionTags from './PermissionTags';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import OrgTags from '../../user/team/OrgTags';
 import Tag from '@fastgpt/web/components/common/Tag';

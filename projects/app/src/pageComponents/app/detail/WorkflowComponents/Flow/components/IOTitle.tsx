@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, StackProps, HStack } from '@chakra-ui/react';
+import { Box, type StackProps, HStack } from '@chakra-ui/react';
 
 const IOTitle = ({ text, ...props }: { text?: 'Input' | 'Output' | string } & StackProps) => {
   return (

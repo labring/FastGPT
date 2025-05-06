@@ -1,8 +1,8 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { EditorVariableLabelPickerType } from '../../type';
+import { type EditorVariableLabelPickerType } from '../../type';
 import { useCallback, useEffect } from 'react';
 import { $createVariableLabelNode, VariableLabelNode } from './node';
-import { TextNode } from 'lexical';
+import type { TextNode } from 'lexical';
 import { getHashtagRegexString } from './utils';
 import { mergeRegister } from '@lexical/utils';
 import { registerLexicalTextEntity } from '../../utils';

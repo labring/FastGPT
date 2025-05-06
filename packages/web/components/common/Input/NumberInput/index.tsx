@@ -4,11 +4,11 @@ import {
   NumberInputField,
   NumberInputStepper,
   NumberDecrementStepper,
-  NumberInputProps
+  type NumberInputProps
 } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '../../Icon';
-import { UseFormRegister } from 'react-hook-form';
+import { type UseFormRegister } from 'react-hook-form';
 
 type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   onChange?: (e?: number) => any;

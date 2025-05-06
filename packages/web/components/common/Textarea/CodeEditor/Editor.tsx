@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState, useEffect } from 'react';
-import Editor, { Monaco, loader } from '@monaco-editor/react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import Editor, { type Monaco, loader } from '@monaco-editor/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { getWebReqUrl } from '../../../../common/system/utils';
 import usePythonCompletion from './usePythonCompletion';

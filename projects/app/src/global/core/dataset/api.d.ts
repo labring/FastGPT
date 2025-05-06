@@ -1,20 +1,24 @@
-import {
+import type {
   PushDatasetDataChunkProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api';
-import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
-import {
+import type {
+  APIFileServer,
+  FeishuServer,
+  YuqueServer
+} from '@fastgpt/global/core/dataset/apiDataset';
+import type {
   DatasetSearchModeEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
+import {
   DatasetSourceReadTypeEnum,
-  DatasetTypeEnum,
   ImportDataSourceEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import {
-  DatasetDataIndexItemType,
-  SearchDataResponseItemType
-} from '@fastgpt/global/core/dataset/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 /* ================= dataset ===================== */

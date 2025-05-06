@@ -12,8 +12,8 @@ import {
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  CustomFieldConfigType,
-  FlowNodeInputItemType
+  type CustomFieldConfigType,
+  type FlowNodeInputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';

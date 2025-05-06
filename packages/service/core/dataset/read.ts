@@ -3,11 +3,15 @@ import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
 import { parseCsvTable2Chunks } from './training/utils';
-import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { type TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
-import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import {
+  type APIFileServer,
+  type FeishuServer,
+  type YuqueServer
+} from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from './apiDataset/api';
 
 export const readFileRawTextByUrl = async ({

@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 

@@ -1,4 +1,4 @@
-import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
 import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
@@ -12,10 +12,10 @@ import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
 import { getAppLatestVersion, getAppVersionById } from '../version/controller';
-import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 

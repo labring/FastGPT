@@ -1,4 +1,4 @@
-import { PerConstructPros, Permission } from '../controller';
+import { type PerConstructPros, Permission } from '../controller';
 import {
   TeamApikeyCreatePermissionVal,
   TeamAppCreatePermissionVal,

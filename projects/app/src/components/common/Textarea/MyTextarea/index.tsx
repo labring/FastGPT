@@ -6,7 +6,7 @@ import {
   ModalBody,
   ModalFooter,
   Textarea,
-  TextareaProps,
+  type TextareaProps,
   useDisclosure
 } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

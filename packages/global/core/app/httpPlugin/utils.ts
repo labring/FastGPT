@@ -1,19 +1,19 @@
 import { getNanoid } from '../../../common/string/tools';
-import { OpenApiJsonSchema } from './type';
+import { type OpenApiJsonSchema } from './type';
 import yaml from 'js-yaml';
-import { OpenAPIV3 } from 'openapi-types';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
+import type { OpenAPIV3 } from 'openapi-types';
+import { type FlowNodeInputItemType, type FlowNodeOutputItemType } from '../../workflow/type/io';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../../workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { PluginInputModule } from '../../workflow/template/system/pluginInput';
 import { PluginOutputModule } from '../../workflow/template/system/pluginOutput';
 import { HttpNode468 } from '../../workflow/template/system/http468';
-import { HttpParamAndHeaderItemType } from '../../workflow/api';
-import { StoreNodeItemType } from '../../workflow/type/node';
+import { type HttpParamAndHeaderItemType } from '../../workflow/api';
+import { type StoreNodeItemType } from '../../workflow/type/node';
 import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { getHandleId } from '../../workflow/utils';
-import { CreateHttpPluginChildrenPros } from '../controller';
+import { type CreateHttpPluginChildrenPros } from '../controller';
 import { AppTypeEnum } from '../constants';
 import type { StoreEdgeItemType } from '../../workflow/type/edge';
 

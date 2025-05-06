@@ -14,13 +14,13 @@ import {
   Input,
   ModalFooter,
   Button,
-  ButtonProps
+  type ButtonProps
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   ModelProviderList,
-  ModelProviderIdType,
+  type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -28,7 +28,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
-import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { useForm } from 'react-hook-form';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';

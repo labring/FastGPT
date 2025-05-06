@@ -1,4 +1,4 @@
-import React, { ReactNode, useCallback, useState } from 'react';
+import React, { type ReactNode, useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './EditInfoModal';
 import dynamic from 'next/dynamic';

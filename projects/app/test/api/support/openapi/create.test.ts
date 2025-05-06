@@ -1,4 +1,4 @@
-import { EditApiKeyProps } from '@/global/support/openapi/api';
+import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';

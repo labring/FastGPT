@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
   PopoverContent,
   useDisclosure,
-  PlacementWithLogical,
+  type PlacementWithLogical,
   HStack,
   Box,
   Button,

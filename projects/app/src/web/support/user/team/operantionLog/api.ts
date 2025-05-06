@@ -1,7 +1,7 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import type { OperationListItemType } from '@fastgpt/global/support/operationLog/type';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import type { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 
 export const getOperationLogs = (
   props: PaginationProps & {

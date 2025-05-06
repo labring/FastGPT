@@ -1,7 +1,7 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
+import type { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 import { TrackModel } from '@fastgpt/service/common/middle/tracks/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';

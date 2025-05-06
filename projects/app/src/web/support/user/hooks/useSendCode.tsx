@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { Box, BoxProps, useDisclosure } from '@chakra-ui/react';
+import { Box, type BoxProps, useDisclosure } from '@chakra-ui/react';
 import SendCodeAuthModal from '@/components/support/user/safe/SendCodeAuthModal';
 import { useMemoizedFn } from 'ahooks';
 import { useToast } from '@fastgpt/web/hooks/useToast';

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Permission } from '@fastgpt/global/support/permission/controller';
-import { PermissionListType } from '@fastgpt/global/support/permission/type';
+import { type PermissionListType } from '@fastgpt/global/support/permission/type';
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { HStack } from '@chakra-ui/react';
