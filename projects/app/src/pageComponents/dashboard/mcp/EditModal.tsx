@@ -238,7 +238,7 @@ const SelectAppModal = ({
       </ModalBody>
       <ModalFooter>
         <Button ml="4" h={'32px'} onClick={() => onConfirm(selectedList)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>
@@ -288,7 +288,7 @@ const EditMcpModal = ({
       }),
     {
       manual: true,
-      successToast: t('common:common.Create Success'),
+      successToast: t('common:create_success'),
       onSuccess
     }
   );
@@ -306,7 +306,7 @@ const EditMcpModal = ({
       }),
     {
       manual: true,
-      successToast: t('common:common.Update Success'),
+      successToast: t('common:update_success'),
       onSuccess
     }
   );
@@ -325,7 +325,7 @@ const EditMcpModal = ({
         <ModalBody>
           <Box>
             <FormLabel required mb={0.5}>
-              {t('common:common.Input name')}
+              {t('common:input_name')}
             </FormLabel>
             <Input {...register('name', { required: true })} bg={'myGray.50'} />
           </Box>
@@ -390,7 +390,7 @@ const EditMcpModal = ({
         </ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
           <Button
             isLoading={isConfirming}
@@ -403,7 +403,7 @@ const EditMcpModal = ({
               return createMcp(data);
             })}
           >
-            {t('common:common.Confirm')}
+            {t('common:Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

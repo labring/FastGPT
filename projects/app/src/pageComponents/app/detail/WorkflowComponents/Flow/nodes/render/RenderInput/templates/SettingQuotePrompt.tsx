@@ -242,7 +242,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
                   })
                 }
               >
-                {t('common:common.Select template')}
+                {t('common:select_template')}
               </Box>
             </Flex>
 
@@ -283,9 +283,9 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         </ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       {/* Prompt template */}

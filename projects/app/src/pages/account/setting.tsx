@@ -40,7 +40,7 @@ const Individuation = () => {
       <Box py={[3, '28px']} px={['5vw', '64px']}>
         <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
           <MyIcon mr={2} name={'common/settingLight'} w={'20px'} />
-          {t('common:common.Setting')}
+          {t('common:Setting')}
         </Flex>
 
         <Card mt={6} px={[3, 10]} py={[3, 7]} fontSize={'sm'}>

@@ -17,8 +17,8 @@ import {
 } from '@fastgpt/service/common/string/tiktoken/index';
 import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 import { loadRequestMessages } from '@fastgpt/service/core/chat/utils';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '@fastgpt/service/core/ai/utils';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '@fastgpt/service/core/ai/utils';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import {
   chunkAutoChunkSize,
   getLLMMaxChunkSize
@@ -140,7 +140,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
         modelData
       )
     });
-    const { text: answer, usage } = await llmResponseToAnswerText(chatResponse);
+    const { text: answer, usage } = await formatLLMResponse(chatResponse);
     const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(messages));
     const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 

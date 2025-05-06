@@ -88,8 +88,8 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
+- 使用 [id](CITE) 格式来引用<Reference></Reference>中的知识，其中 CITE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](CITE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
       ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
@@ -146,8 +146,8 @@ export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
+- 使用 [id](CITE) 格式来引用<Reference></Reference>中的知识，其中 CITE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](CITE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。
 
 问题:"""{{question}}"""`,
@@ -217,8 +217,8 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
+- 使用 [id](CITE) 格式来引用<Reference></Reference>中的知识，其中 CITE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](CITE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
       ['4.9.2']: `使用 <Reference></Reference> 标记中的内容作为本次对话的参考:
 
@@ -271,8 +271,8 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 - 保持答案与 <Reference></Reference> 中描述的一致。
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
-- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
+- 使用 [id](CITE) 格式来引用<Reference></Reference>中的知识，其中 CITE 是固定常量, id 为引文中的 id。
+- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](CITE)。"
 - 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。
 
 问题:"""{{question}}"""`,
@@ -321,24 +321,13 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   }
 ];
 
-export const getQuotePrompt = (
-  version?: string,
-  role: 'user' | 'system' = 'user',
-  parseQuote = true
-) => {
+export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user') => {
   const quotePromptTemplates =
     role === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
 
   const defaultTemplate = quotePromptTemplates[0].value;
 
-  return parseQuote
-    ? getPromptByVersion(version, defaultTemplate)
-    : getPromptByVersion(version, defaultTemplate).replace(
-        `- 使用 [id](QUOTE) 格式来引用<Reference></Reference>中的知识，其中 QUOTE 是固定常量, id 为引文中的 id。
-- 在每段结尾自然地整合引用。例如: "FastGPT 是一个基于大语言模型(LLM)的知识库问答系统[67e517e74767063e882d6861](QUOTE)。"
-- 每段至少包含一个引用，也可根据内容需要加入多个引用，按顺序排列。`,
-        ''
-      );
+  return getPromptByVersion(version, defaultTemplate);
 };
 
 // Document quote prompt

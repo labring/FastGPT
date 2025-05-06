@@ -158,7 +158,7 @@ const EditChannelModal = ({
         onSuccess();
         onClose();
       },
-      successToast: isEdit ? t('common:common.Update Success') : t('common:common.Create Success'),
+      successToast: isEdit ? t('common:update_success') : t('common:create_success'),
       manual: true
     }
   );
@@ -285,10 +285,10 @@ const EditChannelModal = ({
         </ModalBody>
         <ModalFooter>
           <Button variant={'outline'} onClick={onClose} mr={4}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
           <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
-            {isEdit ? t('common:common.Update') : t('common:new_create')}
+            {isEdit ? t('common:Update') : t('common:new_create')}
           </Button>
         </ModalFooter>
       </MyModal>

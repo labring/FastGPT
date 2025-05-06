@@ -30,7 +30,12 @@ import { getNanoid, sliceStrStartEnd } from '@fastgpt/global/common/string/tools
 import { type AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { formatToolResponse, initToolCallEdges, initToolNodes } from './utils';
-import { computedMaxToken, llmCompletionsBodyFormat } from '../../../../ai/utils';
+import {
+  computedMaxToken,
+  llmCompletionsBodyFormat,
+  removeDatasetCiteText,
+  parseLLMStreamResponse
+} from '../../../../ai/utils';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -52,6 +57,7 @@ export const runToolWithFunctionCall = async (
     runtimeEdges,
     externalProvider,
     stream,
+    retainDatasetCite = true,
     workflowStreamResponse,
     params: {
       temperature,
@@ -265,7 +271,8 @@ export const runToolWithFunctionCall = async (
         res,
         toolNodes,
         stream: aiResponse,
-        workflowStreamResponse
+        workflowStreamResponse,
+        retainDatasetCite
       });
 
       return {
@@ -292,8 +299,18 @@ export const runToolWithFunctionCall = async (
           ]
         : [];
 
+      const answer = result.choices?.[0]?.message?.content || '';
+      if (answer) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: removeDatasetCiteText(answer, retainDatasetCite)
+          })
+        });
+      }
+
       return {
-        answer: result.choices?.[0]?.message?.content || '',
+        answer,
         functionCalls: toolCalls,
         inputTokens: usage?.prompt_tokens,
         outputTokens: usage?.completion_tokens
@@ -513,12 +530,14 @@ async function streamResponse({
   res,
   toolNodes,
   stream,
-  workflowStreamResponse
+  workflowStreamResponse,
+  retainDatasetCite
 }: {
   res: NextApiResponse;
   toolNodes: ToolNodeItemType[];
   stream: StreamChatType;
   workflowStreamResponse?: WorkflowResponseType;
+  retainDatasetCite?: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -530,6 +549,8 @@ async function streamResponse({
   let functionId = getNanoid();
   let usage = getLLMDefaultUsage();
 
+  const { parsePart } = parseLLMStreamResponse();
+
   for await (const part of stream) {
     usage = part.usage || usage;
     if (res.closed) {
@@ -537,17 +558,21 @@ async function streamResponse({
       break;
     }
 
+    const { content: toolChoiceContent, responseContent } = parsePart({
+      part,
+      parseThinkTag: false,
+      retainDatasetCite
+    });
+
     const responseChoice = part.choices?.[0]?.delta;
+    textAnswer += toolChoiceContent;
 
-    if (responseChoice.content) {
-      const content = responseChoice?.content || '';
-      textAnswer += content;
-
+    if (responseContent) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
+          text: responseContent
         })
       });
     } else if (responseChoice.function_call) {

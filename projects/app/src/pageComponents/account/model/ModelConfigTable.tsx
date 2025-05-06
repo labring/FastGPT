@@ -67,7 +67,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
   const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
-    { label: t('common:common.All'), value: '' },
+    { label: t('common:All'), value: '' },
     ...ModelProviderList.map((item) => ({
       label: (
         <HStack>
@@ -81,7 +81,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
   const selectModelTypeList = useRef<{ label: string; value: ModelTypeEnum | '' }[]>([
-    { label: t('common:common.All'), value: '' },
+    { label: t('common:All'), value: '' },
     ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
   ]);
 
@@ -110,14 +110,14 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
           typeof item.inputPrice === 'number' ? (
             <Box>
               <Flex>
-                {`${t('common:common.Input')}:`}
+                {`${t('common:Input')}:`}
                 <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                   {item.inputPrice || 0}
                 </Box>
                 {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
               </Flex>
               <Flex>
-                {`${t('common:common.Output')}:`}
+                {`${t('common:Output')}:`}
                 <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                   {item.outputPrice || 0}
                 </Box>
@@ -141,7 +141,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         typeLabel: t('common:model.type.embedding'),
         priceLabel: (
           <Flex color={'myGray.700'}>
-            {`${t('common:common.Input')}: `}
+            {`${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
               {item.charsPointsPrice || 0}
             </Box>
@@ -187,7 +187,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         typeLabel: t('common:model.type.reRank'),
         priceLabel: item.charsPointsPrice ? (
           <Flex color={'myGray.700'}>
-            {`${t('common:common.Input')}: `}
+            {`${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
               {item.charsPointsPrice}
             </Box>
@@ -254,7 +254,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
 
   const { runAsync: onTestModel, loading: testingModel } = useRequest2(getTestModel, {
     manual: true,
-    successToast: t('common:common.Success')
+    successToast: t('common:Success')
   });
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(putSystemModel, {
     onSuccess: refreshModels
@@ -540,7 +540,7 @@ const JsonConfigModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button
           onClick={() =>
@@ -549,7 +549,7 @@ const JsonConfigModal = ({
             })()
           }
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
 
@@ -591,7 +591,7 @@ const DefaultModelModal = ({
       onSuccess();
       onClose();
     },
-    successToast: t('common:common.Update Success')
+    successToast: t('common:update_success')
   });
 
   return (
@@ -745,7 +745,7 @@ const DefaultModelModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button
           isLoading={loading}
@@ -761,7 +761,7 @@ const DefaultModelModal = ({
             })
           }
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

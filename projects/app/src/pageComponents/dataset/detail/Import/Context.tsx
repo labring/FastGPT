@@ -338,7 +338,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
                 })
               }
             />
-            {t('common:common.Exit')}
+            {t('common:Exit')}
           </Flex>
         ) : (
           <Button
@@ -346,7 +346,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
             onClick={goToPrevious}
           >
-            {t('common:common.Last Step')}
+            {t('common:last_step')}
           </Button>
         )}
         <Box flex={1} />

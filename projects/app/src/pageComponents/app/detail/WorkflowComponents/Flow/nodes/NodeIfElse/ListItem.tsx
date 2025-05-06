@@ -31,7 +31,6 @@ import { Position, useReactFlow } from 'reactflow';
 import { getRefData } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
 import { AppContext } from '@/pageComponents/app/detail/context';
-import { useI18n } from '@/web/context/I18n';
 
 const ListItem = ({
   provided,
@@ -418,7 +417,7 @@ const ConditionValueInput = ({
   condition?: VariableConditionEnum;
   onChange: (e: string) => void;
 }) => {
-  const { workflowT } = useI18n();
+  const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   // get value type
@@ -443,7 +442,7 @@ const ConditionValueInput = ({
           ]}
           onChange={onChange}
           value={value}
-          placeholder={workflowT('ifelse.Select value')}
+          placeholder={t('workflow:ifelse.Select value')}
           isDisabled={
             condition === VariableConditionEnum.isEmpty ||
             condition === VariableConditionEnum.isNotEmpty
@@ -457,7 +456,7 @@ const ConditionValueInput = ({
           placeholder={
             condition === VariableConditionEnum.reg
               ? '/^((+|00)86)?1[3-9]d{9}$/'
-              : workflowT('ifelse.Input value')
+              : t('workflow:ifelse.Input value')
           }
           w={'100%'}
           bg={'white'}
@@ -469,7 +468,7 @@ const ConditionValueInput = ({
         />
       );
     }
-  }, [condition, onChange, value, valueType, workflowT]);
+  }, [condition, onChange, value, valueType, t]);
 
   return Render;
 };

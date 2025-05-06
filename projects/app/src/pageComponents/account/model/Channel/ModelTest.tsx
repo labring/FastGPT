@@ -59,11 +59,11 @@ const ModelTest = ({
       colorSchema: 'blue'
     },
     success: {
-      label: t('common:common.Success'),
+      label: t('common:Success'),
       colorSchema: 'green'
     },
     error: {
-      label: t('common:common.failed'),
+      label: t('common:failed'),
       colorSchema: 'red'
     }
   });
@@ -246,7 +246,7 @@ const ModelTest = ({
       </ModalBody>
       <ModalFooter>
         <Button mr={4} variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button isLoading={isTesting} variant={'primary'} onClick={onStartTest}>
           {t('account_model:start_test', { num: testModelList.length })}

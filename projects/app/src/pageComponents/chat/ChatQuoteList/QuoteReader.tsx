@@ -97,7 +97,7 @@ const QuoteReader = ({
                   color={'myGray.900'}
                   fontWeight={'medium'}
                 >
-                  {metadata.sourceName || t('common:common.UnKnow Source')}
+                  {metadata.sourceName || t('common:unknow_source')}
                 </Box>
               </>
             ) : (

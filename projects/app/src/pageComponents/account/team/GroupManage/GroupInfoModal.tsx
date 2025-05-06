@@ -118,7 +118,7 @@ function GroupInfoModal({
             }
           })}
         >
-          {editGroup ? t('common:common.Save') : t('common:new_create')}
+          {editGroup ? t('common:Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
       <AvatarSelect onSelect={onSelectAvatar} />

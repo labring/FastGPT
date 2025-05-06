@@ -136,7 +136,7 @@ const QuoteItem = ({
             {q.length + (a?.length || 0)}
           </Flex>
         </MyTooltip>
-        <MyTooltip label={t('common:common.Copy')}>
+        <MyTooltip label={t('common:Copy')}>
           <Flex
             alignItems={'center'}
             fontSize={'10px'}

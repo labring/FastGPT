@@ -88,15 +88,15 @@ const Wecom = ({ appId }: { appId: string }) => {
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('common:common.Name')} </Th>
+              <Th>{t('common:Name')} </Th>
               <Th> {t('common:support.outlink.Usage points')} </Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>{t('common:core.app.share.Ip limit title')} </Th>
-                  <Th> {t('common:common.Expired Time')} </Th>
+                  <Th> {t('common:expired_time')} </Th>
                 </>
               )}
-              <Th>{t('common:common.Last use time')} </Th>
+              <Th>{t('common:last_use_time')} </Th>
               <Th> </Th>
             </Tr>
           </Thead>
@@ -110,7 +110,7 @@ const Wecom = ({ appId }: { appId: string }) => {
                     ? `${
                         item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
                           ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common:common.Unlimited')}`
+                          : ` / ${t('common:Unlimited')}`
                       }`
                     : ''}
                 </Td>
@@ -127,7 +127,7 @@ const Wecom = ({ appId }: { appId: string }) => {
                 <Td>
                   {item.lastTime
                     ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:common.Un used')}
+                    : t('common:un_used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -156,7 +156,7 @@ const Wecom = ({ appId }: { appId: string }) => {
                       {
                         children: [
                           {
-                            label: t('common:common.Edit'),
+                            label: t('common:Edit'),
                             icon: 'edit',
                             onClick: () => {
                               setEditWecomData({
@@ -172,7 +172,7 @@ const Wecom = ({ appId }: { appId: string }) => {
                             }
                           },
                           {
-                            label: t('common:common.Delete'),
+                            label: t('common:Delete'),
                             icon: 'delete',
                             onClick: async () => {
                               setIsLoading(true);

@@ -17,8 +17,8 @@ import MemberListCard, { type MemberListCardProps } from './MemberListCard';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { useTranslation } from 'next-i18next';
 
 const MemberModal = dynamic(() => import('./MemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
@@ -89,6 +89,7 @@ const CollaboratorContextProvider = ({
   hasParent?: boolean;
   addPermissionOnly?: boolean;
 }) => {
+  const { t } = useTranslation();
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
     refetchCollaboratorList();
@@ -101,7 +102,6 @@ const CollaboratorContextProvider = ({
   };
 
   const { feConfigs } = useSystemStore();
-  const { commonT } = useI18n();
 
   const {
     data: collaboratorList = [],
@@ -187,7 +187,7 @@ const CollaboratorContextProvider = ({
           onOpenAddMember();
         },
         undefined,
-        commonT('permission.Remove InheritPermission Confirm')
+        t('common:permission.Remove InheritPermission Confirm')
       )();
     } else {
       onOpenAddMember();
@@ -200,7 +200,7 @@ const CollaboratorContextProvider = ({
           onOpenManageModal();
         },
         undefined,
-        commonT('permission.Remove InheritPermission Confirm')
+        t('common:permission.Remove InheritPermission Confirm')
       )();
     } else {
       onOpenManageModal();

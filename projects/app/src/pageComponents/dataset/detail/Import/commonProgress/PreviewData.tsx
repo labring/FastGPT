@@ -167,7 +167,7 @@ const PreviewData = () => {
         </Flex>
       </Flex>
       <Flex mt={2} justifyContent={'flex-end'}>
-        <Button onClick={goToNext}>{t('common:common.Next Step')}</Button>
+        <Button onClick={goToNext}>{t('common:next_step')}</Button>
       </Flex>
     </Flex>
   );

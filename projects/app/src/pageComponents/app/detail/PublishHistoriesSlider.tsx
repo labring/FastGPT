@@ -167,7 +167,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
           );
         })}
         <Box py={2} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-          {t('common:common.No more data')}
+          {t('common:no_more_data')}
         </Box>
       </Flex>
     </Flex>

@@ -147,7 +147,7 @@ const VariableEdit = ({
         onChange(onChangeVariable);
         toast({
           status: 'success',
-          title: t('common:common.Add Success')
+          title: t('common:Add Success')
         });
         reset({
           ...addVariable(),
@@ -194,7 +194,7 @@ const VariableEdit = ({
             reset(addVariable());
           }}
         >
-          {t('common:common.Add New')}
+          {t('common:add_new')}
         </Button>
       </Flex>
       {/* Form render */}

@@ -56,7 +56,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({
-        title: t(getErrText(err, t('common:common.Load Failed')) as any),
+        title: t(getErrText(err, t('common:load_failed')) as any),
         status: 'error'
       });
     },

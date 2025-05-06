@@ -16,7 +16,7 @@ import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '@fastgpt/service/core/ai/utils';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '@fastgpt/service/core/ai/utils';
 
 export type testQuery = { model: string; channelId?: number };
 
@@ -78,7 +78,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
     model
   );
 
-  const { response, isStreamResponse } = await createChatCompletion({
+  const { response } = await createChatCompletion({
     modelData: model,
     body: requestBody,
     options: {
@@ -88,7 +88,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
       }
     }
   });
-  const { text: answer } = await llmResponseToAnswerText(response);
+  const { text: answer } = await formatLLMResponse(response);
 
   if (answer) {
     return answer;

@@ -4,7 +4,8 @@ import { type FeishuServer, type YuqueServer } from '@fastgpt/global/core/datase
 export enum ProApiDatasetOperationTypeEnum {
   LIST = 'list',
   READ = 'read',
-  CONTENT = 'content'
+  CONTENT = 'content',
+  DETAIL = 'detail'
 }
 
 export type ProApiDatasetCommonParams = {
@@ -21,5 +22,9 @@ export type GetProApiDatasetFileContentParams = ProApiDatasetCommonParams & {
 };
 
 export type GetProApiDatasetFilePreviewUrlParams = ProApiDatasetCommonParams & {
+  apiFileId: string;
+};
+
+export type GetProApiDatasetFileDetailParams = ProApiDatasetCommonParams & {
   apiFileId: string;
 };

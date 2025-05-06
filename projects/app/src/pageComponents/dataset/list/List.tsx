@@ -161,8 +161,8 @@ function List() {
                   <Flex flexDirection={'column'} alignItems={'center'}>
                     <Box fontSize={'xs'} color={'myGray.500'}>
                       {dataset.type === DatasetTypeEnum.folder
-                        ? t('common:common.folder.Open folder')
-                        : t('common:common.folder.open_dataset')}
+                        ? t('common:open_folder')
+                        : t('common:folder.open_dataset')}
                     </Box>
                   </Flex>
                 }
@@ -373,7 +373,7 @@ function List() {
                                       children: [
                                         {
                                           icon: 'delete',
-                                          label: t('common:common.Delete'),
+                                          label: t('common:Delete'),
                                           type: 'danger' as 'danger',
                                           onClick: () => onClickDeleteDataset(dataset._id)
                                         }

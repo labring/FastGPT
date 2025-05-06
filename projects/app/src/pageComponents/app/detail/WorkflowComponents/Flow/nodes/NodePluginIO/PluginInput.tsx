@@ -108,7 +108,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               size={'sm'}
               onClick={() => setEditField(defaultInput)}
             >
-              {t('common:common.Add New')}
+              {t('common:add_new')}
             </Button>
           </HStack>
           <VariableTable
@@ -143,7 +143,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
         {outputs.length != inputs.length && (
           <Container>
-            <IOTitle text={t('common:common.Output')} />
+            <IOTitle text={t('common:Output')} />
             <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
           </Container>
         )}

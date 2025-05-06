@@ -267,7 +267,7 @@ const RenderInput = () => {
               })();
             }}
           >
-            {isDisabledInput ? t('common:common.Restart') : t('common:common.Run')}
+            {isDisabledInput ? t('common:Restart') : t('common:Run')}
           </Button>
         </Flex>
       )}

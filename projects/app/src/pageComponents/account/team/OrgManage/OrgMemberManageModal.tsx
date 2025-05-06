@@ -79,7 +79,7 @@ function OrgMemberManageModal({
       });
     },
     {
-      successToast: t('common:common.Update Success'),
+      successToast: t('common:update_success'),
       onSuccess() {
         refetchOrgs();
         onClose();
@@ -193,10 +193,10 @@ function OrgMemberManageModal({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button isLoading={isLoading} onClick={onUpdate}>
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </ModalFooter>
     </MyModal>

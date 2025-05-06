@@ -316,7 +316,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                 ]);
               }}
             >
-              {t('common:common.Add New')}
+              {t('common:add_new')}
             </Button>
           </Flex>
         </Box>

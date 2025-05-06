@@ -90,7 +90,7 @@ const FolderSlideCard = ({
               mt={4}
               onClick={onMove}
             >
-              {t('common:common.Move')}
+              {t('common:Move')}
             </Button>
             {managePer.permission.isOwner && (
               <Button
@@ -107,7 +107,7 @@ const FolderSlideCard = ({
                   openConfirm(onDelete)();
                 }}
               >
-                {t('common:common.Delete folder')}
+                {t('common:delete_folder')}
               </Button>
             )}
           </Box>
@@ -150,7 +150,7 @@ const FolderSlideCard = ({
                                 onClick={onOpenManageModal}
                               />
                             </MyTooltip>
-                            <MyTooltip label={t('common:common.Add')}>
+                            <MyTooltip label={t('common:Add')}>
                               <MyIcon
                                 w="1rem"
                                 name="support/permission/collaborator"

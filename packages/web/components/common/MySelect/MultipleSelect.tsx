@@ -180,7 +180,7 @@ const MultipleSelect = <T = any,>({
               >
                 {isSelectAll ? (
                   <Box fontSize={'mini'} color={'myGray.900'}>
-                    {t('common:common.All')}
+                    {t('common:All')}
                   </Box>
                 ) : (
                   list
@@ -249,7 +249,7 @@ const MultipleSelect = <T = any,>({
             {...menuItemStyles}
           >
             <Checkbox isChecked={isSelectAll} />
-            <Box flex={'1 0 0'}>{t('common:common.All')}</Box>
+            <Box flex={'1 0 0'}>{t('common:All')}</Box>
           </MenuItem>
 
           <MyDivider my={1} />

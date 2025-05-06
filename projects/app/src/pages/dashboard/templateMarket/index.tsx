@@ -87,8 +87,8 @@ const TemplateMarket = ({
       onSuccess(id: string) {
         router.push(`/app/detail?appId=${id}`);
       },
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed')
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
     }
   );
 

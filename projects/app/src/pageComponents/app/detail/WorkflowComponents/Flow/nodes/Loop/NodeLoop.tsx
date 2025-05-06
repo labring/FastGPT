@@ -190,7 +190,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
-        <IOTitle text={t('common:common.Input')} />
+        <IOTitle text={t('common:Input')} />
         {RenderInputDom}
         {RenderChildrenNodes}
       </Container>

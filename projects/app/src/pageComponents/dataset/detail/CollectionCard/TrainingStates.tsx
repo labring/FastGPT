@@ -429,7 +429,7 @@ const EditView = ({
       )}
       <Flex justifyContent={'flex-end'} gap={4}>
         <Button variant={'outline'} onClick={onCancel}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button variant={'primary'} onClick={handleSubmit(onSave)}>
           {t('dataset:dataset.ReTrain')}

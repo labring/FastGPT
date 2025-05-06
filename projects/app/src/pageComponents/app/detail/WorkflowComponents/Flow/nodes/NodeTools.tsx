@@ -18,11 +18,11 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container>
-        <IOTitle text={t('common:common.Input')} />
+        <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} />
       </Container>
       <Container>
-        <IOTitle text={t('common:common.Output')} />
+        <IOTitle text={t('common:Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
       <Box position={'relative'}>

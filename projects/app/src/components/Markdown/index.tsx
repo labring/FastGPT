@@ -60,9 +60,9 @@ const MarkdownRender = ({
       img: Image,
       pre: RewritePre,
       code: Code,
-      a: (props: any) => <A {...props} chatAuthData={chatAuthData} />
+      a: (props: any) => <A {...props} showAnimation={showAnimation} chatAuthData={chatAuthData} />
     };
-  }, [chatAuthData]);
+  }, [chatAuthData, showAnimation]);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;

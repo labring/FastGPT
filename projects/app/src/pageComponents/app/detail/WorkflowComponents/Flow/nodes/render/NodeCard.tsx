@@ -78,7 +78,7 @@ const NodeCard = (props: Props) => {
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
-    title: t('common:common.Custom Title'),
+    title: t('common:custom_title'),
     placeholder: t('app:module.Custom Title Tip') || ''
   });
 
@@ -533,7 +533,7 @@ const MenuRender = React.memo(function MenuRender({
         : [
             {
               icon: 'copy',
-              label: t('common:common.Copy'),
+              label: t('common:Copy'),
               variant: 'whiteBase',
               onClick: () => onCopyNode(nodeId)
             }
@@ -543,7 +543,7 @@ const MenuRender = React.memo(function MenuRender({
         : [
             {
               icon: 'delete',
-              label: t('common:common.Delete'),
+              label: t('common:Delete'),
               variant: 'whiteDanger',
               onClick: () => onDelNode(nodeId)
             }

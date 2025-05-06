@@ -118,7 +118,7 @@ const SelectMarkCollection = ({
                   });
                 }}
               >
-                {t('common:common.Last Step')}
+                {t('common:last_step')}
               </Button>
             </ModalFooter>
           }

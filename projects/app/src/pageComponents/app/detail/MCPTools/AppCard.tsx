@@ -47,7 +47,7 @@ const AppCard = () => {
               leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
               onClick={onOpenInfoEdit}
             >
-              {t('common:common.Setting')}
+              {t('common:Setting')}
             </Button>
           )}
           {appDetail.permission.isOwner && (
@@ -67,7 +67,7 @@ const AppCard = () => {
                     {
                       icon: 'delete',
                       type: 'danger',
-                      label: t('common:common.Delete'),
+                      label: t('common:Delete'),
                       onClick: onDelApp
                     }
                   ]

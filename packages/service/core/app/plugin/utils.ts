@@ -31,5 +31,6 @@ export const computedPluginUsage = async ({
     return plugin.hasTokenFee ? pluginCurrentCost + childrenUsages : pluginCurrentCost;
   }
 
+  // Personal plugins are charged regardless of whether they are successful or not
   return childrenUsages;
 };

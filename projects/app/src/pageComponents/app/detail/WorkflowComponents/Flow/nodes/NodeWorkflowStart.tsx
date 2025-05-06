@@ -73,7 +73,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {...data}
       >
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
         <Container>

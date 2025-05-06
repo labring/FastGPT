@@ -37,16 +37,11 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
 
   return (
     <>
-      <MyModal
-        isOpen
-        iconSrc="common/confirm/deleteTip"
-        title={t('common:common.Warning')}
-        w={'420px'}
-      >
+      <MyModal isOpen iconSrc="common/confirm/deleteTip" title={t('common:Warning')} w={'420px'}>
         <ModalBody>{textMap[type]}</ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
           <Button
             onClick={() => {

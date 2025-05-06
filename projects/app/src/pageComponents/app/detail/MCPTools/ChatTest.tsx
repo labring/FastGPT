@@ -81,7 +81,7 @@ const ChatTest = ({ currentTool, url }: { currentTool: ToolType | null; url: str
           {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 && (
             <>
               <Box color={'myGray.900'} fontSize={'16px'} fontWeight={'medium'} mb={3}>
-                {t('common:common.Input')}
+                {t('common:Input')}
               </Box>
               <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
                 {Object.entries(currentTool?.inputSchema.properties || {}).map(
@@ -116,13 +116,13 @@ const ChatTest = ({ currentTool, url }: { currentTool: ToolType | null; url: str
           )}
 
           <Button mt={3} isLoading={isRunning} onClick={handleSubmit(runTool)}>
-            {t('common:common.Run')}
+            {t('common:Run')}
           </Button>
 
           {output && (
             <>
               <Box color={'myGray.900'} fontSize={'16px'} fontWeight={'medium'} mb={3} mt={8}>
-                {t('common:common.Output')}
+                {t('common:Output')}
               </Box>
               <Box>
                 <Markdown source={`~~~json\n${output}`} />

@@ -184,7 +184,7 @@ const Upload = () => {
             title:
               importSource === ImportDataSourceEnum.reTraining
                 ? t('dataset:retrain_task_submitted')
-                : t('common:core.dataset.import.Import success'),
+                : t('common:core.dataset.import.import_success'),
             status: 'success'
           });
         }
@@ -227,7 +227,7 @@ const Upload = () => {
                 {t('common:core.dataset.import.Upload status')}
               </Th>
               <Th borderRightRadius={'md'} borderBottom={'none'} py={4}>
-                {t('common:common.Action')}
+                {t('common:Action')}
               </Th>
             </Tr>
           </Thead>
@@ -247,20 +247,20 @@ const Upload = () => {
                     {item.errorMsg ? (
                       <Tooltip label={item.errorMsg} fontSize="md">
                         <Flex alignItems="center">
-                          <MyTag colorSchema={'red'}>{t('common:common.Error')}</MyTag>
+                          <MyTag colorSchema={'red'}>{t('common:Error')}</MyTag>
                           <QuestionOutlineIcon ml={2} color="red.500" w="14px" />
                         </Flex>
                       </Tooltip>
                     ) : (
                       <>
                         {item.createStatus === 'waiting' && (
-                          <MyTag colorSchema={'gray'}>{t('common:common.Waiting')}</MyTag>
+                          <MyTag colorSchema={'gray'}>{t('common:Waiting')}</MyTag>
                         )}
                         {item.createStatus === 'creating' && (
-                          <MyTag colorSchema={'blue'}>{t('common:common.Creating')}</MyTag>
+                          <MyTag colorSchema={'blue'}>{t('common:Creating')}</MyTag>
                         )}
                         {item.createStatus === 'finish' && (
-                          <MyTag colorSchema={'green'}>{t('common:common.Finish')}</MyTag>
+                          <MyTag colorSchema={'green'}>{t('common:Finish')}</MyTag>
                         )}
                       </>
                     )}

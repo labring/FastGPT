@@ -153,7 +153,7 @@ export const ModelEditModal = ({
       onSuccess: () => {
         onClose();
       },
-      successToast: t('common:common.Success')
+      successToast: t('common:Success')
     }
   );
 
@@ -741,10 +741,10 @@ export const ModelEditModal = ({
           </Button>
         )}
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

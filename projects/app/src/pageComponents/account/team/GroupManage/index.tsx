@@ -116,7 +116,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 <Th bg="myGray.100">{t('account_team:owner')}</Th>
                 <Th bg="myGray.100">{t('account_team:member')}</Th>
                 <Th bg="myGray.100" borderRightRadius="6px">
-                  {t('common:common.Action')}
+                  {t('common:Action')}
                 </Th>
               </Tr>
             </Thead>
@@ -185,7 +185,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                       type: 'primary' as MenuItemType
                                     },
                                     {
-                                      label: t('common:common.Delete'),
+                                      label: t('common:Delete'),
                                       icon: 'delete',
                                       onClick: () => {
                                         openDeleteGroupModal(() => delDeleteGroup(group._id))();

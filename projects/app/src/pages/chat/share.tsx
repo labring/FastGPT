@@ -87,6 +87,7 @@ const OutLink = (props: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -162,7 +163,8 @@ const OutLink = (props: Props) => {
           },
           responseChatItemId,
           chatId: completionChatId,
-          ...outLinkAuthData
+          ...outLinkAuthData,
+          retainDatasetCite: isResponseDetail
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -200,6 +202,7 @@ const OutLink = (props: Props) => {
       chatId,
       customVariables,
       outLinkAuthData,
+      isResponseDetail,
       onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChat,

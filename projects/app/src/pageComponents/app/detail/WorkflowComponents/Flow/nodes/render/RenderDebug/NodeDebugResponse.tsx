@@ -55,7 +55,7 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
               })()
             }
           >
-            {t('common:common.Next Step')}
+            {t('common:next_step')}
           </Button>
         )}
       />
@@ -218,7 +218,7 @@ const NodeDebugResponse = ({ nodeId, debugResult }: NodeDebugResponseProps) => {
                       variant={'primary'}
                       onClick={() => onNextNodeDebug(workflowDebugData)}
                     >
-                      {t('common:common.Next Step')}
+                      {t('common:next_step')}
                     </Button>
                   )}
                 {workflowDebugData?.nextRunNodes &&

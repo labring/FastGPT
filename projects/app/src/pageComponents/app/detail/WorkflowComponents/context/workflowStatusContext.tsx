@@ -104,7 +104,7 @@ const WorkflowStatusContextProvider = ({ children }: { children: ReactNode }) =>
     };
   }, []);
   useBeforeunload({
-    tip: t('common:core.common.tip.leave page'),
+    tip: t('common:core.tip.leave page'),
     callback: autoSaveFn
   });
 

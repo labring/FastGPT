@@ -98,8 +98,8 @@ const HttpPluginEditModal = ({
       loadMyApps();
       onClose();
     },
-    successToast: t('common:common.Create Success'),
-    errorToast: t('common:common.Create Failed')
+    successToast: t('common:create_success'),
+    errorToast: t('common:create_failed')
   });
 
   const { mutate: updatePlugins, isLoading: isUpdating } = useRequest({
@@ -118,8 +118,8 @@ const HttpPluginEditModal = ({
       loadMyApps();
       onClose();
     },
-    successToast: t('common:common.Update Success'),
-    errorToast: t('common:common.Update Failed')
+    successToast: t('common:update_success'),
+    errorToast: t('common:update_failed')
   });
 
   const {
@@ -178,10 +178,10 @@ const HttpPluginEditModal = ({
         <ModalBody flex={'1 0 0'} overflow={'auto'}>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'}>
-              {t('common:plugin.Set Name')}
+              {t('common:input_name')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
-              <MyTooltip label={t('common:common.Set Avatar')}>
+              <MyTooltip label={t('common:set_avatar')}>
                 <Avatar
                   flexShrink={0}
                   src={avatar}
@@ -197,7 +197,7 @@ const HttpPluginEditModal = ({
                 ml={4}
                 bg={'myWhite.600'}
                 {...register('name', {
-                  required: t('common:common.name_is_empty')
+                  required: t('common:name_is_empty')
                 })}
               />
             </Flex>
@@ -240,7 +240,7 @@ const HttpPluginEditModal = ({
                     isLoading={isLoadingUrlApi}
                     onClick={onClickUrlLoadApi}
                   >
-                    {t('common:common.Import')}
+                    {t('common:Import')}
                   </Button>
                 </Flex>
               </Box>
@@ -432,7 +432,7 @@ const HttpPluginEditModal = ({
 
         <ModalFooter>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
           {!isEdit ? (
             <Button
@@ -440,7 +440,7 @@ const HttpPluginEditModal = ({
               onClick={handleSubmit((data) => onCreate(data))}
               isLoading={isCreating}
             >
-              {t('common:common.Confirm Create')}
+              {t('common:comfirn_create')}
             </Button>
           ) : (
             <Button
@@ -448,7 +448,7 @@ const HttpPluginEditModal = ({
               isLoading={isUpdating}
               onClick={handleSubmit((data) => updatePlugins(data))}
             >
-              {t('common:common.Confirm Update')}
+              {t('common:confirm_update')}
             </Button>
           )}
         </ModalFooter>

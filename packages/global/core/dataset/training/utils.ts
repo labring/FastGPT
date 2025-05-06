@@ -8,7 +8,7 @@ import {
 export const minChunkSize = 64; // min index and chunk size
 
 // Chunk size
-export const chunkAutoChunkSize = 1500;
+export const chunkAutoChunkSize = 1000;
 export const getMaxChunkSize = (model: LLMModelItemType) => {
   return Math.max(model.maxContext - model.maxResponse, 2000);
 };

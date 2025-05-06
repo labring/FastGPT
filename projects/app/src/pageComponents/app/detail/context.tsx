@@ -191,8 +191,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       onSuccess() {
         router.replace(`/dashboard/apps`);
       },
-      successToast: t('common:common.Delete Success'),
-      errorToast: t('common:common.Delete Failed')
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
   const onDelApp = useCallback(

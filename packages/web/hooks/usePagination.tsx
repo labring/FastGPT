@@ -190,9 +190,9 @@ export function usePagination<DataT, ResT = {}>(
     } & BoxProps) => {
       const ref = ScrollContainerRef || DefaultRef;
       const loadText = (() => {
-        if (isLoading) return t('common:common.is_requesting');
-        if (noMore) return t('common:common.request_end');
-        return t('common:common.request_more');
+        if (isLoading) return t('common:is_requesting');
+        if (noMore) return t('common:request_end');
+        return t('common:request_more');
       })();
 
       const scroll = useScroll(ref);
@@ -219,7 +219,7 @@ export function usePagination<DataT, ResT = {}>(
         <Box {...props} ref={ref} overflow={'overlay'}>
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
           {children}
@@ -229,9 +229,9 @@ export function usePagination<DataT, ResT = {}>(
               fontSize={'xs'}
               color={'blackAlpha.500'}
               textAlign={'center'}
-              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
+              cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
               onClick={() => {
-                if (loadText !== t('common:common.request_more')) return;
+                if (loadText !== t('common:request_more')) return;
                 fetchData(pageNum + 1);
               }}
             >
