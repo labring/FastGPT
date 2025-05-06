@@ -21,6 +21,11 @@ export type BillSchemaType = {
     datasetSize?: number;
     extraPoints?: number;
   };
+  refundData?: {
+    amount: number;
+    refundId: string;
+    refundTime: Date;
+  };
 };
 
 export type ChatNodeUsageType = {

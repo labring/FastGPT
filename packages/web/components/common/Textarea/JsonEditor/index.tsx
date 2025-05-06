@@ -178,7 +178,7 @@ const JSONEditor = ({
     } catch (error) {
       toast({
         status: 'warning',
-        title: t('common:jsonEditor.Parse error')
+        title: t('common:json_parse_error')
       });
     }
   }, [value]);

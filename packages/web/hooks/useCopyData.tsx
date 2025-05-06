@@ -20,7 +20,7 @@ export const useCopyData = () => {
   const copyData = useCallback(
     async (
       data: string,
-      title: string | null | undefined = t('common:Copy Successful'),
+      title: string | null | undefined = t('common:copy_successful'),
       duration = 1000
     ) => {
       data = data.trim();
