@@ -98,7 +98,7 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    inputTokens: reRankInputTokens,
+    inputTokens: embeddingTokens,
     model: dataset.vectorModel,
     source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
