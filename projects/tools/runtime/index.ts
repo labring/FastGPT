@@ -1,7 +1,7 @@
 import { Command } from 'commander';
 import express from 'express';
 import { list, run } from './controllers';
-import { getFlushCode, init } from './utils/tools';
+import { getFlushId, init } from './utils/tools';
 
 const app = express().use(express.json());
 const program = new Command();
@@ -20,8 +20,8 @@ init(prod); // init the tool
 
 app.post('/run', run); // run a tool
 app.get('/list', list); // get tools list
-app.get('/flushCode', async (req, res) => {
-  res.send(getFlushCode());
+app.get('/flushId', async (req, res) => {
+  res.send(getFlushId());
 });
 
 app.listen(PORT, (error?: Error) => {

@@ -47,3 +47,10 @@ export async function runTool(toolId: string, input: object) {
   );
   return result;
 }
+
+export async function getToolFlushId() {
+  const { data: result } = await axios.get<string>(`/flushId`, {
+    baseURL: ToolBaseURL
+  });
+  return result;
+}
