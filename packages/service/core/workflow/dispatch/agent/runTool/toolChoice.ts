@@ -730,12 +730,12 @@ async function streamResponse({
           if (toolCall.id) {
             callingTool = {
               name: toolCall.function?.name || '',
-              arguments: toolCall.function?.arguments || ''
+              arguments: toolCall.function?.arguments || '{}'
             };
           } else if (callingTool) {
             // Continue call(Perhaps the name of the previous function was incomplete)
             callingTool.name += toolCall.function?.name || '';
-            callingTool.arguments += toolCall.function?.arguments || '';
+            callingTool.arguments += toolCall.function?.arguments || '{}';
           }
 
           if (!callingTool) {
