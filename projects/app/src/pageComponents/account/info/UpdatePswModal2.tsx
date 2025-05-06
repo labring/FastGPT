@@ -25,7 +25,6 @@ const ResetPswModal = ({
   const { t } = useTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
-  console.log('resetPswModal', resetPswModal);
 
   const { register, handleSubmit, getValues, setValue } = useForm<FormType>({
     defaultValues: {

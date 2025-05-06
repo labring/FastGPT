@@ -64,6 +64,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
+  const pswUpdateTime = process.env.NEXT_PUBLIC_PASSWORD_UPDATETIME ?? 0;
   const [reset_password, setResetPassword] = useState(false);
   const [resetPswModal, setResetPswModal] = useState(false);
 
@@ -82,7 +83,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       updatePswTime({ userid: userInfo._id }).then((updateTime) => {
         const now = new Date();
         const isResetPassword =
-          !updateTime || new Date(updateTime).getTime() < now.getTime() - 1000 * 60 * 60 * 24 * 30;
+          !updateTime ||
+          (pswUpdateTime !== '0' &&
+            new Date(updateTime).getTime() <
+              now.getTime() - 1000 * 60 * 60 * 24 * 30 * Number(pswUpdateTime));
         if (!updateTime) {
           setResetPswModal(true);
         }
@@ -91,7 +95,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         }
       });
     }
-  }, [userInfo?.username, updatePswTime, userInfo]);
+  }, [userInfo?.username, updatePswTime, userInfo, pswUpdateTime]);
 
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
