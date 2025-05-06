@@ -13,13 +13,5 @@
       }
     ]
   },
-  "ignorePatterns": ["node_modules/", "dist/", "build/", "coverage/"],
-  "overrides": [
-    {
-      "files": ["**/*.ts", "**/*.tsx"],
-      "parserOptions": {
-        "project": ["**/tsconfig.json"]
-      }
-    }
-  ]
+  "ignorePatterns": ["node_modules/", "dist/", "build/", "coverage/"]
 }
