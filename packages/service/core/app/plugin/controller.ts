@@ -90,18 +90,20 @@ const getSystemPluginTemplateById = async (
 
 /* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
-  id
+  appId,
+  versionId
 }: {
-  id: string;
+  appId: string;
+  versionId?: string;
 }): Promise<FlowNodeTemplateType> {
   const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(id);
+    const { source, pluginId } = await splitCombinePluginId(appId);
 
     if (source === PluginSourceEnum.personal) {
-      const item = await MongoApp.findById(id).lean();
+      const item = await MongoApp.findById(appId).lean();
       if (!item) return Promise.reject('plugin not found');
 
-      const version = await getAppLatestVersion(id, item);
+      const version = await getAppVersionById({ appId, versionId, app: item });
 
       if (!version.versionId) return Promise.reject('App version not found');
 

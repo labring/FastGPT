@@ -36,6 +36,7 @@ import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
 import { workflowSystemVariables } from '../app/utils';
+import { AppNodeTypes } from './constants';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -101,63 +102,53 @@ export const storeNode2FlowNode = ({
     ...template,
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
-    version: storeNode.version ?? template.version ?? defaultNodeVersion,
-    /* 
-      Inputs and outputs, New fields are added, not reduced
-    */
-    inputs: templateInputs
-      .map<FlowNodeInputItemType>((templateInput) => {
+    version: template.version ?? storeNode.version ?? defaultNodeVersion,
+    inputs: [
+      ...templateInputs.map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
           storeNode.inputs.find((item) => item.key === templateInput.key) || templateInput;
 
         return {
           ...storeInput,
           ...templateInput,
-
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value,
           valueType: storeInput.valueType ?? templateInput.valueType,
           label: storeInput.label ?? templateInput.label
         };
-      })
-      .concat(
-        /* Concat dynamic inputs */
-        storeNode.inputs
-          .filter((item) => !templateInputs.find((input) => input.key === item.key))
-          .map((item) => {
-            if (!dynamicInput) return item;
-
-            return {
-              ...item,
-              ...getInputComponentProps(dynamicInput)
-            };
-          })
-      ),
-    outputs: templateOutputs
-      .map<FlowNodeOutputItemType>((templateOutput) => {
+      }),
+      ...storeNode.inputs
+        .filter((item) => !templateInputs.find((input) => input.key === item.key))
+        .map((item) => {
+          if (AppNodeTypes.includes(storeNode.flowNodeType)) {
+            return dynamicInput ? { ...item, ...getInputComponentProps(dynamicInput) } : item;
+          }
+          return { ...item, deprecated: true };
+        })
+    ],
+    outputs: [
+      ...templateOutputs.map<FlowNodeOutputItemType>((templateOutput) => {
         const storeOutput =
           template.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
 
         return {
           ...storeOutput,
           ...templateOutput,
-
           description: t(templateOutput.description ?? (storeOutput.description as any)),
-
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
           value: storeOutput.value ?? templateOutput.value,
           valueType: storeOutput.valueType ?? templateOutput.valueType
         };
-      })
-      .concat(
-        storeNode.outputs.filter(
-          (item) => !templateOutputs.find((output) => output.key === item.key)
+      }),
+      ...storeNode.outputs
+        .filter((item) => !templateOutputs.find((output) => output.key === item.key))
+        .map((item) =>
+          AppNodeTypes.includes(storeNode.flowNodeType) ? item : { ...item, deprecated: true }
         )
-      )
+    ]
   };
 
   return {

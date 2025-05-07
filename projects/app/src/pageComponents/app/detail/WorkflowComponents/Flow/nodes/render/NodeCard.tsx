@@ -28,6 +28,10 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+import { getAppVersionList } from '@/web/core/app/api/version';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { AppNodeTypes } from '@/web/core/workflow/constants';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -132,6 +136,19 @@ const NodeCard = (props: Props) => {
     }
   );
 
+  const { ScrollData, data: versionList } = useScrollPagination(
+    node?.flowNodeType && AppNodeTypes.includes(node.flowNodeType)
+      ? getAppVersionList
+      : () => Promise.resolve({ list: [], total: 0 }),
+    {
+      pageSize: 30,
+      params: {
+        appId: node?.pluginId
+      },
+      refreshDeps: [node?.pluginId, node?.flowNodeType]
+    }
+  );
+
   const {
     openConfirm: onOpenConfirmSync,
     onClose: onCloseConfirmSync,
@@ -140,14 +157,12 @@ const NodeCard = (props: Props) => {
     content: t('workflow:Confirm_sync_node')
   });
 
-  const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
-
   const { runAsync: onClickSyncVersion } = useRequest2(
-    async () => {
+    async (versionId: string) => {
       if (!node) return;
 
       if (node.pluginId) {
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
+        const template = await getPreviewPluginNode({ appId: node.pluginId, versionId });
 
         if (!!template) {
           onResetNode({
@@ -155,20 +170,6 @@ const NodeCard = (props: Props) => {
             node: template
           });
         }
-      } else {
-        const template = moduleTemplatesFlat.find(
-          (item) => item.flowNodeType === node.flowNodeType
-        );
-        if (!template) {
-          return toast({
-            title: t('app:app.modules.not_found_tips'),
-            status: 'warning'
-          });
-        }
-        onResetNode({
-          id: nodeId,
-          node: template
-        });
       }
     },
     {
@@ -256,27 +257,36 @@ const NodeCard = (props: Props) => {
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
               <Box flex={1} />
-              {hasNewVersion && (
-                <MyTooltip label={t('app:app.modules.click to update')}>
-                  <Button
-                    bg={'yellow.50'}
-                    color={'yellow.600'}
-                    variant={'ghost'}
-                    h={8}
-                    px={2}
-                    rounded={'6px'}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                    cursor={'pointer'}
-                    _hover={{ bg: 'yellow.100' }}
-                    onClick={onOpenConfirmSync(onClickSyncVersion)}
-                  >
-                    <Box>{t('app:app.modules.has new version')}</Box>
-                    <MyIcon name={'help'} w={'14px'} ml={1} />
-                  </Button>
-                </MyTooltip>
+              {versionList.length > 0 && (
+                <MySelect
+                  className="nowheel"
+                  value={node?.version}
+                  list={versionList.map((version) => ({
+                    label: version.versionName,
+                    value: version._id
+                  }))}
+                  onChange={(version) => {
+                    onClickSyncVersion(version);
+                  }}
+                  ScrollData={ScrollData}
+                  rightTag={
+                    node?.version !== versionList[0]?._id ? (
+                      <Box
+                        px={1}
+                        py={'1px'}
+                        color={'adora.600'}
+                        bg={'adora.50'}
+                        ml={2}
+                        rounded={'sm'}
+                        fontSize={'mini'}
+                      >
+                        {t('app:not_the_newest')}
+                      </Box>
+                    ) : null
+                  }
+                />
               )}
-              {!!nodeTemplate?.diagram && !hasNewVersion && (
+              {!!nodeTemplate?.diagram && (
                 <MyTooltip
                   label={
                     <MyImage
@@ -295,7 +305,7 @@ const NodeCard = (props: Props) => {
               {!!nodeTemplate?.diagram && node?.courseUrl && (
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
-              {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
+              {!!(node?.courseUrl || nodeTemplate?.userGuide) && (
                 <UseGuideModal
                   title={nodeTemplate?.name}
                   iconSrc={nodeTemplate?.avatar}
@@ -342,7 +352,6 @@ const NodeCard = (props: Props) => {
     avatar,
     t,
     name,
-    hasNewVersion,
     onOpenConfirmSync,
     onClickSyncVersion,
     nodeTemplate?.diagram,
@@ -355,7 +364,8 @@ const NodeCard = (props: Props) => {
     nodeList,
     onChangeNode,
     onOpenCustomTitleModal,
-    toast
+    toast,
+    versionList
   ]);
 
   const RenderHandle = useMemo(() => {

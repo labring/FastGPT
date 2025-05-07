@@ -8,6 +8,7 @@ import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { Position } from 'reactflow';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
   const { t } = useTranslation();
@@ -36,6 +37,16 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         </Box>
         {description && <QuestionTip ml={1} label={t(description as any)} />}
         <ValueTypeLabel valueType={valueType} valueDesc={valueDesc} />
+
+        {output.deprecated && (
+          <>
+            <Box flex={'1'} />
+            <Flex px={1.5} py={1} bg={'adora.50'} rounded={'6px'}>
+              <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />
+              <Box color={'adora.600'}>{t('app:Filed_is_deprecated')}</Box>
+            </Flex>
+          </>
+        )}
       </Flex>
       {output.type === FlowNodeOutputTypeEnum.source && (
         <SourceHandle

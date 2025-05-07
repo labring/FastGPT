@@ -10,6 +10,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type Props = {
   nodeId: string;
@@ -68,8 +69,18 @@ const InputLabel = ({ nodeId, input, RightComponent }: Props) => {
         </Box>
       )}
 
+      {input.deprecated && (
+        <>
+          <Box flex={'1'} />
+          <Flex px={1.5} py={1} bg={'adora.50'} rounded={'6px'}>
+            <MyIcon name={'common/info'} color={'adora.600'} w={4} mr={1} />
+            <Box color={'adora.600'}>{t('app:Filed_is_deprecated')}</Box>
+          </Flex>
+        </>
+      )}
+
       {/* Right Component */}
-      {RightComponent && (
+      {!input.deprecated && RightComponent && (
         <>
           <Box flex={'1'} />
           {RightComponent}

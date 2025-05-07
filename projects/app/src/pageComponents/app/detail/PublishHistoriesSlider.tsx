@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   getAppVersionDetail,
-  getWorkflowVersionList,
+  getAppVersionList,
   updateAppVersion
 } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -186,7 +186,7 @@ const TeamCloud = ({
     ScrollData,
     data: scrollDataList,
     setData
-  } = useScrollPagination(getWorkflowVersionList, {
+  } = useScrollPagination(getAppVersionList, {
     pageSize: 30,
     params: {
       appId: appDetail._id

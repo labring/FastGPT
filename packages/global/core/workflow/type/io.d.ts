@@ -63,6 +63,8 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   canSelectFile?: boolean;
   canSelectImg?: boolean;
   maxFiles?: number;
+
+  deprecated?: boolean;
 };
 
 export type FlowNodeOutputItemType = {
@@ -86,6 +88,8 @@ export type FlowNodeOutputItemType = {
 
   // component params
   customFieldConfig?: CustomFieldConfigType;
+
+  deprecated?: boolean;
 };
 
 export type ReferenceItemValueType = [string, string | undefined];

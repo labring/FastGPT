@@ -49,6 +49,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+  rightTag?: React.ReactNode;
 };
 
 const MySelect = <T = any,>(
@@ -61,6 +62,7 @@ const MySelect = <T = any,>(
     onChange,
     isLoading = false,
     ScrollData,
+    rightTag,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -228,6 +230,7 @@ const MySelect = <T = any,>(
                   <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
                 )}
                 {selectItem?.alias || selectItem?.label || placeholder}
+                {rightTag && rightTag}
               </>
             )}
           </Flex>

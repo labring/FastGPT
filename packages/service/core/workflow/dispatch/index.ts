@@ -11,6 +11,7 @@ import type {
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -122,6 +123,23 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
 type Props = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
+};
+
+const filterDeprecatedOutput = (
+  node: RuntimeNodeItemType,
+  dispatchRes: Record<string, any>
+): Record<string, any> => {
+  const deprecatedOutputKeys = node.outputs
+    .filter((output: FlowNodeOutputItemType) => output.deprecated)
+    .map((output: FlowNodeOutputItemType) => output.key);
+
+  const filteredDispatchRes = { ...dispatchRes };
+
+  deprecatedOutputKeys.forEach((key: string) => {
+    delete filteredDispatchRes[key];
+  });
+
+  return filteredDispatchRes;
 };
 
 /* running */
@@ -542,40 +560,42 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         }
       : {};
 
-    node.inputs.forEach((input) => {
-      // Special input, not format
-      if (input.key === dynamicInput?.key) return;
+    node.inputs
+      .filter((input) => !input.deprecated)
+      .forEach((input) => {
+        // Special input, not format
+        if (input.key === dynamicInput?.key) return;
 
-      // Skip some special key
-      if (
-        [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
-          input.key as any
-        )
-      ) {
-        params[input.key] = input.value;
-        return;
-      }
+        // Skip some special key
+        if (
+          [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
+            input.key as any
+          )
+        ) {
+          params[input.key] = input.value;
+          return;
+        }
 
-      // replace {{$xx.xx$}} and {{xx}} variables
-      let value = replaceEditorVariable({
-        text: input.value,
-        nodes: runtimeNodes,
-        variables
+        // replace {{$xx.xx$}} and {{xx}} variables
+        let value = replaceEditorVariable({
+          text: input.value,
+          nodes: runtimeNodes,
+          variables
+        });
+
+        // replace reference variables
+        value = getReferenceVariableValue({
+          value,
+          nodes: runtimeNodes,
+          variables
+        });
+
+        // Dynamic input is stored in the dynamic key
+        if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+          params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+        }
+        params[input.key] = valueTypeFormat(value, input.valueType);
       });
-
-      // replace reference variables
-      value = getReferenceVariableValue({
-        value,
-        nodes: runtimeNodes,
-        variables
-      });
-
-      // Dynamic input is stored in the dynamic key
-      if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
-        params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
-      }
-      params[input.key] = valueTypeFormat(value, input.valueType);
-    });
 
     return params;
   }
@@ -619,7 +639,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const dispatchRes: Record<string, any> = await (async () => {
       if (callbackMap[node.flowNodeType]) {
         try {
-          return await callbackMap[node.flowNodeType](dispatchData);
+          const res = await callbackMap[node.flowNodeType](dispatchData);
+          return filterDeprecatedOutput(node, res);
         } catch (error) {
           // Get source handles of outgoing edges
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);
