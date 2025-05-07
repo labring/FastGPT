@@ -762,8 +762,8 @@ export async function searchDatasetData(
 
   // embedding recall and fullText recall rrf concat
   const baseK = 120;
-  const embK = Math.round(baseK * (1 - embeddingWeight)); // 搜索结果的 k 值
-  const fullTextK = Math.round(baseK * embeddingWeight); // rerank 结果的 k 值
+  const embK = Math.round(baseK * embeddingWeight); // 语义检索结果的 k 值
+  const fullTextK = Math.round(baseK * (1 - embeddingWeight)); // 全文检索结果的 k 值
 
   const rrfSearchResult = datasetSearchResultConcat([
     { k: embK, list: embeddingRecallResults },
@@ -773,8 +773,8 @@ export async function searchDatasetData(
     if (reRankResults.length === 0) return rrfSearchResult;
     if (rerankWeight === 1) return reRankResults;
 
-    const searchK = Math.round(baseK * rerankWeight); // 搜索结果的 k 值
-    const rerankK = Math.round(baseK * (1 - rerankWeight)); // rerank 结果的 k 值
+    const searchK = Math.round(baseK * (1 - rerankWeight)); // 搜索结果的 k 值
+    const rerankK = Math.round(baseK * rerankWeight); // rerank 结果的 k 值
 
     return datasetSearchResultConcat([
       { k: searchK, list: rrfSearchResult },
