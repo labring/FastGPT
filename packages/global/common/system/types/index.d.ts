@@ -1,4 +1,5 @@
-import { StandSubPlanLevelMapType, SubPlanType } from '../../../support/wallet/sub/type';
+import type { SubPlanType } from '../../../support/wallet/sub/type';
+import { StandSubPlanLevelMapType } from '../../../support/wallet/sub/type';
 import type {
   ChatModelItemType,
   FunctionModelItemType,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, HStack, Icon, StackProps } from '@chakra-ui/react';
+import { Box, HStack, Icon, type StackProps } from '@chakra-ui/react';
 
 const LightTip = ({
   text,

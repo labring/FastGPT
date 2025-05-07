@@ -13,11 +13,14 @@ import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/template
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  DeepRagSearchProps,
-  SearchDatasetDataResponse
+  type DeepRagSearchProps,
+  type SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search/controller';
-import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
-import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
+import {
+  type ConcatUsageProps,
+  type CreateUsageProps
+} from '@fastgpt/global/support/wallet/usage/api';
 import {
   getProApiDatasetFileContentRequest,
   getProApiDatasetFileDetailRequest,

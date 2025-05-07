@@ -1,5 +1,5 @@
 import { i18nT } from '../../../../web/i18n/utils';
-import { ErrType } from '../errorCode';
+import { type ErrType } from '../errorCode';
 
 /* dataset: 501000 */
 export enum DatasetErrEnum {

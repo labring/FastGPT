@@ -1,8 +1,8 @@
 import type { UserModelSchema } from '../type';
 import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
-import { LafAccountType } from './type';
+import type { LafAccountType } from './type';
 import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
-import { TeamPermission } from '../../permission/user/controller';
+import type { TeamPermission } from '../../permission/user/controller';
 
 export type ThirdPartyAccountType = {
   lafAccount?: LafAccountType;

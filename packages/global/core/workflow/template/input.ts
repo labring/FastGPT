@@ -2,7 +2,7 @@ import { NodeInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum } from '../node/constant';
 import { WorkflowIOValueTypeEnum } from '../constants';
 import { chatNodeSystemPromptTip, systemPromptTip } from './tip';
-import { FlowNodeInputItemType } from '../type/io';
+import { type FlowNodeInputItemType } from '../type/io';
 import { i18nT } from '../../../../web/i18n/utils';
 
 export const Input_Template_History: FlowNodeInputItemType = {

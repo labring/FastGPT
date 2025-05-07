@@ -1,5 +1,5 @@
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
-import { AuthModeType, AuthResponseType } from '../type';
+import { type AuthModeType, type AuthResponseType } from '../type';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { authUserPer } from '../user/auth';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';

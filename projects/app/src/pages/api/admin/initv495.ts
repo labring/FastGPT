@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NextApiRequest, NextApiResponse } from 'next';
+import { type NextApiRequest, type NextApiResponse } from 'next';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import {

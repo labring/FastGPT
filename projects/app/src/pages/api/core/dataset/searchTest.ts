@@ -12,7 +12,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 
 async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
@@ -95,12 +95,13 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       });
 
   // push bill
+  const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
   const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    inputTokens: reRankInputTokens,
+    inputTokens: embeddingTokens,
     model: dataset.vectorModel,
-    source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
+    source,
 
     ...(queryExtensionResult && {
       extensionModel: queryExtensionResult.model,
@@ -118,7 +119,8 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
         teamId,
         tmbId,
         inputTokens: reRankInputTokens,
-        model: rerankModelData.model
+        model: rerankModelData.model,
+        source
       })
     : { totalPoints: 0 };
 

@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   ModelProviderList,
-  ModelProviderIdType,
+  type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';

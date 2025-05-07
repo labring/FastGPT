@@ -1,5 +1,5 @@
-import { NextApiHandler } from '@fastgpt/service/common/middle/entry';
-import { MockReqType } from '../mocks/request';
+import type { NextApiHandler } from '@fastgpt/service/common/middle/entry';
+import type { MockReqType } from '../mocks/request';
 import { vi } from 'vitest';
 
 export async function Call<B = any, Q = any, R = any>(

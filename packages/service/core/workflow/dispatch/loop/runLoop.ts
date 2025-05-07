@@ -1,16 +1,19 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  DispatchNodeResultType,
-  ModuleDispatchProps
+  type DispatchNodeResultType,
+  type ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { dispatchWorkFlow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { AIChatItemValueItemType, ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import {
+  type AIChatItemValueItemType,
+  type ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type';
 import { cloneDeep } from 'lodash';
 import {
-  LoopInteractive,
-  WorkflowInteractiveResponseType
+  type LoopInteractive,
+  type WorkflowInteractiveResponseType
 } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 

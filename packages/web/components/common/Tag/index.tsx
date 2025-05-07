@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, BoxProps, Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, type BoxProps, Flex, type FlexProps } from '@chakra-ui/react';
 
 type ColorSchemaType = 'white' | 'blue' | 'green' | 'red' | 'yellow' | 'gray' | 'purple' | 'adora';
 

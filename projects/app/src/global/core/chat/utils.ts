@@ -1,6 +1,6 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>

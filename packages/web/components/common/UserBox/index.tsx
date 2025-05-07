@@ -1,5 +1,5 @@
 import { Box, HStack, type StackProps } from '@chakra-ui/react';
-import { SourceMemberType } from '@fastgpt/global/support/user/type';
+import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import React from 'react';
 import Avatar from '../Avatar';
 import { useTranslation } from 'next-i18next';

@@ -1,11 +1,14 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
-import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { LinkedListResponse, LinkedPaginationProps } from '@fastgpt/web/common/fetch/type';
-import { FilterQuery, Types } from 'mongoose';
-import { quoteDataFieldSelector, QuoteDataItemType } from '@/service/core/chat/constants';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import {
+  type LinkedListResponse,
+  type LinkedPaginationProps
+} from '@fastgpt/web/common/fetch/type';
+import { type FilterQuery, Types } from 'mongoose';
+import { quoteDataFieldSelector, type QuoteDataItemType } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';

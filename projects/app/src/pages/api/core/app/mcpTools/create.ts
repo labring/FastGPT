@@ -3,8 +3,8 @@ import { NextAPI } from '@/service/middleware/entry';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { CreateAppBody, onCreateApp } from '../create';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type CreateAppBody, onCreateApp } from '../create';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {

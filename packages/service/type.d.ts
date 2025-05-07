@@ -1,4 +1,4 @@
-import { FastGPTFeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types';
+import type { FastGPTFeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types';
 import {
   TTSModelType,
   RerankModelItemType,
@@ -6,8 +6,8 @@ import {
   EmbeddingModelItemType,
   LLMModelItemType
 } from '@fastgpt/global/core/ai/model.d';
-import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { WorkerNameEnum, WorkerPool } from './worker/utils';
+import type { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import type { WorkerNameEnum, WorkerPool } from './worker/utils';
 import { Worker } from 'worker_threads';
 
 declare global {

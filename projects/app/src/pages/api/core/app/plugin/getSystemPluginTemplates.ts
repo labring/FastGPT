@@ -1,11 +1,11 @@
 import type { NextApiResponse } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { getSystemPluginCb, getSystemPlugins } from '@/service/core/app/plugin';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 

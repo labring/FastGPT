@@ -284,12 +284,14 @@ export const pushRerankUsage = ({
   teamId,
   tmbId,
   model,
-  inputTokens
+  inputTokens,
+  source = UsageSourceEnum.fastgpt
 }: {
   teamId: string;
   tmbId: string;
   model: string;
   inputTokens: number;
+  source?: UsageSourceEnum;
 }) => {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
@@ -300,9 +302,9 @@ export const pushRerankUsage = ({
   createUsage({
     teamId,
     tmbId,
-    appName: modelName,
+    appName: i18nT('account_bill:rerank'),
     totalPoints,
-    source: UsageSourceEnum.fastgpt,
+    source,
     list: [
       {
         moduleName: modelName,

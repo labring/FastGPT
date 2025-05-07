@@ -3,9 +3,9 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { DatasetDataListItemType } from '@/global/core/dataset/type';
-import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type DatasetDataListItemType } from '@/global/core/dataset/type';
+import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type GetDatasetDataListProps = PaginationProps & {

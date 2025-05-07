@@ -1,10 +1,11 @@
 import type { AppChatConfigType, AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
-import { AdminFbkType, ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { AdminFbkType } from '@fastgpt/global/core/chat/type';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { RequestPaging } from '@/types';
-import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import type { GetChatTypeEnum } from '@/global/core/chat/constants';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 export type GetChatSpeechProps = OutLinkChatAuthProps & {
   appId: string;
   ttsConfig: AppTTSConfigType;

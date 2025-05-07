@@ -5,9 +5,9 @@ import {
   updateFastGPTConfigBuffer
 } from '@fastgpt/service/common/system/config/controller';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NextApiRequest, NextApiResponse } from 'next';
+import { type NextApiRequest, type NextApiResponse } from 'next';
 import json5 from 'json5';
-import { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';

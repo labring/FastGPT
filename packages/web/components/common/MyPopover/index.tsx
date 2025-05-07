@@ -4,9 +4,9 @@ import {
   PopoverTrigger,
   PopoverContent,
   useDisclosure,
-  PlacementWithLogical,
+  type PlacementWithLogical,
   PopoverArrow,
-  PopoverContentProps
+  type PopoverContentProps
 } from '@chakra-ui/react';
 
 interface Props extends PopoverContentProps {

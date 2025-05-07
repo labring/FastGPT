@@ -1,13 +1,13 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NextApiRequest, NextApiResponse } from 'next';
+import { type NextApiRequest, type NextApiResponse } from 'next';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetDataTextSchemaType } from '@fastgpt/global/core/dataset/type';
 import type { AnyBulkWriteOperation } from '@fastgpt/service/common/mongo';
 
 const updateData = async () => {

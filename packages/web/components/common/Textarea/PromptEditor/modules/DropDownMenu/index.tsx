@@ -1,5 +1,5 @@
 import { Box, Flex } from '@chakra-ui/react';
-import { EditorVariablePickerType } from '../../type';
+import { type EditorVariablePickerType } from '../../type';
 import MyIcon from '../../../../Icon';
 import React, { useCallback, useEffect } from 'react';
 

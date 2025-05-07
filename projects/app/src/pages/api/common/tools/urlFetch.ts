@@ -1,9 +1,9 @@
 // pages/api/fetchContent.ts
-import { NextApiRequest, NextApiResponse } from 'next';
+import { type NextApiRequest, type NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
-import { UrlFetchParams, UrlFetchResponse } from '@fastgpt/global/common/file/api.d';
+import { type UrlFetchParams, type UrlFetchResponse } from '@fastgpt/global/common/file/api.d';
 import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
 
 const fetchContent = async (req: NextApiRequest, res: NextApiResponse) => {

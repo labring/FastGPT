@@ -1,9 +1,9 @@
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 export const updateToolInputValue = ({
   params,

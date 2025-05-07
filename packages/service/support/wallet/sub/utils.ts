@@ -5,10 +5,13 @@ import {
   standardSubLevelMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type.d';
+import {
+  type FeTeamPlanStatusType,
+  type TeamSubSchema
+} from '@fastgpt/global/support/wallet/sub/type.d';
 import { getVectorCountByTeamId } from '../../../common/vectorDB/controller';
 import dayjs from 'dayjs';
-import { ClientSession } from '../../../common/mongo';
+import { type ClientSession } from '../../../common/mongo';
 import { addMonths } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 

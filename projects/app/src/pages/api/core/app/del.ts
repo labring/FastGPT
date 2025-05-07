@@ -14,7 +14,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { ClientSession } from '@fastgpt/service/common/mongo';
+import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { deleteChatFiles } from '@fastgpt/service/core/chat/controller';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';

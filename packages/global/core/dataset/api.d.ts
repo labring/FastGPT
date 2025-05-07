@@ -1,12 +1,12 @@
-import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import {
+import type { DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import type {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum
 } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
-import { ParentIdType } from 'common/parentFolder/type';
+import type { ParentIdType } from 'common/parentFolder/type';
 
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {

@@ -1,5 +1,5 @@
 import { Schema, getMongoLogModel } from '../../common/mongo';
-import type { OperationLogSchema } from '@fastgpt/global/support/operationLog/type';
+import { type OperationLogSchema } from '@fastgpt/global/support/operationLog/type';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import {
   TeamCollectionName,

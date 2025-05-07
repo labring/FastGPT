@@ -1,5 +1,5 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import type { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/memberGroup/groupMemberSchema';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';

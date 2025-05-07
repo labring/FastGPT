@@ -1,9 +1,9 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import axios from 'axios';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { isInternalAddress } from '@fastgpt/service/common/system/utils';
-import { NextApiResponse } from 'next';
+import { type NextApiResponse } from 'next';
 
 export type FetchWorkflowBody = {
   url: string;

@@ -1,4 +1,4 @@
-import { ScoreItemType } from '@/components/core/dataset/QuoteItem';
+import { type ScoreItemType } from '@/components/core/dataset/QuoteItem';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ScoreTag from './ScoreTag';

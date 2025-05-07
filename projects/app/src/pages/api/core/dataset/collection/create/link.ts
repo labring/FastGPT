@@ -8,7 +8,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 import { urlsFetch } from '@fastgpt/service/common/string/cheerio';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 

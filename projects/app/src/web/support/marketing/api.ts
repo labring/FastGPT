@@ -1,7 +1,7 @@
 import { POST } from '@/web/common/api/request';
 import {
-  FetchWorkflowQuery,
-  FetchWorkflowResponseType
+  type FetchWorkflowQuery,
+  type FetchWorkflowResponseType
 } from '@/pages/api/support/marketing/fetchWorkflow';
 
 export const postFetchWorkflow = (data: FetchWorkflowQuery) =>

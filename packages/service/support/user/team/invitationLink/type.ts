@@ -1,4 +1,4 @@
-import { TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
+import { type TeamMemberSchema } from '@fastgpt/global/support/user/team/type';
 
 export type InvitationSchemaType = {
   _id: string;

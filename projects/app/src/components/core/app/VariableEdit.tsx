@@ -20,7 +20,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useForm, UseFormReset } from 'react-hook-form';
+import { useForm, type UseFormReset } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -33,8 +33,8 @@ import InputTypeConfig from '@/pageComponents/app/detail/WorkflowComponents/Flow
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
-  DraggableProvided,
-  DraggableStateSnapshot
+  type DraggableProvided,
+  type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);

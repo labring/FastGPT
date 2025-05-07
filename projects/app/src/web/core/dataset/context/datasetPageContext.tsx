@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Dispatch, ReactNode, SetStateAction, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import {
@@ -12,10 +12,10 @@ import {
   putDatasetById
 } from '../api';
 import { defaultDatasetDetail } from '../constants';
-import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
-import { DatasetItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
+import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
 

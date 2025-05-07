@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import MultipleRowSelect from './MultipleRowSelect';
 import { useTranslation } from 'next-i18next';
-import { MultipleSelectProps } from './type';
+import { type MultipleSelectProps } from './type';
 import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 
 type CronType = 'month' | 'week' | 'day' | 'interval';

@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import multer from 'multer';
 import path from 'path';
-import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
+import type { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export type FileType = {

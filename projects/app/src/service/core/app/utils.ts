@@ -19,7 +19,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import {
@@ -29,7 +29,10 @@ import {
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { PluginDataType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  type PluginDataType,
+  type StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app

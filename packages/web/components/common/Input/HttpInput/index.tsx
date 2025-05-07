@@ -1,10 +1,10 @@
 import React from 'react';
-import { EditorState, type LexicalEditor } from 'lexical';
+import type { EditorState, LexicalEditor } from 'lexical';
 import { useCallback } from 'react';
 import { editorStateToText } from '../../Textarea/PromptEditor/utils';
 import {
-  EditorVariableLabelPickerType,
-  EditorVariablePickerType
+  type EditorVariableLabelPickerType,
+  type EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import Editor from './Editor';
 

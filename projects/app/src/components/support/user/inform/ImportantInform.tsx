@@ -1,4 +1,4 @@
-import { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
+import { type UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';

@@ -1,16 +1,17 @@
 import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import type { MemberGroupSchemaType } from '@fastgpt/global/support/permission/memberGroup/type';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { TeamManagePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { OrgSchemaType, OrgType } from '@fastgpt/global/support/user/team/org/type';
+import type { OrgSchemaType } from '@fastgpt/global/support/user/team/org/type';
+import { OrgType } from '@fastgpt/global/support/user/team/org/type';
 import { MongoMemberGroupModel } from '@fastgpt/service/support/permission/memberGroup/memberGroupSchema';
 import { MongoOrgModel } from '@fastgpt/service/support/permission/org/orgSchema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
-import { parseHeaderCertRet } from 'test/mocks/request';
+import type { parseHeaderCertRet } from 'test/mocks/request';
 
 export async function getRootUser(): Promise<parseHeaderCertRet> {
   const rootUser = await MongoUser.create({

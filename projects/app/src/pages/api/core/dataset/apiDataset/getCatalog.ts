@@ -9,7 +9,7 @@ import type {
   FeishuServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
-import { NextApiRequest } from 'next';
+import { type NextApiRequest } from 'next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 export type GetApiDatasetCataLogProps = {

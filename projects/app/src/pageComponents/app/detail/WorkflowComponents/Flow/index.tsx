@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactFlow, { NodeProps, SelectionMode } from 'reactflow';
+import ReactFlow, { type NodeProps, SelectionMode } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -10,7 +10,7 @@ import ButtonEdge from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 
 import 'reactflow/dist/style.css';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import { useContextSelector } from 'use-context-selector';
 import { useWorkflow } from './hooks/useWorkflow';

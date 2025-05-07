@@ -13,7 +13,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { defaultDatasetMaxTokens } from '@fastgpt/global/core/app/constants';
-import { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
+import { type AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);

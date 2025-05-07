@@ -6,9 +6,9 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, {
-  MemberManagerInputPropsType
+  type MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

@@ -19,7 +19,7 @@ import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
-import { useReactFlow, XYPosition } from 'reactflow';
+import { useReactFlow, type XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
@@ -42,7 +42,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';

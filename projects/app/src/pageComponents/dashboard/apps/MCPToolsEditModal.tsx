@@ -25,7 +25,7 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 export type MCPToolSetData = {

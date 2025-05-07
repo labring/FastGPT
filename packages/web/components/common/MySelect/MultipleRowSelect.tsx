@@ -11,7 +11,7 @@ import {
   MenuButton,
   MenuList
 } from '@chakra-ui/react';
-import { ListItemType, MultipleArraySelectProps, MultipleSelectProps } from './type';
+import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
