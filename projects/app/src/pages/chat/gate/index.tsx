@@ -92,9 +92,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const [showDebug, setShowDebug] = useState(false);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  // 为ChatTest准备正确的appDetail
-  const [localAppDetail, setLocalAppDetail] = useState<AppDetailType>(appDetail);
-
   // Load chat init data
   const { loading } = useRequest2(
     async () => {
@@ -119,14 +116,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           chatConfig: appDetail.chatConfig || {}
         });
         setAppForm(form);
-
-        // 更新本地appDetail，用于ChatTest
-        setLocalAppDetail({
-          ...appDetail,
-          _id: appId,
-          name: res.app.name,
-          avatar: res.app.avatar
-        });
       }
     },
     {
@@ -301,7 +290,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
-  const { gateConfig, initGateConfig, loadGateApps } = useGateStore();
+  const { gateConfig, initGateConfig } = useGateStore();
 
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     () => getMyApps({ getRecentlyChat: true }),

@@ -212,51 +212,6 @@ const GateChatInput = ({
   );
 
   // 工具列表菜单
-  const ToolsMenu = useMemo(() => {
-    if (!showTools || appForm.selectedTools.length === 0) return null;
-
-    return (
-      <Menu>
-        <MenuButton
-          as={Button}
-          size="sm"
-          rightIcon={<ChevronDownIcon />}
-          variant="outline"
-          bg="#F9F9F9"
-          border="0.5px solid #E0E0E0"
-          borderRadius="10px"
-          color={selectedTool ? 'primary.600' : '#485264'}
-          h="36px"
-          fontSize="14px"
-          px={3}
-        >
-          {selectedTool
-            ? appForm.selectedTools.find((tool) => tool.id === selectedTool)?.name || t('Tools')
-            : t('Tools')}
-        </MenuButton>
-        <MenuList>
-          <MenuItem
-            onClick={() => setSelectedTool(null)}
-            fontWeight={!selectedTool ? 'bold' : 'normal'}
-          >
-            {t('None')}
-          </MenuItem>
-          {appForm.selectedTools.map((tool) => (
-            <MenuItem
-              key={tool.id}
-              onClick={() => setSelectedTool(tool.id)}
-              fontWeight={selectedTool === tool.id ? 'bold' : 'normal'}
-            >
-              <Flex align="center">
-                <MyIcon name="core/app/toolCall" w={'16px'} mr={2} />
-                {tool.name}
-              </Flex>
-            </MenuItem>
-          ))}
-        </MenuList>
-      </Menu>
-    );
-  }, [appForm.selectedTools, selectedTool, showTools, t]);
 
   return (
     <Box
@@ -370,7 +325,6 @@ const GateChatInput = ({
             fontSize="14px"
           />
         )}
-        {showTools && ToolsMenu}
       </Flex>
 
       <Flex position="absolute" right="4" bottom="3" align="center" gap={2}>
