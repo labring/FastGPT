@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { resetPassword } from '@/web/support/user/api';
+import { resetPassword, checkReset } from '@/web/support/user/api';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -15,13 +15,7 @@ type FormType = {
   confirmPsw: string;
 };
 
-const ResetPswModal = ({
-  onClose,
-  resetPswModal
-}: {
-  onClose: () => void;
-  resetPswModal: boolean;
-}) => {
+const ResetPswModal = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { userInfo } = useUserStore();
@@ -34,7 +28,28 @@ const ResetPswModal = ({
     }
   });
 
-  React.useEffect(() => {
+  const [resetPsw, setResetPassword] = useState(false);
+
+  const { runAsync: check } = useRequest2(async (data: { updateTime: Date }) => {
+    const res = await checkReset(data);
+    return res;
+  });
+
+  useEffect(() => {
+    if (userInfo) {
+      if (userInfo?.passwordUpdateTime) {
+        check({ updateTime: userInfo?.passwordUpdateTime }).then((needReset) => {
+          if (needReset) {
+            setResetPassword(true);
+          }
+        });
+      } else {
+        setResetPassword(true);
+      }
+    }
+  }, [check, userInfo]);
+
+  useEffect(() => {
     if (userInfo?._id) {
       setValue('userId', userInfo._id);
     }
@@ -49,7 +64,7 @@ const ResetPswModal = ({
     },
     {
       onSuccess() {
-        onClose();
+        setResetPassword(false);
       },
       successToast: t('common:user.Update password successful'),
       errorToast: t('common:user.Update password failed')
@@ -69,11 +84,15 @@ const ResetPswModal = ({
     }
   };
 
+  if (!resetPsw) {
+    return;
+  }
+
   return (
     <MyModal isOpen iconSrc="/imgs/modal/password.svg" title={t('common:user.reset_password')}>
       <ModalBody>
         <Flex alignItems={'center'} color={'primary.600'} fontSize={'sm'}>
-          {resetPswModal ? t('common:user.init_password') : t('common:user.reset_password_tip')}
+          {/* { t('common:user.init_password')t('common:user.reset_password_tip')} */}
         </Flex>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 70px'} fontSize={'sm'}>

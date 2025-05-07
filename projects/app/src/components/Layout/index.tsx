@@ -6,11 +6,9 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
-import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getPasswordUpdateTime } from '@/web/support/user/api';
 import dynamic from 'next/dynamic';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import ResetPswModal from '@/pageComponents/account/info/UpdatePswModal2';
+import ResetPswModal from '@/components/Layout/ResetPswModal';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -64,40 +62,11 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
-  const pswUpdateTime = process.env.NEXT_PUBLIC_PASSWORD_UPDATETIME
-    ? process.env.NEXT_PUBLIC_PASSWORD_UPDATETIME
-    : '0';
-  const [reset_password, setResetPassword] = useState(false);
-  const [resetPswModal, setResetPswModal] = useState(false);
 
   const isChatPage = useMemo(
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
     [router.pathname, router.query]
   );
-
-  const { runAsync: updatePswTime } = useRequest2(async (data: { userid: string }) => {
-    const res = await getPasswordUpdateTime(data);
-    return res;
-  });
-
-  useEffect(() => {
-    if (userInfo?._id) {
-      updatePswTime({ userid: userInfo._id }).then((updateTime) => {
-        const now = new Date();
-        const isResetPassword =
-          !updateTime ||
-          (pswUpdateTime !== '0' &&
-            new Date(updateTime).getTime() <
-              now.getTime() - 1000 * 60 * 60 * 24 * 30 * Number(pswUpdateTime));
-        if (!updateTime) {
-          setResetPswModal(true);
-        }
-        if (isResetPassword) {
-          setResetPassword(true);
-        }
-      });
-    }
-  }, [userInfo?.username, updatePswTime, userInfo, pswUpdateTime]);
 
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
@@ -193,9 +162,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
-          {reset_password && (
-            <ResetPswModal resetPswModal={resetPswModal} onClose={() => setResetPassword(false)} />
-          )}
+
+          <ResetPswModal />
+
           <WorkorderButton />
         </>
       )}

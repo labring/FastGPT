@@ -14,7 +14,7 @@ export type UserModelSchema = {
   timezone: string;
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
-  passwordUpdateTime: Date;
+  passwordUpdateTime?: Date;
   fastgpt_sem?: {
     keyword: string;
   };
@@ -31,6 +31,7 @@ export type UserType = {
   notificationAccount?: string;
   permission: TeamPermission;
   contact?: string;
+  passwordUpdateTime?: Date;
 };
 
 export type SourceMemberType = {

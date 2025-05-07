@@ -47,6 +47,7 @@ export async function getUserDetail({
     team: tmb,
     notificationAccount: tmb.notificationAccount,
     permission: tmb.permission,
-    contact: user.contact
+    contact: user.contact,
+    passwordUpdateTime: user.passwordUpdateTime
   };
 }

@@ -50,8 +50,7 @@ const UserSchema = new Schema({
     type: Schema.Types.ObjectId
   },
   passwordUpdateTime: {
-    type: Date,
-    default: null
+    type: Date
   },
 
   inviterId: {

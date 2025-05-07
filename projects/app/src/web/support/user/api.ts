@@ -74,6 +74,11 @@ export const resetPassword = ({ userId, newPsw }: { userId: string; newPsw: stri
     newPsw: hashStr(newPsw)
   });
 
+export const checkReset = ({ updateTime }: { updateTime: Date }) =>
+  GET('/support/user/account/checkReset', {
+    updateTime
+  });
+
 export const getPasswordUpdateTime = (data: { userid: string }) =>
   GET('/support/user/account/getUpdataPasswordTime', data);
 

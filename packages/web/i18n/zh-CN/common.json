@@ -1262,7 +1262,7 @@
   "user.no_usage_records": "暂无使用记录",
   "user.old_password": "旧密码",
   "user.password_message": "密码最少 4 位最多 60 位",
-  "user.password_tip": "密码至少 6 位，且至少包含两种组合：数字、字母或特殊字符\t",
+  "user.password_tip": "密码至少 6 位，且至少包含两种组合：数字、字母或特殊字符",
   "user.init_password": "请初始化密码",
   "user.reset_password_tip": "太长时间未修改密码，请及时修改密码",
   "user.reset_password": "重置密码",

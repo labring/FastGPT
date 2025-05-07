@@ -36,7 +36,7 @@ declare global {
       SHOW_COUPON?: string;
       CONFIG_JSON_PATH?: string;
       PASSWORD_LOGIN_LOCK_SECONDS?: string;
-      NEXT_PUBLIC_PASSWORD_UPDATETIME?: number;
+      PASSWORD_UPDATETIME?: string;
     }
   }
 }
