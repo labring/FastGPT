@@ -125,23 +125,6 @@ type Props = ChatDispatchProps & {
   runtimeEdges: RuntimeEdgeItemType[];
 };
 
-const filterDeprecatedOutput = (
-  node: RuntimeNodeItemType,
-  dispatchRes: Record<string, any>
-): Record<string, any> => {
-  const deprecatedOutputKeys = node.outputs
-    .filter((output: FlowNodeOutputItemType) => output.deprecated)
-    .map((output: FlowNodeOutputItemType) => output.key);
-
-  const filteredDispatchRes = { ...dispatchRes };
-
-  deprecatedOutputKeys.forEach((key: string) => {
-    delete filteredDispatchRes[key];
-  });
-
-  return filteredDispatchRes;
-};
-
 /* running */
 export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
   let {
@@ -569,7 +552,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         // Skip some special key
         if (
           [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
-            input.key as any
+            input.key as NodeInputKeyEnum
           )
         ) {
           params[input.key] = input.value;
@@ -640,7 +623,17 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       if (callbackMap[node.flowNodeType]) {
         try {
           const res = await callbackMap[node.flowNodeType](dispatchData);
-          return filterDeprecatedOutput(node, res);
+          // filter deprecated output
+          const deprecatedOutputKeys = node.outputs
+            .filter((output: FlowNodeOutputItemType) => output.deprecated)
+            .map((output: FlowNodeOutputItemType) => output.key);
+
+          const filteredRes = { ...res };
+          deprecatedOutputKeys.forEach((key: string) => {
+            delete filteredRes[key];
+          });
+
+          return filteredRes;
         } catch (error) {
           // Get source handles of outgoing edges
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);

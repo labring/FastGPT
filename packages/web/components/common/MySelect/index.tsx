@@ -230,7 +230,7 @@ const MySelect = <T = any,>(
                   <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
                 )}
                 {selectItem?.alias || selectItem?.label || placeholder}
-                {rightTag && rightTag}
+                {rightTag ? rightTag : null}
               </>
             )}
           </Flex>
