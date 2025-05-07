@@ -51,7 +51,7 @@ async function handler(
       if (!collection.fileId) return Promise.reject('fileId is missing');
       return {
         type: DatasetSourceReadTypeEnum.fileLocal,
-        sourceId: collection.fileId
+        sourceId: String(collection.fileId)
       };
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile) {
@@ -94,6 +94,7 @@ async function handler(
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
       rawText,
+      relatedId: collection.metadata?.relatedImgId,
       createCollectionParams: {
         ...data,
         teamId: collection.teamId,

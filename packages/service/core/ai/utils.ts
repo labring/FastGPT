@@ -11,6 +11,7 @@ import type {
 import { getLLMModel } from './model';
 import { getLLMDefaultUsage } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import json5 from 'json5';
 
 /* 
   Count response max token
@@ -54,8 +55,6 @@ type InferCompletionsBody<T> = T extends { stream: true }
 
 export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
   body: T & {
-    response_format?: any;
-    json_schema?: string;
     stop?: string;
   },
   model: string | LLMModelItemType
@@ -65,8 +64,26 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
     return body as unknown as InferCompletionsBody<T>;
   }
 
-  const response_format = body.response_format;
-  const json_schema = body.json_schema ?? undefined;
+  const response_format = (() => {
+    if (!body.response_format?.type) return undefined;
+    if (body.response_format.type === 'json_schema') {
+      try {
+        return {
+          type: 'json_schema',
+          json_schema: json5.parse(body.response_format?.json_schema as unknown as string)
+        };
+      } catch (error) {
+        throw new Error('Json schema error');
+      }
+    }
+    if (body.response_format.type) {
+      return {
+        type: body.response_format.type
+      };
+    }
+    return undefined;
+  })();
+
   const stop = body.stop ?? undefined;
 
   const requestBody: T = {
@@ -80,12 +97,7 @@ export const llmCompletionsBodyFormat = <T extends CompletionsBodyType>(
           })
         : undefined,
     ...modelData?.defaultConfig,
-    response_format: response_format
-      ? {
-          type: response_format,
-          json_schema
-        }
-      : undefined,
+    response_format,
     stop: stop?.split('|')
   };
 

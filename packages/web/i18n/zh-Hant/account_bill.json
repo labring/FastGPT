@@ -33,6 +33,7 @@
   "organization_name": "組織名稱",
   "payment_method": "支付方式",
   "payway_coupon": "兌換碼",
+  "rerank": "結果重排",
   "save": "儲存",
   "save_failed": "儲存異常",
   "save_success": "儲存成功",

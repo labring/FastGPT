@@ -95,12 +95,13 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       });
 
   // push bill
+  const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
   const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
     inputTokens: embeddingTokens,
     model: dataset.vectorModel,
-    source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
+    source,
 
     ...(queryExtensionResult && {
       extensionModel: queryExtensionResult.model,
@@ -118,7 +119,8 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
         teamId,
         tmbId,
         inputTokens: reRankInputTokens,
-        model: rerankModelData.model
+        model: rerankModelData.model,
+        source
       })
     : { totalPoints: 0 };
 
