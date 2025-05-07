@@ -1,31 +1,16 @@
 import React, { useState } from 'react';
-import {
-  Box,
-  Flex,
-  Text,
-  Button,
-  IconButton,
-  Input,
-  InputGroup,
-  InputRightElement
-} from '@chakra-ui/react';
+import { Box, Flex, Text, Button, IconButton, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CopyIcon } from '@chakra-ui/icons';
-import { useUserStore } from '@/web/support/user/useUserStore';
 
 // 分享门户组件
 const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { copyData } = useCopyData();
-  const { userInfo } = useUserStore();
-  const teamId = userInfo?.team?.teamId || '';
 
   // 门户链接和自定义域名
-  const [defaultGateUrl, setDefaultGateUrl] = useState(
-    `${window.location.origin}/chat/gate?teamid=${teamId}`
-  );
-  const [customDomain, setCustomDomain] = useState('');
+  const [defaultGateUrl] = useState(`${window.location.origin}/chat/gate`);
 
   // 复制链接
   const handleCopyLink = (link: string) => {
@@ -39,7 +24,6 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
   };
 
   // 生成随机CNAME值
-  const cnameDomain = 'lxjgiwggswmb.sealoshzh.site';
 
   return (
     <MyModal isOpen={isOpen} onClose={onClose} maxW="500px">
@@ -178,62 +162,6 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                     w="32px"
                     minW="32px"
                   />
-                </Flex>
-              </Flex>
-
-              {/* 自定义域名 */}
-              <Flex direction="column" alignItems="flex-start" gap="8px" w="100%">
-                <Text
-                  fontFamily="PingFang SC"
-                  fontWeight="500"
-                  fontSize="14px"
-                  lineHeight="20px"
-                  letterSpacing="0.1px"
-                  color="#24282C"
-                >
-                  自定义域名
-                </Text>
-                <Flex w="100%" alignItems="center" gap="8px">
-                  <Input
-                    value={customDomain}
-                    onChange={(e) => setCustomDomain(e.target.value)}
-                    placeholder="请输入自定义域名"
-                    h="32px"
-                    bg="#F7F8FA"
-                    border="1px solid #E8EBF0"
-                    borderRadius="6px"
-                    fontSize="12px"
-                    color="#111824"
-                    pl="12px"
-                    flex="1"
-                  />
-                  <IconButton
-                    aria-label="复制链接"
-                    icon={<CopyIcon />}
-                    size="sm"
-                    variant="ghost"
-                    colorScheme="gray"
-                    onClick={() => handleCopyLink(customDomain)}
-                    h="32px"
-                    w="32px"
-                    minW="32px"
-                    isDisabled={!customDomain}
-                  />
-                </Flex>
-                {/* CNAME提示信息 */}
-                <Flex alignItems="center" gap="4px">
-                  <MyIcon name="infoRounded" w="14px" h="14px" color="#3370FF" />
-                  <Text
-                    fontFamily="PingFang SC"
-                    fontWeight="400"
-                    fontSize="12px"
-                    lineHeight="16px"
-                    letterSpacing="0.004em"
-                    color="#667085"
-                  >
-                    请到您的域名服务商处，添加该域名的、CNAME 解析到 {cnameDomain}
-                    ，解析生效后即可绑定自定义域名。
-                  </Text>
                 </Flex>
               </Flex>
             </Flex>

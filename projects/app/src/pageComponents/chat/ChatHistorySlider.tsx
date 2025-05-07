@@ -33,7 +33,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
 
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
-
+  const isGateRoute = router.pathname.startsWith('/chat/gate');
   const { appId, chatId: activeChatId } = useChatStore();
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const isLoading = useContextSelector(ChatContext, (v) => v.isLoading);
@@ -92,7 +92,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
       borderRight={['', theme.borders.base]}
       whiteSpace={'nowrap'}
     >
-      {isPc && (
+      {isPc && !isGateRoute && (
         <MyTooltip label={canRouteToDetail ? t('app:app_detail') : ''} offset={[0, 0]}>
           <Flex
             pt={5}
