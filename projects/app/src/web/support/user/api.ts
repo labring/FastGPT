@@ -79,9 +79,6 @@ export const checkReset = ({ updateTime }: { updateTime: Date }) =>
     updateTime
   });
 
-export const getPasswordUpdateTime = (data: { userid: string }) =>
-  GET('/support/user/account/getUpdataPasswordTime', data);
-
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);
 

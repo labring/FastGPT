@@ -162,9 +162,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
-
           <ResetPswModal />
-
           <WorkorderButton />
         </>
       )}
