@@ -168,85 +168,112 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
           {/* Recent Apps - matched with SliderApps style */}
           {apps && apps.length > 0 && (
             <>
-              {!isCollapsed && (
-                <HStack
-                  px={4}
-                  my={2}
-                  color={'myGray.500'}
-                  fontSize={'sm'}
-                  justifyContent={'space-between'}
-                >
-                  <Box>{t('common:core.chat.Recent use')}</Box>
-                  <MyPopover
-                    placement="bottom-end"
-                    offset={[20, 10]}
-                    p={4}
-                    trigger="hover"
-                    Trigger={
-                      <HStack
-                        spacing={0.5}
-                        cursor={'pointer'}
-                        px={2}
-                        py={'0.5'}
-                        borderRadius={'md'}
-                        mr={-2}
-                        userSelect={'none'}
-                        _hover={{
-                          bg: 'myGray.200'
-                        }}
+              <HStack
+                px={2}
+                my={2}
+                w={isCollapsed ? '36px' : '100%'}
+                color={'myGray.500'}
+                fontSize={'sm'}
+                justifyContent={'space-between'}
+                transition="all 0.2s"
+                opacity={isCollapsed ? 0 : 1}
+                sx={{
+                  '& > .recent-title': {
+                    opacity: isCollapsed ? 0 : 1,
+                    transform: `scale(${isCollapsed ? 0 : 1})`,
+                    transformOrigin: 'left center',
+                    transition: 'all 0.2s',
+                    whiteSpace: 'nowrap'
+                  }
+                }}
+              >
+                <Box className="recent-title">{t('common:core.chat.Recent use')}</Box>
+                <MyPopover
+                  placement="bottom-end"
+                  offset={[20, 10]}
+                  p={4}
+                  trigger="hover"
+                  Trigger={
+                    <HStack
+                      spacing={0.5}
+                      cursor={'pointer'}
+                      px={2}
+                      py={'0.5'}
+                      borderRadius={'md'}
+                      userSelect={'none'}
+                      opacity={isCollapsed ? 0 : 1}
+                      transform={`scale(${isCollapsed ? 0 : 1})`}
+                      transformOrigin="left center"
+                      transition="all 0.2s"
+                      _hover={{
+                        bg: 'myGray.200'
+                      }}
+                    >
+                      <Box
+                        opacity={isCollapsed ? 0 : 1}
+                        transform={`scale(${isCollapsed ? 0 : 1})`}
+                        transformOrigin="left center"
+                        transition="all 0.2s"
+                        whiteSpace="nowrap"
                       >
-                        <Box>{t('common:common.More')}</Box>
-                        <MyIcon name={'common/select'} w={'1rem'} />
-                      </HStack>
-                    }
-                  >
-                    {({ onClose }) => (
-                      <Box minH={'200px'}>
-                        <SelectOneResource
-                          maxH={'60vh'}
-                          value={activeAppId}
-                          onSelect={(id) => {
-                            if (!id) return;
-                            router.replace({
-                              pathname: '/chat/gate/application',
-                              query: {
-                                ...router.query,
-                                appId: id
-                              }
-                            });
-                            onClose();
-                          }}
-                          server={useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-                            return getMyApps({
-                              parentId,
-                              type: [
-                                AppTypeEnum.folder,
-                                AppTypeEnum.simple,
-                                AppTypeEnum.workflow,
-                                AppTypeEnum.plugin
-                              ]
-                            }).then((res) =>
-                              res.map<GetResourceListItemResponse>((item) => ({
-                                id: item._id,
-                                name: item.name,
-                                avatar: item.avatar,
-                                isFolder: item.type === AppTypeEnum.folder
-                              }))
-                            );
-                          }, [])}
-                        />
+                        {t('common:common.More')}
                       </Box>
-                    )}
-                  </MyPopover>
-                </HStack>
-              )}
+                      <MyIcon
+                        name={'common/select'}
+                        w={'1rem'}
+                        opacity={isCollapsed ? 0 : 1}
+                        transition="all 0.2s"
+                      />
+                    </HStack>
+                  }
+                >
+                  {({ onClose }) => (
+                    <Box minH={'200px'}>
+                      <SelectOneResource
+                        maxH={'60vh'}
+                        value={activeAppId}
+                        onSelect={(id) => {
+                          if (!id) return;
+                          router.replace({
+                            pathname: '/chat/gate/application',
+                            query: {
+                              ...router.query,
+                              appId: id
+                            }
+                          });
+                          onClose();
+                        }}
+                        server={useCallback(async ({ parentId }: GetResourceFolderListProps) => {
+                          return getMyApps({
+                            parentId,
+                            type: [
+                              AppTypeEnum.folder,
+                              AppTypeEnum.simple,
+                              AppTypeEnum.workflow,
+                              AppTypeEnum.plugin
+                            ]
+                          }).then((res) =>
+                            res.map<GetResourceListItemResponse>((item) => ({
+                              id: item._id,
+                              name: item.name,
+                              avatar: item.avatar,
+                              isFolder: item.type === AppTypeEnum.folder
+                            }))
+                          );
+                        }, [])}
+                      />
+                    </Box>
+                  )}
+                </MyPopover>
+              </HStack>
 
               <Box
                 maxH={isCollapsed ? '0' : 'calc(100vh - 300px)'}
                 opacity={isCollapsed ? 0 : 1}
                 transition="all 0.2s"
                 overflowY="auto"
-                px={2}
+                w="100%"
+                px={0}
               >
                 {apps.map((item) => (
                   <Flex
@@ -258,6 +285,7 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
                     borderRadius={'md'}
                     alignItems={'center'}
                     fontSize={'sm'}
+                    w="100%"
                     {...(item._id === activeAppId
                       ? {
                           bg: 'white',
@@ -335,7 +363,7 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
             fontFamily="PingFang SC"
             className="textEllipsis"
           >
-            {userInfo?.username || '未登录'}
+            {userInfo?.username || 'unauthorized'}
           </Text>
         </Box>
       </Flex>
