@@ -2,7 +2,7 @@ import React, { type Dispatch } from 'react';
 import { FormControl, Flex, Input, Button, Box, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
-import { postLogin } from '@/web/support/user/api';
+import { postLogin, preLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -31,12 +31,24 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     formState: { errors }
   } = useForm<LoginFormType>();
 
+  const { runAsync: getLoginCode, loading: preLoginLoading } = useRequest2(
+    async (username: string) => {
+      const res = await preLogin(username);
+      return res;
+    },
+    {
+      refreshDeps: [loginSuccess]
+    }
+  );
+
   const { runAsync: onclickLogin, loading: requesting } = useRequest2(
     async ({ username, password }: LoginFormType) => {
+      const { code } = await getLoginCode(username);
       loginSuccess(
         await postLogin({
           username,
-          password
+          password,
+          code
         })
       );
       toast({

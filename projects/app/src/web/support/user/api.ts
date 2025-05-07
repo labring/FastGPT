@@ -96,6 +96,11 @@ export const getCaptchaPic = (username: string) =>
     captchaImage: string;
   }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
 
+export const preLogin = (username: string) =>
+  GET<{
+    code: string;
+  }>('/support/user/account/preLogin', { username });
+
 export const postSyncMembers = () => POST('/proApi/support/user/sync');
 
 export const GetSearchUserGroupOrg = (

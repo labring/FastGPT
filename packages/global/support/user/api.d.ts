@@ -9,6 +9,7 @@ import type { TeamMemberItemType } from './team/type';
 export type PostLoginProps = {
   username: string;
   password: string;
+  code: string;
 };
 
 export type OauthLoginProps = {
