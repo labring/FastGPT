@@ -32,7 +32,12 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { AppListItemType, AppSchema, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import {
+  AppDetailType,
+  AppListItemType,
+  AppSchema,
+  AppSimpleEditFormType
+} from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
@@ -46,7 +51,7 @@ import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
-import { AppContext } from '@/pageComponents/app/detail/context';
+import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 const ChatTest = dynamic(() => import('@/pageComponents/app/detail/Gate/ChatTest'));
@@ -88,16 +93,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   // 为ChatTest准备正确的appDetail
-  const [localAppDetail, setLocalAppDetail] = useState<AppSchema>({
-    _id: '',
-    userId: '',
-    teamId: '',
-    name: '',
-    type: AppTypeEnum.gate,
-    avatar: '',
-    modules: [],
-    edges: []
-  });
+  const [localAppDetail, setLocalAppDetail] = useState<AppDetailType>(appDetail);
 
   // Load chat init data
   const { loading } = useRequest2(
@@ -258,9 +254,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 {/* chat box or test box */}
                 <Box flex={'1 0 0'} bg={'white'}>
                   {showDebug ? (
-                    <AppContext.Provider value={{ appDetail: localAppDetail }}>
-                      <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
-                    </AppContext.Provider>
+                    <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
                   ) : isPlugin ? (
                     <CustomPluginRunBox
                       appId={appId}
@@ -412,7 +406,9 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} />
+          <AppContextProvider>
+            <Chat myApps={myApps} />
+          </AppContextProvider>
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
