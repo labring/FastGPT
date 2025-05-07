@@ -192,8 +192,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
-      response_format: aiChatResponseFormat as any,
-      json_schema: aiChatJsonSchema
+      response_format: {
+        type: aiChatResponseFormat as any,
+        json_schema: aiChatJsonSchema
+      }
     },
     modelConstantsData
   );

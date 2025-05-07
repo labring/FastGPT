@@ -296,8 +296,10 @@ export const runToolWithToolChoice = async (
       max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
-      response_format: aiChatResponseFormat,
-      json_schema: aiChatJsonSchema
+      response_format: {
+        type: aiChatResponseFormat as any,
+        json_schema: aiChatJsonSchema
+      }
     },
     toolModel
   );
