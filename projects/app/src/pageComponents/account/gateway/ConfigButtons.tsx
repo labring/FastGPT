@@ -31,12 +31,6 @@ const ConfigButtons = ({ tab }: Props) => {
   const { saveGateConfig, saveCopyRightConfig, copyRightConfig, gateConfig } = useGateStore();
   const { userInfo } = useUserStore();
 
-  // 确认删除门户
-  const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('account_gate:confirm_delete_gate'),
-    type: 'delete'
-  });
-
   // 保存配置
   const { runAsync: saveHomeConfig, loading: savingHome } = useRequest2(
     async () => {
@@ -192,18 +186,9 @@ const ConfigButtons = ({ tab }: Props) => {
       >
         {t('account:gateway.share')}
       </Button>
-      <Button
-        variant={'dangerFill'}
-        leftIcon={<MyIcon className="delete" name={'delete' as any} w={'18px'} color={'inherit'} />}
-        onClick={() => openConfirmDel(deleteGateApp)()}
-        isLoading={deletingGate}
-      >
-        {t('account_gate:delete_gate')}
-      </Button>
 
       {/* 分享门户弹窗 */}
       <ShareGateModal isOpen={isOpen} onClose={onClose} />
-      <ConfirmDelModal />
     </Flex>
   );
 };
