@@ -1,8 +1,9 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoUserAuth } from '@fastgpt/global/support/user/auth/schema';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
-import { nanoid } from 'nanoid';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { addSeconds } from 'date-fns';
+import { addAuthCode } from '@fastgpt/service/support/user/auth/controller';
 
 export type preLoginQuery = {
   username: string;
@@ -22,25 +23,17 @@ async function handler(
     return Promise.reject('username is required');
   }
 
-  let answer = nanoid(6);
+  const code = getNanoid(6);
 
-  await MongoUserAuth.updateOne(
-    {
-      key: username,
-      type: UserAuthTypeEnum.login
-    },
-    {
-      code: answer.toLowerCase(),
-      createTime: new Date(), // reset time
-      outdateTime: new Date(Date.now() + 30 * 1000) // reset outdateTime
-    },
-    {
-      upsert: true
-    }
-  );
+  await addAuthCode({
+    type: UserAuthTypeEnum.login,
+    key: username,
+    code,
+    expiredTime: addSeconds(new Date(), 30)
+  });
 
   return {
-    code: answer
+    code
   };
 }
 

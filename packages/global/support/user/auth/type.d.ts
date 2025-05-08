@@ -5,5 +5,6 @@ export type UserAuthSchemaType = {
   type: `${UserAuthTypeEnum}`;
   code?: string;
   openid?: string;
-  createTime: number;
+  createTime: Date;
+  expiredTime: Date;
 };

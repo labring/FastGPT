@@ -11,19 +11,19 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperationLog';
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { authCode } from '@fastgpt/global/support/user/auth/controller';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import { authCode } from '@fastgpt/service/support/user/auth/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password, code } = req.body as PostLoginProps;
 
-  if (!username || !password) {
+  if (!username || !password || !code) {
     return Promise.reject(CommonErrEnum.invalidParams);
   }
 
-  // 验证码校验
+  // Auth prelogin code
   await authCode({
-    username,
+    key: username,
     code,
     type: UserAuthTypeEnum.login
   });

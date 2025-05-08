@@ -14,6 +14,7 @@ import type {
   AccountRegisterBody,
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';
+import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -100,11 +101,9 @@ export const getWXLoginResult = (code: string) =>
   GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, { code });
 
 export const getCaptchaPic = (username: string) =>
-  GET<{
-    captchaImage: string;
-  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+  GET<preLoginResponse>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
 
-export const preLogin = (username: string) =>
+export const getPreLogin = (username: string) =>
   GET<{
     code: string;
   }>('/support/user/account/preLogin', { username });
