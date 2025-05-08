@@ -122,8 +122,8 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
             h="44px"
             borderRadius="8px"
             cursor="pointer"
-            bg={isChatPage ? 'rgba(51, 112, 255, 0.05)' : 'transparent'}
-            _hover={{ bg: isChatPage ? 'rgba(51, 112, 255, 0.1)' : 'rgba(17, 24, 36, 0.05)' }}
+            bg={isChatPage ? 'rgba(17, 24, 36, 0.05)' : 'transparent'}
+            _hover={{ bg: isChatPage ? 'rgba(17, 24, 36, 0.1)' : 'rgba(17, 24, 36, 0.05)' }}
             flexGrow={0}
             transition="width 0.2s"
             className="nav-item"
@@ -146,6 +146,7 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
                 width="20px"
                 height="20px"
                 color={isChatPage ? '#3370FF' : '#8A95A7'}
+                fill={isChatPage ? '#3370FF' : '#8A95A7'}
               />
               <Text
                 fontSize="14px"

@@ -1,10 +1,8 @@
 import React, { useMemo } from 'react';
-import { Box, Button, Flex, useTheme, IconButton } from '@chakra-ui/react';
+import { Box, Button, Flex, useTheme, IconButton, Text } from '@chakra-ui/react';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -25,7 +23,7 @@ type HistoryItemType = {
   updateTime: Date;
 };
 
-const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) => {
+const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) => {
   const theme = useTheme();
   const router = useRouter();
 
@@ -92,85 +90,67 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
       borderRight={['', theme.borders.base]}
       whiteSpace={'nowrap'}
     >
-      {isPc && (
-        <MyTooltip label={canRouteToDetail ? t('app:app_detail') : ''} offset={[0, 0]}>
-          <Flex
-            pt={5}
-            pb={2}
-            px={[2, 5]}
-            alignItems={'center'}
-            cursor={canRouteToDetail ? 'pointer' : 'default'}
-            fontSize={'sm'}
-            onClick={() =>
-              canRouteToDetail &&
-              router.push({
-                pathname: '/app/detail',
-                query: { appId }
-              })
-            }
-          >
-            <Avatar src={appAvatar} borderRadius={'md'} />
-            <Box flex={'1 0 0'} w={0} ml={2} fontWeight={'bold'} className={'textEllipsis'}>
-              {appName}
-            </Box>
-          </Flex>
-        </MyTooltip>
-      )}
-
       {/* menu */}
-      <Flex
-        w={'100%'}
-        px={[2, 5]}
-        h={'36px'}
-        my={5}
-        justify={['space-between', '']}
-        alignItems={'center'}
-      >
-        {!isPc && (
-          <Flex height={'100%'} align={'center'} justify={'center'}>
-            <MyIcon ml={2} name="core/chat/sideLine" />
-            <Box ml={2} fontWeight={'bold'}>
-              {t('common:core.chat.History')}
-            </Box>
-          </Flex>
-        )}
-
-        <Button
-          variant={'whitePrimary'}
-          flex={['0 0 auto', 1]}
-          h={'100%'}
-          px={6}
-          color={'primary.600'}
-          borderRadius={'xl'}
-          leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
-          overflow={'hidden'}
-          onClick={() => {
-            onChangeChatId();
-            setQuoteData(undefined);
-          }}
+      <Flex w={'100%'} px={'16px'} pt={'16px'} h={'auto'} mb={5} flexDirection={'column'}>
+        {/* Title */}
+        <Text
+          display="flex"
+          alignItems="center"
+          pl="8px"
+          fontWeight="semibold"
+          fontSize="lg"
+          mb={4}
         >
-          {t('common:core.chat.New Chat')}
-        </Button>
-        {/* Clear */}
-        {isPc && histories.length > 0 && (
-          <IconButton
-            ml={3}
+          {t('common:navbar.Chat')}
+        </Text>
+
+        <Flex w={'100%'} h={'36px'} justify={['space-between', '']} alignItems={'center'}>
+          {!isPc && (
+            <Flex height={'100%'} align={'center'} justify={'center'}>
+              <MyIcon ml={2} name="core/chat/sideLine" />
+              <Box ml={2} fontWeight={'bold'}>
+                {t('common:core.chat.History')}
+              </Box>
+            </Flex>
+          )}
+
+          <Button
+            variant={'whitePrimary'}
+            flex={['0 0 auto', 1]}
             h={'100%'}
-            variant={'whiteDanger'}
-            size={'mdSquare'}
-            aria-label={''}
-            borderRadius={'50%'}
-            icon={<MyIcon name={'common/clearLight'} w={'16px'} />}
-            onClick={() =>
-              openConfirm(() => {
-                onClearHistory();
-              })()
-            }
-          />
-        )}
+            px={6}
+            color={'primary.600'}
+            borderRadius={'xl'}
+            leftIcon={<MyIcon name={'support/gate/chat/historySlider/new_chat'} />}
+            overflow={'hidden'}
+            onClick={() => {
+              onChangeChatId();
+              setQuoteData(undefined);
+            }}
+          >
+            {t('common:core.chat.New Chat')}
+          </Button>
+          {/* Clear */}
+          {isPc && histories.length > 0 && (
+            <IconButton
+              ml={3}
+              h={'100%'}
+              variant={'whiteDanger'}
+              size={'mdSquare'}
+              aria-label={''}
+              borderRadius={'50%'}
+              icon={<MyIcon name={'support/gate/chat/historySlider/clear-all'} />}
+              onClick={() =>
+                openConfirm(() => {
+                  onClearHistory();
+                })()
+              }
+            />
+          )}
+        </Flex>
       </Flex>
 
-      <ScrollData flex={'1 0 0'} h={0} px={[2, 5]} overflow={'overlay'}>
+      <ScrollData flex={'1 0 0'} h={0} px={'16px'} overflow={'overlay'}>
         {/* chat history */}
         <>
           {concatHistory.map((item, i) => (
@@ -178,8 +158,10 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
               position={'relative'}
               key={item.id}
               alignItems={'center'}
-              px={4}
-              h={'44px'}
+              justifyContent={'space-between'}
+              px={'8px'}
+              py={'9px'}
+              h={'40px'}
               cursor={'pointer'}
               userSelect={'none'}
               borderRadius={'md'}
@@ -206,14 +188,10 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
                     }
                   })}
               {...(i !== concatHistory.length - 1 && {
-                mb: '8px'
+                mb: '4px'
               })}
             >
-              <MyIcon
-                name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
-                w={'16px'}
-              />
-              <Box flex={'1 0 0'} ml={3} className="textEllipsis">
+              <Box flex={'1 0 0'} className="textEllipsis">
                 {item.customTitle || item.title}
               </Box>
               {!!item.id && (
@@ -319,4 +297,4 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
   );
 };
 
-export default ChatHistorySlider;
+export default GateChatHistorySlider;

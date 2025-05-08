@@ -1,46 +1,26 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import {
-  Box,
-  Flex,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
-  Button,
-  useDisclosure
-} from '@chakra-ui/react';
-import { streamFetch } from '@/web/common/api/fetch';
+import { Box, Flex, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
-import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getMyApps, getMyAppsGate } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 import { useMount } from 'ahooks';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import {
-  AppDetailType,
-  AppListItemType,
-  AppSchema,
-  AppSimpleEditFormType
-} from '@fastgpt/global/core/app/type';
+import { AppListItemType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
-import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -48,13 +28,11 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
+import GateChatHistorySlider from '@/pageComponents/chat/gatechat/GateChatHistorySlider';
 
-const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
-const ChatTest = dynamic(() => import('@/pageComponents/app/detail/Gate/ChatTest'));
+const ChatGate = dynamic(() => import('@/pageComponents/app/detail/Gate/ChatGate'));
 
 // AppForm共享上下文
 export const AppFormContext = React.createContext<{
@@ -89,7 +67,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   // 添加appForm共享状态
   const [appForm, setAppForm] = useState<AppSimpleEditFormType>(getDefaultAppForm());
   const [renderEdit, setRenderEdit] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   // Load chat init data
@@ -102,7 +79,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
       // Wait for state update to complete
       setChatBoxData(res);
-
       // reset chat variables
       resetVariables({
         variables: res.variables,
@@ -141,50 +117,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
-  const onStartChat = useCallback(
-    async ({
-      gateModel,
-      messages,
-      responseChatItemId,
-      controller,
-      generatingMessage,
-      variables,
-      selectedTool
-    }: StartChatFnProps) => {
-      // Just send a user prompt
-      const histories = messages.slice(-1);
-      const { responseText } = await streamFetch({
-        data: {
-          gateModel,
-          messages: histories,
-          variables,
-          responseChatItemId,
-          appId,
-          chatId,
-          selectedTool
-        },
-        onMessage: generatingMessage,
-        abortCtrl: controller
-      });
-
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
-
-      // new chat
-      onUpdateHistoryTitle({ chatId, newTitle });
-      // update chat window
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
-
-      return { responseText, isNewChat: forbidLoadChat.current };
-    },
-    [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
-  );
-
   const RenderHistorySlider = useMemo(() => {
     const Children = (
-      <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
+      <GateChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
     );
 
     return isPc || !appId ? (
@@ -202,13 +137,13 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       </Drawer>
     );
   }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
-
+  console.log('chatBoxData', chatBoxData);
   return (
     <AppFormContext.Provider value={{ appForm, setAppForm }}>
       <Flex h={'100%'}>
         <NextHead
           title={userInfo?.team.teamName + t('account_gate:Gate')}
-          icon={chatBoxData.app.avatar}
+          icon={userInfo?.team.teamAvatar}
         ></NextHead>
         {isPc && <GateSideBar apps={myApps} activeAppId={appId} />}
 
@@ -225,45 +160,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 flex={'1 0 0'}
                 flexDirection={'column'}
               >
-                {/* 添加调试模式切换按钮 */}
-                {isPc && (
-                  <Flex justifyContent="flex-end" p={2}>
-                    <Button
-                      leftIcon={<MyIcon name="text" w="16px" />}
-                      size="sm"
-                      onClick={() => setShowDebug(!showDebug)}
-                      colorScheme="blue"
-                      variant={showDebug ? 'solid' : 'outline'}
-                    >
-                      {showDebug ? t('app:chat_debug') : t('app:chat_debug')}
-                    </Button>
-                  </Flex>
-                )}
-
-                {/* chat box or test box */}
+                {/* 聊天界面 */}
                 <Box flex={'1 0 0'} bg={'white'}>
-                  {showDebug ? (
-                    <ChatTest appForm={appForm} setRenderEdit={setRenderEdit} />
-                  ) : isPlugin ? (
-                    <CustomPluginRunBox
-                      appId={appId}
-                      chatId={chatId}
-                      outLinkAuthData={outLinkAuthData}
-                      onNewChat={() => onChangeChatId(getNanoid())}
-                      onStartChat={onStartChat}
-                    />
-                  ) : (
-                    <ChatBox
-                      appId={appId}
-                      chatId={chatId}
-                      outLinkAuthData={outLinkAuthData}
-                      showEmptyIntro
-                      feedbackType={'user'}
-                      onStartChat={onStartChat}
-                      chatType={'chat'}
-                      isReady={!loading}
-                    />
-                  )}
+                  <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} />
                 </Box>
               </Flex>
             </Flex>
