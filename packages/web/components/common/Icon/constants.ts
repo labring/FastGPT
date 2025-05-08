@@ -473,6 +473,10 @@ export const iconPaths = {
   'support/gate/gateLight': () => import('./icons/support/gate/gateLight.svg'),
   'support/gate/chat/sidebar/chatGray': () =>
     import('./icons/support/gate/chat/sidebar/chatGray.svg'),
+  'support/gate/chat/historySlider/new_chat': () =>
+    import('./icons/support/gate/chat/historySlider/new_chat.svg'),
+  'support/gate/chat/historySlider/clear-all': () =>
+    import('./icons/support/gate/chat/historySlider/clear-all.svg'),
   'support/gate/chat/sidebar/appGray': () =>
     import('./icons/support/gate/chat/sidebar/appGray.svg'),
   'support/gate/chat/voiceGray': () => import('./icons/support/gate/chat/voiceGray.svg'),
