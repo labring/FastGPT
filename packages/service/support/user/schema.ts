@@ -49,6 +49,9 @@ const UserSchema = new Schema({
   lastLoginTmbId: {
     type: Schema.Types.ObjectId
   },
+  passwordUpdateTime: {
+    type: Date
+  },
 
   inviterId: {
     // 谁邀请注册的

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -8,6 +8,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
+import ResetPswModal from '@/components/Layout/ResetPswModal';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -161,6 +162,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
+          <ResetPswModal />
           <WorkorderButton />
         </>
       )}

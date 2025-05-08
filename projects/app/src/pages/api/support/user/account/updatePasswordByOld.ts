@@ -4,6 +4,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { i18nT } from '@fastgpt/web/i18n/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -26,12 +27,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     if (!user) {
-      throw new Error('user.Old password is error');
+      throw new Error(i18nT('common:user.Old password is error'));
+    }
+
+    if (oldPsw === newPsw) {
+      throw new Error(i18nT('common:user.Password has no change'));
     }
 
     // 更新对应的记录
     await MongoUser.findByIdAndUpdate(userId, {
-      password: newPsw
+      password: newPsw,
+      passwordUpdateTime: new Date()
     });
 
     jsonRes(res, {

@@ -68,6 +68,17 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     newPsw: hashStr(newPsw)
   });
 
+export const resetPassword = ({ userId, newPsw }: { userId: string; newPsw: string }) =>
+  POST('/support/user/account/nopswResetPsw', {
+    userId,
+    newPsw: hashStr(newPsw)
+  });
+
+export const checkReset = ({ updateTime }: { updateTime: Date }) =>
+  GET('/support/user/account/checkReset', {
+    updateTime
+  });
+
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);
 
