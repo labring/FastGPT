@@ -14,6 +14,7 @@ export type UserModelSchema = {
   timezone: string;
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
+  passwordUpdateTime?: Date;
   fastgpt_sem?: {
     keyword: string;
   };

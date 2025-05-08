@@ -68,6 +68,14 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     newPsw: hashStr(newPsw)
   });
 
+export const resetPassword = (newPsw: string) =>
+  POST('/support/user/account/resetExpiredPsw', {
+    newPsw: hashStr(newPsw)
+  });
+
+/* Check the whether password has expired */
+export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');
+
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);
 
