@@ -277,10 +277,10 @@ const updateSyncSchedule = async ({
   if (dataset.type === DatasetTypeEnum.websiteDataset) {
     if (autoSync) {
       // upsert Job Scheduler
-      upsertWebsiteSyncJobScheduler({ datasetId: String(dataset._id) });
+      return upsertWebsiteSyncJobScheduler({ datasetId: dataset._id });
     } else {
       // remove Job Scheduler
-      removeWebsiteSyncJobScheduler(String(dataset._id));
+      return removeWebsiteSyncJobScheduler(dataset._id);
     }
   } else {
     // Other dataset, update the collection sync
