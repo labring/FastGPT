@@ -31,7 +31,6 @@ export type UserType = {
   notificationAccount?: string;
   permission: TeamPermission;
   contact?: string;
-  passwordUpdateTime?: Date;
 };
 
 export type SourceMemberType = {

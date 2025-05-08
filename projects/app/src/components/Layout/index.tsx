@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -8,7 +8,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import ResetPswModal from '@/components/Layout/ResetPswModal';
 
 import Auth from './auth';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -19,6 +18,10 @@ import WorkorderButton from './WorkorderButton';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
+
+const ResetExpiredPswModal = dynamic(
+  () => import('@/components/support/user/safe/ResetExpiredPswModal')
+);
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
@@ -162,7 +165,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
-          <ResetPswModal />
+          <ResetExpiredPswModal />
           <WorkorderButton />
         </>
       )}
