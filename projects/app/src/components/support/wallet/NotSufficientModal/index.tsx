@@ -12,9 +12,9 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMount } from 'ahooks';
 
-const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
+const NotSufficientModal = () => {
   const { t } = useTranslation();
-  const { setNotSufficientModalType } = useSystemStore();
+  const { notSufficientModalType: type, setNotSufficientModalType } = useSystemStore();
 
   const onClose = () => setNotSufficientModalType(undefined);
 
@@ -35,7 +35,7 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
     [TeamErrEnum.reRankNotEnough]: t('common:code_error.team_error.re_rank_not_enough')
   };
 
-  return (
+  return type ? (
     <>
       <MyModal isOpen iconSrc="common/confirm/deleteTip" title={t('common:Warning')} w={'420px'}>
         <ModalBody>{textMap[type]}</ModalBody>
@@ -57,7 +57,7 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
         <RechargeModal onClose={onRechargeModalClose} onPaySuccess={onClose} />
       )}
     </>
-  );
+  ) : null;
 };
 
 export default NotSufficientModal;
