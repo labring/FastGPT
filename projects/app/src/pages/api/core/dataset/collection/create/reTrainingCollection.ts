@@ -12,8 +12,8 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type RetrainingCollectionResponse = {
   collectionId: string;
@@ -35,7 +35,7 @@ async function handler(
     authToken: true,
     authApiKey: true,
     collectionId: collectionId,
-    per: ReadPermissionVal
+    per: WritePermissionVal
   });
 
   const sourceReadType = await (async () => {
