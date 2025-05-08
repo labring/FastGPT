@@ -10,13 +10,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { oldPsw, newPsw } = req.body as { oldPsw: string; newPsw: string };
 
   if (!oldPsw || !newPsw) {
-    throw new Error('Params is missing');
+    return Promise.reject('Params is missing');
   }
 
   const { tmbId } = await authCert({ req, authToken: true });
   const tmb = await MongoTeamMember.findById(tmbId);
   if (!tmb) {
-    throw new Error('can not find it');
+    return Promise.reject('can not find it');
   }
   const userId = tmb.userId;
   // auth old password
@@ -26,11 +26,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   if (!user) {
-    throw new Error(i18nT('common:user.Old password is error'));
+    return Promise.reject(i18nT('common:user.Old password is error'));
   }
 
   if (oldPsw === newPsw) {
-    throw new Error(i18nT('common:user.Password has no change'));
+    return Promise.reject(i18nT('common:user.Password has no change'));
   }
 
   // 更新对应的记录
