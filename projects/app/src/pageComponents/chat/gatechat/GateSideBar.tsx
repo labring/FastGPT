@@ -45,89 +45,118 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
 
   return (
     <Flex
-      w={isCollapsed ? '60px' : '15%'}
-      minW={isCollapsed ? '60px' : '220px'}
-      maxW={isCollapsed ? '60px' : '220px'}
+      w={isCollapsed ? '64px' : '15%'}
+      minW={isCollapsed ? '64px' : '220px'}
+      maxW={isCollapsed ? '64px' : '220px'}
       h="100%"
       bg="#F4F4F7"
       direction="column"
       justify="space-between"
-      p={6}
-      transition="all 0.2s"
+      p={isCollapsed ? '24px 10px' : 6}
+      transition="all 0.4s ease-in-out"
     >
       {/* Logo and Navigation Items */}
-      <Flex direction="column" align="flex-start" gap={4}>
-        <Flex
-          align="center"
-          cursor="pointer"
-          onClick={() => setIsCollapsed(!isCollapsed)}
+      <Flex
+        direction="column"
+        align={isCollapsed ? 'center' : 'flex-start'}
+        gap={4}
+        w="100%"
+        transition="all 0.4s ease-in-out"
+      >
+        <Box
+          w={isCollapsed ? '44px' : 'auto'}
+          h={isCollapsed ? 'auto' : 'auto'}
+          display="flex"
           position="relative"
-          minW={isCollapsed ? '36px' : 'auto'}
-          gap={3}
+          transition="all 0.4s ease-in-out"
+          justifyContent="center"
+          alignItems="center"
         >
-          <Box
-            boxSize="36px"
-            bg="white"
-            border="0.75px solid #ECECEC"
-            borderRadius="9px"
-            overflow="hidden"
-            flexShrink={0}
+          <Flex
+            align="center"
+            cursor="pointer"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            position="relative"
+            gap={3}
+            style={{
+              transition: 'transform 0.4s ease-in-out'
+            }}
           >
-            <Avatar
-              boxSize="100%"
-              src={userInfo?.team.teamAvatar}
+            <Box
+              boxSize="36px"
+              bg="white"
+              border="0.75px solid #ECECEC"
               borderRadius="9px"
-              objectFit="cover"
-            />
-          </Box>
-          <Box
-            opacity={isCollapsed ? 0 : 1}
-            maxW={isCollapsed ? 0 : '130px'}
-            w="130px"
-            transition="all 0.2s"
-            overflow="hidden"
-            transform="scale(1, 1)"
-            transformOrigin="left center"
-            className="company-name"
-          >
-            <Text
-              as="span"
-              fontSize="md"
-              fontWeight="bold"
-              color="#111824"
-              fontFamily="Inter"
-              whiteSpace="nowrap"
-              ref={companyNameRef}
-              style={{
-                transform: `scale(${companyNameScale})`,
-                display: 'inline-block',
-                transformOrigin: 'left'
-              }}
+              overflow="hidden"
+              flexShrink={0}
+              transition="all 0.4s ease-in-out"
             >
-              {copyRightConfig?.name || '没渲染出来'}
-            </Text>
-          </Box>
-        </Flex>
+              <Avatar
+                boxSize="100%"
+                src={userInfo?.team.teamAvatar}
+                borderRadius="9px"
+                objectFit="cover"
+              />
+            </Box>
+            <Box
+              opacity={isCollapsed ? 0 : 1}
+              maxW={isCollapsed ? 0 : '130px'}
+              w="130px"
+              transition="all 0.4s ease-in-out"
+              overflow="hidden"
+              transform="scale(1, 1)"
+              transformOrigin="left center"
+              className="company-name"
+              position={isCollapsed ? 'absolute' : 'relative'}
+              width={isCollapsed ? '0' : 'auto'}
+              height={isCollapsed ? '0' : 'auto'}
+            >
+              <Text
+                as="span"
+                fontSize="md"
+                fontWeight="bold"
+                color="#111824"
+                fontFamily="Inter"
+                whiteSpace="nowrap"
+                ref={companyNameRef}
+                style={{
+                  transform: `scale(${companyNameScale})`,
+                  display: 'inline-block',
+                  transformOrigin: 'left'
+                }}
+              >
+                {copyRightConfig?.name || '没渲染出来'}
+              </Text>
+            </Box>
+          </Flex>
+        </Box>
 
         {/* Divider */}
-        <Box w={isCollapsed ? '36px' : '100%'} h="2px" bg="#E8EBF0" transition="width 0.2s" />
+        <Box w="100%" h="2px" bg="#E8EBF0" transition="width 0.2s" />
 
         {/* Navigation Items */}
-        <Flex direction="column" gap={6} w={isCollapsed ? '36px' : '100%'} transition="width 0.2s">
+        <Flex
+          direction="column"
+          gap={6}
+          w="100%"
+          alignItems={isCollapsed ? 'center' : 'flex-start'}
+          transition="all 0.2s"
+        >
           <Flex
             align="center"
             p="8px"
             gap="8px"
-            w={isCollapsed ? '36px' : '100%'}
+            w={isCollapsed ? '44px' : '100%'}
             h="44px"
             borderRadius="8px"
             cursor="pointer"
             bg={isChatPage ? 'rgba(17, 24, 36, 0.05)' : 'transparent'}
             _hover={{ bg: isChatPage ? 'rgba(17, 24, 36, 0.1)' : 'rgba(17, 24, 36, 0.05)' }}
             flexGrow={0}
-            transition="width 0.2s"
+            transition="all 0.4s ease-in-out"
             className="nav-item"
             onClick={() => router.push('/chat/gate')}
+            justifyContent={isCollapsed ? 'center' : 'flex-start'}
             sx={{
               '&.nav-item': {
                 '& > .nav-content': {
@@ -135,7 +164,7 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
                   alignItems: 'center',
                   gap: '8px',
                   width: isCollapsed ? '20px' : '100%',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.4s ease-in-out'
                 }
               }
             }}
@@ -148,21 +177,25 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
                 color={isChatPage ? '#3370FF' : '#8A95A7'}
                 fill={isChatPage ? '#3370FF' : '#8A95A7'}
               />
-              <Text
-                fontSize="14px"
-                fontWeight="500"
-                lineHeight="20px"
-                letterSpacing="0.1px"
-                fontFamily="PingFang SC"
-                color={isChatPage ? '#3370FF' : '#667085'}
+              <Box
                 opacity={isCollapsed ? 0 : 1}
-                transform={`scale(${isCollapsed ? 0 : 1})`}
-                transformOrigin="left center"
-                transition="all 0.2s"
-                whiteSpace="nowrap"
+                maxW={isCollapsed ? 0 : '130px'}
+                transition="all 0.4s ease-in-out"
+                overflow="hidden"
               >
-                {t('common:navbar.Chat')}
-              </Text>
+                <Text
+                  fontSize="14px"
+                  fontWeight="500"
+                  lineHeight="20px"
+                  letterSpacing="0.1px"
+                  fontFamily="PingFang SC"
+                  color={isChatPage ? '#3370FF' : '#667085'}
+                  transformOrigin="left center"
+                  whiteSpace="nowrap"
+                >
+                  {t('common:navbar.Chat')}
+                </Text>
+              </Box>
             </Box>
           </Flex>
 
@@ -172,10 +205,10 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
               <HStack
                 px={2}
                 my={2}
-                w={isCollapsed ? '36px' : '100%'}
+                w={isCollapsed ? '44px' : '100%'}
                 color={'myGray.500'}
                 fontSize={'sm'}
-                justifyContent={'space-between'}
+                justifyContent={isCollapsed ? 'center' : 'space-between'}
                 transition="all 0.2s"
                 opacity={isCollapsed ? 0 : 1}
                 sx={{
@@ -333,7 +366,13 @@ const GateSideBar = ({ apps, activeAppId }: Props) => {
       </Flex>
 
       {/* User Profile */}
-      <Flex align="center" gap={2} w={isCollapsed ? '36px' : '100%'} transition="all 0.2s">
+      <Flex
+        align="center"
+        gap={2}
+        w="100%"
+        justifyContent={isCollapsed ? 'center' : 'flex-start'}
+        transition="all 0.2s"
+      >
         <Box
           boxSize="36px"
           border="2px solid #fff"
