@@ -220,14 +220,8 @@ const ListItem = () => {
                     {app.intro || t('common:no_intro')}
                   </Box>
                 </Box>
-                <Flex
-                  h={'24px'}
-                  alignItems={'center'}
-                  justifyContent={'space-between'}
-                  fontSize={'mini'}
-                  color={'myGray.500'}
-                >
-                  <HStack spacing={3.5}>
+                <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+                  <HStack flex={'1 0 0'}>
                     <UserBox
                       sourceMember={app.sourceMember}
                       fontSize="xs"
@@ -241,7 +235,6 @@ const ListItem = () => {
                       w={'0.875rem'}
                     />
                   </HStack>
-
                   <HStack>
                     {isPc && (
                       <HStack spacing={0.5} className="time">
@@ -394,7 +387,7 @@ const ListItem = () => {
                       </Box>
                     )}
                   </HStack>
-                </Flex>
+                </HStack>
               </MyBox>
             </MyTooltip>
           );

@@ -9,12 +9,16 @@ export type UserBoxProps = {
   sourceMember: SourceMemberType;
   avatarSize?: string;
 } & StackProps;
+
 function UserBox({ sourceMember, avatarSize = '1.25rem', ...props }: UserBoxProps) {
   const { t } = useTranslation();
+
   return (
     <HStack space="1" {...props}>
       <Avatar src={sourceMember.avatar} w={avatarSize} />
-      <Box>{sourceMember.name}</Box>
+      <Box maxW={'150px'} whiteSpace={'nowrap'} overflow={'hidden'}>
+        {sourceMember.name}
+      </Box>
       {sourceMember.status === 'leave' && <Tag color="gray">{t('common:user_leaved')}</Tag>}
     </HStack>
   );
