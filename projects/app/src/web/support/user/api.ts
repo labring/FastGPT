@@ -101,12 +101,12 @@ export const getWXLoginResult = (code: string) =>
   GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, { code });
 
 export const getCaptchaPic = (username: string) =>
-  GET<preLoginResponse>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+  GET<{
+    captchaImage: string;
+  }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
 
 export const getPreLogin = (username: string) =>
-  GET<{
-    code: string;
-  }>('/support/user/account/preLogin', { username });
+  GET<preLoginResponse>('/support/user/account/preLogin', { username });
 
 export const postSyncMembers = () => POST('/proApi/support/user/sync');
 
