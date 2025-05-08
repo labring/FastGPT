@@ -1,11 +1,11 @@
 import { connectionMongo, getMongoModel, type Model } from '../../../../service/common/mongo';
 const { Schema, model, models } = connectionMongo;
-import type { UserAuthSchemaType } from '../../../../../../projects/app/src/global/support/user/auth/type';
+import type { UserAuthSchemaType } from '../../../../../projects/app/src/global/support/user/auth/type';
 import { UserAuthTypeEnum, userAuthTypeMap } from './constants';
 
 /* 
-    user account auth
-    1. login
+  user account auth
+  1. login
   2. register 
   3. find password 
   4. wx login 
