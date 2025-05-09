@@ -56,6 +56,77 @@ type Props = {
   showNodeStatus: boolean;
 };
 
+const getWebSocketServerURL = () => {
+  if (typeof window !== 'undefined') {
+    // 兼容HTTP和HTTPS协议
+    return window.location.origin.replace(/^http/, 'ws').replace(/^https/, 'wss') + '/ws-proxy';
+  }
+  return '';
+};
+
+// WebSocket hook for managing the connection
+const useWebSocketConnection = (chatId: string) => {
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  // Function to handle sending messages through WebSocket
+  const sendMessage = useCallback(
+    (data: any) => {
+      if (socket && isConnected) {
+        socket.send(JSON.stringify(data));
+        return true;
+      }
+      return false;
+    },
+    [socket, isConnected]
+  );
+
+  // Connect to WebSocket when chatId changes
+  useEffect(() => {
+    if (!chatId) return;
+
+    // 获取WebSocket服务器URL
+    const wsUrl = getWebSocketServerURL();
+    if (!wsUrl) return; // 如果URL为空，不建立连接
+
+    // Close previous connection if exists
+    if (socket) {
+      socket.close();
+      setSocket(null);
+      setIsConnected(false);
+    }
+
+    // Create new WebSocket connection
+    const ws = new WebSocket(`${wsUrl}?chatId=${chatId}`);
+
+    ws.onopen = () => {
+      console.log(`WebSocket connected for chatId: ${chatId}`);
+      setIsConnected(true);
+    };
+
+    ws.onclose = () => {
+      console.log(`WebSocket disconnected for chatId: ${chatId}`);
+      setIsConnected(false);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      setIsConnected(false);
+    };
+
+    setSocket(ws);
+
+    // Cleanup function to close WebSocket when component unmounts or chatId changes
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [chatId]);
+
+  return { socket, isConnected, sendMessage };
+};
+
 const OutLink = (props: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -75,6 +146,9 @@ const OutLink = (props: Props) => {
   };
   const { isPc } = useSystem();
   const { outLinkAuthData, appId, chatId } = useChatStore();
+
+  // Initialize WebSocket connection
+  const { socket, isConnected, sendMessage } = useWebSocketConnection(chatId);
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
@@ -131,6 +205,54 @@ const OutLink = (props: Props) => {
       }
     }
   }, [data, isChatRecordsLoaded]);
+
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        console.log('WebSocket message received:', data);
+
+        // Convert WebSocket message to postMessage
+        if (window !== top) {
+          window.top?.postMessage(
+            {
+              type: 'functionCall',
+              value: data
+            },
+            '*'
+          );
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+  }, [socket]);
+
+  // Handle postMessage events
+  useEffect(() => {
+    if (window !== top) {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'functionCallResponse') {
+          // Handle response to WebSocket message
+          if (isConnected && sendMessage) {
+            sendMessage({
+              type: 'tool_response',
+              result: event.data.result,
+              requestId: event.data.requestId
+            });
+          }
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+      return () => {
+        window.removeEventListener('message', handleMessage);
+      };
+    }
+  }, [isConnected, sendMessage]);
 
   const startChat = useCallback(
     async ({
