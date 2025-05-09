@@ -6,7 +6,6 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
-  AppNodeTypes,
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -103,6 +102,7 @@ export const storeNode2FlowNode = ({
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
+    // template 中的输入必须都有
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
@@ -120,14 +120,17 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
+        // 合并 store 中有，template 中没有的输入
         storeNode.inputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
             if (!dynamicInput) return item;
+            const templateInput = template.inputs.find((input) => input.key === item.key);
 
             return {
               ...item,
-              ...getInputComponentProps(dynamicInput)
+              ...getInputComponentProps(dynamicInput),
+              deprecated: templateInput?.deprecated
             };
           })
       ),
@@ -147,9 +150,15 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        storeNode.outputs.filter(
-          (item) => !templateOutputs.find((output) => output.key === item.key)
-        )
+        storeNode.outputs
+          .filter((item) => !templateOutputs.find((output) => output.key === item.key))
+          .map((item) => {
+            const templateOutput = template.outputs.find((output) => output.key === item.key);
+            return {
+              ...item,
+              deprecated: templateOutput?.deprecated
+            };
+          })
       )
   };
 

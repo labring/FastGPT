@@ -57,3 +57,22 @@ export const getAppVersionById = async ({
   // If the version does not exist, the latest version is returned
   return getAppLatestVersion(appId, app);
 };
+
+export const checkIsLatestVersion = async ({
+  appId,
+  versionId
+}: {
+  appId: string;
+  versionId: string;
+}) => {
+  const version = await MongoAppVersion.findOne(
+    {
+      appId,
+      isPublish: true,
+      _id: { $gt: versionId }
+    },
+    '_id'
+  ).lean();
+
+  return !version;
+};

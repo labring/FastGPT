@@ -16,7 +16,10 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { AppNodeTypes, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  AppNodeFlowNodeTypeMap,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
@@ -38,8 +41,9 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 import { getAppVersionList } from '@/web/core/app/api/version';
-import MySelect, { menuItemStyles } from '@fastgpt/web/components/common/MySelect';
+import { menuItemStyles } from '@fastgpt/web/components/common/MySelect';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -73,7 +77,6 @@ const NodeCard = (props: Props) => {
     w = 'full',
     h = 'full',
     nodeId,
-    flowNodeType,
     selected,
     menuForbid,
     isTool = false,
@@ -107,6 +110,7 @@ const NodeCard = (props: Props) => {
 
     return { node, parentNode };
   }, [nodeList, nodeId]);
+  const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
@@ -114,7 +118,7 @@ const NodeCard = (props: Props) => {
         return undefined;
       }
 
-      if (node && AppNodeTypes.includes(node.flowNodeType as any)) {
+      if (isAppNode) {
         return { ...node, ...node.pluginData };
       } else {
         const template = moduleTemplatesFlat.find(
@@ -217,7 +221,7 @@ const NodeCard = (props: Props) => {
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
               <Box flex={1} />
-              {nodeTemplate && <NodeVersion nodeId={nodeId} />}
+              {isAppNode && <NodeVersion node={node} />}
               {!!nodeTemplate?.diagram && (
                 <MyTooltip
                   label={
@@ -252,7 +256,7 @@ const NodeCard = (props: Props) => {
                 </UseGuideModal>
               )}
               {!!node?.pluginData?.error && (
-                <MyTooltip label={t('app:app.modules.not_found_tips')}>
+                <MyTooltip label={node?.pluginData?.error || t('app:app.modules.not_found_tips')}>
                   <Flex
                     bg={'red.50'}
                     alignItems={'center'}
@@ -263,7 +267,9 @@ const NodeCard = (props: Props) => {
                     fontWeight={'medium'}
                   >
                     <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                    <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
+                    <Box color={'red.600'}>
+                      {node?.pluginData?.error || t('app:app.modules.not_found')}
+                    </Box>
                   </Flex>
                 </MyTooltip>
               )}
@@ -275,16 +281,19 @@ const NodeCard = (props: Props) => {
       </Box>
     );
   }, [
-    node?.flowNodeType,
-    node?.courseUrl,
-    node?.pluginData?.error,
+    node,
     showToolHandle,
     nodeId,
     isFolded,
     avatar,
     t,
     name,
-    nodeTemplate,
+    isAppNode,
+    nodeTemplate?.diagram,
+    nodeTemplate?.userGuide,
+    nodeTemplate?.name,
+    nodeTemplate?.avatar,
+    nodeTemplate?.courseUrl,
     intro,
     menuForbid,
     nodeList,
@@ -598,31 +607,31 @@ const NodeIntro = React.memo(function NodeIntro({
   return Render;
 });
 
-const NodeVersion = React.memo(function NodeVersion({ nodeId }: { nodeId: string }) {
+const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
   const { t } = useTranslation();
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const ButtonRef = useRef<HTMLButtonElement>(null);
+
   const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const node = useMemo(() => nodeList.find((node) => node.nodeId === nodeId), [nodeList, nodeId]);
-  if (!node) return null;
-
+  // Load version list
   const {
     ScrollData,
     data: versionList,
-    isLoading: isLoadingVersion,
-    total
+    isLoading: isLoadingVersion
   } = useScrollPagination(getAppVersionList, {
-    pageSize: 30,
+    pageSize: 20,
     params: {
-      appId: node.pluginId
+      appId: node.pluginId,
+      isPublish: true
     },
-    refreshDeps: [node.pluginId, node.flowNodeType, isOpen],
-    manual: !isOpen || !node.flowNodeType || !AppNodeTypes.includes(node.flowNodeType)
+    refreshDeps: [node.pluginId, isOpen],
+    disalbed: !isOpen,
+    manual: false
   });
 
-  const { runAsync: onClickSyncVersion, loading: isLoadingSyncVersion } = useRequest2(
+  const { runAsync: onUpdateVersion, loading: isUpdating } = useRequest2(
     async (versionId: string) => {
       if (!node) return;
 
@@ -631,60 +640,37 @@ const NodeVersion = React.memo(function NodeVersion({ nodeId }: { nodeId: string
 
         if (!!template) {
           onResetNode({
-            id: nodeId,
+            id: node.nodeId,
             node: template
           });
         }
       }
     },
     {
-      refreshDeps: [node, nodeId, onResetNode]
+      refreshDeps: [node, onResetNode]
     }
   );
-  const isSelecting = isLoadingSyncVersion || isLoadingVersion;
-
-  const defaultLabel = useMemo(() => {
-    return (
-      versionList.find((item) => item._id === node.version)?.versionName ||
-      node.versionData?.versionName
-    );
-  }, [versionList, node.version, node.versionData]);
-
-  const isNotLatest = useMemo(() => {
-    return (
-      (versionList.length > 0 && node.version !== versionList[0]?._id) ||
-      (versionList.length === 0 && node.versionData && !node.versionData.isLatest)
-    );
-  }, [versionList, node.version, node.versionData]);
 
   const Render = useMemo(() => {
-    if (total === 0 && !node.versionData) return null;
-
     return (
       <Menu
         autoSelect={false}
-        isOpen={isOpen && !isSelecting}
-        onOpen={() => {
-          onOpen();
-        }}
+        isOpen={isOpen}
+        onOpen={onOpen}
         onClose={onClose}
         strategy={'fixed'}
+        offset={[0, 0]}
       >
         <MenuButton
+          ref={ButtonRef}
           as={Button}
-          px={3}
+          isLoading={isUpdating}
+          px={2}
           rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
           variant={'whitePrimaryOutline'}
-          size={'md'}
-          fontSize={'sm'}
-          textAlign={'left'}
-          h={'auto'}
+          size={'sm'}
           whiteSpace={'pre-wrap'}
           wordBreak={'break-word'}
-          isLoading={isSelecting}
-          _active={{
-            transform: 'none'
-          }}
           {...(isOpen
             ? {
                 boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
@@ -693,82 +679,69 @@ const NodeVersion = React.memo(function NodeVersion({ nodeId }: { nodeId: string
               }
             : {})}
         >
-          <Flex alignItems={'center'}>
-            {defaultLabel}
-            {isNotLatest ? (
-              <Box
-                px={1}
-                py={'1px'}
-                color={'adora.600'}
-                bg={'adora.50'}
-                ml={2}
-                rounded={'sm'}
-                fontSize={'mini'}
-              >
+          <Flex alignItems={'center'} gap={0.5}>
+            {node?.versionLabel}
+            {!node.isLatestVersion && (
+              <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
                 {t('app:not_the_newest')}
-              </Box>
-            ) : null}
+              </MyTag>
+            )}
           </Flex>
         </MenuButton>
 
         <MenuList
+          w={(() => {
+            const w = ButtonRef.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+            return '100%';
+          })()}
           className="nowheel"
-          px={'6px'}
-          py={'6px'}
-          border={'1px solid #fff'}
-          boxShadow={
-            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
-          }
-          zIndex={99}
-          maxH={'40vh'}
-          overflowY={'auto'}
+          p={'6px'}
+          border={'base'}
+          boxShadow={'md'}
         >
-          <ScrollData>
+          <ScrollData isLoading={isLoadingVersion} minH={'100px'} maxH={'40vh'} overflowY={'auto'}>
             {versionList.map((item, i) => (
-              <Box key={i}>
-                <MenuItem
-                  {...menuItemStyles}
-                  {...(node.version === item._id
-                    ? {
-                        color: 'primary.700',
-                        bg: 'myGray.100',
-                        fontWeight: '600'
-                      }
-                    : {
-                        color: 'myGray.900'
-                      })}
-                  onClick={() => {
-                    if (node.version !== item._id) {
-                      onClickSyncVersion(item._id);
+              <MenuItem
+                key={i}
+                {...menuItemStyles}
+                {...(node.version === item._id
+                  ? {
+                      color: 'primary.700',
+                      bg: 'myGray.100',
+                      fontWeight: '600'
                     }
-                  }}
-                  whiteSpace={'pre-wrap'}
-                  fontSize={'sm'}
-                  display={'block'}
-                  mb={0.5}
-                >
-                  <Flex alignItems={'center'}>{item.versionName}</Flex>
-                </MenuItem>
-              </Box>
+                  : {
+                      color: 'myGray.900',
+                      onClick: () => onUpdateVersion(item._id)
+                    })}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                display={'block'}
+                mb={0.5}
+              >
+                <Flex alignItems={'center'}>{item.versionName}</Flex>
+              </MenuItem>
             ))}
           </ScrollData>
         </MenuList>
       </Menu>
     );
   }, [
-    total,
-    node.versionData,
-    node.version,
     isOpen,
-    isSelecting,
+    onOpen,
     onClose,
-    defaultLabel,
-    isNotLatest,
+    isUpdating,
+    node?.versionLabel,
+    node.isLatestVersion,
+    node.version,
     t,
     ScrollData,
+    isLoadingVersion,
     versionList,
-    onOpen,
-    onClickSyncVersion
+    onUpdateVersion
   ]);
 
   return Render;

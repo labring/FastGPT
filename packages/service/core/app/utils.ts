@@ -1,9 +1,13 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
-import { AppNodeTypes, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  AppNodeFlowNodeTypeMap,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { MongoAppVersion } from './version/schema';
+import { checkIsLatestVersion } from './version/controller';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -36,22 +40,25 @@ export async function rewriteAppWorkflowToDetail({
 }) {
   const datasetIdSet = new Set<string>();
 
-  const appNodes = nodes.filter((node) => AppNodeTypes.includes(node.flowNodeType));
+  // Add node(App Type) versionlabel and latest sign
+  const appNodes = nodes.filter((node) => AppNodeFlowNodeTypeMap[node.flowNodeType]);
   const versionIds = appNodes.filter((node) => node.version).map((node) => node.version);
-
   if (versionIds.length > 0) {
-    const versionDataList = await MongoAppVersion.find({
-      _id: { $in: versionIds }
-    }).lean();
+    const versionDataList = await MongoAppVersion.find(
+      {
+        _id: { $in: versionIds }
+      },
+      '_id versionName appId time'
+    ).lean();
 
     const versionMap: Record<string, any> = {};
 
     const isLatestChecks = await Promise.all(
       versionDataList.map(async (version) => {
-        const isLatest = await MongoAppVersion.countDocuments({
+        const isLatest = await checkIsLatestVersion({
           appId: version.appId,
-          time: { $gt: version.time }
-        }).then((count) => count === 0);
+          versionId: version._id
+        });
 
         return { versionId: String(version._id), isLatest };
       })
@@ -64,10 +71,8 @@ export async function rewriteAppWorkflowToDetail({
       if (!node.version) return;
       const versionData = versionMap[String(node.version)];
       if (versionData) {
-        node.versionData = {
-          versionName: versionData.versionName,
-          isLatest: isLatestMap.get(String(node.version)) || false
-        };
+        node.versionLabel = versionData.versionName;
+        node.isLatestVersion = isLatestMap.get(String(node.version)) || false;
       }
     });
   }
