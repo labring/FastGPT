@@ -477,10 +477,16 @@ export const iconPaths = {
     import('./icons/support/gate/chat/historySlider/new_chat.svg'),
   'support/gate/chat/historySlider/clear-all': () =>
     import('./icons/support/gate/chat/historySlider/clear-all.svg'),
+  'support/gate/chat/historySlider/chevron-right2': () =>
+    import('./icons/support/gate/chat/historySlider/chevron-right2.svg'),
+  'support/gate/chat/toolkitLine': () => import('./icons/support/gate/chat/toolkitLine.svg'),
+  'support/gate/chat/historySlider/chevron-left2': () =>
+    import('./icons/support/gate/chat/historySlider/chevron-left2.svg'),
   'support/gate/chat/sidebar/appGray': () =>
     import('./icons/support/gate/chat/sidebar/appGray.svg'),
   'support/gate/chat/voiceGray': () => import('./icons/support/gate/chat/voiceGray.svg'),
   'support/gate/chat/fileGray': () => import('./icons/support/gate/chat/fileGray.svg'),
+  'support/gate/chat/paperclip': () => import('./icons/support/gate/chat/paperclip.svg'),
   'support/gate/chat/imageGray': () => import('./icons/support/gate/chat/imageGray.svg'),
   'support/gate/home/savePrimary': () => import('./icons/support/gate/home/savePrimary.svg'),
   'support/gate/home/shareLight': () => import('./icons/support/gate/home/shareLight.svg'),

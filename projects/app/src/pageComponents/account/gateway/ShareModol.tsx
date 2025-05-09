@@ -30,10 +30,12 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
       <Box
         position="relative"
         width="500px"
-        height="440px"
+        maxHeight="80vh"
+        gap={'20px'}
         bg="#FFFFFF"
         boxShadow="0px 32px 64px -12px rgba(19, 51, 107, 0.2), 0px 0px 1px rgba(19, 51, 107, 0.2)"
         borderRadius="10px"
+        overflowY="auto"
       >
         {/* 弹窗头部 */}
         <Flex
@@ -65,133 +67,106 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         </Flex>
 
         {/* 弹窗内容 */}
-        <Box position="absolute" w="500px" h="392px" left="0px" top="48px">
-          <Flex
-            direction="column"
-            alignItems="flex-start"
-            padding="24px 36px"
-            gap="24px"
-            w="100%"
-            h="100%"
-          >
-            {/* 上部内容区 */}
-            <Flex direction="column" gap="20px" w="428px">
-              {/* 提示信息 */}
-              <Flex
-                bg="#F0F4FF"
-                borderRadius="6px"
-                p="6px 12px"
-                alignItems="center"
-                w="100%"
-                h="44px"
+        <Flex
+          direction="column"
+          alignItems="flex-start"
+          padding="24px 36px"
+          gap="24px"
+          w="100%"
+          h="100%"
+        >
+          {/* 上部内容区 */}
+          <Flex direction="column" gap="20px" w="428px">
+            {/* 提示信息 */}
+            <Flex
+              bg="#F0F4FF"
+              borderRadius="6px"
+              p="6px 12px"
+              alignItems="center"
+              w="100%"
+              h="44px"
+            >
+              <Text
+                fontFamily="PingFang SC"
+                fontWeight="500"
+                fontSize="12px"
+                lineHeight="16px"
+                letterSpacing="0.5px"
+                color="#3370FF"
               >
+                通过门户进入的用户仍需登录账号及应用鉴权。
+                门户仅支持与已配置的应用对话，对话记录与站内聊天记录互通。
+              </Text>
+            </Flex>
+
+            {/* 门户状态 */}
+            <Flex alignItems="center" gap="12px">
+              <Text
+                fontFamily="PingFang SC"
+                fontWeight="500"
+                fontSize="14px"
+                lineHeight="20px"
+                letterSpacing="0.1px"
+                color="#111824"
+              >
+                门户状态:
+              </Text>
+              <Flex bg="#EDFBF3" borderRadius="6px" p="4px 8px" alignItems="center" gap="4px">
+                <Box w="6px" h="6px" borderRadius="50%" bg="#039855"></Box>
                 <Text
                   fontFamily="PingFang SC"
                   fontWeight="500"
                   fontSize="12px"
                   lineHeight="16px"
                   letterSpacing="0.5px"
-                  color="#3370FF"
+                  color="#039855"
                 >
-                  通过门户进入的用户仍需登录账号及应用鉴权。
-                  门户仅支持与已配置的应用对话，对话记录与站内聊天记录互通。
+                  已启用
                 </Text>
-              </Flex>
-
-              {/* 门户状态 */}
-              <Flex alignItems="center" gap="12px">
-                <Text
-                  fontFamily="PingFang SC"
-                  fontWeight="500"
-                  fontSize="14px"
-                  lineHeight="20px"
-                  letterSpacing="0.1px"
-                  color="#111824"
-                >
-                  门户状态:
-                </Text>
-                <Flex bg="#EDFBF3" borderRadius="6px" p="4px 8px" alignItems="center" gap="4px">
-                  <Box w="6px" h="6px" borderRadius="50%" bg="#039855"></Box>
-                  <Text
-                    fontFamily="PingFang SC"
-                    fontWeight="500"
-                    fontSize="12px"
-                    lineHeight="16px"
-                    letterSpacing="0.5px"
-                    color="#039855"
-                  >
-                    已启用
-                  </Text>
-                </Flex>
-              </Flex>
-
-              {/* 默认地址 */}
-              <Flex direction="column" alignItems="flex-start" gap="8px" w="100%">
-                <Text
-                  fontFamily="PingFang SC"
-                  fontWeight="500"
-                  fontSize="14px"
-                  lineHeight="20px"
-                  letterSpacing="0.1px"
-                  color="#24282C"
-                >
-                  默认地址
-                </Text>
-                <Flex w="100%" alignItems="center" gap="8px">
-                  <Input
-                    value={defaultGateUrl}
-                    readOnly
-                    h="32px"
-                    bg="#FFFFFF"
-                    border="1px solid #3370FF"
-                    boxShadow="0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)"
-                    borderRadius="6px"
-                    fontSize="12px"
-                    color="#111824"
-                    pl="12px"
-                    flex="1"
-                  />
-                  <IconButton
-                    aria-label="复制链接"
-                    icon={<CopyIcon />}
-                    size="sm"
-                    variant="ghost"
-                    colorScheme="gray"
-                    onClick={() => handleCopyLink(defaultGateUrl)}
-                    h="32px"
-                    w="32px"
-                    minW="32px"
-                  />
-                </Flex>
               </Flex>
             </Flex>
 
-            {/* 底部按钮 */}
-            <Flex justifyContent="flex-end" w="100%" mt="auto">
-              <Button
-                variant="outline"
-                h="32px"
-                px="14px"
-                fontSize="12px"
-                mr="12px"
-                onClick={onClose}
+            {/* 默认地址 */}
+            <Flex direction="column" alignItems="flex-start" gap="8px" w="100%">
+              <Text
+                fontFamily="PingFang SC"
+                fontWeight="500"
+                fontSize="14px"
+                lineHeight="20px"
+                letterSpacing="0.1px"
+                color="#24282C"
               >
-                取消
-              </Button>
-              <Button
-                bg="#3370FF"
-                color="#FFFFFF"
-                h="32px"
-                px="14px"
-                fontSize="12px"
-                onClick={handleSave}
-                _hover={{ bg: '#2860E1' }}
-              >
-                保存
-              </Button>
+                默认地址
+              </Text>
+              <Flex w="100%" alignItems="center" gap="8px">
+                <Input
+                  value={defaultGateUrl}
+                  readOnly
+                  h="32px"
+                  bg="#FFFFFF"
+                  border="1px solid #3370FF"
+                  boxShadow="0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)"
+                  borderRadius="6px"
+                  fontSize="12px"
+                  color="#111824"
+                  pl="12px"
+                  flex="1"
+                />
+                <IconButton
+                  aria-label="复制链接"
+                  icon={<CopyIcon />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="gray"
+                  onClick={() => handleCopyLink(defaultGateUrl)}
+                  h="32px"
+                  w="32px"
+                  minW="32px"
+                />
+              </Flex>
             </Flex>
           </Flex>
-        </Box>
+        </Flex>
       </Box>
     </MyModal>
   );
