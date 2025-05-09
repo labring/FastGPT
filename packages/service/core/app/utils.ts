@@ -36,26 +36,41 @@ export async function rewriteAppWorkflowToDetail({
 }) {
   const datasetIdSet = new Set<string>();
 
-  const appNodePromises = nodes
-    .filter((node) => AppNodeTypes.includes(node.flowNodeType))
-    .map(async (node) => {
-      const versionData = await MongoAppVersion.findById(node.version);
+  const appNodes = nodes.filter((node) => AppNodeTypes.includes(node.flowNodeType));
+  const versionIds = appNodes.filter((node) => node.version).map((node) => node.version);
 
-      if (versionData) {
+  if (versionIds.length > 0) {
+    const versionDataList = await MongoAppVersion.find({
+      _id: { $in: versionIds }
+    }).lean();
+
+    const versionMap: Record<string, any> = {};
+
+    const isLatestChecks = await Promise.all(
+      versionDataList.map(async (version) => {
         const isLatest = await MongoAppVersion.countDocuments({
-          appId: versionData.appId,
-          time: { $gt: versionData.time }
+          appId: version.appId,
+          time: { $gt: version.time }
         }).then((count) => count === 0);
 
+        return { versionId: String(version._id), isLatest };
+      })
+    );
+    const isLatestMap = new Map(isLatestChecks.map((item) => [item.versionId, item.isLatest]));
+    versionDataList.forEach((version) => {
+      versionMap[String(version._id)] = version;
+    });
+    appNodes.forEach((node) => {
+      if (!node.version) return;
+      const versionData = versionMap[String(node.version)];
+      if (versionData) {
         node.versionData = {
           versionName: versionData.versionName,
-          isLatest
+          isLatest: isLatestMap.get(String(node.version)) || false
         };
       }
-      return node;
     });
-
-  await Promise.all(appNodePromises);
+  }
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {

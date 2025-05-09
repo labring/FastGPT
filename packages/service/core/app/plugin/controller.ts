@@ -18,6 +18,7 @@ import { getAppLatestVersion, getAppVersionById } from '../version/controller';
 import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { MongoAppVersion } from '../version/schema';
 
 /* 
   plugin id rule:
@@ -105,6 +106,13 @@ export async function getChildAppPreviewNode({
 
       const version = await getAppVersionById({ appId, versionId, app: item });
 
+      const versionData = await MongoAppVersion.findById(version.versionId);
+
+      const isLatest = await MongoAppVersion.countDocuments({
+        appId: versionData?.appId,
+        time: { $gt: versionData?.time }
+      }).then((count) => count === 0);
+
       if (!version.versionId) return Promise.reject('App version not found');
 
       return {
@@ -121,6 +129,10 @@ export async function getChildAppPreviewNode({
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         version: version.versionId,
+        versionData: {
+          versionName: versionData?.versionName || '',
+          isLatest
+        },
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,
@@ -178,6 +190,7 @@ export async function getChildAppPreviewNode({
     showStatus: app.showStatus,
     isTool: true,
     version: app.version,
+    versionData: app.versionData,
     sourceHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
       : getHandleConfig(true, true, true, true),

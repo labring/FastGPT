@@ -101,7 +101,7 @@ export const storeNode2FlowNode = ({
     parentNodeId,
     ...template,
     ...storeNode,
-    avatar: storeNode.avatar ?? template.avatar,
+    avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
@@ -123,11 +123,7 @@ export const storeNode2FlowNode = ({
         storeNode.inputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
-            if (!dynamicInput)
-              return {
-                ...item,
-                deprecated: AppNodeTypes.includes(storeNode.flowNodeType) ? undefined : true
-              };
+            if (!dynamicInput) return item;
 
             return {
               ...item,
@@ -151,14 +147,9 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        storeNode.outputs
-          .filter((item) => !templateOutputs.find((output) => output.key === item.key))
-          .map((item) => {
-            return {
-              ...item,
-              deprecated: AppNodeTypes.includes(storeNode.flowNodeType) ? undefined : true
-            };
-          })
+        storeNode.outputs.filter(
+          (item) => !templateOutputs.find((output) => output.key === item.key)
+        )
       )
   };
 
