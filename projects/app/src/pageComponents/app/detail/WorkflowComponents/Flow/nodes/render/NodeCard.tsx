@@ -1,13 +1,22 @@
-import React, { useCallback, useMemo } from 'react';
-import { Box, Button, Flex, type FlexProps } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useRef } from 'react';
+import {
+  Box,
+  Button,
+  Flex,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  useDisclosure,
+  type FlexProps
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { AppNodeTypes, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
@@ -28,6 +37,9 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
+import { getAppVersionList } from '@/web/core/app/api/version';
+import MySelect, { menuItemStyles } from '@fastgpt/web/components/common/MySelect';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -73,7 +85,6 @@ const NodeCard = (props: Props) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
   const setHoverNodeId = useContextSelector(WorkflowEventContext, (v) => v.setHoverNodeId);
 
   // custom title edit
@@ -103,12 +114,7 @@ const NodeCard = (props: Props) => {
         return undefined;
       }
 
-      if (
-        node?.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-        node?.flowNodeType === FlowNodeTypeEnum.appModule ||
-        node?.flowNodeType === FlowNodeTypeEnum.tool ||
-        node?.flowNodeType === FlowNodeTypeEnum.toolSet
-      ) {
+      if (node && AppNodeTypes.includes(node.flowNodeType as any)) {
         return { ...node, ...node.pluginData };
       } else {
         const template = moduleTemplatesFlat.find(
@@ -129,51 +135,6 @@ const NodeCard = (props: Props) => {
         });
       },
       manual: false
-    }
-  );
-
-  const {
-    openConfirm: onOpenConfirmSync,
-    onClose: onCloseConfirmSync,
-    ConfirmModal: ConfirmSyncModal
-  } = useConfirm({
-    content: t('workflow:Confirm_sync_node')
-  });
-
-  const hasNewVersion = nodeTemplate && nodeTemplate.version !== node?.version;
-
-  const { runAsync: onClickSyncVersion } = useRequest2(
-    async () => {
-      if (!node) return;
-
-      if (node.pluginId) {
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
-
-        if (!!template) {
-          onResetNode({
-            id: nodeId,
-            node: template
-          });
-        }
-      } else {
-        const template = moduleTemplatesFlat.find(
-          (item) => item.flowNodeType === node.flowNodeType
-        );
-        if (!template) {
-          return toast({
-            title: t('app:app.modules.not_found_tips'),
-            status: 'warning'
-          });
-        }
-        onResetNode({
-          id: nodeId,
-          node: template
-        });
-      }
-    },
-    {
-      refreshDeps: [node, nodeId, onResetNode],
-      onFinally() {}
     }
   );
 
@@ -256,27 +217,8 @@ const NodeCard = (props: Props) => {
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
               <Box flex={1} />
-              {hasNewVersion && (
-                <MyTooltip label={t('app:app.modules.click to update')}>
-                  <Button
-                    bg={'yellow.50'}
-                    color={'yellow.600'}
-                    variant={'ghost'}
-                    h={8}
-                    px={2}
-                    rounded={'6px'}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                    cursor={'pointer'}
-                    _hover={{ bg: 'yellow.100' }}
-                    onClick={onOpenConfirmSync(onClickSyncVersion)}
-                  >
-                    <Box>{t('app:app.modules.has new version')}</Box>
-                    <MyIcon name={'help'} w={'14px'} ml={1} />
-                  </Button>
-                </MyTooltip>
-              )}
-              {!!nodeTemplate?.diagram && !hasNewVersion && (
+              {nodeTemplate && <NodeVersion nodeId={nodeId} />}
+              {!!nodeTemplate?.diagram && (
                 <MyTooltip
                   label={
                     <MyImage
@@ -295,7 +237,7 @@ const NodeCard = (props: Props) => {
               {!!nodeTemplate?.diagram && node?.courseUrl && (
                 <Box bg={'myGray.300'} w={'1px'} h={'12px'} ml={1} mr={0.5} />
               )}
-              {!!(node?.courseUrl || nodeTemplate?.userGuide) && !hasNewVersion && (
+              {!!(node?.courseUrl || nodeTemplate?.userGuide) && (
                 <UseGuideModal
                   title={nodeTemplate?.name}
                   iconSrc={nodeTemplate?.avatar}
@@ -342,14 +284,7 @@ const NodeCard = (props: Props) => {
     avatar,
     t,
     name,
-    hasNewVersion,
-    onOpenConfirmSync,
-    onClickSyncVersion,
-    nodeTemplate?.diagram,
-    nodeTemplate?.userGuide,
-    nodeTemplate?.name,
-    nodeTemplate?.avatar,
-    nodeTemplate?.courseUrl,
+    nodeTemplate,
     intro,
     menuForbid,
     nodeList,
@@ -419,7 +354,6 @@ const NodeCard = (props: Props) => {
       {RenderHandle}
       {RenderToolHandle}
 
-      <ConfirmSyncModal />
       <EditTitleModal maxLength={100} />
     </Flex>
   );
@@ -660,6 +594,182 @@ const NodeIntro = React.memo(function NodeIntro({
       </>
     );
   }, [EditIntroModal, intro, NodeIsTool, nodeId, onChangeNode, onOpenIntroModal, t]);
+
+  return Render;
+});
+
+const NodeVersion = React.memo(function NodeVersion({ nodeId }: { nodeId: string }) {
+  const { t } = useTranslation();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const node = useMemo(() => nodeList.find((node) => node.nodeId === nodeId), [nodeList, nodeId]);
+  if (!node) return null;
+
+  const {
+    ScrollData,
+    data: versionList,
+    isLoading: isLoadingVersion,
+    total
+  } = useScrollPagination(getAppVersionList, {
+    pageSize: 30,
+    params: {
+      appId: node.pluginId
+    },
+    refreshDeps: [node.pluginId, node.flowNodeType, isOpen],
+    manual: !isOpen || !node.flowNodeType || !AppNodeTypes.includes(node.flowNodeType)
+  });
+
+  const { runAsync: onClickSyncVersion, loading: isLoadingSyncVersion } = useRequest2(
+    async (versionId: string) => {
+      if (!node) return;
+
+      if (node.pluginId) {
+        const template = await getPreviewPluginNode({ appId: node.pluginId, versionId });
+
+        if (!!template) {
+          onResetNode({
+            id: nodeId,
+            node: template
+          });
+        }
+      }
+    },
+    {
+      refreshDeps: [node, nodeId, onResetNode]
+    }
+  );
+  const isSelecting = isLoadingSyncVersion || isLoadingVersion;
+
+  const defaultLabel = useMemo(() => {
+    return (
+      versionList.find((item) => item._id === node.version)?.versionName ||
+      node.versionData?.versionName
+    );
+  }, [versionList, node.version, node.versionData]);
+
+  const isNotLatest = useMemo(() => {
+    return (
+      (versionList.length > 0 && node.version !== versionList[0]?._id) ||
+      (versionList.length === 0 && node.versionData && !node.versionData.isLatest)
+    );
+  }, [versionList, node.version, node.versionData]);
+
+  const Render = useMemo(() => {
+    if (total === 0 && !node.versionData) return null;
+
+    return (
+      <Menu
+        autoSelect={false}
+        isOpen={isOpen && !isSelecting}
+        onOpen={() => {
+          onOpen();
+        }}
+        onClose={onClose}
+        strategy={'fixed'}
+      >
+        <MenuButton
+          as={Button}
+          px={3}
+          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
+          variant={'whitePrimaryOutline'}
+          size={'md'}
+          fontSize={'sm'}
+          textAlign={'left'}
+          h={'auto'}
+          whiteSpace={'pre-wrap'}
+          wordBreak={'break-word'}
+          isLoading={isSelecting}
+          _active={{
+            transform: 'none'
+          }}
+          {...(isOpen
+            ? {
+                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                borderColor: 'primary.600',
+                color: 'primary.700'
+              }
+            : {})}
+        >
+          <Flex alignItems={'center'}>
+            {defaultLabel}
+            {isNotLatest ? (
+              <Box
+                px={1}
+                py={'1px'}
+                color={'adora.600'}
+                bg={'adora.50'}
+                ml={2}
+                rounded={'sm'}
+                fontSize={'mini'}
+              >
+                {t('app:not_the_newest')}
+              </Box>
+            ) : null}
+          </Flex>
+        </MenuButton>
+
+        <MenuList
+          className="nowheel"
+          px={'6px'}
+          py={'6px'}
+          border={'1px solid #fff'}
+          boxShadow={
+            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+          }
+          zIndex={99}
+          maxH={'40vh'}
+          overflowY={'auto'}
+        >
+          <ScrollData>
+            {versionList.map((item, i) => (
+              <Box key={i}>
+                <MenuItem
+                  {...menuItemStyles}
+                  {...(node.version === item._id
+                    ? {
+                        color: 'primary.700',
+                        bg: 'myGray.100',
+                        fontWeight: '600'
+                      }
+                    : {
+                        color: 'myGray.900'
+                      })}
+                  onClick={() => {
+                    if (node.version !== item._id) {
+                      onClickSyncVersion(item._id);
+                    }
+                  }}
+                  whiteSpace={'pre-wrap'}
+                  fontSize={'sm'}
+                  display={'block'}
+                  mb={0.5}
+                >
+                  <Flex alignItems={'center'}>{item.versionName}</Flex>
+                </MenuItem>
+              </Box>
+            ))}
+          </ScrollData>
+        </MenuList>
+      </Menu>
+    );
+  }, [
+    total,
+    node.versionData,
+    node.version,
+    isOpen,
+    isSelecting,
+    onClose,
+    defaultLabel,
+    isNotLatest,
+    t,
+    ScrollData,
+    versionList,
+    onOpen,
+    onClickSyncVersion
+  ]);
 
   return Render;
 });

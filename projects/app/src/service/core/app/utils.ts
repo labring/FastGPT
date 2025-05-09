@@ -160,7 +160,7 @@ export const checkNode = async ({
       });
     }
 
-    const preview = await getChildAppPreviewNode({ id: pluginId });
+    const preview = await getChildAppPreviewNode({ appId: pluginId });
     return {
       ...node,
       pluginData: {

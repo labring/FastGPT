@@ -51,6 +51,19 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
 };
 
+export const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 1
+  }
+};
+
 const MySelect = <T = any,>(
   {
     placeholder,
@@ -72,18 +85,6 @@ const MySelect = <T = any,>(
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
 
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.100'
-    },
-    _notLast: {
-      mb: 1
-    }
-  };
   const { isOpen, onOpen, onClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 

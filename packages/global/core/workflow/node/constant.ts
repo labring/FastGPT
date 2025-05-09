@@ -236,3 +236,10 @@ export const datasetQuoteValueDesc = `{
 export const datasetSelectValueDesc = `{
   datasetId: string;
 }[]`;
+
+export const AppNodeTypes = [
+  FlowNodeTypeEnum.pluginModule,
+  FlowNodeTypeEnum.appModule,
+  FlowNodeTypeEnum.tool,
+  FlowNodeTypeEnum.toolSet
+];

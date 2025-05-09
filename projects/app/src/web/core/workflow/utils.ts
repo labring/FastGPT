@@ -6,6 +6,7 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
+  AppNodeTypes,
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -102,9 +103,6 @@ export const storeNode2FlowNode = ({
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
     version: storeNode.version ?? template.version ?? defaultNodeVersion,
-    /* 
-      Inputs and outputs, New fields are added, not reduced
-    */
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
@@ -113,10 +111,8 @@ export const storeNode2FlowNode = ({
         return {
           ...storeInput,
           ...templateInput,
-
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value,
           valueType: storeInput.valueType ?? templateInput.valueType,
@@ -124,7 +120,6 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        /* Concat dynamic inputs */
         storeNode.inputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
@@ -139,14 +134,12 @@ export const storeNode2FlowNode = ({
     outputs: templateOutputs
       .map<FlowNodeOutputItemType>((templateOutput) => {
         const storeOutput =
-          template.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+          storeNode.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
 
         return {
           ...storeOutput,
           ...templateOutput,
-
           description: t(templateOutput.description ?? (storeOutput.description as any)),
-
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
           value: storeOutput.value ?? templateOutput.value,
