@@ -237,9 +237,9 @@ export const datasetSelectValueDesc = `{
   datasetId: string;
 }[]`;
 
-export const AppNodeTypes = [
-  FlowNodeTypeEnum.pluginModule,
-  FlowNodeTypeEnum.appModule,
-  FlowNodeTypeEnum.tool,
-  FlowNodeTypeEnum.toolSet
-];
+export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
+  [FlowNodeTypeEnum.pluginModule]: true,
+  [FlowNodeTypeEnum.appModule]: true,
+  [FlowNodeTypeEnum.tool]: true,
+  [FlowNodeTypeEnum.toolSet]: true
+};

@@ -14,11 +14,16 @@ import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
 import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
-import { getAppLatestVersion, getAppVersionById } from '../version/controller';
+import {
+  checkIsLatestVersion,
+  getAppLatestVersion,
+  getAppVersionById
+} from '../version/controller';
 import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { MongoAppVersion } from '../version/schema';
+import { i18nT } from '../../../../web/i18n/utils';
 
 /* 
   plugin id rule:
@@ -106,14 +111,19 @@ export async function getChildAppPreviewNode({
 
       const version = await getAppVersionById({ appId, versionId, app: item });
 
-      const versionData = await MongoAppVersion.findById(version.versionId);
+      if (!version.versionId) return Promise.reject(i18nT('common:app_not_version'));
 
-      const isLatest = await MongoAppVersion.countDocuments({
-        appId: versionData?.appId,
-        time: { $gt: versionData?.time }
-      }).then((count) => count === 0);
+      const versionData = await MongoAppVersion.findById(
+        version.versionId,
+        '_id versionName appId time'
+      ).lean();
 
-      if (!version.versionId) return Promise.reject('App version not found');
+      const isLatest = versionData
+        ? await checkIsLatestVersion({
+            appId,
+            versionId: versionData._id
+          })
+        : true;
 
       return {
         id: String(item._id),
@@ -128,11 +138,11 @@ export async function getChildAppPreviewNode({
           chatConfig: version.chatConfig
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
+
         version: version.versionId,
-        versionData: {
-          versionName: versionData?.versionName || '',
-          isLatest
-        },
+        versionLabel: versionData?.versionName || '',
+        isLatestVersion: isLatest,
+
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,
@@ -189,8 +199,11 @@ export async function getChildAppPreviewNode({
     userGuide: app.userGuide,
     showStatus: app.showStatus,
     isTool: true,
+
     version: app.version,
-    versionData: app.versionData,
+    versionLabel: app.versionLabel,
+    isLatestVersion: app.isLatestVersion,
+
     sourceHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
       : getHandleConfig(true, true, true, true),
