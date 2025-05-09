@@ -1,8 +1,9 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppNodeTypes, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { MongoAppVersion } from './version/schema';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -34,6 +35,42 @@ export async function rewriteAppWorkflowToDetail({
   isRoot: boolean;
 }) {
   const datasetIdSet = new Set<string>();
+
+  const appNodes = nodes.filter((node) => AppNodeTypes.includes(node.flowNodeType));
+  const versionIds = appNodes.filter((node) => node.version).map((node) => node.version);
+
+  if (versionIds.length > 0) {
+    const versionDataList = await MongoAppVersion.find({
+      _id: { $in: versionIds }
+    }).lean();
+
+    const versionMap: Record<string, any> = {};
+
+    const isLatestChecks = await Promise.all(
+      versionDataList.map(async (version) => {
+        const isLatest = await MongoAppVersion.countDocuments({
+          appId: version.appId,
+          time: { $gt: version.time }
+        }).then((count) => count === 0);
+
+        return { versionId: String(version._id), isLatest };
+      })
+    );
+    const isLatestMap = new Map(isLatestChecks.map((item) => [item.versionId, item.isLatest]));
+    versionDataList.forEach((version) => {
+      versionMap[String(version._id)] = version;
+    });
+    appNodes.forEach((node) => {
+      if (!node.version) return;
+      const versionData = versionMap[String(node.version)];
+      if (versionData) {
+        node.versionData = {
+          versionName: versionData.versionName,
+          isLatest: isLatestMap.get(String(node.version)) || false
+        };
+      }
+    });
+  }
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {

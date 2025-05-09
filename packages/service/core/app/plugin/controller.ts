@@ -18,6 +18,7 @@ import { getAppLatestVersion, getAppVersionById } from '../version/controller';
 import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { MongoAppVersion } from '../version/schema';
 
 /* 
   plugin id rule:
@@ -90,18 +91,27 @@ const getSystemPluginTemplateById = async (
 
 /* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
-  id
+  appId,
+  versionId
 }: {
-  id: string;
+  appId: string;
+  versionId?: string;
 }): Promise<FlowNodeTemplateType> {
   const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(id);
+    const { source, pluginId } = await splitCombinePluginId(appId);
 
     if (source === PluginSourceEnum.personal) {
-      const item = await MongoApp.findById(id).lean();
+      const item = await MongoApp.findById(appId).lean();
       if (!item) return Promise.reject('plugin not found');
 
-      const version = await getAppLatestVersion(id, item);
+      const version = await getAppVersionById({ appId, versionId, app: item });
+
+      const versionData = await MongoAppVersion.findById(version.versionId);
+
+      const isLatest = await MongoAppVersion.countDocuments({
+        appId: versionData?.appId,
+        time: { $gt: versionData?.time }
+      }).then((count) => count === 0);
 
       if (!version.versionId) return Promise.reject('App version not found');
 
@@ -119,6 +129,10 @@ export async function getChildAppPreviewNode({
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
         version: version.versionId,
+        versionData: {
+          versionName: versionData?.versionName || '',
+          isLatest
+        },
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,
@@ -176,6 +190,7 @@ export async function getChildAppPreviewNode({
     showStatus: app.showStatus,
     isTool: true,
     version: app.version,
+    versionData: app.versionData,
     sourceHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
       : getHandleConfig(true, true, true, true),

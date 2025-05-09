@@ -32,7 +32,7 @@ export const ToolModule: FlowNodeTemplateType = {
   name: i18nT('workflow:template.tool_call'),
   intro: i18nT('workflow:template.tool_call_intro'),
   showStatus: true,
-  courseUrl: '/docs/guide/workbench/workflow/tool/',
+  courseUrl: '/docs/guide/dashboard/workflow/tool/',
   version: '4.9.2',
   inputs: [
     {

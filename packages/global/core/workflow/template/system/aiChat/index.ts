@@ -19,7 +19,6 @@ import {
   Input_Template_UserChatInput,
   Input_Template_File_Link
 } from '../../input';
-import { chatNodeSystemPromptTip, systemPromptTip } from '../../tip';
 import { getHandleConfig } from '../../utils';
 import { i18nT } from '../../../../../../web/i18n/utils';
 
@@ -54,7 +53,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/ai_chat/',
+  courseUrl: '/docs/guide/dashboard/workflow/ai_chat/',
   version: '4.9.7',
   inputs: [
     Input_Template_SettingAiModel,
@@ -121,12 +120,7 @@ export const AiChatModule: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string
     },
     // settings modal ---
-    {
-      ...Input_Template_System_Prompt,
-      label: i18nT('common:core.ai.Prompt'),
-      description: systemPromptTip,
-      placeholder: chatNodeSystemPromptTip
-    },
+    Input_Template_System_Prompt,
     Input_Template_History,
     Input_Template_Dataset_Quote,
     Input_Template_File_Link,
