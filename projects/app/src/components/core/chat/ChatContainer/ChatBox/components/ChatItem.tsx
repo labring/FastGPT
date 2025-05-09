@@ -1,4 +1,4 @@
-import { Box, BoxProps, Card, Flex } from '@chakra-ui/react';
+import { Box, type BoxProps, Card, Flex } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
@@ -19,7 +19,10 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import {
+  type AIChatItemValueItemType,
+  type ChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { CodeClassNameEnum } from '@/components/Markdown/utils';
 import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -240,11 +243,6 @@ const ChatItem = (props: Props) => {
       quoteId?: string;
     }) => {
       if (!setQuoteData) return;
-      if (isChatting)
-        return toast({
-          title: t('chat:chat.waiting_for_response'),
-          status: 'info'
-        });
 
       const collectionIdList = collectionId
         ? [collectionId]
@@ -277,18 +275,7 @@ const ChatItem = (props: Props) => {
               }
       });
     },
-    [
-      setQuoteData,
-      isChatting,
-      toast,
-      t,
-      quoteList,
-      isShowReadRawSource,
-      appId,
-      chatId,
-      chat.dataId,
-      outLinkAuthData
-    ]
+    [setQuoteData, quoteList, isShowReadRawSource, appId, chatId, chat.dataId, outLinkAuthData]
   );
 
   useEffect(() => {
@@ -397,7 +384,7 @@ const ChatItem = (props: Props) => {
                   right={0}
                   transform={'translateX(100%)'}
                 >
-                  <MyTooltip label={t('common:common.Copy')}>
+                  <MyTooltip label={t('common:Copy')}>
                     <MyIcon
                       w={'1rem'}
                       cursor="pointer"

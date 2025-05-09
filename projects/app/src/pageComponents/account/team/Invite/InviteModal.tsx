@@ -110,7 +110,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
                 <Th bgColor="myGray.100">{t('account_team:used_times_limit')}</Th>
                 <Th bgColor="myGray.100">{t('account_team:invited')}</Th>
                 <Th bgColor="myGray.100" borderRightRadius="6px">
-                  {t('common:common.Action')}
+                  {t('common:Action')}
                 </Th>
               </Tr>
             </Thead>
@@ -213,7 +213,7 @@ const InviteModal = ({ onClose }: { onClose: () => void }) => {
                                   </Box>
                                   <Flex gap={2} mt={2} justifyContent={'flex-end'}>
                                     <Button variant="outline" onClick={onClosePopover}>
-                                      {t('common:common.Cancel')}
+                                      {t('common:Cancel')}
                                     </Button>
                                     <Button
                                       isLoading={forbiding}

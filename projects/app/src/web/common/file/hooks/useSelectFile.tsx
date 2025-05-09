@@ -1,7 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useI18n } from '@/web/context/I18n';
 import { useMemoizedFn } from 'ahooks';
 import { compressImgFileAndUpload } from '../controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -14,7 +13,6 @@ export const useSelectFile = (props?: {
   maxCount?: number;
 }) => {
   const { t } = useTranslation();
-  const { fileT } = useI18n();
   const { fileType = '*', multiple = false, maxCount = 10 } = props || {};
   const { toast } = useToast();
   const SelectFileDom = useRef<HTMLInputElement>(null);
@@ -36,7 +34,7 @@ export const useSelectFile = (props?: {
           if (fileList.length > maxCount) {
             toast({
               status: 'warning',
-              title: fileT('select_file_amount_limit', { max: maxCount })
+              title: t('file:select_file_amount_limit', { max: maxCount })
             });
             fileList = fileList.slice(0, maxCount);
           }

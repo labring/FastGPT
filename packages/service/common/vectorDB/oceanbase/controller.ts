@@ -1,4 +1,9 @@
-import mysql, { Pool, QueryResult, RowDataPacket, ResultSetHeader } from 'mysql2/promise';
+import mysql, {
+  type Pool,
+  type QueryResult,
+  type RowDataPacket,
+  type ResultSetHeader
+} from 'mysql2/promise';
 import { addLog } from '../../system/log';
 import { OCEANBASE_ADDRESS } from '../constants';
 

@@ -1,9 +1,9 @@
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { getResourcePermission, parseHeaderCert } from '../controller';
 import {
-  CollectionWithDatasetType,
-  DatasetDataItemType,
-  DatasetSchemaType
+  type CollectionWithDatasetType,
+  type DatasetDataItemType,
+  type DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoDataset } from '../../../core/dataset/schema';
@@ -12,9 +12,9 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { getCollectionWithDataset } from '../../../core/dataset/controller';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
-import { AuthModeType, AuthResponseType } from '../type';
+import { type AuthModeType, type AuthResponseType } from '../type';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 export const authDatasetByTmbId = async ({

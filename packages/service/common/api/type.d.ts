@@ -1,12 +1,14 @@
+import type { ApiDatasetDetailResponse } from '@fastgpt/global/core/dataset/apiDataset';
 import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
-import {
+import type {
   DeepRagSearchProps,
   SearchDatasetDataResponse
 } from '../../core/dataset/search/controller';
-import { AuthOpenApiLimitProps } from '../../support/openapi/auth';
-import { CreateUsageProps, ConcatUsageProps } from '@fastgpt/global/support/wallet/usage/api';
-import {
+import type { AuthOpenApiLimitProps } from '../../support/openapi/auth';
+import type { CreateUsageProps, ConcatUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import type {
   GetProApiDatasetFileContentParams,
+  GetProApiDatasetFileDetailParams,
   GetProApiDatasetFileListParams,
   GetProApiDatasetFilePreviewUrlParams
 } from '../../core/dataset/apiDataset/proApi';
@@ -26,4 +28,7 @@ declare global {
   var getProApiDatasetFilePreviewUrl: (
     data: GetProApiDatasetFilePreviewUrlParams
   ) => Promise<string>;
+  var getProApiDatasetFileDetail: (
+    data: GetProApiDatasetFileDetailParams
+  ) => Promise<ApiDatasetDetailResponse>;
 }

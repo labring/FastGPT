@@ -36,7 +36,7 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
@@ -87,6 +87,7 @@ const OutLink = (props: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
   const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -162,7 +163,8 @@ const OutLink = (props: Props) => {
           },
           responseChatItemId,
           chatId: completionChatId,
-          ...outLinkAuthData
+          ...outLinkAuthData,
+          retainDatasetCite: isResponseDetail
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -200,6 +202,7 @@ const OutLink = (props: Props) => {
       chatId,
       customVariables,
       outLinkAuthData,
+      isResponseDetail,
       onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChat,

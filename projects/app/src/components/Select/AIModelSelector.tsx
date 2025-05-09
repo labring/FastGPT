@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MySelect, { SelectProps } from '@fastgpt/web/components/common/MySelect';
+import MySelect, { type SelectProps } from '@fastgpt/web/components/common/MySelect';
 import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 import { Box, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';

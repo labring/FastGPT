@@ -5,7 +5,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
+import { type FlowNodeTemplateType } from '../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -54,7 +54,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.datasetMaxTokens,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       label: '',
-      value: 1500,
+      value: 5000,
       valueType: WorkflowIOValueTypeEnum.number
     },
     {

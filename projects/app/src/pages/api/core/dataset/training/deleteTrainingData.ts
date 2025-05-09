@@ -2,7 +2,7 @@ import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type deleteTrainingDataBody = {
   datasetId: string;

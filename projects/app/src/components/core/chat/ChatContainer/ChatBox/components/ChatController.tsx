@@ -1,6 +1,6 @@
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { Flex, FlexProps, css, useTheme } from '@chakra-ui/react';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { Flex, type FlexProps, css, useTheme } from '@chakra-ui/react';
+import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -80,7 +80,7 @@ const ChatController = ({
         }
       })}
     >
-      <MyTooltip label={t('common:common.Copy')}>
+      <MyTooltip label={t('common:Copy')}>
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
@@ -100,7 +100,7 @@ const ChatController = ({
               />
             </MyTooltip>
           )}
-          <MyTooltip label={t('common:common.Delete')}>
+          <MyTooltip label={t('common:Delete')}>
             <MyIcon
               {...controlIconStyle}
               name={'delete'}
@@ -132,7 +132,7 @@ const ChatController = ({
           }
           if (isPlayingChat && audioLoading) {
             return (
-              <MyTooltip label={t('common:common.Loading')}>
+              <MyTooltip label={t('common:Loading')}>
                 <MyIcon {...controlIconStyle} name={'common/loading'} />
               </MyTooltip>
             );

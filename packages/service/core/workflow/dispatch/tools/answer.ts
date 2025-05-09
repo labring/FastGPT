@@ -5,7 +5,7 @@ import {
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;
 }>;

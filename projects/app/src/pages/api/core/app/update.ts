@@ -10,13 +10,13 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   syncChildrenPermission,
   syncCollaborators
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ClientSession } from 'mongoose';
+import { type ClientSession } from 'mongoose';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';

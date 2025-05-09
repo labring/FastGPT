@@ -54,7 +54,7 @@ const FeedbackModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button isLoading={isLoading} onClick={mutate}>
           {t('common:core.chat.Feedback Submit')}

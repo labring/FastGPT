@@ -1,6 +1,6 @@
 import {
-  DispatchNodeResponseType,
-  DispatchNodeResultType
+  type DispatchNodeResponseType,
+  type DispatchNodeResultType
 } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
@@ -8,10 +8,10 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getEmbeddingModel, getRerankModel } from '../../../ai/model';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search/controller';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { MongoDataset } from '../../../dataset/schema';
 import { i18nT } from '../../../../../web/i18n/utils';
 import { filterDatasetsByTmbId } from '../../../dataset/utils';
@@ -55,11 +55,10 @@ export async function dispatchDatasetSearch(
     runningUserInfo: { tmbId },
     histories,
     node,
-    parseQuote = true,
     params: {
       datasets = [],
       similarity,
-      limit = 1500,
+      limit = 5000,
       userChatInput = '',
       authTmbId = false,
       collectionFilterMatch,
@@ -114,7 +113,6 @@ export async function dispatchDatasetSearch(
   if (datasetIds.length === 0) {
     return emptyResult;
   }
-  // console.log(concatQueries, rewriteQuery, aiExtensionResult);
 
   // get vector
   const vectorModel = getEmbeddingModel(
@@ -183,12 +181,14 @@ export async function dispatchDatasetSearch(
     inputTokens: reRankInputTokens,
     modelType: ModelTypeEnum.rerank
   });
-  nodeDispatchUsages.push({
-    totalPoints: reRankTotalPoints,
-    moduleName: node.name,
-    model: reRankModelName,
-    inputTokens: reRankInputTokens
-  });
+  if (usingReRank) {
+    nodeDispatchUsages.push({
+      totalPoints: reRankTotalPoints,
+      moduleName: node.name,
+      model: reRankModelName,
+      inputTokens: reRankInputTokens
+    });
+  }
   // Query extension
   (() => {
     if (queryExtensionResult) {
@@ -267,7 +267,7 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: {
-      prompt: getDatasetSearchToolResponsePrompt(parseQuote),
+      prompt: getDatasetSearchToolResponsePrompt(),
       quotes: searchRes.map((item) => ({
         id: item.id,
         sourceName: item.sourceName,

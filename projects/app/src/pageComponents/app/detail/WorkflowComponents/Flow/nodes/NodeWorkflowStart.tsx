@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
 import { useCreation } from 'ahooks';
-import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -73,7 +73,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {...data}
       >
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
         <Container>

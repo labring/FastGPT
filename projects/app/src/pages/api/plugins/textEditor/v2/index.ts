@@ -3,7 +3,7 @@ import type { HttpBodyType } from '@fastgpt/global/core/workflow/api.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { authRequestFromLocal } from '@fastgpt/service/support/permission/auth/common';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 
 type Props = HttpBodyType<{
   text: string;

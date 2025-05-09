@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema } = connectionMongo;
-import { TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type.d';
+import { type TeamMemberSchema as TeamMemberType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import {
   TeamMemberStatusMap,

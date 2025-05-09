@@ -1,4 +1,4 @@
-import { OrgSchemaType } from './type';
+import { type OrgSchemaType } from './type';
 
 export const OrgCollectionName = 'team_orgs';
 export const OrgMemberCollectionName = 'team_org_members';

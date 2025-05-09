@@ -1,6 +1,10 @@
-import { AIChatItemType, ChatHistoryItemResType, ChatSchema } from '@fastgpt/global/core/chat/type';
+import {
+  type AIChatItemType,
+  type ChatHistoryItemResType,
+  type ChatSchema
+} from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { AuthModeType } from '@fastgpt/service/support/permission/type';
+import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';

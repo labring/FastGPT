@@ -1,4 +1,5 @@
-import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import type { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+import axios from 'axios';
 
 type ConfigType = {};
 type ResponseDataType = {

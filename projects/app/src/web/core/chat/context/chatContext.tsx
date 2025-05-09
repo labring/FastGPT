@@ -1,6 +1,6 @@
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import React, { ReactNode, useCallback, useMemo, useRef } from 'react';
+import React, { type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { createContext } from 'use-context-selector';
 import {
   delClearChatHistories,
@@ -8,9 +8,9 @@ import {
   putChatHistory,
   getChatHistories
 } from '../api';
-import { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
-import { UpdateHistoryProps } from '@/global/core/chat/api';
-import { BoxProps, useDisclosure } from '@chakra-ui/react';
+import { type ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
+import { type UpdateHistoryProps } from '@/global/core/chat/api';
+import { type BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';

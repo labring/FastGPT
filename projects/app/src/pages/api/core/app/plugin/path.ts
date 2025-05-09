@@ -1,6 +1,9 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { GetPathProps, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import {
+  type GetPathProps,
+  type ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import { getSystemPlugins } from '@/service/core/app/plugin';
 
 export type pathQuery = GetPathProps;

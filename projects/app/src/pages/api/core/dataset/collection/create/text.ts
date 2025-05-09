@@ -5,7 +5,7 @@ import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/col
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { CreateCollectionResponse } from '@/global/core/dataset/api';
+import { type CreateCollectionResponse } from '@/global/core/dataset/api';
 
 async function handler(req: NextApiRequest): CreateCollectionResponse {
   const { name, text, ...body } = req.body as TextCreateDatasetCollectionParams;

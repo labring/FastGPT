@@ -1,6 +1,6 @@
 import type { Pool } from 'pg';
-import { Pool as MysqlPool } from 'mysql2/promise';
-import { MilvusClient } from '@zilliz/milvus2-sdk-node';
+import type { Pool as MysqlPool } from 'mysql2/promise';
+import type { MilvusClient } from '@zilliz/milvus2-sdk-node';
 
 declare global {
   var pgClient: Pool | null;

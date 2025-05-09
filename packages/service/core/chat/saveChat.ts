@@ -1,17 +1,14 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '../app/schema';
-import {
-  ChatItemValueTypeEnum,
-  ChatRoleEnum,
-  ChatSourceEnum
-} from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { addLog } from '../../common/system/log';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
 import { pushChatLog } from './pushChatLog';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

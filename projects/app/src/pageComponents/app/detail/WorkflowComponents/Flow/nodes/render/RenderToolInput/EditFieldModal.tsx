@@ -16,7 +16,7 @@ import { useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
@@ -129,10 +129,10 @@ const EditFieldModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button onClick={handleSubmit((data) => onclickSubmit(data), onclickSubmitError)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

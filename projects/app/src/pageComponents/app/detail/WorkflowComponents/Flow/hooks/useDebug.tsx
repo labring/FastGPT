@@ -1,12 +1,15 @@
 import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/utils';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  type RuntimeEdgeItemType,
+  type StoreEdgeItemType
+} from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
-import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 import dynamic from 'next/dynamic';
 import {
@@ -20,7 +23,7 @@ import {
   NumberInputStepper,
   Switch
 } from '@chakra-ui/react';
-import { FieldErrors, useForm } from 'react-hook-form';
+import { type FieldErrors, useForm } from 'react-hook-form';
 import {
   VariableInputEnum,
   WorkflowIOValueTypeEnum
@@ -362,9 +365,7 @@ export const useDebug = () => {
           </Box>
         </Box>
         <Flex py={2} justifyContent={'flex-end'} px={6}>
-          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>
-            {t('common:common.Run')}
-          </Button>
+          <Button onClick={handleSubmit(onClickRun, onCheckRunError)}>{t('common:Run')}</Button>
         </Flex>
       </MyRightDrawer>
     );

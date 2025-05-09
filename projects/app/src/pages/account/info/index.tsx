@@ -9,10 +9,10 @@ import {
   Link,
   Progress,
   Grid,
-  BoxProps
+  type BoxProps
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { UserUpdateParams } from '@/types/user';
+import { type UserUpdateParams } from '@/types/user';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type.d';

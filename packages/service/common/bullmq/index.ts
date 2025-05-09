@@ -1,4 +1,11 @@
-import { ConnectionOptions, Processor, Queue, QueueOptions, Worker, WorkerOptions } from 'bullmq';
+import {
+  type ConnectionOptions,
+  type Processor,
+  Queue,
+  type QueueOptions,
+  Worker,
+  type WorkerOptions
+} from 'bullmq';
 import { addLog } from '../system/log';
 import { newQueueRedisConnection, newWorkerRedisConnection } from '../redis';
 

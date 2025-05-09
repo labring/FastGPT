@@ -1,7 +1,7 @@
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React from 'react';
-import { ThirdPartyAccountType } from '../../../pages/account/thirdParty/index';
+import { type ThirdPartyAccountType } from '../../../pages/account/thirdParty/index';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -38,8 +38,8 @@ const WorkflowVariableModal = ({
         initUserInfo();
         onClose();
       },
-      successToast: t('common:common.Update Success'),
-      errorToast: t('common:common.Update Failed')
+      successToast: t('common:update_success'),
+      errorToast: t('common:update_failed')
     }
   );
 
@@ -68,10 +68,10 @@ const WorkflowVariableModal = ({
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

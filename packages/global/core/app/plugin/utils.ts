@@ -1,5 +1,5 @@
-import { StoreNodeItemType } from '../../workflow/type/node';
-import { FlowNodeInputItemType } from '../../workflow/type/io';
+import { type StoreNodeItemType } from '../../workflow/type/node';
+import { type FlowNodeInputItemType } from '../../workflow/type/io';
 import { FlowNodeTypeEnum } from '../../workflow/node/constant';
 
 export const getPluginInputsFromStoreNodes = (nodes: StoreNodeItemType[]) => {

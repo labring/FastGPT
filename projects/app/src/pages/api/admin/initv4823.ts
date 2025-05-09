@@ -9,7 +9,7 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
 

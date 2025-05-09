@@ -1,5 +1,5 @@
-import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { splitCombinePluginId } from './controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
@@ -31,5 +31,6 @@ export const computedPluginUsage = async ({
     return plugin.hasTokenFee ? pluginCurrentCost + childrenUsages : pluginCurrentCost;
   }
 
+  // Personal plugins are charged regardless of whether they are successful or not
   return childrenUsages;
 };

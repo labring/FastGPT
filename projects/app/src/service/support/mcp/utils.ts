@@ -4,17 +4,17 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { Tool } from '@modelcontextprotocol/sdk/types';
+import { type Tool } from '@modelcontextprotocol/sdk/types';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { toolCallProps } from './type';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type toolCallProps } from './type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   getPluginRunUserQuery,
   updatePluginInputByVariables
@@ -37,6 +37,7 @@ import { saveChat } from '@fastgpt/service/core/chat/saveChat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { createChatUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { removeDatasetCiteText } from '@fastgpt/service/core/ai/utils';
 
 export const pluginNodes2InputSchema = (
   nodes: { flowNodeType: FlowNodeTypeEnum; inputs: FlowNodeInputItemType[] }[]
@@ -288,7 +289,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     })();
 
     // Format response content
-    responseContent = responseContent.trim().replace(/\[\w+\]\(QUOTE\)/g, '');
+    responseContent = removeDatasetCiteText(responseContent.trim(), false);
 
     return responseContent;
   };

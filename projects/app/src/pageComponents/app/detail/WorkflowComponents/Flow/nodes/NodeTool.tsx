@@ -1,6 +1,6 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
@@ -29,13 +29,13 @@ const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
         </Container>
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
         </Container>
       </>

@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import MultipleRowSelect from './MultipleRowSelect';
 import { useTranslation } from 'next-i18next';
-import { MultipleSelectProps } from './type';
+import { type MultipleSelectProps } from './type';
 import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 
 type CronType = 'month' | 'week' | 'day' | 'interval';
@@ -47,7 +47,7 @@ export const cronString2Label = (
 ) => {
   const cronField = cronString2Fields(cronString);
   if (!cronField) {
-    return t('common:common.Not open');
+    return t('common:not_open');
   }
 
   if (cronField[0] === 'month') {
@@ -82,7 +82,7 @@ export const cronString2Label = (
     });
   }
 
-  return t('common:common.Not open');
+  return t('common:not_open');
 };
 
 const CronSelector = ({

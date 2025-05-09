@@ -1,4 +1,7 @@
-import { ShortUrlParams, TrackRegisterParams } from '@fastgpt/global/support/marketing/type';
+import {
+  type ShortUrlParams,
+  type TrackRegisterParams
+} from '@fastgpt/global/support/marketing/type';
 
 export const getInviterId = () => {
   return localStorage.getItem('inviterId') || undefined;

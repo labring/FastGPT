@@ -5,12 +5,12 @@ import type {
 } from '@fastgpt/global/core/dataset/api.d';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { ClientSession } from '../../../common/mongo';
+import { type ClientSession } from '../../../common/mongo';
 import { getLLMModel, getEmbeddingModel, getVlmModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';
 import { getCollectionWithDataset } from '../controller';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
-import { PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
+import { type PushDataToTrainingQueueProps } from '@fastgpt/global/core/dataset/training/type';
 import { i18nT } from '../../../../web/i18n/utils';
 import {
   getLLMDefaultChunkSize,

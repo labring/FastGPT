@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
@@ -32,9 +32,9 @@ import {
 import { useTranslation } from 'next-i18next';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { type EditorVariableLabelPickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -845,7 +845,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput
             nodeId={nodeId}
             flowInputList={commonInputs}
@@ -855,7 +855,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
         </Container>
       </>

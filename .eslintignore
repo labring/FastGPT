@@ -1,0 +1,25 @@
+# 构建输出目录
+dist/
+build/
+.next/
+out/
+
+# 依赖目录
+node_modules/
+
+# 缓存和生成文件
+coverage/
+.coverage/
+.nyc_output/
+*.log
+
+# 其他不需要检查的文件
+*.min.js
+*.config.js
+vitest.config.mts
+
+# 特定目录
+bin/
+scripts/
+deploy/
+docSite/

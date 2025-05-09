@@ -1,7 +1,7 @@
 import React, { useCallback, useRef, useState } from 'react';
 import {
   Box,
-  BoxProps,
+  type BoxProps,
   Flex,
   Input,
   Tag,
@@ -31,7 +31,7 @@ const TagTextarea = ({ defaultValues, onUpdate, ...props }: Props) => {
       if (tags.includes(value)) {
         return toast({
           status: 'warning',
-          title: t('common:common.input.Repeat Value')
+          title: t('common:input.Repeat Value')
         });
       }
       setTags([...tags, value]);

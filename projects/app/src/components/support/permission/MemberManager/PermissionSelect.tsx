@@ -1,5 +1,5 @@
 import {
-  ButtonProps,
+  type ButtonProps,
   Flex,
   Menu,
   MenuList,
@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useContextSelector } from 'use-context-selector';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { CollaboratorContext } from './context';
@@ -239,7 +239,7 @@ function PermissionSelect({
                 }}
               >
                 <MyIcon name="delete" w="20px" color="red.600" />
-                <Box color="red.600">{t('common:common.Remove')}</Box>
+                <Box color="red.600">{t('common:Remove')}</Box>
               </HStack>
             </>
           )}

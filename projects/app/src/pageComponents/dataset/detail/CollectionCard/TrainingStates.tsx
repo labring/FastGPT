@@ -28,7 +28,7 @@ import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/datas
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getTrainingDataDetailResponse } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
+import { type getTrainingDataDetailResponse } from '@/pages/api/core/dataset/training/getTrainingDataDetail';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { TrainingProcess } from '@/web/core/dataset/constants';
 import { useForm } from 'react-hook-form';
@@ -429,7 +429,7 @@ const EditView = ({
       )}
       <Flex justifyContent={'flex-end'} gap={4}>
         <Button variant={'outline'} onClick={onCancel}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button variant={'primary'} onClick={handleSubmit(onSave)}>
           {t('dataset:dataset.ReTrain')}

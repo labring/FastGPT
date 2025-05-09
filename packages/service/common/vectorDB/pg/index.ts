@@ -2,7 +2,7 @@
 import { DatasetVectorTableName } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { PgClient, connectPg } from './controller';
-import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
+import { type PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import type {
   DelDatasetVectorCtrlProps,
   EmbeddingRecallCtrlProps,

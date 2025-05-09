@@ -30,18 +30,19 @@ import {
   concatHistories,
   filterPublicNodeResponseData,
   getChatTitleFromChatMessage,
+  removeAIResponseCite,
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { AppSchema } from '@fastgpt/global/core/app/type';
-import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 import { NextAPI } from '@/service/middleware/entry';
@@ -58,7 +59,7 @@ import { rewriteNodeOutputByHistories } from '@fastgpt/global/core/workflow/runt
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getPluginInputsFromStoreNodes } from '@fastgpt/global/core/app/plugin/utils';
-import { ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type ExternalProviderType } from '@fastgpt/global/core/workflow/runtime/type';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: get histories from messages, '': new chat, 'xxxxx': get histories from db
@@ -74,7 +75,7 @@ export type Props = ChatCompletionCreateParams &
     responseChatItemId?: string;
     stream?: boolean;
     detail?: boolean;
-    parseQuote?: boolean;
+    retainDatasetCite?: boolean;
     variables: Record<string, any>; // Global variables or plugin inputs
   };
 
@@ -107,7 +108,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     stream = false,
     detail = false,
-    parseQuote = false,
+    retainDatasetCite = false,
     messages = [],
     variables = {},
     responseChatItemId = getNanoid(),
@@ -187,6 +188,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         chatId
       });
     })();
+    retainDatasetCite = retainDatasetCite && !!responseDetail;
     const isPlugin = app.type === AppTypeEnum.plugin;
 
     // Check message type
@@ -291,7 +293,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             chatConfig,
             histories: newHistories,
             stream,
-            parseQuote,
+            retainDatasetCite,
             maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
             workflowStreamResponse: workflowResponseWrite
           });
@@ -406,17 +408,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
         return assistantResponses;
       })();
+      const formatResponseContent = removeAIResponseCite(responseContent, retainDatasetCite);
       const error = flowResponses[flowResponses.length - 1]?.error;
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
         error,
-        id: chatId || '',
+        id: saveChatId,
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: responseContent },
+            message: { role: 'assistant', content: formatResponseContent },
             finish_reason: 'stop',
             index: 0
           }

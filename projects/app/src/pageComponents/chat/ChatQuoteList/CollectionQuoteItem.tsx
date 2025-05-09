@@ -1,7 +1,7 @@
 import Markdown from '@/components/Markdown';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Dispatch, MutableRefObject, SetStateAction, useState } from 'react';
+import { type Dispatch, type MutableRefObject, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
@@ -147,7 +147,7 @@ const CollectionQuoteItem = ({
               </Flex>
             </MyTooltip>
           )}
-          <MyTooltip label={t('common:common.Copy')}>
+          <MyTooltip label={t('common:Copy')}>
             <Flex
               alignItems={'center'}
               fontSize={'10px'}

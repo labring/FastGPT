@@ -3,7 +3,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../common/mongo';
-import { McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppCollectionName } from '../../core/app/schema';
 

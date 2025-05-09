@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo } from 'react';
+import React, { type ReactNode, useMemo } from 'react';
 import { createContext } from 'use-context-selector';
 import { useMediaQuery } from '@chakra-ui/react';
 import Cookies from 'js-cookie';

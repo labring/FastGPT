@@ -17,7 +17,7 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { type InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';

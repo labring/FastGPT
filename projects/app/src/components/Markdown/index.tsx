@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic';
 import { Box } from '@chakra-ui/react';
 import { CodeClassNameEnum, mdTextFormat } from './utils';
 import { useCreation } from 'ahooks';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -60,9 +60,9 @@ const MarkdownRender = ({
       img: Image,
       pre: RewritePre,
       code: Code,
-      a: (props: any) => <A {...props} chatAuthData={chatAuthData} />
+      a: (props: any) => <A {...props} showAnimation={showAnimation} chatAuthData={chatAuthData} />
     };
-  }, [chatAuthData]);
+  }, [chatAuthData, showAnimation]);
 
   const formatSource = useMemo(() => {
     if (showAnimation || forbidZhFormat) return source;

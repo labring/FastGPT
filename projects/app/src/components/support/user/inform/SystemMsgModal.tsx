@@ -11,19 +11,27 @@ const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
 const SystemMsgModal = ({}: {}) => {
   const { t } = useTranslation();
-  const { systemMsgReadId, setSysMsgReadId } = useUserStore();
+  const { userInfo, systemMsgReadId, setSysMsgReadId } = useUserStore();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const { data } = useRequest2(getSystemMsgModalData, {
-    refreshDeps: [systemMsgReadId],
-    manual: false,
-    onSuccess(res) {
-      if (res?.content && (!systemMsgReadId || res.id !== systemMsgReadId)) {
-        onOpen();
+  const { data } = useRequest2(
+    async () => {
+      if (!userInfo?._id) {
+        return;
+      }
+      return getSystemMsgModalData();
+    },
+    {
+      refreshDeps: [systemMsgReadId, userInfo?._id],
+      manual: false,
+      onSuccess(res) {
+        if (res?.content && (!systemMsgReadId || res.id !== systemMsgReadId)) {
+          onOpen();
+        }
       }
     }
-  });
+  );
 
   const onclickRead = useCallback(() => {
     if (!data) return;
@@ -31,12 +39,8 @@ const SystemMsgModal = ({}: {}) => {
     onClose();
   }, [data, onClose, setSysMsgReadId]);
 
-  return (
-    <MyModal
-      isOpen={isOpen}
-      iconSrc={LOGO_ICON}
-      title={t('common:support.user.inform.System message')}
-    >
+  return isOpen ? (
+    <MyModal isOpen iconSrc={LOGO_ICON} title={t('common:support.user.inform.System message')}>
       <ModalBody overflow={'auto'}>
         <Markdown source={data?.content} />
       </ModalBody>
@@ -44,7 +48,7 @@ const SystemMsgModal = ({}: {}) => {
         <Button onClick={onclickRead}>{t('common:support.inform.Read')}</Button>
       </ModalFooter>
     </MyModal>
-  );
+  ) : null;
 };
 
 export default React.memo(SystemMsgModal);

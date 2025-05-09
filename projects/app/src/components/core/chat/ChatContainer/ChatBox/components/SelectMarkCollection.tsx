@@ -6,7 +6,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import dynamic from 'next/dynamic';
-import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
+import { type AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
@@ -118,7 +118,7 @@ const SelectMarkCollection = ({
                   });
                 }}
               >
-                {t('common:common.Last Step')}
+                {t('common:last_step')}
               </Button>
             </ModalFooter>
           }

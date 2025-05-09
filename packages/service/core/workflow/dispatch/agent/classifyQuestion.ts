@@ -7,19 +7,20 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatCompletion } from '../../../ai/config';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getCQPrompt } from '@fastgpt/global/core/ai/prompt/agent';
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { loadRequestMessages } from '../../../chat/utils';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../../../ai/utils';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '../../../ai/utils';
 import { addLog } from '../../../../common/system/log';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -135,13 +136,13 @@ const completions = async ({
         model: cqModel.model,
         temperature: 0.01,
         messages: requestMessages,
-        stream: false
+        stream: true
       },
       cqModel
     ),
     userKey: externalProvider.openaiAccount
   });
-  const { text: answer, usage } = await llmResponseToAnswerText(response);
+  const { text: answer, usage } = await formatLLMResponse(response);
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
   // console.log(answer, '----');

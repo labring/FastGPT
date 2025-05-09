@@ -1,5 +1,5 @@
 import { DELETE, GET, POST, PUT } from '@/web/common/api/request';
-import { GetGroupListBody } from '@fastgpt/global/support/permission/memberGroup/api';
+import { type GetGroupListBody } from '@fastgpt/global/support/permission/memberGroup/api';
 import type {
   GroupMemberItemType,
   MemberGroupListItemType

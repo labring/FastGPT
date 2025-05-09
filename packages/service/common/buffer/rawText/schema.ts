@@ -1,5 +1,5 @@
 import { getMongoModel, Schema } from '../../mongo';
-import { RawTextBufferSchemaType } from './type';
+import { type RawTextBufferSchemaType } from './type';
 
 export const collectionName = 'buffer_rawtexts';
 

@@ -3,7 +3,7 @@ import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
@@ -135,7 +135,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     timezone,
     externalProvider,
     stream = false,
-    parseQuote = true,
+    retainDatasetCite = true,
     version = 'v1',
     responseDetail = true,
     responseAllData = true,
@@ -607,7 +607,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       timezone,
       externalProvider,
       stream,
-      parseQuote,
+      retainDatasetCite,
       node,
       runtimeNodes,
       runtimeEdges,

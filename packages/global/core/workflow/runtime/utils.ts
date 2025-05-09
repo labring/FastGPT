@@ -1,19 +1,19 @@
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum, WorkflowIOValueTypeEnum } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
-import { StoreNodeItemType } from '../type/node';
-import { StoreEdgeItemType } from '../type/edge';
-import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
+import { type StoreNodeItemType } from '../type/node';
+import { type StoreEdgeItemType } from '../type/edge';
+import { type RuntimeEdgeItemType, type RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
 import { isValidReferenceValueFormat } from '../utils';
-import { FlowNodeOutputItemType, ReferenceValueType } from '../type/io';
-import { ChatItemType, NodeOutputItemType } from '../../../core/chat/type';
+import { type FlowNodeOutputItemType, type ReferenceValueType } from '../type/io';
+import { type ChatItemType, type NodeOutputItemType } from '../../../core/chat/type';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '../../../core/chat/constants';
 import { replaceVariable, valToStr } from '../../../common/string/tools';
 import json5 from 'json5';
 import {
-  InteractiveNodeResponseType,
-  WorkflowInteractiveResponseType
+  type InteractiveNodeResponseType,
+  type WorkflowInteractiveResponseType
 } from '../template/system/interactive/type';
 
 export const extractDeepestInteractive = (

@@ -1,5 +1,5 @@
-import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
-import { QuoteDataItemType } from './constants';
+import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type QuoteDataItemType } from './constants';
 
 // 获取对话时间时，引用的内容
 export function processChatTimeFilter(

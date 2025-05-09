@@ -1,10 +1,7 @@
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  ChatItemValueItemType,
-  ChatSiteItemType,
-  ToolModuleResponseItemType
-} from '@fastgpt/global/core/chat/type';
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatItemValueItemType, ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export type UserInputFileItemType = {

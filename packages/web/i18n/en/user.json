@@ -28,6 +28,7 @@
   "login.success": "Login Successful",
   "manage_team": "Manage team",
   "name": "Name",
+  "new_password": "New Password",
   "notification.remind_owner_bind": "Please remind the creator to bind a notification account",
   "operations": "Actions",
   "owner": "owner",

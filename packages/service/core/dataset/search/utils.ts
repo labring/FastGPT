@@ -1,6 +1,6 @@
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { queryExtension } from '../../ai/functions/queryExtension';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType } from '@fastgpt/global/core/chat/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 

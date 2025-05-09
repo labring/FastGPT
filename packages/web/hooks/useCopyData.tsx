@@ -20,7 +20,7 @@ export const useCopyData = () => {
   const copyData = useCallback(
     async (
       data: string,
-      title: string | null | undefined = t('common:common.Copy Successful'),
+      title: string | null | undefined = t('common:copy_successful'),
       duration = 1000
     ) => {
       data = data.trim();
@@ -59,7 +59,7 @@ export const ManualCopyModal = () => {
       isOpen={!!copyContent}
       iconSrc="copy"
       iconColor="primary.600"
-      title={t('common:common.Copy')}
+      title={t('common:Copy')}
       maxW={['90vw', '500px']}
       w={'100%'}
       onClose={() => setCopyContent(undefined)}

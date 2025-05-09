@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { Flex, Box, ButtonProps, Grid } from '@chakra-ui/react';
+import { Flex, Box, type ButtonProps, Grid } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import {
   computedNodeInputReference,

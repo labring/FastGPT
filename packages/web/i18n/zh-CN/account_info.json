@@ -65,6 +65,7 @@
   "type": "类型",
   "unlimited": "无限制",
   "update_password": "修改密码",
+  "reset_password": "重置密码",
   "update_success_tip": "更新数据成功",
   "upgrade_package": "升级套餐",
   "usage_balance": "使用余额: 使用余额",

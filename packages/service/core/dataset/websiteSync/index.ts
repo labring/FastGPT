@@ -1,4 +1,4 @@
-import { Processor } from 'bullmq';
+import { type Processor } from 'bullmq';
 import { getQueue, getWorker, QueueNames } from '../../../common/bullmq';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 

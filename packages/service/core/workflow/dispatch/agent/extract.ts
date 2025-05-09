@@ -9,28 +9,25 @@ import {
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatCompletion } from '../../../ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
-import {
-  NodeInputKeyEnum,
-  NodeOutputKeyEnum,
-  toolValueTypeList
-} from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum, toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
 import {
-  ChatCompletionMessageParam,
-  ChatCompletionTool,
-  UnStreamChatType
+  type ChatCompletionMessageParam,
+  type ChatCompletionTool,
+  type UnStreamChatType
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../../../ai/utils';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '../../../ai/utils';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
@@ -226,10 +223,10 @@ const toolChoice = async (props: ActionProps) => {
     }
   ];
 
-  const { response } = (await createChatCompletion({
+  const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
-        stream: false,
+        stream: true,
         model: extractModel.model,
         temperature: 0.01,
         messages: filterMessages,
@@ -239,16 +236,15 @@ const toolChoice = async (props: ActionProps) => {
       extractModel
     ),
     userKey: externalProvider.openaiAccount
-  })) as { response: UnStreamChatType };
+  });
+  const { toolCalls, usage } = await formatLLMResponse(response);
 
   const arg: Record<string, any> = (() => {
     try {
-      return json5.parse(
-        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
-      );
+      return json5.parse(toolCalls?.[0]?.function?.arguments || '');
     } catch (error) {
       console.log(agentFunction.parameters);
-      console.log(response.choices?.[0]?.message?.tool_calls?.[0]?.function);
+      console.log(toolCalls?.[0]?.function);
       console.log('Your model may not support tool_call', error);
       return {};
     }
@@ -257,11 +253,10 @@ const toolChoice = async (props: ActionProps) => {
   const AIMessages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      tool_calls: response.choices?.[0]?.message?.tool_calls
+      tool_calls: toolCalls
     }
   ];
 
-  const usage = response.usage;
   const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(filterMessages, tools));
   const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(AIMessages));
   return {
@@ -321,13 +316,13 @@ Human: ${content}`
         model: extractModel.model,
         temperature: 0.01,
         messages: requestMessages,
-        stream: false
+        stream: true
       },
       extractModel
     ),
     userKey: externalProvider.openaiAccount
   });
-  const { text: answer, usage } = await llmResponseToAnswerText(response);
+  const { text: answer, usage } = await formatLLMResponse(response);
   const inputTokens = usage?.prompt_tokens || (await countMessagesTokens(messages));
   const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
 

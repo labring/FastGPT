@@ -1,4 +1,4 @@
-import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 
 export const quoteDataFieldSelector = '_id q a history updateTime chunkIndex';
 

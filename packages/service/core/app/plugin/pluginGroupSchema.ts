@@ -1,5 +1,5 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
-import { PluginGroupSchemaType, TGroupType } from './type';
+import { type PluginGroupSchemaType, type TGroupType } from './type';
 const { Schema } = connectionMongo;
 
 export const collectionName = 'app_plugin_groups';

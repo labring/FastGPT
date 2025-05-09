@@ -5,7 +5,7 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -90,11 +90,11 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           >
             <LightRowTabs<PluginRunBoxTabEnum>
               list={[
-                { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
+                { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
                 ...(chatRecords.length > 0
                   ? [
-                      { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-                      { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
+                      { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
+                      { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
               ]}
@@ -133,7 +133,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
                 onClick={restartChat}
               />
             </MyTooltip>
-            <MyTooltip label={t('common:common.Close')}>
+            <MyTooltip label={t('common:Close')}>
               <IconButton
                 ml={4}
                 icon={<SmallCloseIcon fontSize={'22px'} />}

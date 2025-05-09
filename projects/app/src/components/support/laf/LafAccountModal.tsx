@@ -91,8 +91,8 @@ const LafAccountModal = ({
       initUserInfo();
       onClose();
     },
-    successToast: t('common:common.Update Success'),
-    errorToast: t('common:common.Update Failed')
+    successToast: t('common:update_success'),
+    errorToast: t('common:update_failed')
   });
 
   return (
@@ -180,11 +180,11 @@ const LafAccountModal = ({
             onClose();
           }}
         >
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         {appid && (
           <Button ml={3} isLoading={isUpdating} onClick={handleSubmit((data) => onSubmit(data))}>
-            {t('common:common.Update')}
+            {t('common:Update')}
           </Button>
         )}
       </ModalFooter>

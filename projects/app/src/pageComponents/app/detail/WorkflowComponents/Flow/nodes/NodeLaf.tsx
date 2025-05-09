@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -26,8 +26,8 @@ import RenderOutput from './render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../components/IOTitle';
@@ -214,7 +214,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
       });
     },
     {
-      successToast: t('common:common.Sync success')
+      successToast: t('common:sync_success')
     }
   );
 
@@ -347,13 +347,13 @@ const RenderIO = ({ data }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
         </Container>
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput flowOutputList={outputs} nodeId={nodeId} />
         </Container>
       </>

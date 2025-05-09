@@ -1,7 +1,7 @@
 import { PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
 import { systemPluginResponseEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
-import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import type { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 
 export type SystemPluginResponseType = Promise<Record<string, any>>;
 export type SystemPluginSpecialResponse = {

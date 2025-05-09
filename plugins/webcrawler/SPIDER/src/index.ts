@@ -1,4 +1,5 @@
-import express, { Application } from 'express';
+import type { Application } from 'express';
+import express from 'express';
 import bodyParser from 'body-parser';
 import searchRoutes from './routes/searchRoutes';
 import readRoutes from './routes/readRoutes';

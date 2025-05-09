@@ -1,4 +1,4 @@
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from './io';
+import type { FlowNodeInputItemType, FlowNodeOutputItemType } from './io';
 
 export type FlowNodeChangeProps = { nodeId: string } & (
   | {

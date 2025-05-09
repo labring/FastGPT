@@ -1,8 +1,8 @@
 import axios, {
-  Method,
-  InternalAxiosRequestConfig,
-  AxiosResponse,
-  AxiosProgressEvent
+  type Method,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse,
+  type AxiosProgressEvent
 } from 'axios';
 import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';

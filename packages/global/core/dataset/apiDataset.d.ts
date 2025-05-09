@@ -1,8 +1,9 @@
 import { RequireOnlyOne } from '../../common/type/utils';
+import type { ParentIdType } from '../../common/parentFolder/type.d';
 
 export type APIFileItem = {
   id: string;
-  parentId: string | null;
+  parentId: ParentIdType;
   name: string;
   type: 'file' | 'folder';
   updateTime: Date;
@@ -10,10 +11,24 @@ export type APIFileItem = {
   hasChild?: boolean;
 };
 
+// Api dataset config
 export type APIFileServer = {
   baseUrl: string;
-  authorization: string;
+  authorization?: string;
+  basePath?: string;
 };
+export type FeishuServer = {
+  appId: string;
+  appSecret?: string;
+  folderToken: string;
+};
+export type YuqueServer = {
+  userId: string;
+  token?: string;
+  basePath?: string;
+};
+
+// Api dataset api
 
 export type APIFileListResponse = APIFileItem[];
 
@@ -26,13 +41,8 @@ export type APIFileReadResponse = {
   url: string;
 };
 
-export type FeishuServer = {
-  appId: string;
-  appSecret: string;
-  folderToken: string;
-};
-
-export type YuqueServer = {
-  userId: string;
-  token: string;
+export type ApiDatasetDetailResponse = {
+  id: string;
+  name: string;
+  parentId: ParentIdType;
 };

@@ -1,4 +1,4 @@
-import { TrackSchemaType } from '@fastgpt/global/common/middle/tracks/type';
+import { type TrackSchemaType } from '@fastgpt/global/common/middle/tracks/type';
 import { getMongoModel, Schema } from '../../mongo';
 import { TrackEnum } from '@fastgpt/global/common/middle/tracks/constants';
 

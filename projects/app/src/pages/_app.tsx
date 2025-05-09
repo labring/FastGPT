@@ -6,13 +6,12 @@ import { appWithTranslation } from 'next-i18next';
 
 import QueryClientContext from '@/web/context/QueryClient';
 import ChakraUIContext from '@/web/context/ChakraUI';
-import I18nContextProvider from '@/web/context/I18n';
 import { useInitApp } from '@/web/context/useInitApp';
 import { useTranslation } from 'next-i18next';
 import '@/web/styles/reset.scss';
 import NextHead from '@/components/common/NextHead';
-import { ReactElement, useEffect } from 'react';
-import { NextPage } from 'next';
+import { type ReactElement, useEffect } from 'react';
+import { type NextPage } from 'next';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import SystemStoreContextProvider from '@fastgpt/web/context/useSystem';
 import { useRouter } from 'next/router';
@@ -73,11 +72,9 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
 
       <QueryClientContext>
         <SystemStoreContextProvider device={pageProps.deviceSize}>
-          <I18nContextProvider>
-            <ChakraUIContext>
-              <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
-            </ChakraUIContext>
-          </I18nContextProvider>
+          <ChakraUIContext>
+            <Layout>{setLayout(<Component {...pageProps} />)}</Layout>
+          </ChakraUIContext>
         </SystemStoreContextProvider>
       </QueryClientContext>
     </>

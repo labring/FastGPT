@@ -1,6 +1,6 @@
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { AppSchema } from '@fastgpt/global/core/app/type';
 
 export type AppUpdateParams = {
   parentId?: ParentIdType;

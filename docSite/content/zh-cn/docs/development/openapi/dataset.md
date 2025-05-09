@@ -296,6 +296,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 | datasetId | 知识库ID | ✅ |
 | parentId： | 父级ID，不填则默认为根目录 |  |
 | trainingType | 数据处理方式。chunk: 按文本长度进行分割;qa: 问答对提取 | ✅ |
+| customPdfParse | PDF增强解析。true: 开启PDF增强解析;不填则默认为false |  |
 | autoIndexes | 是否自动生成索引(仅商业版支持) |  |
 | imageIndex | 是否自动生成图片索引(仅商业版支持) |  |
 | chunkSettingMode | 分块参数模式。auto: 系统默认参数; custom: 手动指定参数 |  |

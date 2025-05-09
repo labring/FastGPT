@@ -5,7 +5,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 
 export const LoopEndNode: FlowNodeTemplateType = {

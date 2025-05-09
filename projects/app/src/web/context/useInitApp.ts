@@ -15,7 +15,7 @@ import {
   setUtmParams,
   setUtmWorkflow
 } from '../support/marketing/utils';
-import { ShortUrlParams } from '@fastgpt/global/support/marketing/type';
+import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 
 type MarketingQueryParams = {
   hiId?: string;

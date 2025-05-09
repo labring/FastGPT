@@ -1,4 +1,4 @@
-import { AuthFrequencyLimitProps } from '@fastgpt/global/common/frequenctLimit/type';
+import { type AuthFrequencyLimitProps } from '@fastgpt/global/common/frequenctLimit/type';
 import { MongoFrequencyLimit } from './schema';
 
 export const authFrequencyLimit = async ({

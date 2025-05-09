@@ -17,11 +17,14 @@ import {
 } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyInput from '@/components/MyInput';
-import { DatasetTagType } from '@fastgpt/global/core/dataset/type';
-import { ScrollListType, useVirtualScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
+import { type DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import {
+  type ScrollListType,
+  useVirtualScrollPagination
+} from '@fastgpt/web/hooks/useScrollPagination';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
-import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 
 const TagManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -71,8 +74,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
         setSearchTagKey('');
         loadAllDatasetTags();
       },
-      successToast: t('common:common.Delete Success'),
-      errorToast: t('common:common.Delete Failed')
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
 
@@ -114,8 +117,8 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
       onFinally() {
         getData(pageNum);
       },
-      successToast: t('common:common.Save Success'),
-      errorToast: t('common:common.Save Failed')
+      successToast: t('common:save_success'),
+      errorToast: t('common:save_failed')
     }
   );
 
@@ -211,7 +214,7 @@ const TagManageModal = ({ onClose }: { onClose: () => void }) => {
                 setNewTag('');
               }}
             >
-              {t('dataset:tag.Add New')}
+              {t('dataset:tag.add_new')}
             </Button>
           </Flex>
           <Flex px={8} w={'full'}>
@@ -464,7 +467,7 @@ const AddTagToCollections = ({
         }
         <Box flex={'1 0 0'}></Box>
         <MyInput
-          placeholder={t('common:common.Search')}
+          placeholder={t('common:Search')}
           w={'200px'}
           mr={2}
           onChange={(e) => {
@@ -482,7 +485,7 @@ const AddTagToCollections = ({
             setOriginCollections(selectedCollections);
           }}
         >
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </Flex>
       <ScrollListCollections

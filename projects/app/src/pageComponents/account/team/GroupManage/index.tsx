@@ -15,7 +15,7 @@ import {
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -26,7 +26,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import IconButton from '../OrgManage/IconButton';
-import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 const ChangeOwnerModal = dynamic(() => import('./GroupTransferOwnerModal'));
 const GroupInfoModal = dynamic(() => import('./GroupInfoModal'));
@@ -116,7 +116,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 <Th bg="myGray.100">{t('account_team:owner')}</Th>
                 <Th bg="myGray.100">{t('account_team:member')}</Th>
                 <Th bg="myGray.100" borderRightRadius="6px">
-                  {t('common:common.Action')}
+                  {t('common:Action')}
                 </Th>
               </Tr>
             </Thead>
@@ -185,7 +185,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                                       type: 'primary' as MenuItemType
                                     },
                                     {
-                                      label: t('common:common.Delete'),
+                                      label: t('common:Delete'),
                                       icon: 'delete',
                                       onClick: () => {
                                         openDeleteGroupModal(() => delDeleteGroup(group._id))();

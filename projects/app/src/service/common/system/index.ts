@@ -13,19 +13,22 @@ import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/template
 import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  DeepRagSearchProps,
-  SearchDatasetDataResponse
+  type DeepRagSearchProps,
+  type SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search/controller';
-import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
-import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
+import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
+import {
+  type ConcatUsageProps,
+  type CreateUsageProps
+} from '@fastgpt/global/support/wallet/usage/api';
 import {
   getProApiDatasetFileContentRequest,
+  getProApiDatasetFileDetailRequest,
   getProApiDatasetFileListRequest,
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
-import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken';
-import { preLoadWorker } from '../../../../../../packages/service/worker/preload';
+import { preLoadWorker } from '@fastgpt/service/worker/preload';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -80,6 +83,7 @@ export function initGlobalVariables() {
     global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
     global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
     global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
+    global.getProApiDatasetFileDetail = getProApiDatasetFileDetailRequest;
   }
 
   global.communityPlugins = [];

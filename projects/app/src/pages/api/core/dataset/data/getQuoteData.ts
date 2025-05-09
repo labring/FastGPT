@@ -1,11 +1,11 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 

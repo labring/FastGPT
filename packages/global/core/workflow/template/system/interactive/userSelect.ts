@@ -10,7 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node.d';
+import { type FlowNodeTemplateType } from '../../../type/node.d';
 import { getHandleConfig } from '../../utils';
 
 export const UserSelectNode: FlowNodeTemplateType = {

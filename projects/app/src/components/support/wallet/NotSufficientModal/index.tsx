@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import { NotSufficientModalType, useSystemStore } from '@/web/common/system/useSystemStore';
+import { type NotSufficientModalType, useSystemStore } from '@/web/common/system/useSystemStore';
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
 import StandardPlan from '@/pageComponents/price/Standard';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
@@ -12,9 +12,9 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useMount } from 'ahooks';
 
-const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
+const NotSufficientModal = () => {
   const { t } = useTranslation();
-  const { setNotSufficientModalType } = useSystemStore();
+  const { notSufficientModalType: type, setNotSufficientModalType } = useSystemStore();
 
   const onClose = () => setNotSufficientModalType(undefined);
 
@@ -35,18 +35,13 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
     [TeamErrEnum.reRankNotEnough]: t('common:code_error.team_error.re_rank_not_enough')
   };
 
-  return (
+  return type ? (
     <>
-      <MyModal
-        isOpen
-        iconSrc="common/confirm/deleteTip"
-        title={t('common:common.Warning')}
-        w={'420px'}
-      >
+      <MyModal isOpen iconSrc="common/confirm/deleteTip" title={t('common:Warning')} w={'420px'}>
         <ModalBody>{textMap[type]}</ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-            {t('common:common.Close')}
+            {t('common:Close')}
           </Button>
           <Button
             onClick={() => {
@@ -62,7 +57,7 @@ const NotSufficientModal = ({ type }: { type: NotSufficientModalType }) => {
         <RechargeModal onClose={onRechargeModalClose} onPaySuccess={onClose} />
       )}
     </>
-  );
+  ) : null;
 };
 
 export default NotSufficientModal;

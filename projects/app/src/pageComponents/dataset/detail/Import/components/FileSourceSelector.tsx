@@ -55,7 +55,7 @@ const FileModeSelector = ({ onClose }: { onClose: () => void }) => {
             })
           }
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

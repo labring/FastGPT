@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, WorkflowSnapshotsType } from '../WorkflowComponents/context';
+import { WorkflowContext, type WorkflowSnapshotsType } from '../WorkflowComponents/context';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
 import { useRouter } from 'next/router';
@@ -237,7 +237,7 @@ const Header = () => {
         isOpen={isOpenBackConfirm}
         onClose={onCloseBackConfirm}
         iconSrc="common/warn"
-        title={t('common:common.Exit')}
+        title={t('common:Exit')}
         w={'400px'}
       >
         <ModalBody>
@@ -245,7 +245,7 @@ const Header = () => {
         </ModalBody>
         <ModalFooter gap={3}>
           <Button variant={'whiteDanger'} onClick={onBack}>
-            {t('common:common.Exit Directly')}
+            {t('common:exit_directly')}
           </Button>
           <Button
             isLoading={loading}
@@ -262,7 +262,7 @@ const Header = () => {
               } catch (error) {}
             }}
           >
-            {t('common:common.Save_and_exit')}
+            {t('common:Save_and_exit')}
           </Button>
         </ModalFooter>
       </MyModal>

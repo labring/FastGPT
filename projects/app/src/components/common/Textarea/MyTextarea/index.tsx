@@ -6,7 +6,7 @@ import {
   ModalBody,
   ModalFooter,
   Textarea,
-  TextareaProps,
+  type TextareaProps,
   useDisclosure
 } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -74,7 +74,7 @@ const MyTextarea = React.forwardRef<HTMLTextAreaElement, Props>(function MyTexta
                 onClose();
               }}
             >
-              {t('common:common.Confirm')}
+              {t('common:Confirm')}
             </Button>
           </ModalFooter>
         </MyModal>
@@ -134,7 +134,7 @@ const Editor = React.memo(function Editor({
           cursor={'pointer'}
           onClick={onOpenModal}
         >
-          <MyTooltip label={t('common:common.ui.textarea.Magnifying')}>
+          <MyTooltip label={t('common:ui.textarea.Magnifying')}>
             <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
           </MyTooltip>
         </Box>

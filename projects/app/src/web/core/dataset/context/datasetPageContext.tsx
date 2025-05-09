@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { Dispatch, ReactNode, SetStateAction, useState } from 'react';
+import { type Dispatch, type ReactNode, type SetStateAction, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
 import {
@@ -12,10 +12,10 @@ import {
   putDatasetById
 } from '../api';
 import { defaultDatasetDetail } from '../constants';
-import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
-import { DatasetItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
+import { type DatasetItemType, type DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { type ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getWebLLMModel } from '@/web/common/system/utils';
 
@@ -101,27 +101,28 @@ export const DatasetPageContextProvider = ({
       setDatasetDetail((state) => ({
         ...state,
         ...data,
-        agentModel: getWebLLMModel(data.agentModel),
-        vlmModel: getWebLLMModel(data.vlmModel),
+        agentModel: data.agentModel ? getWebLLMModel(data.agentModel) : state.agentModel,
+        vlmModel: data.vlmModel ? getWebLLMModel(data.vlmModel) : state.vlmModel,
         apiServer: data.apiServer
           ? {
               baseUrl: data.apiServer.baseUrl,
               authorization: ''
             }
-          : undefined,
+          : state.apiServer,
         yuqueServer: data.yuqueServer
           ? {
               userId: data.yuqueServer.userId,
-              token: ''
+              token: '',
+              basePath: data.yuqueServer.basePath
             }
-          : undefined,
+          : state.yuqueServer,
         feishuServer: data.feishuServer
           ? {
               appId: data.feishuServer.appId,
               appSecret: '',
               folderToken: data.feishuServer.folderToken
             }
-          : undefined
+          : state.feishuServer
       }));
     }
   };
@@ -170,8 +171,8 @@ export const DatasetPageContextProvider = ({
       onSuccess() {
         loadAllDatasetTags();
       },
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed')
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
     }
   );
 

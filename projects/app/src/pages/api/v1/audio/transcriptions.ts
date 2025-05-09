@@ -5,7 +5,7 @@ import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import fs from 'fs';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';

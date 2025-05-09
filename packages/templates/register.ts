@@ -3,7 +3,7 @@ import path from 'path';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
-import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
+import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 
 const getTemplateNameList = () => {
   const currentFileUrl = new URL(import.meta.url);

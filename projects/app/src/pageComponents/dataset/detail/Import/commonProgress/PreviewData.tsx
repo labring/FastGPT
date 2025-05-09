@@ -10,7 +10,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { getPreviewChunks } from '@/web/core/dataset/api';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { getPreviewSourceReadType } from '../utils';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -167,7 +167,7 @@ const PreviewData = () => {
         </Flex>
       </Flex>
       <Flex mt={2} justifyContent={'flex-end'}>
-        <Button onClick={goToNext}>{t('common:common.Next Step')}</Button>
+        <Button onClick={goToNext}>{t('common:next_step')}</Button>
       </Flex>
     </Flex>
   );

@@ -1,5 +1,5 @@
 import { Schema, getMongoModel } from '../../../common/mongo';
-import { TTSBufferSchemaType } from './type.d';
+import { type TTSBufferSchemaType } from './type.d';
 
 export const collectionName = 'buffer_tts';
 
