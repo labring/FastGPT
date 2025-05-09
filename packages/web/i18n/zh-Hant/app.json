@@ -1,4 +1,5 @@
 {
+  "Click_to_delete_this_field": "點擊刪除該字段",
   "Filed_is_deprecated": "該字段已棄用",
   "MCP_tools_list_is_empty": "未解析到 MCP 工具",
   "MCP_tools_parse_failed": "解析 MCP 地址失敗",

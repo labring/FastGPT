@@ -1,8 +1,9 @@
 import { MongoDataset } from '../dataset/schema';
 import { getEmbeddingModel } from '../ai/model';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { AppNodeTypes, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { MongoAppVersion } from './version/schema';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -34,6 +35,27 @@ export async function rewriteAppWorkflowToDetail({
   isRoot: boolean;
 }) {
   const datasetIdSet = new Set<string>();
+
+  const appNodePromises = nodes
+    .filter((node) => AppNodeTypes.includes(node.flowNodeType))
+    .map(async (node) => {
+      const versionData = await MongoAppVersion.findById(node.version);
+
+      if (versionData) {
+        const isLatest = await MongoAppVersion.countDocuments({
+          appId: versionData.appId,
+          time: { $gt: versionData.time }
+        }).then((count) => count === 0);
+
+        node.versionData = {
+          versionName: versionData.versionName,
+          isLatest
+        };
+      }
+      return node;
+    });
+
+  await Promise.all(appNodePromises);
 
   // Get all dataset ids from nodes
   nodes.forEach((node) => {

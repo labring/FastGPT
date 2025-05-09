@@ -32,7 +32,7 @@ export const LafModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_laf_function_call'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/laf/',
+  courseUrl: '/docs/guide/dashboard/workflow/laf/',
   version: '481',
   inputs: [
     {

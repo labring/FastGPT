@@ -543,42 +543,40 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         }
       : {};
 
-    node.inputs
-      .filter((input) => !input.deprecated)
-      .forEach((input) => {
-        // Special input, not format
-        if (input.key === dynamicInput?.key) return;
+    node.inputs.forEach((input) => {
+      // Special input, not format
+      if (input.key === dynamicInput?.key) return;
 
-        // Skip some special key
-        if (
-          [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
-            input.key as NodeInputKeyEnum
-          )
-        ) {
-          params[input.key] = input.value;
-          return;
-        }
+      // Skip some special key
+      if (
+        [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
+          input.key as NodeInputKeyEnum
+        )
+      ) {
+        params[input.key] = input.value;
+        return;
+      }
 
-        // replace {{$xx.xx$}} and {{xx}} variables
-        let value = replaceEditorVariable({
-          text: input.value,
-          nodes: runtimeNodes,
-          variables
-        });
-
-        // replace reference variables
-        value = getReferenceVariableValue({
-          value,
-          nodes: runtimeNodes,
-          variables
-        });
-
-        // Dynamic input is stored in the dynamic key
-        if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
-          params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
-        }
-        params[input.key] = valueTypeFormat(value, input.valueType);
+      // replace {{$xx.xx$}} and {{xx}} variables
+      let value = replaceEditorVariable({
+        text: input.value,
+        nodes: runtimeNodes,
+        variables
       });
+
+      // replace reference variables
+      value = getReferenceVariableValue({
+        value,
+        nodes: runtimeNodes,
+        variables
+      });
+
+      // Dynamic input is stored in the dynamic key
+      if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
+        params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
+      }
+      params[input.key] = valueTypeFormat(value, input.valueType);
+    });
 
     return params;
   }
@@ -622,18 +620,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     const dispatchRes: Record<string, any> = await (async () => {
       if (callbackMap[node.flowNodeType]) {
         try {
-          const res = await callbackMap[node.flowNodeType](dispatchData);
-          // filter deprecated output
-          const deprecatedOutputKeys = node.outputs
-            .filter((output: FlowNodeOutputItemType) => output.deprecated)
-            .map((output: FlowNodeOutputItemType) => output.key);
-
-          const filteredRes = { ...res };
-          deprecatedOutputKeys.forEach((key: string) => {
-            delete filteredRes[key];
-          });
-
-          return filteredRes;
+          return await callbackMap[node.flowNodeType](dispatchData);
         } catch (error) {
           // Get source handles of outgoing edges
           const targetEdges = runtimeEdges.filter((item) => item.source === node.nodeId);

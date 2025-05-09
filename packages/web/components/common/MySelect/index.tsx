@@ -49,7 +49,19 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
-  rightTag?: React.ReactNode;
+};
+
+export const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 1
+  }
 };
 
 const MySelect = <T = any,>(
@@ -62,7 +74,6 @@ const MySelect = <T = any,>(
     onChange,
     isLoading = false,
     ScrollData,
-    rightTag,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -74,18 +85,6 @@ const MySelect = <T = any,>(
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
 
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.100'
-    },
-    _notLast: {
-      mb: 1
-    }
-  };
   const { isOpen, onOpen, onClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
@@ -230,7 +229,6 @@ const MySelect = <T = any,>(
                   <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
                 )}
                 {selectItem?.alias || selectItem?.label || placeholder}
-                {rightTag ? rightTag : null}
               </>
             )}
           </Flex>
