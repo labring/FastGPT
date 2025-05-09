@@ -766,7 +766,7 @@ async function streamResponse({
                   toolName: toolNode.name,
                   toolAvatar: toolNode.avatar,
                   functionName: callingTool.name,
-                  params: callingTool?.arguments ?? '',
+                  params: callingTool?.arguments ?? '{}',
                   response: ''
                 }
               }
