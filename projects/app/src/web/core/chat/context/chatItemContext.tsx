@@ -10,7 +10,6 @@ import { type AppChatConfigType, type VariableItemType } from '@fastgpt/global/c
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { valueTypeSerialize } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type ContextProps = {
   showRouteToAppDetail: boolean;
@@ -144,15 +143,17 @@ const ChatItemContextProvider = ({
       let newVariableValue: Record<string, any> = {};
       if (variables) {
         variableList.forEach((item) => {
-          newVariableValue[item.key] = valueTypeSerialize(variables[item.key], item.valueType);
+          newVariableValue[item.key] = variables[item.key];
         });
       } else {
         variableList.forEach((item) => {
-          newVariableValue[item.key] = valueTypeSerialize(item.defaultValue, item.valueType);
+          newVariableValue[item.key] = item.defaultValue;
         });
       }
 
-      variablesForm.setValue('variables', newVariableValue);
+      Object.entries(newVariableValue).forEach(([key, value]) => {
+        variablesForm.setValue(`variables.${key}`, value);
+      });
     },
     [variablesForm]
   );
