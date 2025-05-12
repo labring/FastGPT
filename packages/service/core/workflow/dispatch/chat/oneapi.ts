@@ -464,7 +464,7 @@ async function getChatMessages({
   aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
   datasetQuoteText: string;
-  version: string;
+  version?: string;
 
   useDatasetQuote: boolean;
   histories: ChatItemType[];

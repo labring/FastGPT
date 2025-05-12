@@ -34,7 +34,10 @@ export type FlowNodeCommonType = {
   name: string;
   intro?: string; // template list intro
   showStatus?: boolean; // chatting response step status
-  version: string;
+
+  version?: string;
+  versionLabel?: string; // Just ui show
+  isLatestVersion?: boolean; // Just ui show
 
   // data
   inputs: FlowNodeInputItemType[];
@@ -48,7 +51,7 @@ export type FlowNodeCommonType = {
 };
 
 export type PluginDataType = {
-  version: string;
+  version?: string;
   diagram?: string;
   userGuide?: string;
   courseUrl?: string;

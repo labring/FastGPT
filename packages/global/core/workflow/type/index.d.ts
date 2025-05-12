@@ -37,7 +37,10 @@ export type WorkflowTemplateType = {
   intro?: string;
   author?: string;
   courseUrl?: string;
-  version: string;
+
+  version?: string;
+  versionLabel?: string;
+  isLatestVersion?: boolean;
 
   showStatus?: boolean;
   weight?: number;

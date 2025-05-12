@@ -29,7 +29,6 @@ export const LoopNode: FlowNodeTemplateType = {
   name: i18nT('workflow:loop'),
   intro: i18nT('workflow:intro_loop'),
   showStatus: true,
-  version: '4811',
   courseUrl: '/docs/guide/dashboard/workflow/loop/',
   inputs: [
     {

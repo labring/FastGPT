@@ -11,6 +11,7 @@ import type {
   SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -549,7 +550,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       // Skip some special key
       if (
         [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
-          input.key as any
+          input.key as NodeInputKeyEnum
         )
       ) {
         params[input.key] = input.value;

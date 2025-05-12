@@ -15,7 +15,6 @@ import {
   useDisclosure,
   MenuButton,
   Box,
-  css,
   Flex,
   Input
 } from '@chakra-ui/react';
@@ -32,13 +31,16 @@ import Avatar from '../Avatar';
  * list: 列表数据
  * isLoading: 是否加载中
  * ScrollData: 分页滚动数据控制器 [useScrollPagination] 的返回值
+ * customOnOpen: 自定义打开回调
+ * customOnClose: 自定义关闭回调
  * */
 export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   value?: T;
+  valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
   list: {
-    alias?: string;
+    alias?: string | React.ReactNode;
     icon?: string;
     iconSize?: string;
     label: string | React.ReactNode;
@@ -49,18 +51,36 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
+  customOnOpen?: () => void;
+  customOnClose?: () => void;
+};
+
+export const menuItemStyles: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  display: 'flex',
+  alignItems: 'center',
+  _hover: {
+    backgroundColor: 'myGray.100'
+  },
+  _notLast: {
+    mb: 1
+  }
 };
 
 const MySelect = <T = any,>(
   {
     placeholder,
     value,
+    valueLabel,
     isSearch = false,
     width = '100%',
     list = [],
     onChange,
     isLoading = false,
     ScrollData,
+    customOnOpen,
+    customOnClose,
     ...props
   }: SelectProps<T>,
   ref: ForwardedRef<{
@@ -72,20 +92,18 @@ const MySelect = <T = any,>(
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
 
-  const menuItemStyles: MenuItemProps = {
-    borderRadius: 'sm',
-    py: 2,
-    display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.100'
-    },
-    _notLast: {
-      mb: 1
-    }
-  };
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
+
+  const onOpen = () => {
+    defaultOnOpen();
+    customOnOpen?.();
+  };
+
+  const onClose = () => {
+    defaultOnClose();
+    customOnClose?.();
+  };
 
   const [search, setSearch] = useState('');
   const filterList = useMemo(() => {
@@ -105,6 +123,7 @@ const MySelect = <T = any,>(
     }
   }));
 
+  // Auto scroll
   useEffect(() => {
     if (isOpen && MenuListRef.current && SelectedItemRef.current) {
       const menu = MenuListRef.current;
@@ -117,7 +136,7 @@ const MySelect = <T = any,>(
     }
   }, [isSearch, isOpen]);
 
-  const { runAsync: onclickChange, loading } = useRequest2((val: T) => onChange?.(val));
+  const { runAsync: onClickChange, loading } = useRequest2((val: T) => onChange?.(val));
 
   const ListRender = useMemo(() => {
     return (
@@ -138,7 +157,7 @@ const MySelect = <T = any,>(
                   })}
               onClick={() => {
                 if (value !== item.value) {
-                  onclickChange(item.value);
+                  onClickChange(item.value);
                 }
               }}
               whiteSpace={'pre-wrap'}
@@ -161,7 +180,7 @@ const MySelect = <T = any,>(
         ))}
       </>
     );
-  }, [filterList, value]);
+  }, [filterList, onClickChange, value]);
 
   const isSelecting = loading || isLoading;
 
@@ -200,36 +219,48 @@ const MySelect = <T = any,>(
             : {})}
           {...props}
         >
-          <Flex alignItems={'center'}>
-            {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
-            {isSearch && isOpen ? (
-              <Input
-                ref={SearchInputRef}
-                autoFocus
-                variant={'unstyled'}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={
-                  selectItem?.alias ||
-                  (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
-                }
-                size={'sm'}
-                w={'100%'}
-                color={'myGray.700'}
-                onBlur={() => {
-                  setTimeout(() => {
-                    SearchInputRef?.current?.focus();
-                  }, 0);
-                }}
-              />
-            ) : (
-              <>
-                {selectItem?.icon && (
-                  <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
-                )}
-                {selectItem?.alias || selectItem?.label || placeholder}
-              </>
-            )}
+          <Flex alignItems={'center'} justifyContent="space-between" w="100%">
+            <Flex alignItems={'center'}>
+              {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
+              {valueLabel ? (
+                <>{valueLabel}</>
+              ) : (
+                <>
+                  {isSearch && isOpen ? (
+                    <Input
+                      ref={SearchInputRef}
+                      autoFocus
+                      variant={'unstyled'}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={
+                        (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
+                        (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                      }
+                      size={'sm'}
+                      w={'100%'}
+                      color={'myGray.700'}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          SearchInputRef?.current?.focus();
+                        }, 0);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {selectItem?.icon && (
+                        <Avatar
+                          mr={2}
+                          src={selectItem.icon as any}
+                          w={selectItem.iconSize ?? '1rem'}
+                        />
+                      )}
+                      {selectItem?.alias || selectItem?.label || placeholder}
+                    </>
+                  )}
+                </>
+              )}
+            </Flex>
           </Flex>
         </MenuButton>
 
@@ -252,7 +283,7 @@ const MySelect = <T = any,>(
             '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
           }
           zIndex={99}
-          maxH={'40vh'}
+          maxH={'45vh'}
           overflowY={'auto'}
         >
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}

@@ -15,7 +15,6 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   intro: '',
   unique: true,
   forbidDelete: true,
-  version: '481',
   inputs: [],
   outputs: []
 };

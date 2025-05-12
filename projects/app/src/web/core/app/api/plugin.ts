@@ -7,7 +7,7 @@ import type {
 } from '@fastgpt/global/core/workflow/type/node';
 import { getMyApps } from '../api';
 import type { ListAppBody } from '@/pages/api/core/app/list';
-import { defaultNodeVersion, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { GetPreviewNodeQuery } from '@/pages/api/core/app/plugin/getPreviewNode';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -47,7 +47,7 @@ export const getTeamPlugTemplates = (data?: ListAppBody) =>
       name: app.name,
       intro: app.intro,
       showStatus: false,
-      version: app.pluginData?.nodeVersion || defaultNodeVersion,
+      version: app.pluginData?.nodeVersion,
       isTool: true,
       sourceMember: app.sourceMember
     }))

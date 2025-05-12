@@ -24,7 +24,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  AppNodeFlowNodeTypeMap,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   getPreviewPluginNode,
   getSystemPlugTemplates,
@@ -475,11 +478,7 @@ const RenderList = React.memo(function RenderList({
       const templateNode = await (async () => {
         try {
           // get plugin preview module
-          if (
-            template.flowNodeType === FlowNodeTypeEnum.pluginModule ||
-            template.flowNodeType === FlowNodeTypeEnum.appModule ||
-            template.flowNodeType === FlowNodeTypeEnum.toolSet
-          ) {
+          if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
             setLoading(true);
             const res = await getPreviewPluginNode({ appId: template.id });
 
@@ -533,21 +532,25 @@ const RenderList = React.memo(function RenderList({
             pluginId: templateNode.pluginId
           }),
           intro: t(templateNode.intro as any),
-          inputs: templateNode.inputs.map((input) => ({
-            ...input,
-            value: defaultValueMap[input.key] ?? input.value,
-            valueDesc: t(input.valueDesc as any),
-            label: t(input.label as any),
-            description: t(input.description as any),
-            debugLabel: t(input.debugLabel as any),
-            toolDescription: t(input.toolDescription as any)
-          })),
-          outputs: templateNode.outputs.map((output) => ({
-            ...output,
-            valueDesc: t(output.valueDesc as any),
-            label: t(output.label as any),
-            description: t(output.description as any)
-          }))
+          inputs: templateNode.inputs
+            .filter((input) => input.deprecated !== true)
+            .map((input) => ({
+              ...input,
+              value: defaultValueMap[input.key] ?? input.value,
+              valueDesc: t(input.valueDesc as any),
+              label: t(input.label as any),
+              description: t(input.description as any),
+              debugLabel: t(input.debugLabel as any),
+              toolDescription: t(input.toolDescription as any)
+            })),
+          outputs: templateNode.outputs
+            .filter((output) => output.deprecated !== true)
+            .map((output) => ({
+              ...output,
+              valueDesc: t(output.valueDesc as any),
+              label: t(output.label as any),
+              description: t(output.description as any)
+            }))
         },
         position: { x: mouseX, y: mouseY },
         selected: true,

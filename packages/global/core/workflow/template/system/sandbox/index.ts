@@ -27,7 +27,6 @@ export const CodeNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,
   courseUrl: '/docs/guide/dashboard/workflow/sandbox/',
-  version: '482',
   inputs: [
     {
       ...Input_Template_DynamicInput,

@@ -16,7 +16,6 @@ export const PluginInputModule: FlowNodeTemplateType = {
   name: i18nT('workflow:plugin_input'),
   intro: i18nT('workflow:intro_plugin_input'),
   showStatus: false,
-  version: '481',
   inputs: [],
   outputs: []
 };
