@@ -178,12 +178,11 @@ const JSONEditor = ({
       return '';
     }
 
-    try {
+    if (typeof value === 'object') {
       return JSON.stringify(value, null, 2);
-    } catch (error) {
-      console.error('JSON stringify error:', error);
-      return String(value) || '';
     }
+
+    return String(value);
   }, [value]);
 
   const onBlur = useCallback(() => {

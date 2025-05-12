@@ -140,20 +140,15 @@ const ChatItemContextProvider = ({
     (props?: { variables?: Record<string, any>; variableList?: VariableItemType[] }) => {
       const { variables, variableList = [] } = props || {};
 
-      let newVariableValue: Record<string, any> = {};
       if (variables) {
         variableList.forEach((item) => {
-          newVariableValue[item.key] = variables[item.key];
+          variablesForm.setValue(`variables.${item.key}`, variables[item.key]);
         });
       } else {
         variableList.forEach((item) => {
-          newVariableValue[item.key] = item.defaultValue;
+          variablesForm.setValue(`variables.${item.key}`, item.defaultValue);
         });
       }
-
-      Object.entries(newVariableValue).forEach(([key, value]) => {
-        variablesForm.setValue(`variables.${key}`, value);
-      });
     },
     [variablesForm]
   );
