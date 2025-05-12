@@ -43,6 +43,25 @@ export const html2md = (
     turndownService.remove(['i', 'script', 'iframe', 'style']);
     turndownService.use(turndownPluginGfm.gfm);
 
+    // add custom handling for video tag
+    // convert to markdown link [Video](src)
+    turndownService.addRule('video', {
+      filter: ['video'],
+      replacement: function (content, node) {
+        const videoNode = node as HTMLVideoElement;
+        const src = videoNode.getAttribute('src');
+        const sources = videoNode.getElementsByTagName('source');
+        const firstSourceSrc = sources.length > 0 ? sources[0].getAttribute('src') : null;
+        const videoSrc = src || firstSourceSrc;
+
+        if (videoSrc) {
+          return `[Video](${videoSrc})`;
+        }
+
+        return content;
+      }
+    });
+
     // Base64 img to id, otherwise it will occupy memory when going to md
     const { processedHtml, images } = processBase64Images(html);
     const md = turndownService.turndown(processedHtml);
