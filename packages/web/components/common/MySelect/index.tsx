@@ -274,7 +274,7 @@ const MySelect = <T = any,>(
             '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
           }
           zIndex={99}
-          maxH={'40vh'}
+          maxH={'45vh'}
           overflowY={'auto'}
         >
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}

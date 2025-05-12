@@ -654,6 +654,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const Render = useMemo(() => {
     return (
       <MySelect
+        className="nowheel"
         value={node.version}
         onChange={onUpdateVersion}
         isLoading={isUpdating}
