@@ -37,6 +37,7 @@ import Avatar from '../Avatar';
  * */
 export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   value?: T;
+  valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
   list: {
@@ -72,6 +73,7 @@ const MySelect = <T = any,>(
   {
     placeholder,
     value,
+    valueLabel,
     isSearch = false,
     width = '100%',
     list = [],
@@ -122,6 +124,7 @@ const MySelect = <T = any,>(
     }
   }));
 
+  // Auto scroll
   useEffect(() => {
     if (isOpen && MenuListRef.current && SelectedItemRef.current) {
       const menu = MenuListRef.current;
@@ -220,32 +223,42 @@ const MySelect = <T = any,>(
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
             <Flex alignItems={'center'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
-              {isSearch && isOpen ? (
-                <Input
-                  ref={SearchInputRef}
-                  autoFocus
-                  variant={'unstyled'}
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={
-                    (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
-                    (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
-                  }
-                  size={'sm'}
-                  w={'100%'}
-                  color={'myGray.700'}
-                  onBlur={() => {
-                    setTimeout(() => {
-                      SearchInputRef?.current?.focus();
-                    }, 0);
-                  }}
-                />
+              {valueLabel ? (
+                <>{valueLabel}</>
               ) : (
                 <>
-                  {selectItem?.icon && (
-                    <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
+                  {isSearch && isOpen ? (
+                    <Input
+                      ref={SearchInputRef}
+                      autoFocus
+                      variant={'unstyled'}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={
+                        (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
+                        (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                      }
+                      size={'sm'}
+                      w={'100%'}
+                      color={'myGray.700'}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          SearchInputRef?.current?.focus();
+                        }, 0);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {selectItem?.icon && (
+                        <Avatar
+                          mr={2}
+                          src={selectItem.icon as any}
+                          w={selectItem.iconSize ?? '1rem'}
+                        />
+                      )}
+                      {selectItem?.alias || selectItem?.label || placeholder}
+                    </>
                   )}
-                  {selectItem?.alias || selectItem?.label || placeholder}
                 </>
               )}
             </Flex>

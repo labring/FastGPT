@@ -218,7 +218,6 @@ export const FlowValueTypeMap: Record<
 };
 
 export const EDGE_TYPE = 'default';
-export const defaultNodeVersion = '481';
 
 export const chatHistoryValueDesc = `{
   obj: System | Human | AI;

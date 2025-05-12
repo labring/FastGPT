@@ -39,7 +39,6 @@ describe('storeNode2FlowNode with version and avatar inheritance', () => {
           hidden: 'hidden'
         },
         EDGE_TYPE: 'custom-edge',
-        defaultNodeVersion: '0.0.1',
         chatHistoryValueDesc: 'chat history description',
         datasetSelectValueDesc: 'dataset value description',
         datasetQuoteValueDesc: 'dataset quote value description'

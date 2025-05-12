@@ -5,7 +5,6 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
-import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
@@ -125,8 +124,7 @@ export const onCreateApp = async ({
           chatConfig,
           type,
           version: 'v2',
-          pluginData,
-          'pluginData.nodeVersion': defaultNodeVersion
+          pluginData
         }
       ],
       { session, ordered: true }

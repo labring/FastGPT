@@ -8,6 +8,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { MongoAppVersion } from './version/schema';
 import { checkIsLatestVersion } from './version/controller';
+import { Types } from '../../common/mongo';
 
 export async function listAppDatasetDataByTeamIdAndDatasetIds({
   teamId,
@@ -42,7 +43,9 @@ export async function rewriteAppWorkflowToDetail({
 
   // Add node(App Type) versionlabel and latest sign
   const appNodes = nodes.filter((node) => AppNodeFlowNodeTypeMap[node.flowNodeType]);
-  const versionIds = appNodes.filter((node) => node.version).map((node) => node.version);
+  const versionIds = appNodes
+    .filter((node) => node.version && Types.ObjectId.isValid(node.version))
+    .map((node) => node.version);
   if (versionIds.length > 0) {
     const versionDataList = await MongoAppVersion.find(
       {

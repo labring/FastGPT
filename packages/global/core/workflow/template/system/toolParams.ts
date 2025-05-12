@@ -13,7 +13,6 @@ export const ToolParamsNode: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/toolParams',
   name: i18nT('workflow:tool_custom_field'),
   intro: i18nT('workflow:intro_tool_params_config'),
-  version: '4811',
   isTool: true,
   inputs: [],
   outputs: []

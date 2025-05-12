@@ -1,15 +1,5 @@
 import React, { useCallback, useMemo, useRef } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
-  useDisclosure,
-  type FlexProps
-} from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, useDisclosure, type FlexProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -44,6 +34,7 @@ import { getAppVersionList } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { useCreation } from 'ahooks';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -220,7 +211,7 @@ const NodeCard = (props: Props) => {
               >
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
-              <Box flex={1} />
+              <Box flex={1} mr={1} />
               {isAppNode && <NodeVersion node={node} />}
               {!!nodeTemplate?.diagram && (
                 <MyTooltip
@@ -615,11 +606,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   // Load version list
-  const {
-    ScrollData,
-    data: versionList,
-    isLoading: isLoadingVersion
-  } = useScrollPagination(getAppVersionList, {
+  const { ScrollData, data: versionList } = useScrollPagination(getAppVersionList, {
     pageSize: 20,
     params: {
       appId: node.pluginId,
@@ -640,7 +627,12 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         if (!!template) {
           onResetNode({
             id: node.nodeId,
-            node: template
+            node: {
+              ...template,
+              name: node.name,
+              intro: node.intro,
+              avatar: node.avatar
+            }
           });
         }
       }
@@ -650,59 +642,45 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
     }
   );
 
-  const Render = useMemo(() => {
+  const renderList = useCreation(
+    () =>
+      versionList.map((item) => ({
+        label: item.versionName,
+        value: item._id
+      })),
+    [node.isLatestVersion, node.version, t, versionList]
+  );
+  const valueLabel = useMemo(() => {
     return (
-      <MySelect
-        className="nowheel"
-        value={node.version}
-        onChange={onUpdateVersion}
-        isLoading={isUpdating}
-        customOnOpen={onOpen}
-        customOnClose={onClose}
-        placeholder={node?.versionLabel}
-        variant={'whitePrimaryOutline'}
-        size={'sm'}
-        list={versionList.map((item) => ({
-          alias:
-            item._id === node.version && !node.isLatestVersion ? (
-              <Flex align="center" whiteSpace={'nowrap'} overflow={'hidden'}>
-                {item.versionName}
-                <MyTag
-                  ml={2}
-                  type="fill"
-                  colorSchema={'adora'}
-                  fontSize={'mini'}
-                  borderRadius={'lg'}
-                >
-                  {t('app:not_the_newest')}
-                </MyTag>
-              </Flex>
-            ) : (
-              item.versionName
-            ),
-          label: item.versionName,
-          value: item._id
-        }))}
-        ScrollData={(props) => (
-          <ScrollData isLoading={isLoadingVersion} minH={'100px'} maxH={'40vh'} overflowY={'auto'}>
-            {props.children}
-          </ScrollData>
+      <Flex alignItems={'center'} gap={0.5}>
+        {node?.versionLabel}
+        {!node.isLatestVersion && (
+          <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
+            {t('app:not_the_newest')}
+          </MyTag>
         )}
-      />
+      </Flex>
     );
-  }, [
-    onOpen,
-    onClose,
-    isUpdating,
-    node?.versionLabel,
-    node.isLatestVersion,
-    node.version,
-    t,
-    ScrollData,
-    isLoadingVersion,
-    versionList,
-    onUpdateVersion
-  ]);
+  }, [node.isLatestVersion, node?.versionLabel, t]);
 
-  return Render;
+  return (
+    <MySelect
+      className="nowheel"
+      value={node.version}
+      onChange={onUpdateVersion}
+      isLoading={isUpdating}
+      customOnOpen={onOpen}
+      customOnClose={onClose}
+      placeholder={node?.versionLabel}
+      variant={'whitePrimaryOutline'}
+      size={'sm'}
+      list={renderList}
+      ScrollData={(props) => (
+        <ScrollData minH={'100px'} maxH={'40vh'}>
+          {props.children}
+        </ScrollData>
+      )}
+      valueLabel={valueLabel}
+    />
+  );
 });

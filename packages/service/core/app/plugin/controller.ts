@@ -1,5 +1,5 @@
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
@@ -252,7 +252,7 @@ export async function getChildAppRuntimeById(
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
         // 用不到
-        version: item?.pluginData?.nodeVersion || defaultNodeVersion,
+        version: item?.pluginData?.nodeVersion,
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,

@@ -25,7 +25,6 @@ export const RunAppModule: FlowNodeTemplateType = {
   name: i18nT('workflow:application_call'),
   intro: i18nT('workflow:select_another_application_to_call'),
   showStatus: true,
-  version: '481',
   isTool: true,
   inputs: [
     {

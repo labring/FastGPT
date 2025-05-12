@@ -9,8 +9,7 @@ import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  defaultNodeVersion
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -101,7 +100,7 @@ export const storeNode2FlowNode = ({
     ...template,
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
-    version: storeNode.version ?? template.version ?? defaultNodeVersion,
+    version: template.version || storeNode.version,
     // template 中的输入必须都有
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
