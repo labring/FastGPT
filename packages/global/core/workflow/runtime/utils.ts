@@ -151,6 +151,64 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   return value;
 };
 
+/**
+ * 将值按照类型序列化，以便存储在数据库中
+ * 这是 valueTypeFormat 的逆向操作
+ */
+export const valueTypeSerialize = (value: any, type?: WorkflowIOValueTypeEnum) => {
+  // 空值处理
+  if (value === undefined || value === null) return value;
+  if (!type || type === WorkflowIOValueTypeEnum.any) return value;
+
+  // 基础类型
+  if (type === WorkflowIOValueTypeEnum.string) {
+    return typeof value === 'string' ? value : String(value);
+  }
+  if (type === WorkflowIOValueTypeEnum.number) {
+    return typeof value === 'number' ? value : Number(value);
+  }
+  if (type === WorkflowIOValueTypeEnum.boolean) {
+    return typeof value === 'boolean' ? value : Boolean(value);
+  }
+
+  // 对象类型，转为字符串存储
+  if (type === WorkflowIOValueTypeEnum.object && typeof value === 'object' && value !== null) {
+    return JSON.stringify(value);
+  }
+
+  // 数组类型，转为字符串存储
+  if (type.startsWith('array') && Array.isArray(value)) {
+    return JSON.stringify(value);
+  }
+
+  // 特殊类型处理
+  if (
+    [WorkflowIOValueTypeEnum.datasetQuote, WorkflowIOValueTypeEnum.selectDataset].includes(type) &&
+    Array.isArray(value)
+  ) {
+    return JSON.stringify(value);
+  }
+
+  if (
+    [WorkflowIOValueTypeEnum.selectApp].includes(type) &&
+    typeof value === 'object' &&
+    value !== null
+  ) {
+    return JSON.stringify(value);
+  }
+
+  // 聊天历史处理
+  if (type === WorkflowIOValueTypeEnum.chatHistory) {
+    if (Array.isArray(value) || typeof value === 'number') {
+      return value;
+    }
+    return 0;
+  }
+
+  // 默认处理
+  return value;
+};
+
 /* 
   Get interaction information (if any) from the last AI message.
   What can be done:
