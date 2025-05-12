@@ -52,6 +52,17 @@ export const cheerioToHtml = ({
       }
     }
   });
+  // same for video tag
+  selectDom.find('video').each((i, el) => {
+    const src = $(el).attr('src');
+    if (src) {
+      if (src.startsWith('//')) {
+        $(el).attr('src', protocol + src);
+      } else if (src.startsWith('/')) {
+        $(el).attr('src', originUrl + src);
+      }
+    }
+  });
 
   const html = selectDom
     .map((item, dom) => {
