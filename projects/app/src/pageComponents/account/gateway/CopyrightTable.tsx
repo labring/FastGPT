@@ -19,6 +19,116 @@ const fadeIn = keyframes`
   to { opacity: 1; }
 `;
 
+// 斜线背景样式
+const stripedBackgroundStyle = {
+  backgroundImage:
+    'linear-gradient(135deg, #f0f0f0 25%, transparent 25%, transparent 50%, #f0f0f0 50%, #f0f0f0 75%, transparent 75%, transparent)',
+  backgroundSize: '5px 5px',
+  padding: '12px',
+  borderRadius: '16px',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
+  border: '1px dashed #e0e0e0'
+};
+
+// LogoBox组件 - 提取重复的Logo盒子为可复用组件
+type LogoBoxProps = {
+  avatar?: string;
+  boxSize: any;
+  borderRadius: any;
+  uploadFontSize: any;
+  iconBoxSize: any;
+  onUploadClick: () => void;
+  withStripedBackground?: boolean; // 新增参数，决定是否添加斜线背景
+};
+
+const LogoBox = ({
+  avatar,
+  boxSize,
+  borderRadius,
+  uploadFontSize,
+  iconBoxSize,
+  onUploadClick,
+  withStripedBackground = false // 默认不添加斜线背景
+}: LogoBoxProps) => {
+  const { t } = useTranslation();
+
+  const logoContent = (
+    <Box
+      width={boxSize}
+      height={boxSize}
+      bg="white"
+      border="0.483px solid #ECECEC"
+      borderRadius={borderRadius}
+      display="flex"
+      justifyContent="center"
+      alignItems="center"
+      position="relative"
+      overflow="hidden"
+      boxSizing="border-box"
+      cursor="pointer"
+      onClick={onUploadClick}
+      transition="all 0.3s ease"
+    >
+      <Flex
+        width="40px"
+        height="40px"
+        justifyContent="center"
+        alignItems="center"
+        flexShrink="0"
+        aspectRatio="1/1"
+      >
+        <Image
+          src={avatar}
+          alt="Team Logo"
+          width="100%"
+          height="100%"
+          objectFit="contain"
+          fallbackSrc="/icon/logo.svg"
+        />
+      </Flex>
+      {/* 悬停时显示的上传提示遮罩 - 模糊风格 */}
+      {/* <Box
+        position="absolute"
+        top="0"
+        left="0"
+        width="100%"
+        height="100%"
+        backdropFilter="blur(4px)"
+        bg="rgba(255, 255, 255, 0.2)"
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        color="gray.700"
+        fontSize={uploadFontSize}
+        fontWeight="bold"
+        opacity="0"
+        borderRadius={borderRadius}
+        transition="all 0.3s ease"
+        _hover={{
+          opacity: 1,
+          animation: `${fadeIn} 0.3s ease-in-out`
+        }}
+      >
+        <Flex direction="column" alignItems="center">
+          <SmallAddIcon boxSize={iconBoxSize} mb={{ base: '1px', md: '2px' }} />
+          <Text>{t('account_gate:upload')}</Text>
+        </Flex>
+      </Box> */}
+    </Box>
+  );
+
+  // 如果需要斜线背景，则外包一层带斜线的Box
+  if (withStripedBackground) {
+    return <Box sx={stripedBackgroundStyle}>{logoContent}</Box>;
+  }
+
+  // 否则直接返回原始内容
+  return logoContent;
+};
+
 const CopyrightTable = ({ teamName }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -52,15 +162,13 @@ const CopyrightTable = ({ teamName }: Props) => {
   });
 
   // 响应式尺寸 - 根据设计比例调整
-  const logoBoxSize = useBreakpointValue({ base: '23.18px', md: '50px' });
-  const logoIconSize = useBreakpointValue({ base: '15.45px', md: '33px' });
-  const logoBorderRadius = useBreakpointValue({ base: '5.8px', md: '12px' });
+  const logoBoxSize = useBreakpointValue({ md: '60px' });
+  const logoBorderRadius = useBreakpointValue({ base: '5.8px', md: '15px' });
   const titleFontSize = useBreakpointValue({ base: '18px', md: '28px' });
   const dividerHeight = useBreakpointValue({ base: '70px', md: '84px' });
 
   // 左侧带文本的Logo稍大一些
   const logoBoxSizeWithText = useBreakpointValue({ base: '28px', md: '60px' });
-  const logoIconSizeWithText = useBreakpointValue({ base: '18.5px', md: '40px' });
 
   return (
     <Box flex={'1 0 0'} overflow={'hidden'} display="flex" justifyContent="center">
@@ -105,61 +213,15 @@ const CopyrightTable = ({ teamName }: Props) => {
               {/* 左侧 Logo 显示 - 带文字 */}
               <Flex direction="column" gap={2} alignItems="center">
                 <Flex gap={{ base: 3, md: 5 }} alignItems="center">
-                  <Box
-                    width={logoBoxSizeWithText}
-                    height={logoBoxSizeWithText}
-                    bg="white"
-                    border="0.483px solid #ECECEC"
+                  <LogoBox
+                    avatar={avatar}
+                    boxSize={logoBoxSizeWithText}
                     borderRadius={logoBorderRadius}
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    position="relative"
-                    overflow="hidden"
-                    cursor="pointer"
-                    onClick={onOpenSelectFile}
-                    transition="all 0.3s ease"
-                    _hover={{
-                      transform: 'scale(1.03)'
-                    }}
-                  >
-                    <Image
-                      src={avatar}
-                      alt="Team Logo"
-                      width="100%"
-                      height="100%"
-                      objectFit="contain"
-                      fallbackSrc="/icon/logo.svg"
-                    />
-                    {/* 悬停时显示的上传提示遮罩 - 模糊风格 */}
-                    <Box
-                      position="absolute"
-                      top="0"
-                      left="0"
-                      width="100%"
-                      height="100%"
-                      backdropFilter="blur(4px)"
-                      bg="rgba(255, 255, 255, 0.2)"
-                      display="flex"
-                      justifyContent="center"
-                      alignItems="center"
-                      color="gray.700"
-                      fontSize={{ base: '8px', md: '12px' }}
-                      fontWeight="bold"
-                      opacity="0"
-                      borderRadius={logoBorderRadius}
-                      transition="all 0.3s ease"
-                      _hover={{
-                        opacity: 1,
-                        animation: `${fadeIn} 0.3s ease-in-out`
-                      }}
-                    >
-                      <Flex direction="column" alignItems="center">
-                        <SmallAddIcon boxSize={{ base: '10px', md: '14px' }} mb="2px" />
-                        <Text>上传</Text>
-                      </Flex>
-                    </Box>
-                  </Box>
+                    uploadFontSize={{ base: '8px', md: '12px' }}
+                    iconBoxSize={{ base: '10px', md: '14px' }}
+                    onUploadClick={onOpenSelectFile}
+                    withStripedBackground={true} // 添加斜线背景
+                  />
                   <Text fontSize={titleFontSize} fontWeight={700} lineHeight="140%">
                     {watch('name')}
                   </Text>
@@ -173,62 +235,15 @@ const CopyrightTable = ({ teamName }: Props) => {
 
               {/* 右侧 Logo 显示 - 仅Logo */}
               <Flex direction="column" gap={2} alignItems="center">
-                <Box
-                  width={logoBoxSize}
-                  height={logoBoxSize}
-                  bg="white"
-                  border="0.483px solid #ECECEC"
+                <LogoBox
+                  avatar={avatar}
+                  boxSize={logoBoxSize}
                   borderRadius={logoBorderRadius}
-                  display="flex"
-                  justifyContent="center"
-                  alignItems="center"
-                  position="relative"
-                  overflow="hidden"
-                  boxSizing="border-box"
-                  cursor="pointer"
-                  onClick={onOpenSelectFile}
-                  transition="all 0.3s ease"
-                  _hover={{
-                    transform: 'scale(1.03)'
-                  }}
-                >
-                  <Image
-                    src={avatar}
-                    alt="Team Logo"
-                    width="100%"
-                    height="100%"
-                    objectFit="contain"
-                    fallbackSrc="/icon/logo.svg"
-                  />
-                  {/* 悬停时显示的上传提示遮罩 - 模糊风格 */}
-                  <Box
-                    position="absolute"
-                    top="0"
-                    left="0"
-                    width="100%"
-                    height="100%"
-                    backdropFilter="blur(4px)"
-                    bg="rgba(255, 255, 255, 0.2)"
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    color="gray.700"
-                    fontSize={{ base: '6px', md: '10px' }}
-                    fontWeight="bold"
-                    opacity="0"
-                    borderRadius={logoBorderRadius}
-                    transition="all 0.3s ease"
-                    _hover={{
-                      opacity: 1,
-                      animation: `${fadeIn} 0.3s ease-in-out`
-                    }}
-                  >
-                    <Flex direction="column" alignItems="center">
-                      <SmallAddIcon boxSize={{ base: '8px', md: '12px' }} mb="1px" />
-                      <Text>{t('account_gate:upload')}</Text>
-                    </Flex>
-                  </Box>
-                </Box>
+                  uploadFontSize={{ base: '8px', md: '12px' }}
+                  iconBoxSize={{ base: '10px', md: '14px' }}
+                  onUploadClick={onOpenSelectFile}
+                  withStripedBackground={true} // 添加斜线背景
+                />
                 <Text fontSize="12px" color="#667085">
                   {t('account_gate:suggestion_ratio_1_1')}
                 </Text>
