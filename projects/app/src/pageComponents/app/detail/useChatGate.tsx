@@ -107,12 +107,14 @@ export const useChatGate = ({
         chatConfig,
         name: appDetail.name,
         avatar: appDetail.avatar,
+        intro: appDetail.intro,
         type: appDetail.type,
         pluginInputs
       }
     });
   }, [
     appDetail.avatar,
+    appDetail.intro,
     appDetail.name,
     appDetail.type,
     appId,

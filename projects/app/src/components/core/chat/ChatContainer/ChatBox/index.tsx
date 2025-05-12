@@ -1125,7 +1125,21 @@ const ChatBox = ({
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
 
       {chatRecords.length === 0 && showWelcome ? (
-        <Flex flex={1} direction="column" align="center" justify="center" h="100%" gap={6}>
+        <Flex
+          flex={1}
+          direction="column"
+          align="center"
+          justify="flex-start"
+          h="100%"
+          w="100%"
+          position="relative"
+          maxW="1360px"
+          mx="auto"
+          pt={{ base: '100px', sm: '120px', md: '158px' }}
+          px={{ base: '20px', sm: '30px', md: '40px' }}
+          pb="12px"
+          gap={{ base: 4, md: 6 }}
+        >
           {
             <ChatWelcome
               teamName={copyRightConfig?.name || chatBoxData?.app?.name}
@@ -1135,7 +1149,7 @@ const ChatBox = ({
           }
           {/* message input */}
           {onStartChat && chatStarted && active && !isInteractive && (
-            <Box maxW="700px" w="100%" px={[0, 5]}>
+            <Box w="700px" maxH="132px" h="100%" px={0}>
               <GateChatInput
                 onSendMessage={sendPrompt}
                 onStop={() => chatController.current?.abort('stop')}

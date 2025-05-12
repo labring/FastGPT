@@ -10,7 +10,8 @@ import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatGate } from '../useChatGate';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
@@ -59,8 +60,7 @@ const ChatGate = ({ appForm, setRenderEdit }: Props) => {
         position={'relative'}
         flexDirection={'column'}
         h={'full'}
-        py={4}
-        {...cardStyles}
+        bg={'white'}
         boxShadow={'3'}
       >
         <Box flex={1}>
@@ -80,4 +80,32 @@ const ChatGate = ({ appForm, setRenderEdit }: Props) => {
   );
 };
 
-export default React.memo(ChatGate);
+const Render = ({ appForm, setRenderEdit }: Props) => {
+  const { chatId } = useChatStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const chatRecordProviderParams = useMemo(
+    () => ({
+      chatId: chatId,
+      appId: appDetail._id
+    }),
+    [appDetail._id, chatId]
+  );
+
+  return (
+    <ChatItemContextProvider
+      showRouteToAppDetail={true}
+      showRouteToDatasetDetail={true}
+      isShowReadRawSource={true}
+      isResponseDetail={true}
+      // isShowFullText={true}
+      showNodeStatus
+    >
+      <ChatRecordContextProvider params={chatRecordProviderParams}>
+        <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} />
+      </ChatRecordContextProvider>
+    </ChatItemContextProvider>
+  );
+};
+
+export default React.memo(Render);

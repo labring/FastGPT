@@ -10,7 +10,7 @@ type Props = {
 
 const ChatWelcome = ({ teamName = 'FastGPT', teamAvatar, slogan }: Props) => {
   return (
-    <Flex direction="column" align="center" gap={4} maxW="400px">
+    <Flex direction="column" align="center" gap={4} maxW="700px">
       <Flex align="center" gap={5}>
         <Box
           w="60px"
@@ -27,7 +27,14 @@ const ChatWelcome = ({ teamName = 'FastGPT', teamAvatar, slogan }: Props) => {
         </Text>
       </Flex>
       {slogan && (
-        <Text fontSize="lg" color="#707070" fontFamily="PingFang SC" textAlign="center">
+        <Text
+          fontSize="lg"
+          color="#707070"
+          fontFamily="PingFang SC"
+          textAlign="center"
+          maxW="600px"
+          whiteSpace="pre-line"
+        >
           {slogan}
         </Text>
       )}

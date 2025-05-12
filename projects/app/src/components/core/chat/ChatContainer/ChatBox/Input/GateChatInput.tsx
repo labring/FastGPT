@@ -9,7 +9,8 @@ import {
   MenuButton,
   MenuList,
   MenuItem,
-  Button
+  Button,
+  Badge
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -38,6 +39,8 @@ import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { AppFormContext } from '@/pages/chat/gate/index';
+import Icon from '@fastgpt/web/components/common/Icon';
+import GateSelect from '@fastgpt/web/components/common/MySelect/GateSelect';
 
 const ToolSelect = dynamic(() => import('@/pageComponents/app/detail/Gate/components/ToolSelect'), {
   ssr: false
@@ -216,15 +219,25 @@ const GateChatInput = ({
   return (
     <Box
       w="full"
-      maxW="700px"
+      maxW="100%"
       minH="132px"
-      bg="white"
+      background="var(--White, #FFF)"
       border="0.5px solid rgba(0, 0, 0, 0.13)"
       boxShadow="0px 5px 16px -4px rgba(19, 51, 107, 0.08)"
       borderRadius="20px"
       position="relative"
       p={4}
       pb="56px"
+      overflow="hidden"
+      transition="all 0.2s ease"
+      _hover={{
+        border: '0.5px solid rgba(0, 0, 0, 0.20)',
+        boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)'
+      }}
+      _focus-within={{
+        border: '0.5px solid rgba(0, 0, 0, 0.20)',
+        boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)'
+      }}
     >
       {/* Tool select configuration */}
       {showToolSelect && (
@@ -308,107 +321,166 @@ const GateChatInput = ({
         }}
       />
       {/* Bottom Toolbar */}
-      <Flex position="absolute" left="3" bottom="3" gap={2} align="center">
-        {showModelSelector && (
-          <AIModelSelector
-            value={selectedModel}
-            list={modelList}
-            onChange={setSelectedModel}
-            minW="128px"
-            maxW="200px"
-            w="auto"
-            bg="#F9F9F9"
-            border="0.5px solid #E0E0E0"
-            borderRadius="10px"
-            color="#485264"
-            h="36px"
-            fontSize="14px"
-          />
-        )}
-      </Flex>
+      <Flex
+        position="absolute"
+        left="0"
+        right="0"
+        bottom="3"
+        px="4"
+        justify="space-between"
+        align="center"
+        w="100%"
+        maxW="100%"
+      >
+        <Flex align="center" gap={2} overflow="hidden" maxW="65%" flexShrink={1} flexWrap="nowrap">
+          {showModelSelector && (
+            <GateSelect
+              value={selectedModel}
+              list={modelList}
+              onChange={setSelectedModel}
+              minW="128px"
+              maxW="180px"
+              w="auto"
+              bg="#F9F9F9"
+              border="0.5px solid #E0E0E0"
+              borderRadius="10px"
+              color="#485264"
+              h="36px"
+              fontSize="14px"
+            />
+          )}
+          {showTools && (
+            <Button
+              leftIcon={
+                <MyIcon
+                  name={'support/gate/chat/toolkitLine'}
+                  w={'18px'}
+                  h={'18px'}
+                  color="blue.500"
+                />
+              }
+              size={buttonSize}
+              display="flex"
+              padding="8px 12px"
+              justifyContent="center"
+              alignItems="center"
+              gap="4px"
+              iconSpacing="4px"
+              borderRadius="9999px"
+              border="0.5px solid var(--Royal-Blue-200, #C5D7FF)"
+              background="var(--light-fastgpt-primary-container-low, #F0F4FF)"
+              color="blue.500"
+              fontWeight="500"
+              onClick={() => setShowToolSelect(!showToolSelect)}
+              flexShrink={0}
+              _hover={{
+                background: 'var(--light-fastgpt-primary-container-low, #E6EDFF)'
+              }}
+            >
+              {t('common:tool_select')}: {appForm?.selectedTools?.length || 0}
+            </Button>
+          )}
+        </Flex>
 
-      <Flex position="absolute" right="4" bottom="3" align="center" gap={2}>
-        {showTools && (
-          <IconButton
-            aria-label="Configure Tools"
-            icon={<MyIcon name={'core/app/toolCall'} w={'20px'} />}
-            size={buttonSize}
-            variant="ghost"
-            borderRadius="6px"
-            w="36px"
-            h="36px"
-            onClick={() => setShowToolSelect(!showToolSelect)}
-          />
-        )}
-        {(showSelectFile || showSelectImg) && (
-          <IconButton
-            aria-label="Upload file"
-            icon={<MyIcon name={'support/gate/chat/fileGray'} w={'20px'} />}
-            size={buttonSize}
-            variant="ghost"
-            borderRadius="6px"
-            w="36px"
-            h="36px"
-            onClick={() => onOpenSelectFile()}
-          />
-        )}
-        {whisperConfig?.open && (
-          <IconButton
-            aria-label="Voice input"
-            icon={<MyIcon name={'support/gate/chat/voiceGray'} w={'20px'} />}
-            size={buttonSize}
-            variant="ghost"
-            borderRadius="6px"
-            w="36px"
-            h="36px"
-            onClick={() => VoiceInputRef.current?.onSpeak?.()}
-          />
-        )}
+        <Flex align="center" gap="2px" flexShrink={0}>
+          {(showSelectFile || showSelectImg) && (
+            <IconButton
+              aria-label="Upload file"
+              icon={<MyIcon name={'support/gate/chat/paperclip'} w={'20px'} h={'20px'} />}
+              size="auto" // 尝试移除buttonSize变量的影响
+              variant="ghost"
+              display="flex"
+              padding="8px"
+              alignItems="center"
+              minW="36px" // 使用minW而不是w
+              minH="36px" // 使用minH而不是h
+              w="36px"
+              h="36px"
+              boxSize="36px" // 添加boxSize属性更强制性地控制尺寸
+              onClick={() => onOpenSelectFile()}
+              flexShrink={0}
+              _hover={{
+                background: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
+                '& svg path': {
+                  fill: '#3370FF !important'
+                }
+              }}
+            />
+          )}
+          {whisperConfig?.open && (
+            <IconButton
+              aria-label="Voice input"
+              icon={<Icon name={'support/gate/chat/voiceGray'} w={'20px'} h={'20px'} />}
+              size="auto"
+              variant="ghost"
+              display="flex"
+              padding="8px"
+              w="36px"
+              h="36px"
+              alignItems="center"
+              onClick={() => VoiceInputRef.current?.onSpeak?.()}
+              flexShrink={0}
+              _hover={{
+                background: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
+                '& svg path': {
+                  fill: '#3370FF !important'
+                }
+              }}
+            />
+          )}
 
-        <Box w="2px" h="16px" bg="#F0F1F6" mx={2} />
+          <Box w="2px" h="16px" bg="#F0F1F6" mx={1} flexShrink={0} />
 
-        {isChatting ? (
-          <IconButton
-            aria-label="Stop"
-            icon={
-              <MyIcon
-                animation={'zoomStopIcon 0.4s infinite alternate'}
-                width={['22px', '25px']}
-                height={['22px', '25px']}
-                name={'stop'}
-                color={'gray.500'}
-              />
-            }
-            size={buttonSize}
-            onClick={onStop}
-            borderRadius="12px"
-            w="36px"
-            h="36px"
-            variant="ghost"
-          />
-        ) : (
-          <IconButton
-            aria-label="Send"
-            icon={
-              <MyIcon
-                name={'core/chat/sendFill'}
-                width={['18px', '20px']}
-                height={['18px', '20px']}
-                color={'white'}
-              />
-            }
-            size={buttonSize}
-            bg={!canSendMessage ? 'rgba(17, 24, 36, 0.1)' : '#3370FF'}
-            _hover={{
-              bg: !canSendMessage ? 'rgba(17, 24, 36, 0.1)' : '#2860E1'
-            }}
-            borderRadius="12px"
-            w="36px"
-            h="36px"
-            isDisabled={!canSendMessage}
-            onClick={() => handleSend()}
-          />
-        )}
+          {isChatting ? (
+            <IconButton
+              aria-label="Stop"
+              icon={
+                <MyIcon
+                  animation={'zoomStopIcon 0.4s infinite alternate'}
+                  width={['22px', '25px']}
+                  height={['22px', '25px']}
+                  name={'stop'}
+                  color={'gray.500'}
+                />
+              }
+              size="auto"
+              onClick={onStop}
+              borderRadius="12px"
+              w="36px"
+              h="36px"
+              variant="ghost"
+              flexShrink={0}
+            />
+          ) : (
+            <IconButton
+              aria-label="Send"
+              icon={
+                <MyIcon
+                  name={'core/chat/sendFill'}
+                  width={['18px', '20px']}
+                  height={['18px', '20px']}
+                  color={'white'}
+                />
+              }
+              size="auto"
+              bg={
+                !canSendMessage
+                  ? 'var(--light-general-surface-opacity-01, rgba(17, 24, 36, 0.10))'
+                  : '#3370FF'
+              }
+              _hover={{
+                bg: !canSendMessage
+                  ? 'var(--light-general-surface-opacity-01, rgba(17, 24, 36, 0.10))'
+                  : '#2860E1'
+              }}
+              borderRadius="12px"
+              w="36px"
+              h="36px"
+              onClick={() => handleSend()}
+              flexShrink={0}
+            />
+          )}
+        </Flex>
       </Flex>
 
       <File onSelect={(files) => onSelectFile({ files })} />

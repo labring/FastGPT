@@ -9,14 +9,11 @@ import {
   Input,
   FormControl,
   FormLabel,
-  Link,
-  useTheme,
-  useBreakpointValue
+  Link
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import ToolSelect, { ToolSelectRefType, ToolItemType } from './ToolSelect';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getBatchPlugins } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -191,7 +188,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
                 borderWidth="1px"
                 borderColor={status ? 'primary.500' : 'myGray.200'}
                 borderRadius="7px"
-                bg={status ? 'blue.50' : 'white'}
+                bg={'white'}
                 transition="all 0.2s ease-in-out"
                 _hover={{
                   bg: status ? 'blue.100' : 'myGray.50',
@@ -239,6 +236,16 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
               </Flex>
             </Stack>
           </RadioGroup>
+        </FormControl>
+        {/* 可用工具选择 */}
+        <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
+          <ToolSelect
+            ref={toolSelectRef}
+            key="tool-select"
+            defaultTools={selectedTools}
+            isLoading={loadingPlugins}
+            onChange={saveToolsToStore}
+          />
         </FormControl>
         {/* slogan设置 */}
         <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
@@ -313,16 +320,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
             color="gray.900"
           />
         </FormControl>
-        {/* 可用工具选择 */}
-        <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
-          <ToolSelect
-            ref={toolSelectRef}
-            key="tool-select"
-            defaultTools={selectedTools}
-            isLoading={loadingPlugins}
-            onChange={saveToolsToStore}
-          />
-        </FormControl>
+
         {/* 可用工具 */}
         {/* <FormControl display="flex" flexDirection="column" gap={spacing.sm} w="full">
           <Flex gap={spacing.xs}>

@@ -35,6 +35,16 @@ const shatterKeyframes = keyframes`
   }
 `;
 
+// 定义淡入动画关键帧
+const fadeInKeyframes = keyframes`
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+`;
+
 // 定义工具项的类型
 export type ToolItemType = {
   id: string;
@@ -221,8 +231,8 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
 
         {/* 工具容器 */}
         {selectedTools.length > 0 ? (
-          <Box mt={2}>
-            <Grid gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
+          <Box mt={0}>
+            <Grid gridTemplateColumns={'repeat(3, minmax(0, 1fr))'} gridGap={[2, 4]}>
               {selectedTools.map((item) => {
                 const hasError = checkAppUnExistError(item.pluginData?.error);
 
@@ -230,17 +240,26 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                   <MyTooltip key={item.id} label={item.intro}>
                     <Flex
                       overflow={'hidden'}
+                      display={'flex'}
+                      height={'40px'}
+                      padding={'8px 12px'}
+                      flexDirection={'row'}
+                      justifyContent={'flex-start'}
                       alignItems={'center'}
-                      p={3}
-                      bg={'white'}
-                      boxShadow={'0 2px 8px rgba(0,0,0,0.06)'}
-                      borderRadius={'lg'}
-                      border={'1px solid'}
-                      borderColor={hasError ? 'red.400' : 'gray.100'}
+                      flex={'1 0 0'}
+                      borderRadius={'6px'}
+                      border={'0.5px solid var(--Gray-Modern-200, #E8EBF0)'}
+                      background={'#FFF'}
+                      boxShadow={
+                        '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+                      }
                       _hover={{
                         transform: 'translateY(-2px)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                        borderColor: hasError ? 'red.400' : 'primary.300'
+                        borderRadius: '6px',
+                        border: '0.5px solid var(--Gray-Modern-200, #E8EBF0)',
+                        background: '#FFF',
+                        boxShadow:
+                          '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
                       }}
                       cursor={'pointer'}
                       transition="all 0.2s ease"
@@ -250,20 +269,52 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                         item.isDeleting ? `${shatterKeyframes} 0.15s ease forwards` : undefined
                       }
                     >
-                      <Box position="relative" borderRadius="md" overflow="hidden">
-                        <Avatar src={item.avatar} w={'1.8rem'} h={'1.8rem'} borderRadius={'md'} />
-                      </Box>
-                      <Box
-                        flex={'1 0 0'}
-                        ml={3}
-                        gap={2}
-                        className={'textEllipsis'}
-                        fontSize={'sm'}
-                        fontWeight="medium"
-                        color={'myGray.900'}
-                      >
-                        {item.name}
-                      </Box>
+                      <Flex alignItems="center" width="100%">
+                        <Avatar src={item.avatar} borderRadius={'6px'} w={'20px'} h={'20px'} />
+                        <Box
+                          ml={'6px'}
+                          className={'textEllipsis'}
+                          fontSize={'sm'}
+                          fontWeight="medium"
+                          color={'myGray.900'}
+                          flex="1"
+                        >
+                          {item.name}
+                        </Box>
+                        <Flex
+                          className="delete"
+                          alignItems="center"
+                          justifyContent="center"
+                          ml={2}
+                          w="22px"
+                          h="22px"
+                          borderRadius="sm"
+                          cursor="pointer"
+                          transition="all 0.2s"
+                          _hover={{
+                            background: 'rgba(17, 24, 36, 0.05)',
+                            color: 'red.600'
+                          }}
+                          onClick={(e) => {
+                            // 仅阻止删除按钮的点击事件冒泡
+                            e.stopPropagation();
+                            handleDeleteTool(item.id);
+                          }}
+                          opacity="0"
+                          _groupHover={{
+                            opacity: 1,
+                            animation: `${fadeInKeyframes} 0.2s ease`
+                          }}
+                        >
+                          <MyIcon
+                            className="delete"
+                            name={'delete' as any}
+                            w={'16px'}
+                            h={'16px'}
+                            color={'inherit'}
+                          />
+                        </Flex>
+                      </Flex>
                       {hasError && (
                         <MyTooltip label={t('app:app.modules.not_found_tips')}>
                           <Flex
@@ -280,34 +331,6 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                           </Flex>
                         </MyTooltip>
                       )}
-                      <Flex
-                        className="delete"
-                        alignItems="center"
-                        justifyContent="center"
-                        ml={2}
-                        w="22px"
-                        h="22px"
-                        borderRadius="sm"
-                        bg="myGray.50"
-                        cursor="pointer"
-                        transition="all 0.2s"
-                        _hover={{
-                          bg: 'red.50',
-                          color: 'red.500'
-                        }}
-                        onClick={(e) => {
-                          // 仅阻止删除按钮的点击事件冒泡
-                          e.stopPropagation();
-                          handleDeleteTool(item.id);
-                        }}
-                      >
-                        <MyIcon
-                          className="delete"
-                          name={'delete' as any}
-                          w={'14px'}
-                          color={'inherit'}
-                        />
-                      </Flex>
                     </Flex>
                   </MyTooltip>
                 );
@@ -316,13 +339,14 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
           </Box>
         ) : (
           <Box
-            mt={2}
-            p={3}
-            borderWidth="1px"
-            borderStyle="dashed"
-            borderColor="gray.300"
-            borderRadius="lg"
-            bg="gray.50"
+            mt={0}
+            display="flex"
+            width="640px"
+            height="80px"
+            justifyContent="center"
+            alignItems="center"
+            borderRadius="4px"
+            border="1px dashed var(--Gray-Modern-250, #DFE2EA)"
             cursor="pointer"
             onClick={onOpenToolsSelect}
             _hover={{
@@ -332,12 +356,10 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
             }}
             transition="all 0.2s"
             position="relative"
-            boxShadow="sm"
           >
             <Flex
               alignItems="center"
               justifyContent="center"
-              height="80px"
               flexDirection="column"
               color="gray.500"
             >
@@ -371,12 +393,12 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                     className="hoverContent"
                     alignItems="center"
                     justifyContent="center"
-                    flexDirection="column"
-                    gap={0}
+                    flexDirection="row"
+                    gap={'6px'}
                   >
-                    <SmallAddIcon boxSize={5} mb={0.5} />
+                    <SmallAddIcon boxSize={5} />
                     <Box fontSize="sm" fontWeight="medium">
-                      {t('common:common.Choose')}
+                      {t('common:common.Add')}
                     </Box>
                   </Flex>
                 </>

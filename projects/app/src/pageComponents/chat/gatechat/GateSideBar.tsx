@@ -1,413 +1,72 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Box, Flex, Text, HStack, IconButton } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import Avatar from '@fastgpt/web/components/common/Avatar';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
-import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
-import { useRouter } from 'next/router';
-import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
-import dynamic from 'next/dynamic';
-import { getMyApps } from '@/web/core/app/api';
-import {
-  GetResourceFolderListProps,
-  GetResourceListItemResponse
-} from '@fastgpt/global/common/parentFolder/type';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import React, { useState, useEffect, useRef } from 'react';
+import { Box, Flex } from '@chakra-ui/react';
+import type { BoxProps } from '@chakra-ui/react';
+import FoldButton from './FoldButton';
 
-const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
+interface Props extends BoxProps {
+  externalTrigger?: Boolean;
+  onFoldChange?: (isFolded: boolean) => void;
+  defaultFolded?: boolean;
+}
 
-type Props = {
-  apps?: AppListItemType[];
-  activeAppId?: string;
-};
+const GateSideBar = (e?: Props) => {
+  const {
+    w = ['100%', '0 0 250px', '0 0 250px', '0 0 270px', '0 0 290px'],
+    children,
+    externalTrigger,
+    onFoldChange,
+    defaultFolded = false,
+    ...props
+  } = e || {};
 
-const GateSideBar = ({ apps, activeAppId }: Props) => {
-  const { t } = useTranslation();
-  const router = useRouter();
-  const { userInfo } = useUserStore();
-  const { copyRightConfig } = useGateStore();
-  const [isCollapsed, setIsCollapsed] = useState(false);
-  const companyNameRef = useRef<HTMLSpanElement>(null);
-  const [companyNameScale, setCompanyNameScale] = useState(1);
+  const [isFolded, setIsFolded] = useState(defaultFolded);
 
-  const isChatPage = router.pathname === '/chat/gate';
+  // 保存上一次折叠状态
+  const preFoledStatus = useRef<Boolean>(defaultFolded);
+
+  // 同步外部传入的折叠状态
+  useEffect(() => {
+    setIsFolded(defaultFolded);
+  }, [defaultFolded]);
 
   useEffect(() => {
-    if (companyNameRef.current && !isCollapsed) {
-      const containerWidth = 130;
-      const scale = Math.min(1, containerWidth / (companyNameRef.current.offsetWidth + 5));
-      setCompanyNameScale(scale);
+    if (externalTrigger) {
+      setIsFolded(true);
+      preFoledStatus.current = isFolded;
+    } else {
+      // @ts-ignore
+      setIsFolded(preFoledStatus.current);
     }
-  }, [copyRightConfig?.name, isCollapsed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalTrigger]);
+
+  const handleFoldToggle = () => {
+    const newFoldState = !isFolded;
+    setIsFolded(newFoldState);
+    onFoldChange?.(newFoldState);
+  };
 
   return (
-    <Flex
-      w={isCollapsed ? '64px' : '15%'}
-      minW={isCollapsed ? '64px' : '220px'}
-      maxW={isCollapsed ? '64px' : '220px'}
-      h="100%"
-      bg="#F4F4F7"
-      direction="column"
-      justify="space-between"
-      p={isCollapsed ? '24px 10px' : 6}
-      transition="all 0.4s ease-in-out"
+    <Box
+      position={'relative'}
+      flex={isFolded ? '0 0 0' : w}
+      w={['100%', 0]}
+      h={'100%'}
+      overflow={'visible'}
+      transition={'0.2s'}
+      _hover={{
+        '& > div': { visibility: 'visible', opacity: 1 }
+      }}
+      {...props}
     >
-      {/* Logo and Navigation Items */}
-      <Flex
-        direction="column"
-        align={isCollapsed ? 'center' : 'flex-start'}
-        gap={4}
-        w="100%"
-        transition="all 0.4s ease-in-out"
-      >
-        <Box
-          w={isCollapsed ? '44px' : 'auto'}
-          h={isCollapsed ? 'auto' : 'auto'}
-          display="flex"
-          position="relative"
-          transition="all 0.4s ease-in-out"
-          justifyContent="center"
-          alignItems="center"
-        >
-          <Flex
-            align="center"
-            cursor="pointer"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            position="relative"
-            gap={3}
-            style={{
-              transition: 'transform 0.4s ease-in-out'
-            }}
-          >
-            <Box
-              boxSize="36px"
-              bg="white"
-              border="0.75px solid #ECECEC"
-              borderRadius="9px"
-              overflow="hidden"
-              flexShrink={0}
-              transition="all 0.4s ease-in-out"
-            >
-              <Avatar
-                boxSize="100%"
-                src={userInfo?.team.teamAvatar}
-                borderRadius="9px"
-                objectFit="cover"
-              />
-            </Box>
-            <Box
-              opacity={isCollapsed ? 0 : 1}
-              maxW={isCollapsed ? 0 : '130px'}
-              w="130px"
-              transition="all 0.4s ease-in-out"
-              overflow="hidden"
-              transform="scale(1, 1)"
-              transformOrigin="left center"
-              className="company-name"
-              position={isCollapsed ? 'absolute' : 'relative'}
-              width={isCollapsed ? '0' : 'auto'}
-              height={isCollapsed ? '0' : 'auto'}
-            >
-              <Text
-                as="span"
-                fontSize="md"
-                fontWeight="bold"
-                color="#111824"
-                fontFamily="Inter"
-                whiteSpace="nowrap"
-                ref={companyNameRef}
-                style={{
-                  transform: `scale(${companyNameScale})`,
-                  display: 'inline-block',
-                  transformOrigin: 'left'
-                }}
-              >
-                {copyRightConfig?.name || '没渲染出来'}
-              </Text>
-            </Box>
-          </Flex>
-        </Box>
-
-        {/* Divider */}
-        <Box w="100%" h="2px" bg="#E8EBF0" transition="width 0.2s" />
-
-        {/* Navigation Items */}
-        <Flex
-          direction="column"
-          gap={6}
-          w="100%"
-          alignItems={isCollapsed ? 'center' : 'flex-start'}
-          transition="all 0.2s"
-        >
-          <Flex
-            align="center"
-            p="8px"
-            gap="8px"
-            w={isCollapsed ? '44px' : '100%'}
-            h="44px"
-            borderRadius="8px"
-            cursor="pointer"
-            bg={isChatPage ? 'rgba(17, 24, 36, 0.05)' : 'transparent'}
-            _hover={{ bg: isChatPage ? 'rgba(17, 24, 36, 0.1)' : 'rgba(17, 24, 36, 0.05)' }}
-            flexGrow={0}
-            transition="all 0.4s ease-in-out"
-            className="nav-item"
-            onClick={() => router.push('/chat/gate')}
-            justifyContent={isCollapsed ? 'center' : 'flex-start'}
-            sx={{
-              '&.nav-item': {
-                '& > .nav-content': {
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: isCollapsed ? '20px' : '100%',
-                  transition: 'all 0.4s ease-in-out'
-                }
-              }
-            }}
-          >
-            <Box className="nav-content">
-              <MyIcon
-                name="support/gate/chat/sidebar/chatGray"
-                width="20px"
-                height="20px"
-                color={isChatPage ? '#3370FF' : '#8A95A7'}
-                fill={isChatPage ? '#3370FF' : '#8A95A7'}
-              />
-              <Box
-                opacity={isCollapsed ? 0 : 1}
-                maxW={isCollapsed ? 0 : '130px'}
-                transition="all 0.4s ease-in-out"
-                overflow="hidden"
-              >
-                <Text
-                  fontSize="14px"
-                  fontWeight="500"
-                  lineHeight="20px"
-                  letterSpacing="0.1px"
-                  fontFamily="PingFang SC"
-                  color={isChatPage ? '#3370FF' : '#667085'}
-                  transformOrigin="left center"
-                  whiteSpace="nowrap"
-                >
-                  {t('common:navbar.Chat')}
-                </Text>
-              </Box>
-            </Box>
-          </Flex>
-
-          {/* Recent Apps - matched with SliderApps style */}
-          {apps && apps.length > 0 && (
-            <>
-              <HStack
-                px={2}
-                my={2}
-                w={isCollapsed ? '44px' : '100%'}
-                color={'myGray.500'}
-                fontSize={'sm'}
-                justifyContent={isCollapsed ? 'center' : 'space-between'}
-                transition="all 0.2s"
-                opacity={isCollapsed ? 0 : 1}
-                sx={{
-                  '& > .recent-title': {
-                    opacity: isCollapsed ? 0 : 1,
-                    transform: `scale(${isCollapsed ? 0 : 1})`,
-                    transformOrigin: 'left center',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap'
-                  }
-                }}
-              >
-                <Box className="recent-title">{t('common:core.chat.Recent use')}</Box>
-                <MyPopover
-                  placement="bottom-end"
-                  offset={[20, 10]}
-                  p={4}
-                  trigger="hover"
-                  Trigger={
-                    <HStack
-                      spacing={0.5}
-                      cursor={'pointer'}
-                      px={2}
-                      py={'0.5'}
-                      borderRadius={'md'}
-                      userSelect={'none'}
-                      opacity={isCollapsed ? 0 : 1}
-                      transform={`scale(${isCollapsed ? 0 : 1})`}
-                      transformOrigin="left center"
-                      transition="all 0.2s"
-                      _hover={{
-                        bg: 'myGray.200'
-                      }}
-                    >
-                      <Box
-                        opacity={isCollapsed ? 0 : 1}
-                        transform={`scale(${isCollapsed ? 0 : 1})`}
-                        transformOrigin="left center"
-                        transition="all 0.2s"
-                        whiteSpace="nowrap"
-                      >
-                        {t('common:common.More')}
-                      </Box>
-                      <MyIcon
-                        name={'common/select'}
-                        w={'1rem'}
-                        opacity={isCollapsed ? 0 : 1}
-                        transition="all 0.2s"
-                      />
-                    </HStack>
-                  }
-                >
-                  {({ onClose }) => (
-                    <Box minH={'200px'}>
-                      <SelectOneResource
-                        maxH={'60vh'}
-                        value={activeAppId}
-                        onSelect={(id) => {
-                          if (!id) return;
-                          router.replace({
-                            pathname: '/chat/gate/application',
-                            query: {
-                              ...router.query,
-                              appId: id
-                            }
-                          });
-                          onClose();
-                        }}
-                        server={useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-                          return getMyApps({
-                            parentId,
-                            type: [
-                              AppTypeEnum.folder,
-                              AppTypeEnum.simple,
-                              AppTypeEnum.workflow,
-                              AppTypeEnum.plugin
-                            ]
-                          }).then((res) =>
-                            res.map<GetResourceListItemResponse>((item) => ({
-                              id: item._id,
-                              name: item.name,
-                              avatar: item.avatar,
-                              isFolder: item.type === AppTypeEnum.folder
-                            }))
-                          );
-                        }, [])}
-                      />
-                    </Box>
-                  )}
-                </MyPopover>
-              </HStack>
-
-              <Box
-                maxH={isCollapsed ? '0' : 'calc(100vh - 300px)'}
-                opacity={isCollapsed ? 0 : 1}
-                transition="all 0.2s"
-                overflowY="auto"
-                w="100%"
-                px={0}
-              >
-                {apps.map((item) => (
-                  <Flex
-                    key={item._id}
-                    py={2}
-                    px={3}
-                    mb={3}
-                    cursor={'pointer'}
-                    borderRadius={'md'}
-                    alignItems={'center'}
-                    fontSize={'sm'}
-                    w="100%"
-                    {...(item._id === activeAppId
-                      ? {
-                          bg: 'white',
-                          boxShadow: 'md',
-                          color: 'primary.600'
-                        }
-                      : {
-                          _hover: {
-                            bg: 'myGray.200'
-                          }
-                        })}
-                    onClick={
-                      item._id !== activeAppId
-                        ? () =>
-                            router.replace({
-                              pathname: '/chat/gate/application',
-                              query: {
-                                ...router.query,
-                                appId: item._id
-                              }
-                            })
-                        : undefined
-                    }
-                  >
-                    <Avatar src={item.avatar} w={'1.5rem'} borderRadius={'md'} />
-                    <Box
-                      flex="1"
-                      ml={2}
-                      className={'textEllipsis'}
-                      fontWeight={500}
-                      opacity={isCollapsed ? 0 : 1}
-                      transform={`scale(${isCollapsed ? 0 : 1})`}
-                      transformOrigin="left center"
-                      transition="all 0.2s"
-                    >
-                      {item.name}
-                    </Box>
-                  </Flex>
-                ))}
-              </Box>
-            </>
-          )}
-        </Flex>
-      </Flex>
-
-      {/* User Profile */}
-      <Flex
-        align="center"
-        gap={2}
-        w="100%"
-        justifyContent={isCollapsed ? 'center' : 'flex-start'}
-        transition="all 0.2s"
-      >
-        <Box
-          boxSize="36px"
-          border="2px solid #fff"
-          borderRadius="50%"
-          overflow="hidden"
-          flexShrink={0}
-        >
-          <Avatar
-            boxSize="100%"
-            src={userInfo?.avatar || HUMAN_ICON}
-            borderRadius="50%"
-            objectFit="cover"
-          />
-        </Box>
-        <Box
-          opacity={isCollapsed ? 0 : 1}
-          transform={`scale(${isCollapsed ? 0 : 1})`}
-          transformOrigin="left center"
-          transition="all 0.2s"
-          overflow="hidden"
-          flex="1"
-        >
-          <Text
-            fontSize="xs"
-            fontWeight="medium"
-            letterSpacing="0.1px"
-            color="#111824"
-            fontFamily="PingFang SC"
-            className="textEllipsis"
-          >
-            {userInfo?.username || 'unauthorized'}
-          </Text>
-        </Box>
-      </Flex>
-    </Flex>
+      {/* 只在非完全折叠状态下显示侧边栏的折叠按钮 */}
+      {!defaultFolded && (
+        <FoldButton isFolded={isFolded} onClick={handleFoldToggle} position="sidebar" />
+      )}
+      <Box position={'relative'} h={'100%'} overflow={isFolded ? 'hidden' : 'visible'}>
+        {children}
+      </Box>
+    </Box>
   );
 };
 

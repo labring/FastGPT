@@ -26,11 +26,14 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
+import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
 import GateChatHistorySlider from '@/pageComponents/chat/gatechat/GateChatHistorySlider';
+import GatePageContainer from '@/components/GatePageContainer';
+import GateSideBar from '@/pageComponents/chat/gatechat/GateSideBar';
+import FoldButton from '@/pageComponents/chat/gatechat/FoldButton';
 
 const ChatGate = dynamic(() => import('@/pageComponents/app/detail/Gate/ChatGate'));
 
@@ -68,6 +71,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const [appForm, setAppForm] = useState<AppSimpleEditFormType>(getDefaultAppForm());
   const [renderEdit, setRenderEdit] = useState(false);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  // 添加侧边栏折叠状态
+  const [sidebarFolded, setSidebarFolded] = useState(false);
 
   // Load chat init data
   const { loading } = useRequest2(
@@ -117,13 +123,23 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
+  const handleFoldChange = (isFolded: boolean) => {
+    setSidebarFolded(isFolded);
+  };
+
   const RenderHistorySlider = useMemo(() => {
     const Children = (
       <GateChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
     );
 
     return isPc || !appId ? (
-      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
+      <GateSideBar
+        externalTrigger={!!quoteData}
+        onFoldChange={handleFoldChange}
+        defaultFolded={sidebarFolded}
+      >
+        {Children}
+      </GateSideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -136,8 +152,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
-  console.log('chatBoxData', chatBoxData);
+  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData, sidebarFolded, handleFoldChange]);
+
   return (
     <AppFormContext.Provider value={{ appForm, setAppForm }}>
       <Flex h={'100%'}>
@@ -145,12 +161,36 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           title={userInfo?.team.teamName + t('account_gate:Gate')}
           icon={userInfo?.team.teamAvatar}
         ></NextHead>
-        {isPc && <GateSideBar apps={myApps} activeAppId={appId} />}
+        {isPc && (
+          <Flex alignItems="center">
+            <GateNavBar apps={myApps} activeAppId={appId} />
+          </Flex>
+        )}
 
         {(!quoteData || isPc) && (
-          <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
-            <Flex h={'100%'} flexDirection={['column', 'row']}>
-              {/* pc always show history. */}
+          <GatePageContainer flex={'1 0 0'} w={0} position={'relative'}>
+            {/* 将折叠按钮放在PageContainer内部，贴近左侧 */}
+            {sidebarFolded && isPc && appId && (
+              <Box
+                position="absolute"
+                left="-8px"
+                top="50%"
+                transform="translateY(-50%)"
+                zIndex={10}
+              >
+                <FoldButton
+                  isFolded={true}
+                  onClick={() => setSidebarFolded(false)}
+                  position="navbar"
+                />
+              </Box>
+            )}
+            <Flex
+              h={'100%'}
+              flexDirection={['column', 'row']}
+              position="relative"
+              overflow="visible"
+            >
               {RenderHistorySlider}
               {/* chat container */}
               <Flex
@@ -161,12 +201,10 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 flexDirection={'column'}
               >
                 {/* 聊天界面 */}
-                <Box flex={'1 0 0'} bg={'white'}>
-                  <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} />
-                </Box>
+                <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} />
               </Flex>
             </Flex>
-          </PageContainer>
+          </GatePageContainer>
         )}
 
         {quoteData && (

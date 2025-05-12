@@ -37,7 +37,7 @@ import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import GateSideBar from '../../../pageComponents/chat/gatechat/GateSideBar';
+import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
@@ -168,7 +168,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   return (
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
-      {isPc && <GateSideBar apps={myApps} activeAppId={appId} />}
+      {isPc && <GateNavBar apps={myApps} activeAppId={appId} />}
 
       {(!quoteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
