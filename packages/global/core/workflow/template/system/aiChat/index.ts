@@ -54,7 +54,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:template.ai_chat_intro'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/ai_chat/',
+  courseUrl: '/docs/guide/dashboard/workflow/ai_chat/',
   version: '4.9.7',
   inputs: [
     Input_Template_SettingAiModel,
