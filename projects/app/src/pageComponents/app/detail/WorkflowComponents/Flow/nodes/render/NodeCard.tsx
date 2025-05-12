@@ -41,9 +41,9 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 import { getAppVersionList } from '@/web/core/app/api/version';
-import { menuItemStyles } from '@fastgpt/web/components/common/MySelect';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -609,7 +609,6 @@ const NodeIntro = React.memo(function NodeIntro({
 
 const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeItemType }) {
   const { t } = useTranslation();
-  const ButtonRef = useRef<HTMLButtonElement>(null);
 
   const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
 
@@ -653,84 +652,45 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
 
   const Render = useMemo(() => {
     return (
-      <Menu
-        autoSelect={false}
-        isOpen={isOpen}
-        onOpen={onOpen}
-        onClose={onClose}
-        strategy={'fixed'}
-        offset={[0, 0]}
-      >
-        <MenuButton
-          ref={ButtonRef}
-          as={Button}
-          isLoading={isUpdating}
-          px={2}
-          rightIcon={<MyIcon name={'core/chat/chevronDown'} w={4} color={'myGray.500'} />}
-          variant={'whitePrimaryOutline'}
-          size={'sm'}
-          whiteSpace={'pre-wrap'}
-          wordBreak={'break-word'}
-          {...(isOpen
-            ? {
-                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                borderColor: 'primary.600',
-                color: 'primary.700'
-              }
-            : {})}
-        >
-          <Flex alignItems={'center'} gap={0.5}>
-            {node?.versionLabel}
-            {!node.isLatestVersion && (
-              <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
-                {t('app:not_the_newest')}
-              </MyTag>
-            )}
-          </Flex>
-        </MenuButton>
-
-        <MenuList
-          w={(() => {
-            const w = ButtonRef.current?.clientWidth;
-            if (w) {
-              return `${w}px !important`;
-            }
-            return '100%';
-          })()}
-          className="nowheel"
-          p={'6px'}
-          border={'base'}
-          boxShadow={'md'}
-        >
+      <MySelect
+        className="nowheel"
+        value={node.version}
+        onChange={onUpdateVersion}
+        isLoading={isUpdating}
+        customOnOpen={onOpen}
+        customOnClose={onClose}
+        placeholder={node?.versionLabel}
+        variant={'whitePrimaryOutline'}
+        size={'sm'}
+        list={versionList.map((item) => ({
+          alias:
+            item._id === node.version && !node.isLatestVersion ? (
+              <Flex align="center" whiteSpace={'nowrap'} overflow={'hidden'}>
+                {item.versionName}
+                <MyTag
+                  ml={2}
+                  type="fill"
+                  colorSchema={'adora'}
+                  fontSize={'mini'}
+                  borderRadius={'lg'}
+                >
+                  {t('app:not_the_newest')}
+                </MyTag>
+              </Flex>
+            ) : (
+              item.versionName
+            ),
+          label: item.versionName,
+          value: item._id
+        }))}
+        ScrollData={(props) => (
           <ScrollData isLoading={isLoadingVersion} minH={'100px'} maxH={'40vh'} overflowY={'auto'}>
-            {versionList.map((item, i) => (
-              <MenuItem
-                key={i}
-                {...menuItemStyles}
-                {...(node.version === item._id
-                  ? {
-                      color: 'primary.700',
-                      bg: 'myGray.100',
-                      fontWeight: '600'
-                    }
-                  : {
-                      color: 'myGray.900',
-                      onClick: () => onUpdateVersion(item._id)
-                    })}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                display={'block'}
-                mb={0.5}
-              >
-                <Flex alignItems={'center'}>{item.versionName}</Flex>
-              </MenuItem>
-            ))}
+            {props.children}
           </ScrollData>
-        </MenuList>
-      </Menu>
+        )}
+      />
     );
   }, [
-    isOpen,
     onOpen,
     onClose,
     isUpdating,
