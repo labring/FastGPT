@@ -20,293 +20,219 @@ import {
   getLatestNodeTemplate
 } from '@/web/core/workflow/utils';
 
-describe('workflow utils', () => {
-  describe('nodeTemplate2FlowNode', () => {
-    it('should convert template to flow node', () => {
-      const template: FlowNodeTemplateType = {
+describe('nodeTemplate2FlowNode', () => {
+  it('should convert template to flow node', () => {
+    const template: FlowNodeTemplateType = {
+      name: 'Test Node',
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      inputs: [],
+      outputs: []
+    };
+
+    const result = nodeTemplate2FlowNode({
+      template,
+      position: { x: 100, y: 100 },
+      selected: true,
+      parentNodeId: 'parent1',
+      t: (key) => key
+    });
+
+    expect(result).toMatchObject({
+      type: FlowNodeTypeEnum.userInput,
+      position: { x: 100, y: 100 },
+      selected: true,
+      data: {
         name: 'Test Node',
         flowNodeType: FlowNodeTypeEnum.userInput,
-        inputs: [],
-        outputs: []
-      };
+        parentNodeId: 'parent1'
+      }
+    });
+    expect(result.id).toBeDefined();
+  });
+});
 
-      const result = nodeTemplate2FlowNode({
-        template,
-        position: { x: 100, y: 100 },
-        selected: true,
-        parentNodeId: 'parent1',
-        t: (key) => key
-      });
+describe('storeNode2FlowNode', () => {
+  it('should convert store node to flow node', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'node1',
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      position: { x: 100, y: 100 },
+      inputs: [],
+      outputs: [],
+      name: 'Test Node',
+      version: '1.0'
+    };
 
-      expect(result).toMatchObject({
-        type: FlowNodeTypeEnum.userInput,
-        position: { x: 100, y: 100 },
-        selected: true,
-        data: {
-          name: 'Test Node',
-          flowNodeType: FlowNodeTypeEnum.userInput,
-          parentNodeId: 'parent1'
-        }
-      });
-      expect(result.id).toBeDefined();
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      selected: true,
+      t: (key) => key
+    });
+
+    expect(result).toMatchObject({
+      id: 'node1',
+      type: FlowNodeTypeEnum.userInput,
+      position: { x: 100, y: 100 },
+      selected: true
     });
   });
 
-  describe('storeNode2FlowNode', () => {
-    it('should convert store node to flow node', () => {
-      const storeNode: StoreNodeItemType = {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.userInput,
-        position: { x: 100, y: 100 },
-        inputs: [],
-        outputs: [],
-        name: 'Test Node',
-        version: '1.0'
-      };
+  it('should handle dynamic inputs and outputs', () => {
+    const storeNode: StoreNodeItemType = {
+      nodeId: 'node1',
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      position: { x: 0, y: 0 },
+      inputs: [
+        {
+          key: 'dynamicInput',
+          renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
+        }
+      ],
+      outputs: [
+        {
+          key: 'dynamicOutput',
+          type: FlowNodeOutputTypeEnum.dynamic
+        }
+      ],
+      name: 'Test Node',
+      version: '1.0'
+    };
 
-      const result = storeNode2FlowNode({
-        item: storeNode,
-        selected: true,
-        t: (key) => key
-      });
+    const result = storeNode2FlowNode({
+      item: storeNode,
+      t: (key) => key
+    });
 
-      expect(result).toMatchObject({
+    expect(result.data.inputs).toHaveLength(1);
+    expect(result.data.outputs).toHaveLength(1);
+  });
+
+  // 这两个测试涉及到模拟冲突，请运行单独的测试文件:
+  // - utils.deprecated.test.ts: 测试 deprecated inputs/outputs
+  // - utils.version.test.ts: 测试 version 和 avatar inheritance
+});
+
+describe('filterWorkflowNodeOutputsByType', () => {
+  it('should filter outputs by type', () => {
+    const outputs = [
+      { id: '1', valueType: WorkflowIOValueTypeEnum.string },
+      { id: '2', valueType: WorkflowIOValueTypeEnum.number },
+      { id: '3', valueType: WorkflowIOValueTypeEnum.boolean }
+    ];
+
+    const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('1');
+  });
+
+  it('should return all outputs for any type', () => {
+    const outputs = [
+      { id: '1', valueType: WorkflowIOValueTypeEnum.string },
+      { id: '2', valueType: WorkflowIOValueTypeEnum.number }
+    ];
+
+    const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.any);
+
+    expect(result).toHaveLength(2);
+  });
+
+  it('should handle array types correctly', () => {
+    const outputs = [
+      { id: '1', valueType: WorkflowIOValueTypeEnum.string },
+      { id: '2', valueType: WorkflowIOValueTypeEnum.arrayString }
+    ];
+
+    const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.arrayString);
+    expect(result).toHaveLength(2);
+  });
+});
+
+describe('checkWorkflowNodeAndConnection', () => {
+  it('should validate nodes and connections', () => {
+    const nodes: Node[] = [
+      {
         id: 'node1',
         type: FlowNodeTypeEnum.userInput,
-        position: { x: 100, y: 100 },
-        selected: true
-      });
-    });
-
-    it('should handle dynamic inputs and outputs', () => {
-      const storeNode: StoreNodeItemType = {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.userInput,
-        position: { x: 0, y: 0 },
-        inputs: [
-          {
-            key: 'dynamicInput',
-            renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
-          }
-        ],
-        outputs: [
-          {
-            key: 'dynamicOutput',
-            type: FlowNodeOutputTypeEnum.dynamic
-          }
-        ],
-        name: 'Test Node',
-        version: '1.0'
-      };
-
-      const result = storeNode2FlowNode({
-        item: storeNode,
-        t: (key) => key
-      });
-
-      expect(result.data.inputs).toHaveLength(1);
-      expect(result.data.outputs).toHaveLength(1);
-    });
-
-    it('should handle deprecated inputs and outputs', () => {
-      vi.mock('@fastgpt/global/core/workflow/template/constants', () => {
-        return {
-          moduleTemplatesFlat: [
+        data: {
+          nodeId: 'node1',
+          flowNodeType: FlowNodeTypeEnum.userInput,
+          inputs: [
             {
-              flowNodeType: 'userInput',
-              name: 'User Input',
-              avatar: '',
-              intro: '',
-              version: '1.0',
-              inputs: [
-                {
-                  key: 'deprecatedInput',
-                  deprecated: true,
-                  label: 'Deprecated Input',
-                  renderTypeList: ['input'],
-                  selectedTypeIndex: 0
-                }
-              ],
-              outputs: [
-                {
-                  key: 'deprecatedOutput',
-                  id: 'deprecatedId',
-                  type: 'input',
-                  deprecated: true,
-                  label: 'Deprecated Output'
-                }
-              ]
+              key: NodeInputKeyEnum.userInput,
+              required: true,
+              value: undefined,
+              renderTypeList: [FlowNodeInputTypeEnum.input]
             }
-          ]
-        };
-      });
+          ],
+          outputs: []
+        },
+        position: { x: 0, y: 0 }
+      }
+    ];
 
-      const storeNode = {
-        nodeId: 'node1',
-        flowNodeType: 'userInput',
-        position: { x: 0, y: 0 },
-        inputs: [
-          {
-            key: 'deprecatedInput',
-            value: 'old value',
-            renderTypeList: ['input'],
-            label: 'Deprecated Input'
-          }
-        ],
-        outputs: [
-          {
-            key: 'deprecatedOutput',
-            id: 'deprecatedId',
-            type: 'input',
-            label: 'Deprecated Output'
-          }
-        ],
-        name: 'Test Node',
-        version: '1.0'
-      };
+    const edges: Edge[] = [
+      {
+        id: 'edge1',
+        source: 'node1',
+        target: 'node2',
+        type: EDGE_TYPE
+      }
+    ];
 
-      const result = storeNode2FlowNode({
-        item: storeNode,
-        t: (key) => key
-      });
-
-      vi.resetAllMocks();
-      vi.resetModules();
-
-      const deprecatedInput = result.data.inputs.find((input) => input.key === 'deprecatedInput');
-      expect(deprecatedInput).toBeDefined();
-      expect(deprecatedInput?.deprecated).toBe(true);
-
-      const deprecatedOutput = result.data.outputs.find(
-        (output) => output.key === 'deprecatedOutput'
-      );
-      expect(deprecatedOutput).toBeDefined();
-      expect(deprecatedOutput?.deprecated).toBe(true);
-    });
+    const result = checkWorkflowNodeAndConnection({ nodes, edges });
+    expect(result).toEqual(['node1']);
   });
 
-  describe('filterWorkflowNodeOutputsByType', () => {
-    it('should filter outputs by type', () => {
-      const outputs = [
-        { id: '1', valueType: WorkflowIOValueTypeEnum.string },
-        { id: '2', valueType: WorkflowIOValueTypeEnum.number },
-        { id: '3', valueType: WorkflowIOValueTypeEnum.boolean }
-      ];
+  it('should handle empty nodes and edges', () => {
+    const result = checkWorkflowNodeAndConnection({ nodes: [], edges: [] });
+    expect(result).toBeUndefined();
+  });
+});
 
-      const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
+describe('getLatestNodeTemplate', () => {
+  it('should update node to latest template version', () => {
+    const node = {
+      nodeId: 'node1',
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      inputs: [{ key: 'input1', value: 'test' }],
+      outputs: [{ key: 'output1', value: 'test' }],
+      name: 'Old Name',
+      intro: 'Old Intro'
+    };
 
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe('1');
-    });
+    const template = {
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      inputs: [{ key: 'input1' }, { key: 'input2' }],
+      outputs: [{ key: 'output1' }, { key: 'output2' }]
+    };
 
-    it('should return all outputs for any type', () => {
-      const outputs = [
-        { id: '1', valueType: WorkflowIOValueTypeEnum.string },
-        { id: '2', valueType: WorkflowIOValueTypeEnum.number }
-      ];
+    const result = getLatestNodeTemplate(node, template);
 
-      const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.any);
-
-      expect(result).toHaveLength(2);
-    });
-
-    it('should handle array types correctly', () => {
-      const outputs = [
-        { id: '1', valueType: WorkflowIOValueTypeEnum.string },
-        { id: '2', valueType: WorkflowIOValueTypeEnum.arrayString }
-      ];
-
-      const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.arrayString);
-      expect(result).toHaveLength(2);
-    });
+    expect(result.inputs).toHaveLength(2);
+    expect(result.outputs).toHaveLength(2);
+    expect(result.name).toBe('Old Name');
   });
 
-  describe('checkWorkflowNodeAndConnection', () => {
-    it('should validate nodes and connections', () => {
-      const nodes: Node[] = [
-        {
-          id: 'node1',
-          type: FlowNodeTypeEnum.userInput,
-          data: {
-            nodeId: 'node1',
-            flowNodeType: FlowNodeTypeEnum.userInput,
-            inputs: [
-              {
-                key: NodeInputKeyEnum.userInput,
-                required: true,
-                value: undefined,
-                renderTypeList: [FlowNodeInputTypeEnum.input]
-              }
-            ],
-            outputs: []
-          },
-          position: { x: 0, y: 0 }
-        }
-      ];
+  it('should preserve existing values when updating template', () => {
+    const node = {
+      nodeId: 'node1',
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      inputs: [{ key: 'input1', value: 'existingValue' }],
+      outputs: [{ key: 'output1', value: 'existingOutput' }],
+      name: 'Node Name',
+      intro: 'Node Intro'
+    };
 
-      const edges: Edge[] = [
-        {
-          id: 'edge1',
-          source: 'node1',
-          target: 'node2',
-          type: EDGE_TYPE
-        }
-      ];
+    const template = {
+      flowNodeType: FlowNodeTypeEnum.userInput,
+      inputs: [{ key: 'input1', value: 'newValue' }],
+      outputs: [{ key: 'output1', value: 'newOutput' }]
+    };
 
-      const result = checkWorkflowNodeAndConnection({ nodes, edges });
-      expect(result).toEqual(['node1']);
-    });
+    const result = getLatestNodeTemplate(node, template);
 
-    it('should handle empty nodes and edges', () => {
-      const result = checkWorkflowNodeAndConnection({ nodes: [], edges: [] });
-      expect(result).toBeUndefined();
-    });
-  });
-
-  describe('getLatestNodeTemplate', () => {
-    it('should update node to latest template version', () => {
-      const node = {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.userInput,
-        inputs: [{ key: 'input1', value: 'test' }],
-        outputs: [{ key: 'output1', value: 'test' }],
-        name: 'Old Name',
-        intro: 'Old Intro'
-      };
-
-      const template = {
-        flowNodeType: FlowNodeTypeEnum.userInput,
-        inputs: [{ key: 'input1' }, { key: 'input2' }],
-        outputs: [{ key: 'output1' }, { key: 'output2' }]
-      };
-
-      const result = getLatestNodeTemplate(node, template);
-
-      expect(result.inputs).toHaveLength(2);
-      expect(result.outputs).toHaveLength(2);
-      expect(result.name).toBe('Old Name');
-    });
-
-    it('should preserve existing values when updating template', () => {
-      const node = {
-        nodeId: 'node1',
-        flowNodeType: FlowNodeTypeEnum.userInput,
-        inputs: [{ key: 'input1', value: 'existingValue' }],
-        outputs: [{ key: 'output1', value: 'existingOutput' }],
-        name: 'Node Name',
-        intro: 'Node Intro'
-      };
-
-      const template = {
-        flowNodeType: FlowNodeTypeEnum.userInput,
-        inputs: [{ key: 'input1', value: 'newValue' }],
-        outputs: [{ key: 'output1', value: 'newOutput' }]
-      };
-
-      const result = getLatestNodeTemplate(node, template);
-
-      expect(result.inputs[0].value).toBe('existingValue');
-      expect(result.outputs[0].value).toBe('existingOutput');
-    });
+    expect(result.inputs[0].value).toBe('existingValue');
+    expect(result.outputs[0].value).toBe('existingOutput');
   });
 });

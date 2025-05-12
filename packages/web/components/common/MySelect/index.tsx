@@ -40,7 +40,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   placeholder?: string;
   isSearch?: boolean;
   list: {
-    alias?: string;
+    alias?: string | React.ReactNode;
     icon?: string;
     iconSize?: string;
     label: string | React.ReactNode;
@@ -51,7 +51,6 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
-  RightTag?: React.ReactNode;
   customOnOpen?: () => void;
   customOnClose?: () => void;
 };
@@ -79,7 +78,6 @@ const MySelect = <T = any,>(
     onChange,
     isLoading = false,
     ScrollData,
-    RightTag,
     customOnOpen,
     customOnClose,
     ...props
@@ -230,7 +228,7 @@ const MySelect = <T = any,>(
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={
-                    selectItem?.alias ||
+                    (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
                     (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
                   }
                   size={'sm'}
@@ -251,7 +249,6 @@ const MySelect = <T = any,>(
                 </>
               )}
             </Flex>
-            {RightTag && <Box ml={2}>{RightTag}</Box>}
           </Flex>
         </MenuButton>
 

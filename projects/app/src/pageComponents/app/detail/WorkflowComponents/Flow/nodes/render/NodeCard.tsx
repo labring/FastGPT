@@ -41,7 +41,6 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 import NodeDebugResponse from './RenderDebug/NodeDebugResponse';
 import { getAppVersionList } from '@/web/core/app/api/version';
-import { menuItemStyles } from '@fastgpt/web/components/common/MySelect';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -663,14 +662,24 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
         placeholder={node?.versionLabel}
         variant={'whitePrimaryOutline'}
         size={'sm'}
-        RightTag={
-          !node.isLatestVersion ? (
-            <MyTag type="fill" colorSchema={'adora'} fontSize={'mini'} borderRadius={'lg'}>
-              {t('app:not_the_newest')}
-            </MyTag>
-          ) : undefined
-        }
         list={versionList.map((item) => ({
+          alias:
+            item._id === node.version && !node.isLatestVersion ? (
+              <Flex align="center" whiteSpace={'nowrap'} overflow={'hidden'}>
+                {item.versionName}
+                <MyTag
+                  ml={2}
+                  type="fill"
+                  colorSchema={'adora'}
+                  fontSize={'mini'}
+                  borderRadius={'lg'}
+                >
+                  {t('app:not_the_newest')}
+                </MyTag>
+              </Flex>
+            ) : (
+              item.versionName
+            ),
           label: item.versionName,
           value: item._id
         }))}
