@@ -723,8 +723,8 @@ async function streamResponse({
     }
     // Parse tool calls
     if (responseChoice?.tool_calls?.length) {
-      responseChoice.tool_calls.forEach((toolCall) => {
-        const index = toolCall.index;
+      responseChoice.tool_calls.forEach((toolCall, i) => {
+        const index = toolCall.index ?? i;
 
         // Call new tool
         if (toolCall.id || callingTool) {
