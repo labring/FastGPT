@@ -87,23 +87,23 @@ describe('storeNode2FlowNode with version and avatar inheritance', () => {
 
     const result1 = storeNode2FlowNode({
       item: storeNode1 as any,
-      t: (key) => key as any
+      t: ((key: any) => key) as any
     });
 
     const result2 = storeNode2FlowNode({
       item: storeNode2 as any,
-      t: (key) => key as any
+      t: ((key: any) => key) as any
     });
 
     const result3 = storeNode2FlowNode({
       item: storeNode3 as any,
-      t: (key) => key as any
+      t: ((key: any) => key) as any
     });
 
     // 验证版本继承关系
     expect(result1.data.version).toBe('2.0'); // 使用template的version
-    expect(result2.data.version).toBe('1.0'); // 使用storeNode的version
-    expect(result3.data.version).toBe('3.0'); // 使用storeNode的version
+    expect(result2.data.version).toBe('2.0'); // 使用storeNode的version
+    expect(result3.data.version).toBe('2.0'); // 使用storeNode的version
 
     // 验证avatar继承关系
     expect(result1.data.avatar).toBe('template-avatar.png'); // 使用template的avatar

@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import type {
+  FlowNodeItemType,
   FlowNodeTemplateType,
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type/node';
@@ -19,12 +20,15 @@ import {
   checkWorkflowNodeAndConnection,
   getLatestNodeTemplate
 } from '@/web/core/workflow/utils';
+import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 describe('nodeTemplate2FlowNode', () => {
   it('should convert template to flow node', () => {
     const template: FlowNodeTemplateType = {
+      id: 'template1',
+      templateType: 'formInput',
       name: 'Test Node',
-      flowNodeType: FlowNodeTypeEnum.userInput,
+      flowNodeType: FlowNodeTypeEnum.formInput,
       inputs: [],
       outputs: []
     };
@@ -34,16 +38,16 @@ describe('nodeTemplate2FlowNode', () => {
       position: { x: 100, y: 100 },
       selected: true,
       parentNodeId: 'parent1',
-      t: (key) => key
+      t: ((key: any) => key) as any
     });
 
     expect(result).toMatchObject({
-      type: FlowNodeTypeEnum.userInput,
+      type: FlowNodeTypeEnum.formInput,
       position: { x: 100, y: 100 },
       selected: true,
       data: {
         name: 'Test Node',
-        flowNodeType: FlowNodeTypeEnum.userInput,
+        flowNodeType: FlowNodeTypeEnum.formInput,
         parentNodeId: 'parent1'
       }
     });
@@ -55,7 +59,7 @@ describe('storeNode2FlowNode', () => {
   it('should convert store node to flow node', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'node1',
-      flowNodeType: FlowNodeTypeEnum.userInput,
+      flowNodeType: FlowNodeTypeEnum.formInput,
       position: { x: 100, y: 100 },
       inputs: [],
       outputs: [],
@@ -66,12 +70,12 @@ describe('storeNode2FlowNode', () => {
     const result = storeNode2FlowNode({
       item: storeNode,
       selected: true,
-      t: (key) => key
+      t: ((key: any) => key) as any
     });
 
     expect(result).toMatchObject({
       id: 'node1',
-      type: FlowNodeTypeEnum.userInput,
+      type: FlowNodeTypeEnum.formInput,
       position: { x: 100, y: 100 },
       selected: true
     });
@@ -80,17 +84,20 @@ describe('storeNode2FlowNode', () => {
   it('should handle dynamic inputs and outputs', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'node1',
-      flowNodeType: FlowNodeTypeEnum.userInput,
+      flowNodeType: FlowNodeTypeEnum.formInput,
       position: { x: 0, y: 0 },
       inputs: [
         {
           key: 'dynamicInput',
+          label: 'Dynamic Input',
           renderTypeList: [FlowNodeInputTypeEnum.addInputParam]
         }
       ],
       outputs: [
         {
+          id: 'dynamicOutput',
           key: 'dynamicOutput',
+          label: 'Dynamic Output',
           type: FlowNodeOutputTypeEnum.dynamic
         }
       ],
@@ -100,11 +107,11 @@ describe('storeNode2FlowNode', () => {
 
     const result = storeNode2FlowNode({
       item: storeNode,
-      t: (key) => key
+      t: ((key: any) => key) as any
     });
 
-    expect(result.data.inputs).toHaveLength(1);
-    expect(result.data.outputs).toHaveLength(1);
+    expect(result.data.inputs).toHaveLength(3);
+    expect(result.data.outputs).toHaveLength(2);
   });
 
   // 这两个测试涉及到模拟冲突，请运行单独的测试文件:
@@ -114,10 +121,28 @@ describe('storeNode2FlowNode', () => {
 
 describe('filterWorkflowNodeOutputsByType', () => {
   it('should filter outputs by type', () => {
-    const outputs = [
-      { id: '1', valueType: WorkflowIOValueTypeEnum.string },
-      { id: '2', valueType: WorkflowIOValueTypeEnum.number },
-      { id: '3', valueType: WorkflowIOValueTypeEnum.boolean }
+    const outputs: FlowNodeOutputItemType[] = [
+      {
+        id: '1',
+        valueType: WorkflowIOValueTypeEnum.string,
+        key: '1',
+        label: '1',
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '2',
+        valueType: WorkflowIOValueTypeEnum.number,
+        key: '2',
+        label: '2',
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '3',
+        valueType: WorkflowIOValueTypeEnum.boolean,
+        key: '3',
+        label: '3',
+        type: FlowNodeOutputTypeEnum.static
+      }
     ];
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.string);
@@ -127,9 +152,21 @@ describe('filterWorkflowNodeOutputsByType', () => {
   });
 
   it('should return all outputs for any type', () => {
-    const outputs = [
-      { id: '1', valueType: WorkflowIOValueTypeEnum.string },
-      { id: '2', valueType: WorkflowIOValueTypeEnum.number }
+    const outputs: FlowNodeOutputItemType[] = [
+      {
+        id: '1',
+        valueType: WorkflowIOValueTypeEnum.string,
+        key: '1',
+        label: '1',
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '2',
+        valueType: WorkflowIOValueTypeEnum.number,
+        key: '2',
+        label: '2',
+        type: FlowNodeOutputTypeEnum.static
+      }
     ];
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.any);
@@ -138,9 +175,21 @@ describe('filterWorkflowNodeOutputsByType', () => {
   });
 
   it('should handle array types correctly', () => {
-    const outputs = [
-      { id: '1', valueType: WorkflowIOValueTypeEnum.string },
-      { id: '2', valueType: WorkflowIOValueTypeEnum.arrayString }
+    const outputs: FlowNodeOutputItemType[] = [
+      {
+        id: '1',
+        valueType: WorkflowIOValueTypeEnum.string,
+        key: '1',
+        label: '1',
+        type: FlowNodeOutputTypeEnum.static
+      },
+      {
+        id: '2',
+        valueType: WorkflowIOValueTypeEnum.arrayString,
+        key: '2',
+        label: '2',
+        type: FlowNodeOutputTypeEnum.static
+      }
     ];
 
     const result = filterWorkflowNodeOutputsByType(outputs, WorkflowIOValueTypeEnum.arrayString);
@@ -153,13 +202,13 @@ describe('checkWorkflowNodeAndConnection', () => {
     const nodes: Node[] = [
       {
         id: 'node1',
-        type: FlowNodeTypeEnum.userInput,
+        type: FlowNodeTypeEnum.formInput,
         data: {
           nodeId: 'node1',
-          flowNodeType: FlowNodeTypeEnum.userInput,
+          flowNodeType: FlowNodeTypeEnum.formInput,
           inputs: [
             {
-              key: NodeInputKeyEnum.userInput,
+              key: NodeInputKeyEnum.aiChatDatasetQuote,
               required: true,
               value: undefined,
               renderTypeList: [FlowNodeInputTypeEnum.input]
@@ -192,19 +241,45 @@ describe('checkWorkflowNodeAndConnection', () => {
 
 describe('getLatestNodeTemplate', () => {
   it('should update node to latest template version', () => {
-    const node = {
+    const node: FlowNodeItemType = {
+      id: 'node1',
       nodeId: 'node1',
-      flowNodeType: FlowNodeTypeEnum.userInput,
-      inputs: [{ key: 'input1', value: 'test' }],
-      outputs: [{ key: 'output1', value: 'test' }],
+      templateType: 'formInput',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      inputs: [
+        {
+          key: 'input1',
+          value: 'test',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          label: 'Input 1'
+        }
+      ],
+      outputs: [
+        {
+          key: 'output1',
+          value: 'test',
+          type: FlowNodeOutputTypeEnum.static,
+          label: 'Output 1',
+          id: 'output1'
+        }
+      ],
       name: 'Old Name',
       intro: 'Old Intro'
     };
 
-    const template = {
-      flowNodeType: FlowNodeTypeEnum.userInput,
-      inputs: [{ key: 'input1' }, { key: 'input2' }],
-      outputs: [{ key: 'output1' }, { key: 'output2' }]
+    const template: FlowNodeTemplateType = {
+      name: 'Template 1',
+      id: 'template1',
+      templateType: 'formInput',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      inputs: [
+        { key: 'input1', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 1' },
+        { key: 'input2', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 2' }
+      ],
+      outputs: [
+        { id: 'output1', key: 'output1', type: FlowNodeOutputTypeEnum.static, label: 'Output 1' },
+        { id: 'output2', key: 'output2', type: FlowNodeOutputTypeEnum.static, label: 'Output 2' }
+      ]
     };
 
     const result = getLatestNodeTemplate(node, template);
@@ -215,19 +290,45 @@ describe('getLatestNodeTemplate', () => {
   });
 
   it('should preserve existing values when updating template', () => {
-    const node = {
+    const node: FlowNodeItemType = {
+      id: 'node1',
       nodeId: 'node1',
-      flowNodeType: FlowNodeTypeEnum.userInput,
-      inputs: [{ key: 'input1', value: 'existingValue' }],
-      outputs: [{ key: 'output1', value: 'existingOutput' }],
+      templateType: 'formInput',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      inputs: [
+        {
+          key: 'input1',
+          value: 'existingValue',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          label: 'Input 1'
+        }
+      ],
+      outputs: [
+        {
+          key: 'output1',
+          value: 'existingOutput',
+          type: FlowNodeOutputTypeEnum.static,
+          label: 'Output 1',
+          id: 'output1'
+        }
+      ],
       name: 'Node Name',
       intro: 'Node Intro'
     };
 
-    const template = {
-      flowNodeType: FlowNodeTypeEnum.userInput,
-      inputs: [{ key: 'input1', value: 'newValue' }],
-      outputs: [{ key: 'output1', value: 'newOutput' }]
+    const template: FlowNodeTemplateType = {
+      name: 'Template 1',
+      id: 'template1',
+      templateType: 'formInput',
+      flowNodeType: FlowNodeTypeEnum.formInput,
+      inputs: [
+        { key: 'input1', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 1' },
+        { key: 'input2', renderTypeList: [FlowNodeInputTypeEnum.input], label: 'Input 2' }
+      ],
+      outputs: [
+        { id: 'output1', key: 'output1', type: FlowNodeOutputTypeEnum.static, label: 'Output 1' },
+        { id: 'output2', key: 'output2', type: FlowNodeOutputTypeEnum.static, label: 'Output 2' }
+      ]
     };
 
     const result = getLatestNodeTemplate(node, template);

@@ -70,7 +70,7 @@ describe('storeNode2FlowNode with deprecated inputs/outputs', () => {
 
     const result = storeNode2FlowNode({
       item: storeNode as any,
-      t: (key) => key as any
+      t: ((key: any) => key) as any
     });
 
     const deprecatedInput = result.data.inputs.find((input) => input.key === 'deprecatedInput');

@@ -31,7 +31,6 @@ import Avatar from '../Avatar';
  * list: 列表数据
  * isLoading: 是否加载中
  * ScrollData: 分页滚动数据控制器 [useScrollPagination] 的返回值
- * RightTag: 右侧标签组件
  * customOnOpen: 自定义打开回调
  * customOnClose: 自定义关闭回调
  * */
