@@ -1,6 +1,8 @@
-import { vi, describe, it, expect } from 'vitest';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
-import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import type {
+  FlowNodeTemplateType,
+  StoreNodeItemType
+} from '@fastgpt/global/core/workflow/type/node';
 import type { Node, Edge } from 'reactflow';
 import {
   FlowNodeTypeEnum,
@@ -9,13 +11,10 @@ import {
   EDGE_TYPE
 } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
-  storeEdgesRenderEdge,
-  computedNodeInputReference,
-  getRefData,
   filterWorkflowNodeOutputsByType,
   checkWorkflowNodeAndConnection,
   getLatestNodeTemplate
@@ -107,6 +106,82 @@ describe('workflow utils', () => {
 
       expect(result.data.inputs).toHaveLength(1);
       expect(result.data.outputs).toHaveLength(1);
+    });
+
+    it('should handle deprecated inputs and outputs', () => {
+      vi.mock('@fastgpt/global/core/workflow/template/constants', () => {
+        return {
+          moduleTemplatesFlat: [
+            {
+              flowNodeType: 'userInput',
+              name: 'User Input',
+              avatar: '',
+              intro: '',
+              version: '1.0',
+              inputs: [
+                {
+                  key: 'deprecatedInput',
+                  deprecated: true,
+                  label: 'Deprecated Input',
+                  renderTypeList: ['input'],
+                  selectedTypeIndex: 0
+                }
+              ],
+              outputs: [
+                {
+                  key: 'deprecatedOutput',
+                  id: 'deprecatedId',
+                  type: 'input',
+                  deprecated: true,
+                  label: 'Deprecated Output'
+                }
+              ]
+            }
+          ]
+        };
+      });
+
+      const storeNode = {
+        nodeId: 'node1',
+        flowNodeType: 'userInput',
+        position: { x: 0, y: 0 },
+        inputs: [
+          {
+            key: 'deprecatedInput',
+            value: 'old value',
+            renderTypeList: ['input'],
+            label: 'Deprecated Input'
+          }
+        ],
+        outputs: [
+          {
+            key: 'deprecatedOutput',
+            id: 'deprecatedId',
+            type: 'input',
+            label: 'Deprecated Output'
+          }
+        ],
+        name: 'Test Node',
+        version: '1.0'
+      };
+
+      const result = storeNode2FlowNode({
+        item: storeNode,
+        t: (key) => key
+      });
+
+      vi.resetAllMocks();
+      vi.resetModules();
+
+      const deprecatedInput = result.data.inputs.find((input) => input.key === 'deprecatedInput');
+      expect(deprecatedInput).toBeDefined();
+      expect(deprecatedInput?.deprecated).toBe(true);
+
+      const deprecatedOutput = result.data.outputs.find(
+        (output) => output.key === 'deprecatedOutput'
+      );
+      expect(deprecatedOutput).toBeDefined();
+      expect(deprecatedOutput?.deprecated).toBe(true);
     });
   });
 
