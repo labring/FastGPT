@@ -190,6 +190,7 @@ export function useScrollPagination<
     params = {},
     EmptyTip,
     showErrorToast = true,
+    disalbed = false,
     ...props
   }: {
     scrollLoadType?: 'top' | 'bottom';
@@ -198,6 +199,7 @@ export function useScrollPagination<
     params?: Record<string, any>;
     EmptyTip?: React.JSX.Element;
     showErrorToast?: boolean;
+    disalbed?: boolean;
   } & Parameters<typeof useRequest2>[1]
 ) {
   const { t } = useTranslation();
@@ -345,10 +347,10 @@ export function useScrollPagination<
   // Reload data
   useRequest2(
     async () => {
+      if (disalbed) return;
       loadData(true);
     },
     {
-      manual: false,
       ...props
     }
   );

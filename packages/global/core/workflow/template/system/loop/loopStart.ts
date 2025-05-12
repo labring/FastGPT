@@ -24,7 +24,6 @@ export const LoopStartNode: FlowNodeTemplateType = {
   unique: true,
   forbidDelete: true,
   showStatus: false,
-  version: '4811',
   inputs: [
     {
       key: NodeInputKeyEnum.loopStartInput,

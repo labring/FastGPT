@@ -9,8 +9,7 @@ import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  defaultNodeVersion
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -101,10 +100,8 @@ export const storeNode2FlowNode = ({
     ...template,
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
-    version: storeNode.version ?? template.version ?? defaultNodeVersion,
-    /* 
-      Inputs and outputs, New fields are added, not reduced
-    */
+    version: template.version || storeNode.version,
+    // template 中的输入必须都有
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
@@ -113,10 +110,8 @@ export const storeNode2FlowNode = ({
         return {
           ...storeInput,
           ...templateInput,
-
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value,
           valueType: storeInput.valueType ?? templateInput.valueType,
@@ -124,29 +119,29 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        /* Concat dynamic inputs */
+        // 合并 store 中有，template 中没有的输入
         storeNode.inputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
             if (!dynamicInput) return item;
+            const templateInput = template.inputs.find((input) => input.key === item.key);
 
             return {
               ...item,
-              ...getInputComponentProps(dynamicInput)
+              ...getInputComponentProps(dynamicInput),
+              deprecated: templateInput?.deprecated
             };
           })
       ),
     outputs: templateOutputs
       .map<FlowNodeOutputItemType>((templateOutput) => {
         const storeOutput =
-          template.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+          storeNode.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
 
         return {
           ...storeOutput,
           ...templateOutput,
-
           description: t(templateOutput.description ?? (storeOutput.description as any)),
-
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
           value: storeOutput.value ?? templateOutput.value,
@@ -154,9 +149,15 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        storeNode.outputs.filter(
-          (item) => !templateOutputs.find((output) => output.key === item.key)
-        )
+        storeNode.outputs
+          .filter((item) => !templateOutputs.find((output) => output.key === item.key))
+          .map((item) => {
+            const templateOutput = template.outputs.find((output) => output.key === item.key);
+            return {
+              ...item,
+              deprecated: templateOutput?.deprecated
+            };
+          })
       )
   };
 

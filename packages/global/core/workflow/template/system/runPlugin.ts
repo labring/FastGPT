@@ -13,7 +13,6 @@ export const RunPluginModule: FlowNodeTemplateType = {
   name: '',
   showStatus: false,
   isTool: true,
-  version: '481',
   inputs: [], // [{key:'pluginId'},...]
   outputs: []
 };

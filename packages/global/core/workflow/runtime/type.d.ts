@@ -101,7 +101,7 @@ export type RuntimeNodeItemType = {
   outputs: FlowNodeOutputItemType[];
 
   pluginId?: string; // workflow id / plugin id
-  version: string;
+  version?: string;
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {

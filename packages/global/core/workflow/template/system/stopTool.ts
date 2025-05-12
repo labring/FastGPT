@@ -13,7 +13,6 @@ export const StopToolNode: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/stopTool',
   name: i18nT('workflow:tool_call_termination'),
   intro: i18nT('workflow:intro_tool_call_termination'),
-  version: '481',
   inputs: [],
   outputs: []
 };

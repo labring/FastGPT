@@ -331,7 +331,7 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 };
 
 // Document quote prompt
-export const getDocumentQuotePrompt = (version: string) => {
+export const getDocumentQuotePrompt = (version?: string) => {
   const promptMap = {
     ['4.9.2']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
 <FilesContent>

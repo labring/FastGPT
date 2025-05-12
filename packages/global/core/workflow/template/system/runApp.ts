@@ -13,7 +13,6 @@ export const RunAppNode: FlowNodeTemplateType = {
   name: '',
   showStatus: false,
   isTool: false,
-  version: '481',
   inputs: [], // [{key:'pluginId'},...]
   outputs: []
 };

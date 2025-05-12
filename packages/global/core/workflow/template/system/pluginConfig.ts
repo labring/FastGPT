@@ -15,7 +15,6 @@ export const PluginConfigNode: FlowNodeTemplateType = {
   intro: '',
   unique: true,
   forbidDelete: true,
-  version: '4811',
   inputs: [],
   outputs: []
 };

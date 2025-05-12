@@ -23,7 +23,6 @@ export const FormInputNode: FlowNodeTemplateType = {
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
   isTool: true,
-  version: '4811',
   inputs: [
     {
       key: NodeInputKeyEnum.description,

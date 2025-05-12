@@ -146,7 +146,7 @@ export const checkNode = async ({
 }: {
   node: StoreNodeItemType;
   ownerTmbId: string;
-}) => {
+}): Promise<StoreNodeItemType> => {
   const pluginId = node.pluginId;
   if (!pluginId) return node;
 
@@ -160,7 +160,7 @@ export const checkNode = async ({
       });
     }
 
-    const preview = await getChildAppPreviewNode({ id: pluginId });
+    const preview = await getChildAppPreviewNode({ appId: pluginId });
     return {
       ...node,
       pluginData: {
@@ -175,7 +175,6 @@ export const checkNode = async ({
   } catch (error: any) {
     return {
       ...node,
-      isError: true,
       pluginData: {
         error
       } as PluginDataType
