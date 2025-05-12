@@ -64,6 +64,12 @@ export type FastGPTFeConfigsType = {
   show_coupon?: boolean;
   concatMd?: string;
 
+  show_dataset_feishu?: boolean;
+  show_dataset_yuque?: boolean;
+  show_publish_feishu?: boolean;
+  show_publish_dingtalk?: boolean;
+  show_publish_offiaccount?: boolean;
+
   concatMd?: string;
   docUrl?: string;
   openAPIDocUrl?: string;
