@@ -151,7 +151,9 @@ const ChatItemContextProvider = ({
         });
       }
 
-      variablesForm.setValue('variables', newVariableValue);
+      Object.entries(newVariableValue).forEach(([key, value]) => {
+        variablesForm.setValue(`variables.${key}`, value);
+      });
     },
     [variablesForm]
   );
