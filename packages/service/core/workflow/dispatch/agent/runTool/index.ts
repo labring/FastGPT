@@ -47,6 +47,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     query,
     requestOrigin,
     chatConfig,
+    lastInteractive,
     runningUserInfo,
     externalProvider,
     params: {
@@ -85,18 +86,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     });
 
   // Check interactive entry
-  const interactiveResponse = (() => {
-    const lastHistory = chatHistories[chatHistories.length - 1];
-    if (isEntry && lastHistory?.obj === ChatRoleEnum.AI) {
-      const lastValue = lastHistory.value[lastHistory.value.length - 1];
-      if (
-        lastValue?.type === ChatItemValueTypeEnum.interactive &&
-        lastValue.interactive?.toolParams
-      ) {
-        return lastValue.interactive;
-      }
-    }
-  })();
+  const interactiveResponse = lastInteractive;
   props.node.isEntry = false;
   const hasReadFilesTool = toolNodes.some(
     (item) => item.flowNodeType === FlowNodeTypeEnum.readFiles
