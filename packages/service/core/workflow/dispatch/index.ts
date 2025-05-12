@@ -464,8 +464,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }
 
     // In the current version, only one interactive node is allowed at the same time
-    const interactiveResponse: InteractiveNodeResponseType =
-      nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
+    const interactiveResponse = nodeRunResult.result?.[DispatchNodeResponseKeyEnum.interactive];
     if (interactiveResponse) {
       pushStore(nodeRunResult.node, nodeRunResult.result);
 
@@ -474,9 +473,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       }
 
       nodeInteractiveResponse = {
-        entryNodeIds: interactiveResponse.entryNodeIds
-          ? interactiveResponse.entryNodeIds
-          : [nodeRunResult.node.nodeId],
+        entryNodeIds: [nodeRunResult.node.nodeId],
         interactiveResponse
       };
       return [];
