@@ -43,19 +43,18 @@ export const html2md = (
     turndownService.remove(['i', 'script', 'iframe', 'style']);
     turndownService.use(turndownPluginGfm.gfm);
 
-    // add custom handling for video tag
-    // convert to markdown link [Video](src)
-    turndownService.addRule('video', {
-      filter: ['video'],
+    // add custom handling for media tag
+    turndownService.addRule('media', {
+      filter: ['video', 'source', 'audio'],
       replacement: function (content, node) {
-        const videoNode = node as HTMLVideoElement;
-        const src = videoNode.getAttribute('src');
-        const sources = videoNode.getElementsByTagName('source');
+        const mediaNode = node as HTMLVideoElement | HTMLAudioElement | HTMLSourceElement;
+        const src = mediaNode.getAttribute('src');
+        const sources = mediaNode.getElementsByTagName('source');
         const firstSourceSrc = sources.length > 0 ? sources[0].getAttribute('src') : null;
-        const videoSrc = src || firstSourceSrc;
+        const mediaSrc = src || firstSourceSrc;
 
-        if (videoSrc) {
-          return `[Video](${videoSrc})`;
+        if (mediaSrc) {
+          return `[${mediaSrc}](${mediaSrc}) `;
         }
 
         return content;
