@@ -29,7 +29,7 @@
   "FAQ.ai_point_q": "什么是AI积分？",
   "FAQ.check_subscription_a": "账号-个人信息-套餐详情-使用情况。您可以查看所拥有套餐的生效和到期时间。当付费套餐到期后将自动切换免费版。",
   "FAQ.check_subscription_q": "在哪里查看已订阅的套餐？",
-  "FAQ.dataset_compute_a": "1条知识库存储等于1条知识库索引。一条知识库数据可以包含1条或多条知识库索引。增强训练中，1条数据会生成5条索引。",
+  "FAQ.dataset_compute_a": "1条知识库存储等于1条知识库索引。一条分块数据，通常对应多条索引，可以在单个知识库集合中看到\"n组索引\"",
   "FAQ.dataset_compute_q": "知识库存储怎么计算？",
   "FAQ.dataset_index_a": "不会。但知识库索引超出时，无法插入和更新知识库内容。",
   "FAQ.dataset_index_q": "知识库索引超出会删除么？",
