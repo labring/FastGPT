@@ -14,7 +14,7 @@ import type {
 } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Checkbox, Flex } from '@chakra-ui/react';
+import { Box, Checkbox, Flex, Text } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { useForm } from 'react-hook-form';
@@ -1129,7 +1129,7 @@ const ChatBox = ({
           flex={1}
           direction="column"
           align="center"
-          justify="flex-start"
+          justify="space-between"
           h="100%"
           w="100%"
           position="relative"
@@ -1140,13 +1140,13 @@ const ChatBox = ({
           pb="12px"
           gap={{ base: 4, md: 6 }}
         >
-          {
+          <Box>
             <ChatWelcome
               teamName={copyRightConfig?.name || chatBoxData?.app?.name}
               teamAvatar={userInfo?.team?.teamAvatar}
               slogan={appIntro}
             />
-          }
+          </Box>
           {/* message input */}
           {onStartChat && chatStarted && active && !isInteractive && (
             <Box w="700px" maxH="132px" h="100%" px={0}>
@@ -1158,6 +1158,15 @@ const ChatBox = ({
                 chatForm={chatForm}
                 placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
               />
+            </Box>
+          )}
+
+          {/* 在inGateRoute状态下显示底部语句 */}
+          {inGateRoute && (
+            <Box mt="auto" w="100%">
+              <Flex justify="center" w="100%" py={3} px={4} fontSize="xs" color="gray.500">
+                <Text textAlign="center">{t('common:gate.copyright')}</Text>
+              </Flex>
             </Box>
           )}
         </Flex>
@@ -1195,6 +1204,15 @@ const ChatBox = ({
                 />
               )}
             </Box>
+          )}
+
+          {/* 在inGateRoute状态下显示底部语句 */}
+          {inGateRoute && (
+            <Flex justify="center" w="100%" py={3} px={4} fontSize="xs" color="gray.500">
+              <Text textAlign="center">
+                内容由第三方 AI 生成，仅供参考，信息真实性、准确性、合法性由提供者负责
+              </Text>
+            </Flex>
           )}
         </>
       )}
