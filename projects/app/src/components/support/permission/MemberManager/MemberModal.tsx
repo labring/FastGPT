@@ -122,7 +122,7 @@ function MemberModal({
         permission: addOnly ? undefined : selectedPermission!
       } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
     {
-      successToast: t('common:Add Success'),
+      successToast: t('common:add_success'),
       onSuccess() {
         onClose();
       }
