@@ -351,6 +351,7 @@ export async function getServerSideProps(context: any) {
         'app',
         'chat',
         'workflow',
+        'account',
         'account_gate',
         'common'
       ]))

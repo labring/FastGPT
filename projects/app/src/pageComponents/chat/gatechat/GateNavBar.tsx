@@ -1,5 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Box, Flex, Text, HStack, IconButton } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  Text,
+  HStack,
+  IconButton,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody
+} from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -27,11 +37,14 @@ type Props = {
 const GateNavBar = ({ apps, activeAppId }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { userInfo } = useUserStore();
+  const { userInfo, setUserInfo } = useUserStore();
   const { copyRightConfig } = useGateStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const companyNameRef = useRef<HTMLSpanElement>(null);
   const [companyNameScale, setCompanyNameScale] = useState(1);
+  const [showUserPopover, setShowUserPopover] = useState(false);
+  const [userPopoverVisibility, setUserPopoverVisibility] = useState(false);
+  const userPopoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isChatPage = router.pathname === '/chat/gate';
 
@@ -42,6 +55,28 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
       setCompanyNameScale(scale);
     }
   }, [copyRightConfig?.name, isCollapsed]);
+
+  const handleLogout = useCallback(() => {
+    setUserInfo(null);
+    router.replace('/login');
+  }, [router, setUserInfo]);
+
+  const handleUserPopoverEnter = () => {
+    if (userPopoverTimeoutRef.current) {
+      clearTimeout(userPopoverTimeoutRef.current);
+      userPopoverTimeoutRef.current = null;
+    }
+    setShowUserPopover(true);
+    setUserPopoverVisibility(true);
+  };
+
+  const handleUserPopoverLeave = () => {
+    setShowUserPopover(false); // 先触发淡出动画
+
+    userPopoverTimeoutRef.current = setTimeout(() => {
+      setUserPopoverVisibility(false); // 动画完成后才真正隐藏元素
+    }, 300); // 与动画时长相同
+  };
 
   return (
     <Flex
@@ -362,48 +397,111 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
         </Flex>
       </Flex>
 
-      {/* User Profile */}
-      <Flex
-        align="center"
-        gap={2}
-        w="100%"
-        justifyContent={isCollapsed ? 'center' : 'flex-start'}
-        transition="all 0.2s"
+      {/* User Profile with Popover */}
+      <Box
+        position="relative"
+        onMouseEnter={handleUserPopoverEnter}
+        onMouseLeave={handleUserPopoverLeave}
       >
-        <Box
-          boxSize="36px"
-          border="2px solid #fff"
-          borderRadius="50%"
-          overflow="hidden"
-          flexShrink={0}
-        >
-          <Avatar
-            boxSize="100%"
-            src={userInfo?.avatar || HUMAN_ICON}
-            borderRadius="50%"
-            objectFit="cover"
-          />
-        </Box>
-        <Box
-          opacity={isCollapsed ? 0 : 1}
-          transform={`scale(${isCollapsed ? 0 : 1})`}
-          transformOrigin="left center"
+        <Flex
+          align="center"
+          gap={2}
+          w="100%"
+          justifyContent={isCollapsed ? 'center' : 'flex-start'}
           transition="all 0.2s"
-          overflow="hidden"
-          flex="1"
+          cursor="pointer"
+          position="relative"
         >
-          <Text
-            fontSize="xs"
-            fontWeight="medium"
-            letterSpacing="0.1px"
-            color="#111824"
-            fontFamily="PingFang SC"
-            className="textEllipsis"
+          <Box
+            boxSize="36px"
+            border="2px solid #fff"
+            borderRadius="50%"
+            overflow="hidden"
+            flexShrink={0}
           >
-            {userInfo?.username || 'unauthorized'}
-          </Text>
-        </Box>
-      </Flex>
+            <Avatar
+              boxSize="100%"
+              src={userInfo?.avatar || HUMAN_ICON}
+              borderRadius="50%"
+              objectFit="cover"
+            />
+          </Box>
+          <Box
+            opacity={isCollapsed ? 0 : 1}
+            transform={`scale(${isCollapsed ? 0 : 1})`}
+            transformOrigin="left center"
+            transition="all 0.2s"
+            overflow="hidden"
+            flex="1"
+          >
+            <Text
+              fontSize="xs"
+              fontWeight="medium"
+              letterSpacing="0.1px"
+              color="#111824"
+              fontFamily="PingFang SC"
+              className="textEllipsis"
+            >
+              {userInfo?.username || 'unauthorized'}
+            </Text>
+          </Box>
+        </Flex>
+
+        {/* Custom Popover */}
+        <Flex
+          position="absolute"
+          left={isCollapsed ? '40px' : '45px'}
+          bottom="0"
+          direction="column"
+          alignItems="flex-start"
+          width="192px"
+          padding="16px 16px 8px 16px"
+          borderRadius="10px"
+          bg="white"
+          boxShadow="0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)"
+          zIndex={10}
+          opacity={showUserPopover ? 1 : 0}
+          transform={showUserPopover ? 'translateY(0)' : 'translateY(10px)'}
+          transition="opacity 0.3s ease, transform 0.3s ease"
+          display={userPopoverVisibility ? 'flex' : 'none'}
+          pointerEvents={showUserPopover ? 'auto' : 'none'}
+          onMouseEnter={handleUserPopoverEnter}
+          onMouseLeave={handleUserPopoverLeave}
+        >
+          <Flex alignItems="center" gap={3} width="100%">
+            <Avatar src={userInfo?.avatar || HUMAN_ICON} boxSize="36px" borderRadius="50%" />
+            <Box>
+              <Text
+                fontSize="sm"
+                fontWeight="bold"
+                color="#111824"
+                className="textEllipsis"
+                maxW="120px"
+              >
+                {userInfo?.username || 'unauthorized'}
+              </Text>
+            </Box>
+          </Flex>
+
+          {/* Divider */}
+          <Box w="100%" h="1px" bg="#E8EBF0" transition="width 0.2s" mt={'12px'} mb={'4px'} />
+
+          <Flex
+            alignItems="center"
+            width="100%"
+            cursor="pointer"
+            p={2}
+            borderRadius="md"
+            _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
+            onClick={handleLogout}
+          >
+            <MyIcon name="support/account/loginoutLight" width="16px" height="16px" />
+            <Text fontSize="sm" ml={2}>
+              {t('account:logout')}
+            </Text>
+          </Flex>
+        </Flex>
+      </Box>
     </Flex>
   );
 };
