@@ -5,7 +5,7 @@ export const checkPasswordRule = (password: string) => {
     /[A-Z]/, // Contains uppercase letters
     /[!@#$%^&*()_+=-]/ // Contains special characters
   ];
-  const validChars = /^[\dA-Za-z!@#$%^&*()_+=-]{6,100}$/;
+  const validChars = /^[\dA-Za-z!@#$%^&*()_+=-]{8,100}$/;
 
   // Check length and valid characters
   if (!validChars.test(password)) return false;
