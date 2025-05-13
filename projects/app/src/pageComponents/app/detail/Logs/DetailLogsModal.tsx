@@ -44,7 +44,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  const { data: chat, loading: isFetching } = useRequest2(
+  const { data: chat } = useRequest2(
     async () => {
       const res = await getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true });
       res.userAvatar = HUMAN_ICON;
