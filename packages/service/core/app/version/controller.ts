@@ -15,6 +15,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   if (version) {
     return {
       versionId: version._id,
+      versionName: version.versionName,
       nodes: version.nodes,
       edges: version.edges,
       chatConfig: version.chatConfig || app?.chatConfig || {}
@@ -22,6 +23,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   }
   return {
     versionId: app?.pluginData?.nodeVersion,
+    versionName: app?.name,
     nodes: app?.modules || [],
     edges: app?.edges || [],
     chatConfig: app?.chatConfig || {}
@@ -47,6 +49,7 @@ export const getAppVersionById = async ({
     if (version) {
       return {
         versionId: version._id,
+        versionName: version.versionName,
         nodes: version.nodes,
         edges: version.edges,
         chatConfig: version.chatConfig || app?.chatConfig || {}

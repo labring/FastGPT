@@ -104,8 +104,8 @@ const NodeCard = (props: Props) => {
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const showVersion = useMemo(() => {
     if (!isAppNode || !node?.pluginId) return false;
-    const splitRes = node.pluginId.split('-');
-    if (splitRes.length > 1) {
+    if ([FlowNodeTypeEnum.tool, FlowNodeTypeEnum.toolSet].includes(node.flowNodeType)) return false;
+    if (node.pluginId.split('-').length > 1) {
       return false;
     }
     return true;

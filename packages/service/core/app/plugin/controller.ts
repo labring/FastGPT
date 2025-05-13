@@ -22,8 +22,7 @@ import {
 import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { MongoAppVersion } from '../version/schema';
-import { i18nT } from '../../../../web/i18n/utils';
+import { Types } from 'mongoose';
 
 /* 
   plugin id rule:
@@ -111,19 +110,13 @@ export async function getChildAppPreviewNode({
 
       const version = await getAppVersionById({ appId, versionId, app: item });
 
-      if (!version.versionId) return Promise.reject(i18nT('common:app_not_version'));
-
-      const versionData = await MongoAppVersion.findById(
-        version.versionId,
-        '_id versionName appId time'
-      ).lean();
-
-      const isLatest = versionData
-        ? await checkIsLatestVersion({
-            appId,
-            versionId: versionData._id
-          })
-        : true;
+      const isLatest =
+        version.versionId && Types.ObjectId.isValid(version.versionId)
+          ? await checkIsLatestVersion({
+              appId,
+              versionId: version.versionId
+            })
+          : true;
 
       return {
         id: String(item._id),
@@ -140,7 +133,7 @@ export async function getChildAppPreviewNode({
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
         version: version.versionId,
-        versionLabel: versionData?.versionName || '',
+        versionLabel: version?.versionName || '',
         isLatestVersion: isLatest,
 
         originCost: 0,
