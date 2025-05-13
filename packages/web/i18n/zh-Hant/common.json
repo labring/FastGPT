@@ -29,7 +29,7 @@
   "FAQ.ai_point_q": "什麼是 AI 點數？",
   "FAQ.check_subscription_a": "帳號 - 個人資訊 - 方案詳細資訊 - 使用狀況。您可以檢視已訂閱方案的生效和到期時間。當付費方案到期後，將自動切換為免費版。",
   "FAQ.check_subscription_q": "在哪裡可以檢視已訂閱的方案？",
-  "FAQ.dataset_compute_a": "1 筆知識庫儲存等於 1 筆知識庫索引。一筆知識庫資料可以包含 1 筆或多筆知識庫索引。在增強訓練中，1 筆資料會產生 5 筆索引。",
+  "FAQ.dataset_compute_a": "1條知識庫存儲等於1條知識庫索引。\n一條分塊數據，通常對應多條索引，可以在單個知識庫集合中看到\"n組索引\"",
   "FAQ.dataset_compute_q": "知識庫儲存如何計算？",
   "FAQ.dataset_index_a": "不會，但知識庫索引超出限制時，將無法插入和更新知識庫內容。",
   "FAQ.dataset_index_q": "知識庫索引超出是否會被刪除？",

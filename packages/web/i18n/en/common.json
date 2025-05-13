@@ -29,7 +29,7 @@
   "FAQ.ai_point_q": "What are AI points?",
   "FAQ.check_subscription_a": "Go to Account - Personal Information - Package Details - Usage. You can view the effective and expiration dates of your subscribed packages. After the paid package expires, it will automatically switch to the free version.",
   "FAQ.check_subscription_q": "Where can I view my subscribed packages?",
-  "FAQ.dataset_compute_a": "1 Dataset storage equals 1 Dataset index. A piece of Dataset data can contain one or more Dataset indexes. In enhanced training, 1 piece of data generates 5 indexes.",
+  "FAQ.dataset_compute_a": "1 knowledge base storage is equal to 1 knowledge base index. \nA single chunked data usually corresponds to multiple indexes. You can see \"n group indexes\" in a single knowledge base collection.",
   "FAQ.dataset_compute_q": "How is Dataset storage calculated?",
   "FAQ.dataset_index_a": "No, but if the Dataset index exceeds the limit, you cannot insert or update Dataset content.",
   "FAQ.dataset_index_q": "Will the Dataset index be deleted if it exceeds the limit?",
