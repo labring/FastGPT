@@ -47,7 +47,7 @@
   "package_usage_rules": "Package usage rules: The system will give priority to using more advanced packages, and the original unused packages will take effect later.",
   "password": "Password",
   "password_mismatch": "Password Inconsistency: Two passwords are inconsistent",
-  "password_tip": "Password must be at least 6 characters long and contain at least two combinations: numbers, letters, or special characters",
+  "password_tip": "Password must be at least 8 characters long and contain at least two combinations: numbers, letters, or special characters",
   "password_update_error": "Exception when changing password",
   "password_update_success": "Password changed successfully",
   "pending_usage": "To be used",

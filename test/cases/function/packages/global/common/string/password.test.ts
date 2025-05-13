@@ -4,8 +4,8 @@ import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 describe('PasswordRule', () => {
   it('should be a valid password', () => {
     // Small password
-    expect(checkPasswordRule('123A')).toBe(false);
-    expect(checkPasswordRule('@ga21')).toBe(false);
+    expect(checkPasswordRule('123ABC')).toBe(false);
+    expect(checkPasswordRule('@ga2123')).toBe(false);
 
     // Test single type characters
     expect(checkPasswordRule('123456')).toBe(false);
@@ -14,13 +14,13 @@ describe('PasswordRule', () => {
     expect(checkPasswordRule('!@#$%^')).toBe(false); // only special chars
 
     // Test two types combination
-    expect(checkPasswordRule('abc123')).toBe(true); // lowercase + numbers
-    expect(checkPasswordRule('abcABC')).toBe(true); // lowercase + uppercase
-    expect(checkPasswordRule('abc!@#')).toBe(true); // lowercase + special chars
-    expect(checkPasswordRule('ABC!@#')).toBe(true); // uppercase + special chars
-    expect(checkPasswordRule('ABC123')).toBe(true); // uppercase + numbers
-    expect(checkPasswordRule('123!@#')).toBe(true); // numbers + special chars
-    expect(checkPasswordRule('!@123fa')).toBe(true); // numbers + special chars
+    expect(checkPasswordRule('abcd1234')).toBe(true); // lowercase + numbers
+    expect(checkPasswordRule('abcdABCD')).toBe(true); // lowercase + uppercase
+    expect(checkPasswordRule('abcd!@#$')).toBe(true); // lowercase + special chars
+    expect(checkPasswordRule('ABCD!@#$')).toBe(true); // uppercase + special chars
+    expect(checkPasswordRule('ABCD1234')).toBe(true); // uppercase + numbers
+    expect(checkPasswordRule('1234!@#$')).toBe(true); // numbers + special chars
+    expect(checkPasswordRule('!@123fab')).toBe(true); // numbers + special chars
     expect(checkPasswordRule('+2222()222')).toBe(true); // special chars + numbers
     expect(checkPasswordRule('_2222()-+=22')).toBe(true); // special chars + numbers
 
