@@ -45,7 +45,7 @@
   "package_usage_rules": "套餐使用规则：系统优先使用更高级的套餐，原未用完的套餐将延后生效",
   "password": "密码",
   "password_mismatch": "密码不一致: 两次密码不一致",
-  "password_tip": "密码至少 6 位，且至少包含两种组合：数字、字母或特殊字符",
+  "password_tip": "密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符",
   "password_update_error": "修改密码异常",
   "password_update_success": "修改密码成功",
   "pending_usage": "待使用",
