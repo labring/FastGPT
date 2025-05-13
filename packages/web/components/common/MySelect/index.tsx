@@ -24,6 +24,7 @@ import { useRequest2 } from '../../../hooks/useRequest';
 import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
+import EmptyTip from '../EmptyTip';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -141,43 +142,49 @@ const MySelect = <T = any,>(
   const ListRender = useMemo(() => {
     return (
       <>
-        {filterList.map((item, i) => (
-          <Box key={i}>
-            <MenuItem
-              {...menuItemStyles}
-              {...(value === item.value
-                ? {
-                    ref: SelectedItemRef,
-                    color: 'primary.700',
-                    bg: 'myGray.100',
-                    fontWeight: '600'
+        {filterList.length > 0 ? (
+          filterList.map((item, i) => (
+            <Box key={i}>
+              <MenuItem
+                {...menuItemStyles}
+                {...(value === item.value
+                  ? {
+                      ref: SelectedItemRef,
+                      color: 'primary.700',
+                      bg: 'myGray.100',
+                      fontWeight: '600'
+                    }
+                  : {
+                      color: 'myGray.900'
+                    })}
+                onClick={() => {
+                  if (value !== item.value) {
+                    onClickChange(item.value);
                   }
-                : {
-                    color: 'myGray.900'
-                  })}
-              onClick={() => {
-                if (value !== item.value) {
-                  onClickChange(item.value);
-                }
-              }}
-              whiteSpace={'pre-wrap'}
-              fontSize={'sm'}
-              display={'block'}
-              mb={0.5}
-            >
-              <Flex alignItems={'center'}>
-                {item.icon && <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />}
-                {item.label}
-              </Flex>
-              {item.description && (
-                <Box color={'myGray.500'} fontSize={'xs'}>
-                  {item.description}
-                </Box>
-              )}
-            </MenuItem>
-            {item.showBorder && <MyDivider my={2} />}
-          </Box>
-        ))}
+                }}
+                whiteSpace={'pre-wrap'}
+                fontSize={'sm'}
+                display={'block'}
+                mb={0.5}
+              >
+                <Flex alignItems={'center'}>
+                  {item.icon && (
+                    <Avatar mr={2} src={item.icon as any} w={item.iconSize ?? '1rem'} />
+                  )}
+                  {item.label}
+                </Flex>
+                {item.description && (
+                  <Box color={'myGray.500'} fontSize={'xs'}>
+                    {item.description}
+                  </Box>
+                )}
+              </MenuItem>
+              {item.showBorder && <MyDivider my={2} />}
+            </Box>
+          ))
+        ) : (
+          <EmptyTip py={0} />
+        )}
       </>
     );
   }, [filterList, onClickChange, value]);
