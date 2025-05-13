@@ -68,7 +68,7 @@ const GateChatInput = ({
   TextareaDom,
   resetInputVal,
   chatForm,
-  placeholder = '你可以问我任何问题'
+  placeholder
 }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();

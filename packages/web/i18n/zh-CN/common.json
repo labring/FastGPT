@@ -919,6 +919,7 @@
   "field_name": "字段名",
   "free": "免费",
   "gate.copyright": "内容由第三方 AI 生成，仅供参考，信息真实性、准确性、合法性由提供者负责",
+  "gate.placeholder": "你可以问我任何问题",
   "get_QR_failed": "获取二维码失败",
   "get_app_failed": "获取应用失败",
   "get_laf_failed": "获取Laf函数列表失败",

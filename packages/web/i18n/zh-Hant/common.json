@@ -920,6 +920,7 @@
   "field_name": "欄位名稱",
   "free": "免費",
   "gate.copyright": "內容由第三方 AI 生成，僅供參考，信息真實性、準確性、合法性由提供者負責",
+  "gate.placeholder": "你可以問我任何問題",
   "get_QR_failed": "取得 QR Code 失敗",
   "get_app_failed": "取得應用程式失敗",
   "get_laf_failed": "取得 LAF 函式清單失敗",

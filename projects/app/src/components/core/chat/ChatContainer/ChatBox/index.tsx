@@ -1191,7 +1191,7 @@ const ChatBox = ({
                   TextareaDom={TextareaDom}
                   resetInputVal={resetInputVal}
                   chatForm={chatForm}
-                  placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+                  placeholder={gateConfig?.placeholderText || t('common:gate.placeholder')}
                 />
               )}
               {!inGateRoute && (
