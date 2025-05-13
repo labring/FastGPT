@@ -43,7 +43,7 @@ type ResponseType = {
 // 文件列表中，单项的文件类型
 type FileListItem = {
   id: string;
-  parentId: string | null;
+  parentId: string  //也可能为 null 或者 undefined 类型;
   name: string;
   type: 'file' | 'folder';
   updateTime: Date;
@@ -59,7 +59,7 @@ type FileListItem = {
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
-- parentId - 父级 id，可选，或者 null。
+- parentId - 父级 id，可选，或者 null | undefined。
 - searchKey - 检索词，可选
 {{% /alert %}}
 
@@ -68,7 +68,7 @@ curl --location --request POST '{{baseURL}}/v1/file/list' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
-    "parentId": null,
+    "parentId": "",
     "searchKey": ""
 }'
 ```
