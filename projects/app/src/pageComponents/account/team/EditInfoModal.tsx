@@ -120,7 +120,7 @@ function EditModal({
             maxLength={100}
             placeholder={t('user:team.Team Name')}
             {...register('name', {
-              required: t('common:Please Input Name')
+              required: t('common:please_input_name')
             })}
           />
         </Flex>
