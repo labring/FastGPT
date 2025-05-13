@@ -147,7 +147,7 @@ const VariableEdit = ({
         onChange(onChangeVariable);
         toast({
           status: 'success',
-          title: t('common:Add Success')
+          title: t('common:add_success')
         });
         reset({
           ...addVariable(),

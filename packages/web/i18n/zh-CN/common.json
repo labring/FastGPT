@@ -1,7 +1,7 @@
 {
   "Action": "操作",
   "Add": "添加",
-  "Add Success": "添加成功",
+  "add_success": "添加成功",
   "Add_new_input": "新增输入",
   "All": "全部",
   "App": "应用",
@@ -64,7 +64,7 @@
   "Parse": "解析",
   "Permission": "权限",
   "Permission_tip": "个人权限大于群组权限",
-  "Please Input Name": "请输入名称",
+  "please_input_name": "请输入名称",
   "Preview": "预览",
   "Remove": "移除",
   "Rename": "重命名",

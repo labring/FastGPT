@@ -351,6 +351,7 @@ export function useScrollPagination<
       loadData(true);
     },
     {
+      manual: false,
       ...props
     }
   );

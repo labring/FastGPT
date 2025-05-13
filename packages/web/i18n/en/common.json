@@ -1,7 +1,7 @@
 {
   "Action": "Action",
   "Add": "Add",
-  "Add Success": "Added Successfully",
+  "add_success": "Added Successfully",
   "Add_new_input": "Add new input",
   "All": "All",
   "App": "Application",
@@ -64,7 +64,7 @@
   "Parse": "Analysis",
   "Permission": "Permission",
   "Permission_tip": "Individual permissions are greater than group permissions",
-  "Please Input Name": "Please Enter a Name",
+  "please_input_name": "Please Enter a Name",
   "Preview": "Preview",
   "Remove": "Remove",
   "Rename": "Rename",
