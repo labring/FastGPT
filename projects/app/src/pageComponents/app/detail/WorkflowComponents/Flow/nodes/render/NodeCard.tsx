@@ -102,6 +102,14 @@ const NodeCard = (props: Props) => {
     return { node, parentNode };
   }, [nodeList, nodeId]);
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
+  const showVersion = useMemo(() => {
+    if (!isAppNode || !node?.pluginId) return false;
+    const splitRes = node.pluginId.split('-');
+    if (splitRes.length > 1) {
+      return false;
+    }
+    return true;
+  }, [isAppNode, node]);
 
   const { data: nodeTemplate } = useRequest2(
     async () => {
@@ -212,7 +220,7 @@ const NodeCard = (props: Props) => {
                 <MyIcon name={'edit'} w={'14px'} />
               </Button>
               <Box flex={1} mr={1} />
-              {isAppNode && <NodeVersion node={node} />}
+              {showVersion && node && <NodeVersion node={node} />}
               {!!nodeTemplate?.diagram && (
                 <MyTooltip
                   label={
@@ -279,7 +287,7 @@ const NodeCard = (props: Props) => {
     avatar,
     t,
     name,
-    isAppNode,
+    showVersion,
     nodeTemplate?.diagram,
     nodeTemplate?.userGuide,
     nodeTemplate?.name,
