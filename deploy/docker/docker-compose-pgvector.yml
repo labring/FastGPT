@@ -20,6 +20,8 @@ services:
       - POSTGRES_USER=username
       - POSTGRES_PASSWORD=password
       - POSTGRES_DB=postgres
+      # PostgreSQL专用时区变量。默认设置为上海时区
+      - PGTZ=Asia/Shanghai     
     volumes:
       - ./pg/data:/var/lib/postgresql/data
     healthcheck:
@@ -39,6 +41,8 @@ services:
       - fastgpt
     command: mongod --keyFile /data/mongodb.key --replSet rs0
     environment:
+      # 默认设置为上海时区
+      - TZ=Asia/Shanghai
       - MONGO_INITDB_ROOT_USERNAME=myusername
       - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
@@ -76,9 +80,16 @@ services:
 
   redis:
     image: redis:7.2-alpine
+    # 国内镜像地址，镜像来源：https://docker.aityp.com/image/docker.io/redis:7.2-alpine
+    # image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io/redis:7.2-alpine 
     container_name: redis
     # ports:
     # - 6379:6379
+    environment:
+      # 默认设置为上海时区
+      - TZ=Asia/Shanghai
+      # 强烈建议为redis设置密码，防止黑客扫端口
+      - REDIS_PASSWORD=mypassword
     networks:
       - fastgpt
     restart: always
@@ -112,6 +123,8 @@ services:
     restart: always
     environment:
       - FASTGPT_ENDPOINT=http://fastgpt:3000
+      # 默认设置为上海时区
+      - TZ=Asia/Shanghai 
   fastgpt:
     container_name: fastgpt
     image: ghcr.io/labring/fastgpt:v4.9.8 # git
@@ -163,6 +176,8 @@ services:
       - USE_IP_LIMIT=false
       # 对话文件过期天数
       - CHAT_FILE_EXPIRE_TIME=7
+      # 默认设置为上海时区
+      - TZ=Asia/Shanghai 
     volumes:
       - ./config.json:/app/data/config.json
 
@@ -190,6 +205,8 @@ services:
       - BILLING_ENABLED=false
       # 不需要严格检测模型
       - DISABLE_MODEL_CONFIG=true
+      # 默认设置为上海时区
+      - TZ=Asia/Shanghai 
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
       interval: 5s
