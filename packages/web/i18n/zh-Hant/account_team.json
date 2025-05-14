@@ -77,7 +77,7 @@
   "owner": "擁有者",
   "permission": "權限",
   "permission_apikeyCreate": "建立 API 密鑰",
-  "permission_apikeyCreate_Tip": "可以建立全域的 APIKey",
+  "permission_apikeyCreate_Tip": "可以創建全局的 APIKey和 MCP 服務",
   "permission_appCreate": "建立應用程式",
   "permission_appCreate_tip": "可以在根目錄建立應用程式，（資料夾下的建立權限由資料夾控制）",
   "permission_datasetCreate": "建立知識庫",
