@@ -218,47 +218,48 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
           gridTemplateColumns={'repeat(2, 1fr)'}
         />
       </Box>
-      {trainingType === DatasetCollectionDataProcessModeEnum.chunk && (
-        <Box mt={6}>
-          <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
-            {t('dataset:enhanced_indexes')}
+      {trainingType === DatasetCollectionDataProcessModeEnum.chunk &&
+        feConfigs?.show_dataset_enhance !== false && (
+          <Box mt={6}>
+            <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
+              {t('dataset:enhanced_indexes')}
+            </Box>
+            <HStack gap={[3, 7]}>
+              <HStack flex={'1'} spacing={1}>
+                <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
+                  <Checkbox
+                    isDisabled={!feConfigs?.isPlus}
+                    isChecked={autoIndexes}
+                    {...register('autoIndexes')}
+                  >
+                    <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
+                  </Checkbox>
+                </MyTooltip>
+                <QuestionTip label={t('dataset:auto_indexes_tips')} />
+              </HStack>
+              <HStack flex={'1'} spacing={1}>
+                <MyTooltip
+                  label={
+                    !feConfigs?.isPlus
+                      ? t('common:commercial_function_tip')
+                      : !datasetDetail?.vlmModel
+                        ? t('common:error_vlm_not_config')
+                        : ''
+                  }
+                >
+                  <Checkbox
+                    isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
+                    isChecked={imageIndex}
+                    {...register('imageIndex')}
+                  >
+                    <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
+                  </Checkbox>
+                </MyTooltip>
+                <QuestionTip label={t('dataset:image_auto_parse_tips')} />
+              </HStack>
+            </HStack>
           </Box>
-          <HStack gap={[3, 7]}>
-            <HStack flex={'1'} spacing={1}>
-              <MyTooltip label={!feConfigs?.isPlus ? t('common:commercial_function_tip') : ''}>
-                <Checkbox
-                  isDisabled={!feConfigs?.isPlus}
-                  isChecked={autoIndexes}
-                  {...register('autoIndexes')}
-                >
-                  <FormLabel>{t('dataset:auto_indexes')}</FormLabel>
-                </Checkbox>
-              </MyTooltip>
-              <QuestionTip label={t('dataset:auto_indexes_tips')} />
-            </HStack>
-            <HStack flex={'1'} spacing={1}>
-              <MyTooltip
-                label={
-                  !feConfigs?.isPlus
-                    ? t('common:commercial_function_tip')
-                    : !datasetDetail?.vlmModel
-                      ? t('common:error_vlm_not_config')
-                      : ''
-                }
-              >
-                <Checkbox
-                  isDisabled={!feConfigs?.isPlus || !datasetDetail?.vlmModel}
-                  isChecked={imageIndex}
-                  {...register('imageIndex')}
-                >
-                  <FormLabel>{t('dataset:image_auto_parse')}</FormLabel>
-                </Checkbox>
-              </MyTooltip>
-              <QuestionTip label={t('dataset:image_auto_parse_tips')} />
-            </HStack>
-          </HStack>
-        </Box>
-      )}
+        )}
       <Box mt={6}>
         <Box fontSize={'sm'} mb={2} color={'myGray.600'}>
           {t('dataset:params_setting')}

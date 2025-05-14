@@ -1,3 +1,4 @@
+'use client';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { Box, Button, Flex, Grid, HStack } from '@chakra-ui/react';

@@ -10,7 +10,6 @@ import json5 from 'json5';
 import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
-import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
   type DeepRagSearchProps,
@@ -28,7 +27,6 @@ import {
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
-import { preLoadWorker } from '@fastgpt/service/worker/preload';
 
 export const readConfigData = async (name: string) => {
   const splitName = name.split('.');
@@ -95,12 +93,25 @@ export function initGlobalVariables() {
 
 /* Init system data(Need to connected db). It only needs to run once */
 export async function getInitConfig() {
-  await Promise.all([initSystemConfig(), getSystemVersion(), loadSystemModels()]);
-  try {
-    await preLoadWorker();
-  } catch (error) {
-    console.error('Preload worker error', error);
-  }
+  const getSystemVersion = async () => {
+    if (global.systemVersion) return;
+    try {
+      if (process.env.NODE_ENV === 'development') {
+        global.systemVersion = process.env.npm_package_version || '0.0.0';
+      } else {
+        const packageJson = json5.parse(await fs.promises.readFile('/app/package.json', 'utf-8'));
+
+        global.systemVersion = packageJson?.version;
+      }
+      console.log(`System Version: ${global.systemVersion}`);
+    } catch (error) {
+      console.log(error);
+
+      global.systemVersion = '0.0.0';
+    }
+  };
+
+  await Promise.all([initSystemConfig(), getSystemVersion()]);
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
@@ -125,10 +136,12 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   // load config
-  const [{ config: dbConfig }, fileConfig] = await Promise.all([
+  const [{ fastgptConfig, licenseData }, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);
+  global.licenseData = licenseData;
+
   const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
 
   // get config from database
@@ -136,16 +149,18 @@ export async function initSystemConfig() {
     feConfigs: {
       ...fileRes?.feConfigs,
       ...defaultFeConfigs,
-      ...(dbConfig.feConfigs || {}),
-      isPlus: !!FastGPTProUrl,
+      ...(fastgptConfig.feConfigs || {}),
+      isPlus: !!licenseData,
       show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
-      show_coupon: process.env.SHOW_COUPON === 'true'
+      show_coupon: process.env.SHOW_COUPON === 'true',
+      show_dataset_enhance: licenseData?.functions?.datasetEnhance,
+      show_batch_eval: licenseData?.functions?.batchEval
     },
     systemEnv: {
       ...fileRes.systemEnv,
-      ...(dbConfig.systemEnv || {})
+      ...(fastgptConfig.systemEnv || {})
     },
-    subPlans: dbConfig.subPlans || fileRes.subPlans
+    subPlans: fastgptConfig.subPlans
   };
 
   // set config
@@ -154,26 +169,9 @@ export async function initSystemConfig() {
   console.log({
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
-    subPlans: global.subPlans
+    subPlans: global.subPlans,
+    licenseData: global.licenseData
   });
-}
-
-async function getSystemVersion() {
-  if (global.systemVersion) return;
-  try {
-    if (process.env.NODE_ENV === 'development') {
-      global.systemVersion = process.env.npm_package_version || '0.0.0';
-    } else {
-      const packageJson = json5.parse(await fs.promises.readFile('/app/package.json', 'utf-8'));
-
-      global.systemVersion = packageJson?.version;
-    }
-    console.log(`System Version: ${global.systemVersion}`);
-  } catch (error) {
-    console.log(error);
-
-    global.systemVersion = '0.0.0';
-  }
 }
 
 export async function initSystemPluginGroups() {
