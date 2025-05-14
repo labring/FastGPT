@@ -123,6 +123,7 @@ const DatasetSchema = new Schema({
 
 try {
   DatasetSchema.index({ teamId: 1 });
+  DatasetSchema.index({ type: 1 });
 } catch (error) {
   console.log(error);
 }
