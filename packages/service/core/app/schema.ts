@@ -119,6 +119,7 @@ const AppSchema = new Schema({
   defaultPermission: Number
 });
 
+AppSchema.index({ type: 1 });
 AppSchema.index({ teamId: 1, updateTime: -1 });
 AppSchema.index({ teamId: 1, type: 1 });
 AppSchema.index(

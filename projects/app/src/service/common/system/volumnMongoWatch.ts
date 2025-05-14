@@ -21,7 +21,7 @@ const reloadConfigWatch = () => {
 
   changeStream.on('change', async (change) => {
     try {
-      if (change.operationType === 'insert') {
+      if (change.operationType === 'insert' || change.operationType === 'update') {
         await initSystemConfig();
         console.log('refresh system config');
       }

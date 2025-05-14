@@ -12,6 +12,7 @@ import {
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/mcpTools/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export type createMCPToolsQuery = {};
 
@@ -34,6 +35,8 @@ async function handler(
   const { teamId, tmbId, userId } = parentId
     ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
+
+  await checkTeamAppLimit(teamId);
 
   const mcpToolsId = await mongoSessionRun(async (session) => {
     const mcpToolsId = await onCreateApp({
