@@ -7,7 +7,7 @@ import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-
+import FoldButton from '@/pageComponents/chat/gatechat/FoldButton';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
@@ -39,6 +39,9 @@ import ChatRecordContextProvider, {
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import GateSideBar from '@/pageComponents/chat/gatechat/GateSideBar';
+import GatePageContainer from '@/components/GatePageContainer';
+import GateChatHistorySlider from '@/pageComponents/chat/gatechat/GateChatHistorySlider';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -143,14 +146,23 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     },
     [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
   );
-
+  const [sidebarFolded, setSidebarFolded] = useState(false);
+  const handleFoldChange = (isFolded: boolean) => {
+    setSidebarFolded(isFolded);
+  };
   const RenderHistorySlider = useMemo(() => {
     const Children = (
-      <ChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
+      <GateChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
     );
 
     return isPc || !appId ? (
-      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
+      <GateSideBar
+        externalTrigger={!!quoteData}
+        onFoldChange={handleFoldChange}
+        defaultFolded={sidebarFolded}
+      >
+        {Children}
+      </GateSideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -163,7 +175,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
+  }, [t, isPc, appId, quoteData, sidebarFolded, isOpenSlider, onCloseSlider]);
 
   return (
     <Flex h={'100%'}>
@@ -171,7 +183,16 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
       {isPc && <GateNavBar apps={myApps} activeAppId={appId} />}
 
       {(!quoteData || isPc) && (
-        <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
+        <GatePageContainer flex={'1 0 0'} w={0} position={'relative'}>
+          {sidebarFolded && isPc && appId && (
+            <Box position="absolute" left="-8px" top="50%" transform="translateY(-50%)" zIndex={10}>
+              <FoldButton
+                isFolded={true}
+                onClick={() => setSidebarFolded(false)}
+                position="navbar"
+              />
+            </Box>
+          )}
           <Flex h={'100%'} flexDirection={['column', 'row']}>
             {/* pc always show history. */}
             {RenderHistorySlider}
@@ -216,7 +237,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
               </Box>
             </Flex>
           </Flex>
-        </PageContainer>
+        </GatePageContainer>
       )}
 
       {quoteData && (
