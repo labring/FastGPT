@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
-import { createJWT, setCookie } from '@fastgpt/service/support/permission/controller';
+import { setCookie } from '@fastgpt/service/support/permission/controller';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
@@ -13,6 +13,8 @@ import { addOperationLog } from '@fastgpt/service/support/operationLog/addOperat
 import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { authCode } from '@fastgpt/service/support/user/auth/controller';
+import { createUserSession } from '@fastgpt/service/support/user/session';
+import requestIp from 'request-ip';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { username, password, code } = req.body as PostLoginProps;
@@ -61,20 +63,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     lastLoginTmbId: userDetail.team.tmbId
   });
 
+  const token = await createUserSession({
+    userId: user._id,
+    teamId: userDetail.team.teamId,
+    tmbId: userDetail.team.tmbId,
+    isRoot: username === 'root',
+    ip: requestIp.getClientIp(req)
+  });
+
+  setCookie(res, token);
+
   pushTrack.login({
     type: 'password',
     uid: user._id,
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId
   });
-
-  const token = createJWT({
-    ...userDetail,
-    isRoot: username === 'root'
-  });
-
-  setCookie(res, token);
-
   addOperationLog({
     tmbId: userDetail.team.tmbId,
     teamId: userDetail.team.teamId,
