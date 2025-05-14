@@ -469,7 +469,7 @@ const RenderList = React.memo(function RenderList({
                             px={2}
                             fontSize={'mini'}
                           >
-                            {t('common:common.Remove')}
+                            {t('common:Remove')}
                           </Button>
                         ) : template.flowNodeType === 'toolSet' ? (
                           <Flex gap={2}>
@@ -482,7 +482,7 @@ const RenderList = React.memo(function RenderList({
                               px={2}
                               fontSize={'mini'}
                             >
-                              {t('common:common.Open')}
+                              {t('common:Open')}
                             </Button>
                             <Button
                               size={'sm'}
@@ -493,7 +493,7 @@ const RenderList = React.memo(function RenderList({
                               px={2}
                               fontSize={'mini'}
                             >
-                              {t('common:common.Add')}
+                              {t('common:Add')}
                             </Button>
                           </Flex>
                         ) : template.isFolder ? (
@@ -505,7 +505,7 @@ const RenderList = React.memo(function RenderList({
                             px={2}
                             fontSize={'mini'}
                           >
-                            {t('common:common.Open')}
+                            {t('common:Open')}
                           </Button>
                         ) : (
                           <Button
@@ -517,7 +517,7 @@ const RenderList = React.memo(function RenderList({
                             px={2}
                             fontSize={'mini'}
                           >
-                            {t('common:common.Add')}
+                            {t('common:Add')}
                           </Button>
                         )}
                       </Flex>

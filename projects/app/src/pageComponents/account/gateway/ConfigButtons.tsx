@@ -36,7 +36,7 @@ const ConfigButtons = ({ tab }: Props) => {
     async () => {
       await saveGateConfig();
       toast({
-        title: t('common:common.Save Success'),
+        title: t('common:Save Success'),
         status: 'success'
       });
     },
@@ -44,7 +44,7 @@ const ConfigButtons = ({ tab }: Props) => {
       manual: true,
       onError: (err) => {
         toast({
-          title: t('common:common.Save Failed'),
+          title: t('common:Save Failed'),
           status: 'error',
           description: err?.message
         });
@@ -66,7 +66,7 @@ const ConfigButtons = ({ tab }: Props) => {
       // 保存其他版权配置
       await saveCopyRightConfig();
       toast({
-        title: t('common:common.Save Success'),
+        title: t('common:Save Success'),
         status: 'success'
       });
     },
@@ -74,7 +74,7 @@ const ConfigButtons = ({ tab }: Props) => {
       manual: true,
       onError: (err) => {
         toast({
-          title: t('common:common.Save Failed'),
+          title: t('common:Save Failed'),
           status: 'error',
           description: err?.message
         });
@@ -94,7 +94,7 @@ const ConfigButtons = ({ tab }: Props) => {
           // 删除门户应用
           await delAppById(gateApp._id);
           toast({
-            title: t('common:common.Delete Success'),
+            title: t('common:Delete Success'),
             status: 'success'
           });
         } else {
@@ -105,7 +105,7 @@ const ConfigButtons = ({ tab }: Props) => {
         }
       } catch (error) {
         toast({
-          title: t('common:common.Delete Failed'),
+          title: t('common:Delete Failed'),
           status: 'error',
           description: (error as Error)?.message
         });
@@ -131,7 +131,7 @@ const ConfigButtons = ({ tab }: Props) => {
             intro: currentSlogan
           });
           toast({
-            title: t('common:common.Update Success'),
+            title: t('common:Update Success'),
             status: 'success'
           });
         }
@@ -146,7 +146,7 @@ const ConfigButtons = ({ tab }: Props) => {
           chatConfig: emptyTemplates[AppTypeEnum.gate].chatConfig
         });
         toast({
-          title: t('common:common.Create Success'),
+          title: t('common:create_success'),
           status: 'success'
         });
       }

@@ -286,10 +286,10 @@ const ToolSelectModal = ({ selectedPluginIds, onSelectPlugins, onCancel }: Props
         borderColor="gray.100"
       >
         <Button variant="outline" onClick={onCancel}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button colorScheme="blue" onClick={handleConfirm}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </Flex>
     </MyModal>
@@ -462,7 +462,7 @@ const RenderList = React.memo(function RenderList({
                             px={2}
                             fontSize={'mini'}
                           >
-                            {t('common:common.Remove')}
+                            {t('common:Remove')}
                           </Button>
                         ) : isNestedPlugin ? (
                           <Button
@@ -473,7 +473,7 @@ const RenderList = React.memo(function RenderList({
                             px={2}
                             fontSize={'mini'}
                           >
-                            {t('common:common.Open')}
+                            {t('common:Open')}
                           </Button>
                         ) : (
                           <Button
@@ -484,7 +484,7 @@ const RenderList = React.memo(function RenderList({
                             px={2}
                             fontSize={'mini'}
                           >
-                            {t('common:common.Add')}
+                            {t('common:Add')}
                           </Button>
                         )}
                       </Flex>

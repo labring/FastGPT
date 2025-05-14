@@ -282,7 +282,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
                         transition="all 0.2s"
                         whiteSpace="nowrap"
                       >
-                        {t('common:common.More')}
+                        {t('common:More')}
                       </Box>
                       <MyIcon
                         name={'common/select'}

@@ -201,7 +201,7 @@ const CopyrightTable = ({ teamName }: Props) => {
             <Flex alignItems="center" gap={3}>
               <Box w="4px" h="16px" bg="#3370FF" borderRadius="6px" />
               <Text fontSize={{ base: '14px', md: '16px' }} fontWeight={500}>
-                {t('common:common.base_config')}
+                {t('common:base_config')}
               </Text>
             </Flex>
 

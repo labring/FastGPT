@@ -9,7 +9,7 @@ import { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import ToolSelectModal from './ToolSelectModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
-import { defaultNodeVersion, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { keyframes } from '@emotion/react';
@@ -159,7 +159,7 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                 inputs: [],
                 outputs: [],
                 flowNodeType: plugin.flowNodeType || FlowNodeTypeEnum.tool,
-                version: defaultNodeVersion,
+                version: 'v2',
                 templateType: plugin.templateType || FlowNodeTemplateTypeEnum.tools
               });
             }
@@ -224,7 +224,7 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
               onClick={onOpenToolsSelect}
               _hover={{ bg: 'blue.50' }}
             >
-              {t('common:common.Add')}
+              {t('common:Add')}
             </Button>
           )}
         </Flex>
@@ -384,7 +384,7 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                     mb={2}
                   />
                   <Text fontSize="sm" fontWeight="500">
-                    {t('common:common.Loading')}
+                    {t('common:Loading')}
                   </Text>
                 </Flex>
               ) : (
@@ -398,7 +398,7 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                   >
                     <SmallAddIcon boxSize={5} />
                     <Box fontSize="sm" fontWeight="medium">
-                      {t('common:common.Add')}
+                      {t('common:Add')}
                     </Box>
                   </Flex>
                 </>

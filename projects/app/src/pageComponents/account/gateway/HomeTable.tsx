@@ -45,7 +45,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
       onError: (err) => {
         toast({
           status: 'error',
-          title: t('common:common.Load Failed'),
+          title: t('common:load_failed'),
           description: err?.message
         });
       }

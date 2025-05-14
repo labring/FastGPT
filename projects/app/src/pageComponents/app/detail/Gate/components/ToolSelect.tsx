@@ -56,7 +56,7 @@ const ToolSelect = ({
           fontSize={'sm'}
           onClick={onOpenToolsSelect}
         >
-          {t('common:common.Choose')}
+          {t('common:Choose')}
         </Button>
       </Flex>
       <Grid

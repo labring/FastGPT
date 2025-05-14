@@ -232,7 +232,7 @@ const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string 
                             },
 
                             {
-                              label: t('common:common.Custom Title'),
+                              label: t('common:custom_title'),
                               icon: 'common/customTitleLight',
                               onClick: () => {
                                 onOpenModal({
@@ -246,7 +246,7 @@ const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string 
                               }
                             },
                             {
-                              label: t('common:common.Delete'),
+                              label: t('common:Delete'),
                               icon: 'delete',
                               onClick: () => {
                                 onDelHistory(item.id);
