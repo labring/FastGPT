@@ -138,9 +138,11 @@ export const llmStreamResponseToAnswerText = async (
       responseChoice.tool_calls.forEach((toolCall, i) => {
         const index = toolCall.index ?? i;
 
-        if (toolCall.id || callingTool) {
-          // 有 id，代表新 call 工具
-          if (toolCall.id) {
+        // Call new tool
+        const hasNewTool = toolCall?.function?.name || callingTool;
+        if (hasNewTool) {
+          // 有 function name，代表新 call 工具
+          if (toolCall?.function?.name) {
             callingTool = {
               name: toolCall.function?.name || '',
               arguments: toolCall.function?.arguments || ''
