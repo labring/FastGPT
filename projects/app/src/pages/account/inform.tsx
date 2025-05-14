@@ -1,3 +1,4 @@
+'use client';
 import React, { useState } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';

@@ -1,3 +1,4 @@
+'use client';
 import React from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, type FlexProps } from '@chakra-ui/react';

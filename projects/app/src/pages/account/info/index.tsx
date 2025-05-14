@@ -1,3 +1,4 @@
+'use client';
 import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Box,

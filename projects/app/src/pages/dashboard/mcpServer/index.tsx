@@ -1,3 +1,4 @@
+'use client';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useState } from 'react';
 import DashboardContainer from '@/pageComponents/dashboard/Container';

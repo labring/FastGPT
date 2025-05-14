@@ -1,4 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
+'use client';
+import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/i18n/utils';
