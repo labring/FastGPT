@@ -1137,83 +1137,103 @@ const ChatBox = ({
           mx="auto"
           pt={{ base: '100px', sm: '120px', md: '158px' }}
           px={{ base: '20px', sm: '30px', md: '40px' }}
-          pb="12px"
+          pb={{ base: '12px', sm: '12px' }}
           gap={{ base: 4, md: 6 }}
         >
-          <Box>
-            <ChatWelcome
-              teamName={copyRightConfig?.name || chatBoxData?.app?.name}
-              teamAvatar={userInfo?.team?.teamAvatar}
-              slogan={appIntro}
-            />
-          </Box>
-          {/* message input */}
-          {onStartChat && chatStarted && active && !isInteractive && (
-            <Box w="700px" maxH="132px" h="100%" px={0}>
-              <GateChatInput
-                onSendMessage={sendPrompt}
-                onStop={() => chatController.current?.abort('stop')}
-                TextareaDom={TextareaDom}
-                resetInputVal={resetInputVal}
-                chatForm={chatForm}
-                placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
+          <Flex direction="column" align="center" justify="center" w="100%" gap="44px">
+            <Box>
+              <ChatWelcome
+                teamName={copyRightConfig?.name || chatBoxData?.app?.name}
+                teamAvatar={userInfo?.team?.teamAvatar}
+                slogan={appIntro}
               />
             </Box>
-          )}
 
-          {/* 在inGateRoute状态下显示底部语句 */}
-          {inGateRoute && (
-            <Box mt="auto" w="100%">
-              <Flex justify="center" w="100%" py={3} px={4} fontSize="xs" color="gray.500">
-                <Text textAlign="center">{t('common:gate.copyright')}</Text>
-              </Flex>
-            </Box>
-          )}
-        </Flex>
-      ) : (
-        <>
-          {RenderRecords}
-          {/* message input */}
-          {onStartChat && chatStarted && active && !isInteractive && (
-            <Box
-              m={['0 auto', '10px auto']}
-              w={'100%'}
-              maxW={['auto', 'min(800px, 100%)']}
-              px={[0, 5]}
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-            >
-              {inGateRoute && (
+            {/* message input */}
+            {onStartChat && chatStarted && active && !isInteractive && (
+              <Box w={{ base: 'calc(100% - 48px)', md: '700px' }} maxH="132px" h="100%" px={0}>
                 <GateChatInput
                   onSendMessage={sendPrompt}
                   onStop={() => chatController.current?.abort('stop')}
                   TextareaDom={TextareaDom}
                   resetInputVal={resetInputVal}
                   chatForm={chatForm}
-                  placeholder={gateConfig?.placeholderText || t('common:gate.placeholder')}
+                  placeholder={gateConfig?.placeholderText || '你可以问我任何问题'}
                 />
-              )}
-              {!inGateRoute && (
-                <ChatInput
-                  onSendMessage={sendPrompt}
-                  onStop={() => chatController.current?.abort('stop')}
-                  TextareaDom={TextareaDom}
-                  resetInputVal={resetInputVal}
-                  chatForm={chatForm}
-                />
-              )}
-            </Box>
-          )}
+              </Box>
+            )}
+          </Flex>
 
-          {/* 在inGateRoute状态下显示底部语句 */}
-          {inGateRoute && (
-            <Flex justify="center" w="100%" py={3} px={4} fontSize="xs" color="gray.500">
-              <Text textAlign="center">
-                内容由第三方 AI 生成，仅供参考，信息真实性、准确性、合法性由提供者负责
-              </Text>
-            </Flex>
-          )}
+          {/* 移动端下的版权信息容器 */}
+          <Box w="100%" mt="auto">
+            {/* 在inGateRoute状态下显示底部语句 */}
+            {inGateRoute && (
+              <Flex
+                justify="center"
+                w="100%"
+                py={3}
+                px={4}
+                fontSize={{ base: '2xs', sm: 'xs' }}
+                color="gray.500"
+              >
+                <Text textAlign="center">{t('common:gate.copyright')}</Text>
+              </Flex>
+            )}
+          </Box>
+        </Flex>
+      ) : (
+        <>
+          {RenderRecords}
+
+          {/* 移动端下的输入框和版权信息容器 */}
+          <Flex direction="column" w="100%" mb={{ base: '12px', sm: 0 }} gap="12px">
+            {/* message input */}
+            {onStartChat && chatStarted && active && !isInteractive && (
+              <Box
+                m={['0 auto', '10px auto']}
+                w={'100%'}
+                maxW={['auto', 'min(800px, 100%)']}
+                px={['16px', 5]}
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+              >
+                {inGateRoute && (
+                  <GateChatInput
+                    onSendMessage={sendPrompt}
+                    onStop={() => chatController.current?.abort('stop')}
+                    TextareaDom={TextareaDom}
+                    resetInputVal={resetInputVal}
+                    chatForm={chatForm}
+                    placeholder={gateConfig?.placeholderText || t('common:gate.placeholder')}
+                  />
+                )}
+                {!inGateRoute && (
+                  <ChatInput
+                    onSendMessage={sendPrompt}
+                    onStop={() => chatController.current?.abort('stop')}
+                    TextareaDom={TextareaDom}
+                    resetInputVal={resetInputVal}
+                    chatForm={chatForm}
+                  />
+                )}
+              </Box>
+            )}
+
+            {/* 在inGateRoute状态下显示底部语句 */}
+            {inGateRoute && (
+              <Flex
+                justify="center"
+                w="100%"
+                py={3}
+                px={4}
+                fontSize={{ base: '2xs', sm: 'xs' }}
+                color="gray.500"
+              >
+                <Text textAlign="center">{t('common:gate.copyright')}</Text>
+              </Flex>
+            )}
+          </Flex>
         </>
       )}
 

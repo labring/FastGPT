@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Text, Input, Button, useBreakpointValue, Image } from '@chakra-ui/react';
 import { keyframes } from '@emotion/react';
 import { useTranslation } from 'next-i18next';
@@ -8,6 +8,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type Props = {
   teamName: string;
@@ -129,6 +130,27 @@ const LogoBox = ({
   return logoContent;
 };
 
+// 添加悬浮遮罩样式
+const uploadOverlayStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  border: '1px dashed var(--Royal-Blue-200, #C5D7FF)',
+  background: 'rgba(255, 255, 255, 0.5)',
+  backdropFilter: 'blur(2px)',
+  zIndex: 10,
+  opacity: 0,
+  transition: 'opacity 0.3s ease',
+  _groupHover: {
+    opacity: 1
+  }
+};
+
 const CopyrightTable = ({ teamName }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -212,20 +234,70 @@ const CopyrightTable = ({ teamName }: Props) => {
             >
               {/* 左侧 Logo 显示 - 带文字 */}
               <Flex direction="column" gap={2} alignItems="center">
-                <Flex gap={{ base: 3, md: 5 }} alignItems="center">
-                  <LogoBox
-                    avatar={avatar}
-                    boxSize={logoBoxSizeWithText}
-                    borderRadius={logoBorderRadius}
-                    uploadFontSize={{ base: '8px', md: '12px' }}
-                    iconBoxSize={{ base: '10px', md: '14px' }}
-                    onUploadClick={onOpenSelectFile}
-                    withStripedBackground={true} // 添加斜线背景
-                  />
-                  <Text fontSize={titleFontSize} fontWeight={700} lineHeight="140%">
-                    {watch('name')}
-                  </Text>
-                </Flex>
+                <Box
+                  sx={stripedBackgroundStyle}
+                  onClick={onOpenSelectFile}
+                  cursor="pointer"
+                  role="group"
+                  position="relative"
+                >
+                  <Flex gap={{ base: 3, md: 5 }} alignItems="center">
+                    <Box
+                      width={logoBoxSizeWithText}
+                      height={logoBoxSizeWithText}
+                      bg="white"
+                      border="0.483px solid #ECECEC"
+                      borderRadius={logoBorderRadius}
+                      display="flex"
+                      justifyContent="center"
+                      alignItems="center"
+                      position="relative"
+                      overflow="hidden"
+                      boxSizing="border-box"
+                      transition="all 0.3s ease"
+                    >
+                      <Flex
+                        width="40px"
+                        height="40px"
+                        justifyContent="center"
+                        alignItems="center"
+                        flexShrink="0"
+                        aspectRatio="1/1"
+                      >
+                        <Image
+                          src={avatar}
+                          alt="Team Logo"
+                          width="100%"
+                          height="100%"
+                          objectFit="contain"
+                          fallbackSrc="/icon/logo.svg"
+                        />
+                      </Flex>
+                    </Box>
+                    <Text fontSize={titleFontSize} fontWeight={700} lineHeight="140%">
+                      {watch('name')}
+                    </Text>
+                  </Flex>
+
+                  {/* 悬浮遮罩 - 4:1 */}
+                  <Box
+                    sx={{
+                      ...uploadOverlayStyle,
+                      width: '100%',
+                      height: '100%'
+                    }}
+                    borderRadius="16px"
+                  >
+                    <Flex direction="column" alignItems="center" justifyContent="center">
+                      <MyIcon
+                        name="support/gate/home/upload"
+                        width="24px"
+                        height="24px"
+                        color="blue.500"
+                      />
+                    </Flex>
+                  </Box>
+                </Box>
                 <Text fontSize="12px" color="#667085" alignSelf="flex-start">
                   {t('account_gate:suggestion_ratio_4_1')}
                 </Text>
@@ -235,15 +307,65 @@ const CopyrightTable = ({ teamName }: Props) => {
 
               {/* 右侧 Logo 显示 - 仅Logo */}
               <Flex direction="column" gap={2} alignItems="center">
-                <LogoBox
-                  avatar={avatar}
-                  boxSize={logoBoxSize}
-                  borderRadius={logoBorderRadius}
-                  uploadFontSize={{ base: '8px', md: '12px' }}
-                  iconBoxSize={{ base: '10px', md: '14px' }}
-                  onUploadClick={onOpenSelectFile}
-                  withStripedBackground={true} // 添加斜线背景
-                />
+                <Box
+                  sx={stripedBackgroundStyle}
+                  onClick={onOpenSelectFile}
+                  cursor="pointer"
+                  role="group"
+                  position="relative"
+                >
+                  <Box
+                    width={logoBoxSize}
+                    height={logoBoxSize}
+                    bg="white"
+                    border="0.483px solid #ECECEC"
+                    borderRadius={logoBorderRadius}
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    position="relative"
+                    overflow="hidden"
+                    boxSizing="border-box"
+                    transition="all 0.3s ease"
+                  >
+                    <Flex
+                      width="40px"
+                      height="40px"
+                      justifyContent="center"
+                      alignItems="center"
+                      flexShrink="0"
+                      aspectRatio="1/1"
+                    >
+                      <Image
+                        src={avatar}
+                        alt="Team Logo"
+                        width="100%"
+                        height="100%"
+                        objectFit="contain"
+                        fallbackSrc="/icon/logo.svg"
+                      />
+                    </Flex>
+                  </Box>
+
+                  {/* 悬浮遮罩 - 1:1 */}
+                  <Box
+                    sx={{
+                      ...uploadOverlayStyle,
+                      width: '100%',
+                      height: '100%'
+                    }}
+                    borderRadius="16px"
+                  >
+                    <Flex direction="column" alignItems="center" justifyContent="center">
+                      <MyIcon
+                        name="support/gate/home/upload"
+                        width="24px"
+                        height="24px"
+                        color="blue.500"
+                      />
+                    </Flex>
+                  </Box>
+                </Box>
                 <Text fontSize="12px" color="#667085">
                   {t('account_gate:suggestion_ratio_1_1')}
                 </Text>

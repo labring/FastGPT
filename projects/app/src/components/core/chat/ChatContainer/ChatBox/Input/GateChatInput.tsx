@@ -377,7 +377,8 @@ const GateChatInput = ({
                 background: 'var(--light-fastgpt-primary-container-low, #E6EDFF)'
               }}
             >
-              {t('common:tool_select')}: {appForm?.selectedTools?.length || 0}
+              <Box display={{ base: 'none', md: 'block' }}>{t('common:tool_select')}:&nbsp;</Box>
+              {appForm?.selectedTools?.length || 0}
             </Button>
           )}
         </Flex>

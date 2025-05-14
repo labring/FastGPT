@@ -491,6 +491,7 @@ export const iconPaths = {
   'support/gate/home/savePrimary': () => import('./icons/support/gate/home/savePrimary.svg'),
   'support/gate/home/shareLight': () => import('./icons/support/gate/home/shareLight.svg'),
   'support/gate/home/sharePrimary': () => import('./icons/support/gate/home/sharePrimary.svg'),
+  'support/gate/home/upload': () => import('./icons/support/gate/home/upload.svg'),
   text: () => import('./icons/text.svg'),
   union: () => import('./icons/union.svg'),
   user: () => import('./icons/user.svg'),
