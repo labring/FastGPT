@@ -5,7 +5,7 @@ import type {
   putUpdateGateConfigData,
   putUpdateGateConfigResponse
 } from '@fastgpt/global/support/user/team/gate/api.d';
-import { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 /**
  * 获取门户配置 - Get请求

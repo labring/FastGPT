@@ -11,7 +11,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 import { defaultNodeVersion, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { keyframes } from '@emotion/react';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { spacing, formStyles } from './HomeTable';

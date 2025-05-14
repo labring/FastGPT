@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Flex, Text, Avatar, Heading, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import type { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useRouter } from 'next/router';
 
 type Props = {

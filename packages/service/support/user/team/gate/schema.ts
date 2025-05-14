@@ -1,6 +1,6 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../../../common/mongo';
-import { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 export const gateCollectionName = 'team_gate_config';
 

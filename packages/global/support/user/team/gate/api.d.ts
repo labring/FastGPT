@@ -1,4 +1,4 @@
-import { GateTool } from './type';
+import type { GateTool } from './type';
 
 export type putUpdateGateConfigData = {
   status?: boolean;

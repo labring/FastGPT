@@ -18,7 +18,7 @@ import { useMount } from 'ahooks';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { AppListItemType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppListItemType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';

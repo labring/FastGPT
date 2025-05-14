@@ -17,7 +17,7 @@ import {
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import {
+import type {
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
@@ -30,7 +30,7 @@ import {
 } from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -40,7 +40,7 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useMemoizedFn } from 'ahooks';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 type Props = {
   selectedPluginIds: string[];

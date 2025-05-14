@@ -1,14 +1,6 @@
 import React, { useEffect, useMemo, useTransition } from 'react';
-import {
-  Box,
-  Flex,
-  Grid,
-  BoxProps,
-  useTheme,
-  useDisclosure,
-  Button,
-  HStack
-} from '@chakra-ui/react';
+import type { BoxProps } from '@chakra-ui/react';
+import { Box, Flex, Grid, useTheme, useDisclosure, Button, HStack } from '@chakra-ui/react';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';

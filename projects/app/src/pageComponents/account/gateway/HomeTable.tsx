@@ -13,7 +13,8 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
-import ToolSelect, { ToolSelectRefType, ToolItemType } from './ToolSelect';
+import type { ToolSelectRefType, ToolItemType } from './ToolSelect';
+import ToolSelect from './ToolSelect';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getBatchPlugins } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';

@@ -16,12 +16,12 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import type { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useRouter } from 'next/router';
 import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
 import dynamic from 'next/dynamic';
 import { getMyApps } from '@/web/core/app/api';
-import {
+import type {
   GetResourceFolderListProps,
   GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';

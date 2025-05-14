@@ -1,5 +1,5 @@
 import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
-import { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 import {
   getTeamGateConfig,
   updateTeamGateConfig,
@@ -9,7 +9,7 @@ import {
 import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api.d';
 import { getMyAppsGate } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import type { AppListItemType } from '@fastgpt/global/core/app/type';
 
 type State = {
   gateConfig?: GateSchemaType;
