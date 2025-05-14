@@ -1,7 +1,7 @@
-import { SourceMemberType } from '@fastgpt/global/support/user/type';
+import { type SourceMemberType } from '@fastgpt/global/support/user/type';
 import { MongoTeam } from './team/teamSchema';
 import { MongoTeamMember } from './team/teamMemberSchema';
-import { ClientSession } from '../../common/mongo';
+import { type ClientSession } from '../../common/mongo';
 
 /* export dataset limit */
 export const updateExportDatasetLimit = async (teamId: string) => {

@@ -1,7 +1,7 @@
-import { LLMModelItemType } from '../../ai/model.d';
-import { LLMModelTypeEnum } from '../../ai/constants';
-import { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
-import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
+import type { LLMModelItemType } from '../../ai/model.d';
+import type { LLMModelTypeEnum } from '../../ai/constants';
+import type { WorkflowIOValueTypeEnum, NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
+import type { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../node/constant';
 
 // Dynamic input field configuration
 export type CustomFieldConfigType = {
@@ -63,6 +63,8 @@ export type FlowNodeInputItemType = InputComponentPropsType & {
   canSelectFile?: boolean;
   canSelectImg?: boolean;
   maxFiles?: number;
+
+  deprecated?: boolean;
 };
 
 export type FlowNodeOutputItemType = {
@@ -86,6 +88,8 @@ export type FlowNodeOutputItemType = {
 
   // component params
   customFieldConfig?: CustomFieldConfigType;
+
+  deprecated?: boolean;
 };
 
 export type ReferenceItemValueType = [string, string | undefined];

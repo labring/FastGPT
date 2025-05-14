@@ -5,7 +5,10 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type FlowNodeInputItemType,
+  type ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { defaultInput } from '../../FieldEditModal';
@@ -15,14 +18,12 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useI18n } from '@/web/context/I18n';
 
 const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
 
 const DynamicInputs = (props: RenderInputProps) => {
   const { item, inputs = [], nodeId } = props;
   const { t } = useTranslation();
-  const { workflowT } = useI18n();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const dynamicInputs = useMemo(() => inputs.filter((item) => item.canEdit), [inputs]);
@@ -55,7 +56,7 @@ const DynamicInputs = (props: RenderInputProps) => {
       <Box borderBottom={'base'} pb={3}>
         <HStack className="nodrag" cursor={'default'} position={'relative'}>
           <HStack spacing={1} position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
-            <Box>{item.label || workflowT('custom_input')}</Box>
+            <Box>{item.label || t('workflow:custom_input')}</Box>
             {item.description && <QuestionTip label={t(item.description as any)} />}
           </HStack>
           <Box flex={'1 0 0'} />
@@ -71,7 +72,7 @@ const DynamicInputs = (props: RenderInputProps) => {
               })
             }
           >
-            {t('common:common.Add New')}
+            {t('common:add_new')}
           </Button>
         </HStack>
         {/* field render */}
@@ -94,7 +95,7 @@ const DynamicInputs = (props: RenderInputProps) => {
         )}
       </Box>
     );
-  }, [editField, dynamicInputs, item, keys, onAddField, props, t, workflowT]);
+  }, [editField, dynamicInputs, item, keys, onAddField, props, t, t]);
 
   return Render;
 };
@@ -109,10 +110,9 @@ function Reference({
 }) {
   const { nodeId, inputs = [], item } = props;
   const { t } = useTranslation();
-  const { workflowT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: workflowT('confirm_delete_field_tip')
+    content: t('workflow:confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 

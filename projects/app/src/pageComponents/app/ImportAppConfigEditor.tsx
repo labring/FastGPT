@@ -1,4 +1,4 @@
-import React, { DragEvent, useCallback, useState } from 'react';
+import React, { type DragEvent, useCallback, useState } from 'react';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -99,12 +99,12 @@ const ImportAppConfigEditor = ({ value, onChange, rows = 16 }: Props) => {
           <Box>
             <Flex justify={'space-between'} align={'center'} pb={3}>
               <Box fontSize={'sm'} color={'myGray.900'} fontWeight={'500'}>
-                {t('common:common.json_config')}
+                {t('common:json_config')}
               </Box>
               <Button onClick={onOpen} variant={'whiteBase'} p={0}>
                 <Flex px={'0.88rem'} py={'0.44rem'} color={'myGray.600'} fontSize={'mini'}>
                   <MyIcon name={'file/uploadFile'} w={'1rem'} mr={'0.38rem'} />
-                  {t('common:common.upload_file')}
+                  {t('common:upload_file')}
                 </Flex>
               </Button>
             </Flex>

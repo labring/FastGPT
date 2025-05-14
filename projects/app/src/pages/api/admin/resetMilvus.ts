@@ -8,7 +8,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 

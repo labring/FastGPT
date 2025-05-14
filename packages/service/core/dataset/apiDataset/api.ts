@@ -4,11 +4,11 @@ import type {
   APIFileReadResponse,
   APIFileServer
 } from '@fastgpt/global/core/dataset/apiDataset';
-import axios, { Method } from 'axios';
+import axios, { type Method } from 'axios';
 import { addLog } from '../../../common/system/log';
 import { readFileRawTextByUrl } from '../read';
-import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 type ResponseDataType = {
   success: boolean;

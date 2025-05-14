@@ -1,6 +1,6 @@
 import { toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
 import { Box, Button, Flex, Input, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import React, { useCallback, useMemo } from 'react';
@@ -169,10 +169,10 @@ const ToolParamsEditModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button onClick={handleSubmit((data) => onClickSubmit(data), onClickSubmitError)}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

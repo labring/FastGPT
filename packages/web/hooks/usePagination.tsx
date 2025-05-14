@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback, RefObject, ReactNode, useMemo } from 'react';
-import { IconButton, Flex, Box, Input, BoxProps } from '@chakra-ui/react';
+import { useRef, useState, useCallback, type RefObject, type ReactNode, useMemo } from 'react';
+import { IconButton, Flex, Box, Input, type BoxProps } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
@@ -13,7 +13,7 @@ import {
   useThrottleEffect
 } from 'ahooks';
 
-import { PaginationProps, PaginationResponse } from '../common/fetch/type';
+import { type PaginationProps, type PaginationResponse } from '../common/fetch/type';
 
 const thresholdVal = 200;
 
@@ -190,9 +190,9 @@ export function usePagination<DataT, ResT = {}>(
     } & BoxProps) => {
       const ref = ScrollContainerRef || DefaultRef;
       const loadText = (() => {
-        if (isLoading) return t('common:common.is_requesting');
-        if (noMore) return t('common:common.request_end');
-        return t('common:common.request_more');
+        if (isLoading) return t('common:is_requesting');
+        if (noMore) return t('common:request_end');
+        return t('common:request_more');
       })();
 
       const scroll = useScroll(ref);
@@ -219,7 +219,7 @@ export function usePagination<DataT, ResT = {}>(
         <Box {...props} ref={ref} overflow={'overlay'}>
           {scrollLoadType === 'top' && total > 0 && isLoading && (
             <Box mt={2} fontSize={'xs'} color={'blackAlpha.500'} textAlign={'center'}>
-              {t('common:common.is_requesting')}
+              {t('common:is_requesting')}
             </Box>
           )}
           {children}
@@ -229,9 +229,9 @@ export function usePagination<DataT, ResT = {}>(
               fontSize={'xs'}
               color={'blackAlpha.500'}
               textAlign={'center'}
-              cursor={loadText === t('common:common.request_more') ? 'pointer' : 'default'}
+              cursor={loadText === t('common:request_more') ? 'pointer' : 'default'}
               onClick={() => {
-                if (loadText !== t('common:common.request_more')) return;
+                if (loadText !== t('common:request_more')) return;
                 fetchData(pageNum + 1);
               }}
             >

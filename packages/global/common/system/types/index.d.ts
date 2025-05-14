@@ -1,4 +1,5 @@
-import { StandSubPlanLevelMapType, SubPlanType } from '../../../support/wallet/sub/type';
+import type { SubPlanType } from '../../../support/wallet/sub/type';
+import { StandSubPlanLevelMapType } from '../../../support/wallet/sub/type';
 import type {
   ChatModelItemType,
   FunctionModelItemType,
@@ -62,6 +63,12 @@ export type FastGPTFeConfigsType = {
   show_aiproxy?: boolean;
   show_coupon?: boolean;
   concatMd?: string;
+
+  show_dataset_feishu?: boolean;
+  show_dataset_yuque?: boolean;
+  show_publish_feishu?: boolean;
+  show_publish_dingtalk?: boolean;
+  show_publish_offiaccount?: boolean;
 
   concatMd?: string;
   docUrl?: string;

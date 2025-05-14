@@ -1,7 +1,7 @@
 /* Abandoned */
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
+import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { dispatchWorkFlow } from '../index';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -11,11 +11,11 @@ import {
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 

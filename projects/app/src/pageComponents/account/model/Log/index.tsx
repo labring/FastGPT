@@ -16,10 +16,12 @@ import {
   ModalBody,
   Grid,
   GridItem,
-  BoxProps
+  type BoxProps
 } from '@chakra-ui/react';
 import { getModelProvider } from '@fastgpt/global/core/ai/provider';
-import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -33,7 +35,7 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { ChannelLogUsageType } from '@/global/aiproxy/type';
+import { type ChannelLogUsageType } from '@/global/aiproxy/type';
 
 type LogDetailType = {
   id: number;
@@ -89,7 +91,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       );
       return [
         {
-          label: t('common:common.All'),
+          label: t('common:All'),
           value: ''
         },
         ...res
@@ -118,7 +120,7 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
       .sort((a, b) => a.order - b.order);
     return [
       {
-        label: t('common:common.All'),
+        label: t('common:All'),
         value: ''
       },
       ...res
@@ -229,9 +231,9 @@ const ChannelLog = ({ Tab }: { Tab: React.ReactNode }) => {
             <MySelect<'all' | 'success' | 'error'>
               bg={'myGray.50'}
               list={[
-                { label: t('common:common.All'), value: 'all' },
-                { label: t('common:common.Success'), value: 'success' },
-                { label: t('common:common.failed'), value: 'error' }
+                { label: t('common:All'), value: 'all' },
+                { label: t('common:Success'), value: 'success' },
+                { label: t('common:failed'), value: 'error' }
               ]}
               value={filterProps.code_type}
               onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}

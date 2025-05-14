@@ -11,8 +11,8 @@ import {
   TableContainer,
   Flex
 } from '@chakra-ui/react';
-import { NodeProps } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type NodeProps } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { useTranslation } from 'next-i18next';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
@@ -27,8 +27,8 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/const
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import RenderToolInput from '../render/RenderToolInput';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../../components/IOTitle';
@@ -158,7 +158,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       )}
       <>
         <Container>
-          <IOTitle text={t('common:common.Input')} />
+          <IOTitle text={t('common:Input')} />
           <RenderInput
             nodeId={nodeId}
             flowInputList={commonInputs}
@@ -168,7 +168,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       </>
       <>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
       </>

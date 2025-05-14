@@ -1,13 +1,12 @@
 import {
-  AppChatConfigType,
-  AppDetailType,
-  AppSchema,
-  AppSimpleEditFormType
+  type AppChatConfigType,
+  type AppDetailType,
+  type AppSchema,
+  type AppSimpleEditFormType
 } from '@fastgpt/global/core/app/type';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import {
   chatHistoryValueDesc,
-  defaultNodeVersion,
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
@@ -18,8 +17,8 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
 import {
   WorkflowStart,
@@ -402,7 +401,6 @@ export function form2AppWorkflow(
               y: 545
             },
             // 这里不需要固定版本，给一个不存在的版本，每次都会用最新版
-            version: defaultNodeVersion,
             pluginData: tool.pluginData,
             inputs: tool.inputs.map((input) => {
               // Special key value

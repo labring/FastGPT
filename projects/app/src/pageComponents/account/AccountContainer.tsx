@@ -118,7 +118,7 @@ const AccountContainer = ({
       : []),
     {
       icon: 'common/settingLight',
-      label: t('common:common.Setting'),
+      label: t('common:Setting'),
       value: TabEnum.setting
     },
     {

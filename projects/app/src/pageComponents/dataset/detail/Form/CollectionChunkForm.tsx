@@ -1,6 +1,6 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { UseFormReturn } from 'react-hook-form';
+import { type UseFormReturn } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -42,7 +42,7 @@ import {
   minChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
-import { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
+import { type ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 import type { LLMModelItemType, EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const PromptTextarea = ({
@@ -77,7 +77,7 @@ const PromptTextarea = ({
             onClose();
           }}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

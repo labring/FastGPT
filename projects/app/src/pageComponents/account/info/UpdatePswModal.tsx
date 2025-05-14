@@ -5,8 +5,8 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { updatePasswordByOld } from '@/web/support/user/api';
-import { checkPasswordRule } from '@/web/support/user/login/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 type FormType = {
   oldPsw: string;

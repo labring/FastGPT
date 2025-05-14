@@ -12,10 +12,10 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useFileUpload } from '../../ChatBox/hooks/useFileUpload';
 import FilePreview from '../../components/FilePreview';
-import { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { ChatBoxInputFormType } from '../../ChatBox/type';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type ChatBoxInputFormType } from '../../ChatBox/type';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -267,7 +267,7 @@ const RenderInput = () => {
               })();
             }}
           >
-            {isDisabledInput ? t('common:common.Restart') : t('common:common.Run')}
+            {isDisabledInput ? t('common:Restart') : t('common:Run')}
           </Button>
         </Flex>
       )}

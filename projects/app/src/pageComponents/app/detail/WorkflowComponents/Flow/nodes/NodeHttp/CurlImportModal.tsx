@@ -3,7 +3,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { ModalBody, Button, ModalFooter, Textarea } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useContextSelector } from 'use-context-selector';
@@ -95,12 +95,12 @@ const CurlImportModal = ({
       onClose();
 
       toast({
-        title: t('common:common.Import success'),
+        title: t('common:import_success'),
         status: 'success'
       });
     } catch (error: any) {
       toast({
-        title: t('common:common.Import failed'),
+        title: t('common:import_failed'),
         description: error.message,
         status: 'error'
       });
@@ -126,7 +126,7 @@ const CurlImportModal = ({
       </ModalBody>
       <ModalFooter>
         <Button onClick={handleSubmit((data) => handleFileProcessing(data.curlContent))}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

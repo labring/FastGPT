@@ -1,11 +1,15 @@
 import React from 'react';
-import { ModalFooter, ModalBody, Button, Flex } from '@chakra-ui/react';
+import { ModalFooter, ModalBody, Button, Flex, Box } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal/index';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { APIFileServer, FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import {
+  type APIFileServer,
+  type FeishuServer,
+  type YuqueServer
+} from '@fastgpt/global/core/dataset/apiDataset';
 import ApiDatasetForm from '@/pageComponents/dataset/ApiDatasetForm';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -45,7 +49,7 @@ const EditAPIDatasetInfoModal = ({
     {
       onSuccess: (res) => {
         toast({
-          title: t('common:common.Update Success'),
+          title: t('common:update_success'),
           status: 'success'
         });
         onClose();
@@ -57,24 +61,29 @@ const EditAPIDatasetInfoModal = ({
     <MyModal isOpen onClose={onClose} w={'450px'} iconSrc="modal/edit" title={title}>
       <ModalBody>
         {datasetTypeCourseMap[type] && (
-          <Flex
-            alignItems={'center'}
-            justifyContent={'flex-end'}
-            color={'primary.600'}
-            fontSize={'sm'}
-            cursor={'pointer'}
-            onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
-          >
-            <MyIcon name={'book'} w={4} mr={0.5} />
-            {t('common:Instructions')}
+          <Flex alignItems={'center'} justifyContent={'space-between'}>
+            <Box color={'myGray.900'} fontSize={'sm'} fontWeight={500}>
+              {t('dataset:apidataset_configuration')}
+            </Box>
+            <Flex
+              alignItems={'center'}
+              justifyContent={'flex-end'}
+              color={'primary.600'}
+              fontSize={'sm'}
+              cursor={'pointer'}
+              onClick={() => window.open(getDocPath(datasetTypeCourseMap[type]), '_blank')}
+            >
+              <MyIcon name={'book'} w={4} mr={0.5} />
+              {t('common:Instructions')}
+            </Flex>
           </Flex>
         )}
         {/* @ts-ignore */}
-        <ApiDatasetForm type={type} form={form} />
+        <ApiDatasetForm datasetId={datasetDetail._id} type={type} form={form} />
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={form.handleSubmit(onSave)} px={6}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

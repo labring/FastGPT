@@ -5,8 +5,8 @@ import Edit from './Edit';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ToolType } from '@fastgpt/global/core/app/type';
-import { MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
+import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 
 const MCPTools = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);

@@ -19,9 +19,9 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tool
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
+import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import {
   BillStatusEnum,
-  BillTypeEnum,
   billPayWayMap,
   billStatusMap,
   billTypeMap

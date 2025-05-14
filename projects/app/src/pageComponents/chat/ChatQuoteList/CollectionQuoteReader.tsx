@@ -1,5 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
-import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -14,13 +14,13 @@ import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import CollectionQuoteItem from './CollectionQuoteItem';
-import { GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
+import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getCollectionQuote } from '@/web/core/chat/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
-import { QuoteDataItemType } from '@/service/core/chat/constants';
+import { type QuoteDataItemType } from '@/service/core/chat/constants';
 
 const CollectionReader = ({
   rawSearch,
@@ -165,7 +165,7 @@ const CollectionReader = ({
                   }
                 })}
             >
-              {sourceName || t('common:common.UnKnow Source')}
+              {sourceName || t('common:unknow_source')}
             </Box>
             <Box ml={3}>
               <DownloadButton

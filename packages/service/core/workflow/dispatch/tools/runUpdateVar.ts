@@ -1,15 +1,16 @@
-import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   getReferenceVariableValue,
   replaceEditorVariable
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { removeSystemVariable } from '../utils';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';

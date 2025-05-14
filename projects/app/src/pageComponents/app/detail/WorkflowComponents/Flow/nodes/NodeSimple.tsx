@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
@@ -38,7 +38,7 @@ const NodeSimple = ({
         {filterHiddenInputs.length > 0 && (
           <>
             <Container>
-              <IOTitle text={t('common:common.Input')} />
+              <IOTitle text={t('common:Input')} />
               <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
             </Container>
           </>
@@ -46,7 +46,7 @@ const NodeSimple = ({
         {outputs.filter((output) => output.type !== FlowNodeOutputTypeEnum.hidden).length > 0 && (
           <>
             <Container>
-              <IOTitle text={t('common:common.Output')} />
+              <IOTitle text={t('common:Output')} />
               <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
             </Container>
           </>

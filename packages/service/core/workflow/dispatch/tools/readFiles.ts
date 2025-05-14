@@ -1,7 +1,8 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import axios from 'axios';
 import { serverRequestBaseUrl } from '../../../../common/api/serverRequest';
 import { MongoRawTextBuffer } from '../../../../common/buffer/rawText/schema';
@@ -10,7 +11,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { detectFileEncoding, parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { readRawContentByFileBuffer } from '../../../../common/file/read/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../../../common/system/log';
 

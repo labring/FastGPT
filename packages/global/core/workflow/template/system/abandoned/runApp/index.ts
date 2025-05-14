@@ -4,7 +4,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../../node/constant';
-import { FlowNodeTemplateType } from '../../../../type/node';
+import { type FlowNodeTemplateType } from '../../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -25,7 +25,6 @@ export const RunAppModule: FlowNodeTemplateType = {
   name: i18nT('workflow:application_call'),
   intro: i18nT('workflow:select_another_application_to_call'),
   showStatus: true,
-  version: '481',
   isTool: true,
   inputs: [
     {

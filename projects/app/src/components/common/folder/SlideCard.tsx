@@ -6,9 +6,9 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 import CollaboratorContextProvider, {
-  MemberManagerInputPropsType
+  type MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -90,7 +90,7 @@ const FolderSlideCard = ({
               mt={4}
               onClick={onMove}
             >
-              {t('common:common.Move')}
+              {t('common:Move')}
             </Button>
             {managePer.permission.isOwner && (
               <Button
@@ -107,7 +107,7 @@ const FolderSlideCard = ({
                   openConfirm(onDelete)();
                 }}
               >
-                {t('common:common.Delete folder')}
+                {t('common:delete_folder')}
               </Button>
             )}
           </Box>
@@ -150,7 +150,7 @@ const FolderSlideCard = ({
                                 onClick={onOpenManageModal}
                               />
                             </MyTooltip>
-                            <MyTooltip label={t('common:common.Add')}>
+                            <MyTooltip label={t('common:Add')}>
                               <MyIcon
                                 w="1rem"
                                 name="support/permission/collaborator"

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ImportSourceItemType } from '@/web/core/dataset/type.d';
+import { type ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { Box, Button } from '@chakra-ui/react';
 import FileSelector from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
@@ -71,7 +71,7 @@ const SelectFile = React.memo(function SelectFile() {
           {selectFiles.length > 0
             ? `${t('dataset:total_num_files', { total: selectFiles.length })} | `
             : ''}
-          {t('common:common.Next Step')}
+          {t('common:next_step')}
         </Button>
       </Box>
     </Box>

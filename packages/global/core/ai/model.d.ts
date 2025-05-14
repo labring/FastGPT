@@ -1,4 +1,4 @@
-import { ModelTypeEnum } from './model';
+import type { ModelTypeEnum } from './model';
 import type { ModelProviderIdType } from './provider';
 
 type PriceType = {

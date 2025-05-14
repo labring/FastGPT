@@ -7,7 +7,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -69,7 +69,7 @@ const EditForm = ({
               runGetMCPTools({ url });
             }}
           >
-            {t('common:common.Parse')}
+            {t('common:Parse')}
           </Button>
         </Flex>
 
@@ -215,7 +215,7 @@ const ToolDetailModal = ({ tool, onClose }: { tool: ToolType; onClose: () => voi
         </Flex>
 
         <Box mt={6} color={'myGray.900'} fontWeight={'medium'}>
-          {t('common:common.Params')}
+          {t('common:Params')}
         </Box>
 
         <Box mt={3}>
@@ -256,7 +256,7 @@ const ToolDetailModal = ({ tool, onClose }: { tool: ToolType; onClose: () => voi
       </ModalBody>
       <ModalFooter>
         <Button size={'md'} onClick={onClose}>
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

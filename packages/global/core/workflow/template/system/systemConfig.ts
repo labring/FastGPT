@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node.d';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
 import { i18nT } from '../../../../../web/i18n/utils';
@@ -15,7 +15,6 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   intro: '',
   unique: true,
   forbidDelete: true,
-  version: '481',
   inputs: [],
   outputs: []
 };

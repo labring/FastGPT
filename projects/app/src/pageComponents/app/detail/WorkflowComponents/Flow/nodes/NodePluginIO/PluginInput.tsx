@@ -1,12 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { Box, Button, HStack } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io.d';
 import Container from '../../components/Container';
 import { useTranslation } from 'next-i18next';
@@ -108,7 +108,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               size={'sm'}
               onClick={() => setEditField(defaultInput)}
             >
-              {t('common:common.Add New')}
+              {t('common:add_new')}
             </Button>
           </HStack>
           <VariableTable
@@ -143,7 +143,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         </Container>
         {outputs.length != inputs.length && (
           <Container>
-            <IOTitle text={t('common:common.Output')} />
+            <IOTitle text={t('common:Output')} />
             <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
           </Container>
         )}

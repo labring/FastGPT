@@ -1,5 +1,5 @@
 import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeOutputKeyEnum,
@@ -8,7 +8,7 @@ import {
 import { getHandleConfig } from '../utils';
 import { Input_Template_UserChatInput } from '../input';
 import { i18nT } from '../../../../../web/i18n/utils';
-import { FlowNodeOutputItemType } from '../../type/io';
+import { type FlowNodeOutputItemType } from '../../type/io';
 
 export const userFilesInput: FlowNodeOutputItemType = {
   id: NodeOutputKeyEnum.userFiles,
@@ -30,7 +30,6 @@ export const WorkflowStart: FlowNodeTemplateType = {
   intro: '',
   forbidDelete: true,
   unique: true,
-  version: '481',
   inputs: [{ ...Input_Template_UserChatInput, toolDescription: i18nT('workflow:user_question') }],
   outputs: [
     {

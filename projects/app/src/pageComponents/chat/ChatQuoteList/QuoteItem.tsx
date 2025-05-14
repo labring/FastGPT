@@ -1,4 +1,4 @@
-import { ScoreItemType } from '@/components/core/dataset/QuoteItem';
+import { type ScoreItemType } from '@/components/core/dataset/QuoteItem';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ScoreTag from './ScoreTag';
@@ -136,7 +136,7 @@ const QuoteItem = ({
             {q.length + (a?.length || 0)}
           </Flex>
         </MyTooltip>
-        <MyTooltip label={t('common:common.Copy')}>
+        <MyTooltip label={t('common:Copy')}>
           <Flex
             alignItems={'center'}
             fontSize={'10px'}

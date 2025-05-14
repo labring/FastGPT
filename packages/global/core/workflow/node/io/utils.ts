@@ -1,4 +1,4 @@
-import { FlowNodeInputItemType } from '../../type/io';
+import { type FlowNodeInputItemType } from '../../type/io';
 
 export const getInputComponentProps = (input: FlowNodeInputItemType) => {
   return {

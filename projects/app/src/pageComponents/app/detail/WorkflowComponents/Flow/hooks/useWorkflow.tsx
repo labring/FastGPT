@@ -1,18 +1,18 @@
 import React, { useCallback, useState } from 'react';
 import {
-  Connection,
-  NodeChange,
-  OnConnectStartParams,
+  type Connection,
+  type NodeChange,
+  type OnConnectStartParams,
   addEdge,
-  EdgeChange,
-  Edge,
-  Node,
-  NodePositionChange,
-  XYPosition,
+  type EdgeChange,
+  type Edge,
+  type Node,
+  type NodePositionChange,
+  type XYPosition,
   useReactFlow,
-  NodeRemoveChange,
-  NodeSelectionChange,
-  EdgeRemoveChange
+  type NodeRemoveChange,
+  type NodeSelectionChange,
+  type EdgeRemoveChange
 } from 'reactflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import 'reactflow/dist/style.css';
@@ -21,10 +21,10 @@ import { useTranslation } from 'next-i18next';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { THelperLine } from '@fastgpt/global/core/workflow/type';
+import { type THelperLine } from '@fastgpt/global/core/workflow/type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { AppContext } from '../../../context';

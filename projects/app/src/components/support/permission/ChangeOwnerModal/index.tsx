@@ -10,7 +10,7 @@ import {
   Button,
   useDisclosure
 } from '@chakra-ui/react';
-import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import Icon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -166,9 +166,9 @@ export function ChangeOwnerModal({
       <ModalFooter>
         <HStack>
           <Button onClick={onClose} variant={'whiteBase'}>
-            {t('common:common.Cancel')}
+            {t('common:Cancel')}
           </Button>
-          <Button onClick={onConfirm}>{t('common:common.Confirm')}</Button>
+          <Button onClick={onConfirm}>{t('common:Confirm')}</Button>
         </HStack>
       </ModalFooter>
     </MyModal>

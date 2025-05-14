@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -26,7 +26,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_text_content_extraction'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/content_extract/',
+  courseUrl: '/docs/guide/dashboard/workflow/content_extract/',
   version: '4.9.2',
   inputs: [
     {

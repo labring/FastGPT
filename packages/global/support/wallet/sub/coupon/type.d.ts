@@ -1,4 +1,4 @@
-import { SubTypeEnum, StandardSubLevelEnum } from '../constants';
+import type { SubTypeEnum, StandardSubLevelEnum } from '../constants';
 
 export type TeamCouponSub = {
   type: `${SubTypeEnum}`; // Sub type

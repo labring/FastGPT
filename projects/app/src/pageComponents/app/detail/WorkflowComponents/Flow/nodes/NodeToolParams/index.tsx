@@ -1,5 +1,5 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { NodeProps } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import React, { useMemo, useState } from 'react';
 import Container from '../../components/Container';
@@ -18,7 +18,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { defaultEditFormData } from '../render/RenderToolInput/EditFieldModal';
 import ToolParamsEditModal from './ToolParamsEditModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';

@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import { readFileRawText } from './rawText';
 
 // 加载源文件内容

@@ -10,7 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node.d';
+import { type FlowNodeTemplateType } from '../../../type/node.d';
 import { getHandleConfig } from '../../utils';
 
 export const UserSelectNode: FlowNodeTemplateType = {
@@ -24,8 +24,7 @@ export const UserSelectNode: FlowNodeTemplateType = {
   name: i18nT('app:workflow.user_select'),
   intro: i18nT(`app:workflow.user_select_tip`),
   isTool: true,
-  version: '489',
-  courseUrl: '/docs/guide/workbench/workflow/user-selection/',
+  courseUrl: '/docs/guide/dashboard/workflow/user-selection/',
   inputs: [
     {
       key: NodeInputKeyEnum.description,

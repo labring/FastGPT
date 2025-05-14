@@ -1,4 +1,4 @@
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { MongoAppVersion } from './schema';
 import { Types } from '../../../common/mongo';
 
@@ -15,6 +15,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   if (version) {
     return {
       versionId: version._id,
+      versionName: version.versionName,
       nodes: version.nodes,
       edges: version.edges,
       chatConfig: version.chatConfig || app?.chatConfig || {}
@@ -22,6 +23,7 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   }
   return {
     versionId: app?.pluginData?.nodeVersion,
+    versionName: app?.name,
     nodes: app?.modules || [],
     edges: app?.edges || [],
     chatConfig: app?.chatConfig || {}
@@ -47,6 +49,7 @@ export const getAppVersionById = async ({
     if (version) {
       return {
         versionId: version._id,
+        versionName: version.versionName,
         nodes: version.nodes,
         edges: version.edges,
         chatConfig: version.chatConfig || app?.chatConfig || {}
@@ -56,4 +59,23 @@ export const getAppVersionById = async ({
 
   // If the version does not exist, the latest version is returned
   return getAppLatestVersion(appId, app);
+};
+
+export const checkIsLatestVersion = async ({
+  appId,
+  versionId
+}: {
+  appId: string;
+  versionId: string;
+}) => {
+  const version = await MongoAppVersion.findOne(
+    {
+      appId,
+      isPublish: true,
+      _id: { $gt: versionId }
+    },
+    '_id'
+  ).lean();
+
+  return !version;
 };

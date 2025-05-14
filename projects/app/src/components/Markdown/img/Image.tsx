@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, ImageProps, Skeleton } from '@chakra-ui/react';
+import { Box, type ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
 

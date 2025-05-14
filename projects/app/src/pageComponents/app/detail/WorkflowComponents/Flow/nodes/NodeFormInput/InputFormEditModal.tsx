@@ -5,7 +5,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { type UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import InputTypeConfig from '../NodePluginIO/InputTypeConfig';
@@ -100,7 +100,7 @@ const InputFormEditModal = ({
         onSubmit(data);
         toast({
           status: 'success',
-          title: t('common:common.Add Success')
+          title: t('common:add_success')
         });
         reset(defaultFormInput);
       }

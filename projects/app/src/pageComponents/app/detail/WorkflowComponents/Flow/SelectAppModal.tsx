@@ -5,8 +5,8 @@ import type { SelectAppItemType } from '@fastgpt/global/core/workflow/template/s
 import { useTranslation } from 'next-i18next';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import {
-  GetResourceFolderListProps,
-  GetResourceListItemResponse
+  type GetResourceFolderListProps,
+  type GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -62,7 +62,7 @@ const SelectAppModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button
           ml={2}
@@ -73,7 +73,7 @@ const SelectAppModal = ({
             onClose();
           }}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

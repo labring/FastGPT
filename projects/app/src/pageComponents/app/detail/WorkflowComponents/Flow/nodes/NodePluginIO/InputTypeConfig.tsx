@@ -24,7 +24,7 @@ import MultipleSelect, {
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import React, { useMemo } from 'react';
-import { useFieldArray, UseFormReturn } from 'react-hook-form';
+import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag';
@@ -588,7 +588,7 @@ const InputTypeConfig = ({
 
       <Flex justify={'flex-end'} gap={3} pb={8} pr={8}>
         <Button variant={'whiteBase'} fontWeight={'medium'} onClick={onClose} w={20}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button
           variant={'primaryOutline'}
@@ -596,7 +596,7 @@ const InputTypeConfig = ({
           onClick={handleSubmit((data) => onSubmitSuccess(data, 'confirm'), onSubmitError)}
           w={20}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
         {!isEdit && (
           <Button
@@ -604,7 +604,7 @@ const InputTypeConfig = ({
             onClick={handleSubmit((data) => onSubmitSuccess(data, 'continue'), onSubmitError)}
             w={20}
           >
-            {t('common:common.Continue_Adding')}
+            {t('common:Continue_Adding')}
           </Button>
         )}
       </Flex>

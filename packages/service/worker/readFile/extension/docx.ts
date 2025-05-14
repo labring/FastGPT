@@ -1,5 +1,5 @@
 import mammoth, { images } from 'mammoth';
-import { ReadRawTextByBuffer, ReadFileResponse, ImageType } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse, type ImageType } from '../type';
 import { html2md } from '../../htmlStr2Md/utils';
 
 /**

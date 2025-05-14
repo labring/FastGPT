@@ -1,6 +1,6 @@
 import { MongoOperationLog } from './schema';
-import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { TemplateParamsMap } from './constants';
+import type { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { type TemplateParamsMap } from './constants';
 import { retryFn } from '../../../global/common/system/utils';
 
 export function addOperationLog<T extends OperationLogEventEnum>({

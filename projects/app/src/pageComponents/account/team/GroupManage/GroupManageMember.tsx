@@ -8,15 +8,15 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { putUpdateGroup } from '@/web/support/user/team/group/api';
-import { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
+import type { GroupMemberRole } from '@fastgpt/global/support/permission/memberGroup/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import _ from 'lodash';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
@@ -294,10 +294,10 @@ function GroupEditModal({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:common.Close')}
+          {t('common:Close')}
         </Button>
         <Button isLoading={isLoading} onClick={onUpdate}>
-          {t('common:common.Save')}
+          {t('common:Save')}
         </Button>
       </ModalFooter>
     </MyModal>

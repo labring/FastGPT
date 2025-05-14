@@ -20,7 +20,19 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
       lean: vi.fn()
     })
   },
-  AppCollectionName: 'apps'
+  AppCollectionName: 'apps',
+  chatConfigType: {
+    welcomeText: String,
+    variables: Array,
+    questionGuide: Object,
+    ttsConfig: Object,
+    whisperConfig: Object,
+    scheduledTriggerConfig: Object,
+    chatInputGuide: Object,
+    fileSelectConfig: Object,
+    instruction: String,
+    autoExecute: Object
+  }
 }));
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({

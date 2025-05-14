@@ -150,7 +150,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                       {t('common:Name')}
                     </Th>
                     <Th bg="myGray.100" borderRightRadius="6px">
-                      {t('common:common.Action')}
+                      {t('common:Action')}
                     </Th>
                   </Tr>
                 </Thead>
@@ -298,13 +298,13 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
                 )}
               </HStack>
               {currentOrg?.path !== '' && (
-                <Box fontSize={'xs'}>{currentOrg?.description || t('common:common.no_intro')}</Box>
+                <Box fontSize={'xs'}>{currentOrg?.description || t('common:no_intro')}</Box>
               )}
 
               <Divider my={'20px'} />
 
               <Box fontWeight={500} fontSize="sm" color="myGray.900">
-                {t('common:common.Action')}
+                {t('common:Action')}
               </Box>
               {isTeamAdmin && (
                 <VStack gap="13px" w="100%">

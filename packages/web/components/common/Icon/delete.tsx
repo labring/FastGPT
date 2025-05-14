@@ -1,6 +1,6 @@
 import React from 'react';
 import MyIcon from './index';
-import { IconProps } from '@chakra-ui/react';
+import { type IconProps } from '@chakra-ui/react';
 
 const DeleteIcon = (props: IconProps) => {
   return (

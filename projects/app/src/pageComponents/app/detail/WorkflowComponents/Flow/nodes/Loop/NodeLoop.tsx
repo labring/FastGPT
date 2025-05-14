@@ -3,9 +3,9 @@
   When the childNodes of loopFlow change, it automatically calculates the rectangular width, height, and position of the childNodes, 
   thereby further updating the width and height properties of the loop node.
 */
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Background, NodeProps } from 'reactflow';
+import { Background, type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import IOTitle from '../../components/IOTitle';
@@ -29,7 +29,7 @@ import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { AppContext } from '../../../../context';
 import { isValidArrayReferenceValue } from '@fastgpt/global/core/workflow/utils';
-import { ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
+import { type ReferenceArrayValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useSize } from 'ahooks';
 import { WorkflowStatusContext } from '../../../context/workflowStatusContext';
 
@@ -190,7 +190,7 @@ const NodeLoop = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard selected={selected} maxW="full" menuForbid={{ copy: true }} {...data}>
       <Container position={'relative'} flex={1}>
-        <IOTitle text={t('common:common.Input')} />
+        <IOTitle text={t('common:Input')} />
         {RenderInputDom}
         {RenderChildrenNodes}
       </Container>

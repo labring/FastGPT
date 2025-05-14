@@ -5,7 +5,7 @@ import {
   WorkflowIOValueTypeEnum
 } from '../../../constants';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 
 export const LoopEndNode: FlowNodeTemplateType = {
@@ -19,7 +19,6 @@ export const LoopEndNode: FlowNodeTemplateType = {
   avatar: 'core/workflow/template/loopEnd',
   name: i18nT('workflow:loop_end'),
   showStatus: false,
-  version: '4811',
   inputs: [
     {
       key: NodeInputKeyEnum.loopEndInput,

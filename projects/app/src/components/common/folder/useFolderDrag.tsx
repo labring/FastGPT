@@ -1,4 +1,4 @@
-import React, { useState, DragEvent, useCallback } from 'react';
+import React, { useState, type DragEvent, useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 

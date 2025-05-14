@@ -1,5 +1,5 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ApiRequestProps } from '../../type/next';
+import { type ApiRequestProps } from '../../type/next';
 
 export function parsePaginationRequest(req: ApiRequestProps) {
   const {

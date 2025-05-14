@@ -5,8 +5,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 import UseGuideModal from '@/components/common/Modal/UseGuideModal';
 
 const PluginCard = ({

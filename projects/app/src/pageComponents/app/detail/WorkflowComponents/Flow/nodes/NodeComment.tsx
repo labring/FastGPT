@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import NodeCard from './render/NodeCard';
-import { NodeProps } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type NodeProps } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { Box, Textarea } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';

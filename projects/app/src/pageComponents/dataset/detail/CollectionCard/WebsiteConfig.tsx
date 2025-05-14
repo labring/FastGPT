@@ -32,7 +32,7 @@ import CollectionChunkForm, {
   type CollectionChunkFormType
 } from '../Form/CollectionChunkForm';
 import { getLLMDefaultChunkSize } from '@fastgpt/global/core/dataset/training/utils';
-import { ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
+import { type ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 
 export type WebsiteConfigFormType = {
   websiteConfig: {
@@ -134,7 +134,7 @@ const WebsiteConfigModal = ({
                   textDecoration={'underline'}
                   color={'blue.700'}
                 >
-                  {t('common:common.course.Read Course')}
+                  {t('common:read_course')}
                 </Link>
               )}
             </Box>
@@ -149,7 +149,7 @@ const WebsiteConfigModal = ({
             </Box>
             <Box mt={3}>
               <Box>
-                {t('common:core.dataset.website.Selector')}({t('common:common.choosable')})
+                {t('common:core.dataset.website.Selector')}({t('common:choosable')})
               </Box>
               <Input {...websiteInfoForm('selector')} placeholder="body .content #document" />
             </Box>
@@ -161,7 +161,7 @@ const WebsiteConfigModal = ({
         {activeStep == 0 && (
           <>
             <Button variant={'whiteBase'} onClick={onClose}>
-              {t('common:common.Close')}
+              {t('common:Close')}
             </Button>
             <Button
               ml={2}
@@ -171,20 +171,20 @@ const WebsiteConfigModal = ({
                 if (!strIsLink(data.url)) {
                   return toast({
                     status: 'warning',
-                    title: t('common:common.link.UnValid')
+                    title: t('common:link.UnValid')
                   });
                 }
                 goToNext();
               })}
             >
-              {t('common:common.Next Step')}
+              {t('common:next_step')}
             </Button>
           </>
         )}
         {activeStep == 1 && (
           <>
             <Button variant={'whiteBase'} onClick={goToPrevious}>
-              {t('common:common.Last Step')}
+              {t('common:last_step')}
             </Button>
             <Button
               ml={2}
@@ -250,7 +250,7 @@ const PromptTextarea = ({
             onClose();
           }}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

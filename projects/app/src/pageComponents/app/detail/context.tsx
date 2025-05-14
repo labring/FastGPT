@@ -1,7 +1,7 @@
 import {
-  Dispatch,
-  ReactNode,
-  SetStateAction,
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
   useCallback,
   useEffect,
   useMemo,
@@ -12,8 +12,8 @@ import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
-import { AppUpdateParams, PostPublishAppProps } from '@/global/core/app/api';
+import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppUpdateParams, type PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp, getAppLatestVersion } from '@/web/core/app/api/version';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import dynamic from 'next/dynamic';
@@ -191,8 +191,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       onSuccess() {
         router.replace(`/dashboard/apps`);
       },
-      successToast: t('common:common.Delete Success'),
-      errorToast: t('common:common.Delete Failed')
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
   const onDelApp = useCallback(

@@ -2,7 +2,7 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constant
 import { i18nT } from '../../i18n/utils';
 import type { PluginGroupSchemaType, TGroupType } from '../../../service/core/app/plugin/type';
 import { AppTemplateTypeEnum } from '@fastgpt/global/core/app/constants';
-import { TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
+import { type TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 
 export const workflowNodeTemplateList = [
   {
@@ -42,7 +42,7 @@ export const workflowNodeTemplateList = [
   },
   {
     type: FlowNodeTemplateTypeEnum.other,
-    label: i18nT('common:common.Other'),
+    label: i18nT('common:Other'),
     list: []
   },
   {
@@ -59,7 +59,7 @@ export const systemPluginTemplateList: TGroupType[] = [
   },
   {
     typeId: FlowNodeTemplateTypeEnum.search,
-    typeName: i18nT('common:common.Search')
+    typeName: i18nT('common:Search')
   },
   {
     typeId: FlowNodeTemplateTypeEnum.multimodal,
@@ -71,7 +71,7 @@ export const systemPluginTemplateList: TGroupType[] = [
   },
   {
     typeId: FlowNodeTemplateTypeEnum.other,
-    typeName: i18nT('common:common.Other')
+    typeName: i18nT('common:Other')
   }
 ];
 export const defaultGroup: PluginGroupSchemaType = {
@@ -84,27 +84,27 @@ export const defaultGroup: PluginGroupSchemaType = {
 
 export const defaultTemplateTypes: TemplateTypeSchemaType[] = [
   {
-    typeName: i18nT('common:app.templateMarket.templateTags.Writing'),
+    typeName: i18nT('common:templateTags.Writing'),
     typeId: AppTemplateTypeEnum.writing,
     typeOrder: 0
   },
   {
-    typeName: i18nT('common:app.templateMarket.templateTags.Image_generation'),
+    typeName: i18nT('common:templateTags.Image_generation'),
     typeId: AppTemplateTypeEnum.imageGeneration,
     typeOrder: 1
   },
   {
-    typeName: i18nT('common:app.templateMarket.templateTags.Web_search'),
+    typeName: i18nT('common:templateTags.Web_search'),
     typeId: AppTemplateTypeEnum.webSearch,
     typeOrder: 2
   },
   {
-    typeName: i18nT('common:app.templateMarket.templateTags.Roleplay'),
+    typeName: i18nT('common:templateTags.Roleplay'),
     typeId: AppTemplateTypeEnum.roleplay,
     typeOrder: 3
   },
   {
-    typeName: i18nT('common:app.templateMarket.templateTags.Office_services'),
+    typeName: i18nT('common:templateTags.Office_services'),
     typeId: AppTemplateTypeEnum.officeServices,
     typeOrder: 4
   }

@@ -9,7 +9,7 @@ import {
   HStack,
   Switch,
   ModalFooter,
-  BoxProps,
+  type BoxProps,
   Checkbox
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
@@ -188,7 +188,7 @@ const FileSelect = ({
         </ModalBody>
         <ModalFooter>
           <Button onClick={onClose} px={8}>
-            {t('common:common.Confirm')}
+            {t('common:Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

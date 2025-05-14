@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, ButtonProps } from '@chakra-ui/react';
+import { Box, type ButtonProps } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { getTeamList, putSwitchTeam } from '@/web/support/user/team/api';

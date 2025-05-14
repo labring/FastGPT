@@ -1,8 +1,8 @@
 import axios, {
-  Method,
-  InternalAxiosRequestConfig,
-  AxiosResponse,
-  AxiosRequestConfig
+  type Method,
+  type InternalAxiosRequestConfig,
+  type AxiosResponse,
+  type AxiosRequestConfig
 } from 'axios';
 import { FastGPTProUrl } from '../system/constants';
 

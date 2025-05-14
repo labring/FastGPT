@@ -1,7 +1,7 @@
 import React from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Divider from '../components/Divider';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
@@ -18,11 +18,11 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container>
-        <IOTitle text={t('common:common.Input')} />
+        <IOTitle text={t('common:Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} />
       </Container>
       <Container>
-        <IOTitle text={t('common:common.Output')} />
+        <IOTitle text={t('common:Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
       <Box position={'relative'}>

@@ -18,12 +18,26 @@ import WorkorderButton from './WorkorderButton';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
-const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
-const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
-const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
-const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
-const ManualCopyModal = dynamic(() =>
-  import('@fastgpt/web/hooks/useCopyData').then((mod) => mod.ManualCopyModal)
+
+const ResetExpiredPswModal = dynamic(
+  () => import('@/components/support/user/safe/ResetExpiredPswModal'),
+  { ssr: false }
+);
+const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'), {
+  ssr: false
+});
+const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
+  ssr: false
+});
+const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'), {
+  ssr: false
+});
+const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'), {
+  ssr: false
+});
+const ManualCopyModal = dynamic(
+  () => import('@fastgpt/web/hooks/useCopyData').then((mod) => mod.ManualCopyModal),
+  { ssr: false }
 );
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
@@ -62,8 +76,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { Loading } = useLoading();
-  const { loading, feConfigs, notSufficientModalType, llmModelList, embeddingModelList } =
-    useSystemStore();
+  const { loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng } = useI18nLng();
@@ -72,6 +85,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     () => router.pathname === '/chat' && Object.values(router.query).join('').length !== 0,
     [router.pathname, router.query]
   );
+  const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
 
   // System hook
   const { data, refetch: refetchUnRead } = useQuery(['getUnreadCount'], getUnreadCount, {
@@ -80,8 +94,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   });
   const unread = data?.unReadCount || 0;
   const importantInforms = data?.importantInforms || [];
-
-  const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
 
   const showUpdateNotification =
     isUpdateNotification &&
@@ -159,14 +171,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       </Box>
       {feConfigs?.isPlus && (
         <>
-          {notSufficientModalType && <NotSufficientModal type={notSufficientModalType} />}
-          {!!userInfo && <SystemMsgModal />}
+          <NotSufficientModal />
+          <SystemMsgModal />
           {showUpdateNotification && (
             <UpdateContact onClose={() => setIsUpdateNotification(false)} mode="contact" />
           )}
           {!!userInfo && importantInforms.length > 0 && (
             <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
           )}
+          <ResetExpiredPswModal />
           <WorkorderButton />
         </>
       )}

@@ -8,7 +8,7 @@
   "login_success": "登录成功",
   "no_remind": "不再提醒",
   "password_condition": "密码最多 60 位",
-  "password_tip": "密码至少 6 位，且至少包含两种组合：数字、字母或特殊字符",
+  "password_tip": "密码至少 8 位，且至少包含两种组合：数字、字母或特殊字符",
   "policy_tip": "使用即代表你同意我们的",
   "privacy": "隐私协议",
   "privacy_policy": "隐私政策",

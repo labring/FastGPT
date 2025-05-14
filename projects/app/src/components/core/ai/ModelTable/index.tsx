@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   ModelProviderList,
-  ModelProviderIdType,
+  type ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -34,7 +34,7 @@ const ModelTable = () => {
   const { t } = useTranslation();
   const [provider, setProvider] = useState<ModelProviderIdType | ''>('');
   const providerList = useRef<{ label: any; value: ModelProviderIdType | '' }[]>([
-    { label: t('common:common.All'), value: '' },
+    { label: t('common:All'), value: '' },
     ...ModelProviderList.map((item) => ({
       label: (
         <HStack>
@@ -48,7 +48,7 @@ const ModelTable = () => {
 
   const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
   const selectModelTypeList = useRef<{ label: string; value: ModelTypeEnum | '' }[]>([
-    { label: t('common:common.All'), value: '' },
+    { label: t('common:All'), value: '' },
     ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
   ]);
 
@@ -65,14 +65,14 @@ const ModelTable = () => {
         typeof item.inputPrice === 'number' ? (
           <Box>
             <Flex>
-              {`${t('common:common.Input')}:`}
+              {`${t('common:Input')}:`}
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                 {item.inputPrice || 0}
               </Box>
               {`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
             </Flex>
             <Flex>
-              {`${t('common:common.Output')}:`}
+              {`${t('common:Output')}:`}
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
                 {item.outputPrice || 0}
               </Box>
@@ -94,7 +94,7 @@ const ModelTable = () => {
       typeLabel: t('common:model.type.embedding'),
       priceLabel: (
         <Flex color={'myGray.700'}>
-          {`${t('common:common.Input')}: `}
+          {`${t('common:Input')}: `}
           <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
             {item.charsPointsPrice || 0}
           </Box>
@@ -134,7 +134,7 @@ const ModelTable = () => {
       typeLabel: t('common:model.type.reRank'),
       priceLabel: item.charsPointsPrice ? (
         <Flex color={'myGray.700'}>
-          {`${t('common:common.Input')}: `}
+          {`${t('common:Input')}: `}
           <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
             {item.charsPointsPrice}
           </Box>

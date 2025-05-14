@@ -1,5 +1,5 @@
 import iconv from 'iconv-lite';
-import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
+import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 
 const rawEncodingList = [
   'ascii',

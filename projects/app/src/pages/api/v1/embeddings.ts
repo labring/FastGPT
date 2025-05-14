@@ -6,7 +6,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
-import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
+import type { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { NextAPI } from '@/service/middleware/entry';
 
 type Props = {

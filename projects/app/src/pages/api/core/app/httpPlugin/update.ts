@@ -1,10 +1,10 @@
 import type { NextApiResponse } from 'next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { ClientSession } from '@fastgpt/service/common/mongo';
+import { type ClientSession } from '@fastgpt/service/common/mongo';
 import { httpApiSchema2Plugins } from '@fastgpt/global/core/app/httpPlugin/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { AppSchema } from '@fastgpt/global/core/app/type';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';

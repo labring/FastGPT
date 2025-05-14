@@ -1,4 +1,4 @@
-import { TrackRegisterParams } from '../../marketing/type';
+import type { TrackRegisterParams } from '../../marketing/type';
 
 export type GetWXLoginQRResponse = {
   code: string;

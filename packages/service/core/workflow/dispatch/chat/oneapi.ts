@@ -4,7 +4,11 @@ import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/co
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
-import { parseReasoningContent, parseReasoningStreamContent } from '../../../ai/utils';
+import {
+  removeDatasetCiteText,
+  parseReasoningContent,
+  parseLLMStreamResponse
+} from '../../../ai/utils';
 import { createChatCompletion } from '../../../ai/config';
 import type {
   ChatCompletionMessageParam,
@@ -41,15 +45,15 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { responseWriteController } from '../../../../common/response';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { checkQuoteQAValue, getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { computedMaxToken, llmCompletionsBodyFormat } from '../../../ai/utils';
-import { WorkflowResponseType } from '../type';
+import { type WorkflowResponseType } from '../type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
-import { AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
+import { type AiChatQuoteRoleType } from '@fastgpt/global/core/workflow/template/system/aiChat/type';
 import { getFileContentFromLinks, getHistoryFileLinks } from '../tools/readFiles';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
 import { i18nT } from '../../../../../web/i18n/utils';
@@ -75,7 +79,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     res,
     requestOrigin,
     stream = false,
-    parseQuote = true,
+    retainDatasetCite = true,
     externalProvider,
     histories,
     node: { name, version },
@@ -159,8 +163,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       userChatInput,
       systemPrompt,
       userFiles,
-      documentQuoteText,
-      parseQuote
+      documentQuoteText
     }),
     // Censor = true and system key, will check content
     (() => {
@@ -189,8 +192,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       max_tokens,
       top_p: aiChatTopP,
       stop: aiChatStopSign,
-      response_format: aiChatResponseFormat as any,
-      json_schema: aiChatJsonSchema
+      response_format: {
+        type: aiChatResponseFormat as any,
+        json_schema: aiChatJsonSchema
+      }
     },
     modelConstantsData
   );
@@ -223,7 +228,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         aiChatReasoning,
         parseThinkTag: modelConstantsData.reasoning,
         isResponseAnswerText,
-        workflowStreamResponse
+        workflowStreamResponse,
+        retainDatasetCite
       });
 
       return {
@@ -258,23 +264,21 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       })();
 
       // Some models do not support streaming
-      if (stream) {
-        if (aiChatReasoning && reasoningContent) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              reasoning_content: reasoningContent
-            })
-          });
-        }
-        if (isResponseAnswerText && content) {
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.fastAnswer,
-            data: textAdaptGptResponse({
-              text: content
-            })
-          });
-        }
+      if (aiChatReasoning && reasoningContent) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            reasoning_content: removeDatasetCiteText(reasoningContent, retainDatasetCite)
+          })
+        });
+      }
+      if (isResponseAnswerText && content) {
+        workflowStreamResponse?.({
+          event: SseResponseEventEnum.fastAnswer,
+          data: textAdaptGptResponse({
+            text: removeDatasetCiteText(content, retainDatasetCite)
+          })
+        });
       }
 
       return {
@@ -452,8 +456,7 @@ async function getChatMessages({
   systemPrompt,
   userChatInput,
   userFiles,
-  documentQuoteText,
-  parseQuote = true
+  documentQuoteText
 }: {
   model: LLMModelItemType;
   maxTokens?: number;
@@ -461,7 +464,7 @@ async function getChatMessages({
   aiChatQuoteRole: AiChatQuoteRoleType; // user: replace user prompt; system: replace system prompt
   datasetQuotePrompt?: string;
   datasetQuoteText: string;
-  version: string;
+  version?: string;
 
   useDatasetQuote: boolean;
   histories: ChatItemType[];
@@ -470,14 +473,13 @@ async function getChatMessages({
 
   userFiles: UserChatItemValueItemType['file'][];
   documentQuoteText?: string; // document quote
-  parseQuote?: boolean;
 }) {
   // Dataset prompt ====>
   // User role or prompt include question
   const quoteRole =
     aiChatQuoteRole === 'user' || datasetQuotePrompt.includes('{{question}}') ? 'user' : 'system';
 
-  const defaultQuotePrompt = getQuotePrompt(version, quoteRole, parseQuote);
+  const defaultQuotePrompt = getQuotePrompt(version, quoteRole);
 
   const datasetQuotePromptTemplate = datasetQuotePrompt || defaultQuotePrompt;
 
@@ -539,7 +541,8 @@ async function streamResponse({
   workflowStreamResponse,
   aiChatReasoning,
   parseThinkTag,
-  isResponseAnswerText
+  isResponseAnswerText,
+  retainDatasetCite = true
 }: {
   res: NextApiResponse;
   stream: StreamChatType;
@@ -547,6 +550,7 @@ async function streamResponse({
   aiChatReasoning?: boolean;
   parseThinkTag?: boolean;
   isResponseAnswerText?: boolean;
+  retainDatasetCite: boolean;
 }) {
   const write = responseWriteController({
     res,
@@ -557,7 +561,7 @@ async function streamResponse({
   let finish_reason: CompletionFinishReason = null;
   let usage: CompletionUsage = getLLMDefaultUsage();
 
-  const { parsePart, getStartTagBuffer } = parseReasoningStreamContent();
+  const { parsePart } = parseLLMStreamResponse();
 
   for await (const part of stream) {
     usage = part.usage || usage;
@@ -568,7 +572,11 @@ async function streamResponse({
       break;
     }
 
-    const { reasoningContent, content, finishReason } = parsePart(part, parseThinkTag);
+    const { reasoningContent, content, responseContent, finishReason } = parsePart({
+      part,
+      parseThinkTag,
+      retainDatasetCite
+    });
     finish_reason = finish_reason || finishReason;
     answer += content;
     reasoning += reasoningContent;
@@ -583,26 +591,12 @@ async function streamResponse({
       });
     }
 
-    if (isResponseAnswerText && content) {
+    if (isResponseAnswerText && responseContent) {
       workflowStreamResponse?.({
         write,
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
-          text: content
-        })
-      });
-    }
-  }
-
-  // if answer is empty, try to get value from startTagBuffer. (Cause: The response content is too short to exceed the minimum parse length)
-  if (answer === '') {
-    answer = getStartTagBuffer();
-    if (isResponseAnswerText && answer) {
-      workflowStreamResponse?.({
-        write,
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: answer
+          text: responseContent
         })
       });
     }

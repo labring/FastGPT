@@ -1,7 +1,7 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
+import type { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import type {
@@ -14,6 +14,7 @@ import type {
   AccountRegisterBody,
   GetWXLoginQRResponse
 } from '@fastgpt/global/support/user/login/api.d';
+import type { preLoginResponse } from '@/pages/api/support/user/account/preLogin';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -68,6 +69,14 @@ export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw
     newPsw: hashStr(newPsw)
   });
 
+export const resetPassword = (newPsw: string) =>
+  POST('/support/user/account/resetExpiredPsw', {
+    newPsw: hashStr(newPsw)
+  });
+
+/* Check the whether password has expired */
+export const getCheckPswExpired = () => GET<boolean>('/support/user/account/checkPswExpired');
+
 export const updateNotificationAccount = (data: { account: string; verifyCode: string }) =>
   PUT('/proApi/support/user/team/updateNotificationAccount', data);
 
@@ -95,6 +104,9 @@ export const getCaptchaPic = (username: string) =>
   GET<{
     captchaImage: string;
   }>('/proApi/support/user/account/captcha/getImgCaptcha', { username });
+
+export const getPreLogin = (username: string) =>
+  GET<preLoginResponse>('/support/user/account/preLogin', { username });
 
 export const postSyncMembers = () => POST('/proApi/support/user/sync');
 

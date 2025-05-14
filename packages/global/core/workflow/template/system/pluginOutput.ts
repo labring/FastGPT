@@ -1,7 +1,7 @@
 import { i18nT } from '../../../../../web/i18n/utils';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node';
+import { type FlowNodeTemplateType } from '../../type/node';
 import { getHandleConfig } from '../utils';
 
 export const PluginOutputModule: FlowNodeTemplateType = {
@@ -16,7 +16,6 @@ export const PluginOutputModule: FlowNodeTemplateType = {
   name: i18nT('workflow:template.plugin_output'),
   intro: i18nT('workflow:intro_custom_plugin_output'),
   showStatus: false,
-  version: '481',
   inputs: [],
   outputs: []
 };

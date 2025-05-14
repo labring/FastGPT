@@ -9,30 +9,29 @@ import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  defaultNodeVersion
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getGlobalVariableNode } from './adapt';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { type EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
   getGuideModule
 } from '@fastgpt/global/core/workflow/utils';
-import { TFunction } from 'next-i18next';
+import { type TFunction } from 'next-i18next';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType,
-  ReferenceItemValueType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType,
+  type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io';
-import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
-import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
 import { cloneDeep, isEqual } from 'lodash';
 import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/utils';
 import { workflowSystemVariables } from '../app/utils';
@@ -101,10 +100,8 @@ export const storeNode2FlowNode = ({
     ...template,
     ...storeNode,
     avatar: template.avatar ?? storeNode.avatar,
-    version: storeNode.version ?? template.version ?? defaultNodeVersion,
-    /* 
-      Inputs and outputs, New fields are added, not reduced
-    */
+    version: template.version || storeNode.version,
+    // template 中的输入必须都有
     inputs: templateInputs
       .map<FlowNodeInputItemType>((templateInput) => {
         const storeInput =
@@ -113,10 +110,8 @@ export const storeNode2FlowNode = ({
         return {
           ...storeInput,
           ...templateInput,
-
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
-
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value,
           valueType: storeInput.valueType ?? templateInput.valueType,
@@ -124,29 +119,29 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        /* Concat dynamic inputs */
+        // 合并 store 中有，template 中没有的输入
         storeNode.inputs
           .filter((item) => !templateInputs.find((input) => input.key === item.key))
           .map((item) => {
             if (!dynamicInput) return item;
+            const templateInput = template.inputs.find((input) => input.key === item.key);
 
             return {
               ...item,
-              ...getInputComponentProps(dynamicInput)
+              ...getInputComponentProps(dynamicInput),
+              deprecated: templateInput?.deprecated
             };
           })
       ),
     outputs: templateOutputs
       .map<FlowNodeOutputItemType>((templateOutput) => {
         const storeOutput =
-          template.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
+          storeNode.outputs.find((item) => item.key === templateOutput.key) || templateOutput;
 
         return {
           ...storeOutput,
           ...templateOutput,
-
           description: t(templateOutput.description ?? (storeOutput.description as any)),
-
           id: storeOutput.id ?? templateOutput.id,
           label: storeOutput.label ?? templateOutput.label,
           value: storeOutput.value ?? templateOutput.value,
@@ -154,9 +149,15 @@ export const storeNode2FlowNode = ({
         };
       })
       .concat(
-        storeNode.outputs.filter(
-          (item) => !templateOutputs.find((output) => output.key === item.key)
-        )
+        storeNode.outputs
+          .filter((item) => !templateOutputs.find((output) => output.key === item.key))
+          .map((item) => {
+            const templateOutput = template.outputs.find((output) => output.key === item.key);
+            return {
+              ...item,
+              deprecated: templateOutput?.deprecated
+            };
+          })
       )
   };
 

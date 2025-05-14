@@ -91,8 +91,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       onSuccess() {
         getData(pageNum);
       },
-      successToast: t('common:common.Create Success'),
-      errorToast: t('common:common.Create Failed')
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed')
     }
   );
 
@@ -155,7 +155,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             flex={1}
             size={'sm'}
             h={'36px'}
-            placeholder={t('common:common.Search') || ''}
+            placeholder={t('common:Search') || ''}
             value={searchText}
             leftIcon={
               <MyIcon

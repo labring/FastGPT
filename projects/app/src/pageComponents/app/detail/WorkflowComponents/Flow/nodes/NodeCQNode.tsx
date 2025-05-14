@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { NodeProps, Position } from 'reactflow';
+import { type NodeProps, Position } from 'reactflow';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflow/template/system/classifyQuestion/type';
@@ -10,7 +10,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
+import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
@@ -35,7 +35,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             {agents.map((item, i) => (
               <Box key={item.key} mb={4}>
                 <Flex alignItems={'center'}>
-                  <MyTooltip label={t('common:common.Delete')}>
+                  <MyTooltip label={t('common:Delete')}>
                     <MyIcon
                       mt={1}
                       mr={2}

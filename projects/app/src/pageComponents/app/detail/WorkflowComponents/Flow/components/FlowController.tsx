@@ -3,7 +3,7 @@ import {
   Background,
   ControlButton,
   MiniMap,
-  MiniMapNodeProps,
+  type MiniMapNodeProps,
   Panel,
   useReactFlow,
   useViewport
@@ -150,7 +150,7 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* undo */}
-          <MyTooltip label={isMac ? t('common:common.undo_tip_mac') : t('common:common.undo_tip')}>
+          <MyTooltip label={isMac ? t('common:undo_tip_mac') : t('common:undo_tip')}>
             <ControlButton
               onClick={undo}
               style={buttonStyle}
@@ -162,7 +162,7 @@ const FlowController = React.memo(function FlowController() {
           </MyTooltip>
 
           {/* redo */}
-          <MyTooltip label={isMac ? t('common:common.redo_tip_mac') : t('common:common.redo_tip')}>
+          <MyTooltip label={isMac ? t('common:redo_tip_mac') : t('common:redo_tip')}>
             <ControlButton
               onClick={redo}
               style={buttonStyle}
@@ -176,9 +176,7 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* zoom out */}
-          <MyTooltip
-            label={isMac ? t('common:common.zoomin_tip_mac') : t('common:common.zoomin_tip')}
-          >
+          <MyTooltip label={isMac ? t('common:zoomin_tip_mac') : t('common:zoomin_tip')}>
             <ControlButton
               onClick={() => zoomOut()}
               style={buttonStyle}
@@ -190,9 +188,7 @@ const FlowController = React.memo(function FlowController() {
           </MyTooltip>
 
           {/* zoom in */}
-          <MyTooltip
-            label={isMac ? t('common:common.zoomout_tip_mac') : t('common:common.zoomout_tip')}
-          >
+          <MyTooltip label={isMac ? t('common:zoomout_tip_mac') : t('common:zoomout_tip')}>
             <ControlButton
               onClick={() => zoomIn()}
               style={buttonStyle}
@@ -206,7 +202,7 @@ const FlowController = React.memo(function FlowController() {
           <Box w="1px" h="20px" bg="gray.200" mx={1.5}></Box>
 
           {/* fit view */}
-          <MyTooltip label={t('common:common.page_center')}>
+          <MyTooltip label={t('common:page_center')}>
             <ControlButton
               onClick={() => fitView()}
               style={buttonStyle}

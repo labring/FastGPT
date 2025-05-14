@@ -13,7 +13,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { AppScheduledTriggerConfigType } from '@fastgpt/global/core/app/type';
+import { type AppScheduledTriggerConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import ScheduleTimeSelect, {

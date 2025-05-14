@@ -6,19 +6,19 @@ import {
   delDatasetById
 } from '@/web/core/dataset/api';
 import {
-  GetResourceFolderListProps,
-  ParentIdType,
-  ParentTreePathItemType
+  type GetResourceFolderListProps,
+  type ParentIdType,
+  type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
 import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
+import { type DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type';
-import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import { type DatasetItemType, type DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useTranslation } from 'next-i18next';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -136,7 +136,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const [editedDataset, setEditedDataset] = useState<EditResourceInfoFormType>();
 
   const { runAsync: onDelDataset } = useRequest2(delDatasetById, {
-    successToast: t('common:common.Delete Success'),
+    successToast: t('common:delete_success'),
     errorToast: t('common:dataset.Delete Dataset Error')
   });
 

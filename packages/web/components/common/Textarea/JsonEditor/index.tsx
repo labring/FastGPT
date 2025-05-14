@@ -1,6 +1,6 @@
-import React, { useEffect, useCallback, useRef, useState } from 'react';
-import Editor, { Monaco, loader, useMonaco } from '@monaco-editor/react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
+import Editor, { type Monaco, loader, useMonaco } from '@monaco-editor/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
@@ -169,19 +169,36 @@ const JSONEditor = ({
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
+  const formatedValue = useMemo(() => {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    if (value === undefined || value === null) {
+      return '';
+    }
+
+    if (typeof value === 'object') {
+      return JSON.stringify(value, null, 2);
+    }
+
+    return String(value);
+  }, [value]);
+
   const onBlur = useCallback(() => {
-    if (!value) return;
+    if (!formatedValue) return;
     // replace {{xx}} to true
-    const replaceValue = value?.replace(/{{(.*?)}}/g, 'true');
+    const replaceValue = formatedValue?.replace(/{{(.*?)}}/g, 'true');
     try {
       JSON.parse(replaceValue);
     } catch (error) {
       toast({
         status: 'warning',
-        title: t('common:common.jsonEditor.Parse error')
+        title: t('common:json_parse_error')
       });
     }
-  }, [value]);
+  }, [formatedValue, toast, t]);
+
   const beforeMount = useCallback((monaco: Monaco) => {
     monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
       validate: false,
@@ -241,7 +258,7 @@ const JSONEditor = ({
         theme="JSONEditorTheme"
         beforeMount={beforeMount}
         defaultValue={defaultValue}
-        value={value}
+        value={formatedValue}
         onChange={(e) => {
           onChange?.(e || '');
           if (!e) {

@@ -1,6 +1,14 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { Box, Button, Flex, ModalBody, useDisclosure, Switch, BoxProps } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  ModalBody,
+  useDisclosure,
+  Switch,
+  type BoxProps
+} from '@chakra-ui/react';
 
 import React from 'react';
 import { useTranslation } from 'next-i18next';
@@ -146,7 +154,7 @@ const QGConfigModal = ({
                     leftIcon={<MyIcon name={'edit'} w={'14px'} />}
                     onClick={onOpenCustomPrompt}
                   >
-                    {t('common:common.Edit')}
+                    {t('common:Edit')}
                   </Button>
                 </Flex>
                 <Box

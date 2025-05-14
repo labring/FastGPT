@@ -1,7 +1,7 @@
 import { create, createJSONStorage, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
 type State = {
   source?: `${ChatSourceEnum}`;

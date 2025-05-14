@@ -3,7 +3,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowNodeTemplateType } from '../../type/node.d';
+import { type FlowNodeTemplateType } from '../../type/node.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
@@ -27,8 +27,7 @@ export const HttpNode468: FlowNodeTemplateType = {
   intro: i18nT('workflow:intro_http_request'),
   showStatus: true,
   isTool: true,
-  courseUrl: '/docs/guide/workbench/workflow/http/',
-  version: '481',
+  courseUrl: '/docs/guide/dashboard/workflow/http/',
   inputs: [
     {
       ...Input_Template_DynamicInput,

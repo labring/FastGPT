@@ -1,5 +1,5 @@
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type.d';
+import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export type PluginOutputProps = ModuleDispatchProps<{

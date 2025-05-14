@@ -3,8 +3,8 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 
 export type getResDataQuery = OutLinkChatAuthProps & {

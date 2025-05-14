@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import NodeCard from './render/NodeCard';
-import { NodeProps } from 'reactflow';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type NodeProps } from 'reactflow';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { useTranslation } from 'next-i18next';
 import {
   Box,
@@ -14,7 +14,7 @@ import {
   NumberInputStepper,
   Switch
 } from '@chakra-ui/react';
-import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
+import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
@@ -26,7 +26,10 @@ import Container from '../components/Container';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { ReferenceItemValueType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  type ReferenceItemValueType,
+  type ReferenceValueType
+} from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getRefData } from '@/web/core/workflow/utils';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -313,7 +316,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                 ]);
               }}
             >
-              {t('common:common.Add New')}
+              {t('common:add_new')}
             </Button>
           </Flex>
         </Box>

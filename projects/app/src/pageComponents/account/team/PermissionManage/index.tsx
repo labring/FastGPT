@@ -45,9 +45,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
-import { Permission } from '@fastgpt/global/support/permission/controller';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import type { Permission } from '@fastgpt/global/support/permission/controller';
 
 function PermissionManage({
   Tabs,
@@ -239,7 +239,7 @@ function PermissionManage({
                 </Th>
                 <Th bg="myGray.100" borderRightRadius="md">
                   <Box mx="auto" w="fit-content">
-                    {t('common:common.Action')}
+                    {t('common:Action')}
                   </Box>
                 </Th>
               </Tr>

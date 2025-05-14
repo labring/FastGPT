@@ -1,4 +1,4 @@
-import { reTrainingDatasetFileCollectionParams } from '@fastgpt/global/core/dataset/api';
+import { type reTrainingDatasetFileCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionTypeEnum,
@@ -8,12 +8,12 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
-import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { delCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { i18nT } from '@fastgpt/web/i18n/utils';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type RetrainingCollectionResponse = {
   collectionId: string;
@@ -35,7 +35,7 @@ async function handler(
     authToken: true,
     authApiKey: true,
     collectionId: collectionId,
-    per: ReadPermissionVal
+    per: WritePermissionVal
   });
 
   const sourceReadType = await (async () => {
@@ -51,7 +51,7 @@ async function handler(
       if (!collection.fileId) return Promise.reject('fileId is missing');
       return {
         type: DatasetSourceReadTypeEnum.fileLocal,
-        sourceId: collection.fileId
+        sourceId: String(collection.fileId)
       };
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile) {
@@ -94,6 +94,7 @@ async function handler(
     const { collectionId } = await createCollectionAndInsertData({
       dataset: collection.dataset,
       rawText,
+      relatedId: collection.metadata?.relatedImgId,
       createCollectionParams: {
         ...data,
         teamId: collection.teamId,

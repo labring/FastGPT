@@ -1,4 +1,4 @@
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 type PaginationProps<T = {}> = T & {
   pageSize: number | string;

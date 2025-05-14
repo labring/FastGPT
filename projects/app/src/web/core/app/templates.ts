@@ -1,6 +1,6 @@
 import { parseCurl } from '@fastgpt/global/common/string/http';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { AppSchema } from '@fastgpt/global/core/app/type';
+import { type AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -8,8 +8,8 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
+  type FlowNodeInputItemType,
+  type FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 

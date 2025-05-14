@@ -4,7 +4,7 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box } from '@chakra-ui/react';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { childAppSystemKey } from './ToolSelectModal';
 import { Controller, useForm } from 'react-hook-form';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -105,7 +105,7 @@ const ConfigToolModal = ({
       </ModalBody>
       <ModalFooter gap={6}>
         <Button onClick={onCloseConfigTool} variant={'whiteBase'}>
-          {t('common:common.Cancel')}
+          {t('common:Cancel')}
         </Button>
         <Button
           variant={'primary'}
@@ -120,7 +120,7 @@ const ConfigToolModal = ({
             onCloseConfigTool();
           })}
         >
-          {t('common:common.Confirm')}
+          {t('common:Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -9,7 +9,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useForm } from 'react-hook-form';
 import { postCreateGroup, putUpdateGroup } from '@/web/support/user/team/group/api';
 import { DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
-import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 
 export type GroupFormType = {
   avatar: string;
@@ -118,7 +118,7 @@ function GroupInfoModal({
             }
           })}
         >
-          {editGroup ? t('common:common.Save') : t('common:new_create')}
+          {editGroup ? t('common:Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
       <AvatarSelect onSelect={onSelectAvatar} />

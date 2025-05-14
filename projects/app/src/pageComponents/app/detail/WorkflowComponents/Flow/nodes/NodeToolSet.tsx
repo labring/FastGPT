@@ -1,11 +1,11 @@
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
 import { useTranslation } from 'react-i18next';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 import { Box, Flex } from '@chakra-ui/react';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {

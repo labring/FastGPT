@@ -8,7 +8,7 @@
   "login_success": "Login successful",
   "no_remind": "Don't remind again",
   "password_condition": "Password maximum 60 characters",
-  "password_tip": "Password must be at least 6 characters long and contain at least two combinations: numbers, letters, or special characters",
+  "password_tip": "Password must be at least 8 characters long and contain at least two combinations: numbers, letters, or special characters",
   "policy_tip": "By using this service, you agree to our",
   "privacy": "Privacy Policy",
   "privacy_policy": "Privacy Policy",

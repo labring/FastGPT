@@ -9,7 +9,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { FlowNodeTemplateType } from '../../../type/node';
+import { type FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
@@ -26,8 +26,7 @@ export const CodeNode: FlowNodeTemplateType = {
   name: i18nT('workflow:code_execution'),
   intro: i18nT('workflow:execute_a_simple_script_code_usually_for_complex_data_processing'),
   showStatus: true,
-  courseUrl: '/docs/guide/workbench/workflow/sandbox/',
-  version: '482',
+  courseUrl: '/docs/guide/dashboard/workflow/sandbox/',
   inputs: [
     {
       ...Input_Template_DynamicInput,

@@ -1,4 +1,4 @@
-import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
+import type { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from './constants';
 
 // Content of plan
 export type TeamStandardSubPlanItemType = {

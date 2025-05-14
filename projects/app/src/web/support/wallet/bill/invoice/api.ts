@@ -1,5 +1,5 @@
 import { GET, POST } from '@/web/common/api/request';
-import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import type { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { InvoiceType } from '@fastgpt/global/support/wallet/bill/type';
 import type { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';

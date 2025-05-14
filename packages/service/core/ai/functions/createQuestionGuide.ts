@@ -2,7 +2,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { createChatCompletion } from '../config';
 import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
-import { llmCompletionsBodyFormat, llmResponseToAnswerText } from '../utils';
+import { llmCompletionsBodyFormat, formatLLMResponse } from '../utils';
 import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt
@@ -42,12 +42,12 @@ export async function createQuestionGuide({
         temperature: 0.1,
         max_tokens: 200,
         messages: requestMessages,
-        stream: false
+        stream: true
       },
       model
     )
   });
-  const { text: answer, usage } = await llmResponseToAnswerText(response);
+  const { text: answer, usage } = await formatLLMResponse(response);
 
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');

@@ -1,4 +1,4 @@
-import { PluginRunBoxProps } from '@/components/core/chat/ChatContainer/PluginRunBox/type';
+import { type PluginRunBoxProps } from '@/components/core/chat/ChatContainer/PluginRunBox/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import React, { useEffect } from 'react';
 import PluginRunBox from '@/components/core/chat/ChatContainer/PluginRunBox';
@@ -26,7 +26,7 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
     <Grid gridTemplateColumns={'450px 1fr'} h={'100%'}>
       <Box px={3} py={4} borderRight={'base'} h={'100%'} overflowY={'auto'} w={'100%'}>
         <Box color={'myGray.900'} mb={5}>
-          {t('common:common.Input')}
+          {t('common:Input')}
         </Box>
         <PluginRunBox {...props} showTab={PluginRunBoxTabEnum.input} />
       </Box>
@@ -34,8 +34,8 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
         <Box display={'inline-block'}>
           <LightRowTabs<PluginRunBoxTabEnum>
             list={[
-              { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-              { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
+              { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
+              { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
             ]}
             value={tab}
             onChange={setTab}
@@ -54,9 +54,9 @@ const CustomPluginRunBox = (props: PluginRunBoxProps) => {
     <Stack py={2} px={4} h={'100%'}>
       <LightRowTabs<PluginRunBoxTabEnum>
         list={[
-          { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
-          { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
-          { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
+          { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
+          { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
+          { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
         ]}
         value={tab}
         onChange={setTab}

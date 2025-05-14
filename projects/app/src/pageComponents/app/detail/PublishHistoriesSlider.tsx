@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import {
   getAppVersionDetail,
-  getWorkflowVersionList,
+  getAppVersionList,
   updateAppVersion
 } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
-import { Box, BoxProps, Button, Flex, Input } from '@chakra-ui/react';
+import { Box, type BoxProps, Button, Flex, Input } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from './context';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
@@ -167,7 +167,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
           );
         })}
         <Box py={2} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
-          {t('common:common.No more data')}
+          {t('common:no_more_data')}
         </Box>
       </Flex>
     </Flex>
@@ -186,7 +186,7 @@ const TeamCloud = ({
     ScrollData,
     data: scrollDataList,
     setData
-  } = useScrollPagination(getWorkflowVersionList, {
+  } = useScrollPagination(getAppVersionList, {
     pageSize: 30,
     params: {
       appId: appDetail._id

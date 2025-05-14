@@ -1,8 +1,8 @@
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { GET } from '@fastgpt/service/common/api/plusRequest';
 import {
-  AuthTeamTagTokenProps,
-  AuthTokenFromTeamDomainResponse
+  type AuthTeamTagTokenProps,
+  type AuthTokenFromTeamDomainResponse
 } from '@fastgpt/global/support/user/team/tag';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 

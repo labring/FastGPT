@@ -1,14 +1,14 @@
-import React, { Dispatch, useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import React, { type Dispatch, useMemo } from 'react';
+import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { Box, Flex } from '@chakra-ui/react';
 import Container from '../../components/Container';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { AppContext } from '../../../../context';
-import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
+import { type AppChatConfigType, type AppDetailType } from '@fastgpt/global/core/app/type';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { useMount } from 'ahooks';
 import ChatFunctionTip from '@/components/core/app/Tip';

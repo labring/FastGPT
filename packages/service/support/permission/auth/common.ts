@@ -1,7 +1,7 @@
 import { parseHeaderCert } from '../controller';
-import { AuthModeType } from '../type';
+import { type AuthModeType } from '../type';
 import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
-import { ApiRequestProps } from '../../../type/next';
+import { type ApiRequestProps } from '../../../type/next';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);

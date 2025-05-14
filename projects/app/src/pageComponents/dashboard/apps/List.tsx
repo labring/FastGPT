@@ -16,7 +16,7 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import MyMenu, { MenuItemType } from '@fastgpt/web/components/common/MyMenu';
+import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
 import { AppPermissionList } from '@fastgpt/global/support/permission/app/constant';
 import {
   deleteAppCollaborators,
@@ -34,9 +34,9 @@ import { postCopyApp } from '@/web/core/app/api/app';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
-import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import UserBox from '@fastgpt/web/components/common/UserBox';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -101,8 +101,8 @@ const ListItem = () => {
       onSuccess() {
         loadMyApps();
       },
-      successToast: t('common:common.Delete Success'),
-      errorToast: t('common:common.Delete Failed')
+      successToast: t('common:delete_success'),
+      errorToast: t('common:delete_failed')
     }
   );
 
@@ -149,7 +149,7 @@ const ListItem = () => {
               h="100%"
               label={
                 app.type === AppTypeEnum.folder
-                  ? t('common:common.folder.Open folder')
+                  ? t('common:open_folder')
                   : app.permission.hasWritePer
                     ? t('app:edit_app')
                     : t('app:go_to_chat')
@@ -217,17 +217,11 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <Box className={'textEllipsis2'} whiteSpace={'pre-wrap'}>
-                    {app.intro || t('common:common.no_intro')}
+                    {app.intro || t('common:no_intro')}
                   </Box>
                 </Box>
-                <Flex
-                  h={'24px'}
-                  alignItems={'center'}
-                  justifyContent={'space-between'}
-                  fontSize={'mini'}
-                  color={'myGray.500'}
-                >
-                  <HStack spacing={3.5}>
+                <HStack h={'24px'} fontSize={'mini'} color={'myGray.500'} w="full">
+                  <HStack flex={'1 0 0'}>
                     <UserBox
                       sourceMember={app.sourceMember}
                       fontSize="xs"
@@ -241,7 +235,6 @@ const ListItem = () => {
                       w={'0.875rem'}
                     />
                   </HStack>
-
                   <HStack>
                     {isPc && (
                       <HStack spacing={0.5} className="time">
@@ -333,7 +326,7 @@ const ListItem = () => {
                                             {
                                               icon: 'common/file/move',
                                               type: 'grayBg' as MenuItemType,
-                                              label: t('common:common.folder.Move to'),
+                                              label: t('common:move_to'),
                                               onClick: () => setMoveAppId(app._id)
                                             }
                                           ]),
@@ -375,7 +368,7 @@ const ListItem = () => {
                                       {
                                         type: 'danger' as 'danger',
                                         icon: 'delete',
-                                        label: t('common:common.Delete'),
+                                        label: t('common:Delete'),
                                         onClick: () =>
                                           openConfirmDel(
                                             () => onclickDelApp(app._id),
@@ -394,7 +387,7 @@ const ListItem = () => {
                       </Box>
                     )}
                   </HStack>
-                </Flex>
+                </HStack>
               </MyBox>
             </MyTooltip>
           );

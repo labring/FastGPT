@@ -7,7 +7,7 @@ import AppCard from './AppCard';
 import ChatTest from './ChatTest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditForm from './EditForm';
-import { ToolType } from '@fastgpt/global/core/app/type';
+import { type ToolType } from '@fastgpt/global/core/app/type';
 
 const Edit = ({
   url,

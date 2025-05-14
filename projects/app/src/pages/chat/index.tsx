@@ -26,7 +26,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { AppListItemType } from '@fastgpt/global/core/app/type';
+import { type AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';

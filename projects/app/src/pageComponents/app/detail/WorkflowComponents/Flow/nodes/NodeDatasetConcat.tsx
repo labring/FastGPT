@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
-import { NodeProps } from 'reactflow';
+import { type NodeProps } from 'reactflow';
 import NodeCard from './render/NodeCard';
-import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
 import { Box, Button, Flex, HStack } from '@chakra-ui/react';
@@ -12,8 +12,8 @@ import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import MySlider from '@/components/Slider';
 import {
-  FlowNodeInputItemType,
-  ReferenceItemValueType
+  type FlowNodeInputItemType,
+  type ReferenceItemValueType
 } from '@fastgpt/global/core/workflow/type/io.d';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
@@ -96,7 +96,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   });
                 }}
               >
-                {t('common:common.Add New')}
+                {t('common:add_new')}
               </Button>
             </HStack>
             <Box mt={2}>
@@ -120,7 +120,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           {/* {RenderQuoteList} */}
         </Container>
         <Container>
-          <IOTitle text={t('common:common.Output')} />
+          <IOTitle text={t('common:Output')} />
           <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
         </Container>
       </NodeCard>
