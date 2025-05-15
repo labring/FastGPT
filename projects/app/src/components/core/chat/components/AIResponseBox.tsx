@@ -96,7 +96,7 @@ const RenderText = React.memo(function RenderText({
   showAnimation: boolean;
   text: string;
   chatItemDataId: string;
-  onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
+  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) {
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
@@ -256,7 +256,7 @@ const AIResponseBox = ({
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastResponseValue: boolean;
   isChatting: boolean;
-  onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
+  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
