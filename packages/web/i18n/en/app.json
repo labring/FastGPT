@@ -192,6 +192,7 @@
   "type.error.Workflow data is empty": "No workflow data was obtained",
   "type.error.workflowresponseempty": "Response content is empty",
   "type_not_recognized": "App type not recognized",
+  "un_auth": "No permission",
   "upload_file_max_amount": "Maximum File Quantity",
   "upload_file_max_amount_tip": "Maximum number of files uploaded in a single round of conversation",
   "variable.select type_desc": "You can define a global variable that does not need to be filled in by the user.\n\nThe value of this variable can come from the API interface, the Query of the shared link, or assigned through the [Variable Update] module.",

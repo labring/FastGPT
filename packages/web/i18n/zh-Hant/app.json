@@ -192,6 +192,7 @@
   "type.error.Workflow data is empty": "沒有獲取到工作流數據",
   "type.error.workflowresponseempty": "響應內容為空",
   "type_not_recognized": "未識別到應用程式類型",
+  "un_auth": "無權限",
   "upload_file_max_amount": "最大檔案數量",
   "upload_file_max_amount_tip": "單輪對話中最大上傳檔案數量",
   "variable.select type_desc": "可以為工作流程定義全域變數，常用於暫存。賦值的方式包括：\n1. 從對話頁面的 query 參數取得。\n2. 透過 API 的 variables 物件傳遞。\n3. 透過【變數更新】節點進行賦值。",

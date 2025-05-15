@@ -199,7 +199,7 @@ export const formatToolError = (error?: string) => {
   ];
 
   if (error && unExistError.includes(error)) {
-    return i18nT('common:code_error.app_error.un_auth_app');
+    return i18nT('app:un_auth');
   } else {
     return error;
   }
