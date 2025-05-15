@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type AppDetailType, type ToolType } from '@fastgpt/global/core/app/type';
+import { type AppDetailType, type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -24,7 +24,7 @@ export type updateMCPToolsQuery = {};
 export type updateMCPToolsBody = {
   appId: string;
   url: string;
-  toolList: ToolType[];
+  toolList: McpToolConfigType[];
 };
 
 export type updateMCPToolsResponse = {};
