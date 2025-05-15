@@ -40,7 +40,7 @@ async function handler(
           await authApp({ req, authToken: true, appId: pluginId, per: ReadPermissionVal });
         }
 
-        const pluginData = await getChildAppPreviewNode({ id: pluginId });
+        const pluginData = await getChildAppPreviewNode({ appId: pluginId });
         result[pluginId] = pluginData;
       } catch (error) {
         console.error(`Error fetching plugin ${pluginId}:`, error);
