@@ -52,7 +52,7 @@ const ApiDatasetForm = ({
     { setTrue: openBaseurlSeletModal, setFalse: closeBaseurlSelectModal }
   ] = useBoolean();
 
-  const parentId = yuqueServer?.basePath || feishuServer?.folderToken || apiServer?.basePath;
+  const parentId = yuqueServer?.basePath || apiServer?.basePath;
 
   const canSelectBaseUrl = useMemo(() => {
     switch (type) {
