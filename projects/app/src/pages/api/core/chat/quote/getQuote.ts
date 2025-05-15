@@ -19,9 +19,9 @@ export type GetQuoteProps = {
   teamToken?: string;
 };
 
-export type GetQuoteDataRes = QuoteDataItemType[];
+export type GetQuotesRes = QuoteDataItemType[];
 
-async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuoteDataRes> {
+async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuotesRes> {
   const {
     appId,
     chatId,
