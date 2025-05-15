@@ -66,6 +66,7 @@ const CiteLink = React.memo(function CiteLink({
   const { t } = useTranslation();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+
   if (!Types.ObjectId.isValid(id)) {
     return <></>;
   }
@@ -190,7 +191,7 @@ const A = ({
   // Cite
   if (
     (props.href?.startsWith('CITE') || props.href?.startsWith('QUOTE')) &&
-    typeof children?.[0] === 'string'
+    typeof content === 'string'
   ) {
     return (
       <CiteLink

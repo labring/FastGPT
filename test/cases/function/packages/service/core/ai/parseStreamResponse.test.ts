@@ -384,6 +384,22 @@ describe('Parse dataset cite content test', async () => {
         content: '知识库问答系统[67e517e7476861](CITE)[67e517e74767063e882d6861](CITE)',
         responseContent: '知识库问答系统[67e517e7476861](CITE)'
       }
+    },
+    {
+      // [id](CITE)
+      data: [
+        { content: '知识库' },
+        { content: '问答系统' },
+        { content: '[i' },
+        { content: 'd](CITE)' },
+        { content: '[67e517e747' },
+        { content: '67063e882d' },
+        { content: '6861](CITE)' }
+      ],
+      correct: {
+        content: '知识库问答系统[id](CITE)[67e517e74767063e882d6861](CITE)',
+        responseContent: '知识库问答系统'
+      }
     }
   ];
 

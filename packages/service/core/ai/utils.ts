@@ -223,7 +223,9 @@ export const parseReasoningContent = (text: string): [string, string] => {
 };
 
 export const removeDatasetCiteText = (text: string, retainDatasetCite: boolean) => {
-  return retainDatasetCite ? text : text.replace(/\[([a-f0-9]{24})\](?:\([^\)]*\)?)?/g, '');
+  return retainDatasetCite
+    ? text.replace(/\[id\]\(CITE\)/g, '')
+    : text.replace(/\[([a-f0-9]{24})\](?:\([^\)]*\)?)?/g, '').replace(/\[id\]\(CITE\)/g, '');
 };
 
 // Parse llm stream part
