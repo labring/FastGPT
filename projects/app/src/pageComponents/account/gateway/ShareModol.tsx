@@ -4,10 +4,12 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CopyIcon } from '@chakra-ui/icons';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 
 // 分享门户组件
 const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
   const { copyData } = useCopyData();
+  const { gateConfig } = useGateStore();
 
   // 门户链接和自定义域名
   const [defaultGateUrl] = useState(`${window.location.origin}/chat/gate`);
@@ -23,7 +25,8 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
     onClose();
   };
 
-  // 生成随机CNAME值
+  // 获取门户状态
+  const isGateEnabled = gateConfig?.status || false;
 
   return (
     <MyModal isOpen={isOpen} onClose={onClose} maxW="500px">
@@ -111,17 +114,28 @@ const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               >
                 门户状态:
               </Text>
-              <Flex bg="#EDFBF3" borderRadius="6px" p="4px 8px" alignItems="center" gap="4px">
-                <Box w="6px" h="6px" borderRadius="50%" bg="#039855"></Box>
+              <Flex
+                bg={isGateEnabled ? '#EDFBF3' : '#FFF0F0'}
+                borderRadius="6px"
+                p="4px 8px"
+                alignItems="center"
+                gap="4px"
+              >
+                <Box
+                  w="6px"
+                  h="6px"
+                  borderRadius="50%"
+                  bg={isGateEnabled ? '#039855' : '#D92D20'}
+                ></Box>
                 <Text
                   fontFamily="PingFang SC"
                   fontWeight="500"
                   fontSize="12px"
                   lineHeight="16px"
                   letterSpacing="0.5px"
-                  color="#039855"
+                  color={isGateEnabled ? '#039855' : '#D92D20'}
                 >
-                  已启用
+                  {isGateEnabled ? '已启用' : '已禁用'}
                 </Text>
               </Flex>
             </Flex>

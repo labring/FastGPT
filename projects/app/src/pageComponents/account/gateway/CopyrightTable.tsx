@@ -242,27 +242,17 @@ const CopyrightTable = ({ teamName }: Props) => {
                   position="relative"
                 >
                   <Flex gap={{ base: 3, md: 5 }} alignItems="center">
-                    <Box
-                      width={logoBoxSizeWithText}
-                      height={logoBoxSizeWithText}
-                      bg="white"
-                      border="0.483px solid #ECECEC"
-                      borderRadius={logoBorderRadius}
-                      display="flex"
-                      justifyContent="center"
-                      alignItems="center"
-                      position="relative"
-                      overflow="hidden"
-                      boxSizing="border-box"
-                      transition="all 0.3s ease"
-                    >
+                    {avatar ? (
                       <Flex
-                        width="40px"
-                        height="40px"
+                        width={logoBoxSizeWithText}
+                        height={logoBoxSizeWithText}
                         justifyContent="center"
                         alignItems="center"
-                        flexShrink="0"
-                        aspectRatio="1/1"
+                        position="relative"
+                        overflow="hidden"
+                        borderRadius={logoBorderRadius}
+                        boxSizing="border-box"
+                        transition="all 0.3s ease"
                       >
                         <Image
                           src={avatar}
@@ -270,10 +260,42 @@ const CopyrightTable = ({ teamName }: Props) => {
                           width="100%"
                           height="100%"
                           objectFit="contain"
-                          fallbackSrc="/icon/logo.svg"
                         />
                       </Flex>
-                    </Box>
+                    ) : (
+                      <Box
+                        width={logoBoxSizeWithText}
+                        height={logoBoxSizeWithText}
+                        bg="white"
+                        border="0.483px solid #ECECEC"
+                        borderRadius={logoBorderRadius}
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        position="relative"
+                        overflow="hidden"
+                        boxSizing="border-box"
+                        transition="all 0.3s ease"
+                      >
+                        <Flex
+                          width="40px"
+                          height="40px"
+                          justifyContent="center"
+                          alignItems="center"
+                          flexShrink="0"
+                          aspectRatio="1/1"
+                        >
+                          <Image
+                            src={avatar}
+                            alt="Team Logo"
+                            width="100%"
+                            height="100%"
+                            objectFit="contain"
+                            fallbackSrc="/icon/logo.svg"
+                          />
+                        </Flex>
+                      </Box>
+                    )}
                     <Text fontSize={titleFontSize} fontWeight={700} lineHeight="140%">
                       {watch('name')}
                     </Text>
@@ -314,27 +336,17 @@ const CopyrightTable = ({ teamName }: Props) => {
                   role="group"
                   position="relative"
                 >
-                  <Box
-                    width={logoBoxSize}
-                    height={logoBoxSize}
-                    bg="white"
-                    border="0.483px solid #ECECEC"
-                    borderRadius={logoBorderRadius}
-                    display="flex"
-                    justifyContent="center"
-                    alignItems="center"
-                    position="relative"
-                    overflow="hidden"
-                    boxSizing="border-box"
-                    transition="all 0.3s ease"
-                  >
+                  {avatar ? (
                     <Flex
-                      width="40px"
-                      height="40px"
+                      width={logoBoxSize}
+                      height={logoBoxSize}
                       justifyContent="center"
                       alignItems="center"
-                      flexShrink="0"
-                      aspectRatio="1/1"
+                      position="relative"
+                      overflow="hidden"
+                      borderRadius={logoBorderRadius}
+                      boxSizing="border-box"
+                      transition="all 0.3s ease"
                     >
                       <Image
                         src={avatar}
@@ -342,10 +354,42 @@ const CopyrightTable = ({ teamName }: Props) => {
                         width="100%"
                         height="100%"
                         objectFit="contain"
-                        fallbackSrc="/icon/logo.svg"
                       />
                     </Flex>
-                  </Box>
+                  ) : (
+                    <Box
+                      width={logoBoxSize}
+                      height={logoBoxSize}
+                      bg="white"
+                      border="0.483px solid #ECECEC"
+                      borderRadius={logoBorderRadius}
+                      display="flex"
+                      justifyContent="center"
+                      alignItems="center"
+                      position="relative"
+                      overflow="hidden"
+                      boxSizing="border-box"
+                      transition="all 0.3s ease"
+                    >
+                      <Flex
+                        width="40px"
+                        height="40px"
+                        justifyContent="center"
+                        alignItems="center"
+                        flexShrink="0"
+                        aspectRatio="1/1"
+                      >
+                        <Image
+                          src={avatar}
+                          alt="Team Logo"
+                          width="100%"
+                          height="100%"
+                          objectFit="contain"
+                          fallbackSrc="/icon/logo.svg"
+                        />
+                      </Flex>
+                    </Box>
+                  )}
 
                   {/* 悬浮遮罩 - 1:1 */}
                   <Box
