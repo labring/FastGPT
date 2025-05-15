@@ -149,7 +149,7 @@ export const readRawContentByFileBuffer = async ({
     return await systemParse();
   })();
 
-  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. Uploading file image.`);
+  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
 
   // markdown data format
   if (imageList) {
@@ -185,7 +185,7 @@ export const readRawContentByFileBuffer = async ({
     }
   }
 
-  addLog.debug(`Upload file image success, time: ${Date.now() - start}ms`);
+  addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
 
   return { rawText, formatText, imageList };
 };

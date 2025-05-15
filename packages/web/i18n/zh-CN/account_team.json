@@ -84,7 +84,7 @@
   "owner": "所有者",
   "permission": "权限",
   "permission_apikeyCreate": "创建 API 密钥",
-  "permission_apikeyCreate_Tip": "可以创建全局的 APIKey",
+  "permission_apikeyCreate_Tip": "可以创建全局的 APIKey和 MCP 服务",
   "permission_appCreate": "创建应用",
   "permission_appCreate_tip": "可以在根目录创建应用，（文件夹下的创建权限由文件夹控制）",
   "permission_datasetCreate": "创建知识库",

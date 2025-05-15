@@ -59,8 +59,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -148,7 +148,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
+      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -161,7 +161,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
+  }, [t, isPc, appId, isOpenSlider, onCloseSlider, datasetCiteData]);
 
   return (
     <Flex h={'100%'}>
@@ -173,7 +173,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      {(!quoteData || isPc) && (
+      {(!datasetCiteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
           <Flex h={'100%'} flexDirection={['column', 'row']}>
             {/* pc always show history. */}
@@ -222,12 +222,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </PageContainer>
       )}
 
-      {quoteData && (
+      {datasetCiteData && (
         <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
           <ChatQuoteList
-            rawSearch={quoteData.rawSearch}
-            metadata={quoteData.metadata}
-            onClose={() => setQuoteData(undefined)}
+            rawSearch={datasetCiteData.rawSearch}
+            metadata={datasetCiteData.metadata}
+            onClose={() => setCiteModalData(undefined)}
           />
         </PageContainer>
       )}

@@ -77,7 +77,7 @@
   "owner": "owner",
   "permission": "Permissions",
   "permission_apikeyCreate": "Create API Key",
-  "permission_apikeyCreate_Tip": "Can create global APIKeys",
+  "permission_apikeyCreate_Tip": "You can create global APIKey and MCP services",
   "permission_appCreate": "Create Application",
   "permission_appCreate_tip": "Can create applications in the root directory (creation permissions in folders are controlled by the folder)",
   "permission_datasetCreate": "Create Knowledge Base",

@@ -43,8 +43,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -60,7 +60,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         bottom={0}
         right={0}
         onClick={() => {
-          setQuoteData(undefined);
+          setCiteModalData(undefined);
           onClose();
         }}
       />
@@ -72,7 +72,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         top={5}
         right={0}
         h={isOpen ? '95%' : '0'}
-        w={isOpen ? (quoteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
+        w={isOpen ? (datasetCiteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -152,7 +152,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
             <ChatContainer />
           </Box>
 
-          {quoteData && (
+          {datasetCiteData && (
             <Box
               flex={'1 0 0'}
               w={0}
@@ -166,9 +166,9 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                rawSearch={quoteData.rawSearch}
-                metadata={quoteData.metadata}
-                onClose={() => setQuoteData(undefined)}
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={() => setCiteModalData(undefined)}
               />
             </Box>
           )}

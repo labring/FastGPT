@@ -753,6 +753,7 @@
   "data_index_image": "图片索引",
   "data_index_question": "推测问题索引",
   "data_index_summary": "摘要索引",
+  "data_not_found": "数据找不到了",
   "dataset.Confirm move the folder": "确认移动到该目录",
   "dataset.Confirm to delete the data": "确认删除该数据？",
   "dataset.Confirm to delete the file": "确认删除该文件及其所有数据？",

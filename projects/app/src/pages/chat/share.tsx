@@ -85,8 +85,8 @@ const OutLink = (props: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -226,7 +226,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
+      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -241,7 +241,7 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
+  }, [isOpenSlider, isPc, onCloseSlider, datasetCiteData, showHistory, t]);
 
   return (
     <>
@@ -255,7 +255,7 @@ const OutLink = (props: Props) => {
         gap={4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
-        {(!quoteData || isPc) && (
+        {(!datasetCiteData || isPc) && (
           <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
@@ -303,12 +303,12 @@ const OutLink = (props: Props) => {
           </PageContainer>
         )}
 
-        {quoteData && (
+        {datasetCiteData && (
           <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
             <ChatQuoteList
-              rawSearch={quoteData.rawSearch}
-              metadata={quoteData.metadata}
-              onClose={() => setQuoteData(undefined)}
+              rawSearch={datasetCiteData.rawSearch}
+              metadata={datasetCiteData.metadata}
+              onClose={() => setCiteModalData(undefined)}
             />
           </PageContainer>
         )}

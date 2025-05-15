@@ -13,6 +13,7 @@ import {
 } from '@fastgpt/global/core/app/mcpTools/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type createMCPToolsQuery = {};
 
@@ -33,7 +34,7 @@ async function handler(
   const { name, avatar, toolList, url, parentId } = req.body;
 
   const { teamId, tmbId, userId } = parentId
-    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   await checkTeamAppLimit(teamId);

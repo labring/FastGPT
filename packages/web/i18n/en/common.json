@@ -754,6 +754,7 @@
   "data_index_image": "Image Index",
   "data_index_question": "Inferred question index",
   "data_index_summary": "Summary Index",
+  "data_not_found": "Data can't be found",
   "dataset.Confirm move the folder": "Confirm to Move to This Directory",
   "dataset.Confirm to delete the data": "Confirm to Delete This Data?",
   "dataset.Confirm to delete the file": "Confirm to Delete This File and All Its Data?",

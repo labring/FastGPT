@@ -268,7 +268,7 @@ export async function dispatchDatasetSearch(
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: {
       prompt: getDatasetSearchToolResponsePrompt(),
-      quotes: searchRes.map((item) => ({
+      cites: searchRes.map((item) => ({
         id: item.id,
         sourceName: item.sourceName,
         updateTime: item.updateTime,
