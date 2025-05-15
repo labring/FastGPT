@@ -56,10 +56,11 @@ async function handler(
       });
     }
 
-    await MongoApp.findByIdAndUpdate(
-      appId,
+    await MongoApp.updateOne(
+      { _id: appId },
       {
-        modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })]
+        modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })],
+        updateTime: new Date()
       },
       { session }
     );
@@ -97,6 +98,7 @@ const updateMCPChildrenTool = async ({
     teamId
   });
 
+  // 删除 DB 里有，新的工具列表里没有的工具
   for await (const tool of dbTools) {
     if (!toolSetData.toolList.find((t) => t.name === tool.name)) {
       await onDelOneApp({
@@ -107,6 +109,7 @@ const updateMCPChildrenTool = async ({
     }
   }
 
+  // 创建 DB 里没有，新的工具列表里有的工具
   for await (const tool of toolSetData.toolList) {
     if (!dbTools.find((t) => t.name === tool.name)) {
       await onCreateApp({
@@ -123,11 +126,12 @@ const updateMCPChildrenTool = async ({
     }
   }
 
+  // 更新 DB 里有的工具
   for await (const tool of toolSetData.toolList) {
     const dbTool = dbTools.find((t) => t.name === tool.name);
     if (dbTool) {
-      await MongoApp.findByIdAndUpdate(
-        dbTool._id,
+      await MongoApp.updateOne(
+        { _id: dbTool._id },
         {
           modules: [getMCPToolRuntimeNode({ tool, url: toolSetData.url })]
         },

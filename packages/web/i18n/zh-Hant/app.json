@@ -18,7 +18,6 @@
   "app.modules.click to update": "點選更新",
   "app.modules.has new version": "有新版本",
   "app.modules.not_found": "元件遺失",
-  "app.modules.not_found_tips": "系統內無法查詢到該元件，請刪除，否則流程無法正常運作",
   "app.version_current": "目前版本",
   "app.version_initial": "初始版本",
   "app.version_name_tips": "版本名稱不能空白",

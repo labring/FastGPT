@@ -22,7 +22,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
+import { formatToolError } from '@fastgpt/global/core/app/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
@@ -207,9 +207,10 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
 
   // check app unExist error
   useEffect(() => {
-    if (appDetail.modules.some((module) => checkAppUnExistError(module.pluginData?.error))) {
+    const error = appDetail.modules.some((module) => formatToolError(module.pluginData?.error));
+    if (error) {
       toast({
-        title: t('app:app.error.unExist_app'),
+        title: t(error as any),
         status: 'error'
       });
     }
