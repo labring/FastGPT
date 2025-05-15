@@ -20,7 +20,7 @@ import type { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/typ
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { defaultGroup } from '@fastgpt/web/core/workflow/constants';
 import type { createMCPToolsBody } from '@/pages/api/core/app/mcpTools/create';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { updateMCPToolsBody } from '@/pages/api/core/app/mcpTools/update';
 import type { RunMCPToolBody } from '@/pages/api/support/mcp/client/runTool';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
@@ -79,7 +79,7 @@ export const postUpdateMCPTools = (data: updateMCPToolsBody) =>
   POST('/core/app/mcpTools/update', data);
 
 export const getMCPTools = (data: getMCPToolsBody) =>
-  POST<ToolType[]>('/support/mcp/client/getTools', data);
+  POST<McpToolConfigType[]>('/support/mcp/client/getTools', data);
 
 export const postRunMCPTool = (data: RunMCPToolBody) => POST('/support/mcp/client/runTool', data);
 

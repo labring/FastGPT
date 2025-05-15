@@ -7,7 +7,7 @@ import AppCard from './AppCard';
 import ChatTest from './ChatTest';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import EditForm from './EditForm';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 
 const Edit = ({
   url,
@@ -19,10 +19,10 @@ const Edit = ({
 }: {
   url: string;
   setUrl: (url: string) => void;
-  toolList: ToolType[];
-  setToolList: (toolList: ToolType[]) => void;
-  currentTool: ToolType | null;
-  setCurrentTool: (tool: ToolType) => void;
+  toolList: McpToolConfigType[];
+  setToolList: (toolList: McpToolConfigType[]) => void;
+  currentTool: McpToolConfigType | null;
+  setCurrentTool: (tool: McpToolConfigType) => void;
 }) => {
   const { isPc } = useSystem();
 

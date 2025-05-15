@@ -7,7 +7,7 @@ import type {
 } from '../../chat/type';
 import { NodeOutputItemType } from '../../chat/type';
 import type { FlowNodeInputItemType, FlowNodeOutputItemType } from '../type/io.d';
-import type { StoreNodeItemType } from '../type/node';
+import type { NodeToolConfigType, StoreNodeItemType } from '../type/node';
 import type { DispatchNodeResponseKeyEnum } from './constants';
 import type { StoreEdgeItemType } from '../type/edge';
 import type { NodeInputKeyEnum } from '../constants';
@@ -102,6 +102,9 @@ export type RuntimeNodeItemType = {
 
   pluginId?: string; // workflow id / plugin id
   version?: string;
+
+  // tool
+  toolConfig?: NodeToolConfigType;
 };
 
 export type RuntimeEdgeItemType = StoreEdgeItemType & {
@@ -114,7 +117,7 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
-  error?: Record<string, any>;
+  error?: Record<string, any> | string;
   customInputs?: Record<string, any>;
   customOutputs?: Record<string, any>;
   nodeInputs?: Record<string, any>;

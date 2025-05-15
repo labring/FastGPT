@@ -1,7 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 
@@ -41,7 +41,7 @@ export class MCPClient {
    * Get available tools list
    * @returns List of tools
    */
-  public async getTools(): Promise<ToolType[]> {
+  public async getTools(): Promise<McpToolConfigType[]> {
     try {
       const client = await this.getConnection();
       const response = await client.listTools();

@@ -553,7 +553,7 @@ const ChatBox = ({
                 const responseData = mergeChatResponseData(item.responseData || []);
                 if (responseData[responseData.length - 1]?.error) {
                   toast({
-                    title: t(responseData[responseData.length - 1].error?.message),
+                    title: t(getErrText(responseData[responseData.length - 1].error)),
                     status: 'error'
                   });
                 }

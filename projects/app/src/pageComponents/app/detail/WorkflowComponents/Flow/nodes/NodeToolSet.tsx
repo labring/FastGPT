@@ -5,14 +5,15 @@ import NodeCard from './render/NodeCard';
 import IOTitle from '../components/IOTitle';
 import Container from '../components/Container';
 import { useTranslation } from 'react-i18next';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { Box, Flex } from '@chakra-ui/react';
 
 const NodeToolSet = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
 
   const { inputs } = data;
-  const toolList: ToolType[] = inputs.find((item) => item.key === 'toolSetData')?.value?.toolList;
+  const toolList: McpToolConfigType[] = inputs.find((item) => item.key === 'toolSetData')?.value
+    ?.toolList;
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
