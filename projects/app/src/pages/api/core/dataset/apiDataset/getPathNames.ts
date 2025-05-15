@@ -11,6 +11,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 
 export type GetApiDatasetPathQuery = {};
 
@@ -70,11 +71,23 @@ async function handler(
     return Promise.reject(DatasetErrEnum.noApiServer);
   }
 
-  if (apiServer || feishuServer) {
-    return Promise.reject('不支持获取 BaseUrl');
+  if (apiServer) {
+    const getFullPath = async (currentId: string): Promise<string> => {
+      const response = await useApiDatasetRequest({ apiServer }).getFileDetail({
+        searchId: currentId,
+        parentId: ''
+      });
+
+      if (!response) {
+        return '';
+      }
+
+      return `${response.fullPath}`;
+    };
+    return await getFullPath(parentId);
   }
 
-  if (yuqueServer) {
+  if (yuqueServer || feishuServer) {
     const getFullPath = async (currentId: string): Promise<string> => {
       const response = await getProApiDatasetFileDetailRequest({
         feishuServer,

@@ -89,7 +89,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       `/v1/file/list`,
       {
         searchKey,
-        parentId
+        parentId: parentId || apiServer.basePath
       },
       'POST'
     );
@@ -164,9 +164,85 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return url;
   };
 
+  const getFileDetail = async ({
+    searchId,
+    parentId
+  }: {
+    searchId?: ParentIdType;
+    parentId?: ParentIdType;
+  }) => {
+    //Breadth first search queue
+    const queue: { id: ParentIdType; depth: number; path: string }[] = [
+      {
+        id: parentId,
+        depth: 0,
+        path: ''
+      }
+    ];
+    //Record accessed folders to avoid loops
+    const visited = new Set<ParentIdType>();
+    //Maximum search depth to prevent infinite loops
+    const MAX_DEPTH = 10;
+
+    while (queue.length > 0) {
+      const { id: currentParentId, depth, path } = queue.shift()!;
+
+      if (depth >= MAX_DEPTH) {
+        break;
+      }
+
+      //If already visited, skip
+      if (visited.has(currentParentId)) {
+        continue;
+      }
+      visited.add(currentParentId);
+
+      //Retrieve the file list of the current level
+      const files = await request<APIFileListResponse>(
+        `/v1/file/list`,
+        {
+          searchKey: '',
+          parentId: currentParentId
+        },
+        'POST'
+      );
+
+      if (!Array.isArray(files)) {
+        return Promise.reject('Invalid file list format');
+      }
+      if (files.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
+        return Promise.reject('Invalid file data format');
+      }
+
+      //Search for the target file at the current level
+      const targetFile = files.find((item) => item.id === searchId);
+      if (targetFile) {
+        // return fullpath
+        return {
+          ...targetFile,
+          fullPath: path ? `${path}/${targetFile.name}` : `/${targetFile.name}`
+        };
+      }
+
+      files
+        .filter((file) => file.type === 'folder')
+        .forEach((folder) => {
+          const newPath = path ? `${path}/${folder.name}` : `/${folder.name}`;
+          queue.push({
+            id: folder.id,
+            depth: depth + 1,
+            path: newPath
+          });
+        });
+    }
+
+    return null;
+  };
+
   return {
     getFileContent,
     listFiles,
-    getFilePreviewUrl
+    getFilePreviewUrl,
+    getFileDetail
   };
 };
