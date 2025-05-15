@@ -2,65 +2,6 @@ import { type PromptTemplateItem } from '../type.d';
 import { i18nT } from '../../../../web/i18n/utils';
 import { getPromptByVersion } from './utils';
 
-export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
-  {
-    title: i18nT('app:template.standard_template'),
-    desc: i18nT('app:template.standard_template_des'),
-    value: {
-      ['4.9.7']: `{
-  "id": "{{id}}",
-  "sourceName": "{{source}}",
-  "updateTime": "{{updateTime}}",
-  "content": "{{q}}\n{{a}}"
-}
-`
-    }
-  },
-  {
-    title: i18nT('app:template.qa_template'),
-    desc: i18nT('app:template.qa_template_des'),
-    value: {
-      ['4.9.2']: `<Question>
-{{q}}
-</Question>
-<Answer>
-{{a}}
-</Answer>`
-    }
-  },
-  {
-    title: i18nT('app:template.standard_strict'),
-    desc: i18nT('app:template.standard_strict_des'),
-    value: {
-      ['4.9.7']: `{
-  "id": "{{id}}",
-  "sourceName": "{{source}}",
-  "updateTime": "{{updateTime}}",
-  "content": "{{q}}\n{{a}}"
-}
-`
-    }
-  },
-  {
-    title: i18nT('app:template.hard_strict'),
-    desc: i18nT('app:template.hard_strict_des'),
-    value: {
-      ['4.9.2']: `<Question>
-{{q}}
-</Question>
-<Answer>
-{{a}}
-</Answer>`
-    }
-  }
-];
-
-export const getQuoteTemplate = (version?: string) => {
-  const defaultTemplate = Prompt_QuoteTemplateList[0].value;
-
-  return getPromptByVersion(version, defaultTemplate);
-};
-
 export const Prompt_userQuotePromptList: PromptTemplateItem[] = [
   {
     title: i18nT('app:template.standard_template'),
@@ -275,30 +216,14 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
 
 <Cites>
 {{quote}}
-</Cites>`,
-      ['4.9.2']: `忘记你已有的知识，仅使用 <Cites></Cites> 标记中的内容作为本次对话的参考:
-
-<Cites>
-{{quote}}
-</Cites>
-
-思考流程：
-1. 判断问题是否与 <Cites></Cites> 标记中的内容有关。
-2. 如果有关，你按下面的要求回答。
-3. 如果无关，你直接拒绝回答本次问题。
-
-回答要求：
-- 避免提及你是从 <Cites></Cites> 获取的知识。
-- 保持答案与 <Cites></Cites> 中描述的一致。
-- 使用 Markdown 语法优化回答格式。
-- 使用与问题相同的语言回答。`
+</Cites>`
     }
   },
   {
     title: i18nT('app:template.hard_strict'),
     desc: '',
     value: {
-      ['4.9.2']: `## 任务描述
+      ['4.9.7']: `## 任务描述
 作为一个问答助手，你会使用 <QA></QA> 标记中的提供的数据对进行内容回答。
 
 ## 回答要求
@@ -319,6 +244,64 @@ export const Prompt_systemQuotePromptList: PromptTemplateItem[] = [
   }
 ];
 
+export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
+  {
+    title: i18nT('app:template.standard_template'),
+    desc: i18nT('app:template.standard_template_des'),
+    value: {
+      ['4.9.7']: `{
+  "id": "{{id}}",
+  "sourceName": "{{source}}",
+  "updateTime": "{{updateTime}}",
+  "content": "{{q}}\n{{a}}"
+}
+`
+    }
+  },
+  {
+    title: i18nT('app:template.qa_template'),
+    desc: i18nT('app:template.qa_template_des'),
+    value: {
+      ['4.9.7']: `<Question>
+{{q}}
+</Question>
+<Answer>
+{{a}}
+</Answer>`
+    }
+  },
+  {
+    title: i18nT('app:template.standard_strict'),
+    desc: i18nT('app:template.standard_strict_des'),
+    value: {
+      ['4.9.7']: `{
+  "id": "{{id}}",
+  "sourceName": "{{source}}",
+  "updateTime": "{{updateTime}}",
+  "content": "{{q}}\n{{a}}"
+}
+`
+    }
+  },
+  {
+    title: i18nT('app:template.hard_strict'),
+    desc: i18nT('app:template.hard_strict_des'),
+    value: {
+      ['4.9.7']: `<Question>
+{{q}}
+</Question>
+<Answer>
+{{a}}
+</Answer>`
+    }
+  }
+];
+export const getQuoteTemplate = (version?: string) => {
+  const defaultTemplate = Prompt_QuoteTemplateList[0].value;
+
+  return getPromptByVersion(version, defaultTemplate);
+};
+
 export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user') => {
   const quotePromptTemplates =
     role === 'user' ? Prompt_userQuotePromptList : Prompt_systemQuotePromptList;
@@ -331,7 +314,7 @@ export const getQuotePrompt = (version?: string, role: 'user' | 'system' = 'user
 // Document quote prompt
 export const getDocumentQuotePrompt = (version?: string) => {
   const promptMap = {
-    ['4.9.2']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
+    ['4.9.7']: `将 <FilesContent></FilesContent> 中的内容作为本次对话的参考:
 <FilesContent>
 {{quote}}
 </FilesContent>
