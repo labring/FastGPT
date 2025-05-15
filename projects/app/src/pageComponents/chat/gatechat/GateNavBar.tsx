@@ -117,22 +117,41 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
-            <Box
-              boxSize="36px"
-              bg="white"
-              border="0.75px solid #ECECEC"
-              borderRadius="9px"
-              overflow="hidden"
-              flexShrink={0}
-              transition="all 0.4s ease-in-out"
-            >
-              <Avatar
-                boxSize="100%"
-                src={userInfo?.team.teamAvatar}
+            {userInfo?.team.teamAvatar ? (
+              <Flex
+                boxSize="36px"
                 borderRadius="9px"
-                objectFit="cover"
-              />
-            </Box>
+                overflow="hidden"
+                flexShrink={0}
+                transition="all 0.4s ease-in-out"
+                justifyContent="center"
+                alignItems="center"
+              >
+                <Avatar
+                  boxSize="100%"
+                  src={userInfo?.team.teamAvatar}
+                  borderRadius="9px"
+                  objectFit="cover"
+                />
+              </Flex>
+            ) : (
+              <Box
+                boxSize="36px"
+                bg="white"
+                border="0.75px solid #ECECEC"
+                borderRadius="9px"
+                overflow="hidden"
+                flexShrink={0}
+                transition="all 0.4s ease-in-out"
+              >
+                <Avatar
+                  boxSize="100%"
+                  src={userInfo?.team.teamAvatar}
+                  borderRadius="9px"
+                  objectFit="cover"
+                />
+              </Box>
+            )}
             <Box
               opacity={isCollapsed ? 0 : 1}
               maxW={isCollapsed ? 0 : '130px'}
@@ -412,20 +431,26 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
           cursor="pointer"
           position="relative"
         >
-          <Box
-            boxSize="36px"
-            border="2px solid #fff"
-            borderRadius="50%"
-            overflow="hidden"
-            flexShrink={0}
-          >
-            <Avatar
-              boxSize="100%"
-              src={userInfo?.avatar || HUMAN_ICON}
+          {userInfo?.avatar ? (
+            <Flex boxSize="36px" borderRadius="50%" overflow="hidden" flexShrink={0}>
+              <Avatar boxSize="100%" src={userInfo?.avatar} borderRadius="50%" objectFit="cover" />
+            </Flex>
+          ) : (
+            <Box
+              boxSize="36px"
+              border="2px solid #fff"
               borderRadius="50%"
-              objectFit="cover"
-            />
-          </Box>
+              overflow="hidden"
+              flexShrink={0}
+            >
+              <Avatar
+                boxSize="100%"
+                src={userInfo?.avatar || HUMAN_ICON}
+                borderRadius="50%"
+                objectFit="cover"
+              />
+            </Box>
+          )}
           <Box
             opacity={isCollapsed ? 0 : 1}
             transform={`scale(${isCollapsed ? 0 : 1})`}
@@ -469,7 +494,13 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
           onMouseLeave={handleUserPopoverLeave}
         >
           <Flex alignItems="center" gap={3} width="100%">
-            <Avatar src={userInfo?.avatar || HUMAN_ICON} boxSize="36px" borderRadius="50%" />
+            {userInfo?.avatar ? (
+              <Flex boxSize="36px" borderRadius="50%" overflow="hidden">
+                <Avatar src={userInfo?.avatar} boxSize="36px" borderRadius="50%" />
+              </Flex>
+            ) : (
+              <Avatar src={userInfo?.avatar || HUMAN_ICON} boxSize="36px" borderRadius="50%" />
+            )}
             <Box>
               <Text
                 fontSize="sm"
