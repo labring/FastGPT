@@ -34,13 +34,13 @@ type ChatBoxDataType = {
   };
 };
 
+// 知识库引用相关 type
 export type GetQuoteDataBasicProps = {
   appId: string;
   chatId: string;
   chatItemDataId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 };
-// 获取单个集合引用
 export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
   quoteId?: string;
   collectionId: string;
@@ -54,10 +54,16 @@ export type GetAllQuoteDataProps = GetQuoteDataBasicProps & {
   sourceName?: string;
 };
 export type GetQuoteProps = GetAllQuoteDataProps | GetCollectionQuoteDataProps;
-
 export type QuoteDataType = {
   rawSearch: SearchDataResponseItemType[];
   metadata: GetQuoteProps;
+};
+export type OnOpenCiteModalProps = {
+  collectionId?: string;
+  sourceId?: string;
+  sourceName?: string;
+  datasetId?: string;
+  quoteId?: string;
 };
 
 type ChatItemContextType = {
@@ -74,8 +80,8 @@ type ChatItemContextType = {
   setChatBoxData: React.Dispatch<React.SetStateAction<ChatBoxDataType>>;
   isPlugin: boolean;
 
-  quoteData?: QuoteDataType;
-  setQuoteData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
+  datasetCiteData?: QuoteDataType;
+  setCiteModalData: React.Dispatch<React.SetStateAction<QuoteDataType | undefined>>;
   isVariableVisible: boolean;
   setIsVariableVisible: React.Dispatch<React.SetStateAction<boolean>>;
 } & ContextProps;
@@ -98,8 +104,8 @@ export const ChatItemContext = createContext<ChatItemContextType>({
     throw new Error('Function not implemented.');
   },
 
-  quoteData: undefined,
-  setQuoteData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
+  datasetCiteData: undefined,
+  setCiteModalData: function (value: React.SetStateAction<QuoteDataType | undefined>): void {
     throw new Error('Function not implemented.');
   },
   isVariableVisible: true,
@@ -124,7 +130,6 @@ const ChatItemContextProvider = ({
 } & ContextProps) => {
   const ChatBoxRef = useRef<ChatComponentRef>(null);
   const variablesForm = useForm<ChatBoxInputFormType>();
-  const [quoteData, setQuoteData] = useState<QuoteDataType>();
   const [isVariableVisible, setIsVariableVisible] = useState(true);
 
   const [chatBoxData, setChatBoxData] = useState<ChatBoxDataType>({
@@ -162,6 +167,8 @@ const ChatItemContextProvider = ({
     ChatBoxRef.current?.restartChat?.();
   }, [variablesForm]);
 
+  const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
+
   const contextValue = useMemo(() => {
     return {
       chatBoxData,
@@ -180,8 +187,8 @@ const ChatItemContextProvider = ({
       // isShowFullText,
       showNodeStatus,
 
-      quoteData,
-      setQuoteData,
+      datasetCiteData,
+      setCiteModalData,
       isVariableVisible,
       setIsVariableVisible
     };
@@ -198,8 +205,8 @@ const ChatItemContextProvider = ({
     isResponseDetail,
     // isShowFullText,
     showNodeStatus,
-    quoteData,
-    setQuoteData,
+    datasetCiteData,
+    setCiteModalData,
     isVariableVisible,
     setIsVariableVisible
   ]);

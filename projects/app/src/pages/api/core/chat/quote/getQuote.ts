@@ -6,7 +6,7 @@ import { quoteDataFieldSelector, type QuoteDataItemType } from '@/service/core/c
 import { processChatTimeFilter } from '@/service/core/chat/utils';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
-export type GetQuoteDataProps = {
+export type GetQuoteProps = {
   datasetDataIdList: string[];
 
   collectionIdList: string[];
@@ -21,7 +21,7 @@ export type GetQuoteDataProps = {
 
 export type GetQuoteDataRes = QuoteDataItemType[];
 
-async function handler(req: ApiRequestProps<GetQuoteDataProps>): Promise<GetQuoteDataRes> {
+async function handler(req: ApiRequestProps<GetQuoteProps>): Promise<GetQuoteDataRes> {
   const {
     appId,
     chatId,
