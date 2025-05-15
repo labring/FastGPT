@@ -140,3 +140,5 @@ const updateMCPChildrenTool = async ({
     }
   }
 };
+
+export { handler, updateMCPChildrenTool };
