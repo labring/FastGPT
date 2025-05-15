@@ -216,33 +216,16 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
 
           {/* 已有工具时显示新增按钮 */}
           {selectedTools.length > 0 && (
-            <Flex
-              alignItems="center"
-              p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
-              borderWidth="1px"
-              borderColor="myGray.200"
-              borderRadius="7px"
-              bg="white"
-              transition="all 0.2s ease-in-out"
-              _hover={{
-                bg: 'myGray.50',
-                borderColor: 'myGray.300',
-                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-                transform: 'translateY(-1px)'
-              }}
-              cursor="pointer"
+            <Button
+              size="sm"
+              colorScheme="primary"
+              variant="outline"
+              leftIcon={<SmallAddIcon />}
               onClick={onOpenToolsSelect}
+              _hover={{ bg: 'blue.50' }}
             >
-              <SmallAddIcon mr={2} />
-              <Text
-                fontSize={formStyles.fontSize}
-                lineHeight={formStyles.lineHeight}
-                fontWeight={formStyles.fontWeight}
-                letterSpacing={formStyles.letterSpacing}
-              >
-                {t('common:Add')}
-              </Text>
-            </Flex>
+              {t('common:Add')}
+            </Button>
           )}
         </Flex>
 
@@ -358,65 +341,67 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
           <Box
             mt={0}
             display="flex"
-            width="100%"
+            width="640px"
+            height="80px"
             justifyContent="center"
             alignItems="center"
+            borderRadius="4px"
+            border="1px dashed var(--Gray-Modern-250, #DFE2EA)"
             cursor="pointer"
             onClick={onOpenToolsSelect}
+            _hover={{
+              borderColor: 'primary.300',
+              bg: 'gray.100',
+              '.hoverContent': { color: 'primary.500' }
+            }}
+            transition="all 0.2s"
             position="relative"
           >
             <Flex
               alignItems="center"
-              p={`${spacing.sm} ${spacing.lg} ${spacing.sm} ${spacing.md}`}
-              borderWidth="1px"
-              borderColor="myGray.200"
-              borderRadius="7px"
-              bg="white"
-              transition="all 0.2s ease-in-out"
-              _hover={{
-                bg: 'myGray.50',
-                borderColor: 'myGray.300',
-                boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.05)',
-                transform: 'translateY(-1px)'
-              }}
-              cursor="pointer"
-              width="auto"
+              justifyContent="center"
+              flexDirection="column"
+              color="gray.500"
             >
               {isLoading ? (
-                <Flex alignItems="center">
+                <Flex
+                  alignItems="center"
+                  justifyContent="center"
+                  flexDirection="column"
+                  h="full"
+                  py={4}
+                >
                   <Box
                     as="span"
                     display="inline-block"
-                    width="16px"
-                    height="16px"
+                    width="30px"
+                    height="30px"
                     borderRadius="full"
                     borderWidth="2px"
                     borderColor="primary.500"
                     borderLeftColor="transparent"
                     animation="spin 1s linear infinite"
-                    mr={2}
+                    mb={2}
                   />
-                  <Text
-                    fontSize={formStyles.fontSize}
-                    lineHeight={formStyles.lineHeight}
-                    fontWeight={formStyles.fontWeight}
-                    letterSpacing={formStyles.letterSpacing}
-                  >
+                  <Text fontSize="sm" fontWeight="500">
                     {t('common:Loading')}
                   </Text>
                 </Flex>
               ) : (
-                <Flex alignItems="center">
-                  <SmallAddIcon mr={2} />
-                  <Text
-                    fontSize={formStyles.fontSize}
-                    lineHeight={formStyles.lineHeight}
-                    fontWeight={formStyles.fontWeight}
-                    letterSpacing={formStyles.letterSpacing}
+                <>
+                  <Flex
+                    className="hoverContent"
+                    alignItems="center"
+                    justifyContent="center"
+                    flexDirection="row"
+                    gap={'6px'}
                   >
-                    {t('common:Add')}
-                  </Text>
-                </Flex>
+                    <SmallAddIcon boxSize={5} />
+                    <Box fontSize="sm" fontWeight="medium">
+                      {t('common:Add')}
+                    </Box>
+                  </Flex>
+                </>
               )}
             </Flex>
           </Box>
