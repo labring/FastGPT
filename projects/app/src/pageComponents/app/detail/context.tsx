@@ -3,7 +3,6 @@ import {
   type ReactNode,
   type SetStateAction,
   useCallback,
-  useEffect,
   useMemo,
   useState
 } from 'react';
@@ -22,7 +21,6 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
@@ -204,16 +202,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       )(),
     [appDetail.name, deleteApp, openConfirmDel, t]
   );
-
-  // check app unExist error
-  useEffect(() => {
-    if (appDetail.modules.some((module) => checkAppUnExistError(module.pluginData?.error))) {
-      toast({
-        title: t('app:app.error.unExist_app'),
-        status: 'error'
-      });
-    }
-  }, [appDetail.modules, t, toast]);
 
   const contextValue: AppContextType = useMemo(
     () => ({

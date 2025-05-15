@@ -68,7 +68,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 
-const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -1014,10 +1013,6 @@ const ChatBox = ({
                         onReadUserDislike: onReadUserDislike(item)
                       }}
                     >
-                      <ResponseTags
-                        showTags={index !== chatRecords.length - 1 || !isChatting}
-                        historyItem={item}
-                      />
                       {/* custom feedback */}
                       {item.customFeedbacks && item.customFeedbacks.length > 0 && (
                         <Box>
@@ -1072,7 +1067,6 @@ const ChatBox = ({
     chatType,
     delOneMessage,
     externalVariableList?.length,
-    isChatting,
     onAddUserDislike,
     onAddUserLike,
     onCloseCustomFeedback,

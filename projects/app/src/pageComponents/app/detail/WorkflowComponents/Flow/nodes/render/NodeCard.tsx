@@ -35,6 +35,7 @@ import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useCreation } from 'ahooks';
+import { formatToolError } from '@fastgpt/global/core/app/utils';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -144,6 +145,7 @@ const NodeCard = (props: Props) => {
   /* Node header */
   const Header = useMemo(() => {
     const showHeader = node?.flowNodeType !== FlowNodeTypeEnum.comment;
+    const error = formatToolError(node?.pluginData?.error);
 
     return (
       <Box position={'relative'}>
@@ -254,23 +256,19 @@ const NodeCard = (props: Props) => {
                   )}
                 </UseGuideModal>
               )}
-              {!!node?.pluginData?.error && (
-                <MyTooltip label={node?.pluginData?.error || t('app:app.modules.not_found_tips')}>
-                  <Flex
-                    bg={'red.50'}
-                    alignItems={'center'}
-                    h={8}
-                    px={2}
-                    rounded={'6px'}
-                    fontSize={'xs'}
-                    fontWeight={'medium'}
-                  >
-                    <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                    <Box color={'red.600'}>
-                      {node?.pluginData?.error || t('app:app.modules.not_found')}
-                    </Box>
-                  </Flex>
-                </MyTooltip>
+              {!!error && (
+                <Flex
+                  bg={'red.50'}
+                  alignItems={'center'}
+                  h={8}
+                  px={2}
+                  rounded={'6px'}
+                  fontSize={'xs'}
+                  fontWeight={'medium'}
+                >
+                  <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+                  <Box color={'red.600'}>{t(error as any)}</Box>
+                </Flex>
               )}
             </Flex>
             <NodeIntro nodeId={nodeId} intro={intro} />

@@ -30,7 +30,7 @@ import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import { useContextSelector } from 'use-context-selector';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
 import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
 import { useCreation } from 'ahooks';
 
@@ -90,11 +90,13 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 const RenderText = React.memo(function RenderText({
   showAnimation,
   text,
-  chatItemDataId
+  chatItemDataId,
+  onOpenCiteModal
 }: {
   showAnimation: boolean;
   text: string;
   chatItemDataId: string;
+  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) {
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
@@ -111,7 +113,14 @@ const RenderText = React.memo(function RenderText({
     return { appId, chatId, chatItemDataId, ...outLinkAuthData };
   }, [appId, chatId, chatItemDataId, outLinkAuthData]);
 
-  return <Markdown source={source} showAnimation={showAnimation} chatAuthData={chatAuthData} />;
+  return (
+    <Markdown
+      source={source}
+      showAnimation={showAnimation}
+      chatAuthData={chatAuthData}
+      onOpenCiteModal={onOpenCiteModal}
+    />
+  );
 });
 
 const RenderTool = React.memo(
@@ -240,12 +249,14 @@ const AIResponseBox = ({
   chatItemDataId,
   value,
   isLastResponseValue,
-  isChatting
+  isChatting,
+  onOpenCiteModal
 }: {
   chatItemDataId: string;
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastResponseValue: boolean;
   isChatting: boolean;
+  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
@@ -253,6 +264,7 @@ const AIResponseBox = ({
         chatItemDataId={chatItemDataId}
         showAnimation={isChatting && isLastResponseValue}
         text={value.text.content}
+        onOpenCiteModal={onOpenCiteModal}
       />
     );
   }

@@ -29,10 +29,8 @@ import {
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import {
-  type PluginDataType,
-  type StoreNodeItemType
-} from '@fastgpt/global/core/workflow/type/node';
+import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const getScheduleTriggerApp = async () => {
   // 1. Find all the app
@@ -152,6 +150,7 @@ export const checkNode = async ({
 
   try {
     const { source } = await splitCombinePluginId(pluginId);
+
     if (source === PluginSourceEnum.personal) {
       await authAppByTmbId({
         tmbId: ownerTmbId,
@@ -176,8 +175,8 @@ export const checkNode = async ({
     return {
       ...node,
       pluginData: {
-        error
-      } as PluginDataType
+        error: getErrText(error)
+      }
     };
   }
 };

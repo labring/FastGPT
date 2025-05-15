@@ -109,6 +109,10 @@ const EditForm = ({
                   boxShadow:
                     '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
                 }}
+                cursor={'pointer'}
+                onClick={() => {
+                  setCurrentTool(tool);
+                }}
               >
                 <Flex alignItems={'center'} py={2} px={3}>
                   <Box w={'20px'} fontSize={'14px'} color={'myGray.500'} fontWeight={'medium'}>
@@ -157,21 +161,9 @@ const EditForm = ({
                     hoverBg={'rgba(51, 112, 255, 0.10)'}
                     hoverBorderColor={'primary.300'}
                     tip={t('app:MCP_tools_detail')}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setToolDetail(tool);
-                    }}
-                  />
-                  <MyIconButton
-                    size={'16px'}
-                    icon={'core/workflow/debug'}
-                    p={2}
-                    border={'1px solid'}
-                    borderColor={'myGray.250'}
-                    hoverBg={'rgba(51, 112, 255, 0.10)'}
-                    hoverBorderColor={'primary.300'}
-                    tip={t('app:MCP_tools_debug')}
-                    onClick={() => {
-                      setCurrentTool(tool);
                     }}
                   />
                 </Flex>

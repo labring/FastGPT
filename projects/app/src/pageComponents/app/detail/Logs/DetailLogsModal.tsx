@@ -38,8 +38,8 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -81,7 +81,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         right={0}
         h={['100%', '96%']}
         w={'100%'}
-        maxW={quoteData ? ['100%', '1080px'] : ['100%', '600px']}
+        maxW={datasetCiteData ? ['100%', '1080px'] : ['100%', '600px']}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -169,7 +169,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
             )}
           </Box>
 
-          {quoteData && (
+          {datasetCiteData && (
             <Box
               flex={'1 0 0'}
               w={0}
@@ -183,9 +183,9 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                rawSearch={quoteData.rawSearch}
-                metadata={quoteData.metadata}
-                onClose={() => setQuoteData(undefined)}
+                rawSearch={datasetCiteData.rawSearch}
+                metadata={datasetCiteData.metadata}
+                onClose={() => setCiteModalData(undefined)}
               />
             </Box>
           )}

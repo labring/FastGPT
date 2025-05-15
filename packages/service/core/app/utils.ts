@@ -46,6 +46,7 @@ export async function rewriteAppWorkflowToDetail({
   const versionIds = appNodes
     .filter((node) => node.version && Types.ObjectId.isValid(node.version))
     .map((node) => node.version);
+
   if (versionIds.length > 0) {
     const versionDataList = await MongoAppVersion.find(
       {
