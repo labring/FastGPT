@@ -42,12 +42,6 @@ import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 
-// 扩展 NodeTemplateListItemType 类型，添加可选的 cost 相关属性
-type ExtendedNodeTemplateItemType = NodeTemplateListItemType & {
-  currentCost?: number;
-  hasTokenFee?: boolean;
-};
-
 type Props = {
   selectedTools: FlowNodeTemplateType[];
   chatConfig: AppSimpleEditFormType['chatConfig'];
@@ -69,7 +63,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const [searchKey, setSearchKey] = useState('');
   const gateConfig = useGateStore((state) => state.gateConfig);
-  const [gatePlugins, setGatePlugins] = useState<ExtendedNodeTemplateItemType[]>([]);
+  const [gatePlugins, setGatePlugins] = useState<NodeTemplateListItemType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // 加载 gateStore 中的插件
@@ -87,9 +81,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             intro: plugin.intro || '',
             isFolder: false,
             templateType: plugin.templateType,
-            flowNodeType: plugin.flowNodeType,
-            currentCost: (plugin as any).currentCost,
-            hasTokenFee: (plugin as any).hasTokenFee
+            flowNodeType: plugin.flowNodeType
           }));
           setGatePlugins(pluginsArray);
         })
@@ -150,7 +142,7 @@ const RenderList = React.memo(function RenderList({
   chatConfig,
   selectedModel
 }: Props & {
-  templates: ExtendedNodeTemplateItemType[];
+  templates: NodeTemplateListItemType[];
 }) {
   const { t } = useTranslation();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
@@ -158,7 +150,7 @@ const RenderList = React.memo(function RenderList({
   const { toast } = useToast();
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
-    async (template: ExtendedNodeTemplateItemType) => {
+    async (template: NodeTemplateListItemType) => {
       const res = await getPreviewPluginNode({ appId: template.id });
 
       /* Invalid plugin check
