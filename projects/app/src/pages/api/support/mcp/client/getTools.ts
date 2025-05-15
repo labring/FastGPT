@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { MCPClient } from '@fastgpt/service/core/app/mcp';
 
@@ -7,7 +7,7 @@ export type getMCPToolsQuery = {};
 
 export type getMCPToolsBody = { url: string };
 
-export type getMCPToolsResponse = ToolType[];
+export type getMCPToolsResponse = McpToolConfigType[];
 
 async function handler(
   req: ApiRequestProps<getMCPToolsBody, getMCPToolsQuery>,

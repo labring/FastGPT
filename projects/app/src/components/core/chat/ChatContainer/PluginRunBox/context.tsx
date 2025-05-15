@@ -22,6 +22,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type PluginRunContextType = PluginRunBoxProps & {
   isChatting: boolean;
@@ -258,7 +259,7 @@ const PluginRunContextProvider = ({
             const responseData = mergeChatResponseData(item.responseData || []);
             if (responseData[responseData.length - 1]?.error) {
               toast({
-                title: t(responseData[responseData.length - 1].error?.message),
+                title: t(getErrText(responseData[responseData.length - 1].error)),
                 status: 'error'
               });
             }

@@ -262,7 +262,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
         {/* Folder slider */}
         {!!folderDetail && isPc && (
-          <Box pt={[4, 6]} pr={[4, 6]}>
+          <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
             <FolderSlideCard
               refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}

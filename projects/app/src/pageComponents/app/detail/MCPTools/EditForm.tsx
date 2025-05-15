@@ -7,7 +7,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -24,14 +24,14 @@ const EditForm = ({
 }: {
   url: string;
   setUrl: (url: string) => void;
-  toolList: ToolType[];
-  setToolList: (toolList: ToolType[]) => void;
-  currentTool: ToolType | null;
-  setCurrentTool: (tool: ToolType) => void;
+  toolList: McpToolConfigType[];
+  setToolList: (toolList: McpToolConfigType[]) => void;
+  currentTool: McpToolConfigType | null;
+  setCurrentTool: (tool: McpToolConfigType) => void;
 }) => {
   const { t } = useTranslation();
 
-  const [toolDetail, setToolDetail] = useState<ToolType | null>(null);
+  const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
     async (data: getMCPToolsBody) => await getMCPTools(data),
@@ -180,7 +180,7 @@ const EditForm = ({
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({ tool, onClose }: { tool: ToolType; onClose: () => void }) => {
+const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: () => void }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 

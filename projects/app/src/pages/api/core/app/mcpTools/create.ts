@@ -4,7 +4,7 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type CreateAppBody, onCreateApp } from '../create';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -22,7 +22,7 @@ export type createMCPToolsBody = Omit<
   'type' | 'modules' | 'edges' | 'chatConfig'
 > & {
   url: string;
-  toolList: ToolType[];
+  toolList: McpToolConfigType[];
 };
 
 export type createMCPToolsResponse = {};

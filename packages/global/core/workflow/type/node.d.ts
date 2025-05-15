@@ -20,10 +20,16 @@ import { RuntimeNodeItemType } from '../runtime/type';
 import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
-import { AppDetailType, AppSchema } from '../../app/type';
+import type { AppDetailType, AppSchema, McpToolConfigType } from '../../app/type';
 import type { ParentIdType } from 'common/parentFolder/type';
-import { AppTypeEnum } from 'core/app/constants';
+import { AppTypeEnum } from '../../app/constants';
 import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+
+export type NodeToolConfigType = {
+  mcpTool?: McpToolConfigType & {
+    url: string;
+  };
+};
 
 export type FlowNodeCommonType = {
   parentNodeId?: string;
@@ -46,8 +52,10 @@ export type FlowNodeCommonType = {
   // plugin data
   pluginId?: string;
   isFolder?: boolean;
-  // pluginType?: AppTypeEnum;
   pluginData?: PluginDataType;
+
+  // tool data
+  toolData?: NodeToolConfigType;
 };
 
 export type PluginDataType = {
