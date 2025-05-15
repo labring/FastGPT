@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -23,17 +23,9 @@ import type {
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  getPluginGroups,
-  getPreviewPluginNode,
-  getSystemPlugTemplates,
-  getSystemPluginPaths
-} from '@/web/core/app/api/plugin';
+import { getPluginGroups, getPreviewPluginNode, getBatchPlugins } from '@/web/core/app/api/plugin';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { getAppFolderPath } from '@/web/core/app/api/app';
-import FolderPath from '@/components/common/folder/Path';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -48,6 +40,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
+import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+
+// 扩展 NodeTemplateListItemType 类型，添加可选的 cost 相关属性
+type ExtendedNodeTemplateItemType = NodeTemplateListItemType & {
+  currentCost?: number;
+  hasTokenFee?: boolean;
+};
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -64,78 +63,54 @@ export const childAppSystemKey: string[] = [
   NodeInputKeyEnum.userChatInput
 ];
 
-enum TemplateTypeEnum {
-  'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
-}
-
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
-  const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemPlugin);
-  const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
+  const gateConfig = useGateStore((state) => state.gateConfig);
+  const [gatePlugins, setGatePlugins] = useState<ExtendedNodeTemplateItemType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const {
-    data: templates = [],
-    runAsync: loadTemplates,
-    loading: isLoading
-  } = useRequest2(
-    async ({
-      type = templateType,
-      parentId = '',
-      searchVal = searchKey
-    }: {
-      type?: TemplateTypeEnum;
-      parentId?: ParentIdType;
-      searchVal?: string;
-    }) => {
-      if (type === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates({ parentId, searchKey: searchVal });
-      } else if (type === TemplateTypeEnum.teamPlugin) {
-        return getTeamPlugTemplates({
-          parentId,
-          searchKey: searchVal
-        }).then((res) => res.filter((app) => app.id !== appDetail._id));
-      }
-    },
-    {
-      onSuccess(_, [{ type = templateType, parentId = '' }]) {
-        setTemplateType(type);
-        setParentId(parentId);
-      },
-      refreshDeps: [templateType, searchKey, parentId],
-      errorToast: t('common:core.module.templates.Load plugin error')
+  // 加载 gateStore 中的插件
+  useEffect(() => {
+    if (gateConfig?.tools && gateConfig.tools.length > 0) {
+      setIsLoading(true);
+      getBatchPlugins(gateConfig.tools)
+        .then((plugins) => {
+          // 将插件对象转换为数组形式
+          const pluginsArray = Object.entries(plugins).map(([id, plugin]) => ({
+            id,
+            pluginId: id,
+            name: plugin.name,
+            avatar: plugin.avatar,
+            intro: plugin.intro || '',
+            isFolder: false,
+            templateType: plugin.templateType,
+            flowNodeType: plugin.flowNodeType,
+            currentCost: (plugin as any).currentCost,
+            hasTokenFee: (plugin as any).hasTokenFee
+          }));
+          setGatePlugins(pluginsArray);
+        })
+        .catch((error) => {
+          console.error('加载门户工具失败:', error);
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-  );
+  }, [gateConfig]);
 
-  const { data: paths = [] } = useRequest2(
-    () => {
-      if (templateType === TemplateTypeEnum.teamPlugin)
-        return getAppFolderPath({ sourceId: parentId, type: 'current' });
-      return getSystemPluginPaths({ sourceId: parentId, type: 'current' });
-    },
-    {
-      manual: false,
-      refreshDeps: [parentId]
-    }
-  );
-
-  const onUpdateParentId = useCallback(
-    (parentId: ParentIdType) => {
-      loadTemplates({
-        parentId
-      });
-    },
-    [loadTemplates]
-  );
-
-  useRequest2(() => loadTemplates({ searchVal: searchKey }), {
-    manual: false,
-    throttleWait: 300,
-    refreshDeps: [searchKey]
-  });
+  // 根据搜索关键词过滤插件
+  const filteredPlugins = useMemo(() => {
+    if (!searchKey) return gatePlugins;
+    return gatePlugins.filter(
+      (plugin) =>
+        plugin.name.toLowerCase().includes(searchKey.toLowerCase()) ||
+        (plugin.intro && plugin.intro.toLowerCase().includes(searchKey.toLowerCase()))
+    );
+  }, [gatePlugins, searchKey]);
 
   return (
     <MyModal
@@ -147,56 +122,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       w={'700px'}
       h={['90vh', '80vh']}
     >
-      {/* Header: row and search */}
-      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
-        <FillRowTabs
-          list={[
-            {
-              icon: 'phoneTabbar/tool',
-              label: t('common:navbar.Toolkit'),
-              value: TemplateTypeEnum.systemPlugin
-            },
-            {
-              icon: 'core/modules/teamPlugin',
-              label: t('common:core.module.template.Team app'),
-              value: TemplateTypeEnum.teamPlugin
-            }
-          ]}
-          py={'5px'}
-          px={'15px'}
-          value={templateType}
-          onChange={(e) =>
-            loadTemplates({
-              type: e as TemplateTypeEnum,
-              parentId: null
-            })
-          }
-        />
+      {/* Header: search */}
+      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'flex-end'} w={'full'}>
         <Box w={300}>
           <SearchInput
             value={searchKey}
             onChange={(e) => setSearchKey(e.target.value)}
-            placeholder={
-              templateType === TemplateTypeEnum.systemPlugin
-                ? t('common:plugin.Search plugin')
-                : t('app:search_app')
-            }
+            placeholder={t('common:plugin.Search plugin')}
           />
         </Box>
       </Box>
-      {/* route components */}
-      {!searchKey && parentId && (
-        <Flex mt={2} px={[3, 6]}>
-          <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
-        </Flex>
-      )}
+
       <MyBox isLoading={isLoading} mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
-        <RenderList
-          templates={templates}
-          type={templateType}
-          setParentId={onUpdateParentId}
-          {...props}
-        />
+        <RenderList templates={filteredPlugins} {...props} />
       </MyBox>
     </MyModal>
   );
@@ -206,17 +144,13 @@ export default React.memo(ToolSelectModal);
 
 const RenderList = React.memo(function RenderList({
   templates,
-  type,
   onAddTool,
   onRemoveTool,
-  setParentId,
   selectedTools,
   chatConfig,
   selectedModel
 }: Props & {
-  templates: NodeTemplateListItemType[];
-  type: TemplateTypeEnum;
-  setParentId: (parentId: ParentIdType) => any;
+  templates: ExtendedNodeTemplateItemType[];
 }) {
   const { t } = useTranslation();
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
@@ -224,7 +158,7 @@ const RenderList = React.memo(function RenderList({
   const { toast } = useToast();
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest2(
-    async (template: NodeTemplateListItemType) => {
+    async (template: ExtendedNodeTemplateItemType) => {
       const res = await getPreviewPluginNode({ appId: template.id });
 
       /* Invalid plugin check
@@ -294,13 +228,6 @@ const RenderList = React.memo(function RenderList({
       const defaultForm = {
         ...res,
         inputs: res.inputs.map((input) => {
-          // 如果是模型选择类型,使用当前选中的模型
-          // if (input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel)) {
-          //   return {
-          //     ...input,
-          //     value: selectedModel.model
-          //   };
-          // }
           // 如果是文件上传类型,设置为从工作流开始节点获取用户文件
           if (input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)) {
             return {
@@ -323,246 +250,103 @@ const RenderList = React.memo(function RenderList({
     }
   );
 
-  const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
-    manual: false
-  });
-
-  const formatTemplatesArray = useMemo(() => {
-    const data = (() => {
-      if (type === TemplateTypeEnum.systemPlugin) {
-        return pluginGroups.map((group) => {
-          const copy: NodeTemplateListType = group.groupTypes.map((type) => ({
-            list: [],
-            type: type.typeId,
-            label: type.typeName
-          }));
-          templates.forEach((item) => {
-            const index = copy.findIndex((template) => template.type === item.templateType);
-            if (index === -1) return;
-            copy[index].list.push(item);
-          });
-          return {
-            label: group.groupName,
-            list: copy.filter((item) => item.list.length > 0)
-          };
-        });
-      }
-
-      return [
-        {
-          list: [
-            {
-              list: templates,
-              type: '',
-              label: ''
-            }
-          ],
-          label: ''
-        }
-      ];
-    })();
-
-    return data.filter(({ list }) => list.length > 0);
-  }, [pluginGroups, templates, type]);
-
   const gridStyle = useMemo(() => {
-    if (type === TemplateTypeEnum.teamPlugin) {
-      return {
-        gridTemplateColumns: ['1fr', '1fr'],
-        py: 2,
-        avatarSize: '2rem'
-      };
-    }
-
     return {
       gridTemplateColumns: ['1fr', '1fr 1fr'],
       py: 3,
       avatarSize: '1.75rem'
     };
-  }, [type]);
-
-  const PluginListRender = useMemoizedFn(({ list = [] }: { list: NodeTemplateListType }) => {
-    return (
-      <>
-        {list.map((item, i) => {
-          return (
-            <Box
-              key={item.type}
-              css={css({
-                span: {
-                  display: 'block'
-                }
-              })}
-            >
-              <Flex>
-                <Box fontSize={'sm'} my={2} fontWeight={'500'} flex={1} color={'myGray.900'}>
-                  {t(item.label as any)}
-                </Box>
-              </Flex>
-              <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2} columnGap={3}>
-                {item.list.map((template) => {
-                  const selected = selectedTools.some((tool) => tool.pluginId === template.id);
-
-                  return (
-                    <MyTooltip
-                      key={template.id}
-                      placement={'right'}
-                      label={
-                        <Box py={2}>
-                          <Flex alignItems={'center'}>
-                            <MyAvatar
-                              src={template.avatar}
-                              w={'1.75rem'}
-                              objectFit={'contain'}
-                              borderRadius={'sm'}
-                            />
-                            <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
-                              {t(template.name as any)}
-                            </Box>
-                          </Flex>
-                          <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
-                            {t(template.intro as any) || t('common:core.workflow.Not intro')}
-                          </Box>
-                          {type === TemplateTypeEnum.systemPlugin && (
-                            <CostTooltip
-                              cost={template.currentCost}
-                              hasTokenFee={template.hasTokenFee}
-                            />
-                          )}
-                        </Box>
-                      }
-                    >
-                      <Flex
-                        alignItems={'center'}
-                        py={gridStyle.py}
-                        px={3}
-                        _hover={{ bg: 'myWhite.600' }}
-                        borderRadius={'sm'}
-                        whiteSpace={'nowrap'}
-                        overflow={'hidden'}
-                        textOverflow={'ellipsis'}
-                      >
-                        <MyAvatar
-                          src={template.avatar}
-                          w={gridStyle.avatarSize}
-                          objectFit={'contain'}
-                          borderRadius={'sm'}
-                          flexShrink={0}
-                        />
-                        <Box
-                          color={'myGray.900'}
-                          fontWeight={'500'}
-                          fontSize={'sm'}
-                          flex={'1 0 0'}
-                          ml={3}
-                          className="textEllipsis"
-                        >
-                          {t(template.name as any)}
-                        </Box>
-
-                        {selected ? (
-                          <Button
-                            size={'sm'}
-                            variant={'grayDanger'}
-                            leftIcon={<MyIcon name={'delete'} w={'16px'} mr={-1} />}
-                            onClick={() => onRemoveTool(template)}
-                            px={2}
-                            fontSize={'mini'}
-                          >
-                            {t('common:Remove')}
-                          </Button>
-                        ) : template.flowNodeType === 'toolSet' ? (
-                          <Flex gap={2}>
-                            <Button
-                              size={'sm'}
-                              variant={'whiteBase'}
-                              isLoading={isLoading}
-                              leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
-                              onClick={() => setParentId(template.id)}
-                              px={2}
-                              fontSize={'mini'}
-                            >
-                              {t('common:Open')}
-                            </Button>
-                            <Button
-                              size={'sm'}
-                              variant={'primaryOutline'}
-                              leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
-                              isLoading={isLoading}
-                              onClick={() => onClickAdd(template)}
-                              px={2}
-                              fontSize={'mini'}
-                            >
-                              {t('common:Add')}
-                            </Button>
-                          </Flex>
-                        ) : template.isFolder ? (
-                          <Button
-                            size={'sm'}
-                            variant={'whiteBase'}
-                            leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
-                            onClick={() => setParentId(template.id)}
-                            px={2}
-                            fontSize={'mini'}
-                          >
-                            {t('common:Open')}
-                          </Button>
-                        ) : (
-                          <Button
-                            size={'sm'}
-                            variant={'primaryOutline'}
-                            leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
-                            isLoading={isLoading}
-                            onClick={() => onClickAdd(template)}
-                            px={2}
-                            fontSize={'mini'}
-                          >
-                            {t('common:Add')}
-                          </Button>
-                        )}
-                      </Flex>
-                    </MyTooltip>
-                  );
-                })}
-              </Grid>
-            </Box>
-          );
-        })}
-      </>
-    );
-  });
+  }, []);
 
   return templates.length === 0 ? (
     <EmptyTip text={t('app:module.No Modules')} />
   ) : (
     <Box flex={'1 0 0'} overflow={'overlay'}>
-      <Accordion defaultIndex={[0]} allowMultiple reduceMotion>
-        {formatTemplatesArray.length > 1 ? (
-          <>
-            {formatTemplatesArray.map(({ list, label }, index) => (
-              <AccordionItem key={index} border={'none'}>
-                <AccordionButton
-                  fontSize={'sm'}
-                  fontWeight={'500'}
+      <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={2} columnGap={3}>
+        {templates.map((template) => {
+          const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+
+          return (
+            <MyTooltip
+              key={template.id}
+              placement={'right'}
+              label={
+                <Box py={2}>
+                  <Flex alignItems={'center'}>
+                    <MyAvatar
+                      src={template.avatar}
+                      w={'1.75rem'}
+                      objectFit={'contain'}
+                      borderRadius={'sm'}
+                    />
+                    <Box fontWeight={'bold'} ml={3} color={'myGray.900'}>
+                      {t(template.name as any)}
+                    </Box>
+                  </Flex>
+                  <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
+                    {t(template.intro as any) || t('common:core.workflow.Not intro')}
+                  </Box>
+                  <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
+                </Box>
+              }
+            >
+              <Flex
+                alignItems={'center'}
+                py={gridStyle.py}
+                px={3}
+                _hover={{ bg: 'myWhite.600' }}
+                borderRadius={'sm'}
+                whiteSpace={'nowrap'}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+              >
+                <MyAvatar
+                  src={template.avatar}
+                  w={gridStyle.avatarSize}
+                  objectFit={'contain'}
+                  borderRadius={'sm'}
+                  flexShrink={0}
+                />
+                <Box
                   color={'myGray.900'}
-                  justifyContent={'space-between'}
-                  alignItems={'center'}
-                  borderRadius={'md'}
-                  px={3}
+                  fontWeight={'500'}
+                  fontSize={'sm'}
+                  flex={'1 0 0'}
+                  ml={3}
+                  className="textEllipsis"
                 >
-                  {t(label as any)}
-                  <AccordionIcon />
-                </AccordionButton>
-                <AccordionPanel py={0}>
-                  <PluginListRender list={list} />
-                </AccordionPanel>
-              </AccordionItem>
-            ))}
-          </>
-        ) : (
-          <PluginListRender list={formatTemplatesArray?.[0]?.list} />
-        )}
-      </Accordion>
+                  {t(template.name as any)}
+                </Box>
+
+                {selected ? (
+                  <Button
+                    size={'sm'}
+                    variant={'grayDanger'}
+                    leftIcon={<MyIcon name={'delete'} w={'16px'} mr={-1} />}
+                    onClick={() => onRemoveTool(template)}
+                    px={2}
+                    fontSize={'mini'}
+                  >
+                    {t('common:Remove')}
+                  </Button>
+                ) : (
+                  <Button
+                    size={'sm'}
+                    variant={'primaryOutline'}
+                    leftIcon={<MyIcon name={'common/addLight'} w={'16px'} mr={-1.5} />}
+                    isLoading={isLoading}
+                    onClick={() => onClickAdd(template)}
+                    px={2}
+                    fontSize={'mini'}
+                  >
+                    {t('common:Add')}
+                  </Button>
+                )}
+              </Flex>
+            </MyTooltip>
+          );
+        })}
+      </Grid>
 
       {!!configTool && (
         <ConfigToolModal
