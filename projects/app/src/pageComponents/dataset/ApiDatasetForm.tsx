@@ -61,7 +61,7 @@ const ApiDatasetForm = ({
       case DatasetTypeEnum.feishu:
         return feishuServer?.appId && feishuServer?.appSecret;
       case DatasetTypeEnum.apiDataset:
-        return !!apiServer?.baseUrl && !!apiServer?.authorization;
+        return !!apiServer?.baseUrl;
       default:
         return false;
     }
@@ -71,8 +71,7 @@ const ApiDatasetForm = ({
     yuqueServer?.token,
     feishuServer?.appId,
     feishuServer?.appSecret,
-    apiServer?.baseUrl,
-    apiServer?.authorization
+    apiServer?.baseUrl
   ]);
 
   // Unified function to get the current path

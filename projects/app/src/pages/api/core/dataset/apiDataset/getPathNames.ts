@@ -74,20 +74,25 @@ async function handler(
   if (apiServer) {
     const getFullPath = async (currentId: string): Promise<string> => {
       const response = await useApiDatasetRequest({ apiServer }).getFileDetail({
-        searchId: currentId,
-        parentId: ''
+        apiFileId: currentId
       });
 
-      if (!response) {
-        return '';
+      if (response?.parentId) {
+        const parentPath = await getFullPath(response.parentId);
+        return `${parentPath}/${response.name}`;
       }
 
-      return `${response.fullPath}`;
+      return `/${response?.name}`;
     };
+
     return await getFullPath(parentId);
   }
 
-  if (yuqueServer || feishuServer) {
+  if (feishuServer) {
+    return '';
+  }
+
+  if (yuqueServer) {
     const getFullPath = async (currentId: string): Promise<string> => {
       const response = await getProApiDatasetFileDetailRequest({
         feishuServer,

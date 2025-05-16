@@ -2,7 +2,9 @@ import type {
   APIFileListResponse,
   ApiFileReadContentResponse,
   APIFileReadResponse,
-  APIFileServer
+  ApiDatasetDetailResponse,
+  APIFileServer,
+  APIFileItem
 } from '@fastgpt/global/core/dataset/apiDataset';
 import axios, { type Method } from 'axios';
 import { addLog } from '../../../common/system/log';
@@ -165,77 +167,27 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   };
 
   const getFileDetail = async ({
-    searchId,
-    parentId
+    apiFileId
   }: {
-    searchId?: ParentIdType;
-    parentId?: ParentIdType;
-  }) => {
-    //Breadth first search queue
-    const queue: { id: ParentIdType; depth: number; path: string }[] = [
+    apiFileId: string;
+  }): Promise<ApiDatasetDetailResponse | null> => {
+    const response = await request<APIFileItem>(
+      `/v1/file/detail`,
       {
-        id: parentId,
-        depth: 0,
-        path: ''
-      }
-    ];
-    //Record accessed folders to avoid loops
-    const visited = new Set<ParentIdType>();
-    //Maximum search depth to prevent infinite loops
-    const MAX_DEPTH = 10;
+        id: apiFileId
+      },
+      'GET'
+    );
 
-    while (queue.length > 0) {
-      const { id: currentParentId, depth, path } = queue.shift()!;
+    const fileData = response;
 
-      if (depth >= MAX_DEPTH) {
-        break;
-      }
-
-      //If already visited, skip
-      if (visited.has(currentParentId)) {
-        continue;
-      }
-      visited.add(currentParentId);
-
-      //Retrieve the file list of the current level
-      const files = await request<APIFileListResponse>(
-        `/v1/file/list`,
-        {
-          searchKey: '',
-          parentId: currentParentId
-        },
-        'POST'
-      );
-
-      if (!Array.isArray(files)) {
-        return Promise.reject('Invalid file list format');
-      }
-      if (files.some((file) => !file.id || !file.name || typeof file.type === 'undefined')) {
-        return Promise.reject('Invalid file data format');
-      }
-
-      //Search for the target file at the current level
-      const targetFile = files.find((item) => item.id === searchId);
-      if (targetFile) {
-        // return fullpath
-        return {
-          ...targetFile,
-          fullPath: path ? `${path}/${targetFile.name}` : `/${targetFile.name}`
-        };
-      }
-
-      files
-        .filter((file) => file.type === 'folder')
-        .forEach((folder) => {
-          const newPath = path ? `${path}/${folder.name}` : `/${folder.name}`;
-          queue.push({
-            id: folder.id,
-            depth: depth + 1,
-            path: newPath
-          });
-        });
+    if (fileData) {
+      return {
+        id: fileData.id,
+        name: fileData.name,
+        parentId: fileData.parentId === null ? '' : fileData.parentId
+      };
     }
-
     return null;
   };
 

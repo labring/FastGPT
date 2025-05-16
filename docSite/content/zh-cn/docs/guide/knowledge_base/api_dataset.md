@@ -185,3 +185,43 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 {{< /tabs >}}
 
 
+### 4. 获取文件详细信息（用于获取文件信息）
+
+{{< tabs tabTotal="2" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+id 为文件的 id。
+
+```bash
+curl --location --request GET '{{baseURL}}/v1/file/detai?id=xx' \
+--header 'Authorization: Bearer {{authorization}}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+```json
+{
+    "code": 200,
+    "success": true,
+    "message": "",
+    "data": {
+        "id": "docs",
+        "parentId": "xxxx",
+        "name": "docs",
+        "type": "folder",
+        "createTime": "2025-05-16T03:46:10.652Z",
+        "updateTime": "2025-05-16T03:46:10.652Z"
+    }
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+
