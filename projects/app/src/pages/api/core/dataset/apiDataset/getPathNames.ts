@@ -25,6 +25,27 @@ export type GetApiDatasetPathBody = {
 
 export type GetApiDatasetPathResponse = string;
 
+type FileDetailGetter = (fileId: string) => Promise<{
+  id: string;
+  name: string;
+  parentId: ParentIdType;
+}>;
+
+const getFullPath = async (currentId: string, getFileDetail: FileDetailGetter): Promise<string> => {
+  const response = await getFileDetail(currentId);
+
+  if (!response) {
+    return '';
+  }
+
+  if (response.parentId && response.parentId !== null) {
+    const parentPath = await getFullPath(response.parentId, getFileDetail);
+    return `${parentPath}/${response.name}`;
+  }
+
+  return `/${response.name}`;
+};
+
 async function handler(
   req: ApiRequestProps<GetApiDatasetPathBody, any>,
   res: ApiResponseType<GetApiDatasetPathResponse>
@@ -71,44 +92,27 @@ async function handler(
     return Promise.reject(DatasetErrEnum.noApiServer);
   }
 
-  if (apiServer) {
-    const getFullPath = async (currentId: string): Promise<string> => {
-      const response = await useApiDatasetRequest({ apiServer }).getFileDetail({
-        apiFileId: currentId
-      });
-
-      if (response?.parentId) {
-        const parentPath = await getFullPath(response.parentId);
-        return `${parentPath}/${response.name}`;
-      }
-
-      return `/${response?.name}`;
-    };
-
-    return await getFullPath(parentId);
-  }
-
   if (feishuServer) {
     return '';
   }
 
-  if (yuqueServer) {
-    const getFullPath = async (currentId: string): Promise<string> => {
-      const response = await getProApiDatasetFileDetailRequest({
-        feishuServer,
-        yuqueServer,
-        apiFileId: currentId
+  if (apiServer) {
+    const apiFileGetter: FileDetailGetter = async (fileId) => {
+      return await useApiDatasetRequest({ apiServer }).getFileDetail({
+        apiFileId: fileId
       });
-
-      if (response.parentId) {
-        const parentPath = await getFullPath(response.parentId);
-        return `${parentPath}/${response.name}`;
-      }
-
-      return `/${response.name}`;
     };
+    return await getFullPath(parentId, apiFileGetter);
+  }
 
-    return await getFullPath(parentId);
+  if (yuqueServer) {
+    const yuqueFileGetter: FileDetailGetter = async (fileId) => {
+      return await getProApiDatasetFileDetailRequest({
+        yuqueServer,
+        apiFileId: fileId
+      });
+    };
+    return await getFullPath(parentId, yuqueFileGetter);
   }
 
   return Promise.reject(new Error(DatasetErrEnum.noApiServer));

@@ -170,16 +170,14 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     apiFileId
   }: {
     apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse | null> => {
-    const response = await request<APIFileItem>(
+  }): Promise<ApiDatasetDetailResponse> => {
+    const fileData = await request<APIFileItem>(
       `/v1/file/detail`,
       {
         id: apiFileId
       },
       'GET'
     );
-
-    const fileData = response;
 
     if (fileData) {
       return {
@@ -188,7 +186,15 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         parentId: fileData.parentId === null ? '' : fileData.parentId
       };
     }
-    return null;
+
+    if (!fileData) {
+      return Promise.reject('File not found');
+    }
+    return {
+      id: '',
+      name: '',
+      parentId: ''
+    };
   };
 
   return {

@@ -194,7 +194,7 @@ curl --location --request GET '{{baseURL}}/v1/file/read?id=xx' \
 id 为文件的 id。
 
 ```bash
-curl --location --request GET '{{baseURL}}/v1/file/detai?id=xx' \
+curl --location --request GET '{{baseURL}}/v1/file/detail?id=xx' \
 --header 'Authorization: Bearer {{authorization}}'
 ```
 
