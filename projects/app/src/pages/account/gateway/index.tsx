@@ -117,7 +117,7 @@ const GatewayConfig = () => {
             />
           )}
           {tab === 'copyright' && <CopyrightTable teamName={copyRightConfig.name} />}
-          {tab === 'app' && <AppTable Tab={undefined} />}
+          {tab === 'app' && <AppTable />}
         </Flex>
       </Flex>
     </AccountContainer>

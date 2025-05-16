@@ -44,7 +44,7 @@ const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string 
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
   const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
@@ -125,7 +125,7 @@ const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string 
             overflow={'hidden'}
             onClick={() => {
               onChangeChatId();
-              setQuoteData(undefined);
+              setCiteModalData(undefined);
             }}
           >
             {t('common:core.chat.New Chat')}
@@ -184,7 +184,7 @@ const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string 
                 : {
                     onClick: () => {
                       onChangeChatId(item.id);
-                      setQuoteData(undefined);
+                      setCiteModalData(undefined);
                     }
                   })}
               {...(i !== concatHistory.length - 1 && {
@@ -252,7 +252,7 @@ const GateChatHistorySlider = ({ confirmClearText }: { confirmClearText: string 
                                 onDelHistory(item.id);
                                 if (item.id === activeChatId) {
                                   onChangeChatId();
-                                  setQuoteData(undefined);
+                                  setCiteModalData(undefined);
                                 }
                               },
                               type: 'danger'

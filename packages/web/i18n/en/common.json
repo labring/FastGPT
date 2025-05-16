@@ -1230,6 +1230,7 @@
   "templateTags.Writing": "Writing",
   "template_market": "Template Market",
   "textarea_variable_picker_tip": "Enter \"/\" to select a variable",
+  "ui.textarea.Magnifying": "enlarge",
   "unauth_token": "The certificate has expired, please log in again",
   "undo_tip": "Undo  ctrl  z",
   "undo_tip_mac": "Undo  ⌘  z ",

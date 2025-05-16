@@ -8,7 +8,6 @@ import { theme } from '@fastgpt/web/styles/theme';
 import { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import ToolSelectModal from './ToolSelectModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -234,8 +233,6 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
           <Box mt={0}>
             <Grid gridTemplateColumns={'repeat(3, minmax(0, 1fr))'} gridGap={[2, 4]}>
               {selectedTools.map((item) => {
-                const hasError = checkAppUnExistError(item.pluginData?.error);
-
                 return (
                   <MyTooltip key={item.id} label={item.intro}>
                     <Flex
@@ -315,22 +312,6 @@ const ToolSelect = React.forwardRef<ToolSelectRefType, ToolSelectProps>(
                           />
                         </Flex>
                       </Flex>
-                      {hasError && (
-                        <MyTooltip label={t('app:app.modules.not_found_tips')}>
-                          <Flex
-                            bg={'red.50'}
-                            alignItems={'center'}
-                            h={6}
-                            px={2}
-                            rounded={'md'}
-                            fontSize={'xs'}
-                            fontWeight={'medium'}
-                          >
-                            <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                            <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
-                          </Flex>
-                        </MyTooltip>
-                      )}
                     </Flex>
                   </MyTooltip>
                 );

@@ -1230,6 +1230,8 @@
   "template_market": "模板市场",
   "textarea_variable_picker_tip": "输入\"/\"可选择变量",
   "tool_select": "工具选择",
+  "ui.textarea.Magnifying": "放大",
+  "un_used": "未使用",
   "unauth_token": "凭证已过期，请重新登录",
   "undo_tip": "撤销  ctrl  z",
   "undo_tip_mac": "撤销  ⌘  z ",

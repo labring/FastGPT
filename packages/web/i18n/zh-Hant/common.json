@@ -1227,6 +1227,7 @@
   "templateTags.Writing": "文字創作",
   "template_market": "模板市場",
   "textarea_variable_picker_tip": "輸入「/」以選擇變數",
+  "ui.textarea.Magnifying": "放大",
   "unauth_token": "憑證已過期，請重新登入",
   "undo_tip": "復原  ctrl  z",
   "undo_tip_mac": "復原  ⌘  z ",

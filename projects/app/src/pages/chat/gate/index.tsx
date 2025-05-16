@@ -64,8 +64,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   // 添加appForm共享状态
   const [appForm, setAppForm] = useState<AppSimpleEditFormType>(getDefaultAppForm());
@@ -134,7 +134,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
 
     return isPc || !appId ? (
       <GateSideBar
-        externalTrigger={!!quoteData}
+        externalTrigger={!!datasetCiteData}
         onFoldChange={handleFoldChange}
         defaultFolded={sidebarFolded}
       >
@@ -152,7 +152,16 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData, sidebarFolded, handleFoldChange]);
+  }, [
+    t,
+    isPc,
+    appId,
+    isOpenSlider,
+    onCloseSlider,
+    datasetCiteData,
+    sidebarFolded,
+    handleFoldChange
+  ]);
 
   return (
     <AppFormContext.Provider value={{ appForm, setAppForm }}>
@@ -167,7 +176,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           </Flex>
         )}
 
-        {(!quoteData || isPc) && (
+        {(!datasetCiteData || isPc) && (
           <GatePageContainer flex={'1 0 0'} w={0} position={'relative'}>
             {/* 将折叠按钮放在PageContainer内部，贴近左侧 */}
             {sidebarFolded && isPc && appId && (
@@ -207,12 +216,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           </GatePageContainer>
         )}
 
-        {quoteData && (
+        {datasetCiteData && (
           <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
             <ChatQuoteList
-              rawSearch={quoteData.rawSearch}
-              metadata={quoteData.metadata}
-              onClose={() => setQuoteData(undefined)}
+              rawSearch={datasetCiteData.rawSearch}
+              metadata={datasetCiteData.metadata}
+              onClose={() => setCiteModalData(undefined)}
             />
           </PageContainer>
         )}
