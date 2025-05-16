@@ -35,6 +35,7 @@
   "delete_all_input_guide_confirm": "确定要清空输入引导词库吗？",
   "download_chunks": "下载数据",
   "empty_directory": "这个目录已经没东西可选了~",
+  "error_message": "错误信息",
   "file_amount_over": "超出最大文件数量 {{max}}",
   "file_input": "系统文件",
   "file_input_tip": "可通过【插件开始】节点的“文件链接”获取对应文件的链接",

@@ -61,6 +61,7 @@ const ChatItemSchema = new Schema({
     type: Array,
     default: []
   },
+  errorMsg: String,
   userGoodFeedback: {
     type: String
   },
