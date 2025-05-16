@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Box, type ImageProps, Skeleton } from '@chakra-ui/react';
 import MyPhotoView from '@fastgpt/web/components/common/Image/PhotoView';
 import { useBoolean } from 'ahooks';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
   const { t } = useTranslation();
