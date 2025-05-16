@@ -13,8 +13,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 const HomeTable = dynamic(() => import('@/pageComponents/account/gateway/HomeTable'));
 const CopyrightTable = dynamic(() => import('@/pageComponents/account/gateway/CopyrightTable'));
 const GateAppsList = dynamic(() => import('@/pageComponents/account/gateway/GateAppsList'));
-
-type TabType = 'home' | 'copyright';
+const AppTable = dynamic(() => import('@/pageComponents/account/gateway/AppTable'));
+type TabType = 'home' | 'copyright' | 'app';
 
 const GatewayConfig = () => {
   const { t } = useTranslation();
@@ -72,7 +72,8 @@ const GatewayConfig = () => {
       <FillRowTabs<TabType>
         list={[
           { label: t('account:config_home'), value: 'home' },
-          { label: t('account:config_copyright'), value: 'copyright' }
+          { label: t('account:config_copyright'), value: 'copyright' },
+          { label: t('account:config_app'), value: 'app' }
         ]}
         value={tab}
         py={1}
@@ -116,6 +117,7 @@ const GatewayConfig = () => {
             />
           )}
           {tab === 'copyright' && <CopyrightTable teamName={copyRightConfig.name} />}
+          {tab === 'app' && <AppTable Tab={undefined} />}
         </Flex>
       </Flex>
     </AccountContainer>

@@ -47,6 +47,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
   const userPopoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isChatPage = router.pathname === '/chat/gate';
+  const isStorePage = router.pathname === '/chat/gate/store';
 
   useEffect(() => {
     if (companyNameRef.current && !isCollapsed) {
@@ -192,6 +193,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
           alignItems={isCollapsed ? 'center' : 'flex-start'}
           transition="all 0.2s"
         >
+          {/* Chat Button */}
           <Flex
             align="center"
             p="8px"
@@ -248,6 +250,65 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
               </Box>
             </Box>
           </Flex>
+
+          {/* App Store Button */}
+          <Flex
+            align="center"
+            p="8px"
+            gap="8px"
+            w={isCollapsed ? '44px' : '100%'}
+            h="44px"
+            borderRadius="8px"
+            cursor="pointer"
+            bg={isStorePage ? 'rgba(17, 24, 36, 0.05)' : 'transparent'}
+            _hover={{ bg: isStorePage ? 'rgba(17, 24, 36, 0.1)' : 'rgba(17, 24, 36, 0.05)' }}
+            flexGrow={0}
+            transition="all 0.4s ease-in-out"
+            className="nav-item"
+            onClick={() => router.push('/chat/gate/store')}
+            justifyContent={isCollapsed ? 'center' : 'flex-start'}
+            sx={{
+              '&.nav-item': {
+                '& > .nav-content': {
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  width: isCollapsed ? '20px' : '100%',
+                  transition: 'all 0.4s ease-in-out'
+                }
+              }
+            }}
+          >
+            <Box className="nav-content">
+              <MyIcon
+                name="support/gate/chat/sidebar/appGray"
+                width="20px"
+                height="20px"
+                color={isStorePage ? '#3370FF' : '#8A95A7'}
+                fill={isStorePage ? '#3370FF' : '#8A95A7'}
+              />
+              <Box
+                opacity={isCollapsed ? 0 : 1}
+                maxW={isCollapsed ? 0 : '130px'}
+                transition="all 0.4s ease-in-out"
+                overflow="hidden"
+              >
+                <Text
+                  fontSize="14px"
+                  fontWeight="500"
+                  lineHeight="20px"
+                  letterSpacing="0.1px"
+                  fontFamily="PingFang SC"
+                  color={isStorePage ? '#3370FF' : '#667085'}
+                  transformOrigin="left center"
+                  whiteSpace="nowrap"
+                >
+                  {t('common:App')}
+                </Text>
+              </Box>
+            </Box>
+          </Flex>
+
           {/* Divider */}
           <Box w="100%" h="2px" bg="#E8EBF0" transition="width 0.2s" my={3} />
           {/* Recent Apps - matched with SliderApps style */}

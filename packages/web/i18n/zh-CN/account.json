@@ -4,6 +4,7 @@
   "api_key": "API 密钥",
   "bills_and_invoices": "账单与发票",
   "channel": "模型渠道",
+  "config_app": "应用配置",
   "config_copyright": "版权信息",
   "config_home": "门户配置",
   "config_model": "模型配置",

@@ -1,21 +1,8 @@
 import React, { useRef, useCallback, useMemo, useState, useEffect, useContext } from 'react';
-import {
-  Box,
-  Flex,
-  Textarea,
-  IconButton,
-  useBreakpointValue,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Button,
-  Badge
-} from '@chakra-ui/react';
+import { Box, Flex, Textarea, IconButton, useBreakpointValue, Button } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getWebDefaultLLMModel } from '@/web/common/system/utils';
-import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import type { ChatBoxInputFormType, ChatBoxInputType, SendPromptFnType } from '../type';
@@ -31,13 +18,8 @@ import { useFileUpload } from '../hooks/useFileUpload';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import { useRouter } from 'next/router';
-import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
-import { getMyAppsGate } from '@/web/core/app/api';
-import { form2AppWorkflow } from '@/web/core/app/utils';
+import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import dynamic from 'next/dynamic';
-import { ChevronDownIcon } from '@chakra-ui/icons';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { AppFormContext } from '@/pages/chat/gate/index';
 import Icon from '@fastgpt/web/components/common/Icon';

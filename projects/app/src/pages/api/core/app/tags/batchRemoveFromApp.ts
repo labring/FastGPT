@@ -10,11 +10,6 @@ type Props = {
 };
 
 async function handler(req: ApiRequestProps<Props>) {
-  // 确保只处理 DELETE 请求
-  if (req.method !== 'DELETE') {
-    throw new Error('Method Not Allowed');
-  }
-
   const { appId, tagIds } = req.body;
 
   if (!appId) {

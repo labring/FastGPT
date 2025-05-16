@@ -9,7 +9,8 @@ import {
   Input,
   FormControl,
   FormLabel,
-  Link
+  Link,
+  Button
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
@@ -18,6 +19,7 @@ import ToolSelect from './ToolSelect';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getBatchPlugins } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import TagManageModal from './TagManageModal';
 
 type Props = {
   tools: string[];
@@ -32,7 +34,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
   const { updateLocalGateConfig } = useGateStore();
   const toolSelectRef = useRef<ToolSelectRefType>(null);
   const [selectedTools, setSelectedTools] = useState<ToolItemType[]>([]);
-
+  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   // 批量获取插件信息
   const { runAsync: loadBatchPlugins, loading: loadingPlugins } = useRequest2(
     async (pluginIds: string[]) => {

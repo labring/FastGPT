@@ -15,7 +15,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRouter } from 'next/router';
 
 type Props = {
-  tab: 'home' | 'copyright';
+  tab: 'home' | 'copyright' | 'app';
   tools: string[];
   slogan: string;
   placeholderText: string;

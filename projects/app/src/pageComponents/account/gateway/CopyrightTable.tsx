@@ -9,6 +9,7 @@ import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { putAppById } from '@/web/core/app/api';
 
 type Props = {
   teamName: string;

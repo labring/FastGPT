@@ -146,7 +146,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<AppListItemTy
 
   const myApps = await MongoApp.find(
     findAppsQuery,
-    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission'
+    '_id parentId avatar type name intro tmbId updateTime pluginData inheritPermission tags'
   )
     .sort({
       updateTime: -1
