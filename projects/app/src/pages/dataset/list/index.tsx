@@ -1,3 +1,4 @@
+'use client';
 import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex, Button, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
@@ -222,7 +223,7 @@ const Dataset = () => {
         </Flex>
 
         {!!folderDetail && isPc && (
-          <Box ml="6">
+          <Box ml="6" h={'100%'} pb={4} overflow={'auto'}>
             <FolderSlideCard
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
               isInheritPermission={folderDetail.inheritPermission}

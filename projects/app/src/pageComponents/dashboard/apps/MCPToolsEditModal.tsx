@@ -20,17 +20,16 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AppListContext } from './context';
 import { useContextSelector } from 'use-context-selector';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
 
 export type MCPToolSetData = {
   url: string;
-  toolList: ToolType[];
+  toolList: McpToolConfigType[];
 };
 
 export type EditMCPToolsProps = {
@@ -41,7 +40,6 @@ export type EditMCPToolsProps = {
 
 const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
 
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
 
@@ -81,7 +79,7 @@ const MCPToolsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
     (data: getMCPToolsBody) => getMCPTools(data),
     {
-      onSuccess: (res: ToolType[]) => {
+      onSuccess: (res: McpToolConfigType[]) => {
         setValue('mcpData.toolList', res);
       },
       errorToast: t('app:MCP_tools_parse_failed')

@@ -4,7 +4,6 @@ declare global {
       LOG_DEPTH: string;
       DEFAULT_ROOT_PSW: string;
       DB_MAX_LINK: string;
-      TOKEN_KEY: string;
       FILE_TOKEN_KEY: string;
       ROOT_KEY: string;
       OPENAI_BASE_URL: string;
@@ -37,6 +36,7 @@ declare global {
       CONFIG_JSON_PATH?: string;
       PASSWORD_LOGIN_LOCK_SECONDS?: string;
       PASSWORD_EXPIRED_MONTH?: string;
+      MAX_LOGIN_SESSION?: string;
     }
   }
 }

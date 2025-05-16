@@ -14,17 +14,24 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
 const ResponseTags = ({
   showTags,
-  historyItem
+  historyItem,
+  onOpenCiteModal
 }: {
   showTags: boolean;
   historyItem: ChatSiteItemType;
+  onOpenCiteModal: (e?: {
+    collectionId?: string;
+    sourceId?: string;
+    sourceName?: string;
+    datasetId?: string;
+    quoteId?: string;
+  }) => void;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
@@ -79,15 +86,6 @@ const ResponseTags = ({
         datasetId: item.datasetId
       }));
   }, [quoteList]);
-
-  const openQuoteReader = (item?: {
-    collectionId?: string;
-    sourceId?: string;
-    sourceName?: string;
-    datasetId?: string;
-  }) => {
-    eventBus.emit(EventNameEnum.openQuoteReader, item);
-  };
 
   const notEmptyTags =
     quoteList.length > 0 ||
@@ -161,7 +159,7 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      openQuoteReader(item);
+                      onOpenCiteModal(item);
                     }}
                     height={6}
                   >
@@ -216,7 +214,7 @@ const ResponseTags = ({
                 cursor={'pointer'}
                 onClick={(e) => {
                   e.stopPropagation();
-                  openQuoteReader();
+                  onOpenCiteModal();
                 }}
               >
                 {t('chat:citations', { num: quoteList.length })}

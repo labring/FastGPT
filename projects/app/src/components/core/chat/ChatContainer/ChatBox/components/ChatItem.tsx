@@ -28,10 +28,16 @@ import { isEqual } from 'lodash';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatItemTime } from '@fastgpt/global/common/string/time';
 import dayjs from 'dayjs';
-import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import {
+  ChatItemContext,
+  type OnOpenCiteModalProps
+} from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import dynamic from 'next/dynamic';
+import { useMemoizedFn } from 'ahooks';
+import ChatBoxDivider from '../../../Divider';
+
+const ResponseTags = dynamic(() => import('./ResponseTags'));
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -88,13 +94,15 @@ const AIContentCard = React.memo(function AIContentCard({
   dataId,
   isLastChild,
   isChatting,
-  questionGuides
+  questionGuides,
+  onOpenCiteModal
 }: {
   dataId: string;
   chatValue: ChatItemValueItemType[];
   isLastChild: boolean;
   isChatting: boolean;
   questionGuides: string[];
+  onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 }) {
   return (
     <Flex flexDirection={'column'} gap={2}>
@@ -108,6 +116,7 @@ const AIContentCard = React.memo(function AIContentCard({
             value={value}
             isLastResponseValue={isLastChild && i === chatValue.length - 1}
             isChatting={isChatting}
+            onOpenCiteModal={onOpenCiteModal}
           />
         );
       })}
@@ -122,7 +131,6 @@ const ChatItem = (props: Props) => {
   const { type, avatar, statusBoxData, children, isLastChild, questionGuides = [], chat } = props;
 
   const { isPc } = useSystem();
-  const { toast } = useToast();
 
   const styleMap: BoxProps = {
     ...(type === ChatRoleEnum.Human
@@ -150,7 +158,6 @@ const ChatItem = (props: Props) => {
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showNodeStatus = useContextSelector(ChatItemContext, (v) => v.showNodeStatus);
 
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
   const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
   const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
@@ -228,63 +235,47 @@ const ChatItem = (props: Props) => {
     return groupedValues;
   }, [chat.obj, chat.value, isChatting]);
 
-  const handleOpenQuoteReader = useCallback(
-    ({
-      collectionId,
-      sourceId,
-      sourceName,
-      datasetId,
-      quoteId
-    }: {
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const onOpenCiteModal = useMemoizedFn(
+    (item?: {
       collectionId?: string;
       sourceId?: string;
       sourceName?: string;
       datasetId?: string;
       quoteId?: string;
     }) => {
-      if (!setQuoteData) return;
-
-      const collectionIdList = collectionId
-        ? [collectionId]
+      const collectionIdList = item?.collectionId
+        ? [item.collectionId]
         : [...new Set(quoteList.map((item) => item.collectionId))];
 
-      setQuoteData({
+      setCiteModalData({
         rawSearch: quoteList,
         metadata:
-          collectionId && isShowReadRawSource
+          item?.collectionId && isShowReadRawSource
             ? {
                 appId: appId,
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
-                collectionId: collectionId,
+                collectionId: item.collectionId,
                 collectionIdList,
-                sourceId: sourceId || '',
-                sourceName: sourceName || '',
-                datasetId: datasetId || '',
+                sourceId: item.sourceId || '',
+                sourceName: item.sourceName || '',
+                datasetId: item.datasetId || '',
                 outLinkAuthData,
-                quoteId
+                quoteId: item.quoteId
               }
             : {
                 appId: appId,
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionIdList,
-                sourceId: sourceId,
-                sourceName: sourceName,
+                sourceId: item?.sourceId,
+                sourceName: item?.sourceName,
                 outLinkAuthData
               }
       });
-    },
-    [setQuoteData, quoteList, isShowReadRawSource, appId, chatId, chat.dataId, outLinkAuthData]
+    }
   );
-
-  useEffect(() => {
-    if (chat.obj !== ChatRoleEnum.AI) return;
-    eventBus.on(EventNameEnum.openQuoteReader, handleOpenQuoteReader);
-    return () => {
-      eventBus.off(EventNameEnum.openQuoteReader);
-    };
-  }, [chat.obj, handleOpenQuoteReader]);
 
   return (
     <Box
@@ -362,16 +353,39 @@ const ChatItem = (props: Props) => {
           >
             {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
             {type === ChatRoleEnum.AI && (
-              <AIContentCard
-                chatValue={value}
-                dataId={chat.dataId}
-                isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
-                isChatting={isChatting}
-                questionGuides={questionGuides}
-              />
+              <>
+                <AIContentCard
+                  chatValue={value}
+                  dataId={chat.dataId}
+                  isLastChild={isLastChild && i === splitAiResponseResults.length - 1}
+                  isChatting={isChatting}
+                  questionGuides={questionGuides}
+                  onOpenCiteModal={onOpenCiteModal}
+                />
+                {i === splitAiResponseResults.length - 1 && (
+                  <ResponseTags
+                    showTags={!isLastChild || !isChatting}
+                    historyItem={chat}
+                    onOpenCiteModal={onOpenCiteModal}
+                  />
+                )}
+              </>
             )}
             {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
-            {i === splitAiResponseResults.length - 1 && <>{children}</>}
+            {i === splitAiResponseResults.length - 1 && (
+              <>
+                {/* error message */}
+                {!!chat.errorMsg && (
+                  <Box mt={2}>
+                    <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
+                    <Box fontSize={'xs'} color={'myGray.500'}>
+                      {chat.errorMsg}
+                    </Box>
+                  </Box>
+                )}
+                {children}
+              </>
+            )}
             {/* 对话框底部的复制按钮 */}
             {type == ChatRoleEnum.AI &&
               value[0]?.type !== 'interactive' &&

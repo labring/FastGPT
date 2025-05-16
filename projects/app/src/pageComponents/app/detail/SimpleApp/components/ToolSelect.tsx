@@ -17,7 +17,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import ConfigToolModal from './ConfigToolModal';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { checkAppUnExistError } from '@fastgpt/global/core/app/utils';
+import { formatToolError } from '@fastgpt/global/core/app/utils';
 
 const ToolSelect = ({
   appForm,
@@ -65,7 +65,7 @@ const ToolSelect = ({
         gridGap={[2, 4]}
       >
         {appForm.selectedTools.map((item) => {
-          const hasError = checkAppUnExistError(item.pluginData?.error);
+          const toolError = formatToolError(item.pluginData?.error);
 
           return (
             <MyTooltip key={item.id} label={item.intro}>
@@ -77,10 +77,10 @@ const ToolSelect = ({
                 boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
                 borderRadius={'md'}
                 border={theme.borders.base}
-                borderColor={hasError ? 'red.600' : ''}
+                borderColor={toolError ? 'red.600' : ''}
                 _hover={{
                   ...hoverDeleteStyles,
-                  borderColor: hasError ? 'red.600' : 'primary.300'
+                  borderColor: toolError ? 'red.600' : 'primary.300'
                 }}
                 cursor={'pointer'}
                 onClick={() => {
@@ -93,7 +93,7 @@ const ToolSelect = ({
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.selectLLMModel) ||
                           input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect)
                       ) ||
-                    hasError ||
+                    toolError ||
                     item.flowNodeType === FlowNodeTypeEnum.tool ||
                     item.flowNodeType === FlowNodeTypeEnum.toolSet
                   ) {
@@ -113,21 +113,19 @@ const ToolSelect = ({
                 >
                   {item.name}
                 </Box>
-                {hasError && (
-                  <MyTooltip label={t('app:app.modules.not_found_tips')}>
-                    <Flex
-                      bg={'red.50'}
-                      alignItems={'center'}
-                      h={6}
-                      px={2}
-                      rounded={'6px'}
-                      fontSize={'xs'}
-                      fontWeight={'medium'}
-                    >
-                      <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
-                      <Box color={'red.600'}>{t('app:app.modules.not_found')}</Box>
-                    </Flex>
-                  </MyTooltip>
+                {toolError && (
+                  <Flex
+                    bg={'red.50'}
+                    alignItems={'center'}
+                    h={6}
+                    px={2}
+                    rounded={'6px'}
+                    fontSize={'xs'}
+                    fontWeight={'medium'}
+                  >
+                    <MyIcon name={'common/errorFill'} w={'14px'} mr={1} />
+                    <Box color={'red.600'}>{t(toolError as any)}</Box>
+                  </Flex>
                 )}
                 <DeleteIcon
                   ml={2}

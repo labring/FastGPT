@@ -727,9 +727,10 @@ async function streamResponse({
         const index = toolCall.index ?? i;
 
         // Call new tool
-        if (toolCall.id || callingTool) {
-          // 有 id，代表新 call 工具
-          if (toolCall.id) {
+        const hasNewTool = toolCall?.function?.name || callingTool;
+        if (hasNewTool) {
+          // 有 function name，代表新 call 工具
+          if (toolCall?.function?.name) {
             callingTool = {
               name: toolCall.function?.name || '',
               arguments: toolCall.function?.arguments || ''

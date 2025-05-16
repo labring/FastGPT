@@ -8,10 +8,10 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
 
-const Header = ({ url, toolList }: { url: string; toolList: ToolType[] }) => {
+const Header = ({ url, toolList }: { url: string; toolList: McpToolConfigType[] }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const router = useRouter();

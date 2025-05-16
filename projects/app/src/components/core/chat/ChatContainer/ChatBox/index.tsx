@@ -73,7 +73,6 @@ import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 
-const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
@@ -566,7 +565,7 @@ const ChatBox = ({
                 const responseData = mergeChatResponseData(item.responseData || []);
                 if (responseData[responseData.length - 1]?.error) {
                   toast({
-                    title: t(responseData[responseData.length - 1].error?.message),
+                    title: t(getErrText(responseData[responseData.length - 1].error)),
                     status: 'error'
                   });
                 }
@@ -1026,10 +1025,6 @@ const ChatBox = ({
                         onReadUserDislike: onReadUserDislike(item)
                       }}
                     >
-                      <ResponseTags
-                        showTags={index !== chatRecords.length - 1 || !isChatting}
-                        historyItem={item}
-                      />
                       {/* custom feedback */}
                       {item.customFeedbacks && item.customFeedbacks.length > 0 && (
                         <Box>
@@ -1084,7 +1079,6 @@ const ChatBox = ({
     chatType,
     delOneMessage,
     externalVariableList?.length,
-    isChatting,
     onAddUserDislike,
     onAddUserLike,
     onCloseCustomFeedback,

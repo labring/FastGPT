@@ -32,6 +32,7 @@ type Props = {
   content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
   metadata?: Record<string, any>;
   durationSeconds: number; //s
+  errorMsg?: string;
 };
 
 export async function saveChat({
@@ -50,6 +51,7 @@ export async function saveChat({
   outLinkUid,
   content,
   durationSeconds,
+  errorMsg,
   metadata = {}
 }: Props) {
   if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
@@ -104,7 +106,8 @@ export async function saveChat({
         return {
           ...item,
           [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
-          durationSeconds
+          durationSeconds,
+          errorMsg
         };
       }
       return item;

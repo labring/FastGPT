@@ -26,8 +26,8 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   const { t } = useTranslation();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
-  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
+  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
+  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   // form2AppWorkflow dependent allDatasets
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
@@ -42,8 +42,8 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
   }, [appForm, setWorkflowData, t]);
 
   useEffect(() => {
-    setRenderEdit(!quoteData);
-  }, [quoteData, setRenderEdit]);
+    setRenderEdit(!datasetCiteData);
+  }, [datasetCiteData, setRenderEdit]);
 
   const { ChatContainer, restartChat, loading } = useChatTest({
     ...workflowData,
@@ -89,12 +89,12 @@ const ChatTest = ({ appForm, setRenderEdit }: Props) => {
           <ChatContainer />
         </Box>
       </MyBox>
-      {quoteData && (
+      {datasetCiteData && (
         <Box flex={'1 0 0'} w={0} maxW={'560px'} {...cardStyles} boxShadow={'3'}>
           <ChatQuoteList
-            rawSearch={quoteData.rawSearch}
-            metadata={quoteData.metadata}
-            onClose={() => setQuoteData(undefined)}
+            rawSearch={datasetCiteData.rawSearch}
+            metadata={datasetCiteData.metadata}
+            onClose={() => setCiteModalData(undefined)}
           />
         </Box>
       )}

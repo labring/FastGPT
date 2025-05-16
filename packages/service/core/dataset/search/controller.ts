@@ -474,7 +474,7 @@ export async function searchDatasetData(
       ).lean()
     ]);
 
-    const set = new Map<string, number>();
+    const set = new Set<string>();
     const formatResult = results
       .map((item, index) => {
         const collection = collections.find((col) => String(col._id) === String(item.collectionId));
@@ -507,7 +507,7 @@ export async function searchDatasetData(
       .filter((item) => {
         if (!item) return false;
         if (set.has(item.id)) return false;
-        set.set(item.id, 1);
+        set.add(item.id);
         return true;
       })
       .map((item, index) => {
@@ -648,7 +648,17 @@ export async function searchDatasetData(
             ]
           };
         })
-        .filter(Boolean) as SearchDataResponseItemType[],
+        .filter((item) => {
+          if (!item) return false;
+          return true;
+        })
+        .map((item, index) => {
+          if (!item) return;
+          return {
+            ...item,
+            score: item.score.map((item) => ({ ...item, index }))
+          };
+        }) as SearchDataResponseItemType[],
       tokenLen: 0
     };
   };

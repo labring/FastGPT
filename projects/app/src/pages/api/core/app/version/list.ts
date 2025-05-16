@@ -27,7 +27,7 @@ async function handler(
 
   const match = {
     appId,
-    isPublish
+    ...(isPublish !== undefined && { isPublish })
   };
 
   const [result, total] = await Promise.all([

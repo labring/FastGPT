@@ -81,4 +81,5 @@ function App({ Component, pageProps }: AppPropsWithLayout) {
   );
 }
 
+// @ts-ignore
 export default appWithTranslation(App);

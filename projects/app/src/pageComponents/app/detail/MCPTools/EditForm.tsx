@@ -7,7 +7,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -24,14 +24,14 @@ const EditForm = ({
 }: {
   url: string;
   setUrl: (url: string) => void;
-  toolList: ToolType[];
-  setToolList: (toolList: ToolType[]) => void;
-  currentTool: ToolType | null;
-  setCurrentTool: (tool: ToolType) => void;
+  toolList: McpToolConfigType[];
+  setToolList: (toolList: McpToolConfigType[]) => void;
+  currentTool: McpToolConfigType | null;
+  setCurrentTool: (tool: McpToolConfigType) => void;
 }) => {
   const { t } = useTranslation();
 
-  const [toolDetail, setToolDetail] = useState<ToolType | null>(null);
+  const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
     async (data: getMCPToolsBody) => await getMCPTools(data),
@@ -109,6 +109,10 @@ const EditForm = ({
                   boxShadow:
                     '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
                 }}
+                cursor={'pointer'}
+                onClick={() => {
+                  setCurrentTool(tool);
+                }}
               >
                 <Flex alignItems={'center'} py={2} px={3}>
                   <Box w={'20px'} fontSize={'14px'} color={'myGray.500'} fontWeight={'medium'}>
@@ -157,21 +161,9 @@ const EditForm = ({
                     hoverBg={'rgba(51, 112, 255, 0.10)'}
                     hoverBorderColor={'primary.300'}
                     tip={t('app:MCP_tools_detail')}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       setToolDetail(tool);
-                    }}
-                  />
-                  <MyIconButton
-                    size={'16px'}
-                    icon={'core/workflow/debug'}
-                    p={2}
-                    border={'1px solid'}
-                    borderColor={'myGray.250'}
-                    hoverBg={'rgba(51, 112, 255, 0.10)'}
-                    hoverBorderColor={'primary.300'}
-                    tip={t('app:MCP_tools_debug')}
-                    onClick={() => {
-                      setCurrentTool(tool);
                     }}
                   />
                 </Flex>
@@ -188,7 +180,7 @@ const EditForm = ({
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({ tool, onClose }: { tool: ToolType; onClose: () => void }) => {
+const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: () => void }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 

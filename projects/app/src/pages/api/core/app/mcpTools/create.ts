@@ -4,7 +4,7 @@ import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/u
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { type CreateAppBody, onCreateApp } from '../create';
-import { type ToolType } from '@fastgpt/global/core/app/type';
+import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -12,6 +12,8 @@ import {
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/mcpTools/utils';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
+import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type createMCPToolsQuery = {};
 
@@ -20,7 +22,7 @@ export type createMCPToolsBody = Omit<
   'type' | 'modules' | 'edges' | 'chatConfig'
 > & {
   url: string;
-  toolList: ToolType[];
+  toolList: McpToolConfigType[];
 };
 
 export type createMCPToolsResponse = {};
@@ -32,8 +34,10 @@ async function handler(
   const { name, avatar, toolList, url, parentId } = req.body;
 
   const { teamId, tmbId, userId } = parentId
-    ? await authApp({ req, appId: parentId, per: TeamAppCreatePermissionVal, authToken: true })
+    ? await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true })
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
+
+  await checkTeamAppLimit(teamId);
 
   const mcpToolsId = await mongoSessionRun(async (session) => {
     const mcpToolsId = await onCreateApp({
