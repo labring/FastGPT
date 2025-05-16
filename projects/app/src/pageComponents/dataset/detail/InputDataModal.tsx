@@ -148,7 +148,7 @@ const InputDataModal = ({
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         // Contains no default index
-        indexes: e.indexes.filter((item) => !!item.text?.trim())
+        indexes: e.indexes?.filter((item) => !!item.text?.trim())
       });
 
       return {
