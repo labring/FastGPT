@@ -112,6 +112,7 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   appId: string;
   time: Date;
   durationSeconds?: number;
+  errorMsg?: string;
 };
 
 export type AdminFbkType = {
@@ -143,6 +144,7 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   responseData?: ChatHistoryItemResType[];
   time?: Date;
   durationSeconds?: number;
+  errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
 
