@@ -35,6 +35,7 @@ import {
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import dynamic from 'next/dynamic';
 import { useMemoizedFn } from 'ahooks';
+import ChatBoxDivider from '../../../Divider';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 
@@ -371,7 +372,20 @@ const ChatItem = (props: Props) => {
               </>
             )}
             {/* Example: Response tags. A set of dialogs only needs to be displayed once*/}
-            {i === splitAiResponseResults.length - 1 && <>{children}</>}
+            {i === splitAiResponseResults.length - 1 && (
+              <>
+                {/* error message */}
+                {!!chat.errorMsg && (
+                  <Box mt={2}>
+                    <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
+                    <Box fontSize={'xs'} color={'myGray.500'}>
+                      {chat.errorMsg}
+                    </Box>
+                  </Box>
+                )}
+                {children}
+              </>
+            )}
             {/* 对话框底部的复制按钮 */}
             {type == ChatRoleEnum.AI &&
               value[0]?.type !== 'interactive' &&
