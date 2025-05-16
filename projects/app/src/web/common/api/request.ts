@@ -109,6 +109,12 @@ function checkRes(data: ResponseDataType) {
  */
 function responseError(err: any) {
   console.log('error->', '请求错误', err);
+  const isOutlinkPage = {
+    '/chat/share': true,
+    '/chat/team': true,
+    '/login': true
+  }[window.location.pathname];
+
   const data = err?.response?.data || err;
 
   if (!err) {
@@ -123,7 +129,7 @@ function responseError(err: any) {
 
   // 有报错响应
   if (data?.code in TOKEN_ERROR_CODE) {
-    if (!['/chat/share', '/chat/team', '/login'].includes(window.location.pathname)) {
+    if (!isOutlinkPage) {
       clearToken();
       window.location.replace(
         getWebReqUrl(`/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`)
@@ -133,13 +139,17 @@ function responseError(err: any) {
     return Promise.reject({ message: i18nT('common:unauth_token') });
   }
   if (
-    data?.statusText === TeamErrEnum.aiPointsNotEnough ||
-    data?.statusText === TeamErrEnum.datasetSizeNotEnough ||
-    data?.statusText === TeamErrEnum.datasetAmountNotEnough ||
-    data?.statusText === TeamErrEnum.appAmountNotEnough ||
-    data?.statusText === TeamErrEnum.pluginAmountNotEnough ||
-    data?.statusText === TeamErrEnum.websiteSyncNotEnough ||
-    data?.statusText === TeamErrEnum.reRankNotEnough
+    data?.statusText &&
+    [
+      TeamErrEnum.aiPointsNotEnough,
+      TeamErrEnum.datasetSizeNotEnough,
+      TeamErrEnum.datasetAmountNotEnough,
+      TeamErrEnum.appAmountNotEnough,
+      TeamErrEnum.pluginAmountNotEnough,
+      TeamErrEnum.websiteSyncNotEnough,
+      TeamErrEnum.reRankNotEnough
+    ].includes(data?.statusText) &&
+    !isOutlinkPage
   ) {
     useSystemStore.getState().setNotSufficientModalType(data.statusText);
     return Promise.reject(data);

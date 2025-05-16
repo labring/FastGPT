@@ -1166,7 +1166,7 @@
   "support.wallet.subscription.standardSubLevel.experience": "体验版",
   "support.wallet.subscription.standardSubLevel.experience_desc": "可解锁 FastGPT 完整功能",
   "support.wallet.subscription.standardSubLevel.free": "免费版",
-  "support.wallet.subscription.standardSubLevel.free desc": "每月均可免费使用基础功能，连续 30 天未登录系统，将会自动清除知识库",
+  "support.wallet.subscription.standardSubLevel.free desc": "核心功能免费试用。30 天未登录，将会清空知识库。",
   "support.wallet.subscription.standardSubLevel.team": "团队版",
   "support.wallet.subscription.standardSubLevel.team_desc": "适合小团队构建知识库应用并提供对外服务",
   "support.wallet.subscription.status.active": "生效中",
