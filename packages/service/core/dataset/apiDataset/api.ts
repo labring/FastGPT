@@ -171,7 +171,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
   }: {
     apiFileId: string;
   }): Promise<ApiDatasetDetailResponse> => {
-    const fileData = await request<APIFileItem>(
+    const fileData = await request<ApiDatasetDetailResponse>(
       `/v1/file/detail`,
       {
         id: apiFileId
@@ -187,14 +187,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       };
     }
 
-    if (!fileData) {
-      return Promise.reject('File not found');
-    }
-    return {
-      id: '',
-      name: '',
-      parentId: ''
-    };
+    return Promise.reject('File not found');
   };
 
   return {

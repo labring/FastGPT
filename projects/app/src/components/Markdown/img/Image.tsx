@@ -13,11 +13,11 @@ const MdImage = ({ src, ...props }: { src?: string } & ImageProps) => {
   if (src?.includes('base64') && !src.startsWith('data:image')) {
     return <Box>Invalid base64 image</Box>;
   }
-  
+
   if (props.alt?.startsWith('OFFIACCOUNT_MEDIA')) {
     return <Box>{t('common:not_support_wechat_image')}</Box>;
   }
-  
+
   return (
     <Skeleton isLoaded={isLoaded}>
       <MyPhotoView

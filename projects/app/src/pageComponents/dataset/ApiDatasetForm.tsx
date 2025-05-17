@@ -79,10 +79,8 @@ const ApiDatasetForm = ({
     async () => {
       if (
         !datasetId &&
-        !(
-          (yuqueServer?.userId && yuqueServer?.token) ||
-          (apiServer?.baseUrl && apiServer?.authorization)
-        )
+        ((yuqueServer && (!yuqueServer.userId || !yuqueServer?.token)) ||
+          (apiServer && !apiServer?.baseUrl))
       ) {
         return setPathNames(t('dataset:input_required_field_to_select_baseurl'));
       }
@@ -147,10 +145,7 @@ const ApiDatasetForm = ({
   const renderDirectoryModal = () =>
     isOpenBaseurlSeletModal ? (
       <BaseUrlSelector
-        selectId={
-          (type === DatasetTypeEnum.yuque ? yuqueServer?.basePath || 'root' : 'root') ||
-          (type === DatasetTypeEnum.apiDataset ? apiServer?.basePath || 'root' : 'root')
-        }
+        selectId={yuqueServer?.basePath || apiServer?.basePath || 'root'}
         server={async (e: GetResourceFolderListProps) => {
           const params: GetApiDatasetCataLogProps = { parentId: e.parentId };
 

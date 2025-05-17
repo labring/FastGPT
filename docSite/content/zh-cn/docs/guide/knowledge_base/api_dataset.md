@@ -211,11 +211,8 @@ curl --location --request GET '{{baseURL}}/v1/file/detail?id=xx' \
     "message": "",
     "data": {
         "id": "docs",
-        "parentId": "xxxx",
-        "name": "docs",
-        "type": "folder",
-        "createTime": "2025-05-16T03:46:10.652Z",
-        "updateTime": "2025-05-16T03:46:10.652Z"
+        "parentId": "",
+        "name": "docs"
     }
 }
 ```

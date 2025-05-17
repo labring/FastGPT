@@ -4,7 +4,8 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   APIFileServer,
   YuqueServer,
-  FeishuServer
+  FeishuServer,
+  ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { getProApiDatasetFileDetailRequest } from '@/service/core/dataset/apiDataset/controller';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
@@ -25,14 +26,11 @@ export type GetApiDatasetPathBody = {
 
 export type GetApiDatasetPathResponse = string;
 
-type FileDetailGetter = (fileId: string) => Promise<{
-  id: string;
-  name: string;
-  parentId: ParentIdType;
-}>;
-
-const getFullPath = async (currentId: string, getFileDetail: FileDetailGetter): Promise<string> => {
-  const response = await getFileDetail(currentId);
+const getFullPath = async (
+  currentId: string,
+  getFileDetail: ({ apiFileId }: { apiFileId: string }) => Promise<ApiDatasetDetailResponse>
+): Promise<string> => {
+  const response = await getFileDetail({ apiFileId: currentId });
 
   if (!response) {
     return '';
@@ -97,19 +95,14 @@ async function handler(
   }
 
   if (apiServer) {
-    const apiFileGetter: FileDetailGetter = async (fileId) => {
-      return await useApiDatasetRequest({ apiServer }).getFileDetail({
-        apiFileId: fileId
-      });
-    };
-    return await getFullPath(parentId, apiFileGetter);
+    return await getFullPath(parentId, useApiDatasetRequest({ apiServer }).getFileDetail);
   }
 
   if (yuqueServer) {
-    const yuqueFileGetter: FileDetailGetter = async (fileId) => {
+    const yuqueFileGetter = async ({ apiFileId }: { apiFileId: string }) => {
       return await getProApiDatasetFileDetailRequest({
         yuqueServer,
-        apiFileId: fileId
+        apiFileId
       });
     };
     return await getFullPath(parentId, yuqueFileGetter);
