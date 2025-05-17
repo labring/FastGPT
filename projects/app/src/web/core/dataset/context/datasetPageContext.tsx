@@ -106,7 +106,8 @@ export const DatasetPageContextProvider = ({
         apiServer: data.apiServer
           ? {
               baseUrl: data.apiServer.baseUrl,
-              authorization: ''
+              authorization: '',
+              basePath: data.apiServer.basePath
             }
           : state.apiServer,
         yuqueServer: data.yuqueServer

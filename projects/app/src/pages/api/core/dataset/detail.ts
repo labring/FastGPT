@@ -48,7 +48,8 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     apiServer: dataset.apiServer
       ? {
           baseUrl: dataset.apiServer.baseUrl,
-          authorization: ''
+          authorization: '',
+          basePath: dataset.apiServer.basePath
         }
       : undefined,
     yuqueServer: dataset.yuqueServer

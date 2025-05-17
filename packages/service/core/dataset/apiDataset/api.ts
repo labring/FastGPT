@@ -2,7 +2,9 @@ import type {
   APIFileListResponse,
   ApiFileReadContentResponse,
   APIFileReadResponse,
-  APIFileServer
+  ApiDatasetDetailResponse,
+  APIFileServer,
+  APIFileItem
 } from '@fastgpt/global/core/dataset/apiDataset';
 import axios, { type Method } from 'axios';
 import { addLog } from '../../../common/system/log';
@@ -89,7 +91,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       `/v1/file/list`,
       {
         searchKey,
-        parentId
+        parentId: parentId || apiServer.basePath
       },
       'POST'
     );
@@ -164,9 +166,34 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return url;
   };
 
+  const getFileDetail = async ({
+    apiFileId
+  }: {
+    apiFileId: string;
+  }): Promise<ApiDatasetDetailResponse> => {
+    const fileData = await request<ApiDatasetDetailResponse>(
+      `/v1/file/detail`,
+      {
+        id: apiFileId
+      },
+      'GET'
+    );
+
+    if (fileData) {
+      return {
+        id: fileData.id,
+        name: fileData.name,
+        parentId: fileData.parentId === null ? '' : fileData.parentId
+      };
+    }
+
+    return Promise.reject('File not found');
+  };
+
   return {
     getFileContent,
     listFiles,
-    getFilePreviewUrl
+    getFilePreviewUrl,
+    getFileDetail
   };
 };
