@@ -170,6 +170,7 @@ async function handler(
         ...(!!apiServer?.authorization && {
           'apiServer.authorization': apiServer.authorization
         }),
+        ...(!!apiServer?.basePath !== undefined && { 'apiServer.basePath': apiServer?.basePath }),
         ...(!!yuqueServer?.userId && { 'yuqueServer.userId': yuqueServer.userId }),
         ...(!!yuqueServer?.token && { 'yuqueServer.token': yuqueServer.token }),
         ...(!!yuqueServer?.basePath !== undefined && {
