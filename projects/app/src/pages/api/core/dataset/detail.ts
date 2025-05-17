@@ -74,3 +74,5 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
 }
 
 export default NextAPI(handler);
+
+export { handler };
