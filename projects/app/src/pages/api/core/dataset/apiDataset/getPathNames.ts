@@ -112,3 +112,5 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+export { getFullPath, handler };
