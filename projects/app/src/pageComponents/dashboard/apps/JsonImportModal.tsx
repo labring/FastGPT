@@ -16,13 +16,6 @@ import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import ImportAppConfigEditor from '@/pageComponents/app/ImportAppConfigEditor';
-import { postFetchWorkflow } from '@/web/support/marketing/api';
-import {
-  getUtmParams,
-  getUtmWorkflow,
-  removeUtmParams,
-  removeUtmWorkflow
-} from '@/web/support/marketing/utils';
 
 type FormType = {
   avatar: string;
@@ -43,27 +36,6 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     }
   });
   const workflowStr = watch('workflowStr');
-
-  const { loading: isFetching } = useRequest2(
-    async () => {
-      const url = getUtmWorkflow();
-      if (!url) return;
-
-      const workflowData = await postFetchWorkflow({ url });
-
-      setValue('workflowStr', JSON.stringify(workflowData, null, 2));
-
-      const utmParams = getUtmParams();
-      if (utmParams.shortUrlContent) setValue('name', utmParams.shortUrlContent);
-    },
-    { manual: false }
-  );
-
-  const handleCloseJsonImportModal = () => {
-    onClose();
-    removeUtmParams();
-    removeUtmWorkflow();
-  };
 
   const avatar = watch('avatar');
   const {
@@ -125,8 +97,7 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
         type: appType,
         modules: workflow.nodes,
         edges: workflow.edges,
-        chatConfig: workflow.chatConfig,
-        utmParams: getUtmParams()
+        chatConfig: workflow.chatConfig
       });
     },
     {
@@ -134,9 +105,9 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
       onSuccess(id: string) {
         router.push(`/app/detail?appId=${id}`);
         loadMyApps();
-        handleCloseJsonImportModal();
+        onClose();
       },
-      successToast: t('common:create_success')
+      successToast: t('common:common.Create Success')
     }
   );
 
@@ -144,17 +115,18 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
     <>
       <MyModal
         isOpen
-        isLoading={isCreating || isFetching}
+        onClose={onClose}
+        isLoading={isCreating}
         title={t('app:type.Import from json')}
         iconSrc="common/importLight"
         iconColor={'primary.600'}
       >
         <ModalBody>
           <Box color={'myGray.800'} fontWeight={'bold'}>
-            {t('common:input_name')}
+            {t('common:common.Set Name')}
           </Box>
           <Flex mt={2} alignItems={'center'}>
-            <MyTooltip label={t('common:set_avatar')}>
+            <MyTooltip label={t('common:common.Set Avatar')}>
               <Avatar
                 flexShrink={0}
                 src={selectedAvatar}
@@ -184,10 +156,10 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           </Box>
         </ModalBody>
         <ModalFooter gap={4}>
-          <Button variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
-            {t('common:Cancel')}
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:common.Cancel')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       <File

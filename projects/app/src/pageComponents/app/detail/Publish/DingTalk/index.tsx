@@ -84,7 +84,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
             >
               <Flex alignItems={'center'}>
                 <MyIcon name="book" mr="1" w={'1rem'} />
-                {t('common:read_doc')}
+                {t('common:common.Read document')}
               </Flex>
             </Link>
           )}
@@ -113,15 +113,15 @@ const DingTalk = ({ appId }: { appId: string }) => {
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('common:Name')}</Th>
+              <Th>{t('common:common.Name')}</Th>
               <Th>{t('common:support.outlink.Usage points')}</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>{t('common:core.app.share.Ip limit title')}</Th>
-                  <Th>{t('common:expired_time')}</Th>
+                  <Th>{t('common:common.Expired Time')}</Th>
                 </>
               )}
-              <Th>{t('common:last_use_time')}</Th>
+              <Th>{t('common:common.Last use time')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -135,7 +135,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
                     ? `${
                         item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
                           ? ` / ${item.limit.maxUsagePoints}`
-                          : ` / ${t('common:Unlimited')}`
+                          : ` / ${t('common:common.Unlimited')}`
                       }`
                     : ''}
                 </Td>
@@ -152,7 +152,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
                 <Td>
                   {item.lastTime
                     ? t(formatTimeToChatTime(item.lastTime) as any).replace('#', ':')
-                    : t('common:un_used')}
+                    : t('common:common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
@@ -181,7 +181,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
                       {
                         children: [
                           {
-                            label: t('common:Edit'),
+                            label: t('common:common.Edit'),
                             icon: 'edit',
                             onClick: () => {
                               setEditDingTalkLinkData({
@@ -197,7 +197,7 @@ const DingTalk = ({ appId }: { appId: string }) => {
                             }
                           },
                           {
-                            label: t('common:Delete'),
+                            label: t('common:common.Delete'),
                             icon: 'delete',
                             onClick: async () => {
                               setIsLoading(true);

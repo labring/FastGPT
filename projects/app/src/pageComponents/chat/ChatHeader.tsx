@@ -14,10 +14,10 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useRouter } from 'next/router';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
 import {
-  type GetResourceFolderListProps,
-  type GetResourceListItemResponse
+  GetResourceFolderListProps,
+  GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import SelectOneResource from '@/components/common/folder/SelectOneResource';

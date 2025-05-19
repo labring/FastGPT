@@ -1,9 +1,9 @@
 import {
-  type AIChatItemValueItemType,
-  type ChatItemValueItemType,
-  type ChatSiteItemType
+  AIChatItemValueItemType,
+  ChatItemValueItemType,
+  ChatSiteItemType
 } from '@fastgpt/global/core/chat/type';
-import { type ChatBoxInputType, type UserInputFileItemType } from './type';
+import { ChatBoxInputType, UserInputFileItemType } from './type';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';

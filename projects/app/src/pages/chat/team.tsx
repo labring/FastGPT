@@ -18,7 +18,7 @@ import SliderApps from '@/pageComponents/chat/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -64,8 +64,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
-  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -166,7 +166,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -179,7 +179,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [appId, isOpenSlider, isPc, onCloseSlider, datasetCiteData, t]);
+  }, [appId, isOpenSlider, isPc, onCloseSlider, quoteData, t]);
 
   return (
     <Flex h={'100%'}>
@@ -191,7 +191,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      {(!datasetCiteData || isPc) && (
+      {(!quoteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
           <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
             {RenderHistoryList}
@@ -236,12 +236,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
           </Flex>
         </PageContainer>
       )}
-      {datasetCiteData && (
+      {quoteData && (
         <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
           <ChatQuoteList
-            rawSearch={datasetCiteData.rawSearch}
-            metadata={datasetCiteData.metadata}
-            onClose={() => setCiteModalData(undefined)}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
           />
         </PageContainer>
       )}
@@ -314,7 +314,6 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={true}
-        isResponseDetail={true}
         // isShowFullText={true}
         showNodeStatus
       >

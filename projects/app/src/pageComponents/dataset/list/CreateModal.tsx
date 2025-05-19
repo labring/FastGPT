@@ -40,7 +40,8 @@ const CreateModal = ({
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { defaultModels, embeddingModelList, datasetModelList, getVlmModelList } = useSystemStore();
+  const { feConfigs, defaultModels, embeddingModelList, datasetModelList, getVlmModelList } =
+    useSystemStore();
   const { isPc } = useSystem();
 
   const datasetTypeMap = useMemo(() => {
@@ -49,13 +50,13 @@ const CreateModal = ({
         name: t('dataset:common_dataset'),
         icon: 'core/dataset/commonDatasetColor'
       },
-      [DatasetTypeEnum.websiteDataset]: {
-        name: t('dataset:website_dataset'),
-        icon: 'core/dataset/websiteDatasetColor'
-      },
       [DatasetTypeEnum.apiDataset]: {
         name: t('dataset:api_file'),
         icon: 'core/dataset/externalDatasetColor'
+      },
+      [DatasetTypeEnum.websiteDataset]: {
+        name: t('dataset:website_dataset'),
+        icon: 'core/dataset/websiteDatasetColor'
       },
       [DatasetTypeEnum.feishu]: {
         name: t('dataset:feishu_dataset'),
@@ -105,8 +106,8 @@ const CreateModal = ({
   const { run: onclickCreate, loading: creating } = useRequest2(
     async (data: CreateDatasetParams) => await postCreateDataset(data),
     {
-      successToast: t('common:create_success'),
-      errorToast: t('common:create_failed'),
+      successToast: t('common:common.Create Success'),
+      errorToast: t('common:common.Create Failed'),
       onSuccess(id) {
         router.push(`/dataset/detail?datasetId=${id}`);
       }
@@ -136,7 +137,7 @@ const CreateModal = ({
         <Box>
           <Flex justify={'space-between'}>
             <Box color={'myGray.900'} fontWeight={500} fontSize={'sm'}>
-              {t('common:input_name')}
+              {t('common:common.Set Name')}
             </Box>
             {datasetTypeCourseMap[type] && (
               <Flex
@@ -153,7 +154,7 @@ const CreateModal = ({
             )}
           </Flex>
           <Flex mt={'12px'} alignItems={'center'}>
-            <MyTooltip label={t('common:click_select_avatar')}>
+            <MyTooltip label={t('common:common.avatar.Select Avatar')}>
               <Avatar
                 flexShrink={0}
                 src={avatar}
@@ -169,7 +170,7 @@ const CreateModal = ({
               flex={1}
               autoFocus
               bg={'myWhite.600'}
-              placeholder={t('common:Name')}
+              placeholder={t('common:common.Name')}
               maxLength={30}
               {...register('name', {
                 required: true
@@ -280,10 +281,10 @@ const CreateModal = ({
 
       <ModalFooter px={9}>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:Close')}
+          {t('common:common.Close')}
         </Button>
         <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          {t('common:comfirn_create')}
+          {t('common:common.Confirm Create')}
         </Button>
       </ModalFooter>
 

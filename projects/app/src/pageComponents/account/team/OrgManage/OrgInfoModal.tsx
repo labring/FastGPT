@@ -62,7 +62,7 @@ function OrgInfoModal({
       });
     },
     {
-      successToast: t('common:create_success'),
+      successToast: t('common:common.Create Success'),
       onSuccess: () => {
         onClose();
         onSuccess();
@@ -81,7 +81,7 @@ function OrgInfoModal({
       });
     },
     {
-      successToast: t('common:update_success'),
+      successToast: t('common:common.Update Success'),
       onSuccess: () => {
         onClose();
         onSuccess();
@@ -155,7 +155,7 @@ function OrgInfoModal({
             }
           })}
         >
-          {isEdit ? t('common:Save') : t('common:new_create')}
+          {isEdit ? t('common:common.Save') : t('common:new_create')}
         </Button>
       </ModalFooter>
       <AvatarSelect onSelect={onSelectAvatar} />

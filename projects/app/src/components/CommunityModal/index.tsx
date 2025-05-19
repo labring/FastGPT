@@ -22,7 +22,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
 
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:Close')}
+          {t('common:common.Close')}
         </Button>
       </ModalFooter>
     </MyModal>

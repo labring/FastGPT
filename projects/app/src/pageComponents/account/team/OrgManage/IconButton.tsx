@@ -1,4 +1,4 @@
-import { type IconProps } from '@chakra-ui/react';
+import { IconProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 

@@ -1,12 +1,12 @@
 import axios, {
-  type Method,
-  type InternalAxiosRequestConfig,
-  type AxiosResponse,
-  type AxiosProgressEvent
+  Method,
+  InternalAxiosRequestConfig,
+  AxiosResponse,
+  AxiosProgressEvent
 } from 'axios';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { putUpdateTeam } from '@/web/support/user/team/api';
-import { type LafAccountType } from '@fastgpt/global/support/user/team/type';
+import { LafAccountType } from '@fastgpt/global/support/user/team/type';
 
 interface ConfigType {
   headers?: { [key: string]: string };

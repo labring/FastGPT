@@ -1,4 +1,4 @@
-import type { ImportSourceItemType } from '@/web/core/dataset/type';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
 
 export type UploadFileItemType = ImportSourceItemType & {
   file?: File;

@@ -1,12 +1,12 @@
-import axios, { type Method, type AxiosResponse } from 'axios';
+import axios, { Method, AxiosResponse } from 'axios';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import {
-  type ChannelInfoType,
-  type ChannelListResponseType,
-  type ChannelLogListItemType,
-  type CreateChannelProps
+  ChannelInfoType,
+  ChannelListResponseType,
+  ChannelLogListItemType,
+  CreateChannelProps
 } from '@/global/aiproxy/type';
-import type { ChannelStatusEnum } from '@/global/aiproxy/constants';
+import { ChannelStatusEnum } from '@/global/aiproxy/constants';
 
 interface ResponseDataType {
   success: boolean;

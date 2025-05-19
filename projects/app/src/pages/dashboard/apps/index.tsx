@@ -1,4 +1,3 @@
-'use client';
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, useDisclosure, Input, InputGroup } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
@@ -26,14 +25,14 @@ import {
 import type { CreateAppType } from '@/pageComponents/dashboard/apps/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import JsonImportModal from '@/pageComponents/dashboard/apps/JsonImportModal';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 import List from '@/pageComponents/dashboard/apps/List';
 import MCPToolsEditModal from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
-import { getUtmWorkflow } from '@/web/support/marketing/utils';
-import { useMount } from 'ahooks';
 
 const CreateModal = dynamic(() => import('@/pageComponents/dashboard/apps/CreateModal'));
 const EditFolderModal = dynamic(
@@ -72,20 +71,12 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     onOpen: onOpenCreateMCPTools,
     onClose: onCloseCreateMCPTools
   } = useDisclosure();
-
-  const [editFolder, setEditFolder] = useState<EditFolderFormType>();
-
   const {
     isOpen: isOpenJsonImportModal,
     onOpen: onOpenJsonImportModal,
     onClose: onCloseJsonImportModal
   } = useDisclosure();
-  //if there is a workflow url in the session storage, open the json import modal and import the workflow
-  useMount(() => {
-    if (getUtmWorkflow()) {
-      onOpenJsonImportModal();
-    }
-  });
+  const [editFolder, setEditFolder] = useState<EditFolderFormType>();
 
   const { runAsync: onCreateFolder } = useRequest2(postCreateAppFolder, {
     onSuccess() {
@@ -262,7 +253,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
         {/* Folder slider */}
         {!!folderDetail && isPc && (
-          <Box pt={[4, 6]} pr={[4, 6]} h={'100%'} pb={4} overflow={'auto'}>
+          <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
               refetchResource={() => Promise.all([refetchFolderDetail(), loadMyApps()])}
               resumeInheritPermission={() => resumeInheritPer(folderDetail._id)}
@@ -285,17 +276,49 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
-                onUpdateCollaborators: (props) =>
-                  postUpdateAppCollaborators({
-                    ...props,
+                onUpdateCollaborators: ({
+                  members,
+                  groups,
+                  permission
+                }: {
+                  members?: string[];
+                  groups?: string[];
+                  permission: PermissionValueType;
+                }) => {
+                  return postUpdateAppCollaborators({
+                    members,
+                    groups,
+                    permission,
                     appId: folderDetail._id
-                  }),
+                  });
+                },
                 refreshDeps: [folderDetail._id, folderDetail.inheritPermission],
-                onDelOneCollaborator: async (params) =>
-                  deleteAppCollaborators({
-                    ...params,
-                    appId: folderDetail._id
-                  })
+                onDelOneCollaborator: async ({
+                  tmbId,
+                  groupId,
+                  orgId
+                }: {
+                  tmbId?: string;
+                  groupId?: string;
+                  orgId?: string;
+                }) => {
+                  if (tmbId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      tmbId
+                    });
+                  } else if (groupId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      groupId
+                    });
+                  } else if (orgId) {
+                    return deleteAppCollaborators({
+                      appId: folderDetail._id,
+                      orgId
+                    });
+                  }
+                }
               }}
             />
           </Box>

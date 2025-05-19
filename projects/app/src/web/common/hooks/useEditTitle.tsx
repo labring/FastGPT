@@ -5,7 +5,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-
+import InfoTip from '@fastgpt/web/components/common/MyBox/InfoTip';
 export const useEditTitle = ({
   title,
   tip,
@@ -79,7 +79,7 @@ export const useEditTitle = ({
     ({
       maxLength = 50,
       iconSrc = 'modal/edit',
-      closeBtnText = t('common:Close')
+      closeBtnText = t('common:common.Close')
     }: {
       maxLength?: number;
       iconSrc?: string;
@@ -90,7 +90,7 @@ export const useEditTitle = ({
       return (
         <MyModal isOpen={isOpen} onClose={onClose} iconSrc={iconSrc} title={title} maxW={'500px'}>
           <ModalBody>
-            {!!tip && <FormLabel mb={2}>{tip}</FormLabel>}
+            {!!tip && <InfoTip mb={3}>{tip}</InfoTip>}
 
             <Input
               ref={inputRef}
@@ -107,7 +107,7 @@ export const useEditTitle = ({
               </Button>
             )}
             <Button onClick={runAsync} isLoading={loading}>
-              {t('common:Confirm')}
+              {t('common:common.Confirm')}
             </Button>
           </ModalFooter>
         </MyModal>

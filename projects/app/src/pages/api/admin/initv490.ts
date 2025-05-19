@@ -1,12 +1,12 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { type NextApiRequest, type NextApiResponse } from 'next';
+import { NextApiRequest, NextApiResponse } from 'next';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { PgClient } from '@fastgpt/service/common/vectorDB/pg/controller';
-import { PG_ADDRESS } from '@fastgpt/service/common/vectorDB/constants';
+import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
+import { PG_ADDRESS } from '@fastgpt/service/common/vectorStore/constants';
 
 // 所有 trainingType=auto 的 collection，都改成 trainingType=chunk
 const updateCollections = async () => {

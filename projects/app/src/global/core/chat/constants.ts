@@ -1,5 +1,5 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type InitChatResponse } from './api';
+import { InitChatResponse } from './api';
 
 export const defaultChatData: InitChatResponse = {
   chatId: '',

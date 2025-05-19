@@ -1,5 +1,5 @@
 import { Flex } from '@chakra-ui/react';
-import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import Tag from '@fastgpt/web/components/common/Tag';
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';

@@ -46,7 +46,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
   const showRouteToAppDetail = useContextSelector(ChatItemContext, (v) => v.showRouteToAppDetail);
-  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const concatHistory = useMemo(() => {
     const formatHistories: HistoryItemType[] = histories.map((item) => {
@@ -146,7 +146,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
           overflow={'hidden'}
           onClick={() => {
             onChangeChatId();
-            setCiteModalData(undefined);
+            setQuoteData(undefined);
           }}
         >
           {t('common:core.chat.New Chat')}
@@ -202,7 +202,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
                 : {
                     onClick: () => {
                       onChangeChatId(item.id);
-                      setCiteModalData(undefined);
+                      setQuoteData(undefined);
                     }
                   })}
               {...(i !== concatHistory.length - 1 && {
@@ -254,7 +254,7 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
                             },
 
                             {
-                              label: t('common:custom_title'),
+                              label: t('common:common.Custom Title'),
                               icon: 'common/customTitleLight',
                               onClick: () => {
                                 onOpenModal({
@@ -268,13 +268,13 @@ const ChatHistorySlider = ({ confirmClearText }: { confirmClearText: string }) =
                               }
                             },
                             {
-                              label: t('common:Delete'),
+                              label: t('common:common.Delete'),
                               icon: 'delete',
                               onClick: () => {
                                 onDelHistory(item.id);
                                 if (item.id === activeChatId) {
                                   onChangeChatId();
-                                  setCiteModalData(undefined);
+                                  setQuoteData(undefined);
                                 }
                               },
                               type: 'danger'

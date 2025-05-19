@@ -1,13 +1,13 @@
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo, useState } from 'react';
-import { type NodeProps, useViewport } from 'reactflow';
+import { NodeProps, useViewport } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
-  type FlowNodeInputItemType,
-  type FlowNodeOutputItemType
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import {
   Box,
@@ -22,11 +22,11 @@ import {
   Thead,
   Tr
 } from '@chakra-ui/react';
-import { type UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { useTranslation } from 'next-i18next';
-import type { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   FlowNodeInputMap,
+  FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -40,8 +40,8 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import DndDrag, {
   Draggable,
-  type DraggableProvided,
-  type DraggableStateSnapshot
+  DraggableProvided,
+  DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag';
 
 const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -142,7 +142,7 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                   setEditField(defaultFormInput);
                 }}
               >
-                {t('common:Add_new_input')}
+                {t('common:common.Add_new_input')}
               </Button>
               {!!editField && (
                 <InputFormEditModal
@@ -246,11 +246,11 @@ const NodeFormInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
       <Container>
-        <IOTitle text={t('common:Input')} />
+        <IOTitle text={t('common:common.Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
       </Container>
       <Container>
-        <IOTitle text={t('common:Output')} />
+        <IOTitle text={t('common:common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
     </NodeCard>

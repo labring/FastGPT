@@ -1,7 +1,7 @@
 import { useMemoizedFn } from 'ahooks';
 import { useRef, useState } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
-import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { isEqual } from 'lodash';
 
 export type SimpleAppSnapshotType = {

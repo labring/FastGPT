@@ -1,19 +1,16 @@
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
-  type CreateDatasetDataProps,
-  type PatchIndexesProps,
-  type UpdateDatasetDataProps
+  CreateDatasetDataProps,
+  PatchIndexesProps,
+  UpdateDatasetDataProps
 } from '@fastgpt/global/core/dataset/controller';
-import { insertDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import { insertDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba/index';
-import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
-import {
-  type DatasetDataIndexItemType,
-  type DatasetDataItemType
-} from '@fastgpt/global/core/dataset/type';
+import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
+import { DatasetDataIndexItemType, DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { type ClientSession } from '@fastgpt/service/common/mongo';
+import { ClientSession } from '@fastgpt/service/common/mongo';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
@@ -145,93 +142,159 @@ export async function insertData2Dataset({
   indexSize = 512,
   indexes,
   embeddingModel,
-  session
+  session,
+  imageFileId
 }: CreateDatasetDataProps & {
   embeddingModel: string;
   indexSize?: number;
   session?: ClientSession;
 }) {
+  console.log('[数据库] insertData2Dataset 开始执行:', {
+    teamId: teamId?.toString(),
+    datasetId: datasetId?.toString(),
+    collectionId: collectionId?.toString(),
+    chunkIndex,
+    imageFileId: imageFileId ? '已提供' : '未提供'
+  });
+
   if (!q || !datasetId || !collectionId || !embeddingModel) {
+    console.error('[数据库] 参数验证失败:', {
+      q: !!q,
+      datasetId: !!datasetId,
+      collectionId: !!collectionId,
+      embeddingModel: !!embeddingModel
+    });
     return Promise.reject('q, datasetId, collectionId, embeddingModel is required');
   }
   if (String(teamId) === String(tmbId)) {
+    console.error('[数据库] teamId和tmbId相同');
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  const embModel = getEmbeddingModel(embeddingModel);
-  indexSize = Math.min(embModel.maxToken, indexSize);
+  try {
+    // === 临时测试图片上传功能，注释掉向量化相关代码 ===
+    const embModel = getEmbeddingModel(embeddingModel);
+    indexSize = Math.min(embModel.maxToken, indexSize);
+    console.log('[数据库] 获取向量模型:', embModel.model, '索引大小:', indexSize);
 
-  // 1. Get vector indexes and insert
-  // Empty indexes check, if empty, create default index
-  const newIndexes = await formatIndexes({
-    indexes,
-    q,
-    a,
-    indexSize,
-    maxIndexSize: embModel.maxToken
-  });
-
-  // insert to vector store
-  const results: {
-    tokens: number;
-    index: {
-      dataId: string;
-      type: `${DatasetDataIndexTypeEnum}`;
-      text: string;
-    };
-  }[] = [];
-  for await (const item of newIndexes) {
-    const result = await insertDatasetDataVector({
-      query: item.text,
-      model: embModel,
-      teamId,
-      datasetId,
-      collectionId
+    /* 原始向量化代码已注释，用于测试图片上传功能
+    // 1. Get vector indexes and insert
+    // Empty indexes check, if empty, create default index
+    console.log('[数据库] 开始格式化索引');
+    const newIndexes = await formatIndexes({
+      indexes,
+      q,
+      a,
+      indexSize,
+      maxIndexSize: embModel.maxToken
     });
-    results.push({
-      tokens: result.tokens,
+    console.log('[数据库] 索引格式化完成, 索引数量:', newIndexes.length);
+
+    // insert to vector store
+    const results: {
+      tokens: number;
       index: {
-        ...item,
-        dataId: result.insertId
-      }
-    });
+        dataId: string;
+        type: `${DatasetDataIndexTypeEnum}`;
+        text: string;
+      };
+    }[] = [];
+    console.log('[数据库] 开始插入向量索引');
+    for await (const item of newIndexes) {
+      const result = await insertDatasetDataVector({
+        query: item.text,
+        model: embModel,
+        teamId,
+        datasetId,
+        collectionId
+      });
+      results.push({
+        tokens: result.tokens,
+        index: {
+          ...item,
+          dataId: result.insertId
+        }
+      });
+    }
+    console.log('[数据库] 向量索引插入完成, 结果数量:', results.length);
+    */
+
+    // 临时创建一个空索引数组以避免schema验证错误
+    const tempIndexes = [];
+    if (indexes && indexes.length > 0) {
+      console.log('[数据库] 使用提供的索引，但跳过向量化');
+      // 如果用户提供了索引，我们保留它们，但不进行向量化
+      tempIndexes.push(
+        ...indexes.map((item, index) => ({
+          type: item.type || DatasetDataIndexTypeEnum.custom,
+          dataId: `temp_id_${index}`, // 临时ID
+          text: item.text || ''
+        }))
+      );
+    } else {
+      // 创建一个基本索引
+      console.log('[数据库] 创建临时基本索引');
+      tempIndexes.push({
+        type: DatasetDataIndexTypeEnum.default,
+        dataId: `temp_id_${Date.now()}`,
+        text: '这是一个图片，图片的imageFileId是' + imageFileId // 使用问题前500字符作为索引文本
+      });
+    }
+
+    console.log('[数据库] 临时索引:', tempIndexes);
+
+    // 2. Create mongo data
+    console.log('[数据库] 准备MongoDB数据 (跳过向量化)');
+    const mongoData: any = {
+      teamId,
+      tmbId,
+      datasetId,
+      collectionId,
+      q,
+      a,
+      chunkIndex,
+      indexes: tempIndexes
+    };
+
+    // 如果有图片文件ID，添加到MongoDB文档中
+    if (imageFileId) {
+      console.log('[数据库] 添加图片文件ID到MongoDB文档:', imageFileId);
+      mongoData.imageFileId = imageFileId;
+    } else {
+      console.log('[数据库] 未提供图片文件ID');
+    }
+
+    console.log('[数据库] 开始创建MongoDB文档');
+    const [{ _id }] = await MongoDatasetData.create([mongoData], { session, ordered: true });
+    console.log('[数据库] MongoDB文档创建成功, _id:', _id.toString());
+
+    // 3. Create mongo data text
+    console.log('[数据库] 创建文本索引');
+    await MongoDatasetDataText.create(
+      [
+        {
+          teamId,
+          datasetId,
+          collectionId,
+          dataId: _id,
+          fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
+        }
+      ],
+      { session, ordered: true }
+    );
+    console.log('[数据库] 文本索引创建成功');
+
+    return {
+      insertId: _id,
+      tokens: 0 // 由于跳过了向量化，将tokens设为0
+    };
+  } catch (error) {
+    console.error('[数据库] insertData2Dataset 执行错误:', error);
+    if (error instanceof Error) {
+      console.error('[数据库] 错误详情:', error.message, error.stack);
+    }
+    throw error;
   }
-
-  // 2. Create mongo data
-  const [{ _id }] = await MongoDatasetData.create(
-    [
-      {
-        teamId,
-        tmbId,
-        datasetId,
-        collectionId,
-        q,
-        a,
-        chunkIndex,
-        indexes: results.map((item) => item.index)
-      }
-    ],
-    { session, ordered: true }
-  );
-
-  // 3. Create mongo data text
-  await MongoDatasetDataText.create(
-    [
-      {
-        teamId,
-        datasetId,
-        collectionId,
-        dataId: _id,
-        fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
-      }
-    ],
-    { session, ordered: true }
-  );
-
-  return {
-    insertId: _id,
-    tokens: results.reduce((acc, cur) => acc + cur.tokens, 0)
-  };
 }
 
 /**

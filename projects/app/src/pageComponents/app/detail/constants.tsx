@@ -1,4 +1,4 @@
-import { type BoxProps, type FlexProps } from '@chakra-ui/react';
+import { BoxProps, FlexProps } from '@chakra-ui/react';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 export const cardStyles: BoxProps = {
   borderRadius: 'lg',

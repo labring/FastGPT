@@ -1,14 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { type NodeProps } from 'reactflow';
+import { NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import Container from '../../components/Container';
-import {
-  type FlowNodeInputItemType,
-  type ReferenceValueType
-} from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeInputItemType, ReferenceValueType } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
@@ -19,6 +16,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ValueTypeLabel from '../render/ValueTypeLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import { useI18n } from '@/web/context/I18n';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -58,7 +56,7 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             size={'sm'}
             onClick={() => setEditField(defaultOutput)}
           >
-            {t('common:add_new')}
+            {t('common:common.Add New')}
           </Button>
         </Flex>
 
@@ -102,9 +100,10 @@ function Reference({
   input: FlowNodeInputItemType;
 }) {
   const { t } = useTranslation();
+  const { workflowT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
-    content: t('workflow:confirm_delete_field_tip')
+    content: workflowT('confirm_delete_field_tip')
   });
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 

@@ -91,8 +91,8 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       onSuccess() {
         getData(pageNum);
       },
-      successToast: t('common:create_success'),
-      errorToast: t('common:create_failed')
+      successToast: t('common:common.Create Success'),
+      errorToast: t('common:common.Create Failed')
     }
   );
 
@@ -155,7 +155,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             flex={1}
             size={'sm'}
             h={'36px'}
-            placeholder={t('common:Search') || ''}
+            placeholder={t('common:common.Search') || ''}
             value={searchText}
             leftIcon={
               <MyIcon
@@ -263,6 +263,22 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
                             ...router.query,
                             currentTab: TabEnum.import,
                             source: ImportDataSourceEnum.csvTable
+                          }
+                        })
+                    },
+                    {
+                      label: (
+                        <Flex>
+                          <MyIcon name={'image'} mr={2} w={'20px'} />
+                          {t('common:core.dataset.Image collection')}
+                        </Flex>
+                      ),
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.imageDataset
                           }
                         })
                     }
@@ -469,7 +485,10 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
           name={editFolderData.name}
         />
       )}
-      <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
+      <EditCreateVirtualFileModal
+        iconSrc={'modal/manualDataset'}
+        closeBtnText={t('common:common.Cancel')}
+      />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
     </MyBox>
   );

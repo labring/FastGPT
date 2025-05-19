@@ -4,15 +4,15 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getMCPTools } from '@/web/core/app/api/plugin';
 import { AppContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { ToolType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { getMCPToolsBody } from '@/pages/api/support/mcp/client/getTools';
-import { getMCPTools } from '@/web/core/app/api/plugin';
+import { getMCPToolsBody } from '@/pages/api/core/app/mcpTools/getMCPTools';
 
 const EditForm = ({
   url,
@@ -24,14 +24,14 @@ const EditForm = ({
 }: {
   url: string;
   setUrl: (url: string) => void;
-  toolList: McpToolConfigType[];
-  setToolList: (toolList: McpToolConfigType[]) => void;
-  currentTool: McpToolConfigType | null;
-  setCurrentTool: (tool: McpToolConfigType) => void;
+  toolList: ToolType[];
+  setToolList: (toolList: ToolType[]) => void;
+  currentTool: ToolType | null;
+  setCurrentTool: (tool: ToolType) => void;
 }) => {
   const { t } = useTranslation();
 
-  const [toolDetail, setToolDetail] = useState<McpToolConfigType | null>(null);
+  const [toolDetail, setToolDetail] = useState<ToolType | null>(null);
 
   const { runAsync: runGetMCPTools, loading: isGettingTools } = useRequest2(
     async (data: getMCPToolsBody) => await getMCPTools(data),
@@ -69,7 +69,7 @@ const EditForm = ({
               runGetMCPTools({ url });
             }}
           >
-            {t('common:Parse')}
+            {t('common:common.Parse')}
           </Button>
         </Flex>
 
@@ -108,10 +108,6 @@ const EditForm = ({
                   borderRadius: '8px',
                   boxShadow:
                     '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
-                }}
-                cursor={'pointer'}
-                onClick={() => {
-                  setCurrentTool(tool);
                 }}
               >
                 <Flex alignItems={'center'} py={2} px={3}>
@@ -161,9 +157,21 @@ const EditForm = ({
                     hoverBg={'rgba(51, 112, 255, 0.10)'}
                     hoverBorderColor={'primary.300'}
                     tip={t('app:MCP_tools_detail')}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       setToolDetail(tool);
+                    }}
+                  />
+                  <MyIconButton
+                    size={'16px'}
+                    icon={'core/workflow/debug'}
+                    p={2}
+                    border={'1px solid'}
+                    borderColor={'myGray.250'}
+                    hoverBg={'rgba(51, 112, 255, 0.10)'}
+                    hoverBorderColor={'primary.300'}
+                    tip={t('app:MCP_tools_debug')}
+                    onClick={() => {
+                      setCurrentTool(tool);
                     }}
                   />
                 </Flex>
@@ -180,7 +188,7 @@ const EditForm = ({
 
 export default React.memo(EditForm);
 
-const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: () => void }) => {
+const ToolDetailModal = ({ tool, onClose }: { tool: ToolType; onClose: () => void }) => {
   const { t } = useTranslation();
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
@@ -207,7 +215,7 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
         </Flex>
 
         <Box mt={6} color={'myGray.900'} fontWeight={'medium'}>
-          {t('common:Params')}
+          {t('common:common.Params')}
         </Box>
 
         <Box mt={3}>
@@ -248,7 +256,7 @@ const ToolDetailModal = ({ tool, onClose }: { tool: McpToolConfigType; onClose: 
       </ModalBody>
       <ModalFooter>
         <Button size={'md'} onClick={onClose}>
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

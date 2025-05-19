@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, Button, Flex, Grid, Switch, useDisclosure, useTheme } from '@chakra-ui/react';
-import { type SelectedDatasetType } from '@fastgpt/global/core/workflow/api';
+import { SelectedDatasetType } from '@fastgpt/global/core/workflow/api';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -26,7 +26,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
     similarity: 0.5,
-    usingReRank: true
+    usingReRank: false
   });
 
   const {
@@ -66,7 +66,7 @@ export const SelectDatasetRender = React.memo(function SelectDatasetRender({
             leftIcon={<MyIcon name={'common/selectLight'} w={'14px'} />}
             onClick={onOpenDatasetSelect}
           >
-            {t('common:Choose')}
+            {t('common:common.Choose')}
           </Button>
           {selectedDatasets.map((item) => (
             <Flex

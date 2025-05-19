@@ -19,7 +19,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { type McpAppType } from '@fastgpt/global/support/mcp/type';
+import { McpAppType } from '@fastgpt/global/support/mcp/type';
 import { useTranslation } from 'next-i18next';
 import { useFieldArray, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -30,12 +30,11 @@ import Path from '@/components/common/folder/Path';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppBasicInfoByIds, getMyApps } from '@/web/core/app/api';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { postCreateMcpServer, putUpdateMcpServer } from '../../../web/support/mcp/api';
-import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export type EditMcForm = {
   id?: string;
@@ -63,7 +62,6 @@ const SelectAppModal = ({
     {
       appId: string;
       toolName: string;
-      appName: string;
       avatar: string;
       description: string;
     }[]
@@ -77,7 +75,6 @@ const SelectAppModal = ({
         data.map((item) => ({
           appId: item.id,
           toolName: item.name,
-          appName: item.name,
           avatar: item.avatar,
           description: selectedApps.find((app) => app.appId === item.id)?.description || ''
         }))
@@ -177,7 +174,6 @@ const SelectAppModal = ({
                           {
                             appId: item._id,
                             toolName: item.name,
-                            appName: item.name,
                             avatar: item.avatar,
                             description: item.intro
                           }
@@ -238,7 +234,7 @@ const SelectAppModal = ({
       </ModalBody>
       <ModalFooter>
         <Button ml="4" h={'32px'} onClick={() => onConfirm(selectedList)}>
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>
@@ -256,6 +252,7 @@ const EditMcpModal = ({
 }) => {
   const { t } = useTranslation();
   const isEdit = !!editMcp.id;
+  console.log(editMcp);
   const {
     isOpen: isOpenSelectApp,
     onOpen: onOpenSelectApp,
@@ -282,13 +279,12 @@ const EditMcpModal = ({
         apps: data.apps.map((item) => ({
           appId: item.appId,
           toolName: item.toolName,
-          appName: item.appName,
           description: item.description
         }))
       }),
     {
       manual: true,
-      successToast: t('common:create_success'),
+      successToast: t('common:common.Create Success'),
       onSuccess
     }
   );
@@ -300,13 +296,12 @@ const EditMcpModal = ({
         apps: data.apps.map((item) => ({
           appId: item.appId,
           toolName: item.toolName,
-          appName: item.appName,
           description: item.description
         }))
       }),
     {
       manual: true,
-      successToast: t('common:update_success'),
+      successToast: t('common:common.Update Success'),
       onSuccess
     }
   );
@@ -316,16 +311,16 @@ const EditMcpModal = ({
     <>
       <MyModal
         iconSrc="key"
-        title={isEdit ? t('dashboard_mcp:edit_mcp') : t('dashboard_mcp:create_mcp')}
+        title={isEdit ? '编辑MCP' : '创建MCP'}
         w={'100%'}
-        maxW={['90vw', '800px']}
+        maxW={['90vw', '600px']}
         isOpen
         onClose={onClose}
       >
         <ModalBody>
           <Box>
             <FormLabel required mb={0.5}>
-              {t('common:input_name')}
+              {t('common:common.Input name')}
             </FormLabel>
             <Input {...register('name', { required: true })} bg={'myGray.50'} />
           </Box>
@@ -340,10 +335,6 @@ const EditMcpModal = ({
               <Table>
                 <Thead>
                   <Tr>
-                    <Th>
-                      {t('dashboard_mcp:tool_name')}
-                      <QuestionTip label={t('dashboard_mcp:tool_name_tip')} />
-                    </Th>
                     <Th>{t('dashboard_mcp:app_name')}</Th>
                     <Th>{t('dashboard_mcp:app_description')}</Th>
                     <Th></Th>
@@ -353,15 +344,7 @@ const EditMcpModal = ({
                   {apps.map((app, index) => {
                     return (
                       <Tr key={app.id} fontWeight={500} fontSize={'mini'} color={'myGray.900'}>
-                        <Td>
-                          <Input
-                            {...register(`apps.${index}.toolName`, { required: true })}
-                            placeholder={t('dashboard_mcp:tool_name_placeholder')}
-                            bg={'myGray.50'}
-                            w={'100%'}
-                          />
-                        </Td>
-                        <Td>{app.appName}</Td>
+                        <Td>{app.toolName}</Td>
                         <Td>
                           <Input
                             {...register(`apps.${index}.description`, { required: true })}
@@ -390,7 +373,7 @@ const EditMcpModal = ({
         </ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-            {t('common:Cancel')}
+            {t('common:common.Cancel')}
           </Button>
           <Button
             isLoading={isConfirming}
@@ -403,7 +386,7 @@ const EditMcpModal = ({
               return createMcp(data);
             })}
           >
-            {t('common:Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -417,7 +400,6 @@ const EditMcpModal = ({
               e.map((item) => ({
                 appId: item.appId,
                 toolName: item.toolName,
-                appName: item.appName,
                 description: item.description
               }))
             );

@@ -10,19 +10,16 @@ import json5 from 'json5';
 import { defaultGroup, defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
 import { MongoPluginGroups } from '@fastgpt/service/core/app/plugin/pluginGroupSchema';
 import { MongoTemplateTypes } from '@fastgpt/service/core/app/templates/templateTypeSchema';
+import { loadSystemModels } from '@fastgpt/service/core/ai/config/utils';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import {
-  type DeepRagSearchProps,
-  type SearchDatasetDataResponse
+  DeepRagSearchProps,
+  SearchDatasetDataResponse
 } from '@fastgpt/service/core/dataset/search/controller';
-import { type AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
-import {
-  type ConcatUsageProps,
-  type CreateUsageProps
-} from '@fastgpt/global/support/wallet/usage/api';
+import { AuthOpenApiLimitProps } from '@fastgpt/service/support/openapi/auth';
+import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 import {
   getProApiDatasetFileContentRequest,
-  getProApiDatasetFileDetailRequest,
   getProApiDatasetFileListRequest,
   getProApiDatasetFilePreviewUrlRequest
 } from '@/service/core/dataset/apiDataset/controller';
@@ -41,9 +38,8 @@ export const readConfigData = async (name: string) => {
       }
       return `data/${name}`;
     }
-    // Fallback to default production path
-    const envPath = process.env.CONFIG_JSON_PATH || '/app/data';
-    return `${envPath}/${name}`;
+    // production path
+    return `/app/data/${name}`;
   })();
 
   const content = await fs.promises.readFile(filename, 'utf-8');
@@ -55,7 +51,6 @@ export const readConfigData = async (name: string) => {
 export function initGlobalVariables() {
   function initPlusRequest() {
     global.textCensorHandler = function textCensorHandler({ text }: { text: string }) {
-      if (!isProVersion()) return Promise.resolve({ code: 200 });
       return POST<{ code: number; message?: string }>('/common/censor/check', { text });
     };
 
@@ -81,7 +76,6 @@ export function initGlobalVariables() {
     global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
     global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
     global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
-    global.getProApiDatasetFileDetail = getProApiDatasetFileDetailRequest;
   }
 
   global.communityPlugins = [];
@@ -93,25 +87,7 @@ export function initGlobalVariables() {
 
 /* Init system data(Need to connected db). It only needs to run once */
 export async function getInitConfig() {
-  const getSystemVersion = async () => {
-    if (global.systemVersion) return;
-    try {
-      if (process.env.NODE_ENV === 'development') {
-        global.systemVersion = process.env.npm_package_version || '0.0.0';
-      } else {
-        const packageJson = json5.parse(await fs.promises.readFile('/app/package.json', 'utf-8'));
-
-        global.systemVersion = packageJson?.version;
-      }
-      console.log(`System Version: ${global.systemVersion}`);
-    } catch (error) {
-      console.log(error);
-
-      global.systemVersion = '0.0.0';
-    }
-  };
-
-  await Promise.all([initSystemConfig(), getSystemVersion()]);
+  return Promise.all([initSystemConfig(), getSystemVersion(), loadSystemModels()]);
 }
 
 const defaultFeConfigs: FastGPTFeConfigsType = {
@@ -136,12 +112,10 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 
 export async function initSystemConfig() {
   // load config
-  const [{ fastgptConfig, licenseData }, fileConfig] = await Promise.all([
+  const [{ config: dbConfig }, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);
-  global.licenseData = licenseData;
-
   const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
 
   // get config from database
@@ -149,18 +123,15 @@ export async function initSystemConfig() {
     feConfigs: {
       ...fileRes?.feConfigs,
       ...defaultFeConfigs,
-      ...(fastgptConfig.feConfigs || {}),
-      isPlus: !!licenseData,
-      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT,
-      show_coupon: process.env.SHOW_COUPON === 'true',
-      show_dataset_enhance: licenseData?.functions?.datasetEnhance,
-      show_batch_eval: licenseData?.functions?.batchEval
+      ...(dbConfig.feConfigs || {}),
+      isPlus: !!FastGPTProUrl,
+      show_aiproxy: !!process.env.AIPROXY_API_ENDPOINT
     },
     systemEnv: {
       ...fileRes.systemEnv,
-      ...(fastgptConfig.systemEnv || {})
+      ...(dbConfig.systemEnv || {})
     },
-    subPlans: fastgptConfig.subPlans
+    subPlans: dbConfig.subPlans || fileRes.subPlans
   };
 
   // set config
@@ -169,9 +140,26 @@ export async function initSystemConfig() {
   console.log({
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
-    subPlans: global.subPlans,
-    licenseData: global.licenseData
+    subPlans: global.subPlans
   });
+}
+
+async function getSystemVersion() {
+  if (global.systemVersion) return;
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      global.systemVersion = process.env.npm_package_version || '0.0.0';
+    } else {
+      const packageJson = json5.parse(await fs.promises.readFile('/app/package.json', 'utf-8'));
+
+      global.systemVersion = packageJson?.version;
+    }
+    console.log(`System Version: ${global.systemVersion}`);
+  } catch (error) {
+    console.log(error);
+
+    global.systemVersion = '0.0.0';
+  }
 }
 
 export async function initSystemPluginGroups() {

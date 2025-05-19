@@ -5,7 +5,7 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/pageComponents/app/detail/context';
@@ -43,8 +43,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
   });
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
-  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
@@ -60,7 +60,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         bottom={0}
         right={0}
         onClick={() => {
-          setCiteModalData(undefined);
+          setQuoteData(undefined);
           onClose();
         }}
       />
@@ -72,7 +72,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
         top={5}
         right={0}
         h={isOpen ? '95%' : '0'}
-        w={isOpen ? (datasetCiteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
+        w={isOpen ? (quoteData ? ['100%', '960px'] : ['100%', '460px']) : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -90,11 +90,11 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
           >
             <LightRowTabs<PluginRunBoxTabEnum>
               list={[
-                { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
+                { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
                 ...(chatRecords.length > 0
                   ? [
-                      { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
-                      { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
+                      { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
+                      { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
               ]}
@@ -133,7 +133,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
                 onClick={restartChat}
               />
             </MyTooltip>
-            <MyTooltip label={t('common:Close')}>
+            <MyTooltip label={t('common:common.Close')}>
               <IconButton
                 ml={4}
                 icon={<SmallCloseIcon fontSize={'22px'} />}
@@ -152,7 +152,7 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
             <ChatContainer />
           </Box>
 
-          {datasetCiteData && (
+          {quoteData && (
             <Box
               flex={'1 0 0'}
               w={0}
@@ -166,9 +166,9 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                rawSearch={datasetCiteData.rawSearch}
-                metadata={datasetCiteData.metadata}
-                onClose={() => setCiteModalData(undefined)}
+                rawSearch={quoteData.rawSearch}
+                metadata={quoteData.metadata}
+                onClose={() => setQuoteData(undefined)}
               />
             </Box>
           )}
@@ -195,7 +195,6 @@ const Render = (Props: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
-      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >

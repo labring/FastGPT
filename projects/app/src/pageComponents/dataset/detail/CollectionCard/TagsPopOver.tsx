@@ -8,12 +8,9 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useTranslation } from 'next-i18next';
 import { useMemo, useRef, useState } from 'react';
 import { useDeepCompareEffect } from 'ahooks';
-import {
-  type DatasetCollectionItemType,
-  type DatasetTagType
-} from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionItemType, DatasetTagType } from '@fastgpt/global/core/dataset/type';
 import { isEqual } from 'lodash';
-import { type DatasetCollectionsListItemType } from '@/global/core/dataset/type';
+import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 
 const TagsPopOver = ({
   currentCollection

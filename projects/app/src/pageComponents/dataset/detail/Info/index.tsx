@@ -27,7 +27,7 @@ import {
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import dynamic from 'next/dynamic';
 import type { EditAPIDatasetInfoFormType } from './components/EditApiServiceModal';
-import { type EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
+import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
@@ -60,13 +60,13 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     type: 'delete'
   });
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
-    title: t('common:action_confirm'),
+    title: t('common:common.confirm.Common Tip'),
     content: t('dataset:confirm_to_rebuild_embedding_tip'),
     type: 'delete'
   });
   const { openConfirm: onOpenConfirmSyncSchedule, ConfirmModal: ConfirmSyncScheduleModal } =
     useConfirm({
-      title: t('common:action_confirm')
+      title: t('common:common.confirm.Common Tip')
     });
 
   const { runAsync: onSave } = useRequest2(
@@ -79,8 +79,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       });
     },
     {
-      successToast: t('common:update_success'),
-      errorToast: t('common:update_failed')
+      successToast: t('common:common.Update Success'),
+      errorToast: t('common:common.Update Failed')
     }
   );
 
@@ -97,7 +97,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         loadDatasetDetail(datasetId);
       },
       successToast: t('dataset:rebuild_embedding_start_tip'),
-      errorToast: t('common:update_failed')
+      errorToast: t('common:common.Update Failed')
     }
   );
 
@@ -105,8 +105,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     onSuccess() {
       setEditedDataset(undefined);
     },
-    successToast: t('common:update_success'),
-    errorToast: t('common:update_failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   useEffect(() => {

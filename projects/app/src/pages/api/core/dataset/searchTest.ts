@@ -1,25 +1,28 @@
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { pushGenerateVectorUsage, pushRerankUsage } from '@/service/support/wallet/usage/push';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import {
   deepRagSearch,
   defaultSearchDatasetData
 } from '@fastgpt/service/core/dataset/search/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
+import {
+  checkTeamAIPoints,
+  checkTeamReRankPermission
+} from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getRerankModel } from '@fastgpt/service/core/ai/model';
 
 async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTestResponse> {
   const {
     datasetId,
     text,
-    limit = 5000,
+    limit = 1500,
     similarity,
     searchMode,
     embeddingWeight,
@@ -55,8 +58,6 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
   // auth balance
   await checkTeamAIPoints(teamId);
 
-  const rerankModelData = getRerankModel(rerankModel);
-
   const searchData = {
     histories: [],
     teamId,
@@ -68,19 +69,11 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     datasetIds: [datasetId],
     searchMode,
     embeddingWeight,
-    usingReRank,
-    rerankModel: rerankModelData,
+    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId)),
+    rerankModel: getRerankModel(rerankModel),
     rerankWeight
   };
-  const {
-    searchRes,
-    embeddingTokens,
-    reRankInputTokens,
-    usingReRank: searchUsingReRank,
-    queryExtensionResult,
-    deepSearchResult,
-    ...result
-  } = datasetDeepSearch
+  const { searchRes, tokens, queryExtensionResult, deepSearchResult, ...result } = datasetDeepSearch
     ? await deepRagSearch({
         ...searchData,
         datasetDeepSearchModel,
@@ -95,13 +88,12 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       });
 
   // push bill
-  const source = apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt;
-  const { totalPoints: embeddingTotalPoints } = pushGenerateVectorUsage({
+  const { totalPoints } = pushGenerateVectorUsage({
     teamId,
     tmbId,
-    inputTokens: embeddingTokens,
+    inputTokens: tokens,
     model: dataset.vectorModel,
-    source,
+    source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
     ...(queryExtensionResult && {
       extensionModel: queryExtensionResult.model,
@@ -114,20 +106,10 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
       deepSearchOutputTokens: deepSearchResult.outputTokens
     })
   });
-  const { totalPoints: reRankTotalPoints } = searchUsingReRank
-    ? pushRerankUsage({
-        teamId,
-        tmbId,
-        inputTokens: reRankInputTokens,
-        model: rerankModelData.model,
-        source
-      })
-    : { totalPoints: 0 };
-
   if (apikey) {
     updateApiKeyUsage({
       apikey,
-      totalPoints: embeddingTotalPoints + reRankTotalPoints
+      totalPoints: totalPoints
     });
   }
 
@@ -135,7 +117,6 @@ async function handler(req: ApiRequestProps<SearchTestProps>): Promise<SearchTes
     list: searchRes,
     duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
     queryExtensionModel: queryExtensionResult?.model,
-    usingReRank: searchUsingReRank,
     ...result
   };
 }

@@ -1,4 +1,3 @@
-'use client';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import React, { useMemo, useState } from 'react';
 import AccountContainer from '@/pageComponents/account/AccountContainer';

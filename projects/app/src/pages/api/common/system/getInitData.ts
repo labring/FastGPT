@@ -1,8 +1,8 @@
 import type { NextApiResponse } from 'next';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type InitDateResponse } from '@/global/common/api/systemRes';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { InitDateResponse } from '@/global/common/api/systemRes';
+import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 
 async function handler(

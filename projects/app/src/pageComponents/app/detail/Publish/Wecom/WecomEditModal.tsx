@@ -46,15 +46,15 @@ const WecomEditModal = ({
         type: PublishChannelEnum.wecom
       }),
     {
-      errorToast: t('common:create_failed'),
-      successToast: t('common:create_success'),
+      errorToast: t('common:common.Create Failed'),
+      successToast: t('common:common.Create Success'),
       onSuccess: onCreate
     }
   );
 
   const { runAsync: onclickUpdate, loading: updating } = useRequest2((e) => updateShareChat(e), {
-    errorToast: t('common:update_failed'),
-    successToast: t('common:update_success'),
+    errorToast: t('common:common.Update Failed'),
+    successToast: t('common:common.Update Success'),
     onSuccess: onEdit
   });
 
@@ -83,7 +83,7 @@ const WecomEditModal = ({
               >
                 <Flex alignItems={'center'}>
                   <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                  {t('common:read_doc')}
+                  {t('common:common.Read document')}
                 </Flex>
               </Link>
             )}
@@ -146,7 +146,7 @@ const WecomEditModal = ({
 
           <Flex justifyContent={'end'}>
             <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-              {t('common:Close')}
+              {t('common:common.Close')}
             </Button>
             <Button
               isLoading={creating || updating}
@@ -154,7 +154,7 @@ const WecomEditModal = ({
                 isEdit ? onclickUpdate(data) : onclickCreate(data)
               )}
             >
-              {t('common:Confirm')}
+              {t('common:common.Confirm')}
             </Button>
           </Flex>
         </Flex>

@@ -30,7 +30,6 @@ import { getDocPath } from '@/web/common/system/doc';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import LoginForm from '@/pageComponents/login/LoginForm/LoginForm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getBdVId } from '@/web/support/marketing/utils';
 
 const RegisterForm = dynamic(() => import('@/pageComponents/login/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('@/pageComponents/login/ForgetPasswordForm'));
@@ -65,7 +64,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
       setUserInfo(res.user);
 
       const decodeLastRoute = decodeURIComponent(lastRoute);
-
+      // 检查是否是当前的 route
       const navigateTo =
         decodeLastRoute && !decodeLastRoute.includes('/login')
           ? decodeLastRoute
@@ -91,7 +90,7 @@ const Login = ({ ChineseRedirectUrl }: { ChineseRedirectUrl: string }) => {
 
   /* default login type */
   useEffect(() => {
-    const bd_vid = getBdVId();
+    const bd_vid = sessionStorage.getItem('bd_vid');
     if (bd_vid) {
       setPageType(LoginPageTypeEnum.passwordLogin);
       return;

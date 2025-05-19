@@ -86,7 +86,7 @@ const VariablePopover = ({
           )}
           <Flex w={'full'} justifyContent={'flex-end'}>
             <Button size={'sm'} onClick={onClose}>
-              {t('common:Confirm')}
+              {t('common:common.Confirm')}
             </Button>
           </Flex>
         </Box>

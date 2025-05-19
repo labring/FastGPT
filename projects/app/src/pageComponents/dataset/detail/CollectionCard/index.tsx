@@ -37,7 +37,7 @@ import dynamic from 'next/dynamic';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
@@ -117,7 +117,7 @@ const CollectionCard = () => {
       onSuccess() {
         getData(pageNum);
       },
-      successToast: t('common:update_success')
+      successToast: t('common:common.Update Success')
     }
   );
 
@@ -135,8 +135,8 @@ const CollectionCard = () => {
       onSuccess() {
         getData(pageNum);
       },
-      successToast: t('common:delete_success'),
-      errorToast: t('common:delete_failed')
+      successToast: t('common:common.Delete Success'),
+      errorToast: t('common:common.Delete Failed')
     }
   );
 
@@ -203,11 +203,11 @@ const CollectionCard = () => {
           <Table variant={'simple'} draggable={false}>
             <Thead draggable={false}>
               <Tr>
-                <Th py={4}>{t('common:Name')}</Th>
+                <Th py={4}>{t('common:common.Name')}</Th>
                 <Th py={4}>{t('dataset:collection.training_type')}</Th>
                 <Th py={4}>{t('dataset:collection_data_count')}</Th>
                 <Th py={4}>{t('dataset:collection.Create update time')}</Th>
-                <Th py={4}>{t('common:Status')}</Th>
+                <Th py={4}>{t('common:common.Status')}</Th>
                 <Th py={4}>{t('dataset:Enable')}</Th>
                 <Th py={4} />
               </Tr>
@@ -246,7 +246,10 @@ const CollectionCard = () => {
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
                     <Flex alignItems={'center'}>
                       <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
-                      <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
+                      <MyTooltip
+                        label={t('common:common.folder.Drag Tip')}
+                        shouldWrapChildren={false}
+                      >
                         <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
                           {collection.name}
                         </Box>
@@ -397,7 +400,7 @@ const CollectionCard = () => {
                                       w={'0.9rem'}
                                       _hover={{ color: 'red.600' }}
                                     />
-                                    <Box>{t('common:Delete')}</Box>
+                                    <Box>{t('common:common.Delete')}</Box>
                                   </Flex>
                                 ),
                                 type: 'danger',
@@ -455,7 +458,7 @@ const CollectionCard = () => {
               setMoveCollectionData(undefined);
               toast({
                 status: 'success',
-                title: t('common:move_success')
+                title: t('common:common.folder.Move Success')
               });
             }}
           />

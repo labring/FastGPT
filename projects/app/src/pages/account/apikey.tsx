@@ -1,4 +1,3 @@
-'use client';
 import React from 'react';
 import ApiKeyTable from '@/components/support/apikey/Table';
 import { useTranslation } from 'next-i18next';

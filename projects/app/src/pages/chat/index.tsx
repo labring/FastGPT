@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -26,7 +26,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { type AppListItemType } from '@fastgpt/global/core/app/type';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
@@ -59,8 +59,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
-  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -148,7 +148,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     );
 
     return isPc || !appId ? (
-      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -161,7 +161,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
       </Drawer>
     );
-  }, [t, isPc, appId, isOpenSlider, onCloseSlider, datasetCiteData]);
+  }, [t, isPc, appId, isOpenSlider, onCloseSlider, quoteData]);
 
   return (
     <Flex h={'100%'}>
@@ -173,7 +173,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </Box>
       )}
 
-      {(!datasetCiteData || isPc) && (
+      {(!quoteData || isPc) && (
         <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
           <Flex h={'100%'} flexDirection={['column', 'row']}>
             {/* pc always show history. */}
@@ -222,12 +222,12 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         </PageContainer>
       )}
 
-      {datasetCiteData && (
+      {quoteData && (
         <PageContainer flex={'1 0 0'} w={0} maxW={'560px'}>
           <ChatQuoteList
-            rawSearch={datasetCiteData.rawSearch}
-            metadata={datasetCiteData.metadata}
-            onClose={() => setCiteModalData(undefined)}
+            rawSearch={quoteData.rawSearch}
+            metadata={quoteData.metadata}
+            onClose={() => setQuoteData(undefined)}
           />
         </PageContainer>
       )}
@@ -294,7 +294,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showRouteToAppDetail={isStandalone !== '1'}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
-        isResponseDetail={true}
         // isShowFullText={true}
         showNodeStatus
       >

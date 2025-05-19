@@ -60,14 +60,14 @@ const FastLogin = ({
         }, 1000);
       }
     },
-    [loginSuccess, router, t, toast]
+    [loginSuccess, router, toast]
   );
 
   useEffect(() => {
     clearToken();
     router.prefetch(callbackUrl);
     authCode(code, token);
-  }, [authCode, callbackUrl, code, router, token]);
+  }, []);
 
   return <Loading />;
 };

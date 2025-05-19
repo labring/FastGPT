@@ -36,9 +36,8 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { useI18nLng } from '@fastgpt/web/hooks/useI18n';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { AppSchema } from '@fastgpt/global/core/app/type';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -51,7 +50,6 @@ type Props = {
   authToken: string;
   customUid: string;
   showRawSource: boolean;
-  responseDetail: boolean;
   // showFullText: boolean;
   showNodeStatus: boolean;
 };
@@ -85,9 +83,8 @@ const OutLink = (props: Props) => {
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
-  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
-  const isResponseDetail = useContextSelector(ChatItemContext, (v) => v.isResponseDetail);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
@@ -163,8 +160,7 @@ const OutLink = (props: Props) => {
           },
           responseChatItemId,
           chatId: completionChatId,
-          ...outLinkAuthData,
-          retainDatasetCite: isResponseDetail
+          ...outLinkAuthData
         },
         onMessage: generatingMessage,
         abortCtrl: controller
@@ -202,7 +198,6 @@ const OutLink = (props: Props) => {
       chatId,
       customVariables,
       outLinkAuthData,
-      isResponseDetail,
       onUpdateHistoryTitle,
       setChatBoxData,
       forbidLoadChat,
@@ -226,7 +221,7 @@ const OutLink = (props: Props) => {
     if (showHistory !== '1') return null;
 
     return isPc ? (
-      <SideBar externalTrigger={!!datasetCiteData}>{Children}</SideBar>
+      <SideBar externalTrigger={!!quoteData}>{Children}</SideBar>
     ) : (
       <Drawer
         isOpen={isOpenSlider}
@@ -241,7 +236,7 @@ const OutLink = (props: Props) => {
         </DrawerContent>
       </Drawer>
     );
-  }, [isOpenSlider, isPc, onCloseSlider, datasetCiteData, showHistory, t]);
+  }, [isOpenSlider, isPc, onCloseSlider, quoteData, showHistory, t]);
 
   return (
     <>
@@ -255,7 +250,7 @@ const OutLink = (props: Props) => {
         gap={4}
         {...(isEmbed ? { p: '0 !important', borderRadius: '0', boxShadow: 'none' } : { p: [0, 5] })}
       >
-        {(!datasetCiteData || isPc) && (
+        {(!quoteData || isPc) && (
           <PageContainer flex={'1 0 0'} w={0} p={'0 !important'}>
             <Flex h={'100%'} flexDirection={['column', 'row']}>
               {RenderHistoryList}
@@ -303,12 +298,12 @@ const OutLink = (props: Props) => {
           </PageContainer>
         )}
 
-        {datasetCiteData && (
+        {quoteData && (
           <PageContainer flex={'1 0 0'} w={0} maxW={'560px'} p={'0 !important'}>
             <ChatQuoteList
-              rawSearch={datasetCiteData.rawSearch}
-              metadata={datasetCiteData.metadata}
-              onClose={() => setCiteModalData(undefined)}
+              rawSearch={quoteData.rawSearch}
+              metadata={quoteData.metadata}
+              onClose={() => setQuoteData(undefined)}
             />
           </PageContainer>
         )}
@@ -318,8 +313,6 @@ const OutLink = (props: Props) => {
 };
 
 const Render = (props: Props) => {
-  const { t } = useTranslation();
-  const { toast } = useToast();
   const { shareId, authToken, customUid, appId } = props;
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
@@ -369,14 +362,6 @@ const Render = (props: Props) => {
   useEffect(() => {
     setAppId(appId);
   }, [appId, setAppId]);
-  useMount(() => {
-    if (!appId) {
-      toast({
-        status: 'warning',
-        title: t('chat:invalid_share_url')
-      });
-    }
-  });
 
   return source === ChatSourceEnum.share ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
@@ -384,7 +369,6 @@ const Render = (props: Props) => {
         showRouteToAppDetail={false}
         showRouteToDatasetDetail={false}
         isShowReadRawSource={props.showRawSource}
-        isResponseDetail={props.responseDetail}
         // isShowFullText={props.showFullText}
         showNodeStatus={props.showNodeStatus}
       >
@@ -411,7 +395,7 @@ export async function getServerSideProps(context: any) {
         {
           shareId
         },
-        'appId showRawSource showNodeStatus responseDetail'
+        'appId showRawSource showNodeStatus'
       )
         .populate<{ associatedApp: AppSchema }>('associatedApp', 'name avatar intro')
         .lean();
@@ -423,12 +407,11 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appId: app?.appId ? String(app?.appId) : '',
+      appId: String(app?.appId) ?? '',
       appName: app?.associatedApp?.name ?? 'AI',
       appAvatar: app?.associatedApp?.avatar ?? '',
       appIntro: app?.associatedApp?.intro ?? 'AI',
       showRawSource: app?.showRawSource ?? false,
-      responseDetail: app?.responseDetail ?? false,
       // showFullText: app?.showFullText ?? false,
       showNodeStatus: app?.showNodeStatus ?? false,
       shareId: shareId ?? '',

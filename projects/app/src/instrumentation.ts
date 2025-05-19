@@ -17,22 +17,18 @@ export async function register() {
         { getSystemPluginCb },
         { startMongoWatch },
         { startCron },
-        { startTrainingQueue },
-        { preLoadWorker },
-        { loadSystemModels }
+        { startTrainingQueue }
       ] = await Promise.all([
         import('@fastgpt/service/common/mongo/init'),
         import('@fastgpt/service/common/mongo/index'),
         import('@fastgpt/service/common/system/tools'),
         import('@/service/common/system'),
-        import('@fastgpt/service/common/vectorDB/controller'),
+        import('@fastgpt/service/common/vectorStore/controller'),
         import('@/service/mongo'),
         import('@/service/core/app/plugin'),
         import('@/service/common/system/volumnMongoWatch'),
         import('@/service/common/system/cron'),
-        import('@/service/core/dataset/training/utils'),
-        import('@fastgpt/service/worker/preload'),
-        import('@fastgpt/service/core/ai/config/utils')
+        import('@/service/core/dataset/training/utils')
       ]);
 
       // 执行初始化流程
@@ -44,21 +40,14 @@ export async function register() {
       connectMongo(connectionLogMongo, MONGO_LOG_URL);
 
       //init system config；init vector database；init root user
-      await Promise.all([getInitConfig(), initVectorStore(), initRootUser(), loadSystemModels()]);
+      await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
 
-      // 异步加载
       initSystemPluginGroups();
       initAppTemplateTypes();
       getSystemPluginCb();
       startMongoWatch();
       startCron();
       startTrainingQueue(true);
-
-      try {
-        await preLoadWorker();
-      } catch (error) {
-        console.error('Preload worker error', error);
-      }
 
       console.log('Init system success');
     }

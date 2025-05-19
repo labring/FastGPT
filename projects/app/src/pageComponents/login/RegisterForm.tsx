@@ -1,7 +1,7 @@
-import React, { type Dispatch } from 'react';
+import React, { Dispatch } from 'react';
 import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
+import { LoginPageTypeEnum, checkPasswordRule } from '@/web/support/user/login/constants';
 import { postRegister } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes';
@@ -10,16 +10,8 @@ import { postCreateApp } from '@/web/core/app/api';
 import { emptyTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import type { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import {
-  getBdVId,
-  getFastGPTSem,
-  getInviterId,
-  getSourceDomain,
-  removeFastGPTSem
-} from '@/web/support/marketing/utils';
-import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -58,13 +50,20 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           username,
           code,
           password,
-          inviterId: getInviterId(),
-          bd_vid: getBdVId(),
-          fastgpt_sem: getFastGPTSem(),
-          sourceDomain: getSourceDomain()
+          inviterId: localStorage.getItem('inviterId') || undefined,
+          bd_vid: sessionStorage.getItem('bd_vid') || undefined,
+          fastgpt_sem: (() => {
+            try {
+              return sessionStorage.getItem('fastgpt_sem')
+                ? JSON.parse(sessionStorage.getItem('fastgpt_sem')!)
+                : undefined;
+            } catch {
+              return undefined;
+            }
+          })(),
+          sourceDomain: sessionStorage.getItem('sourceDomain') || undefined
         })
       );
-      removeFastGPTSem();
 
       toast({
         status: 'success',

@@ -50,7 +50,7 @@ const SaveButton = ({
             />
           }
         >
-          <Box>{t('common:Save')}</Box>
+          <Box>{t('common:common.Save')}</Box>
         </Button>
       }
     >

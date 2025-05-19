@@ -30,7 +30,7 @@ import type {
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import type { CreateDatasetParams, InsertOneDatasetDataProps } from '@/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
-import type { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
@@ -72,15 +72,6 @@ import type {
   getTrainingErrorResponse
 } from '@/pages/api/core/dataset/training/getTrainingError';
 import type { APIFileItem } from '@fastgpt/global/core/dataset/apiDataset';
-import type { GetQuoteDataProps } from '@/pages/api/core/dataset/data/getQuoteData';
-import type {
-  GetApiDatasetCataLogResponse,
-  GetApiDatasetCataLogProps
-} from '@/pages/api/core/dataset/apiDataset/getCatalog';
-import type {
-  GetApiDatasetPathBody,
-  GetApiDatasetPathResponse
-} from '@/pages/api/core/dataset/apiDataset/getPathNames';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: GetDatasetListBody) =>
@@ -210,8 +201,23 @@ export const getDatasetDataItemById = (id: string) =>
 /**
  * insert one data to dataset (immediately insert)
  */
-export const postInsertData2Dataset = (data: InsertOneDatasetDataProps) =>
-  POST<string>(`/core/dataset/data/insertData`, data);
+export const postInsertData2Dataset = (data: InsertOneDatasetDataProps) => {
+  console.log('[API调用] postInsertData2Dataset 开始, 数据:', JSON.stringify(data));
+
+  return POST<string>(`/core/dataset/data/insertData`, data)
+    .then((response) => {
+      console.log('[API调用] postInsertData2Dataset 成功, 响应:', response);
+      return response;
+    })
+    .catch((error) => {
+      console.error('[API调用] postInsertData2Dataset 失败:', error);
+      if (error.response) {
+        console.error('[API调用] 响应状态:', error.response.status);
+        console.error('[API调用] 响应数据:', error.response.data);
+      }
+      throw error;
+    });
+};
 
 /**
  * update one datasetData by id
@@ -225,8 +231,8 @@ export const delOneDatasetDataById = (id: string) =>
   DELETE<string>(`/core/dataset/data/delete`, { id });
 
 // Get quote data
-export const getQuoteData = (data: GetQuoteDataProps) =>
-  POST<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, data);
+export const getQuoteData = (id: string) =>
+  GET<GetQuoteDataResponse>(`/core/dataset/data/getQuoteData`, { id });
 
 /* ================ training ==================== */
 export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
@@ -264,9 +270,3 @@ export const getApiDatasetFileList = (data: GetApiDatasetFileListProps) =>
   POST<APIFileItem[]>('/core/dataset/apiDataset/list', data);
 export const getApiDatasetFileListExistId = (data: listExistIdQuery) =>
   GET<listExistIdResponse>('/core/dataset/apiDataset/listExistId', data);
-
-export const getApiDatasetCatalog = (data: GetApiDatasetCataLogProps) =>
-  POST<GetApiDatasetCataLogResponse>('/core/dataset/apiDataset/getCatalog', data);
-
-export const getApiDatasetPaths = (data: GetApiDatasetPathBody) =>
-  POST<GetApiDatasetPathResponse>('/core/dataset/apiDataset/getPathNames', data);

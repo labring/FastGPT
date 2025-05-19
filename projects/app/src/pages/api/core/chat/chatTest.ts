@@ -63,6 +63,14 @@ export type Props = {
 };
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
+  res.on('close', () => {
+    res.end();
+  });
+  res.on('error', () => {
+    console.log('error: ', 'request error');
+    res.end();
+  });
+
   let {
     nodes = [],
     edges = [],
@@ -162,40 +170,39 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     /* start process */
-    const { flowResponses, assistantResponses, newVariables, flowUsages, durationSeconds } =
-      await dispatchWorkFlow({
-        res,
-        requestOrigin: req.headers.origin,
-        mode: 'test',
-        timezone,
-        externalProvider,
-        uid: tmbId,
+    const { flowResponses, assistantResponses, newVariables, flowUsages } = await dispatchWorkFlow({
+      res,
+      requestOrigin: req.headers.origin,
+      mode: 'test',
+      timezone,
+      externalProvider,
+      uid: tmbId,
 
-        runningAppInfo: {
-          id: appId,
-          teamId: app.teamId,
-          tmbId: app.tmbId
-        },
-        runningUserInfo: {
-          teamId,
-          tmbId
-        },
+      runningAppInfo: {
+        id: appId,
+        teamId: app.teamId,
+        tmbId: app.tmbId
+      },
+      runningUserInfo: {
+        teamId,
+        tmbId
+      },
 
-        chatId,
-        responseChatItemId,
-        runtimeNodes,
-        runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-        variables,
-        query: removeEmptyUserInput(userQuestion.value),
-        lastInteractive: interactive,
-        chatConfig,
-        histories: newHistories,
-        stream: true,
-        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-        workflowStreamResponse: workflowResponseWrite,
-        version: 'v2',
-        responseDetail: true
-      });
+      chatId,
+      responseChatItemId,
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig,
+      histories: newHistories,
+      stream: true,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      version: 'v2',
+      responseDetail: true
+    });
 
     workflowResponseWrite({
       event: SseResponseEventEnum.answer,
@@ -231,8 +238,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         userInteractiveVal,
         aiResponse,
-        newVariables,
-        durationSeconds
+        newVariables
       });
     } else {
       await saveChat({
@@ -246,8 +252,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         isUpdateUseTime: false, // owner update use time
         newTitle,
         source: ChatSourceEnum.test,
-        content: [userQuestion, aiResponse],
-        durationSeconds
+        content: [userQuestion, aiResponse]
       });
     }
 

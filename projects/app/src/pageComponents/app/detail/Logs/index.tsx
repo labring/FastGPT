@@ -20,9 +20,7 @@ import dayjs from 'dayjs';
 import { ChatSourceEnum, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import DateRangePicker, {
-  type DateRangeType
-} from '@fastgpt/web/components/common/DateRangePicker';
+import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';

@@ -1,6 +1,5 @@
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import React, { useMemo } from 'react';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { Box, Flex, Grid } from '@chakra-ui/react';
@@ -39,9 +38,9 @@ const StandardPlanContentList = ({
       permissionCustomApiKey: plan.permissionCustomApiKey,
       permissionCustomCopyright: plan.permissionCustomCopyright,
       trainingWeight: plan.trainingWeight,
+      permissionReRank: plan.permissionReRank,
       totalPoints: plan.totalPoints * (mode === SubModeEnum.month ? 1 : 12),
-      permissionWebsiteSync: plan.permissionWebsiteSync,
-      permissionTeamOperationLog: plan.permissionTeamOperationLog
+      permissionWebsiteSync: plan.permissionWebsiteSync
     };
   }, [subPlans?.standard, level, mode]);
 
@@ -114,18 +113,16 @@ const StandardPlanContentList = ({
           })}
         </Box>
       </Flex>
+      {!!planContent.permissionReRank && (
+        <Flex alignItems={'center'}>
+          <MyIcon name={'price/right'} w={'16px'} mr={3} />
+          <Box color={'myGray.600'}>{t('common:support.wallet.subscription.rerank')}</Box>
+        </Flex>
+      )}
       {!!planContent.permissionWebsiteSync && (
         <Flex alignItems={'center'}>
           <MyIcon name={'price/right'} w={'16px'} mr={3} />
           <Box color={'myGray.600'}>{t('common:support.wallet.subscription.web_site_sync')}</Box>
-        </Flex>
-      )}
-      {!!planContent.permissionTeamOperationLog && (
-        <Flex alignItems={'center'}>
-          <MyIcon name={'price/right'} w={'16px'} mr={3} />
-          <Box color={'myGray.600'}>
-            {t('common:support.wallet.subscription.team_operation_log')}
-          </Box>
         </Flex>
       )}
     </Grid>

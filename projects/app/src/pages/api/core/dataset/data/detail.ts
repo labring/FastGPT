@@ -8,6 +8,8 @@ export type Response = {
   q: string;
   a: string;
   source: string;
+  imageFileId?: string;
+  dataName?: string;
 };
 
 async function handler(req: NextApiRequest) {
@@ -15,7 +17,6 @@ async function handler(req: NextApiRequest) {
     id: string;
   };
 
-  // 凭证校验
   const { datasetData } = await authDatasetData({
     req,
     authToken: true,

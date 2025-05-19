@@ -2,8 +2,8 @@ import { getLLMModel, getEmbeddingModel, getVlmModel } from '@fastgpt/service/co
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getWebsiteSyncDatasetStatus } from '@fastgpt/service/core/dataset/websiteSync';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -48,15 +48,13 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
     apiServer: dataset.apiServer
       ? {
           baseUrl: dataset.apiServer.baseUrl,
-          authorization: '',
-          basePath: dataset.apiServer.basePath
+          authorization: ''
         }
       : undefined,
     yuqueServer: dataset.yuqueServer
       ? {
           userId: dataset.yuqueServer.userId,
-          token: '',
-          basePath: dataset.yuqueServer.basePath
+          token: ''
         }
       : undefined,
     feishuServer: dataset.feishuServer

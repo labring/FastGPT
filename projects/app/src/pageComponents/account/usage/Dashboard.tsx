@@ -14,10 +14,10 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  type TooltipProps
+  TooltipProps
 } from 'recharts';
-import { type NameType, type ValueType } from 'recharts/types/component/DefaultTooltipContent';
-import { type UnitType, type UsageFilterParams } from './type';
+import { NameType, ValueType } from 'recharts/types/component/DefaultTooltipContent';
+import { UnitType, UsageFilterParams } from './type';
 import dayjs from 'dayjs';
 
 export type usageFormType = {
@@ -70,11 +70,11 @@ const UsageDashboard = ({
     () =>
       getDashboardData({
         dateStart: dateRange.from
-          ? dayjs(dateRange.from.setHours(0, 0, 0, 0)).format()
-          : dayjs(new Date().setHours(0, 0, 0, 0)).format(),
+          ? new Date(dateRange.from.setHours(0, 0, 0, 0))
+          : new Date(new Date().setHours(0, 0, 0, 0)),
         dateEnd: dateRange.to
-          ? dayjs(addDays(dateRange.to, 1).setHours(0, 0, 0, 0)).format()
-          : dayjs(addDays(new Date(), 1).setHours(0, 0, 0, 0)).format(),
+          ? new Date(addDays(dateRange.to, 1).setHours(0, 0, 0, 0))
+          : new Date(addDays(new Date(), 1).setHours(0, 0, 0, 0)),
         sources: isSelectAllSource ? undefined : usageSources,
         teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
         unit

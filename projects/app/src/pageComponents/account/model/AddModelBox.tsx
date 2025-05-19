@@ -14,13 +14,13 @@ import {
   Input,
   ModalFooter,
   Button,
-  type ButtonProps
+  ButtonProps
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useRef, useState } from 'react';
 import {
   ModelProviderList,
-  type ModelProviderIdType,
+  ModelProviderIdType,
   getModelProvider
 } from '@fastgpt/global/core/ai/provider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -28,7 +28,7 @@ import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSystemModelDefaultConfig, putSystemModel } from '@/web/core/ai/config';
-import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
+import { SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { useForm } from 'react-hook-form';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
@@ -127,11 +127,11 @@ export const ModelEditModal = ({
   );
 
   const priceUnit = useMemo(() => {
-    if (isLLMModel || isEmbeddingModel || isRerankModel) return '/ 1k Tokens';
+    if (isLLMModel || isEmbeddingModel) return '/ 1k Tokens';
     if (isTTSModel) return `/ 1k ${t('common:unit.character')}`;
     if (isSTTModel) return `/ 60 ${t('common:unit.seconds')}`;
     return '';
-  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel, isRerankModel]);
+  }, [isLLMModel, isEmbeddingModel, isTTSModel, t, isSTTModel]);
 
   const { runAsync: updateModel, loading: updatingModel } = useRequest2(
     async (data: SystemModelItemType) => {
@@ -143,7 +143,6 @@ export const ModelEditModal = ({
           data[key] = '';
         }
       }
-
       return putSystemModel({
         model: data.model,
         metadata: data
@@ -153,7 +152,7 @@ export const ModelEditModal = ({
       onSuccess: () => {
         onClose();
       },
-      successToast: t('common:Success')
+      successToast: t('common:common.Success')
     }
   );
 
@@ -357,12 +356,7 @@ export const ModelEditModal = ({
                       </Td>
                       <Td textAlign={'right'}>
                         <Flex justifyContent={'flex-end'}>
-                          <MyNumberInput
-                            min={2000}
-                            register={register}
-                            name="maxResponse"
-                            {...InputStyles}
-                          />
+                          <MyNumberInput register={register} name="maxResponse" {...InputStyles} />
                         </Flex>
                       </Td>
                     </Tr>
@@ -378,7 +372,6 @@ export const ModelEditModal = ({
                           <MyNumberInput
                             register={register}
                             name="maxTemperature"
-                            min={0}
                             step={0.1}
                             {...InputStyles}
                           />
@@ -491,7 +484,7 @@ export const ModelEditModal = ({
                             value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                             onChange={(e) => {
                               if (!e) {
-                                setValue('defaultConfig', undefined);
+                                setValue('defaultConfig', {});
                                 return;
                               }
                               try {
@@ -579,6 +572,19 @@ export const ModelEditModal = ({
                     <Td textAlign={'right'}>
                       <Flex justifyContent={'flex-end'}>
                         <Switch {...register('toolChoice')} />
+                      </Flex>
+                    </Td>
+                  </Tr>
+                  <Tr>
+                    <Td>
+                      <HStack spacing={1}>
+                        <Box>{t('account:model.function_call')}</Box>
+                        <QuestionTip label={t('account:model.function_call_tip')} />
+                      </HStack>
+                    </Td>
+                    <Td textAlign={'right'}>
+                      <Flex justifyContent={'flex-end'}>
+                        <Switch {...register('functionCall')} />
                       </Flex>
                     </Td>
                   </Tr>
@@ -708,13 +714,12 @@ export const ModelEditModal = ({
                         value={JSON.stringify(getValues('defaultConfig'), null, 2)}
                         resize
                         onChange={(e) => {
-                          console.log(e, '===');
                           if (!e) {
-                            setValue('defaultConfig', undefined);
+                            setValue('defaultConfig', {});
                             return;
                           }
                           try {
-                            setValue('defaultConfig', JSON.parse(e.trim()));
+                            setValue('defaultConfig', JSON.parse(e));
                           } catch (error) {
                             console.error(error);
                           }
@@ -741,10 +746,10 @@ export const ModelEditModal = ({
           </Button>
         )}
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
-          {t('common:Cancel')}
+          {t('common:common.Cancel')}
         </Button>
         <Button isLoading={updatingModel} onClick={handleSubmit(updateModel)}>
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

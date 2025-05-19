@@ -1,4 +1,3 @@
-'use client';
 import React, { useEffect } from 'react';
 import { Box } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';

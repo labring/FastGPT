@@ -4,7 +4,7 @@ import { AbsoluteCenter, Box, Button, Flex } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { useRouter } from 'next/router';
-import { type Dispatch, useCallback, useEffect, useMemo, useRef } from 'react';
+import { Dispatch, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -13,8 +13,7 @@ import { checkIsWecomTerminal } from '@fastgpt/global/support/user/login/constan
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import dynamic from 'next/dynamic';
-import { POST } from '@/web/common/api/request';
-import { getBdVId } from '@/web/support/marketing/utils';
+import { GET, POST } from '@/web/common/api/request';
 
 interface Props {
   children: React.ReactNode;
@@ -108,7 +107,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   ];
 
   const show_oauth = useMemo(
-    () => !getBdVId() && !!(feConfigs?.sso?.url || oAuthList.length > 0),
+    () => !sessionStorage.getItem('bd_vid') && !!(feConfigs?.sso?.url || oAuthList.length > 0),
     [feConfigs?.sso?.url, oAuthList.length]
   );
 

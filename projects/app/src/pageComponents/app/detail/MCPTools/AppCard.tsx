@@ -6,7 +6,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { AppSchema } from '@fastgpt/global/core/app/type';
 import TagsEditModal from '../TagsEditModal';
 
 const AppCard = () => {
@@ -47,7 +47,7 @@ const AppCard = () => {
               leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
               onClick={onOpenInfoEdit}
             >
-              {t('common:Setting')}
+              {t('common:common.Setting')}
             </Button>
           )}
           {appDetail.permission.isOwner && (
@@ -67,7 +67,7 @@ const AppCard = () => {
                     {
                       icon: 'delete',
                       type: 'danger',
-                      label: t('common:Delete'),
+                      label: t('common:common.Delete'),
                       onClick: onDelApp
                     }
                   ]

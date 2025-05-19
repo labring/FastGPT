@@ -1,12 +1,12 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type AppDetailType, type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { AppDetailType, ToolType } from '@fastgpt/global/core/app/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { isEqual } from 'lodash';
-import { type ClientSession } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { onDelOneApp } from '../del';
 import { onCreateApp } from '../create';
@@ -16,7 +16,7 @@ import {
   getMCPToolRuntimeNode,
   getMCPToolSetRuntimeNode
 } from '@fastgpt/global/core/app/mcpTools/utils';
-import { type MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
+import { MCPToolSetData } from '@/pageComponents/dashboard/apps/MCPToolsEditModal';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
 export type updateMCPToolsQuery = {};
@@ -24,7 +24,7 @@ export type updateMCPToolsQuery = {};
 export type updateMCPToolsBody = {
   appId: string;
   url: string;
-  toolList: McpToolConfigType[];
+  toolList: ToolType[];
 };
 
 export type updateMCPToolsResponse = {};
@@ -56,11 +56,10 @@ async function handler(
       });
     }
 
-    await MongoApp.updateOne(
-      { _id: appId },
+    await MongoApp.findByIdAndUpdate(
+      appId,
       {
-        modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })],
-        updateTime: new Date()
+        modules: [getMCPToolSetRuntimeNode({ url, toolList, name: app.name, avatar: app.avatar })]
       },
       { session }
     );
@@ -98,7 +97,6 @@ const updateMCPChildrenTool = async ({
     teamId
   });
 
-  // 删除 DB 里有，新的工具列表里没有的工具
   for await (const tool of dbTools) {
     if (!toolSetData.toolList.find((t) => t.name === tool.name)) {
       await onDelOneApp({
@@ -109,7 +107,6 @@ const updateMCPChildrenTool = async ({
     }
   }
 
-  // 创建 DB 里没有，新的工具列表里有的工具
   for await (const tool of toolSetData.toolList) {
     if (!dbTools.find((t) => t.name === tool.name)) {
       await onCreateApp({
@@ -126,12 +123,11 @@ const updateMCPChildrenTool = async ({
     }
   }
 
-  // 更新 DB 里有的工具
   for await (const tool of toolSetData.toolList) {
     const dbTool = dbTools.find((t) => t.name === tool.name);
     if (dbTool) {
-      await MongoApp.updateOne(
-        { _id: dbTool._id },
+      await MongoApp.findByIdAndUpdate(
+        dbTool._id,
         {
           modules: [getMCPToolRuntimeNode({ tool, url: toolSetData.url })]
         },

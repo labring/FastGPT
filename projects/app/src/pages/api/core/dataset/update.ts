@@ -14,7 +14,7 @@ import {
   DatasetTypeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { type ClientSession } from 'mongoose';
+import { ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from '@fastgpt/service/support/permission/controller';
@@ -30,7 +30,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { addDays } from 'date-fns';
 import { refreshSourceAvatar } from '@fastgpt/service/common/file/image/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { type DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import {
   removeWebsiteSyncJobScheduler,
   upsertWebsiteSyncJobScheduler
@@ -170,12 +170,8 @@ async function handler(
         ...(!!apiServer?.authorization && {
           'apiServer.authorization': apiServer.authorization
         }),
-        ...(!!apiServer?.basePath !== undefined && { 'apiServer.basePath': apiServer?.basePath }),
         ...(!!yuqueServer?.userId && { 'yuqueServer.userId': yuqueServer.userId }),
         ...(!!yuqueServer?.token && { 'yuqueServer.token': yuqueServer.token }),
-        ...(!!yuqueServer?.basePath !== undefined && {
-          'yuqueServer.basePath': yuqueServer?.basePath
-        }),
         ...(!!feishuServer?.appId && { 'feishuServer.appId': feishuServer.appId }),
         ...(!!feishuServer?.appSecret && { 'feishuServer.appSecret': feishuServer.appSecret }),
         ...(!!feishuServer?.folderToken && {
@@ -278,10 +274,10 @@ const updateSyncSchedule = async ({
   if (dataset.type === DatasetTypeEnum.websiteDataset) {
     if (autoSync) {
       // upsert Job Scheduler
-      return upsertWebsiteSyncJobScheduler({ datasetId: dataset._id });
+      upsertWebsiteSyncJobScheduler({ datasetId: String(dataset._id) });
     } else {
       // remove Job Scheduler
-      return removeWebsiteSyncJobScheduler(dataset._id);
+      removeWebsiteSyncJobScheduler(String(dataset._id));
     }
   } else {
     // Other dataset, update the collection sync

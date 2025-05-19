@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { type SetStateAction, useMemo, useState } from 'react';
+import { SetStateAction, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import {
@@ -11,8 +11,8 @@ import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TabEnum } from '../NavBar';
 import { ChunkSettingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { type UseFormReturn, useForm } from 'react-hook-form';
-import { type ImportSourceItemType } from '@/web/core/dataset/type';
+import { UseFormReturn, useForm } from 'react-hook-form';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -25,7 +25,7 @@ import {
   getAutoIndexSize,
   getMaxIndexSize
 } from '@fastgpt/global/core/dataset/training/utils';
-import { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
+import { CollectionChunkFormType } from '../Form/CollectionChunkForm';
 
 type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
 export type ImportFormType = {
@@ -173,6 +173,20 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       }
     ],
     [ImportDataSourceEnum.apiDataset]: [
+      {
+        title: t('dataset:import_select_file')
+      },
+      {
+        title: t('dataset:import_param_setting')
+      },
+      {
+        title: t('dataset:import_data_preview')
+      },
+      {
+        title: t('dataset:import_confirm')
+      }
+    ],
+    [ImportDataSourceEnum.imageDataset]: [
       {
         title: t('dataset:import_select_file')
       },
@@ -338,7 +352,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
                 })
               }
             />
-            {t('common:Exit')}
+            {t('common:common.Exit')}
           </Flex>
         ) : (
           <Button
@@ -346,7 +360,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
             leftIcon={<MyIcon name={'common/backFill'} w={'14px'} />}
             onClick={goToPrevious}
           >
-            {t('common:last_step')}
+            {t('common:common.Last Step')}
           </Button>
         )}
         <Box flex={1} />
@@ -372,3 +386,167 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
 };
 
 export default DatasetImportContextProvider;
+
+// 创建一个没有步骤导航的Provider
+export const ImageDatasetContextProvider = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const { source = ImportDataSourceEnum.imageDataset, parentId } = (router.query || {}) as {
+    source: ImportDataSourceEnum;
+    parentId?: string;
+  };
+
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+
+  const vectorModel = datasetDetail.vectorModel;
+  const agentModel = datasetDetail.agentModel;
+
+  const processParamsForm = useForm<ImportFormType>({
+    defaultValues: {
+      imageIndex: false,
+      autoIndexes: false,
+
+      trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+
+      chunkSettingMode: ChunkSettingModeEnum.auto,
+
+      chunkSplitMode: DataChunkSplitModeEnum.size,
+      embeddingChunkSize: 2000,
+      indexSize: vectorModel?.defaultToken || 512,
+      qaChunkSize: getLLMDefaultChunkSize(agentModel),
+      chunkSplitter: '',
+      qaPrompt: Prompt_AgentQA.description,
+      webSelector: '',
+      customPdfParse: false
+    }
+  });
+
+  const [sources, setSources] = useState<ImportSourceItemType[]>([]);
+
+  // watch form
+  const trainingType = processParamsForm.watch('trainingType');
+  const chunkSettingMode = processParamsForm.watch('chunkSettingMode');
+  const embeddingChunkSize = processParamsForm.watch('embeddingChunkSize');
+  const qaChunkSize = processParamsForm.watch('qaChunkSize');
+  const chunkSplitter = processParamsForm.watch('chunkSplitter');
+  const autoIndexes = processParamsForm.watch('autoIndexes');
+  const indexSize = processParamsForm.watch('indexSize');
+
+  const TrainingModeMap = useMemo<TrainingFiledType>(() => {
+    if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+      return {
+        chunkSizeField: 'qaChunkSize',
+        chunkOverlapRatio: 0,
+        maxChunkSize: getLLMMaxChunkSize(agentModel),
+        minChunkSize: 1000,
+        autoChunkSize: getLLMDefaultChunkSize(agentModel),
+        chunkSize: qaChunkSize,
+        charsPointsPrice: agentModel.charsPointsPrice || 0,
+        priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
+          price: agentModel.charsPointsPrice
+        }),
+        uploadRate: 30
+      };
+    } else if (autoIndexes) {
+      return {
+        chunkSizeField: 'embeddingChunkSize',
+        chunkOverlapRatio: 0.2,
+        maxChunkSize: getMaxChunkSize(agentModel),
+        minChunkSize: minChunkSize,
+        autoChunkSize: chunkAutoChunkSize,
+        chunkSize: embeddingChunkSize,
+        maxIndexSize: getMaxIndexSize(vectorModel),
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        indexSize,
+        charsPointsPrice: agentModel.charsPointsPrice || 0,
+        priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
+          price: agentModel.charsPointsPrice
+        }),
+        uploadRate: 100
+      };
+    } else {
+      return {
+        chunkSizeField: 'embeddingChunkSize',
+        chunkOverlapRatio: 0.2,
+        maxChunkSize: getMaxChunkSize(agentModel),
+        minChunkSize: minChunkSize,
+        autoChunkSize: chunkAutoChunkSize,
+        chunkSize: embeddingChunkSize,
+        maxIndexSize: getMaxIndexSize(vectorModel),
+        autoIndexSize: getAutoIndexSize(vectorModel),
+        indexSize,
+        charsPointsPrice: vectorModel.charsPointsPrice || 0,
+        priceTip: t('dataset:import.Embedding Estimated Price Tips', {
+          price: vectorModel.charsPointsPrice
+        }),
+        uploadRate: 150
+      };
+    }
+  }, [
+    trainingType,
+    autoIndexes,
+    agentModel,
+    qaChunkSize,
+    t,
+    embeddingChunkSize,
+    vectorModel,
+    indexSize
+  ]);
+
+  const chunkSettingModeMap = useMemo(() => {
+    if (chunkSettingMode === ChunkSettingModeEnum.auto) {
+      return {
+        chunkSize: TrainingModeMap.autoChunkSize,
+        indexSize: TrainingModeMap.autoIndexSize,
+        chunkSplitter: ''
+      };
+    } else {
+      return {
+        chunkSize: TrainingModeMap.chunkSize,
+        indexSize: TrainingModeMap.indexSize,
+        chunkSplitter
+      };
+    }
+  }, [chunkSettingMode, TrainingModeMap, chunkSplitter]);
+
+  const contextValue = {
+    ...TrainingModeMap,
+    ...chunkSettingModeMap,
+    importSource: source,
+    parentId,
+    activeStep: 0, // 固定为第一步
+    goToNext: () => {}, // 空函数，不执行任何步骤跳转
+
+    processParamsForm,
+    sources,
+    setSources
+  };
+
+  return (
+    <DatasetImportContext.Provider value={contextValue}>
+      <Flex>
+        <Flex alignItems={'center'}>
+          <IconButton
+            icon={<MyIcon name={'common/backFill'} w={'14px'} />}
+            aria-label={''}
+            size={'smSquare'}
+            borderRadius={'50%'}
+            variant={'whiteBase'}
+            mr={2}
+            onClick={() =>
+              router.replace({
+                query: {
+                  ...router.query,
+                  currentTab: TabEnum.collectionCard
+                }
+              })
+            }
+          />
+          {t('common:common.Exit')}
+        </Flex>
+        <Box flex={1} />
+      </Flex>
+      {children}
+    </DatasetImportContext.Provider>
+  );
+};
