@@ -137,6 +137,7 @@ export type PushDatasetDataChunkProps = {
   a?: string; // bonus content
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
+  imageFileId?: string; //file id preview
 };
 
 export type PostWebsiteSyncParams = {
@@ -158,4 +159,5 @@ export type PushDatasetDataProps = {
 };
 export type PushDatasetDataResponse = {
   insertLen: number;
+  message?: string;
 };
