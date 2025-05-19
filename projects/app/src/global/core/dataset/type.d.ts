@@ -38,5 +38,8 @@ export type DatasetDataListItemType = {
   a: string; // bonus content
   chunkIndex?: number;
   updated?: boolean;
+  teamId?: string;
+  imageFileId?: string;
+  previewUrl?: string;
   // indexes: DatasetDataSchemaType['indexes'];
 };

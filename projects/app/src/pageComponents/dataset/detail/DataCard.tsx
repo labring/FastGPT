@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Card, IconButton, Flex, Button, useTheme } from '@chakra-ui/react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Box, Card, IconButton, Flex, Button, useTheme, Image, Text } from '@chakra-ui/react';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
-  getDatasetCollectionById
+  getDatasetCollectionById,
+  getDatasetDataItemById,
+  putDatasetDataById
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -12,6 +14,7 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import InputDataModal from './InputDataModal';
+import ImageDatasetInputModal from './ImageDatasetInputModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -35,6 +38,51 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
+import { GET, POST } from '@/web/common/api/request';
+
+const postGetFileToken = (params: {
+  bucketName: string;
+  fileId: string;
+  teamId: string;
+  datasetId: string;
+}) => POST<string>('common/file/token', params);
+
+const getImagePreviewUrl = async (
+  fileId: string,
+  fileName: string,
+  teamId: string,
+  datasetId: string
+) => {
+  try {
+    console.log('开始为图片生成预览URL:', { fileId, fileName, teamId });
+
+    if (!fileId) {
+      console.error('fileId为空，无法生成预览URL');
+      return '';
+    }
+
+    // 通过API获取token，传递必要参数
+    const token = await postGetFileToken({
+      bucketName: 'dataset',
+      fileId,
+      teamId,
+      datasetId
+    });
+
+    // 添加域名前缀
+    const origin = window.location.origin; // 获取当前域名
+
+    // 使用与upload.ts相同的URL格式
+    const previewUrl = `${origin}${ReadFileBaseUrl}/${encodeURIComponent(fileName)}?token=${token}`;
+    console.log('成功生成预览URL:', previewUrl);
+
+    return previewUrl;
+  } catch (error) {
+    console.error('创建图片预览URL失败:', error);
+    return '';
+  }
+};
 
 const DataCard = () => {
   const theme = useTheme();
@@ -93,6 +141,7 @@ const DataCard = () => {
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
+<<<<<<< HEAD
   const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
     try {
       await delOneDatasetDataById(dataId);
@@ -109,7 +158,115 @@ const DataCard = () => {
         status: 'error'
       });
     }
+=======
+  const { openConfirm, ConfirmModal } = useConfirm({
+    content: t('common:dataset.Confirm to delete the data'),
+    type: 'delete'
   });
+  const onDeleteOneData = useMemoizedFn((dataId: string) => {
+    openConfirm(async () => {
+      try {
+        // 删除数据
+        await delOneDatasetDataById(dataId);
+        setDatasetDataList((prev) => {
+          return prev.filter((data) => data._id !== dataId);
+        });
+        toast({
+          title: t('common:common.Delete Success'),
+          status: 'success'
+        });
+      } catch (error) {
+        console.error('删除数据失败:', error);
+        toast({
+          title: getErrText(error),
+          status: 'error'
+        });
+      }
+    })();
+>>>>>>> 532180ecb (更新数据集相关类型，添加图像文件ID和预览URL支持；优化数据集导入功能，新增图像数据集处理组件；修复部分国际化文本；更新文件上传逻辑以支持新功能。)
+  });
+
+  // 判断是否为图片集合的函数
+  const isImageCollection = useMemo(() => {
+    if (!collection) return false;
+    // 检查metadata中是否有标记
+    if (
+      collection.metadata &&
+      typeof collection.metadata === 'object' &&
+      'isImageCollection' in collection.metadata
+    ) {
+      return collection.metadata.isImageCollection === true;
+    }
+    // 集合名称判断（备选方案）
+    return collection.name?.includes('图片集合') || false;
+  }, [collection]);
+
+  // 添加状态存储预览URLs
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
+
+  // 在数据加载成功后生成预览URLs
+  useEffect(() => {
+    if (!datasetDataList.length) {
+      console.log('数据列表为空，不生成预览URL');
+      return;
+    }
+
+    if (!isImageCollection) {
+      console.log('非图片集合，不生成预览URL');
+      return;
+    }
+
+    console.log('数据列表长度:', datasetDataList.length);
+    console.log(
+      '列表数据:',
+      datasetDataList.map((item) => ({
+        id: item._id,
+        q: item.q,
+        a: item.a,
+        imageFileId: item.imageFileId
+      }))
+    );
+
+    // 直接使用列表数据生成预览URL
+    const fetchDetailsAndCreateUrls = async () => {
+      const urlMap: Record<string, string> = {};
+
+      // 并行处理所有项目
+      const previewPromises = datasetDataList.map(async (item) => {
+        try {
+          // 直接检查列表数据中是否包含imageFileId
+          if (item.imageFileId) {
+            console.log(`项目 ${item._id} 包含图片ID:`, {
+              imageFileId: item.imageFileId,
+              fileName: item.a || 'image.jpg'
+            });
+
+            const previewUrl = await getImagePreviewUrl(
+              item.imageFileId,
+              item.a ?? 'image.jpg',
+              item.teamId ?? '',
+              item.datasetId
+            );
+
+            if (previewUrl) {
+              urlMap[item._id] = previewUrl;
+              console.log(`生成项目 ${item._id} 的预览URL成功`);
+            }
+          }
+        } catch (error) {
+          console.error(`生成项目 ${item._id} 预览URL失败:`, error);
+        }
+      });
+
+      // 等待所有预览URL生成完成
+      await Promise.all(previewPromises);
+
+      console.log(`成功生成 ${Object.keys(urlMap).length} 个预览URL`);
+      setImagePreviewUrls(urlMap);
+    };
+
+    fetchDetailsAndCreateUrls();
+  }, [datasetDataList, isImageCollection]);
 
   return (
     <MyBox py={[1, 0]} h={'100%'}>
@@ -137,27 +294,25 @@ const DataCard = () => {
               <TagsPopOver currentCollection={collection} />
             )}
           </Box>
-          {datasetDetail.type !== 'websiteDataset' &&
-            !!collection?.chunkSize &&
-            collection.permission?.hasWritePer && (
-              <Button
-                ml={2}
-                variant={'whitePrimary'}
-                size={['sm', 'md']}
-                onClick={() => {
-                  router.push({
-                    query: {
-                      datasetId,
-                      currentTab: TabEnum.import,
-                      source: ImportDataSourceEnum.reTraining,
-                      collectionId
-                    }
-                  });
-                }}
-              >
-                {t('dataset:retain_collection')}
-              </Button>
-            )}
+          {datasetDetail.type !== 'websiteDataset' && !!collection?.chunkSize && (
+            <Button
+              ml={2}
+              variant={'whitePrimary'}
+              size={['sm', 'md']}
+              onClick={() => {
+                router.push({
+                  query: {
+                    datasetId,
+                    currentTab: TabEnum.import,
+                    source: ImportDataSourceEnum.reTraining,
+                    collectionId
+                  }
+                });
+              }}
+            >
+              {t('dataset:retain_collection')}
+            </Button>
+          )}
           {canWrite && (
             <Button
               ml={2}
@@ -283,11 +438,94 @@ const DataCard = () => {
 
                 {/* Data content */}
                 <Box wordBreak={'break-all'} fontSize={'sm'}>
-                  <Markdown source={item.q} isDisabled />
-                  {!!item.a && (
+                  {/* 显示调试信息 */}
+                  {process.env.NODE_ENV === 'development' && item.imageFileId && (
+                    <Box fontSize="xs" color="gray.500" mb={1}>
+                      imageFileId: {item.imageFileId}
+                      {imagePreviewUrls[item._id] ? ' (有预览URL)' : ' (无预览URL)'}
+                      {item.a ? ` | 文件名: ${item.a}` : ' (无文件名)'}
+                    </Box>
+                  )}
+
+                  {/* 如果是图片数据且在图片集合中 */}
+                  {isImageCollection ? (
+                    <Box
+                      display="flex"
+                      padding="8px 8px 10px 8px"
+                      justifyContent="center"
+                      alignItems="center"
+                      alignSelf="stretch"
+                      borderRadius="md"
+                      overflow="hidden"
+                      bg="var(--Gray-Modern-100, #F4F4F7)"
+                      gap="24px"
+                    >
+                      {/* 图片区域 - 左侧 */}
+                      <Box
+                        width="420px"
+                        flexShrink={0}
+                        borderRadius="md"
+                        overflow="hidden"
+                        display="flex"
+                        justifyContent="center"
+                        alignItems="center"
+                        position="relative"
+                        bg="lightgray"
+                      >
+                        {imagePreviewUrls[item._id] ? (
+                          <Image
+                            src={imagePreviewUrls[item._id]}
+                            alt={item.q}
+                            width="100%"
+                            height="100%"
+                            objectFit="contain"
+                            borderRadius="md"
+                            cursor="pointer"
+                            _hover={{ transform: 'scale(1.02)' }}
+                            onError={(e) => {
+                              console.error('图片加载失败:', imagePreviewUrls[item._id]);
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            width="100%"
+                            height="100%"
+                            display="flex"
+                            justifyContent="center"
+                            alignItems="center"
+                          >
+                            <Text color="gray.400">加载图片中...</Text>
+                          </Box>
+                        )}
+                      </Box>
+
+                      {/* 描述文本 - 右侧 */}
+                      <Box
+                        flex="1 0 0"
+                        color="var(--Gray-Modern-800, #1D2532)"
+                        fontFamily="PingFang SC"
+                        fontSize="14px"
+                        fontStyle="normal"
+                        fontWeight="400"
+                        lineHeight="20px"
+                        letterSpacing="0.25px"
+                        overflow="auto"
+                        maxHeight="272px"
+                      >
+                        <Markdown source={item.q} isDisabled />
+                      </Box>
+                    </Box>
+                  ) : (
                     <>
-                      <MyDivider />
-                      <Markdown source={item.a} isDisabled />
+                      {/* 非图片集合的展示保持不变 */}
+                      <Markdown source={item.q} isDisabled />
+                      {!!item.a && (
+                        <>
+                          <MyDivider />
+                          <Markdown source={item.a} isDisabled />
+                        </>
+                      )}
                     </>
                   )}
                 </Box>
@@ -357,30 +595,56 @@ const DataCard = () => {
         </ScrollData>
       </Flex>
 
-      {editDataId !== undefined && collection && (
-        <InputDataModal
-          collectionId={collection._id}
-          dataId={editDataId}
-          onClose={() => setEditDataId(undefined)}
-          onSuccess={(data) => {
-            if (editDataId === '') {
-              refreshList();
-              return;
-            }
-            setDatasetDataList((prev) => {
-              return prev.map((item) => {
-                if (item._id === editDataId) {
-                  return {
-                    ...item,
-                    ...data
-                  };
-                }
-                return item;
+      {/* 图片数据集的插入的输入模态框 */}
+      {editDataId !== undefined &&
+        collection &&
+        (isImageCollection ? (
+          <ImageDatasetInputModal
+            collectionId={collection._id}
+            dataId={editDataId}
+            onClose={() => setEditDataId(undefined)}
+            onSuccess={(data: any) => {
+              if (editDataId === '') {
+                refreshList();
+                return;
+              }
+              setDatasetDataList((prev) => {
+                return prev.map((item) => {
+                  if (item._id === editDataId) {
+                    return {
+                      ...item,
+                      ...data
+                    };
+                  }
+                  return item;
+                });
               });
-            });
-          }}
-        />
-      )}
+            }}
+          />
+        ) : (
+          <InputDataModal
+            collectionId={collection._id}
+            dataId={editDataId}
+            onClose={() => setEditDataId(undefined)}
+            onSuccess={(data: any) => {
+              if (editDataId === '') {
+                refreshList();
+                return;
+              }
+              setDatasetDataList((prev) => {
+                return prev.map((item) => {
+                  if (item._id === editDataId) {
+                    return {
+                      ...item,
+                      ...data
+                    };
+                  }
+                  return item;
+                });
+              });
+            }}
+          />
+        ))}
       {errorModalId && (
         <TrainingStates
           datasetId={datasetId}
