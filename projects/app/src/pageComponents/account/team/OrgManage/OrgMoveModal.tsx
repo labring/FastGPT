@@ -51,7 +51,7 @@ function OrgMoveModal({
             });
           }}
         >
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

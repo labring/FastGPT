@@ -8,7 +8,7 @@ import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import RouteTab from '../RouteTab';
 import { useTranslation } from 'next-i18next';
-import { type AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { TabEnum } from '../context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -22,11 +22,11 @@ import { useBoolean, useDebounceEffect, useLockFn } from 'ahooks';
 import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
 import {
   compareSimpleAppSnapshot,
-  type onSaveSnapshotFnType,
-  type SimpleAppSnapshotType
+  onSaveSnapshotFnType,
+  SimpleAppSnapshotType
 } from './useSnapshots';
 import PublishHistories from '../PublishHistoriesSlider';
-import { type AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -181,7 +181,7 @@ const Header = ({
     };
   }, []);
   useBeforeunload({
-    tip: t('common:core.tip.leave page'),
+    tip: t('common:core.common.tip.leave page'),
     callback: onLeaveAutoSave
   });
 

@@ -1,5 +1,5 @@
-import type { ReferenceItemValueType } from '../../../type/io';
-import type { VariableConditionEnum } from './constant';
+import { ReferenceItemValueType } from '../../../type/io';
+import { VariableConditionEnum } from './constant';
 
 export type IfElseConditionType = 'AND' | 'OR';
 export type ConditionListItemType = {

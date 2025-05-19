@@ -1,5 +1,5 @@
-import type { SourceMemberType } from '../../../support/user/type';
-import type { CreateUsageProps } from './api';
+import { SourceMemberType } from '../../../support/user/type';
+import { CreateUsageProps } from './api';
 import { UsageSourceEnum } from './constants';
 
 export type UsageListItemCountType = {

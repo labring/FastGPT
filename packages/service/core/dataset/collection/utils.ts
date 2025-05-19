@@ -1,10 +1,10 @@
 import { MongoDatasetCollection } from './schema';
-import { type ClientSession } from '../../../common/mongo';
+import { ClientSession } from '../../../common/mongo';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
-  type CollectionWithDatasetType,
-  type DatasetCollectionSchemaType
+  CollectionWithDatasetType,
+  DatasetCollectionSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionDataProcessModeEnum,
@@ -233,19 +233,29 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
   QA: 独立进程
   Chunk: Image Index -> Auto index -> chunk index
 */
-export const getTrainingModeByCollection = (collection: {
-  trainingType: DatasetCollectionSchemaType['trainingType'];
-  autoIndexes?: DatasetCollectionSchemaType['autoIndexes'];
-  imageIndex?: DatasetCollectionSchemaType['imageIndex'];
+export const getTrainingModeByCollection = ({
+  trainingType,
+  autoIndexes,
+  imageIndex,
+  isImageCollection
+}: {
+  trainingType: DatasetCollectionDataProcessModeEnum;
+  autoIndexes?: boolean;
+  imageIndex?: boolean;
+  isImageCollection?: boolean;
 }) => {
-  if (collection.trainingType === DatasetCollectionDataProcessModeEnum.qa) {
-    return TrainingModeEnum.qa;
+  if (isImageCollection) {
+    return TrainingModeEnum.imageParse;
   }
-  if (collection.imageIndex && global.feConfigs?.isPlus) {
+
+  if (imageIndex) {
     return TrainingModeEnum.image;
   }
-  if (collection.autoIndexes && global.feConfigs?.isPlus) {
-    return TrainingModeEnum.auto;
+  if (trainingType === DatasetCollectionDataProcessModeEnum.chunk) {
+    return autoIndexes ? TrainingModeEnum.auto : TrainingModeEnum.chunk;
+  }
+  if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+    return TrainingModeEnum.qa;
   }
   return TrainingModeEnum.chunk;
 };

@@ -1,4 +1,4 @@
-import { type PermissionListType } from './type';
+import { PermissionListType } from './type';
 import { i18nT } from '../../../web/i18n/utils';
 export enum AuthUserTypeEnum {
   token = 'token',

@@ -43,7 +43,7 @@ const SaveAndPublishModal = ({
     >
       <ModalBody>
         <Box mb={2.5} color={'myGray.900'} fontSize={'14px'} fontWeight={'500'}>
-          {t('common:Name')}
+          {t('common:common.Name')}
         </Box>
         <Box mb={3}>
           <Input
@@ -64,7 +64,7 @@ const SaveAndPublishModal = ({
           }}
           variant={'whiteBase'}
         >
-          {t('common:Cancel')}
+          {t('common:common.Cancel')}
         </Button>
         <Button
           isLoading={isLoading}
@@ -79,7 +79,7 @@ const SaveAndPublishModal = ({
             onClose();
           })}
         >
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -1,5 +1,4 @@
 import { i18nT } from '../../../../web/i18n/utils';
-import { BillTypeEnum } from '../bill/constants';
 
 export enum SubTypeEnum {
   standard = 'standard',
@@ -10,18 +9,15 @@ export enum SubTypeEnum {
 export const subTypeMap = {
   [SubTypeEnum.standard]: {
     label: 'support.wallet.subscription.type.standard',
-    icon: 'support/account/plans',
-    orderType: BillTypeEnum.standSubPlan
+    icon: 'support/account/plans'
   },
   [SubTypeEnum.extraDatasetSize]: {
     label: 'support.wallet.subscription.type.extraDatasetSize',
-    icon: 'core/dataset/datasetLight',
-    orderType: BillTypeEnum.extraDatasetSub
+    icon: 'core/dataset/datasetLight'
   },
   [SubTypeEnum.extraPoints]: {
     label: 'support.wallet.subscription.type.extraPoints',
-    icon: 'core/chat/chatLight',
-    orderType: BillTypeEnum.extraPoints
+    icon: 'core/chat/chatLight'
   }
 };
 

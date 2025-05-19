@@ -1,8 +1,6 @@
-import type { StandardSubLevelEnum, SubModeEnum } from '../sub/constants';
-import { SubTypeEnum } from '../sub/constants';
-import type { BillPayWayEnum, BillStatusEnum, BillTypeEnum } from './constants';
-import type { TeamInvoiceHeaderType } from '../../user/team/type';
-
+import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from '../sub/constants';
+import { BillPayWayEnum, BillTypeEnum } from './constants';
+import { TeamInvoiceHeaderType } from '../../user/team/type';
 export type BillSchemaType = {
   _id: string;
   userId: string;
@@ -10,7 +8,7 @@ export type BillSchemaType = {
   tmbId: string;
   createTime: Date;
   orderId: string;
-  status: `${BillStatusEnum}`;
+  status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
   type: BillTypeEnum;
   price: number;
   hasInvoice: boolean;
@@ -21,11 +19,6 @@ export type BillSchemaType = {
     month?: number;
     datasetSize?: number;
     extraPoints?: number;
-  };
-  refundData?: {
-    amount: number;
-    refundId: string;
-    refundTime: Date;
   };
 };
 

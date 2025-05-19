@@ -1,9 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { Box, type BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
+import { Box, BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { type PromptTemplateItem } from '@fastgpt/global/core/ai/type';
+import { PromptTemplateItem } from '@fastgpt/global/core/ai/type';
 import { useTranslation } from 'next-i18next';
 import { ModalBody } from '@chakra-ui/react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -91,11 +91,6 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
       {
         key: 'source',
         label: t('common:core.dataset.search.Source name'),
-        icon: 'core/app/simpleMode/variable'
-      },
-      {
-        key: 'sourceId',
-        label: t('common:core.dataset.search.Source id'),
         icon: 'core/app/simpleMode/variable'
       },
       {
@@ -223,14 +218,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             </Box>
           </Flex>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
+            <Flex {...LabelStyles} mb={1}>
               <FormLabel>{t('common:core.app.Quote templates')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_content_tip', {
                   default: getQuoteTemplate(nodeVersion)
                 })}
-              />
+              ></QuestionTip>
               <Box flex={1} />
               <Box
                 {...selectTemplateBtn}
@@ -242,7 +237,7 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
                   })
                 }
               >
-                {t('common:select_template')}
+                {t('common:common.Select template')}
               </Box>
             </Flex>
 
@@ -258,14 +253,14 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
             />
           </Box>
           <Box mt={4}>
-            <Flex {...LabelStyles} mb={1} alignItems={'center'}>
+            <Flex {...LabelStyles} mb={1}>
               <FormLabel>{t('common:core.app.Quote prompt')}</FormLabel>
               <QuestionTip
                 ml={1}
                 label={t('workflow:quote_prompt_tip', {
                   default: getQuotePrompt(nodeVersion, aiChatQuoteRole)
                 })}
-              />
+              ></QuestionTip>
             </Flex>
             <PromptEditor
               variables={quotePromptVariables}
@@ -283,9 +278,9 @@ const EditModal = ({ onClose, ...props }: RenderInputProps & { onClose: () => vo
         </ModalBody>
         <ModalFooter>
           <Button variant={'whiteBase'} mr={2} onClick={onClose}>
-            {t('common:Close')}
+            {t('common:common.Close')}
           </Button>
-          <Button onClick={handleSubmit(onSubmit)}>{t('common:Confirm')}</Button>
+          <Button onClick={handleSubmit(onSubmit)}>{t('common:common.Confirm')}</Button>
         </ModalFooter>
       </MyModal>
       {/* Prompt template */}

@@ -38,13 +38,13 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const pluginRunTab = useContextSelector(ChatItemContext, (v) => v.pluginRunTab);
   const setPluginRunTab = useContextSelector(ChatItemContext, (v) => v.setPluginRunTab);
-  const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
-  const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const quoteData = useContextSelector(ChatItemContext, (v) => v.quoteData);
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
 
-  const { data: chat } = useRequest2(
+  const { data: chat, loading: isFetching } = useRequest2(
     async () => {
       const res = await getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true });
       res.userAvatar = HUMAN_ICON;
@@ -81,7 +81,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
         right={0}
         h={['100%', '96%']}
         w={'100%'}
-        maxW={datasetCiteData ? ['100%', '1080px'] : ['100%', '600px']}
+        maxW={quoteData ? ['100%', '1080px'] : ['100%', '600px']}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'md'}
@@ -100,11 +100,11 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
           >
             <LightRowTabs<PluginRunBoxTabEnum>
               list={[
-                { label: t('common:Input'), value: PluginRunBoxTabEnum.input },
+                { label: t('common:common.Input'), value: PluginRunBoxTabEnum.input },
                 ...(chatRecords.length > 0
                   ? [
-                      { label: t('common:Output'), value: PluginRunBoxTabEnum.output },
-                      { label: t('common:all_result'), value: PluginRunBoxTabEnum.detail }
+                      { label: t('common:common.Output'), value: PluginRunBoxTabEnum.output },
+                      { label: t('common:common.all_result'), value: PluginRunBoxTabEnum.detail }
                     ]
                   : [])
               ]}
@@ -169,7 +169,7 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
             )}
           </Box>
 
-          {datasetCiteData && (
+          {quoteData && (
             <Box
               flex={'1 0 0'}
               w={0}
@@ -183,9 +183,9 @@ const DetailLogsModal = ({ appId, chatId, onClose }: Props) => {
               borderRadius={'md'}
             >
               <ChatQuoteList
-                rawSearch={datasetCiteData.rawSearch}
-                metadata={datasetCiteData.metadata}
-                onClose={() => setCiteModalData(undefined)}
+                rawSearch={quoteData.rawSearch}
+                metadata={quoteData.metadata}
+                onClose={() => setQuoteData(undefined)}
               />
             </Box>
           )}
@@ -213,7 +213,6 @@ const Render = (props: Props) => {
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
-      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >

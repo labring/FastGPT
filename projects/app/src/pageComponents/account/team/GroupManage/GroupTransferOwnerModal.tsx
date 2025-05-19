@@ -10,7 +10,7 @@ import {
   useDisclosure,
   Checkbox
 } from '@chakra-ui/react';
-import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -18,11 +18,11 @@ import { useTranslation } from 'next-i18next';
 import React, { useEffect, useState } from 'react';
 import { TeamContext } from '../context';
 import { useContextSelector } from 'use-context-selector';
-import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { GetSearchUserGroupOrg } from '@/web/support/user/api';
-import { type Omit } from '@fastgpt/web/components/common/DndDrag';
+import { Omit } from '@fastgpt/web/components/common/DndDrag';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import _ from 'lodash';
 
@@ -180,10 +180,10 @@ export function ChangeOwnerModal({
       <ModalFooter>
         <HStack>
           <Button onClick={onClose} variant={'whiteBase'}>
-            {t('common:Cancel')}
+            {t('common:common.Cancel')}
           </Button>
           <Button isLoading={loading} isDisabled={!selectedMember} onClick={onConfirm}>
-            {t('common:Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </HStack>
       </ModalFooter>

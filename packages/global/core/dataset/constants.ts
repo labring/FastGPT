@@ -19,32 +19,32 @@ export const DatasetTypeMap = {
   [DatasetTypeEnum.dataset]: {
     icon: 'core/dataset/commonDatasetOutline',
     label: i18nT('dataset:common_dataset'),
-    collectionLabel: i18nT('common:File')
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.websiteDataset]: {
     icon: 'core/dataset/websiteDatasetOutline',
     label: i18nT('dataset:website_dataset'),
-    collectionLabel: i18nT('common:Website')
+    collectionLabel: i18nT('common:common.Website')
   },
   [DatasetTypeEnum.externalFile]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: i18nT('dataset:external_file'),
-    collectionLabel: i18nT('common:File')
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.apiDataset]: {
     icon: 'core/dataset/externalDatasetOutline',
     label: i18nT('dataset:api_file'),
-    collectionLabel: i18nT('common:File')
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.feishu]: {
     icon: 'core/dataset/feishuDatasetOutline',
     label: i18nT('dataset:feishu_dataset'),
-    collectionLabel: i18nT('common:File')
+    collectionLabel: i18nT('common:common.File')
   },
   [DatasetTypeEnum.yuque]: {
     icon: 'core/dataset/yuqueDatasetOutline',
     label: i18nT('dataset:yuque_dataset'),
-    collectionLabel: i18nT('common:File')
+    collectionLabel: i18nT('common:common.File')
   }
 };
 
@@ -157,14 +157,16 @@ export enum ImportDataSourceEnum {
   csvTable = 'csvTable',
   externalFile = 'externalFile',
   apiDataset = 'apiDataset',
-  reTraining = 'reTraining'
+  reTraining = 'reTraining',
+  imageDataset = 'imageDataset'
 }
 
 export enum TrainingModeEnum {
   chunk = 'chunk',
   qa = 'qa',
   auto = 'auto',
-  image = 'image'
+  image = 'image',
+  imageParse = 'imageParse'
 }
 
 /* ------------ search -------------- */

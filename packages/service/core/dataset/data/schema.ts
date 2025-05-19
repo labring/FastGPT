@@ -1,6 +1,6 @@
 import { connectionMongo, getMongoModel } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type.d';
+import { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -39,6 +39,10 @@ const DatasetDataSchema = new Schema({
   a: {
     type: String,
     default: ''
+  },
+
+  imageFileId: {
+    type: String
   },
   history: {
     type: [

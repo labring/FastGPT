@@ -9,46 +9,44 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { type ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 const ContextModal = dynamic(() => import('./ContextModal'));
 const WholeResponseModal = dynamic(() => import('../../../components/WholeResponseModal'));
 
 const ResponseTags = ({
   showTags,
-  historyItem,
-  onOpenCiteModal
+  historyItem
 }: {
   showTags: boolean;
   historyItem: ChatSiteItemType;
-  onOpenCiteModal: (e?: {
-    collectionId?: string;
-    sourceId?: string;
-    sourceName?: string;
-    datasetId?: string;
-    quoteId?: string;
-  }) => void;
 }) => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const quoteListRef = React.useRef<HTMLDivElement>(null);
   const dataId = historyItem.dataId;
-
   const chatTime = historyItem.time || new Date();
-  const durationSeconds = historyItem.durationSeconds || 0;
+
   const {
     totalQuoteList: quoteList = [],
     llmModuleAccount = 0,
+    totalRunningTime: runningTime = 0,
     historyPreviewLength = 0
   } = useMemo(() => addStatisticalDataToHistoryItem(historyItem), [historyItem]);
 
   const [quoteFolded, setQuoteFolded] = useState<boolean>(true);
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
+  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+
+  const setQuoteData = useContextSelector(ChatItemContext, (v) => v.setQuoteData);
 
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
 
@@ -68,6 +66,7 @@ const ResponseTags = ({
     ? quoteListRef.current.scrollHeight > (isPc ? 50 : 55)
     : true;
 
+  const isShowReadRawSource = useContextSelector(ChatItemContext, (v) => v.isShowReadRawSource);
   const sourceList = useMemo(() => {
     return Object.values(
       quoteList.reduce((acc: Record<string, SearchDataResponseItemType[]>, cur) => {
@@ -91,7 +90,7 @@ const ResponseTags = ({
     quoteList.length > 0 ||
     (llmModuleAccount === 1 && notSharePage) ||
     (llmModuleAccount > 1 && notSharePage) ||
-    (isPc && durationSeconds > 0) ||
+    (isPc && runningTime > 0) ||
     notSharePage;
 
   return !showTags ? null : (
@@ -159,7 +158,35 @@ const ResponseTags = ({
                     cursor={'pointer'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onOpenCiteModal(item);
+
+                      if (isShowReadRawSource) {
+                        setQuoteData({
+                          rawSearch: quoteList,
+                          metadata: {
+                            appId,
+                            chatId,
+                            chatItemDataId: dataId,
+                            collectionId: item.collectionId,
+                            sourceId: item.sourceId || '',
+                            sourceName: item.sourceName,
+                            datasetId: item.datasetId,
+                            outLinkAuthData
+                          }
+                        });
+                      } else {
+                        setQuoteData({
+                          rawSearch: quoteList,
+                          metadata: {
+                            appId,
+                            chatId,
+                            chatItemDataId: dataId,
+                            collectionIdList: [item.collectionId],
+                            sourceId: item.sourceId || '',
+                            sourceName: item.sourceName,
+                            outLinkAuthData
+                          }
+                        });
+                      }
                     }}
                     height={6}
                   >
@@ -214,7 +241,17 @@ const ResponseTags = ({
                 cursor={'pointer'}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onOpenCiteModal();
+
+                  setQuoteData({
+                    rawSearch: quoteList,
+                    metadata: {
+                      appId,
+                      chatId,
+                      chatItemDataId: dataId,
+                      collectionIdList: [...new Set(quoteList.map((item) => item.collectionId))],
+                      outLinkAuthData
+                    }
+                  });
                 }}
               >
                 {t('chat:citations', { num: quoteList.length })}
@@ -242,10 +279,10 @@ const ResponseTags = ({
               {t('chat:multiple_AI_conversations')}
             </MyTag>
           )}
-          {isPc && durationSeconds > 0 && (
+          {isPc && runningTime > 0 && (
             <MyTooltip label={t('chat:module_runtime_and')}>
               <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
-                {durationSeconds.toFixed(2)}s
+                {runningTime}s
               </MyTag>
             </MyTooltip>
           )}

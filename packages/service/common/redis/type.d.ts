@@ -1,5 +1,5 @@
-import type Redis from 'ioredis';
+import Redis from 'ioredis';
 
 declare global {
-  var redisClient: Redis | null;
+  var redisCache: Redis | null;
 }

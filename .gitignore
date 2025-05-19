@@ -45,3 +45,29 @@ files/helm/fastgpt/charts/*.tgz
 
 tmp/
 coverage
+
+# 忽略 MongoDB 所有数据文件（递归忽略目录下的所有文件）
+deploy/docker/mongo/data/**/*
+# 忽略 PostgreSQL 数据目录
+deploy/docker/aiproxy_pg/
+deploy/docker/mongo/data/*.wt
+deploy/docker/mongo/data/journal/*.log
+
+
+# 添加以下规则（覆盖之前的规则）
+# 数据库数据
+deploy/
+mongo_data/
+pg_data/
+redis_data/
+
+# 日志文件
+*.log
+*.wt
+*.aof
+*.rdb
+*.pid
+
+# 其他临时文件
+node_modules/
+.DS_Store

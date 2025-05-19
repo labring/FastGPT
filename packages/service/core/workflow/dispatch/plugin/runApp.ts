@@ -10,16 +10,16 @@ import {
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { filterSystemVariables, getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '@fastgpt/global/common/file/tools';
-import { type ChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { ChildrenInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;

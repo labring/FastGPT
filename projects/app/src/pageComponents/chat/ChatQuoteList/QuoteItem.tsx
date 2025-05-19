@@ -1,4 +1,4 @@
-import { type ScoreItemType } from '@/components/core/dataset/QuoteItem';
+import { ScoreItemType } from '@/components/core/dataset/QuoteItem';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ScoreTag from './ScoreTag';
@@ -64,15 +64,13 @@ const QuoteItem = ({
             fontSize={'10px'}
             h={'full'}
             alignItems={'center'}
-            mr={1}
-            flexShrink={0}
           >
             {index + 1}
           </Flex>
           <Flex px={1.5}>
             <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
             <Box
-              className={'textEllipsis'}
+              className="textEllipsis3"
               wordBreak={'break-all'}
               flex={'1 0 0'}
               fontSize={'mini'}
@@ -83,7 +81,7 @@ const QuoteItem = ({
           </Flex>
         </Box>
         {score && !isDeleted && (
-          <Box className="hover-data" visibility={'hidden'} flexShrink={0}>
+          <Box className="hover-data" visibility={'hidden'}>
             <ScoreTag {...score} />
           </Box>
         )}
@@ -136,7 +134,7 @@ const QuoteItem = ({
             {q.length + (a?.length || 0)}
           </Flex>
         </MyTooltip>
-        <MyTooltip label={t('common:Copy')}>
+        <MyTooltip label={t('common:common.Copy')}>
           <Flex
             alignItems={'center'}
             fontSize={'10px'}

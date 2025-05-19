@@ -7,7 +7,6 @@ import { debounce } from 'lodash';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';
-import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 
 export const startMongoWatch = async () => {
   reloadConfigWatch();
@@ -22,11 +21,7 @@ const reloadConfigWatch = () => {
 
   changeStream.on('change', async (change) => {
     try {
-      if (
-        (change.operationType === 'insert' &&
-          change.fullDocument.type === SystemConfigsTypeEnum.fastgptPro) ||
-        change.operationType === 'update'
-      ) {
+      if (change.operationType === 'insert') {
         await initSystemConfig();
         console.log('refresh system config');
       }

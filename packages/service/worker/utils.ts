@@ -87,15 +87,9 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     this.maxReservedThreads = maxReservedThreads;
   }
 
-  private runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
+  runTask({ data, resolve, reject }: WorkerRunTaskType<Props>) {
     // Get idle worker or create a new worker
     const runningWorker = (() => {
-      // @ts-ignore
-      if (data.workerId) {
-        // @ts-ignore
-        const worker = this.workerQueue.find((item) => item.id === data.workerId);
-        if (worker) return worker;
-      }
       const worker = this.workerQueue.find((item) => item.status === 'idle');
       if (worker) return worker;
 
@@ -163,15 +157,23 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
 
     // watch response
     worker.on('message', ({ id, type, data }: WorkerResponse<Response>) => {
+      // Run callback
+      const workerItem = this.workerQueue.find((item) => item.id === id);
+
+      if (!workerItem) {
+        addLog.warn('Invalid worker', { id, type, data });
+        return;
+      }
+
       if (type === 'success') {
-        item.resolve(data);
+        workerItem.resolve(data);
       } else if (type === 'error') {
-        item.reject(data);
+        workerItem.reject(data);
       }
 
       // Clear timeout timer and update worker status
-      clearTimeout(item.timeoutId);
-      item.status = 'idle';
+      clearTimeout(workerItem.timeoutId);
+      workerItem.status = 'idle';
     });
 
     // Worker error, terminate and delete it.（Un catch error)
@@ -189,7 +191,7 @@ export class WorkerPool<Props = Record<string, any>, Response = any> {
     return item;
   }
 
-  private deleteWorker(workerId: string) {
+  deleteWorker(workerId: string) {
     const item = this.workerQueue.find((item) => item.id === workerId);
     if (item) {
       item.reject?.('error');

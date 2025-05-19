@@ -1,11 +1,12 @@
 import React from 'react';
-import { Flex, type FlexProps } from '@chakra-ui/react';
+import { Flex, FlexProps } from '@chakra-ui/react';
 import MyIcon from './index';
 import MyTooltip from '../MyTooltip';
 
 type Props = FlexProps & {
   icon: string;
   size?: string;
+  onClick?: () => void;
   hoverColor?: string;
   hoverBg?: string;
   hoverBorderColor?: string;
@@ -40,9 +41,9 @@ const MyIconButton = ({
           color: hoverColor,
           borderColor: hoverBorderColor
         }}
-        onClick={(e) => {
+        onClick={() => {
           if (isLoading) return;
-          onClick?.(e);
+          onClick?.();
         }}
         sx={{ userSelect: 'none' }}
         {...props}

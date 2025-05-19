@@ -1,9 +1,9 @@
-import type { StoreEdgeItemType } from 'core/workflow/type/edge';
+import { StoreEdgeItemType } from 'core/workflow/type/edge';
 import { ModuleTemplateTypeEnum } from '../workflow/constants';
 import type { StoreNodeItemType } from '../workflow/type/node';
-import type { PluginSourceEnum, PluginTypeEnum } from './constants';
+import { PluginSourceEnum, PluginTypeEnum } from './constants';
 import { MethodType } from './controller';
-import type { FlowNodeTemplateType } from '../workflow/type/node';
+import { FlowNodeTemplateType } from '../workflow/type/node';
 
 export type PluginItemSchema = {
   _id: string;

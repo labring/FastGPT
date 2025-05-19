@@ -1,9 +1,9 @@
 import {
-  type AppTTSConfigType,
-  type AppFileSelectConfigType,
-  type AppWhisperConfigType,
-  type AppAutoExecuteConfigType,
-  type AppQGConfigType
+  AppTTSConfigType,
+  AppFileSelectConfigType,
+  AppWhisperConfigType,
+  AppAutoExecuteConfigType,
+  AppQGConfigType
 } from './type';
 
 export enum AppTypeEnum {

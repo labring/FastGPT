@@ -1,4 +1,4 @@
-import { type ErrType } from '../errorCode';
+import { ErrType } from '../errorCode';
 import { i18nT } from '../../../../web/i18n/utils';
 /* dataset: 504000 */
 export enum ChatErrEnum {

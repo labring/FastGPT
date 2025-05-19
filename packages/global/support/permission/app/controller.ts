@@ -1,4 +1,4 @@
-import { type PerConstructPros, Permission } from '../controller';
+import { PerConstructPros, Permission } from '../controller';
 import { AppDefaultPermissionVal } from './constant';
 
 export class AppPermission extends Permission {

@@ -1,4 +1,4 @@
-import type { WorkflowIOValueTypeEnum } from '../../../constants';
+import { WorkflowIOValueTypeEnum } from '../../../constants';
 
 export type ContextExtractAgentItemType = {
   valueType:

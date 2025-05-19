@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
-import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
-export const addOutLinkUsage = ({
+export const addOutLinkUsage = async ({
   shareId,
   totalPoints
 }: {
   shareId: string;
   totalPoints: number;
 }) => {
-  return MongoOutLink.findOneAndUpdate(
+  MongoOutLink.findOneAndUpdate(
     { shareId },
     {
       $inc: { usagePoints: totalPoints },

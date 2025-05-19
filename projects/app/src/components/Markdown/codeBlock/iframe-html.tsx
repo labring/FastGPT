@@ -173,7 +173,7 @@ const IframeHtmlCodeBlock = ({
             </Flex>
           </Box>
           <StyledButton
-            label={t('common:Code')}
+            label={t('common:common.Code')}
             iconName="code"
             onClick={() => setViewMode('source')}
             isActive={viewMode === 'source'}
@@ -181,7 +181,7 @@ const IframeHtmlCodeBlock = ({
             isMobile={isMobile}
           />
           <StyledButton
-            label={t('common:Preview')}
+            label={t('common:common.Preview')}
             iconName="preview"
             onClick={() => setViewMode('iframe')}
             isActive={viewMode === 'iframe'}
@@ -189,7 +189,7 @@ const IframeHtmlCodeBlock = ({
             isMobile={isMobile}
           />
           <StyledButton
-            label={t('common:FullScreen')}
+            label={t('common:common.FullScreen')}
             iconName="fullScreen"
             onClick={onOpen}
             viewMode={viewMode}
@@ -221,7 +221,7 @@ const IframeHtmlCodeBlock = ({
                 height="60px"
               >
                 <Box fontSize="lg" color="myGray.900">
-                  {t('common:FullScreenLight')}
+                  {t('common:common.FullScreenLight')}
                 </Box>
                 <ModalCloseButton zIndex={1} position={'relative'} top={0} right={0} />
               </ModalHeader>

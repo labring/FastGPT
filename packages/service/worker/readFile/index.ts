@@ -1,15 +1,25 @@
 import { parentPort } from 'worker_threads';
 import { readFileRawText } from './extension/rawText';
-import { type ReadRawTextByBuffer, type ReadRawTextProps } from './type';
+import { ReadRawTextByBuffer, ReadRawTextProps } from './type';
 import { readHtmlRawText } from './extension/html';
 import { readPdfFile } from './extension/pdf';
 import { readDocsFile } from './extension/docx';
 import { readPptxRawText } from './extension/pptx';
 import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
+import { readPngFile } from './extension/png';
+
+// 支持的图片格式列表
+const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico'];
 
 parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
   const read = async (params: ReadRawTextByBuffer) => {
+    // 检查是否为图片格式
+    if (imageExtensions.includes(params.extension.toLowerCase())) {
+      // 使用专门的PNG处理函数处理所有图片格式
+      return readPngFile(params);
+    }
+
     switch (params.extension) {
       case 'txt':
       case 'md':
@@ -28,7 +38,7 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
         return readCsvRawText(params);
       default:
         return Promise.reject(
-          `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx. "${params.extension}" is not supported.`
+          `Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx, and image formats (jpg, jpeg, png, gif, webp, etc). "${params.extension}" is not supported.`
         );
     }
   };

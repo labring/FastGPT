@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer';
+import { Page } from 'puppeteer';
 import randomUseragent from 'random-useragent';
 import dotenv from 'dotenv';
 

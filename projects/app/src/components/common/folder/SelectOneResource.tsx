@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { Box, type BoxProps, Flex } from '@chakra-ui/react';
+import { Box, BoxProps, Flex } from '@chakra-ui/react';
 import {
-  type GetResourceFolderListProps,
-  type GetResourceListItemResponse,
-  type ParentIdType
+  GetResourceFolderListProps,
+  GetResourceListItemResponse,
+  ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Loading from '@fastgpt/web/components/common/MyLoading';
@@ -40,7 +40,7 @@ const SelectOneResource = ({
       id: rootId,
       open: true,
       avatar: FolderImgUrl,
-      name: t('common:root_folder'),
+      name: t('common:common.folder.Root Path'),
       isFolder: true,
       children: dataList
     };

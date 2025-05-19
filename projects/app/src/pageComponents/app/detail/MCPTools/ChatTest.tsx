@@ -7,7 +7,7 @@ import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext
 import { Box, Button, Flex, Switch, Textarea } from '@chakra-ui/react';
 import { cardStyles } from '../constants';
 import { useTranslation } from 'react-i18next';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { ToolType } from '@fastgpt/global/core/app/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { Controller, useForm } from 'react-hook-form';
@@ -15,11 +15,11 @@ import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
 import dynamic from 'next/dynamic';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Markdown from '@/components/Markdown';
-import { postRunMCPTool } from '@/web/core/app/api/plugin';
+import { postRunMCPTools } from '@/web/core/app/api/plugin';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 
-const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null; url: string }) => {
+const ChatTest = ({ currentTool, url }: { currentTool: ToolType | null; url: string }) => {
   const { t } = useTranslation();
 
   const [output, setOutput] = useState<string>('');
@@ -39,7 +39,7 @@ const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null;
   const { runAsync: runTool, loading: isRunning } = useRequest2(
     async (data: Record<string, any>) => {
       if (!currentTool) return;
-      return await postRunMCPTool({
+      return await postRunMCPTools({
         params: data,
         url,
         toolName: currentTool.name
@@ -81,7 +81,7 @@ const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null;
           {Object.keys(currentTool?.inputSchema.properties || {}).length > 0 && (
             <>
               <Box color={'myGray.900'} fontSize={'16px'} fontWeight={'medium'} mb={3}>
-                {t('common:Input')}
+                {t('common:common.Input')}
               </Box>
               <Box border={'1px solid'} borderColor={'myGray.200'} borderRadius={'8px'} p={3}>
                 {Object.entries(currentTool?.inputSchema.properties || {}).map(
@@ -116,13 +116,13 @@ const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null;
           )}
 
           <Button mt={3} isLoading={isRunning} onClick={handleSubmit(runTool)}>
-            {t('common:Run')}
+            {t('common:common.Run')}
           </Button>
 
           {output && (
             <>
               <Box color={'myGray.900'} fontSize={'16px'} fontWeight={'medium'} mb={3} mt={8}>
-                {t('common:Output')}
+                {t('common:common.Output')}
               </Box>
               <Box>
                 <Markdown source={`~~~json\n${output}`} />
@@ -135,7 +135,7 @@ const ChatTest = ({ currentTool, url }: { currentTool: McpToolConfigType | null;
   );
 };
 
-const Render = ({ currentTool, url }: { currentTool: McpToolConfigType | null; url: string }) => {
+const Render = ({ currentTool, url }: { currentTool: ToolType | null; url: string }) => {
   const { chatId } = useChatStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
@@ -152,7 +152,6 @@ const Render = ({ currentTool, url }: { currentTool: McpToolConfigType | null; u
       showRouteToAppDetail={true}
       showRouteToDatasetDetail={true}
       isShowReadRawSource={true}
-      isResponseDetail={true}
       // isShowFullText={true}
       showNodeStatus
     >
@@ -178,7 +177,7 @@ const RenderToolInput = ({
     type: string;
     description?: string;
   };
-  toolData: McpToolConfigType | null;
+  toolData: ToolType | null;
   value: any;
   onChange: (value: any) => void;
   isInvalid: boolean;

@@ -308,7 +308,7 @@
             "key": "limit",
             "renderTypeList": ["hidden"],
             "label": "",
-            "value": 5000,
+            "value": 1500,
             "valueType": "number"
           },
           {

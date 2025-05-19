@@ -1,5 +1,5 @@
 import { NullPermission } from '../constant';
-import { type PerConstructPros, Permission } from '../controller';
+import { PerConstructPros, Permission } from '../controller';
 export class DatasetPermission extends Permission {
   constructor(props?: PerConstructPros) {
     if (!props) {

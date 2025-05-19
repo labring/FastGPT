@@ -4,11 +4,11 @@ import {
   NumberInputField,
   NumberInputStepper,
   NumberDecrementStepper,
-  type NumberInputProps
+  NumberInputProps
 } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '../../Icon';
-import { type UseFormRegister } from 'react-hook-form';
+import { UseFormRegister } from 'react-hook-form';
 
 type Props = Omit<NumberInputProps, 'onChange' | 'onBlur'> & {
   onChange?: (e?: number) => any;
@@ -26,9 +26,9 @@ const MyNumberInput = (props: Props) => {
     <NumberInput
       {...restProps}
       onBlur={(e) => {
-        const numE = e.target.value === '' ? '' : Number(e.target.value);
+        const numE = Number(e.target.value);
         if (onBlur) {
-          if (numE === '') {
+          if (isNaN(numE)) {
             // @ts-ignore
             onBlur('');
           } else {
@@ -46,9 +46,9 @@ const MyNumberInput = (props: Props) => {
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : Number(e);
+        const numE = Number(e);
         if (onChange) {
-          if (numE === '') {
+          if (isNaN(numE)) {
             // @ts-ignore
             onChange('');
           } else {
@@ -62,7 +62,6 @@ const MyNumberInput = (props: Props) => {
               value: numE
             }
           };
-
           register(name).onChange(event);
         }
       }}

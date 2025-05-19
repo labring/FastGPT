@@ -33,8 +33,8 @@ const OpenAIAccountModal = ({
         initUserInfo();
         onClose();
       },
-      successToast: t('common:update_success'),
-      errorToast: t('common:update_failed')
+      successToast: t('common:common.Update Success'),
+      errorToast: t('common:common.Update Failed')
     }
   );
 
@@ -64,10 +64,10 @@ const OpenAIAccountModal = ({
       </ModalBody>
       <ModalFooter>
         <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          {t('common:Cancel')}
+          {t('common:common.Cancel')}
         </Button>
         <Button isLoading={loading} onClick={handleSubmit(onSubmit)}>
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

@@ -1,4 +1,4 @@
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { countPromptTokens } from '../../common/string/tiktoken/index';
 
 /* filter search result */

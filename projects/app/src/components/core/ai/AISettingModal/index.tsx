@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import {
   Box,
-  type BoxProps,
+  BoxProps,
   Button,
   Flex,
   HStack,
@@ -18,7 +18,7 @@ import {
   Thead,
   Tr,
   Table,
-  type FlexProps,
+  FlexProps,
   Input
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -26,7 +26,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -220,8 +220,8 @@ const AIChatSettingsModal = ({
                 </Td>
                 <Td pt={0} pb={2}>
                   {selectedModel?.toolChoice || selectedModel?.functionCall
-                    ? t('common:support')
-                    : t('common:not_support')}
+                    ? t('common:common.support')
+                    : t('common:common.not_support')}
                 </Td>
               </Tr>
             </Tbody>
@@ -470,10 +470,10 @@ const AIChatSettingsModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('common:Close')}
+          {t('common:common.Close')}
         </Button>
         <Button ml={4} onClick={handleSubmit(onSuccess)}>
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

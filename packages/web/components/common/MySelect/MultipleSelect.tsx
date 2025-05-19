@@ -1,13 +1,13 @@
 import {
   Box,
   Button,
-  type ButtonProps,
+  ButtonProps,
   Checkbox,
   Flex,
   Menu,
   MenuButton,
   MenuItem,
-  type MenuItemProps,
+  MenuItemProps,
   MenuList,
   useDisclosure
 } from '@chakra-ui/react';
@@ -16,7 +16,7 @@ import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
 import { useTranslation } from 'next-i18next';
-import type { useScrollPagination } from '../../../hooks/useScrollPagination';
+import { useScrollPagination } from '../../../hooks/useScrollPagination';
 import MyDivider from '../MyDivider';
 
 export type SelectProps<T = any> = {
@@ -180,7 +180,7 @@ const MultipleSelect = <T = any,>({
               >
                 {isSelectAll ? (
                   <Box fontSize={'mini'} color={'myGray.900'}>
-                    {t('common:All')}
+                    {t('common:common.All')}
                   </Box>
                 ) : (
                   list
@@ -249,7 +249,7 @@ const MultipleSelect = <T = any,>({
             {...menuItemStyles}
           >
             <Checkbox isChecked={isSelectAll} />
-            <Box flex={'1 0 0'}>{t('common:All')}</Box>
+            <Box flex={'1 0 0'}>{t('common:common.All')}</Box>
           </MenuItem>
 
           <MyDivider my={1} />

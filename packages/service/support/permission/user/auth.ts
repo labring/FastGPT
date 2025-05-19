@@ -1,14 +1,14 @@
-import { type TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
+import { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { type AuthModeType, type AuthResponseType } from '../type';
+import { AuthModeType, AuthResponseType } from '../type';
 import { NullPermission } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 import { authCert } from '../auth/common';
 import { MongoUser } from '../../user/schema';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { type ApiRequestProps } from '../../../type/next';
+import { ApiRequestProps } from '../../../type/next';
 
 /* auth user role  */
 export async function authUserPer(props: AuthModeType): Promise<

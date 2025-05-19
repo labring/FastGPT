@@ -3,13 +3,13 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { recallFromVectorStore } from '../../../common/vectorDB/controller';
+import { recallFromVectorStore } from '../../../common/vectorStore/controller';
 import { getVectorsByText } from '../../ai/embedding';
 import { getEmbeddingModel, getDefaultRerankModel, getLLMModel } from '../../ai/model';
 import { MongoDatasetData } from '../data/schema';
 import {
-  type DatasetDataTextSchemaType,
-  type SearchDataResponseItemType
+  DatasetDataTextSchemaType,
+  SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
 import { reRankRecall } from '../../../core/ai/rerank';
@@ -23,8 +23,8 @@ import json5 from 'json5';
 import { MongoDatasetCollectionTags } from '../tag/schema';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import { MongoDatasetDataText } from '../data/dataTextSchema';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { datasetSearchQueryExtension } from './utils';
 import type { RerankModelItemType } from '@fastgpt/global/core/ai/model.d';
 
@@ -62,8 +62,7 @@ export type SearchDatasetDataProps = {
 
 export type SearchDatasetDataResponse = {
   searchRes: SearchDataResponseItemType[];
-  embeddingTokens: number;
-  reRankInputTokens: number;
+  tokens: number;
   searchMode: `${DatasetSearchModeEnum}`;
   limit: number;
   similarity: number;
@@ -87,11 +86,8 @@ export const datasetDataReRank = async ({
   rerankModel?: RerankModelItemType;
   data: SearchDataResponseItemType[];
   query: string;
-}): Promise<{
-  results: SearchDataResponseItemType[];
-  inputTokens: number;
-}> => {
-  const { results, inputTokens } = await reRankRecall({
+}): Promise<SearchDataResponseItemType[]> => {
+  const results = await reRankRecall({
     model: rerankModel,
     query,
     documents: data.map((item) => ({
@@ -118,10 +114,7 @@ export const datasetDataReRank = async ({
     })
     .filter(Boolean) as SearchDataResponseItemType[];
 
-  return {
-    results: mergeResult,
-    inputTokens
-  };
+  return mergeResult;
 };
 export const filterDatasetDataByMaxTokens = async (
   data: SearchDataResponseItemType[],
@@ -291,64 +284,50 @@ export async function searchDatasetData(
           ? collectionFilterMatch
           : json5.parse(collectionFilterMatch);
 
-      const andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
-      const orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
+      // Tag
+      let andTags = jsonMatch?.tags?.$and as (string | null)[] | undefined;
+      let orTags = jsonMatch?.tags?.$or as (string | null)[] | undefined;
 
+      // get andTagIds
       if (andTags && andTags.length > 0) {
-        const uniqueAndTags = Array.from(new Set(andTags));
-        if (uniqueAndTags.includes(null) && uniqueAndTags.some((tag) => typeof tag === 'string')) {
+        // tag 去重
+        andTags = Array.from(new Set(andTags));
+
+        if (andTags.includes(null) && andTags.some((tag) => typeof tag === 'string')) {
           return [];
         }
-        if (uniqueAndTags.every((tag) => typeof tag === 'string')) {
-          const matchedTags = await MongoDatasetCollectionTags.find(
+
+        if (andTags.every((tag) => typeof tag === 'string')) {
+          // Get tagId by tag string
+          const andTagIdList = await MongoDatasetCollectionTags.find(
             {
               teamId,
               datasetId: { $in: datasetIds },
-              tag: { $in: uniqueAndTags as string[] }
+              tag: { $in: andTags }
             },
-            '_id datasetId tag',
-            { ...readFromSecondary }
+            '_id',
+            {
+              ...readFromSecondary
+            }
           ).lean();
 
-          // Group tags by dataset
-          const datasetTagMap = new Map<string, { tagIds: string[]; tagNames: Set<string> }>();
+          // If you enter a tag that does not exist, none will be found
+          if (andTagIdList.length !== andTags.length) return [];
 
-          matchedTags.forEach((tag) => {
-            const datasetId = String(tag.datasetId);
-            if (!datasetTagMap.has(datasetId)) {
-              datasetTagMap.set(datasetId, {
-                tagIds: [],
-                tagNames: new Set()
-              });
+          // Get collectionId by tagId
+          const collections = await MongoDatasetCollection.find(
+            {
+              teamId,
+              datasetId: { $in: datasetIds },
+              tags: { $all: andTagIdList.map((item) => String(item._id)) }
+            },
+            '_id',
+            {
+              ...readFromSecondary
             }
-
-            const datasetData = datasetTagMap.get(datasetId)!;
-            datasetData.tagIds.push(String(tag._id));
-            datasetData.tagNames.add(tag.tag);
-          });
-
-          const validDatasetIds = Array.from(datasetTagMap.entries())
-            .filter(([_, data]) => uniqueAndTags.every((tag) => data.tagNames.has(tag as string)))
-            .map(([datasetId]) => datasetId);
-
-          if (validDatasetIds.length === 0) return [];
-
-          const collectionsPromises = validDatasetIds.map((datasetId) => {
-            const { tagIds } = datasetTagMap.get(datasetId)!;
-            return MongoDatasetCollection.find(
-              {
-                teamId,
-                datasetId,
-                tags: { $all: tagIds }
-              },
-              '_id',
-              { ...readFromSecondary }
-            ).lean();
-          });
-
-          const collectionsResults = await Promise.all(collectionsPromises);
-          tagCollectionIdList = collectionsResults.flat().map((item) => String(item._id));
-        } else if (uniqueAndTags.every((tag) => tag === null)) {
+          ).lean();
+          tagCollectionIdList = collections.map((item) => String(item._id));
+        } else if (andTags.every((tag) => tag === null)) {
           const collections = await MongoDatasetCollection.find(
             {
               teamId,
@@ -356,7 +335,9 @@ export async function searchDatasetData(
               $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
             },
             '_id',
-            { ...readFromSecondary }
+            {
+              ...readFromSecondary
+            }
           ).lean();
           tagCollectionIdList = collections.map((item) => String(item._id));
         }
@@ -474,7 +455,7 @@ export async function searchDatasetData(
       ).lean()
     ]);
 
-    const set = new Set<string>();
+    const set = new Map<string, number>();
     const formatResult = results
       .map((item, index) => {
         const collection = collections.find((col) => String(col._id) === String(item.collectionId));
@@ -507,7 +488,7 @@ export async function searchDatasetData(
       .filter((item) => {
         if (!item) return false;
         if (set.has(item.id)) return false;
-        set.add(item.id);
+        set.set(item.id, 1);
         return true;
       })
       .map((item, index) => {
@@ -648,17 +629,7 @@ export async function searchDatasetData(
             ]
           };
         })
-        .filter((item) => {
-          if (!item) return false;
-          return true;
-        })
-        .map((item, index) => {
-          if (!item) return;
-          return {
-            ...item,
-            score: item.score.map((item) => ({ ...item, index }))
-          };
-        }) as SearchDataResponseItemType[],
+        .filter(Boolean) as SearchDataResponseItemType[],
       tokenLen: 0
     };
   };
@@ -723,23 +694,14 @@ export async function searchDatasetData(
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const {
-    embeddingRecallResults,
-    fullTextRecallResults,
-    tokens: embeddingTokens
-  } = await multiQueryRecall({
+  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
 
   // ReRank results
-  const { results: reRankResults, inputTokens: reRankInputTokens } = await (async () => {
-    if (!usingReRank) {
-      return {
-        results: [],
-        inputTokens: 0
-      };
-    }
+  const reRankResults = await (async () => {
+    if (!usingReRank) return [];
 
     set = new Set<string>(embeddingRecallResults.map((item) => item.id));
     const concatRecallResults = embeddingRecallResults.concat(
@@ -763,10 +725,7 @@ export async function searchDatasetData(
       });
     } catch (error) {
       usingReRank = false;
-      return {
-        results: [],
-        inputTokens: 0
-      };
+      return [];
     }
   })();
 
@@ -831,8 +790,7 @@ export async function searchDatasetData(
 
   return {
     searchRes: filterMaxTokensResult,
-    embeddingTokens,
-    reRankInputTokens,
+    tokens,
     searchMode,
     limit: maxTokens,
     similarity,

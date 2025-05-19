@@ -1,4 +1,4 @@
-import type { InformLevelEnum, SendInformTemplateCodeEnum } from './constants';
+import { InformLevelEnum, SendInformTemplateCodeEnum } from './constants';
 
 export type SendInformProps = {
   level: `${InformLevelEnum}`;

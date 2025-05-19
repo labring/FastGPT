@@ -1,5 +1,5 @@
 import { i18nT } from '../../../../web/i18n/utils';
-import { type ErrType } from '../errorCode';
+import { ErrType } from '../errorCode';
 
 /* dataset: 507000 */
 const startCode = 507000;

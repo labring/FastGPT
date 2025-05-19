@@ -12,8 +12,8 @@ import {
   HStack
 } from '@chakra-ui/react';
 import {
-  type InvitationLinkCreateType,
-  type InvitationLinkExpiresType
+  InvitationLinkCreateType,
+  InvitationLinkExpiresType
 } from '@fastgpt/service/support/user/team/invitationLink/type';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -49,7 +49,7 @@ function CreateInvitationModal({
 
   const { runAsync: createInvitationLink, loading } = useRequest2(postCreateInvitationLink, {
     manual: true,
-    errorToast: t('common:create_failed'),
+    errorToast: t('common:common.Create Failed'),
     onSuccess: (data) => {
       onSuccess(data);
       onClose();
@@ -100,10 +100,10 @@ function CreateInvitationModal({
       </ModalBody>
       <ModalFooter>
         <Button isLoading={loading} onClick={() => onClose()} variant="outline">
-          {t('common:Cancel')}
+          {t('common:common.Cancel')}
         </Button>
         <Button isLoading={loading} onClick={handleSubmit(createInvitationLink)} ml="4">
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

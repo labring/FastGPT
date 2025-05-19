@@ -109,9 +109,15 @@ const DatasetSchema = new Schema({
     type: Boolean,
     default: true
   },
-  apiServer: Object,
-  feishuServer: Object,
-  yuqueServer: Object,
+  apiServer: {
+    type: Object
+  },
+  feishuServer: {
+    type: Object
+  },
+  yuqueServer: {
+    type: Object
+  },
 
   // abandoned
   autoSync: Boolean,
@@ -123,7 +129,6 @@ const DatasetSchema = new Schema({
 
 try {
   DatasetSchema.index({ teamId: 1 });
-  DatasetSchema.index({ type: 1 });
 } catch (error) {
   console.log(error);
 }

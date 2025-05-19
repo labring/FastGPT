@@ -10,7 +10,7 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../../node/constant';
-import { type FlowNodeTemplateType } from '../../../type/node';
+import { FlowNodeTemplateType } from '../../../type/node';
 import { getHandleConfig } from '../../utils';
 
 export const FormInputNode: FlowNodeTemplateType = {
@@ -23,6 +23,7 @@ export const FormInputNode: FlowNodeTemplateType = {
   name: i18nT('app:workflow.form_input'),
   intro: i18nT(`app:workflow.form_input_tip`),
   isTool: true,
+  version: '4811',
   inputs: [
     {
       key: NodeInputKeyEnum.description,

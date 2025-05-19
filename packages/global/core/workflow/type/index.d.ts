@@ -15,12 +15,11 @@ import {
 } from '../../chat/type';
 import { ChatNodeUsageType } from '../../../support/wallet/bill/type';
 import { PluginTypeEnum } from '../../plugin/constants';
-import type { StoreEdgeItemType } from './edge';
-import type { AppChatConfigType } from '../../app/type';
-import type { ParentIdType } from 'common/parentFolder/type';
-import type { AppTypeEnum } from 'core/app/constants';
-import type { StoreNodeItemType } from './node';
-import { FlowNodeTemplateType } from './node';
+import { StoreEdgeItemType } from './edge';
+import { AppChatConfigType } from '../../app/type';
+import { ParentIdType } from 'common/parentFolder/type';
+import { AppTypeEnum } from 'core/app/constants';
+import { FlowNodeTemplateType, StoreNodeItemType } from './node';
 
 export type WorkflowTemplateBasicType = {
   nodes: StoreNodeItemType[];
@@ -37,10 +36,7 @@ export type WorkflowTemplateType = {
   intro?: string;
   author?: string;
   courseUrl?: string;
-
-  version?: string;
-  versionLabel?: string;
-  isLatestVersion?: boolean;
+  version: string;
 
   showStatus?: boolean;
   weight?: number;

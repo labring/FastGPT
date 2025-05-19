@@ -5,9 +5,9 @@ import {
   ModalContent,
   ModalHeader,
   ModalCloseButton,
-  type ModalContentProps,
+  ModalContentProps,
   Box,
-  type ImageProps
+  ImageProps
 } from '@chakra-ui/react';
 import MyBox from '../MyBox';
 import { useSystem } from '../../../hooks/useSystem';

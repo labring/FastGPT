@@ -1,14 +1,14 @@
 import {
   DecoratorNode,
-  type DOMConversionMap,
-  type DOMExportOutput,
-  type EditorConfig,
-  type LexicalEditor,
-  type LexicalNode,
-  type NodeKey,
-  type SerializedLexicalNode,
-  type Spread,
-  type TextFormatType
+  DOMConversionMap,
+  DOMExportOutput,
+  EditorConfig,
+  LexicalEditor,
+  LexicalNode,
+  NodeKey,
+  SerializedLexicalNode,
+  Spread,
+  TextFormatType
 } from 'lexical';
 import VariableLabel from './components/VariableLabel';
 

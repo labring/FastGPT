@@ -87,7 +87,7 @@ export const useEditTextarea = ({
     ({
       maxLength = 30,
       iconSrc = 'modal/edit',
-      closeBtnText = t('common:Close')
+      closeBtnText = t('common:common.Close')
     }: {
       maxLength?: number;
       iconSrc?: string;
@@ -118,7 +118,7 @@ export const useEditTextarea = ({
             </Button>
           )}
           <Button onClick={onclickConfirm} px={6}>
-            {t('common:Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

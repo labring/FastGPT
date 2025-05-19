@@ -1,18 +1,19 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { Box, type FlexProps } from '@chakra-ui/react';
+import { Box, FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import React, { type DragEvent, useCallback, useMemo, useState } from 'react';
+import React, { DragEvent, useCallback, useMemo, useState } from 'react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { uploadFile2DB } from '@/web/common/file/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import type { ImportSourceItemType } from '@/web/core/dataset/type';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -38,6 +39,7 @@ const FileSelector = ({
   onFinishSelect: () => void;
 } & FlexProps) => {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
 
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
@@ -155,7 +157,7 @@ const FileSelector = ({
         files = files.slice(0, maxCount - selectFiles.length);
         toast({
           status: 'warning',
-          title: t('file:some_file_count_exceeds_limit', { maxCount })
+          title: fileT('some_file_count_exceeds_limit', { maxCount })
         });
       }
       // size check
@@ -167,13 +169,13 @@ const FileSelector = ({
       if (filterFiles.length < files.length) {
         toast({
           status: 'warning',
-          title: t('file:some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
+          title: fileT('some_file_size_exceeds_limit', { maxSize: formatFileSize(maxSize) })
         });
       }
 
       return onSelectFile(filterFiles);
     },
-    [t, maxCount, maxSize, onSelectFile, selectFiles.length, toast]
+    [fileT, maxCount, maxSize, onSelectFile, selectFiles.length, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -268,7 +270,7 @@ const FileSelector = ({
       );
     } else {
       return toast({
-        title: t('file:upload_error_description'),
+        title: fileT('upload_error_description'),
         status: 'error'
       });
     }
@@ -316,18 +318,18 @@ const FileSelector = ({
         <>
           <Box fontWeight={'bold'}>
             {isDragging
-              ? t('file:release_the_mouse_to_upload_the_file')
-              : t('file:select_and_drag_file_tip')}
+              ? fileT('release_the_mouse_to_upload_the_file')
+              : fileT('select_and_drag_file_tip')}
           </Box>
           {/* file type */}
           <Box color={'myGray.500'} fontSize={'xs'}>
-            {t('file:support_file_type', { fileType })}
+            {fileT('support_file_type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>
             {/* max count */}
-            {maxCount && t('file:support_max_count', { maxCount })}
+            {maxCount && fileT('support_max_count', { maxCount })}
             {/* max size */}
-            {maxSize && t('file:support_max_size', { maxSize: formatFileSize(maxSize) })}
+            {maxSize && fileT('support_max_size', { maxSize: formatFileSize(maxSize) })}
           </Box>
 
           <File

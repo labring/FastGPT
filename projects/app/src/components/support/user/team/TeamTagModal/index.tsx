@@ -63,7 +63,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
       initUserInfo();
       onClose();
     },
-    errorToast: t('common:create_failed')
+    errorToast: t('common:common.Create Failed')
   });
   const { mutate: onclickTagAsync, isLoading: isSyncing } = useRequest({
     mutationFn: (data: FormType) => loadTeamTagsByDomain(data.teamDomain),
@@ -187,7 +187,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
         </ModalBody>
         <ModalFooter mb={2}>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-            {t('common:Close')}
+            {t('common:common.Close')}
           </Button>
           <Button isLoading={isUpdating} onClick={handleSubmit((data) => onclickUpdate(data))}>
             {t('common:user.team.Tags Async')}

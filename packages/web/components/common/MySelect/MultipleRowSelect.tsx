@@ -11,7 +11,7 @@ import {
   MenuButton,
   MenuList
 } from '@chakra-ui/react';
-import { type ListItemType, type MultipleArraySelectProps, type MultipleSelectProps } from './type';
+import { ListItemType, MultipleArraySelectProps, MultipleSelectProps } from './type';
 import EmptyTip from '../EmptyTip';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../common/Icon';
@@ -136,7 +136,11 @@ export const MultipleRowSelect = ({
               );
             })}
             {list.length === 0 && (
-              <EmptyTip text={emptyTip ?? t('common:no_select_data')} pt={1} pb={3} />
+              <EmptyTip
+                text={emptyTip ?? t('common:common.MultipleRowSelect.No data')}
+                pt={1}
+                pb={3}
+              />
             )}
           </Box>
           {children.length > 0 && <RenderList list={children} index={index + 1} />}
@@ -327,7 +331,11 @@ export const MultipleRowArraySelect = ({
               );
             })}
             {list.length === 0 && (
-              <EmptyTip text={emptyTip ?? t('common:no_select_data')} pt={1} pb={3} />
+              <EmptyTip
+                text={emptyTip ?? t('common:common.MultipleRowSelect.No data')}
+                pt={1}
+                pb={3}
+              />
             )}
           </Box>
           {children.length > 0 && <RenderList list={children} index={index + 1} />}

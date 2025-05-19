@@ -9,9 +9,9 @@ import { delCollection } from '@fastgpt/service/core/dataset/collection/controll
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorDB/controller';
+import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 
 // 删了库，没删集合
 const checkInvalidCollection = async () => {

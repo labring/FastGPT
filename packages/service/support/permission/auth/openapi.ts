@@ -1,5 +1,5 @@
-import { type AuthModeType, type AuthResponseType } from '../type';
-import { type OpenApiSchema } from '@fastgpt/global/support/openapi/type';
+import { AuthModeType, AuthResponseType } from '../type';
+import { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';

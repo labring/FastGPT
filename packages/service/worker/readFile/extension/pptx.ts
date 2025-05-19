@@ -1,4 +1,4 @@
-import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
+import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
 // import { parseOfficeAsync } from 'officeparser';
 import { parseOffice } from '../parseOffice';
 

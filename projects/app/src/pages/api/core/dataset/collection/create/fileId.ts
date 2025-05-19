@@ -1,14 +1,14 @@
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { type FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
+import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type CreateCollectionResponse } from '@/global/core/dataset/api';
+import { CreateCollectionResponse } from '@/global/core/dataset/api';
 
 async function handler(
   req: ApiRequestProps<FileIdCreateDatasetCollectionParams>

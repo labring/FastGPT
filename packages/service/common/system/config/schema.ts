@@ -1,4 +1,4 @@
-import { type SystemConfigsType } from '@fastgpt/global/common/system/config/type';
+import { SystemConfigsType } from '@fastgpt/global/common/system/config/type';
 import { connectionMongo, getMongoModel, type Model } from '../../../common/mongo';
 import { SystemConfigsTypeMap } from '@fastgpt/global/common/system/config/constants';
 

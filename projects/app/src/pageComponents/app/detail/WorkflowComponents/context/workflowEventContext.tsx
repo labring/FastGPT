@@ -1,7 +1,7 @@
-import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import React, { ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useLocalStorageState } from 'ahooks';
-import { type SetState } from 'ahooks/lib/createUseStorageState';
+import { SetState } from 'ahooks/lib/createUseStorageState';
 
 type WorkflowEventContextType = {
   mouseInCanvas: boolean;

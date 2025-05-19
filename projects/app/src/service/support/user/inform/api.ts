@@ -1,5 +1,5 @@
 import { POST } from '@fastgpt/service/common/api/plusRequest';
-import { type SendInform2UserProps } from '@fastgpt/global/support/user/inform/type';
+import { SendInform2UserProps } from '@fastgpt/global/support/user/inform/type';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 export function sendOneInform(data: SendInform2UserProps) {

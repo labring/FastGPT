@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { Cluster } from 'puppeteer-cluster';
 import dotenv from 'dotenv';
 import { performDeepSearch } from '../utils/deepSearch';

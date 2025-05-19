@@ -5,9 +5,9 @@ import {
   FlowNodeTypeEnum
 } from '../../workflow/node/constant';
 import { nanoid } from 'nanoid';
-import { type McpToolConfigType } from '../type';
+import { ToolType } from '../type';
 import { i18nT } from '../../../../web/i18n/utils';
-import { type RuntimeNodeItemType } from '../../workflow/runtime/type';
+import { RuntimeNodeItemType } from '../../workflow/runtime/type';
 
 export const getMCPToolSetRuntimeNode = ({
   url,
@@ -16,7 +16,7 @@ export const getMCPToolSetRuntimeNode = ({
   avatar
 }: {
   url: string;
-  toolList: McpToolConfigType[];
+  toolList: ToolType[];
   name?: string;
   avatar?: string;
 }): RuntimeNodeItemType => {
@@ -45,7 +45,7 @@ export const getMCPToolRuntimeNode = ({
   url,
   avatar = 'core/app/type/mcpToolsFill'
 }: {
-  tool: McpToolConfigType;
+  tool: ToolType;
   url: string;
   avatar?: string;
 }): RuntimeNodeItemType => {
@@ -65,7 +65,7 @@ export const getMCPToolRuntimeNode = ({
       ...Object.entries(tool.inputSchema?.properties || {}).map(([key, value]) => ({
         key,
         label: key,
-        valueType: value.type as WorkflowIOValueTypeEnum, // TODO: 这里需要做一个映射
+        valueType: value.type as WorkflowIOValueTypeEnum,
         description: value.description,
         toolDescription: value.description || key,
         required: tool.inputSchema?.required?.includes(key) || false,

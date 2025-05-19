@@ -131,8 +131,7 @@ export const streamFetch = ({
           ...data,
           variables,
           detail: true,
-          stream: true,
-          retainDatasetCite: data.retainDatasetCite ?? true
+          stream: true
         })
       };
 
@@ -216,6 +215,11 @@ export const streamFetch = ({
               event,
               ...parseJson
             });
+          } else if (event === SseResponseEventEnum.flowNodeStatus) {
+            onMessage({
+              event,
+              ...parseJson
+            });
           } else if (event === SseResponseEventEnum.flowNodeResponse) {
             onMessage({
               event,
@@ -236,15 +240,6 @@ export const streamFetch = ({
               useSystemStore.getState().setNotSufficientModalType(TeamErrEnum.aiPointsNotEnough);
             }
             errMsg = getErrText(parseJson, '流响应错误');
-          } else if (
-            [SseResponseEventEnum.workflowDuration, SseResponseEventEnum.flowNodeStatus].includes(
-              event as any
-            )
-          ) {
-            onMessage({
-              event,
-              ...parseJson
-            });
           }
         },
         onclose() {

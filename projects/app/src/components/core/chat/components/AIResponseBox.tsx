@@ -29,10 +29,6 @@ import { useTranslation } from 'next-i18next';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
 import { SelectOptionsComponent, FormInputComponent } from './Interactive/InteractiveComponents';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
-import { useContextSelector } from 'use-context-selector';
-import { type OnOpenCiteModalProps } from '@/web/core/chat/context/chatItemContext';
-import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import { useCreation } from 'ahooks';
 
 const accordionButtonStyle = {
   w: 'auto',
@@ -89,38 +85,16 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
 });
 const RenderText = React.memo(function RenderText({
   showAnimation,
-  text,
-  chatItemDataId,
-  onOpenCiteModal
+  text
 }: {
   showAnimation: boolean;
-  text: string;
-  chatItemDataId: string;
-  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  text?: string;
 }) {
-  const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
-  const chatId = useContextSelector(ChatBoxContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
+  let source = text || '';
+  // First empty line
+  // if (!source && !isLastChild) return null;
 
-  const source = useMemo(() => {
-    if (!text) return '';
-
-    // Remove quote references if not showing response detail
-    return text;
-  }, [text]);
-
-  const chatAuthData = useCreation(() => {
-    return { appId, chatId, chatItemDataId, ...outLinkAuthData };
-  }, [appId, chatId, chatItemDataId, outLinkAuthData]);
-
-  return (
-    <Markdown
-      source={source}
-      showAnimation={showAnimation}
-      chatAuthData={chatAuthData}
-      onOpenCiteModal={onOpenCiteModal}
-    />
-  );
+  return <Markdown source={source} showAnimation={showAnimation} />;
 });
 
 const RenderTool = React.memo(
@@ -246,26 +220,17 @@ const RenderUserFormInteractive = React.memo(function RenderFormInput({
 });
 
 const AIResponseBox = ({
-  chatItemDataId,
   value,
   isLastResponseValue,
-  isChatting,
-  onOpenCiteModal
+  isChatting
 }: {
-  chatItemDataId: string;
   value: UserChatItemValueItemType | AIChatItemValueItemType;
   isLastResponseValue: boolean;
   isChatting: boolean;
-  onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
 }) => {
   if (value.type === ChatItemValueTypeEnum.text && value.text) {
     return (
-      <RenderText
-        chatItemDataId={chatItemDataId}
-        showAnimation={isChatting && isLastResponseValue}
-        text={value.text.content}
-        onOpenCiteModal={onOpenCiteModal}
-      />
+      <RenderText showAnimation={isChatting && isLastResponseValue} text={value.text.content} />
     );
   }
   if (value.type === ChatItemValueTypeEnum.reasoning && value.reasoning) {

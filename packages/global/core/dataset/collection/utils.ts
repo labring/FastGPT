@@ -1,5 +1,5 @@
 import { DatasetCollectionTypeEnum } from '../constants';
-import { type DatasetCollectionSchemaType } from '../type';
+import { DatasetCollectionSchemaType } from '../type';
 
 export const getCollectionSourceData = (collection?: DatasetCollectionSchemaType) => {
   return {

@@ -242,7 +242,7 @@ const Header = () => {
         isOpen={isOpenBackConfirm}
         onClose={onCloseBackConfirm}
         iconSrc="common/warn"
-        title={t('common:Exit')}
+        title={t('common:common.Exit')}
         w={'400px'}
       >
         <ModalBody>
@@ -250,7 +250,7 @@ const Header = () => {
         </ModalBody>
         <ModalFooter gap={3}>
           <Button variant={'whiteDanger'} onClick={onBack}>
-            {t('common:exit_directly')}
+            {t('common:common.Exit Directly')}
           </Button>
           <Button
             isLoading={loading}
@@ -267,7 +267,7 @@ const Header = () => {
               } catch (error) {}
             }}
           >
-            {t('common:Save_and_exit')}
+            {t('common:common.Save_and_exit')}
           </Button>
         </ModalFooter>
       </MyModal>

@@ -1,8 +1,8 @@
-import { type ApiRequestProps } from '../../type/next';
+import { ApiRequestProps } from '../../type/next';
 import requestIp from 'request-ip';
 import { authFrequencyLimit } from '../system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
-import { type NextApiResponse } from 'next';
+import { NextApiResponse } from 'next';
 import { jsonRes } from '../response';
 
 // unit: times/s

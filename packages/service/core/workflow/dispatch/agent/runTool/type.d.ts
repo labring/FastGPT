@@ -1,9 +1,5 @@
-import type {
-  ChatCompletionMessageParam,
-  CompletionFinishReason
-} from '@fastgpt/global/core/ai/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { ChatCompletionMessageParam, CompletionFinishReason } from '@fastgpt/global/core/ai/type';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   ModuleDispatchProps,
   DispatchNodeResponseType
@@ -11,11 +7,10 @@ import type {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../../type.d';
-import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import type { LLMModelItemType } from '@fastgpt/global/core/ai/model';
+import { AIChatItemValueItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemType[];
@@ -41,6 +36,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
 
 export type RunToolResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
+  toolNodeTokens?: number; // deprecated
   toolNodeInputTokens: number;
   toolNodeOutputTokens: number;
   completeMessages?: ChatCompletionMessageParam[];

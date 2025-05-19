@@ -218,6 +218,7 @@ export const FlowValueTypeMap: Record<
 };
 
 export const EDGE_TYPE = 'default';
+export const defaultNodeVersion = '481';
 
 export const chatHistoryValueDesc = `{
   obj: System | Human | AI;
@@ -235,10 +236,3 @@ export const datasetQuoteValueDesc = `{
 export const datasetSelectValueDesc = `{
   datasetId: string;
 }[]`;
-
-export const AppNodeFlowNodeTypeMap: Record<any, boolean> = {
-  [FlowNodeTypeEnum.pluginModule]: true,
-  [FlowNodeTypeEnum.appModule]: true,
-  [FlowNodeTypeEnum.tool]: true,
-  [FlowNodeTypeEnum.toolSet]: true
-};

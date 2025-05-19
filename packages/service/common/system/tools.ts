@@ -1,4 +1,4 @@
-import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 
 export const SERVICE_LOCAL_PORT = `${process.env.PORT || 3000}`;

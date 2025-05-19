@@ -1,4 +1,4 @@
-import { type UserType } from '@fastgpt/global/support/user/type';
+import { UserType } from '@fastgpt/global/support/user/type';
 import { MongoUser } from './schema';
 import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';

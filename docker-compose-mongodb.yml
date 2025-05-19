@@ -1,0 +1,44 @@
+version: '3.3'
+services:
+  mongo:
+    image: mongo:5.0.18
+    container_name: fastgpt-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=fastgpt
+      - MONGO_INITDB_ROOT_PASSWORD=fastgpt123456
+    volumes:
+      - ./mongo_data:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "localhost:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        # 启动MongoDB服务
+        exec docker-entrypoint.sh "$$@" &
+
+        # 等待MongoDB服务启动
+        until mongo -u fastgpt -p fastgpt123456 --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        # 执行初始化副本集的脚本
+        mongo -u fastgpt -p fastgpt123456 --authenticationDatabase admin /data/initReplicaSet.js
+
+        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
+        wait $$! 

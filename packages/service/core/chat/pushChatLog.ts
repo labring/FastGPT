@@ -2,11 +2,7 @@ import { addLog } from '../../common/system/log';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import axios from 'axios';
-import {
-  type AIChatItemType,
-  type ChatItemType,
-  type UserChatItemType
-} from '@fastgpt/global/core/chat/type';
+import { AIChatItemType, ChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type Metadata = {

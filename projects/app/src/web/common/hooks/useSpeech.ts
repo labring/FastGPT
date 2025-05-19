@@ -3,7 +3,7 @@ import { POST } from '../api/request';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
   const { t } = useTranslation();
@@ -120,7 +120,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
       if (!navigator?.mediaDevices?.getUserMedia) {
         return toast({
           status: 'warning',
-          title: t('common:speech_not_support')
+          title: t('common:common.speech.not support')
         });
       }
 
@@ -167,25 +167,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
               if (MediaRecorder.isTypeSupported('video/webm; codecs=vp9')) {
                 return {
                   options: { mimeType: 'video/webm; codecs=vp9' },
-                  filename: 'recording.webm'
+                  filename: 'recording.mp3'
                 };
               }
               if (MediaRecorder.isTypeSupported('video/webm')) {
                 return {
                   options: { type: 'video/webm' },
-                  filename: 'recording.webm'
-                };
-              }
-              if (MediaRecorder.isTypeSupported('audio/webm')) {
-                return {
-                  options: { mimeType: 'audio/webm' },
-                  filename: 'recording.webm'
-                };
-              }
-              if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                return {
-                  options: { mimeType: 'audio/mp4' },
-                  filename: 'recording.m4a'
+                  filename: 'recording.mp3'
                 };
               }
               if (MediaRecorder.isTypeSupported('video/mp4')) {
@@ -194,16 +182,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
                   filename: 'recording.mp4'
                 };
               }
-              if (MediaRecorder.isTypeSupported('audio/mp3')) {
-                return {
-                  options: { mimeType: 'audio/mp3' },
-                  filename: 'recording.mp3'
-                };
-              }
-              // 默认回退选项
               return {
-                options: { type: 'audio/webm' },
-                filename: 'recording.webm'
+                options: { type: 'video/webm' },
+                filename: 'recording.mp3'
               };
             })();
 
@@ -230,7 +211,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
             } catch (error) {
               toast({
                 status: 'warning',
-                title: getErrText(error, t('common:speech_error_tip'))
+                title: getErrText(error, t('common:common.speech.error tip'))
               });
             }
             setIsTransCription(false);

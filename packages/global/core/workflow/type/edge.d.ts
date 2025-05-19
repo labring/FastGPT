@@ -1,4 +1,4 @@
-import type { RuntimeEdgeStatusEnum } from '../constants';
+import { RuntimeEdgeStatusEnum } from '../constants';
 
 export type StoreEdgeItemType = {
   source: string;

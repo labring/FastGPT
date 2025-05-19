@@ -99,7 +99,9 @@ const CustomTextInput = () => {
         />
       </Box>
       <Flex mt={5} justifyContent={'flex-end'}>
-        <Button onClick={handleSubmit((data) => onSubmit(data))}>{t('common:next_step')}</Button>
+        <Button onClick={handleSubmit((data) => onSubmit(data))}>
+          {t('common:common.Next Step')}
+        </Button>
       </Flex>
     </Box>
   );

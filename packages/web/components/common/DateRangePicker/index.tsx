@@ -118,7 +118,7 @@ const DateRangePicker = ({
                   mr={2}
                   onClick={() => setShowSelected(false)}
                 >
-                  {t('common:Close')}
+                  {t('common:common.Close')}
                 </Button>
                 <Button
                   size={'sm'}
@@ -127,7 +127,7 @@ const DateRangePicker = ({
                     setShowSelected(false);
                   }}
                 >
-                  {t('common:Confirm')}
+                  {t('common:common.Confirm')}
                 </Button>
               </Flex>
             }

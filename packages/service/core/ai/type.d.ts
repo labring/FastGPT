@@ -1,5 +1,5 @@
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
-import type {
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import {
   STTModelType,
   RerankModelItemType,
   TTSModelType,

@@ -1,6 +1,6 @@
 import { MongoOperationLog } from './schema';
-import type { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
-import { type TemplateParamsMap } from './constants';
+import { OperationLogEventEnum } from '@fastgpt/global/support/operationLog/constants';
+import { TemplateParamsMap } from './constants';
 import { retryFn } from '../../../global/common/system/utils';
 
 export function addOperationLog<T extends OperationLogEventEnum>({
@@ -14,6 +14,7 @@ export function addOperationLog<T extends OperationLogEventEnum>({
   event: T;
   params?: TemplateParamsMap[T];
 }) {
+  console.log('Insert log');
   retryFn(() =>
     MongoOperationLog.create({
       tmbId: tmbId,

@@ -1,4 +1,3 @@
-'use client';
 import DashboardContainer from '@/pageComponents/dashboard/Container';
 
 import PluginCard from '@/pageComponents/dashboard/SystemPlugin/ToolCard';

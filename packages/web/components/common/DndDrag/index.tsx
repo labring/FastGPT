@@ -1,13 +1,13 @@
 import { Box, Tbody } from '@chakra-ui/react';
-import React, { type ReactElement, type ReactNode, useState } from 'react';
+import React, { ReactElement, ReactNode, useState } from 'react';
 import {
   DragDropContext,
   Droppable,
-  type DraggableChildrenFn,
-  type DragStart,
-  type DropResult,
-  type DroppableProvided,
-  type DroppableStateSnapshot
+  DraggableChildrenFn,
+  DragStart,
+  DropResult,
+  DroppableProvided,
+  DroppableStateSnapshot
 } from 'react-beautiful-dnd';
 export * from 'react-beautiful-dnd';
 

@@ -1,6 +1,6 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { type ChatHistoryItemResType, type ChatItemType } from '@fastgpt/global/core/chat/type';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
@@ -45,6 +45,9 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
       .map((item) => item.quoteList)
       .flat()
       .filter(Boolean) as SearchDataResponseItemType[],
+    totalRunningTime: Number(
+      historyItem.responseData?.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
+    ),
     historyPreviewLength: flatResData.find(isLLMNode)?.historyPreview?.length
   };
 }

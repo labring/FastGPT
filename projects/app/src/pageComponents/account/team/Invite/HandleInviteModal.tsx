@@ -27,7 +27,7 @@ function Invite({ invitelinkid }: { invitelinkid: string }) {
     () => postAcceptInvitationLink(invitelinkid),
     {
       manual: true,
-      successToast: t('common:Success'),
+      successToast: t('common:common.Success'),
       onSuccess: async () => {
         onSwitchTeam(invitationInfo!.teamId);
         onClose();

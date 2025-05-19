@@ -1,45 +1,27 @@
 import { SystemConfigsTypeEnum } from '@fastgpt/global/common/system/config/constants';
 import { MongoSystemConfigs } from './schema';
-import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
+import { FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { FastGPTProUrl } from '../constants';
-import { type LicenseDataType } from '@fastgpt/global/common/system/types';
 
-export const getFastGPTConfigFromDB = async (): Promise<{
-  fastgptConfig: FastGPTConfigFileType;
-  licenseData?: LicenseDataType;
-}> => {
+export const getFastGPTConfigFromDB = async () => {
   if (!FastGPTProUrl) {
     return {
-      fastgptConfig: {} as FastGPTConfigFileType
+      config: {} as FastGPTConfigFileType
     };
   }
 
-  const [fastgptConfig, licenseConfig] = await Promise.all([
-    MongoSystemConfigs.findOne({
-      type: SystemConfigsTypeEnum.fastgpt
-    }).sort({
-      createTime: -1
-    }),
-    MongoSystemConfigs.findOne({
-      type: SystemConfigsTypeEnum.license
-    }).sort({
-      createTime: -1
-    })
-  ]);
+  const res = await MongoSystemConfigs.findOne({
+    type: SystemConfigsTypeEnum.fastgpt
+  }).sort({
+    createTime: -1
+  });
 
-  const config = fastgptConfig?.value || {};
-  const licenseData = licenseConfig?.value?.data as LicenseDataType | undefined;
-
-  const fastgptConfigTime = fastgptConfig?.createTime.getTime().toString();
-  const licenseConfigTime = licenseConfig?.createTime.getTime().toString();
+  const config = res?.value || {};
   // 利用配置文件的创建时间（更新时间）来做缓存，如果前端命中缓存，则不需要再返回配置文件
-  global.systemInitBufferId = fastgptConfigTime
-    ? `${fastgptConfigTime}-${licenseConfigTime}`
-    : undefined;
+  global.systemInitBufferId = res ? res.createTime.getTime().toString() : undefined;
 
   return {
-    fastgptConfig: config as FastGPTConfigFileType,
-    licenseData
+    config: config as FastGPTConfigFileType
   };
 };
 

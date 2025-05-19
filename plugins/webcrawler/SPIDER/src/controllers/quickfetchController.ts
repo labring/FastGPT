@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 

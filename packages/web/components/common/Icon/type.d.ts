@@ -1,3 +1,3 @@
-import type { iconPaths } from './constants';
+import { iconPaths } from './constants';
 
 export type IconNameType = keyof typeof iconPaths;

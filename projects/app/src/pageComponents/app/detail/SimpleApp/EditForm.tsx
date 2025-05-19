@@ -3,7 +3,7 @@ import {
   Box,
   Flex,
   Grid,
-  type BoxProps,
+  BoxProps,
   useTheme,
   useDisclosure,
   Button,
@@ -124,7 +124,7 @@ const EditForm = ({
         }
       }));
     }
-  }, [selectedModel, setAppForm]);
+  }, [selectedModel]);
 
   return (
     <>
@@ -216,7 +216,7 @@ const EditForm = ({
               fontSize={'sm'}
               onClick={onOpenKbSelect}
             >
-              {t('common:Choose')}
+              {t('common:common.Choose')}
             </Button>
             <Button
               variant={'transparentBase'}
@@ -226,7 +226,7 @@ const EditForm = ({
               fontSize={'sm'}
               onClick={onOpenDatasetParams}
             >
-              {t('common:Params')}
+              {t('common:common.Params')}
             </Button>
           </Flex>
           {appForm.dataset.datasets?.length > 0 && (

@@ -1,7 +1,7 @@
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 // @ts-ignore
 import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
+import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
 
 type TokenType = {
   str: string;

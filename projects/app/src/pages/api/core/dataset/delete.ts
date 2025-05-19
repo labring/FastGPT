@@ -45,7 +45,7 @@ async function handler(req: NextApiRequest) {
   await Promise.all(
     datasets.map((dataset) => {
       if (dataset.type === DatasetTypeEnum.websiteDataset)
-        return removeWebsiteSyncJobScheduler(dataset._id);
+        return removeWebsiteSyncJobScheduler(String(dataset._id));
     })
   );
 

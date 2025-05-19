@@ -114,7 +114,7 @@ const RenderOutput = ({
               setEditField(defaultOutput);
             }}
           >
-            {t('common:add_new')}
+            {t('common:common.Add New')}
           </Button>
         </Flex>
         <VariableTable

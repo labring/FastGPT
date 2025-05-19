@@ -1,5 +1,5 @@
 import { PermissionKeyEnum, PermissionList } from '../constant';
-import { type PermissionListType } from '../type';
+import { PermissionListType } from '../type';
 
 export enum GroupMemberRole {
   owner = 'owner',

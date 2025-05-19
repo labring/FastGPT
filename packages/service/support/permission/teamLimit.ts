@@ -54,50 +54,34 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
     })
   ]);
 
-  // User check
   if (standardConstants && datasetCount >= standardConstants.maxDatasetAmount) {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
   }
-
-  // System check
-  if (global?.licenseData?.maxDatasets && typeof global?.licenseData?.maxDatasets === 'number') {
-    const totalDatasets = await MongoDataset.countDocuments({
-      type: { $ne: DatasetTypeEnum.folder }
-    });
-    if (totalDatasets >= global.licenseData.maxDatasets) {
-      return Promise.reject(SystemErrEnum.licenseDatasetAmountLimit);
-    }
-  }
-  // Open source check
   if (!global.feConfigs.isPlus && datasetCount >= 30) {
     return Promise.reject(SystemErrEnum.communityVersionNumLimit);
   }
 };
-
 export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   const [{ standardConstants }, appCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
     MongoApp.countDocuments({
       teamId,
-      type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.tool]
-      }
+      type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
     })
   ]);
 
   if (standardConstants && appCount + amount >= standardConstants.maxAppAmount) {
     return Promise.reject(TeamErrEnum.appAmountNotEnough);
   }
+};
 
-  // System check
-  if (global?.licenseData?.maxApps && typeof global?.licenseData?.maxApps === 'number') {
-    const totalApps = await MongoApp.countDocuments({
-      type: {
-        $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin, AppTypeEnum.tool]
-      }
-    });
-    if (totalApps >= global.licenseData.maxApps) {
-      return Promise.reject(SystemErrEnum.licenseAppAmountLimit);
-    }
+export const checkTeamReRankPermission = async (teamId: string) => {
+  const { standardConstants } = await getTeamStandPlan({
+    teamId
+  });
+
+  if (standardConstants && !standardConstants?.permissionReRank) {
+    return false;
   }
+  return true;
 };

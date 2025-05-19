@@ -17,11 +17,9 @@ type FormType = {
 
 const UpdateContactModal = ({
   onClose,
-  onSuccess,
   mode
 }: {
   onClose: () => void;
-  onSuccess?: (val: string) => void;
   mode: 'contact' | 'notification_account';
 }) => {
   const { t } = useTranslation();
@@ -39,22 +37,20 @@ const UpdateContactModal = ({
   const verifyCode = watch('verifyCode');
 
   const { runAsync: onSubmit, loading: isLoading } = useRequest2(
-    async (data: FormType) => {
+    (data: FormType) => {
       if (mode === 'contact') {
-        await updateContact(data);
+        return updateContact(data);
       } else {
-        await updateNotificationAccount({
+        return updateNotificationAccount({
           account: data.contact,
           verifyCode: data.verifyCode
         });
       }
-      return data.contact;
     },
     {
-      onSuccess(data) {
+      onSuccess() {
         initUserInfo();
         onClose();
-        onSuccess?.(data);
       },
       successToast: t('common:support.user.info.bind_notification_success'),
       errorToast: t('common:support.user.info.bind_notification_error')
@@ -115,14 +111,14 @@ const UpdateContactModal = ({
         </ModalBody>
         <ModalFooter>
           <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-            {t('common:Cancel')}
+            {t('common:common.Cancel')}
           </Button>
           <Button
             isLoading={isLoading}
             isDisabled={!account || !verifyCode}
             onClick={handleSubmit((data) => onSubmit(data))}
           >
-            {t('common:Confirm')}
+            {t('common:common.Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>

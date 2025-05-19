@@ -1,11 +1,10 @@
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { type FeishuServer, type YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { FeishuServer, YuqueServer } from '@fastgpt/global/core/dataset/apiDataset';
 
 export enum ProApiDatasetOperationTypeEnum {
   LIST = 'list',
   READ = 'read',
-  CONTENT = 'content',
-  DETAIL = 'detail'
+  CONTENT = 'content'
 }
 
 export type ProApiDatasetCommonParams = {
@@ -22,9 +21,5 @@ export type GetProApiDatasetFileContentParams = ProApiDatasetCommonParams & {
 };
 
 export type GetProApiDatasetFilePreviewUrlParams = ProApiDatasetCommonParams & {
-  apiFileId: string;
-};
-
-export type GetProApiDatasetFileDetailParams = ProApiDatasetCommonParams & {
   apiFileId: string;
 };

@@ -12,7 +12,7 @@ import {
 } from '@chakra-ui/react';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
-import { type UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
+import { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
@@ -23,7 +23,7 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
-import { type UsageFilterParams } from './type';
+import { UsageFilterParams } from './type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -45,8 +45,8 @@ const UsageTableList = ({
     filterParams;
   const requestParams = useMemo(() => {
     return {
-      dateStart: dayjs(dateRange.from || new Date()).format(),
-      dateEnd: dayjs(addDays(dateRange.to || new Date(), 1)).format(),
+      dateStart: dateRange.from || new Date(),
+      dateEnd: addDays(dateRange.to || new Date(), 1),
       sources: isSelectAllSource ? undefined : usageSources,
       teamMemberIds: isSelectAllTmb ? undefined : selectTmbIds,
       projectName

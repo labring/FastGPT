@@ -1,12 +1,12 @@
-import type { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import type {
+import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
   ChunkSettingModeEnum,
   DataChunkSplitModeEnum
 } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
-import type { ParentIdType } from 'common/parentFolder/type';
+import { ParentIdType } from 'common/parentFolder/type';
 
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {
@@ -137,6 +137,7 @@ export type PushDatasetDataChunkProps = {
   a?: string; // bonus content
   chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
+  imageFileId?: string; //file id preview
 };
 
 export type PostWebsiteSyncParams = {
@@ -158,4 +159,5 @@ export type PushDatasetDataProps = {
 };
 export type PushDatasetDataResponse = {
   insertLen: number;
+  message?: string;
 };

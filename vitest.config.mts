@@ -16,7 +16,7 @@ export default defineConfig({
     maxConcurrency: 5,
     pool: 'threads',
     include: ['test/test.ts', 'test/cases/**/*.test.ts', 'projects/app/test/**/*.test.ts'],
-    testTimeout: 20000,
+    testTimeout: 5000,
     reporters: ['github-actions', 'default']
   },
   resolve: {

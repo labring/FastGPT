@@ -1,7 +1,6 @@
 import { PermissionValueType } from '../../permission/type';
-import type { TeamMemberRoleEnum } from './constant';
-import type { TeamMemberSchema, ThirdPartyAccountType } from './type';
-import { LafAccountType } from './type';
+import { TeamMemberRoleEnum } from './constant';
+import { LafAccountType, TeamMemberSchema, ThirdPartyAccountType } from './type';
 
 export type AuthTeamRoleProps = {
   teamId: string;

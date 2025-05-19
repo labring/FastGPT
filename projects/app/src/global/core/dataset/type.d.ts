@@ -1,7 +1,10 @@
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
-import type { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import { DatasetDataSchemaType, DatasetTagType } from '@fastgpt/global/core/dataset/type.d';
-import type { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import {
+  DatasetCollectionSchemaType,
+  DatasetDataSchemaType,
+  DatasetTagType
+} from '@fastgpt/global/core/dataset/type.d';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 /* ================= dataset ===================== */
 
@@ -38,5 +41,8 @@ export type DatasetDataListItemType = {
   a: string; // bonus content
   chunkIndex?: number;
   updated?: boolean;
+  teamId?: string;
+  imageFileId?: string;
+  previewUrl?: string;
   // indexes: DatasetDataSchemaType['indexes'];
 };

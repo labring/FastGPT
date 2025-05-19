@@ -2,7 +2,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { createChatCompletion } from '../config';
 import { countGptMessagesTokens, countPromptTokens } from '../../../common/string/tiktoken/index';
 import { loadRequestMessages } from '../../chat/utils';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '../utils';
+import { llmCompletionsBodyFormat } from '../utils';
 import {
   QuestionGuidePrompt,
   QuestionGuideFooterPrompt
@@ -35,32 +35,33 @@ export async function createQuestionGuide({
     useVision: false
   });
 
-  const { response } = await createChatCompletion({
+  const { response: data } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
         model,
         temperature: 0.1,
         max_tokens: 200,
         messages: requestMessages,
-        stream: true
+        stream: false
       },
       model
     )
   });
-  const { text: answer, usage } = await formatLLMResponse(response);
+
+  const answer = data.choices?.[0]?.message?.content || '';
 
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
 
-  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(requestMessages));
-  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
+  const inputTokens = await countGptMessagesTokens(requestMessages);
+  const outputTokens = await countPromptTokens(answer);
 
   if (start === -1 || end === -1) {
     addLog.warn('Create question guide error', { answer });
     return {
       result: [],
-      inputTokens,
-      outputTokens
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 
@@ -80,8 +81,8 @@ export async function createQuestionGuide({
 
     return {
       result: [],
-      inputTokens,
-      outputTokens
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 }

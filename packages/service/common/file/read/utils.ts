@@ -9,6 +9,7 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 import { createPdfParseUsage } from '../../../support/wallet/usage/controller';
 import { useDoc2xServer } from '../../../thirdProvider/doc2x';
+import { createDatasetImage } from '../../../core/dataset/image/controller';
 
 export type readRawTextByLocalFileParams = {
   teamId: string;
@@ -17,6 +18,9 @@ export type readRawTextByLocalFileParams = {
   encoding: string;
   customPdfParse?: boolean;
   metadata?: Record<string, any>;
+  datasetId?: string;
+  collectionId?: string;
+  relatedDocId?: string;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
   const { path } = params;
@@ -33,7 +37,10 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
     tmbId: params.tmbId,
     encoding: params.encoding,
     buffer,
-    metadata: params.metadata
+    metadata: params.metadata,
+    datasetId: params.datasetId,
+    collectionId: params.collectionId,
+    relatedDocId: params.relatedDocId
   });
 };
 
@@ -46,7 +53,11 @@ export const readRawContentByFileBuffer = async ({
   encoding,
   metadata,
   customPdfParse = false,
-  isQAImport = false
+  isQAImport = false,
+
+  datasetId,
+  collectionId,
+  relatedDocId
 }: {
   teamId: string;
   tmbId: string;
@@ -58,6 +69,10 @@ export const readRawContentByFileBuffer = async ({
 
   customPdfParse?: boolean;
   isQAImport: boolean;
+
+  datasetId?: string;
+  collectionId?: string;
+  relatedDocId?: string;
 }): Promise<ReadFileResponse> => {
   const systemParse = () =>
     runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
@@ -149,21 +164,38 @@ export const readRawContentByFileBuffer = async ({
     return await systemParse();
   })();
 
-  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. `);
+  addLog.debug(`Parse file success, time: ${Date.now() - start}ms. Uploading file image.`);
 
   // markdown data format
   if (imageList) {
     await batchRun(imageList, async (item) => {
       const src = await (async () => {
         try {
-          return await uploadMongoImg({
-            base64Img: `data:${item.mime};base64,${item.base64}`,
-            teamId,
-            metadata: {
-              ...metadata,
-              mime: item.mime
-            }
-          });
+          if (datasetId) {
+            const { _id } = await createDatasetImage({
+              teamId,
+              tmbId,
+              datasetId,
+              collectionId,
+              binary: Buffer.from(item.base64, 'base64'),
+              metadata: {
+                mime: item.mime,
+                filename: `image_${Date.now()}.${item.mime.split('/')[1] || 'png'}`,
+                relatedDocId,
+                sourceType: 'document'
+              }
+            });
+            return `${process.env.NEXT_PUBLIC_API_PREFIX || ''}/api/core/dataset/image/get?id=${_id}&teamId=${teamId}&datasetId=${datasetId}`;
+          } else {
+            return await uploadMongoImg({
+              base64Img: `data:${item.mime};base64,${item.base64}`,
+              teamId,
+              metadata: {
+                ...metadata,
+                mime: item.mime
+              }
+            });
+          }
         } catch (error) {
           addLog.warn('Upload file image error', { error });
           return 'Upload load image error';
@@ -185,7 +217,7 @@ export const readRawContentByFileBuffer = async ({
     }
   }
 
-  addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
+  addLog.debug(`Upload file image success, time: ${Date.now() - start}ms`);
 
   return { rawText, formatText, imageList };
 };

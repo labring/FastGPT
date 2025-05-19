@@ -9,7 +9,7 @@ import PermissionIconText from '@/components/support/permission/IconText';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { type DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
@@ -51,7 +51,7 @@ function List() {
     folderDetail,
     setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
-  const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
+  const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
   const parentDataset = useMemo(
@@ -82,8 +82,8 @@ function List() {
   });
 
   const editPerDataset = useMemo(
-    () => myDatasets.find((item) => String(item._id) === String(editPerDatasetId)),
-    [editPerDatasetId, myDatasets]
+    () => (editPerDatasetIndex !== undefined ? myDatasets[editPerDatasetIndex] : undefined),
+    [editPerDatasetIndex, myDatasets]
   );
 
   const { mutate: exportDataset } = useRequest({
@@ -161,8 +161,8 @@ function List() {
                   <Flex flexDirection={'column'} alignItems={'center'}>
                     <Box fontSize={'xs'} color={'myGray.500'}>
                       {dataset.type === DatasetTypeEnum.folder
-                        ? t('common:open_folder')
-                        : t('common:folder.open_dataset')}
+                        ? t('common:common.folder.Open folder')
+                        : t('common:common.folder.open_dataset')}
                     </Box>
                   </Flex>
                 }
@@ -346,7 +346,7 @@ function List() {
                                         {
                                           icon: 'key',
                                           label: t('common:permission.Permission'),
-                                          onClick: () => setEditPerDatasetId(dataset._id)
+                                          onClick: () => setEditPerDatasetIndex(index)
                                         }
                                       ]
                                     : [])
@@ -373,7 +373,7 @@ function List() {
                                       children: [
                                         {
                                           icon: 'delete',
-                                          label: t('common:Delete'),
+                                          label: t('common:common.Delete'),
                                           type: 'danger' as 'danger',
                                           onClick: () => onClickDeleteDataset(dataset._id)
                                         }
@@ -449,7 +449,7 @@ function List() {
               }),
             refreshDeps: [editPerDataset._id, editPerDataset.inheritPermission]
           }}
-          onClose={() => setEditPerDatasetId(undefined)}
+          onClose={() => setEditPerDatasetIndex(undefined)}
         />
       )}
       <ConfirmModal />

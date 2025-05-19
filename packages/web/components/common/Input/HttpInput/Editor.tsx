@@ -15,11 +15,11 @@ import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
-import type { EditorState, LexicalEditor } from 'lexical';
+import { EditorState, LexicalEditor } from 'lexical';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
-  type EditorVariableLabelPickerType,
-  type EditorVariablePickerType
+  EditorVariableLabelPickerType,
+  EditorVariablePickerType
 } from '../../Textarea/PromptEditor/type';
 import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
 import { textToEditorState } from '../../Textarea/PromptEditor/utils';

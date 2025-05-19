@@ -1,13 +1,12 @@
-'use client';
 import { Box, Card, Flex } from '@chakra-ui/react';
 import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { type UserType } from '@fastgpt/global/support/user/type';
+import { UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import { type UserUpdateParams } from '@/types/user';
+import { UserUpdateParams } from '@/types/user';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 import I18nLngSelector from '@/components/Select/I18nLngSelector';
 import AccountContainer from '@/pageComponents/account/AccountContainer';
@@ -41,7 +40,7 @@ const Individuation = () => {
       <Box py={[3, '28px']} px={['5vw', '64px']}>
         <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
           <MyIcon mr={2} name={'common/settingLight'} w={'20px'} />
-          {t('common:Setting')}
+          {t('common:common.Setting')}
         </Flex>
 
         <Card mt={6} px={[3, 10]} py={[3, 7]} fontSize={'sm'}>

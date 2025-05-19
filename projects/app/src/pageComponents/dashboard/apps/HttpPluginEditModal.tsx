@@ -32,8 +32,8 @@ import { str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
-import { type OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type';
-import { type AppSchema } from '@fastgpt/global/core/app/type';
+import { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type';
+import { AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
 
@@ -98,8 +98,8 @@ const HttpPluginEditModal = ({
       loadMyApps();
       onClose();
     },
-    successToast: t('common:create_success'),
-    errorToast: t('common:create_failed')
+    successToast: t('common:common.Create Success'),
+    errorToast: t('common:common.Create Failed')
   });
 
   const { mutate: updatePlugins, isLoading: isUpdating } = useRequest({
@@ -118,8 +118,8 @@ const HttpPluginEditModal = ({
       loadMyApps();
       onClose();
     },
-    successToast: t('common:update_success'),
-    errorToast: t('common:update_failed')
+    successToast: t('common:common.Update Success'),
+    errorToast: t('common:common.Update Failed')
   });
 
   const {
@@ -178,10 +178,10 @@ const HttpPluginEditModal = ({
         <ModalBody flex={'1 0 0'} overflow={'auto'}>
           <>
             <Box color={'myGray.800'} fontWeight={'bold'}>
-              {t('common:input_name')}
+              {t('common:plugin.Set Name')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
-              <MyTooltip label={t('common:set_avatar')}>
+              <MyTooltip label={t('common:common.Set Avatar')}>
                 <Avatar
                   flexShrink={0}
                   src={avatar}
@@ -197,7 +197,7 @@ const HttpPluginEditModal = ({
                 ml={4}
                 bg={'myWhite.600'}
                 {...register('name', {
-                  required: t('common:name_is_empty')
+                  required: t('common:common.name_is_empty')
                 })}
               />
             </Flex>
@@ -240,7 +240,7 @@ const HttpPluginEditModal = ({
                     isLoading={isLoadingUrlApi}
                     onClick={onClickUrlLoadApi}
                   >
-                    {t('common:Import')}
+                    {t('common:common.Import')}
                   </Button>
                 </Flex>
               </Box>
@@ -432,7 +432,7 @@ const HttpPluginEditModal = ({
 
         <ModalFooter>
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-            {t('common:Close')}
+            {t('common:common.Close')}
           </Button>
           {!isEdit ? (
             <Button
@@ -440,7 +440,7 @@ const HttpPluginEditModal = ({
               onClick={handleSubmit((data) => onCreate(data))}
               isLoading={isCreating}
             >
-              {t('common:comfirn_create')}
+              {t('common:common.Confirm Create')}
             </Button>
           ) : (
             <Button
@@ -448,7 +448,7 @@ const HttpPluginEditModal = ({
               isLoading={isUpdating}
               onClick={handleSubmit((data) => updatePlugins(data))}
             >
-              {t('common:confirm_update')}
+              {t('common:common.Confirm Update')}
             </Button>
           )}
         </ModalFooter>

@@ -1,11 +1,11 @@
 import {
-  type DispatchNodeResultType,
-  type ModuleDispatchProps
+  DispatchNodeResultType,
+  ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { MCPClient } from '../../../app/mcp';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type RunToolProps = ModuleDispatchProps<{
   toolData: {
@@ -15,7 +15,7 @@ type RunToolProps = ModuleDispatchProps<{
 }>;
 
 type RunToolResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.rawResponse]?: any;
+  [NodeOutputKeyEnum.rawResponse]: any;
 }>;
 
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
@@ -27,26 +27,34 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const { toolData, ...restParams } = params;
   const { name: toolName, url } = toolData;
 
-  const mcpClient = new MCPClient({ url });
+  const client = new Client({
+    name: 'FastGPT-MCP-client',
+    version: '1.0.0'
+  });
 
-  try {
-    const result = await mcpClient.toolCall(toolName, restParams);
+  const result = await (async () => {
+    try {
+      const transport = new SSEClientTransport(new URL(url));
+      await client.connect(transport);
 
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        toolRes: result,
-        moduleLogo: avatar
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: result,
-      [NodeOutputKeyEnum.rawResponse]: result
-    };
-  } catch (error) {
-    return {
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        moduleLogo: avatar,
-        error: getErrText(error)
-      },
-      [DispatchNodeResponseKeyEnum.toolResponses]: getErrText(error)
-    };
-  }
+      return await client.callTool({
+        name: toolName,
+        arguments: restParams
+      });
+    } catch (error) {
+      console.error('Error running MCP tool:', error);
+      return Promise.reject(error);
+    } finally {
+      await client.close();
+    }
+  })();
+
+  return {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      toolRes: result,
+      moduleLogo: avatar
+    },
+    [DispatchNodeResponseKeyEnum.toolResponses]: result,
+    [NodeOutputKeyEnum.rawResponse]: result
+  };
 };

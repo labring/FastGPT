@@ -1,5 +1,5 @@
 import { findAIModel } from '../../../core/ai/model';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 
 export const formatModelChars2Points = ({
   model,
@@ -22,7 +22,7 @@ export const formatModelChars2Points = ({
     };
   }
 
-  const isIOPriceType = typeof modelData.inputPrice === 'number' && modelData.inputPrice > 0;
+  const isIOPriceType = typeof modelData.inputPrice === 'number';
 
   const totalPoints = isIOPriceType
     ? (modelData.inputPrice || 0) * (inputTokens / multiple) +

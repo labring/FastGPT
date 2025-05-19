@@ -1,4 +1,4 @@
-import type { ButtonProps } from '@chakra-ui/react';
+import { ButtonProps } from '@chakra-ui/react';
 
 type ListItemType = {
   alias?: string;

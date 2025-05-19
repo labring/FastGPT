@@ -1,7 +1,7 @@
 import type { LLMModelItemType, EmbeddingModelItemType } from '../../core/ai/model.d';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
-import type {
+import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
   DatasetCollectionTypeEnum,
@@ -10,12 +10,12 @@ import type {
   SearchScoreTypeEnum,
   TrainingModeEnum
 } from './constants';
-import type { DatasetPermission } from '../../support/permission/dataset/controller';
+import { DatasetPermission } from '../../support/permission/dataset/controller';
 import { Permission } from '../../support/permission/controller';
-import type { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
-import type { SourceMemberType } from 'support/user/type';
-import type { DatasetDataIndexTypeEnum } from './data/constants';
-import type { ChunkSettingModeEnum } from './constants';
+import { APIFileServer, FeishuServer, YuqueServer } from './apiDataset';
+import { SourceMemberType } from 'support/user/type';
+import { DatasetDataIndexTypeEnum } from './data/constants';
+import { ChunkSettingModeEnum } from './constants';
 
 export type ChunkSettingsType = {
   trainingType: DatasetCollectionDataProcessModeEnum;
@@ -147,6 +147,7 @@ export type DatasetDataSchemaType = {
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
   rebuilding?: boolean;
+  imageFileId?: string;
 };
 
 export type DatasetDataTextSchemaType = {
@@ -251,7 +252,7 @@ export type DatasetDataItemType = {
   chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
-  // permission: DatasetPermission;
+  imageFileId?: string;
 };
 
 /* --------------- file ---------------------- */

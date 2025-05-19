@@ -1,11 +1,11 @@
-import type { TmpDataEnum } from '@fastgpt/global/support/tmpData/constant';
 import {
+  TmpDataEnum,
   TmpDataExpireTime,
-  type TmpDataMetadata,
-  type TmpDataType
+  TmpDataMetadata,
+  TmpDataType
 } from '@fastgpt/global/support/tmpData/constant';
 import { MongoTmpData } from './schema';
-import { type TmpDataSchema } from '@fastgpt/global/support/tmpData/type';
+import { TmpDataSchema } from '@fastgpt/global/support/tmpData/type';
 import { addMilliseconds } from 'date-fns';
 
 function getDataId<T extends TmpDataEnum>(type: T, metadata: TmpDataMetadata<T>) {

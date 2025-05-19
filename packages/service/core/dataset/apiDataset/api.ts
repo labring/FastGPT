@@ -2,15 +2,13 @@ import type {
   APIFileListResponse,
   ApiFileReadContentResponse,
   APIFileReadResponse,
-  ApiDatasetDetailResponse,
-  APIFileServer,
-  APIFileItem
+  APIFileServer
 } from '@fastgpt/global/core/dataset/apiDataset';
-import axios, { type Method } from 'axios';
+import axios, { Method } from 'axios';
 import { addLog } from '../../../common/system/log';
 import { readFileRawTextByUrl } from '../read';
-import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 
 type ResponseDataType = {
   success: boolean;
@@ -91,7 +89,7 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
       `/v1/file/list`,
       {
         searchKey,
-        parentId: parentId || apiServer.basePath
+        parentId
       },
       'POST'
     );
@@ -166,34 +164,9 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
     return url;
   };
 
-  const getFileDetail = async ({
-    apiFileId
-  }: {
-    apiFileId: string;
-  }): Promise<ApiDatasetDetailResponse> => {
-    const fileData = await request<ApiDatasetDetailResponse>(
-      `/v1/file/detail`,
-      {
-        id: apiFileId
-      },
-      'GET'
-    );
-
-    if (fileData) {
-      return {
-        id: fileData.id,
-        name: fileData.name,
-        parentId: fileData.parentId === null ? '' : fileData.parentId
-      };
-    }
-
-    return Promise.reject('File not found');
-  };
-
   return {
     getFileContent,
     listFiles,
-    getFilePreviewUrl,
-    getFileDetail
+    getFilePreviewUrl
   };
 };

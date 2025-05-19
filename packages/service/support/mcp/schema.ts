@@ -3,7 +3,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { Schema, getMongoModel } from '../../common/mongo';
-import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
+import { McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppCollectionName } from '../../core/app/schema';
 
@@ -38,14 +38,11 @@ const McpKeySchema = new Schema({
           ref: AppCollectionName,
           required: true
         },
-        appName: String,
         toolName: {
-          type: String,
-          required: true
+          type: String
         },
         description: {
-          type: String,
-          required: true
+          type: String
         }
       }
     ],

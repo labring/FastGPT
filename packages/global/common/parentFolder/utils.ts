@@ -1,4 +1,4 @@
-import { type ParentIdType } from './type';
+import { ParentIdType } from './type';
 
 export const parseParentIdInMongo = (parentId: ParentIdType) => {
   if (parentId === undefined) return {};

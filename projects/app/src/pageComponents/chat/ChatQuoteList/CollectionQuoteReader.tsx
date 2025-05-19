@@ -1,5 +1,5 @@
 import { Box, Flex, HStack } from '@chakra-ui/react';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -14,13 +14,13 @@ import { formatScore } from '@/components/core/dataset/QuoteItem';
 import NavButton from './NavButton';
 import { useLinkedScroll } from '@fastgpt/web/hooks/useLinkedScroll';
 import CollectionQuoteItem from './CollectionQuoteItem';
-import { type GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
+import { GetCollectionQuoteDataProps } from '@/web/core/chat/context/chatItemContext';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getCollectionQuote } from '@/web/core/chat/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
-import { type QuoteDataItemType } from '@/service/core/chat/constants';
+import { QuoteDataItemType } from '@/service/core/chat/constants';
 
 const CollectionReader = ({
   rawSearch,
@@ -35,7 +35,7 @@ const CollectionReader = ({
   const router = useRouter();
   const { userInfo } = useUserStore();
 
-  const { collectionId, datasetId, chatItemDataId, sourceId, sourceName, quoteId } = metadata;
+  const { collectionId, datasetId, chatItemDataId, sourceId, sourceName } = metadata;
   const [quoteIndex, setQuoteIndex] = useState(0);
 
   // Get dataset permission
@@ -45,19 +45,11 @@ const CollectionReader = ({
   });
 
   const filterResults = useMemo(() => {
-    const res = rawSearch
+    setQuoteIndex(0);
+    return rawSearch
       .filter((item) => item.collectionId === collectionId)
       .sort((a, b) => (a.chunkIndex || 0) - (b.chunkIndex || 0));
-
-    if (quoteId) {
-      setQuoteIndex(res.findIndex((item) => item.id === quoteId));
-    } else {
-      setQuoteIndex(0);
-    }
-
-    return res;
-  }, [collectionId, quoteId, rawSearch]);
-
+  }, [collectionId, rawSearch]);
   const currentQuoteItem = useMemo(() => {
     const item = filterResults[quoteIndex];
     if (item) {
@@ -165,7 +157,7 @@ const CollectionReader = ({
                   }
                 })}
             >
-              {sourceName || t('common:unknow_source')}
+              {sourceName || t('common:common.UnKnow Source')}
             </Box>
             <Box ml={3}>
               <DownloadButton

@@ -1,20 +1,20 @@
 import path from 'path';
 import * as fs from 'fs';
-import { type SystemModelItemType } from '../type';
+import { SystemModelItemType } from '../type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import { MongoSystemModel } from './schema';
 import {
-  type LLMModelItemType,
-  type EmbeddingModelItemType,
-  type TTSModelType,
-  type STTModelType,
-  type RerankModelItemType
+  LLMModelItemType,
+  EmbeddingModelItemType,
+  TTSModelType,
+  STTModelType,
+  RerankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 import { debounce } from 'lodash';
 import {
   getModelProvider,
-  type ModelProviderIdType,
-  type ModelProviderType
+  ModelProviderIdType,
+  ModelProviderType
 } from '@fastgpt/global/core/ai/provider';
 import { findModelFromAlldata } from '../model';
 import {
@@ -23,23 +23,23 @@ import {
 } from '../../../common/system/config/controller';
 import { delay } from '@fastgpt/global/common/system/utils';
 
-const getModelConfigBaseUrl = () => {
-  const currentFileUrl = new URL(import.meta.url);
-  const filePath = decodeURIComponent(
-    process.platform === 'win32'
-      ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
-      : currentFileUrl.pathname
-  );
-  const modelsPath = path.join(path.dirname(filePath), 'provider');
-  return modelsPath;
-};
-
 /* 
   TODO: 分优先级读取：
   1. 有外部挂载目录，则读取外部的
   2. 没有外部挂载目录，则读取本地的。然后试图拉取云端的进行覆盖。
 */
 export const loadSystemModels = async (init = false) => {
+  const getProviderList = () => {
+    const currentFileUrl = new URL(import.meta.url);
+    const filePath = decodeURIComponent(
+      process.platform === 'win32'
+        ? currentFileUrl.pathname.substring(1) // Remove leading slash on Windows
+        : currentFileUrl.pathname
+    );
+    const modelsPath = path.join(path.dirname(filePath), 'provider');
+
+    return fs.readdirSync(modelsPath) as string[];
+  };
   const pushModel = (model: SystemModelItemType) => {
     global.systemModelList.push(model);
 
@@ -100,21 +100,14 @@ export const loadSystemModels = async (init = false) => {
 
   try {
     const dbModels = await MongoSystemModel.find({}).lean();
+    const providerList = getProviderList();
 
-    // Load system model from local
-    const modelsPath = getModelConfigBaseUrl();
-    const providerList = fs.readdirSync(modelsPath) as string[];
+    // System model
     await Promise.all(
       providerList.map(async (name) => {
         const fileContent = (await import(`./provider/${name}`))?.default as {
           provider: ModelProviderIdType;
           list: SystemModelItemType[];
-        };
-        const mergeObject = (obj1: any, obj2: any) => {
-          if (!obj1 && !obj2) return undefined;
-          const formatObj1 = typeof obj1 === 'object' ? obj1 : {};
-          const formatObj2 = typeof obj2 === 'object' ? obj2 : {};
-          return { ...formatObj1, ...formatObj2 };
         };
 
         fileContent.list.forEach((fileModel) => {
@@ -123,10 +116,6 @@ export const loadSystemModels = async (init = false) => {
           const modelData: any = {
             ...fileModel,
             ...dbModel?.metadata,
-            // @ts-ignore
-            defaultConfig: mergeObject(fileModel.defaultConfig, dbModel?.metadata?.defaultConfig),
-            // @ts-ignore
-            fieldMap: mergeObject(fileModel.fieldMap, dbModel?.metadata?.fieldMap),
             provider: getModelProvider(dbModel?.metadata?.provider || fileContent.provider).id,
             type: dbModel?.metadata?.type || fileModel.type,
             isCustom: false

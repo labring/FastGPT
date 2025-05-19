@@ -17,12 +17,11 @@ import {
   Tr
 } from '@chakra-ui/react';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
-import { type InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
+import { InvoiceSchemaType } from '@fastgpt/global/support/wallet/bill/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-
 const InvoiceTable = () => {
   const { t } = useTranslation();
   const [invoiceDetailData, setInvoiceDetailData] = useState<InvoiceSchemaType | ''>('');

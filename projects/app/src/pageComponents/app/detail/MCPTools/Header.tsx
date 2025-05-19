@@ -8,10 +8,10 @@ import { getAppFolderPath } from '@/web/core/app/api/app';
 import { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type McpToolConfigType } from '@fastgpt/global/core/app/type';
+import { ToolType } from '@fastgpt/global/core/app/type';
 import { postUpdateMCPTools } from '@/web/core/app/api/plugin';
 
-const Header = ({ url, toolList }: { url: string; toolList: McpToolConfigType[] }) => {
+const Header = ({ url, toolList }: { url: string; toolList: ToolType[] }) => {
   const { t } = useTranslation();
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const router = useRouter();
@@ -44,7 +44,7 @@ const Header = ({ url, toolList }: { url: string; toolList: McpToolConfigType[] 
       return await postUpdateMCPTools({ appId, url, toolList });
     },
     {
-      successToast: t('common:update_success')
+      successToast: t('common:common.Update Success')
     }
   );
 
@@ -71,7 +71,7 @@ const Header = ({ url, toolList }: { url: string; toolList: McpToolConfigType[] 
           </Box>
         )} */}
         <Button size={'sm'} isLoading={isSavingMCPTools} onClick={() => saveMCPTools()}>
-          {t('common:Save')}
+          {t('common:common.Save')}
         </Button>
       </Flex>
     </Box>

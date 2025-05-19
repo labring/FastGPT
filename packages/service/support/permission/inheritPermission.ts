@@ -1,11 +1,11 @@
-import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
+import { MongoResourcePermission } from './schema';
+import type { ClientSession, Model } from 'mongoose';
 import type { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import type { ClientSession, Model } from 'mongoose';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getResourceClbsAndGroups } from './controller';
-import { MongoResourcePermission } from './schema';
+import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export type SyncChildrenPermissionResourceType = {
   _id: string;
@@ -193,7 +193,6 @@ export async function syncCollaborators({
       resourceType: resourceType,
       tmbId: item.tmbId,
       groupId: item.groupId,
-      orgId: item.orgId,
       permission: item.permission
     })),
     {

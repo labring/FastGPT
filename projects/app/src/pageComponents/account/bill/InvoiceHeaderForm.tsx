@@ -1,20 +1,11 @@
 import Divider from '@/pageComponents/app/detail/WorkflowComponents/Flow/components/Divider';
 import { getTeamInvoiceHeader, updateTeamInvoiceHeader } from '@/web/support/user/team/api';
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Input,
-  type InputProps,
-  Radio,
-  RadioGroup
-} from '@chakra-ui/react';
-import { type TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
+import { Box, Button, Flex, HStack, Input, InputProps, Radio, RadioGroup } from '@chakra-ui/react';
+import { TeamInvoiceHeaderType } from '@fastgpt/global/support/user/team/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { type UseFormReturn, useForm } from 'react-hook-form';
+import { UseFormReturn, useForm } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const InvoiceHeaderSingleForm = ({
@@ -230,7 +221,7 @@ const InvoiceHeaderForm = () => {
 
   return (
     <>
-      <MyBox isLoading={isLoading} pt={'1rem'}>
+      <MyBox isLoading={isLoading} pt={['1rem', '3.5rem']}>
         <Flex w={'100%'} overflow={'auto'} justify={'center'} flexDir={'column'} align={'center'}>
           <InvoiceHeaderSingleForm inputForm={inputForm} />
           <Flex w={'100%'} justify={'center'} mt={'3rem'}>

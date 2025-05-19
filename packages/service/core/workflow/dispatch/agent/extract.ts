@@ -9,25 +9,28 @@ import {
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { createChatCompletion } from '../../../ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
-import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeOutputKeyEnum, toolValueTypeList } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeInputKeyEnum,
+  NodeOutputKeyEnum,
+  toolValueTypeList
+} from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
-import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { getLLMModel } from '../../../ai/model';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import json5 from 'json5';
 import {
-  type ChatCompletionMessageParam,
-  type ChatCompletionTool,
-  type UnStreamChatType
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam,
+  ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '../../../ai/utils';
+import { llmCompletionsBodyFormat } from '../../../ai/utils';
 import { ModelTypeEnum } from '../../../../../global/core/ai/model';
 import {
   getExtractJsonPrompt,
@@ -73,6 +76,13 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         extractModel
       });
     }
+    if (extractModel.functionCall) {
+      return functionCall({
+        ...props,
+        histories: chatHistories,
+        extractModel
+      });
+    }
     return completions({
       ...props,
       histories: chatHistories,
@@ -93,7 +103,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 
   // auto fill required fields
   extractKeys.forEach((item) => {
-    if (item.required && arg[item.key] === undefined) {
+    if (item.required && !arg[item.key]) {
       arg[item.key] = item.defaultValue || '';
     }
   });
@@ -226,7 +236,6 @@ const toolChoice = async (props: ActionProps) => {
   const { response } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
-        stream: true,
         model: extractModel.model,
         temperature: 0.01,
         messages: filterMessages,
@@ -237,14 +246,15 @@ const toolChoice = async (props: ActionProps) => {
     ),
     userKey: externalProvider.openaiAccount
   });
-  const { toolCalls, usage } = await formatLLMResponse(response);
 
   const arg: Record<string, any> = (() => {
     try {
-      return json5.parse(toolCalls?.[0]?.function?.arguments || '');
+      return json5.parse(
+        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
+      );
     } catch (error) {
       console.log(agentFunction.parameters);
-      console.log(toolCalls?.[0]?.function);
+      console.log(response.choices?.[0]?.message?.tool_calls?.[0]?.function);
       console.log('Your model may not support tool_call', error);
       return {};
     }
@@ -253,17 +263,70 @@ const toolChoice = async (props: ActionProps) => {
   const AIMessages: ChatCompletionMessageParam[] = [
     {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      tool_calls: toolCalls
+      tool_calls: response.choices?.[0]?.message?.tool_calls
     }
   ];
 
-  const inputTokens = usage?.prompt_tokens || (await countGptMessagesTokens(filterMessages, tools));
-  const outputTokens = usage?.completion_tokens || (await countGptMessagesTokens(AIMessages));
+  const inputTokens = await countGptMessagesTokens(filterMessages, tools);
+  const outputTokens = await countGptMessagesTokens(AIMessages);
   return {
     inputTokens,
     outputTokens,
     arg
   };
+};
+
+const functionCall = async (props: ActionProps) => {
+  const { externalProvider, extractModel } = props;
+
+  const { agentFunction, filterMessages } = await getFunctionCallSchema(props);
+  const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
+
+  const { response } = await createChatCompletion({
+    body: llmCompletionsBodyFormat(
+      {
+        model: extractModel.model,
+        temperature: 0.01,
+        messages: filterMessages,
+        function_call: {
+          name: agentFunName
+        },
+        functions
+      },
+      extractModel
+    ),
+    userKey: externalProvider.openaiAccount
+  });
+
+  try {
+    const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
+
+    const AIMessages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        function_call: response.choices?.[0]?.message?.function_call
+      }
+    ];
+
+    const inputTokens = await countGptMessagesTokens(filterMessages, undefined, functions);
+    const outputTokens = await countGptMessagesTokens(AIMessages);
+
+    return {
+      arg,
+      inputTokens,
+      outputTokens
+    };
+  } catch (error) {
+    console.log(response.choices?.[0]?.message);
+
+    console.log('Your model may not support toll_call', error);
+
+    return {
+      arg: {},
+      inputTokens: 0,
+      outputTokens: 0
+    };
+  }
 };
 
 const completions = async ({
@@ -310,21 +373,19 @@ Human: ${content}`
     useVision: false
   });
 
-  const { response } = await createChatCompletion({
+  const { response: data } = await createChatCompletion({
     body: llmCompletionsBodyFormat(
       {
         model: extractModel.model,
         temperature: 0.01,
         messages: requestMessages,
-        stream: true
+        stream: false
       },
       extractModel
     ),
     userKey: externalProvider.openaiAccount
   });
-  const { text: answer, usage } = await formatLLMResponse(response);
-  const inputTokens = usage?.prompt_tokens || (await countMessagesTokens(messages));
-  const outputTokens = usage?.completion_tokens || (await countPromptTokens(answer));
+  const answer = data.choices?.[0].message?.content || '';
 
   // parse response
   const jsonStr = sliceJsonStr(answer);
@@ -332,8 +393,8 @@ Human: ${content}`
   if (!jsonStr) {
     return {
       rawResponse: answer,
-      inputTokens,
-      outputTokens,
+      inputTokens: await countMessagesTokens(messages),
+      outputTokens: await countPromptTokens(answer),
       arg: {}
     };
   }
@@ -341,8 +402,8 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      inputTokens,
-      outputTokens,
+      inputTokens: await countMessagesTokens(messages),
+      outputTokens: await countPromptTokens(answer),
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
@@ -350,8 +411,8 @@ Human: ${content}`
     console.log(error);
     return {
       rawResponse: answer,
-      inputTokens,
-      outputTokens,
+      inputTokens: await countMessagesTokens(messages),
+      outputTokens: await countPromptTokens(answer),
       arg: {}
     };
   }

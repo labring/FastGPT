@@ -1,6 +1,5 @@
 import { addLog } from '../../common/system/log';
-import type { Model } from 'mongoose';
-import mongoose, { Mongoose } from 'mongoose';
+import mongoose, { Model, Mongoose } from 'mongoose';
 
 export default mongoose;
 export * from 'mongoose';

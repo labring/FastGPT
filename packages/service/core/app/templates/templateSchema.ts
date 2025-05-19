@@ -1,4 +1,4 @@
-import { type AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
+import { AppTemplateSchemaType } from '@fastgpt/global/core/app/type';
 import { connectionMongo, getMongoModel } from '../../../common/mongo/index';
 const { Schema } = connectionMongo;
 

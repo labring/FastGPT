@@ -1,5 +1,5 @@
-import type { UsageSourceEnum } from './constants';
-import type { UsageListItemCountType, UsageListItemType } from './type';
+import { UsageSourceEnum } from './constants';
+import { UsageListItemCountType, UsageListItemType } from './type';
 
 export type CreateTrainingUsageProps = {
   name: string;
@@ -7,8 +7,8 @@ export type CreateTrainingUsageProps = {
 };
 
 export type GetUsageProps = {
-  dateStart: string;
-  dateEnd: string;
+  dateStart: Date;
+  dateEnd: Date;
   sources?: UsageSourceEnum[];
   teamMemberIds?: string[];
   projectName?: string;

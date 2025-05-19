@@ -1,5 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import type {
+import {
   DatasetCollectionDataProcessModeEnum,
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
@@ -8,7 +8,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 type getTrainingDetailParams = {
   collectionId: string;
@@ -31,7 +31,8 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   qa: 0,
   chunk: 0,
   image: 0,
-  auto: 0
+  auto: 0,
+  imageParse: 0
 };
 
 async function handler(

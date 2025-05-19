@@ -16,6 +16,7 @@ import {
   getLLMDefaultChunkSize,
   getLLMMaxChunkSize
 } from '../../../../global/core/dataset/training/utils';
+import { MongoDatasetData } from '../data/schema';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -111,6 +112,37 @@ export async function pushDataListToTrainingQueue({
         model: vllmModelData.model,
         weight: 0
       };
+    }
+
+    // 添加新的模式处理
+    // 在pushDataListToTrainingQueue中添加
+    if (mode === TrainingModeEnum.imageParse) {
+      // 创建训练记录
+      await MongoDatasetTraining.create({
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        mode: TrainingModeEnum.imageParse,
+        status: 'completed',
+        result: { message: '图片处理成功' },
+        createTime: new Date(),
+        updateTime: new Date()
+      });
+
+      // 同时创建数据记录
+      await MongoDatasetData.create({
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q: '图片问题',
+        a: '图片内容',
+        indexes: [],
+        createTime: new Date()
+      });
+
+      return { insertLen: 1, message: '处理完成' };
     }
 
     return Promise.reject(`Training mode "${mode}" is inValid`);

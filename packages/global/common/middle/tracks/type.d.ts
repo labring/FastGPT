@@ -1,4 +1,4 @@
-import type { TrackEnum } from './constants';
+import { TrackEnum } from './constants';
 import { OAuthEnum } from '../../../support/user/constant';
 import { AppTypeEnum } from '../../../core/app/constants';
 

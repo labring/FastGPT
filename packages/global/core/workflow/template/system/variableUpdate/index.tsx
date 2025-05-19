@@ -1,5 +1,5 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
-import { type FlowNodeTemplateType } from '../../../type/node.d';
+import { FlowNodeTemplateType } from '../../../type/node.d';
 import {
   FlowNodeTemplateTypeEnum,
   NodeInputKeyEnum,
@@ -19,7 +19,8 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
   intro: i18nT('workflow:update_specified_node_output_or_global_variable'),
   showStatus: false,
   isTool: true,
-  courseUrl: '/docs/guide/dashboard/workflow/variable_update/',
+  version: '481',
+  courseUrl: '/docs/guide/workbench/workflow/variable_update/',
   inputs: [
     {
       key: NodeInputKeyEnum.updateList,

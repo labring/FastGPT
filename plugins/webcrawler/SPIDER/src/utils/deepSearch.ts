@@ -1,4 +1,4 @@
-import type { Cluster } from 'puppeteer-cluster';
+import { Cluster } from 'puppeteer-cluster';
 import * as cheerio from 'cheerio';
 import UserAgent from 'user-agents';
 import { setupPage } from './setupPage';

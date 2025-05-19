@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactFlow, { type NodeProps, SelectionMode } from 'reactflow';
+import ReactFlow, { NodeProps, SelectionMode } from 'reactflow';
 import { Box, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -10,7 +10,7 @@ import ButtonEdge from './components/ButtonEdge';
 import NodeTemplatesModal from './NodeTemplatesModal';
 
 import 'reactflow/dist/style.css';
-import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
+import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { connectionLineStyle, defaultEdgeOptions, maxZoom, minZoom } from '../constants';
 import { useContextSelector } from 'use-context-selector';
 import { useWorkflow } from './hooks/useWorkflow';
@@ -73,7 +73,6 @@ const Workflow = () => {
     WorkflowEventContext,
     (v) => v.workflowControlMode
   );
-  const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
 
   const {
     handleNodesChange,
@@ -164,7 +163,7 @@ const Workflow = () => {
             : {})}
           onNodeDragStop={onNodeDragStop}
         >
-          {!!menu && <ContextMenu />}
+          <ContextMenu />
           <FlowController />
           <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
         </ReactFlow>

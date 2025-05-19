@@ -1,4 +1,4 @@
-import { type PermissionListType, type PermissionValueType } from './type';
+import { PermissionListType, PermissionValueType } from './type';
 import { PermissionList, NullPermission, OwnerPermissionVal } from './constant';
 
 export type PerConstructPros = {

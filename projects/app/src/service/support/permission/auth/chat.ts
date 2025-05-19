@@ -1,10 +1,6 @@
-import {
-  type AIChatItemType,
-  type ChatHistoryItemResType,
-  type ChatSchema
-} from '@fastgpt/global/core/chat/type';
+import { AIChatItemType, ChatHistoryItemResType, ChatSchema } from '@fastgpt/global/core/chat/type';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { type AuthModeType } from '@fastgpt/service/support/permission/type';
+import { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';
@@ -240,7 +236,7 @@ export const authCollectionInChat = async ({
         .flat()
     );
 
-    if (collectionIds.every((id) => quoteListSet.has(String(id)))) {
+    if (collectionIds.every((id) => quoteListSet.has(id))) {
       return {
         chatItem
       };
@@ -248,5 +244,3 @@ export const authCollectionInChat = async ({
   } catch (error) {}
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
 };
-
-export { defaultResponseShow };

@@ -1,4 +1,4 @@
-import type { StandardSubLevelEnum, SubModeEnum } from './constants';
+import { StandardSubLevelEnum, SubModeEnum } from './constants';
 import { TeamSubSchema } from './type.d';
 
 export type StandardSubPlanParams = {

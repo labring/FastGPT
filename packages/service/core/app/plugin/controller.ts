@@ -1,5 +1,5 @@
-import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node.d';
+import { FlowNodeTypeEnum, defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appData2FlowNodeIO,
   pluginData2FlowNodeIO,
@@ -12,17 +12,12 @@ import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { cloneDeep } from 'lodash';
 import { MongoApp } from '../schema';
-import { type SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
+import { SystemPluginTemplateItemType } from '@fastgpt/global/core/workflow/type';
 import { getSystemPluginTemplates } from '../../../../plugins/register';
-import {
-  checkIsLatestVersion,
-  getAppLatestVersion,
-  getAppVersionById
-} from '../version/controller';
-import { type PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
+import { getAppLatestVersion, getAppVersionById } from '../version/controller';
+import { PluginRuntimeType } from '@fastgpt/global/core/plugin/type';
 import { MongoSystemPlugin } from './systemPluginSchema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
-import { Types } from 'mongoose';
 
 /* 
   plugin id rule:
@@ -95,28 +90,20 @@ const getSystemPluginTemplateById = async (
 
 /* Format plugin to workflow preview node data */
 export async function getChildAppPreviewNode({
-  appId,
-  versionId
+  id
 }: {
-  appId: string;
-  versionId?: string;
+  id: string;
 }): Promise<FlowNodeTemplateType> {
   const app: ChildAppType = await (async () => {
-    const { source, pluginId } = await splitCombinePluginId(appId);
+    const { source, pluginId } = await splitCombinePluginId(id);
 
     if (source === PluginSourceEnum.personal) {
-      const item = await MongoApp.findById(appId).lean();
+      const item = await MongoApp.findById(id).lean();
       if (!item) return Promise.reject('plugin not found');
 
-      const version = await getAppVersionById({ appId, versionId, app: item });
+      const version = await getAppLatestVersion(id, item);
 
-      const isLatest =
-        version.versionId && Types.ObjectId.isValid(version.versionId)
-          ? await checkIsLatestVersion({
-              appId,
-              versionId: version.versionId
-            })
-          : true;
+      if (!version.versionId) return Promise.reject('App version not found');
 
       return {
         id: String(item._id),
@@ -131,11 +118,7 @@ export async function getChildAppPreviewNode({
           chatConfig: version.chatConfig
         },
         templateType: FlowNodeTemplateTypeEnum.teamApp,
-
         version: version.versionId,
-        versionLabel: version?.versionName || '',
-        isLatestVersion: isLatest,
-
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,
@@ -192,11 +175,7 @@ export async function getChildAppPreviewNode({
     userGuide: app.userGuide,
     showStatus: app.showStatus,
     isTool: true,
-
     version: app.version,
-    versionLabel: app.versionLabel,
-    isLatestVersion: app.isLatestVersion,
-
     sourceHandle: isToolSet
       ? getHandleConfig(false, false, false, false)
       : getHandleConfig(true, true, true, true),
@@ -245,7 +224,7 @@ export async function getChildAppRuntimeById(
         templateType: FlowNodeTemplateTypeEnum.teamApp,
 
         // 用不到
-        version: item?.pluginData?.nodeVersion,
+        version: item?.pluginData?.nodeVersion || defaultNodeVersion,
         originCost: 0,
         currentCost: 0,
         hasTokenFee: false,

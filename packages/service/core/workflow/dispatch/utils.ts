@@ -1,17 +1,20 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
-  type RuntimeEdgeItemType,
-  type RuntimeNodeItemType,
-  type SystemVariablesType
+  WorkflowIOValueTypeEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  RuntimeEdgeItemType,
+  RuntimeNodeItemType,
+  SystemVariablesType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { responseWrite } from '../../../common/response';
-import { type NextApiResponse } from 'next';
+import { NextApiResponse } from 'next';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/mcpTools/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
@@ -31,22 +34,31 @@ export const getWorkflowResponseWrite = ({
   return ({
     write,
     event,
-    data
+    data,
+    stream
   }: {
     write?: (text: string) => void;
     event: SseResponseEventEnum;
     data: Record<string, any>;
+    stream?: boolean; // Focus set stream response
   }) => {
-    const useStreamResponse = streamResponse;
+    const useStreamResponse = stream ?? streamResponse;
 
     if (!res || res.closed || !useStreamResponse) return;
 
     // Forbid show detail
-    const notDetailEvent: Record<string, 1> = {
-      [SseResponseEventEnum.answer]: 1,
-      [SseResponseEventEnum.fastAnswer]: 1
+    const detailEvent: Record<string, 1> = {
+      [SseResponseEventEnum.error]: 1,
+      [SseResponseEventEnum.flowNodeStatus]: 1,
+      [SseResponseEventEnum.flowResponses]: 1,
+      [SseResponseEventEnum.interactive]: 1,
+      [SseResponseEventEnum.toolCall]: 1,
+      [SseResponseEventEnum.toolParams]: 1,
+      [SseResponseEventEnum.toolResponse]: 1,
+      [SseResponseEventEnum.updateVariables]: 1,
+      [SseResponseEventEnum.flowNodeResponse]: 1
     };
-    if (!detail && !notDetailEvent[event]) return;
+    if (!detail && detailEvent[event]) return;
 
     // Forbid show running status
     const statusEvent: Record<string, 1> = {

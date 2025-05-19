@@ -1,33 +1,33 @@
-import Path from '@/components/common/folder/Path';
-import { getTeamMembers } from '@/web/support/user/team/api';
-import { getGroupList } from '@/web/support/user/team/group/api';
-import useOrg from '@/web/support/user/team/org/hooks/useOrg';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { Box, Button, Flex, Grid, HStack, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
-import {
-  DEFAULT_ORG_AVATAR,
-  DEFAULT_TEAM_AVATAR,
-  DEFAULT_USER_AVATAR
-} from '@fastgpt/global/common/system/constants';
-import { type UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
-import { type MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import { type OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
-import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { useTranslation } from 'next-i18next';
-import { type ValueOf } from 'next/dist/shared/lib/constants';
 import { useMemo, useRef, useState } from 'react';
+import PermissionSelect from './PermissionSelect';
+import {
+  DEFAULT_ORG_AVATAR,
+  DEFAULT_TEAM_AVATAR,
+  DEFAULT_USER_AVATAR
+} from '@fastgpt/global/common/system/constants';
+import Path from '@/components/common/folder/Path';
+import { OrgListItemType } from '@fastgpt/global/support/user/team/org/type';
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from './context';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { getGroupList } from '@/web/support/user/team/group/api';
+import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import MemberItemCard from './MemberItemCard';
-import PermissionSelect from './PermissionSelect';
+import useOrg from '@/web/support/user/team/org/hooks/useOrg';
+import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import { MemberGroupListItemType } from '@fastgpt/global/support/permission/memberGroup/type';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
+import { ValueOf } from 'next/dist/shared/lib/constants';
 
 const HoverBoxStyle = {
   bgColor: 'myGray.50',
@@ -122,7 +122,7 @@ function MemberModal({
         permission: addOnly ? undefined : selectedPermission!
       } as UpdateClbPermissionProps<ValueOf<typeof addOnly>>),
     {
-      successToast: t('common:add_success'),
+      successToast: t('common:common.Add Success'),
       onSuccess() {
         onClose();
       }
@@ -255,7 +255,7 @@ function MemberModal({
                         onPathClick(parentId);
                       }
                     }}
-                    rootName={t('common:Team')}
+                    rootName={t('common:common.Team')}
                   />
                 </Box>
               )}
@@ -348,9 +348,6 @@ function MemberModal({
                         const isChecked = !!selectedMemberList.find(
                           (v) => v.tmbId === member.tmbId
                         );
-                        const collaborator = collaboratorList?.find(
-                          (v) => v.tmbId === member.tmbId
-                        );
                         return (
                           <MemberItemCard
                             avatar={member.avatar}
@@ -365,7 +362,7 @@ function MemberModal({
                               });
                             }}
                             isChecked={isChecked}
-                            permission={collaborator?.permission.value}
+                            permission={member.permission.value}
                             addOnly={addOnly && !!member.permission.value}
                             orgs={member.orgs}
                           />
@@ -452,7 +449,7 @@ function MemberModal({
           </HStack>
         )}
         <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
-          {t('common:Confirm')}
+          {t('common:common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

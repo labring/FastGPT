@@ -11,12 +11,9 @@ import { navbarWidth } from '@/components/Layout';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getTemplateMarketItemList, getTemplateTagList } from '@/web/core/app/api/template';
-import {
-  type AppTemplateSchemaType,
-  type TemplateTypeSchemaType
-} from '@fastgpt/global/core/app/type';
+import { AppTemplateSchemaType, TemplateTypeSchemaType } from '@fastgpt/global/core/app/type';
 import { getPluginGroups } from '@/web/core/app/api/plugin';
-import { type PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
+import { PluginGroupSchemaType } from '@fastgpt/service/core/app/plugin/type';
 
 export enum TabEnum {
   apps = 'apps',
@@ -187,12 +184,16 @@ const DashboardContainer = ({
             : [])
         ]
       },
-      {
-        groupId: TabEnum.mcp_server,
-        groupAvatar: 'key',
-        groupName: t('common:mcp_server'),
-        children: []
-      }
+      ...(feConfigs?.mcpServerProxyEndpoint
+        ? [
+            {
+              groupId: TabEnum.mcp_server,
+              groupAvatar: 'key',
+              groupName: t('common:mcp_server'),
+              children: []
+            }
+          ]
+        : [])
     ];
   }, [currentType, feConfigs.appTemplateCourse, pluginGroups, t, templateList, templateTags]);
 

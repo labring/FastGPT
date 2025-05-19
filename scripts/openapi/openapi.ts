@@ -1,4 +1,4 @@
-import type { ApiType } from './type';
+import { ApiType } from './type';
 
 type OpenAPIParameter = {
   name: string;

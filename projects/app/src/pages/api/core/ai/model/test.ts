@@ -3,11 +3,11 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import {
-  type EmbeddingModelItemType,
-  type LLMModelItemType,
-  type RerankModelItemType,
-  type STTModelType,
-  type TTSModelType
+  EmbeddingModelItemType,
+  LLMModelItemType,
+  RerankModelItemType,
+  STTModelType,
+  TTSModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { createChatCompletion, getAIApi } from '@fastgpt/service/core/ai/config';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -16,7 +16,7 @@ import { reRankRecall } from '@fastgpt/service/core/ai/rerank';
 import { aiTranscriptions } from '@fastgpt/service/core/ai/audio/transcriptions';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import * as fs from 'fs';
-import { llmCompletionsBodyFormat, formatLLMResponse } from '@fastgpt/service/core/ai/utils';
+import { llmCompletionsBodyFormat } from '@fastgpt/service/core/ai/utils';
 
 export type testQuery = { model: string; channelId?: number };
 
@@ -78,8 +78,7 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
     model
   );
 
-  const { response } = await createChatCompletion({
-    modelData: model,
+  const { response, isStreamResponse } = await createChatCompletion({
     body: requestBody,
     options: {
       headers: {
@@ -88,10 +87,23 @@ const testLLMModel = async (model: LLMModelItemType, headers: Record<string, str
       }
     }
   });
-  const { text: answer } = await formatLLMResponse(response);
 
-  if (answer) {
-    return answer;
+  if (isStreamResponse) {
+    for await (const part of response) {
+      const content = part.choices?.[0]?.delta?.content || '';
+      // @ts-ignore
+      const reasoningContent = part.choices?.[0]?.delta?.reasoning_content || '';
+      if (content || reasoningContent) {
+        response?.controller?.abort();
+        return;
+      }
+    }
+  } else {
+    addLog.info(`Model not stream response`);
+    const answer = response.choices?.[0]?.message?.content || '';
+    if (answer) {
+      return answer;
+    }
   }
 
   return Promise.reject('Model response empty');

@@ -18,12 +18,12 @@ export const useConfirm = (props?: {
   const map = useMemo(() => {
     const map = {
       common: {
-        title: t('common:action_confirm'),
+        title: t('common:common.confirm.Common Tip'),
         variant: 'primary',
         iconSrc: 'common/confirm/commonTip'
       },
       delete: {
-        title: t('common:delete_warning'),
+        title: t('common:common.Delete Warning'),
         variant: 'dangerFill',
         iconSrc: 'common/confirm/deleteTip'
       }
@@ -60,8 +60,8 @@ export const useConfirm = (props?: {
 
   const ConfirmModal = useMemoizedFn(
     ({
-      closeText = t('common:Cancel'),
-      confirmText = t('common:Confirm'),
+      closeText = t('common:common.Cancel'),
+      confirmText = t('common:common.Confirm'),
       isLoading,
       bg,
       countDown = 0

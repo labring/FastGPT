@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { type GetChatRecordsProps } from '@/global/core/chat/api';
+import { GetChatRecordsProps } from '@/global/core/chat/api';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -9,13 +9,10 @@ import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import {
-  filterPublicNodeResponseData,
-  removeAIResponseCite
-} from '@fastgpt/global/core/chat/utils';
+import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
-import { type PaginationProps, type PaginationResponse } from '@fastgpt/web/common/fetch/type';
-import { type ChatItemType } from '@fastgpt/global/core/chat/type';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 export type getPaginationRecordsQuery = {};
@@ -55,14 +52,12 @@ async function handler(
   const isPlugin = app.type === AppTypeEnum.plugin;
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
-  const commonField =
-    'dataId obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
   const fieldMap = {
-    [GetChatTypeEnum.normal]: `${commonField} ${
+    [GetChatTypeEnum.normal]: `dataId obj value adminFeedback userBadFeedback userGoodFeedback time hideInUI ${
       DispatchNodeResponseKeyEnum.nodeResponse
     } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
-    [GetChatTypeEnum.outLink]: `${commonField} ${DispatchNodeResponseKeyEnum.nodeResponse}`,
-    [GetChatTypeEnum.team]: `${commonField} ${DispatchNodeResponseKeyEnum.nodeResponse}`
+    [GetChatTypeEnum.outLink]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time hideInUI ${DispatchNodeResponseKeyEnum.nodeResponse}`,
+    [GetChatTypeEnum.team]: `dataId obj value userGoodFeedback userBadFeedback adminFeedback time hideInUI ${DispatchNodeResponseKeyEnum.nodeResponse}`
   };
 
   const { total, histories } = await getChatItems({
@@ -85,13 +80,6 @@ async function handler(
         if (showNodeStatus === false) {
           item.value = item.value.filter((v) => v.type !== ChatItemValueTypeEnum.tool);
         }
-      }
-    });
-  }
-  if (!responseDetail) {
-    histories.forEach((item) => {
-      if (item.obj === ChatRoleEnum.AI) {
-        item.value = removeAIResponseCite(item.value, false);
       }
     });
   }

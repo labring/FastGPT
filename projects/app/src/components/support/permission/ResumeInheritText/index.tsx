@@ -1,8 +1,8 @@
-import { Box, type BoxProps } from '@chakra-ui/react';
+import { useI18n } from '@/web/context/I18n';
+import { Box, BoxProps } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import React from 'react';
-import { useTranslation } from 'next-i18next';
 
 const ResumeInherit = ({
   onResume,
@@ -10,13 +10,13 @@ const ResumeInherit = ({
 }: BoxProps & {
   onResume?: () => Promise<any> | any;
 }) => {
-  const { t } = useTranslation();
+  const { commonT } = useI18n();
   const { toast } = useToast();
   const { ConfirmModal: CommonConfirmModal, openConfirm: openCommonConfirm } = useConfirm({});
 
   return onResume ? (
     <Box display={'inline'} fontSize={'sm'} {...props}>
-      {t('common:permission.No InheritPermission')}
+      {commonT('permission.No InheritPermission')}
       <Box
         display={'inline'}
         textDecoration={'underline'}
@@ -27,16 +27,16 @@ const ResumeInherit = ({
             () =>
               onResume()?.then(() => {
                 toast({
-                  title: t('common:permission.Resume InheritPermission Success'),
+                  title: commonT('permission.Resume InheritPermission Success'),
                   status: 'success'
                 });
               }),
             undefined,
-            t('common:permission.Resume InheritPermission Confirm')
+            commonT('permission.Resume InheritPermission Confirm')
           )();
         }}
       >
-        {t('common:click_to_resume')}
+        {commonT('click_to_resume')}
       </Box>
 
       <CommonConfirmModal />

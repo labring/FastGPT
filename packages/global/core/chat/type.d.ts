@@ -1,23 +1,22 @@
 import { ClassifyQuestionAgentItemType } from '../workflow/template/system/classifyQuestion/type';
-import type { SearchDataResponseItemType } from '../dataset/type';
-import type {
+import { SearchDataResponseItemType } from '../dataset/type';
+import {
   ChatFileTypeEnum,
   ChatItemValueTypeEnum,
   ChatRoleEnum,
   ChatSourceEnum,
   ChatStatusEnum
 } from './constants';
-import type { FlowNodeTypeEnum } from '../workflow/node/constant';
-import type { NodeOutputKeyEnum } from '../workflow/constants';
-import type { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import type { AppSchema, VariableItemType } from '../app/type';
-import { AppChatConfigType } from '../app/type';
+import { FlowNodeTypeEnum } from '../workflow/node/constant';
+import { NodeOutputKeyEnum } from '../workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
+import { AppChatConfigType, AppSchema, VariableItemType } from '../app/type';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import type { DispatchNodeResponseType } from '../workflow/runtime/type.d';
-import type { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
-import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
-import type { FlowNodeInputItemType } from '../workflow/type/io';
+import { DispatchNodeResponseType } from '../workflow/runtime/type.d';
+import { ChatBoxInputType } from '../../../../projects/app/src/components/core/chat/ChatContainer/ChatBox/type';
+import { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { FlowNodeInputItemType } from '../workflow/type/io';
 
 export type ChatSchema = {
   _id: string;
@@ -111,8 +110,6 @@ export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItem
   tmbId: string;
   appId: string;
   time: Date;
-  durationSeconds?: number;
-  errorMsg?: string;
 };
 
 export type AdminFbkType = {
@@ -125,6 +122,7 @@ export type AdminFbkType = {
 
 /* --------- chat item ---------- */
 export type ResponseTagItemType = {
+  totalRunningTime?: number;
   totalQuoteList?: SearchDataResponseItemType[];
   llmModuleAccount?: number;
   historyPreviewLength?: number;
@@ -143,8 +141,6 @@ export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatIt
   ttsBuffer?: Uint8Array;
   responseData?: ChatHistoryItemResType[];
   time?: Date;
-  durationSeconds?: number;
-  errorMsg?: string;
 } & ChatBoxInputType &
   ResponseTagItemType;
 
