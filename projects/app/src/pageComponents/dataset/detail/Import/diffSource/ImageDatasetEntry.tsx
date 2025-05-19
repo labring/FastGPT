@@ -1,6 +1,6 @@
 import React from 'react';
 import { Flex, Box } from '@chakra-ui/react';
-import { ImageDatasetContextProvider } from '../Context';
+import ImageDatasetContextProvider from '../Context';
 import ImageDataset from './ImageDataset';
 
 const ImageDatasetEntry = () => {
