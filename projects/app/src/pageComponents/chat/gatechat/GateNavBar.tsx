@@ -38,7 +38,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo, setUserInfo } = useUserStore();
-  const { copyRightConfig } = useGateStore();
+  const { initCopyRightConfig, copyRightConfig } = useGateStore();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const companyNameRef = useRef<HTMLSpanElement>(null);
   const [companyNameScale, setCompanyNameScale] = useState(1);
@@ -49,6 +49,9 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
   const isChatPage = router.pathname === '/chat/gate';
   const isStorePage = router.pathname === '/chat/gate/store';
 
+  useEffect(() => {
+    initCopyRightConfig();
+  }, [initCopyRightConfig]);
   useEffect(() => {
     if (companyNameRef.current && !isCollapsed) {
       const containerWidth = 130;
