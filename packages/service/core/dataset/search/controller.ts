@@ -544,56 +544,50 @@ export async function searchDatasetData(
       };
     }
 
-    const searchResults = (
-      await Promise.all(
-        datasetIds.map(async (id) => {
-          return MongoDatasetDataText.aggregate(
-            [
-              {
-                $match: {
-                  teamId: new Types.ObjectId(teamId),
-                  datasetId: new Types.ObjectId(id),
-                  $text: { $search: await jiebaSplit({ text: query }) },
-                  ...(filterCollectionIdList
-                    ? {
-                        collectionId: {
-                          $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
-                        }
-                      }
-                    : {}),
-                  ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
-                    ? {
-                        collectionId: {
-                          $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
-                        }
-                      }
-                    : {})
+    const searchResults = (await MongoDatasetDataText.aggregate(
+      [
+        {
+          $match: {
+            teamId: new Types.ObjectId(teamId),
+            $text: { $search: await jiebaSplit({ text: query }) },
+            datasetId: { $in: datasetIds.map((id) => new Types.ObjectId(id)) },
+            ...(filterCollectionIdList
+              ? {
+                  collectionId: {
+                    $in: filterCollectionIdList.map((id) => new Types.ObjectId(id))
+                  }
                 }
-              },
-              {
-                $sort: {
-                  score: { $meta: 'textScore' }
+              : {}),
+            ...(forbidCollectionIdList && forbidCollectionIdList.length > 0
+              ? {
+                  collectionId: {
+                    $nin: forbidCollectionIdList.map((id) => new Types.ObjectId(id))
+                  }
                 }
-              },
-              {
-                $limit: limit
-              },
-              {
-                $project: {
-                  _id: 1,
-                  collectionId: 1,
-                  dataId: 1,
-                  score: { $meta: 'textScore' }
-                }
-              }
-            ],
-            {
-              ...readFromSecondary
-            }
-          );
-        })
-      )
-    ).flat() as (DatasetDataTextSchemaType & { score: number })[];
+              : {})
+          }
+        },
+        {
+          $sort: {
+            score: { $meta: 'textScore' }
+          }
+        },
+        {
+          $limit: limit
+        },
+        {
+          $project: {
+            _id: 1,
+            collectionId: 1,
+            dataId: 1,
+            score: { $meta: 'textScore' }
+          }
+        }
+      ],
+      {
+        ...readFromSecondary
+      }
+    )) as (DatasetDataTextSchemaType & { score: number })[];
 
     // Get data and collections
     const [dataList, collections] = await Promise.all([
