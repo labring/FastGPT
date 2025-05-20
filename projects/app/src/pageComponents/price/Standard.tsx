@@ -74,35 +74,45 @@ const Standard = ({
   return (
     <>
       <Flex flexDirection={'column'} alignItems={'center'} position={'relative'}>
-        <Box>
-          <RowTabs
-            list={[
-              {
-                label: t('common:support.wallet.subscription.mode.Month'),
-                value: SubModeEnum.month
-              },
-              {
-                label: (
-                  <Flex>
+        <Flex>
+          <Box>
+            <Box
+              textAlign={'right'}
+              color="#DC7E03"
+              fontWeight="500"
+              fontStyle="italic"
+              fontFamily={'JiangChengXieHei'}
+              fontSize={'14px'}
+              lineHeight={'20px'}
+              letterSpacing={'0.1px'}
+              textTransform={'lowercase'}
+              mb={2}
+              mr={'-2'}
+            >
+              {t('common:support.wallet.subscription.mode.Ten Year')}
+            </Box>
+            <RowTabs
+              list={[
+                {
+                  label: t('common:support.wallet.subscription.mode.Month'),
+                  value: SubModeEnum.month
+                },
+                {
+                  label: (
                     <Box whiteSpace={'nowrap'}>
                       {t('common:support.wallet.subscription.mode.Year')}
                     </Box>
-                    <Box
-                      whiteSpace={'nowrap'}
-                      ml={1}
-                      color={selectSubMode === SubModeEnum.month ? 'red.600' : 'auto'}
-                    >
-                      ({t('common:support.wallet.subscription.mode.Year sale')})
-                    </Box>
-                  </Flex>
-                ),
-                value: SubModeEnum.year
-              }
-            ]}
-            value={selectSubMode}
-            onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
-          />
-        </Box>
+                  ),
+                  value: SubModeEnum.year
+                }
+              ]}
+              value={selectSubMode}
+              onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
+            />
+          </Box>
+          <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'3px'} />
+        </Flex>
+
         {/* card */}
         <Grid
           mt={[10, '48px']}
