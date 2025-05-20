@@ -221,7 +221,8 @@ const Button = defineStyleConfig({
       boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
         color: 'red.600',
-        borderColor: 'red.300'
+        borderColor: 'red.300',
+        bg: 'red.50'
       },
       _active: {
         color: 'red.600'

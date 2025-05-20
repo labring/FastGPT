@@ -68,7 +68,7 @@ const PopoverConfirm = ({
       onClose={onClose}
       placement={placement}
       offset={offset}
-      closeOnBlur={false}
+      closeOnBlur={true}
       trigger={'click'}
       openDelay={100}
       closeDelay={100}
@@ -84,7 +84,9 @@ const PopoverConfirm = ({
 
         <HStack alignItems={'flex-start'} color={'myGray.700'}>
           <MyIcon name={map.icon as any} w={'1.5rem'} />
-          <Box fontSize={'sm'}>{content}</Box>
+          <Box fontSize={'sm'} whiteSpace={'pre-wrap'}>
+            {content}
+          </Box>
         </HStack>
         <HStack mt={2} justifyContent={'flex-end'}>
           {showCancel && (
@@ -92,7 +94,15 @@ const PopoverConfirm = ({
               {cancelText || t('common:Cancel')}
             </Button>
           )}
-          <Button isLoading={loading} variant={map.variant} size="sm" onClick={onclickConfirm}>
+          <Button
+            isLoading={loading}
+            variant={map.variant}
+            size="sm"
+            onClick={async (e) => {
+              e.stopPropagation();
+              await onclickConfirm();
+            }}
+          >
             {confirmText || t('common:Confirm')}
           </Button>
         </HStack>

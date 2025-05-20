@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useRef } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
