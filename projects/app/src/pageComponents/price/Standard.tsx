@@ -89,7 +89,7 @@ const Standard = ({
               mb={2}
               mr={'-2'}
             >
-              {t('common:support.wallet.subscription.mode.Ten Year')}
+              {t('common:pay_year_tip')}
             </Box>
             <RowTabs
               list={[
@@ -110,7 +110,7 @@ const Standard = ({
               onChange={(e) => setSelectSubMode(e as `${SubModeEnum}`)}
             />
           </Box>
-          <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'3px'} />
+          <MyIcon name={'price/pricearrow'} mt={'10px'} ml={'6px'} />
         </Flex>
 
         {/* card */}

@@ -959,10 +959,16 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getHistories
 {{< markdownify >}}
 
 {{% alert icon=" " context="success" %}}
+目前仅能获取到当前 API key 的创建者的对话。
+
 - appId - 应用 Id
 - offset - 偏移量，即从第几条数据开始取
 - pageSize - 记录数量
 - source - 对话源。source=api，表示获取通过 API 创建的对话（不会获取到页面上的对话记录）
+- startCreateTime - 开始创建时间（可选）
+- endCreateTime - 结束创建时间（可选）
+- startUpdateTime - 开始更新时间（可选）
+- endUpdateTime - 结束更新时间（可选）
 {{% /alert %}}
 
 {{< /markdownify >}}

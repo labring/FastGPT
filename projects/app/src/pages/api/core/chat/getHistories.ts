@@ -20,7 +20,18 @@ async function handler(
   req: ApiRequestProps<getHistoriesBody, getHistoriesQuery>,
   _res: ApiResponseType<any>
 ): Promise<PaginationResponse<getHistoriesResponse>> {
-  const { appId, shareId, outLinkUid, teamId, teamToken, source } = req.body;
+  const {
+    appId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    source,
+    startCreateTime,
+    endCreateTime,
+    startUpdateTime,
+    endUpdateTime
+  } = req.body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   const match = await (async () => {
@@ -49,7 +60,7 @@ async function handler(
       return {
         tmbId,
         appId,
-        source
+        ...(source && { source })
       };
     }
   })();
@@ -61,13 +72,29 @@ async function handler(
     };
   }
 
+  const timeMatch: Record<string, any> = {};
+  if (startCreateTime || endCreateTime) {
+    timeMatch.createTime = {
+      ...(startCreateTime && { $gte: new Date(startCreateTime) }),
+      ...(endCreateTime && { $lte: new Date(endCreateTime) })
+    };
+  }
+  if (startUpdateTime || endUpdateTime) {
+    timeMatch.updateTime = {
+      ...(startUpdateTime && { $gte: new Date(startUpdateTime) }),
+      ...(endUpdateTime && { $lte: new Date(endUpdateTime) })
+    };
+  }
+
+  const mergeMatch = { ...match, ...timeMatch };
+
   const [data, total] = await Promise.all([
-    await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
+    await MongoChat.find(mergeMatch, 'chatId title top customTitle appId updateTime')
       .sort({ top: -1, updateTime: -1 })
       .skip(offset)
       .limit(pageSize)
       .lean(),
-    MongoChat.countDocuments(match)
+    MongoChat.countDocuments(mergeMatch)
   ]);
 
   return {
