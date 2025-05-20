@@ -55,10 +55,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vllmModelList = useMemo(() => getVlmModelList(), [getVlmModelList]);
   const vlmModel = watch('vlmModel');
 
-  const { ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('common:core.dataset.Delete Confirm'),
-    type: 'delete'
-  });
   const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
     title: t('common:action_confirm'),
     content: t('dataset:confirm_to_rebuild_embedding_tip'),
@@ -414,7 +410,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </>
       )}
 
-      <ConfirmDelModal />
       <ConfirmRebuildModal countDown={10} />
       <ConfirmSyncScheduleModal />
       {editedDataset && (

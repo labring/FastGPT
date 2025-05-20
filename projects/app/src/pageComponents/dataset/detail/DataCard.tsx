@@ -7,7 +7,6 @@ import {
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -32,6 +31,7 @@ import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const DataCard = () => {
   const theme = useTheme();
@@ -90,28 +90,22 @@ const DataCard = () => {
 
   const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('common:dataset.Confirm to delete the data'),
-    type: 'delete'
-  });
-  const onDeleteOneData = useMemoizedFn((dataId: string) => {
-    openConfirm(async () => {
-      try {
-        await delOneDatasetDataById(dataId);
-        setDatasetDataList((prev) => {
-          return prev.filter((data) => data._id !== dataId);
-        });
-        toast({
-          title: t('common:delete_success'),
-          status: 'success'
-        });
-      } catch (error) {
-        toast({
-          title: getErrText(error),
-          status: 'error'
-        });
-      }
-    })();
+  const onDeleteOneData = useMemoizedFn(async (dataId: string) => {
+    try {
+      await delOneDatasetDataById(dataId);
+      setDatasetDataList((prev) => {
+        return prev.filter((data) => data._id !== dataId);
+      });
+      toast({
+        title: t('common:delete_success'),
+        status: 'success'
+      });
+    } catch (error) {
+      toast({
+        title: getErrText(error),
+        status: 'error'
+      });
+    }
   });
 
   return (
@@ -333,18 +327,24 @@ const DataCard = () => {
                     {getTextValidLength(item.q + item.a || '')}
                   </Flex>
                   {canWrite && (
-                    <IconButton
-                      display={'flex'}
-                      p={1}
-                      boxShadow={'1'}
-                      icon={<MyIcon name={'common/trash'} w={'14px'} color={'myGray.600'} />}
-                      variant={'whiteDanger'}
-                      size={'xsSquare'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteOneData(item._id);
-                      }}
-                      aria-label={''}
+                    <PopoverConfirm
+                      Trigger={
+                        <IconButton
+                          display={'flex'}
+                          p={1}
+                          boxShadow={'1'}
+                          icon={<MyIcon name={'common/trash'} w={'14px'} />}
+                          variant={'whiteDanger'}
+                          size={'xsSquare'}
+                          aria-label={''}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                      }
+                      content={t('common:dataset.Confirm to delete the data')}
+                      type="delete"
+                      onConfirm={() => onDeleteOneData(item._id)}
                     />
                   )}
                 </Flex>
@@ -386,7 +386,6 @@ const DataCard = () => {
           onClose={() => setErrorModalId('')}
         />
       )}
-      <ConfirmModal />
     </MyBox>
   );
 };

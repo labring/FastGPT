@@ -25,12 +25,11 @@ import EditMcpModal, {
 } from '@/pageComponents/dashboard/mcp/EditModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import dynamic from 'next/dynamic';
 import { type McpKeyType } from '@fastgpt/global/support/mcp/type';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const UsageWay = dynamic(() => import('@/pageComponents/dashboard/mcp/usageWay'), {
   ssr: false
@@ -52,10 +51,6 @@ const McpServer = () => {
   const [editMcp, setEditMcp] = useState<EditMcForm>();
   const [usageWay, setUsageWay] = useState<McpKeyType>();
 
-  const { openConfirm: openDelConfirm, ConfirmModal: DelConfirmModal } = useConfirm({
-    type: 'delete',
-    content: t('dashboard_mcp:delete_mcp_server_confirm_tip')
-  });
   const { runAsync: onDeleteMcpServer } = useRequest2(deleteMcpServer, {
     manual: true,
     onSuccess: () => {
@@ -146,10 +141,19 @@ const McpServer = () => {
                               }
                             />
 
-                            <MyIconButton
-                              icon="delete"
-                              hoverColor={'red.600'}
-                              onClick={() => openDelConfirm(() => onDeleteMcpServer(mcp._id))()}
+                            <PopoverConfirm
+                              Trigger={
+                                <Box>
+                                  <MyIconButton
+                                    icon="delete"
+                                    hoverBg="red.50"
+                                    hoverColor={'red.600'}
+                                  />
+                                </Box>
+                              }
+                              type="delete"
+                              content={t('dashboard_mcp:delete_mcp_server_confirm_tip')}
+                              onConfirm={() => onDeleteMcpServer(mcp._id)}
                             />
                           </HStack>
                         </Td>
@@ -164,7 +168,6 @@ const McpServer = () => {
         )}
       </DashboardContainer>
 
-      <DelConfirmModal />
       {!!usageWay && <UsageWay mcp={usageWay} onClose={() => setUsageWay(undefined)} />}
       {!!editMcp && (
         <EditMcpModal

@@ -16,7 +16,6 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import {
   delRemoveMember,
   getTeamMembers,
@@ -50,6 +49,8 @@ import { type PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import _ from 'lodash';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
 const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
@@ -121,9 +122,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     errorToast: t('account_team:sync_member_failed')
   });
 
-  const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
-    content: t('account_team:confirm_leave_team')
-  });
   const { runAsync: onLeaveTeam } = useRequest2(delLeaveTeam, {
     onSuccess() {
       const defaultTeam = myTeams[0];
@@ -132,19 +130,10 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
     errorToast: t('account_team:user_team_leave_team_failed')
   });
 
-  const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
-    type: 'delete'
-  });
   const { runAsync: onRemoveMember } = useRequest2(delRemoveMember, {
     onSuccess: onRefreshMembers
   });
 
-  const { ConfirmModal: ConfirmRestoreMemberModal, openConfirm: openRestoreMember } = useConfirm({
-    type: 'common',
-    title: t('account_team:restore_tip_title'),
-    iconSrc: 'common/confirm/restoreTip',
-    iconColor: 'primary.500'
-  });
   const { runAsync: onRestore } = useRequest2(postRestoreMember, {
     onSuccess: onRefreshMembers,
     successToast: t('common:Success'),
@@ -247,16 +236,22 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
             </Button>
           )}
           {!userInfo?.team.permission.isOwner && (
-            <Button
-              variant={'whitePrimary'}
-              size="md"
-              borderRadius={'md'}
-              ml={3}
-              leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
-              onClick={() => openLeaveConfirm(onLeaveTeam)()}
-            >
-              {t('account_team:user_team_leave_team')}
-            </Button>
+            <PopoverConfirm
+              Trigger={
+                <Button
+                  variant={'whitePrimary'}
+                  size="md"
+                  borderRadius={'md'}
+                  ml={3}
+                  leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
+                >
+                  {t('account_team:user_team_leave_team')}
+                </Button>
+              }
+              type="delete"
+              content={t('account_team:confirm_leave_team')}
+              onConfirm={() => onLeaveTeam()}
+            />
           )}
         </HStack>
       </Flex>
@@ -317,62 +312,48 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                         member.role !== TeamMemberRoleEnum.owner &&
                         member.tmbId !== userInfo?.team.tmbId &&
                         (member.status === TeamMemberStatusEnum.active ? (
-                          <>
-                            <Icon
-                              mr={2}
-                              name={'edit'}
-                              cursor={'pointer'}
-                              w="1rem"
-                              p="1"
-                              borderRadius="sm"
-                              _hover={{
-                                color: 'blue.600',
-                                bgColor: 'myGray.100'
-                              }}
+                          <HStack>
+                            <MyIconButton
+                              icon={'edit'}
+                              size="1rem"
+                              hoverColor={'blue.500'}
                               onClick={() => handleEditMemberName(member.tmbId, member.memberName)}
                             />
-                            <Icon
-                              name={'common/trash'}
-                              cursor={'pointer'}
-                              w="1rem"
-                              p="1"
-                              borderRadius="sm"
-                              _hover={{
-                                color: 'red.600',
-                                bgColor: 'myGray.100'
-                              }}
-                              onClick={() => {
-                                openRemoveMember(
-                                  () => onRemoveMember(member.tmbId),
-                                  undefined,
-                                  t('account_team:remove_tip', {
-                                    username: member.memberName
-                                  })
-                                )();
-                              }}
+                            <PopoverConfirm
+                              Trigger={
+                                <Box>
+                                  <MyIconButton
+                                    icon={'common/trash'}
+                                    hoverColor={'red.500'}
+                                    hoverBg="red.50"
+                                    size={'1rem'}
+                                  />
+                                </Box>
+                              }
+                              type="delete"
+                              content={t('account_team:remove_tip', {
+                                username: member.memberName
+                              })}
+                              onConfirm={() => onRemoveMember(member.tmbId)}
                             />
-                          </>
+                          </HStack>
                         ) : (
                           member.status === TeamMemberStatusEnum.forbidden && (
-                            <Icon
-                              name={'common/confirm/restoreTip'}
-                              cursor={'pointer'}
-                              w="1rem"
-                              p="1"
-                              borderRadius="sm"
-                              _hover={{
-                                color: 'primary.500',
-                                bgColor: 'myGray.100'
-                              }}
-                              onClick={() => {
-                                openRestoreMember(
-                                  () => onRestore(member.tmbId),
-                                  undefined,
-                                  t('account_team:restore_tip', {
-                                    username: member.memberName
-                                  })
-                                )();
-                              }}
+                            <PopoverConfirm
+                              Trigger={
+                                <Box display={'inline-block'}>
+                                  <MyIconButton
+                                    icon={'common/confirm/restoreTip'}
+                                    size={'1rem'}
+                                    hoverColor={'primary.500'}
+                                  />
+                                </Box>
+                              }
+                              type="info"
+                              content={t('account_team:restore_tip', {
+                                username: member.memberName
+                              })}
+                              onConfirm={() => onRestore(member.tmbId)}
                             />
                           )
                         ))}
@@ -381,14 +362,11 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
                 ))}
               </Tbody>
             </Table>
-            <ConfirmRemoveMemberModal />
-            <ConfirmRestoreMemberModal />
             <EditMemberNameModal />
           </TableContainer>
         </MemberScrollData>
       </MyBox>
 
-      <ConfirmLeaveTeamModal />
       {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}
       {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
     </>
