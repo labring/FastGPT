@@ -34,6 +34,10 @@ const ChatSchema = new Schema({
     ref: AppCollectionName,
     required: true
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
   updateTime: {
     type: Date,
     default: () => new Date()

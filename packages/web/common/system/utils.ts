@@ -6,10 +6,6 @@ export const getUserFingerprint = async () => {
   console.log(result.visitorId);
 };
 
-export const hasHttps = () => {
-  return window.location.protocol === 'https:';
-};
-
 export const subRoute = process.env.NEXT_PUBLIC_BASE_URL;
 
 export const getWebReqUrl = (url: string = '') => {
