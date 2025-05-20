@@ -281,11 +281,11 @@ const Button = defineStyleConfig({
       bg: 'transparent',
       transition: 'background 0.1s',
       _hover: {
-        bg: 'myGray.150',
+        bg: 'red.50',
         color: 'red.600'
       },
       _active: {
-        bg: 'myGray.150'
+        bg: 'red.50'
       },
       _disabled: {
         color: 'myGray.800 !important'

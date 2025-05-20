@@ -23,6 +23,7 @@ import {
   SNADBOX_CODE_TEMPLATE
 } from '@fastgpt/global/core/workflow/template/system/sandbox/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -34,11 +35,6 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const onChangeNode = useContextSelector(WorkflowContext, (ctx) => ctx.onChangeNode);
-
-  // 重置模板确认
-  const { ConfirmModal: ResetTemplateConfirm, openConfirm: openResetTemplateConfirm } = useConfirm({
-    content: t('workflow:code.Reset template confirm')
-  });
 
   // 切换语言确认
   const { ConfirmModal: SwitchLangConfirm, openConfirm: openSwitchLangConfirm } = useConfirm({
@@ -84,13 +80,16 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               {codeType.value === 'py' && (
                 <QuestionTip ml={2} label={t('workflow:support_code_language')} />
               )}
-              <Box
-                cursor={'pointer'}
-                color={'primary.500'}
-                fontSize={'xs'}
-                ml="auto"
-                mr={2}
-                onClick={openResetTemplateConfirm(() => {
+              <PopoverConfirm
+                Trigger={
+                  <Box cursor={'pointer'} color={'primary.500'} fontSize={'xs'} ml="auto" mr={2}>
+                    {t('workflow:code.Reset template')}
+                  </Box>
+                }
+                showCancel
+                content={t('workflow:code.Reset template confirm')}
+                placement={'top-end'}
+                onConfirm={() =>
                   onChangeNode({
                     nodeId,
                     type: 'updateInput',
@@ -99,11 +98,9 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       ...item,
                       value: codeType.value === 'js' ? JS_TEMPLATE : PY_TEMPLATE
                     }
-                  });
-                })}
-              >
-                {t('workflow:code.Reset template')}
-              </Box>
+                  })
+                }
+              />
             </Flex>
             <CodeEditor
               bg={'white'}
@@ -123,7 +120,7 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         );
       }
     };
-  }, [codeType, nodeId, onChangeNode, openResetTemplateConfirm, openSwitchLangConfirm, t]);
+  }, [codeType, nodeId, onChangeNode, openSwitchLangConfirm, t]);
 
   const { isTool, commonInputs } = splitToolInputs(inputs, nodeId);
 
@@ -146,7 +143,6 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <IOTitle text={t('common:Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>
-      <ResetTemplateConfirm />
       <SwitchLangConfirm />
     </NodeCard>
   );

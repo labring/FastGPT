@@ -11,15 +11,16 @@ import {
   HStack,
   Box,
   Button,
-  PopoverArrow
+  PopoverArrow,
+  Portal
 } from '@chakra-ui/react';
 
 const PopoverConfirm = ({
   content,
-  showCancel,
+  showCancel = true,
   type,
   Trigger,
-  placement = 'bottom-start',
+  placement = 'auto',
   offset,
   onConfirm,
   confirmText,
@@ -50,7 +51,7 @@ const PopoverConfirm = ({
     };
     if (type && map[type]) return map[type];
     return map.info;
-  }, [type, t]);
+  }, [type]);
 
   const firstFieldRef = React.useRef(null);
   const { onOpen, onClose, isOpen } = useDisclosure();
@@ -75,6 +76,7 @@ const PopoverConfirm = ({
       lazyBehavior="keepMounted"
       arrowSize={10}
       strategy={'fixed'}
+      computePositionOnMount={true}
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
       <PopoverContent p={4}>
@@ -84,7 +86,7 @@ const PopoverConfirm = ({
           <MyIcon name={map.icon as any} w={'1.5rem'} />
           <Box fontSize={'sm'}>{content}</Box>
         </HStack>
-        <HStack mt={1} justifyContent={'flex-end'}>
+        <HStack mt={2} justifyContent={'flex-end'}>
           {showCancel && (
             <Button variant={'whiteBase'} size="sm" onClick={onClose}>
               {cancelText || t('common:Cancel')}

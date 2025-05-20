@@ -16,8 +16,8 @@ import { getInputComponentProps } from '@fastgpt/global/core/workflow/node/io/ut
 import { ReferSelector, useReference } from '../Reference';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import ValueTypeLabel from '../../../ValueTypeLabel';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
 
@@ -95,7 +95,7 @@ const DynamicInputs = (props: RenderInputProps) => {
         )}
       </Box>
     );
-  }, [editField, dynamicInputs, item, keys, onAddField, props, t, t]);
+  }, [editField, dynamicInputs, item, keys, onAddField, props, t]);
 
   return Render;
 };
@@ -110,10 +110,7 @@ function Reference({
 }) {
   const { nodeId, inputs = [], item } = props;
   const { t } = useTranslation();
-  const { ConfirmModal, openConfirm } = useConfirm({
-    type: 'delete',
-    content: t('workflow:confirm_delete_field_tip')
-  });
+
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const keys = useMemo(() => {
@@ -187,25 +184,31 @@ function Reference({
         {/* value */}
         <ValueTypeLabel valueType={inputChildren.valueType} valueDesc={inputChildren.valueDesc} />
 
-        <MyIcon
-          name={'common/settingLight'}
-          w={'14px'}
-          cursor={'pointer'}
-          ml={3}
+        <MyIconButton
+          icon="common/settingLight"
+          ml={2}
           color={'myGray.600'}
-          _hover={{ color: 'primary.500' }}
+          hoverBg="primary.50"
+          hoverColor="primary.500"
+          size={'14px'}
           onClick={() => setEditField(inputChildren)}
         />
 
-        <MyIcon
-          className={'delete'}
-          name={'delete'}
-          w={'14px'}
-          color={'myGray.500'}
-          cursor={'pointer'}
-          ml={2}
-          _hover={{ color: 'red.600' }}
-          onClick={openConfirm(onDel)}
+        <PopoverConfirm
+          Trigger={
+            <Box ml={1}>
+              <MyIconButton
+                icon="delete"
+                color={'myGray.600'}
+                hoverBg="red.50"
+                hoverColor="red.600"
+                size={'14px'}
+              />
+            </Box>
+          }
+          type={'delete'}
+          content={t('workflow:confirm_delete_field_tip')}
+          onConfirm={onDel}
         />
       </Flex>
       <ReferSelector
@@ -225,7 +228,6 @@ function Reference({
           onSubmit={onUpdateField}
         />
       )}
-      <ConfirmModal />
     </>
   );
 }
