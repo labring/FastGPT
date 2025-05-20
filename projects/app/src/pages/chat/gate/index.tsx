@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
@@ -11,14 +11,18 @@ import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getMyApps, getMyAppsGate } from '@/web/core/app/api';
+import { getAppDetailById, getMyApps, getMyAppsGate } from '@/web/core/app/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 import { useMount } from 'ahooks';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import type { AppListItemType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import type {
+  AppDetailType,
+  AppListItemType,
+  AppSimpleEditFormType
+} from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -29,7 +33,6 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { getDefaultAppForm, appWorkflow2Form } from '@fastgpt/global/core/app/utils';
-import AppContextProvider, { AppContext } from '@/pageComponents/app/detail/context';
 import GateChatHistorySlider from '@/pageComponents/chat/gatechat/GateChatHistorySlider';
 import GatePageContainer from '@/components/GatePageContainer';
 import GateSideBar from '@/pageComponents/chat/gatechat/GateSideBar';
@@ -52,26 +55,21 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const { isPc } = useSystem();
 
   const { userInfo } = useUserStore();
-  const { setLastChatAppId, chatId, appId, outLinkAuthData } = useChatStore();
+  const { setLastChatAppId, chatId, appId } = useChatStore();
 
   const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
-  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
-  const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
-  const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
   // 添加appForm共享状态
   const [appForm, setAppForm] = useState<AppSimpleEditFormType>(getDefaultAppForm());
+  const [appDetail, setAppDetail] = useState<AppDetailType>();
   const [renderEdit, setRenderEdit] = useState(false);
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
-
   // 添加侧边栏折叠状态
   const [sidebarFolded, setSidebarFolded] = useState(false);
 
@@ -91,11 +89,13 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         variableList: res.app?.chatConfig?.variables
       });
 
-      // 添加AppForm初始化
-      if (appDetail?.modules) {
+      // 获取 AppDetail 并初始化 AppForm
+      const detail = await getAppDetailById(appId);
+      if (detail?.modules) {
+        setAppDetail(detail);
         const form = appWorkflow2Form({
-          nodes: appDetail.modules,
-          chatConfig: appDetail.chatConfig || {}
+          nodes: detail.modules,
+          chatConfig: detail.chatConfig || {}
         });
         setAppForm(form);
       }
@@ -123,9 +123,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
-  const handleFoldChange = (isFolded: boolean) => {
+  const handleFoldChange = useCallback((isFolded: boolean) => {
     setSidebarFolded(isFolded);
-  };
+  }, []);
 
   const RenderHistorySlider = useMemo(() => {
     const Children = (
@@ -210,7 +210,9 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
                 flexDirection={'column'}
               >
                 {/* 聊天界面 */}
-                <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} />
+                {appDetail && (
+                  <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} appDetail={appDetail} />
+                )}
               </Flex>
             </Flex>
           </GatePageContainer>
@@ -341,9 +343,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <AppContextProvider>
-            <Chat myApps={myApps} />
-          </AppContextProvider>
+          <Chat myApps={myApps} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>

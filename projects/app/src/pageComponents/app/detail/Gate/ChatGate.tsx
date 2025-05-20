@@ -1,14 +1,11 @@
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo } from 'react';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import { useSafeState } from 'ahooks';
-import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import type { AppDetailType, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '../context';
 import { useChatGate } from '../useChatGate';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
@@ -16,20 +13,17 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import VariablePopover from '@/components/core/chat/ChatContainer/ChatBox/components/VariablePopover';
 
 type Props = {
   appForm: AppSimpleEditFormType;
   setRenderEdit: React.Dispatch<React.SetStateAction<boolean>>;
+  appDetail: AppDetailType; // 添加 appDetail prop
 };
-const ChatGate = ({ appForm, setRenderEdit }: Props) => {
+const ChatGate = ({ appForm, setRenderEdit, appDetail }: Props) => {
   const { t } = useTranslation();
 
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
-  // form2AppWorkflow dependent allDatasets
-  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
@@ -48,7 +42,8 @@ const ChatGate = ({ appForm, setRenderEdit }: Props) => {
   const { ChatContainer, restartChat, loading } = useChatGate({
     ...workflowData,
     chatConfig: appForm.chatConfig,
-    isReady: true
+    isReady: true,
+    appDetail
   });
 
   return (
@@ -80,9 +75,8 @@ const ChatGate = ({ appForm, setRenderEdit }: Props) => {
   );
 };
 
-const Render = ({ appForm, setRenderEdit }: Props) => {
+const Render = ({ appForm, setRenderEdit, appDetail }: Props) => {
   const { chatId } = useChatStore();
-  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const chatRecordProviderParams = useMemo(
     () => ({
@@ -102,7 +96,7 @@ const Render = ({ appForm, setRenderEdit }: Props) => {
       showNodeStatus
     >
       <ChatRecordContextProvider params={chatRecordProviderParams}>
-        <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} />
+        <ChatGate appForm={appForm} setRenderEdit={setRenderEdit} appDetail={appDetail} />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

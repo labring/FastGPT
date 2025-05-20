@@ -11,7 +11,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 import { Box } from '@chakra-ui/react';
-import type { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -28,17 +28,18 @@ export const useChatGate = ({
   nodes,
   edges,
   chatConfig,
-  isReady
+  isReady,
+  appDetail
 }: {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   chatConfig: AppChatConfigType;
   isReady: boolean;
+  appDetail: AppDetailType;
 }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { setChatId, chatId, appId } = useChatStore();
-  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const startChat = useMemoizedFn(
