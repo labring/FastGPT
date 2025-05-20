@@ -544,7 +544,7 @@ export async function searchDatasetData(
       };
     }
 
-    const searchResults = (
+    const rawSearchResults = (
       await Promise.all(
         datasetIds.map(async (id) => {
           return MongoDatasetDataText.aggregate(
@@ -594,6 +594,7 @@ export async function searchDatasetData(
         })
       )
     ).flat() as (DatasetDataTextSchemaType & { score: number })[];
+    const searchResults = rawSearchResults.sort((a, b) => b.score - a.score);
 
     // Get data and collections
     const [dataList, collections] = await Promise.all([
