@@ -439,6 +439,7 @@ export const iconPaths = {
   point: () => import('./icons/point.svg'),
   preview: () => import('./icons/preview.svg'),
   'price/bg': () => import('./icons/price/bg.svg'),
+  'price/pricearrow': () => import('./icons/price/pricearrow.svg'),
   'price/right': () => import('./icons/price/right.svg'),
   save: () => import('./icons/save.svg'),
   sliderTag: () => import('./icons/sliderTag.svg'),
