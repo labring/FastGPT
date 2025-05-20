@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -6,6 +6,7 @@ import RemarkBreaks from 'remark-breaks'; // Line break
 import RehypeKatex from 'rehype-katex'; // Math render
 import RemarkGfm from 'remark-gfm'; // Special markdown syntax
 import RehypeExternalLinks from 'rehype-external-links';
+import RehypeRaw from 'rehype-raw';
 
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
@@ -26,7 +27,23 @@ const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
-const A = dynamic(() => import('./A'), { ssr: false });
+
+const SafeA = (props: any) => {
+  const href = props.href || '';
+  const safeHref = href.toLowerCase().startsWith('javascript:') ? '#' : href;
+
+  return (
+    <a
+      {...props}
+      href={safeHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="cursor-pointer underline !decoration-primary-700 decoration-dashed"
+    >
+      {props.children}
+    </a>
+  );
+};
 
 type Props = {
   source?: string;
@@ -34,6 +51,7 @@ type Props = {
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
 } & AProps;
+
 const Markdown = (props: Props) => {
   const source = props.source || '';
 
@@ -43,12 +61,12 @@ const Markdown = (props: Props) => {
 
   return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
 };
+
 const MarkdownRender = ({
   source = '',
   showAnimation,
   isDisabled,
   forbidZhFormat,
-
   chatAuthData,
   onOpenCiteModal
 }: Props) => {
@@ -58,11 +76,11 @@ const MarkdownRender = ({
       pre: RewritePre,
       code: Code,
       a: (props: any) => (
-        <A
+        <SafeA
           {...props}
-          showAnimation={showAnimation}
           chatAuthData={chatAuthData}
           onOpenCiteModal={onOpenCiteModal}
+          showAnimation={showAnimation}
         />
       )
     };
@@ -73,18 +91,127 @@ const MarkdownRender = ({
     return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
 
-  const urlTransform = useCallback((val: string) => {
-    return val;
-  }, []);
+  const urlTransform = useCallback((val: string) => val, []);
 
   return (
     <Box position={'relative'}>
       <ReactMarkdown
-        className={`markdown ${styles.markdown}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
-    `}
+        className={`markdown ${styles.markdown} ${
+          showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''
+        }`}
         remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-        rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+        rehypePlugins={[
+          RehypeKatex,
+          [RehypeExternalLinks, { target: '_blank', rel: ['noopener', 'noreferrer'] }],
+          RehypeRaw,
+          () => {
+            return (tree) => {
+              const iterate = (node: any) => {
+                if (node.type !== 'element') return;
+
+                const handlers: Record<string, (node: any) => void> = {
+                  script: (node) => {
+                    node.tagName = 'pre';
+                    node.children = [
+                      {
+                        type: 'element',
+                        tagName: 'code',
+                        properties: { className: ['language-javascript'] },
+                        children: [
+                          {
+                            type: 'text',
+                            value: `<script>${node.children?.[0]?.value || ''}</script>`
+                          }
+                        ]
+                      }
+                    ];
+                  },
+                  input: (node) => {
+                    const safeProps = { ...node.properties };
+                    Object.keys(safeProps).forEach((key) => {
+                      if (key.startsWith('on') && !['onChange', 'onClick'].includes(key)) {
+                        delete safeProps[key];
+                      }
+                    });
+
+                    const inputType = safeProps.type || 'text';
+                    const commonProps = {
+                      ...safeProps,
+                      onClick: (e: Event) => e.preventDefault()
+                    };
+
+                    node.properties =
+                      inputType === 'file'
+                        ? { ...commonProps, disabled: true, style: 'cursor: not-allowed;' }
+                        : { ...commonProps, style: 'cursor: pointer;' };
+                  },
+                  form: (node) => {
+                    node.properties = {
+                      ...node.properties,
+                      onSubmit: (e: Event) => e.preventDefault()
+                    };
+                  },
+                  button: (node) => {
+                    node.properties = {
+                      ...node.properties,
+                      onClick: (e: Event) => e.preventDefault(),
+                      style: 'cursor: pointer;'
+                    };
+                  },
+                  iframe: (node) => {
+                    const src = node.properties?.src || '';
+                    if (!src.startsWith('https://')) {
+                      node.tagName = 'pre';
+                      node.children = [
+                        {
+                          type: 'element',
+                          tagName: 'code',
+                          properties: { className: ['language-html'] },
+                          children: [
+                            {
+                              type: 'text',
+                              value: `<iframe src="${src}" ${Object.entries(node.properties || {})
+                                .filter(([key]) => key !== 'src')
+                                .map(([key, value]) => `${key}="${value}"`)
+                                .join(' ')}></iframe>`
+                            }
+                          ]
+                        }
+                      ];
+                    } else {
+                      node.properties = {
+                        ...node.properties,
+                        sandbox: 'allow-scripts allow-same-origin allow-popups',
+                        loading: 'lazy',
+                        referrerpolicy: 'no-referrer',
+                        allow: 'fullscreen'
+                      };
+                    }
+                  }
+                };
+
+                if (handlers[node.tagName]) {
+                  handlers[node.tagName](node);
+                }
+
+                if (node.properties?.ref) {
+                  delete node.properties.ref;
+                }
+                if (!/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                  node.type = 'text';
+                  node.value = `<${node.tagName}`;
+                }
+
+                if (node.children) {
+                  node.children.forEach(iterate);
+                }
+              };
+
+              tree.children.forEach(iterate);
+            };
+          }
+        ]}
+        disallowedElements={['script']}
         components={components}
         urlTransform={urlTransform}
       >
