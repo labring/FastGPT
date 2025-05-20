@@ -171,7 +171,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <MySelect<'text' | 'file'>
               size={'sm'}
-              w={'150px'}
               list={[
                 {
                   label: (
