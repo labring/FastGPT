@@ -279,7 +279,7 @@ export const parseLLMStreamResponse = () => {
         return { reasoningContent, content };
       }
 
-      if (!content) {
+      if (!content && !isStreamEnd) {
         return {
           reasoningContent: '',
           content: ''
