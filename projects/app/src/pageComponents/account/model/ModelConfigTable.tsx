@@ -41,7 +41,6 @@ import {
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
@@ -54,6 +53,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { AddModelButton } from './AddModelBox';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -260,10 +260,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
     onSuccess: refreshModels
   });
 
-  const { ConfirmModal, openConfirm } = useConfirm({
-    type: 'delete',
-    content: t('account:model.delete_model_confirm')
-  });
   const { runAsync: deleteModel } = useRequest2(deleteSystemModel, {
     onSuccess: refreshModels
   });
@@ -459,10 +455,15 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
                           onClick={() => onEditModel(item.model)}
                         />
                         {item.isCustom && (
-                          <MyIconButton
-                            icon={'delete'}
-                            hoverColor={'red.500'}
-                            onClick={() => openConfirm(() => deleteModel({ model: item.model }))()}
+                          <PopoverConfirm
+                            Trigger={
+                              <Box>
+                                <MyIconButton icon={'delete'} hoverColor={'red.500'} />
+                              </Box>
+                            }
+                            type="delete"
+                            content={t('account:model.delete_model_confirm')}
+                            onConfirm={() => deleteModel({ model: item.model })}
                           />
                         )}
                       </HStack>
@@ -475,7 +476,6 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
         </Flex>
       </MyBox>
 
-      <ConfirmModal />
       {!!editModelData && (
         <ModelEditModal
           modelData={editModelData}
@@ -510,9 +510,6 @@ const JsonConfigModal = ({
     }
   });
 
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('account:model.json_config_confirm')
-  });
   const { runAsync } = useRequest2(putUpdateWithJson, {
     onSuccess: () => {
       onSuccess();
@@ -542,18 +539,14 @@ const JsonConfigModal = ({
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
           {t('common:Cancel')}
         </Button>
-        <Button
-          onClick={() =>
-            openConfirm(() => {
-              return runAsync({ config: data });
-            })()
-          }
-        >
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
 
-      <ConfirmModal />
+        <PopoverConfirm
+          Trigger={<Button>{t('common:Confirm')}</Button>}
+          type="info"
+          content={t('account:model.json_config_confirm')}
+          onConfirm={() => runAsync({ config: data })}
+        />
+      </ModalFooter>
     </MyModal>
   );
 };

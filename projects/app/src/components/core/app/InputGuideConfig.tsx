@@ -37,7 +37,7 @@ import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 const csvTemplate = `"第一列内容"
 "只会将第一列内容导入，其余列会被忽略"
@@ -190,10 +190,6 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
   const [editDataId, setEditDataId] = useState<string>();
 
   const [searchKey, setSearchKey] = useState('');
-
-  const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
-    type: 'delete'
-  });
 
   const {
     scrollDataList,
@@ -355,24 +351,26 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
             >
               {t('common:Delete')}
             </Button>
-            <Button
-              variant={'whiteBase'}
-              display={selectedRows.length !== 0 ? 'none' : 'flex'}
-              size={'sm'}
-              leftIcon={<MyIcon name={'delete'} boxSize={4} />}
-              onClick={() =>
-                openConfirmDel(
-                  () => {
-                    onDeleteAllData();
-                    setSelectedRows([]);
-                  },
-                  undefined,
-                  t('chat:delete_all_input_guide_confirm')
-                )()
+
+            <PopoverConfirm
+              Trigger={
+                <Button
+                  variant={'whiteBase'}
+                  display={selectedRows.length !== 0 ? 'none' : 'flex'}
+                  size={'sm'}
+                  leftIcon={<MyIcon name={'delete'} boxSize={4} />}
+                >
+                  {t('chat:Delete_all')}
+                </Button>
               }
-            >
-              {t('chat:Delete_all')}
-            </Button>
+              type="delete"
+              content={t('chat:delete_all_input_guide_confirm')}
+              onConfirm={() => {
+                onDeleteAllData();
+                setSelectedRows([]);
+              }}
+            />
+
             <Button
               display={selectedRows.length !== 0 ? 'none' : 'flex'}
               onClick={() => {
@@ -504,7 +502,6 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
         })}
       </ScrollList>
 
-      <DelConfirmModal />
       <File onSelect={onSelectFile} />
     </MyModal>
   );

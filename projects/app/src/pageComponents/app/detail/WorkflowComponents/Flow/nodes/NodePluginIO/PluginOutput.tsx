@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
@@ -19,9 +19,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ValueTypeLabel from '../render/ValueTypeLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PluginOutputEditModal, { defaultOutput } from './PluginOutputEditModal';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const customOutputConfig = {
   selectValueTypeList: Object.values(WorkflowIOValueTypeEnum),
@@ -102,10 +103,7 @@ function Reference({
   input: FlowNodeInputItemType;
 }) {
   const { t } = useTranslation();
-  const { ConfirmModal, openConfirm } = useConfirm({
-    type: 'delete',
-    content: t('workflow:confirm_delete_field_tip')
-  });
+
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
@@ -161,25 +159,32 @@ function Reference({
           {/* value */}
           <ValueTypeLabel valueType={input.valueType} valueDesc={input.valueDesc} />
 
-          <MyIcon
-            name={'common/settingLight'}
-            w={'14px'}
-            cursor={'pointer'}
-            ml={3}
+          <MyIconButton
+            icon={'common/settingLight'}
+            size={'14px'}
+            ml={2}
             color={'myGray.600'}
-            _hover={{ color: 'primary.500' }}
+            hoverBg="primary.50"
+            hoverColor="primary.500"
             onClick={() => setEditField(input)}
           />
 
-          <MyIcon
-            className="delete"
-            name={'delete'}
-            w={'14px'}
-            color={'myGray.500'}
-            cursor={'pointer'}
-            ml={2}
-            _hover={{ color: 'red.600' }}
-            onClick={openConfirm(onDel)}
+          <PopoverConfirm
+            Trigger={
+              <Box ml={1}>
+                <MyIconButton
+                  icon="delete"
+                  color={'myGray.600'}
+                  hoverBg="red.50"
+                  size={'14px'}
+                  hoverColor="red.600"
+                />
+              </Box>
+            }
+            placement={'bottom'}
+            type={'delete'}
+            content={t('workflow:confirm_delete_field_tip')}
+            onConfirm={onDel}
           />
         </Flex>
         <MyTooltip label={t('workflow:plugin_output_tool')}>
@@ -215,7 +220,6 @@ function Reference({
           onSubmit={onUpdateField}
         />
       )}
-      <ConfirmModal />
     </>
   );
 }
