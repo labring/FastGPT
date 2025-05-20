@@ -53,6 +53,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const refresh = router.query.refresh;
 
   const { userInfo } = useUserStore();
   const { setLastChatAppId, chatId, appId } = useChatStore();
@@ -102,7 +103,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     },
     {
       manual: false,
-      refreshDeps: [appId, chatId],
+      refreshDeps: [appId, chatId, refresh], // 添加refresh作为依赖
       onError(e: any) {
         // reset all chat tore
         if (e?.code === 501) {

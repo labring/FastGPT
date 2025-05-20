@@ -210,7 +210,17 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
             flexGrow={0}
             transition="all 0.4s ease-in-out"
             className="nav-item"
-            onClick={() => router.push('/chat/gate')}
+            onClick={() => {
+              if (isChatPage) {
+                // 如果已经在聊天页面，通过更改路由参数来触发页面刷新
+                router.replace({
+                  pathname: router.pathname,
+                  query: { ...router.query, refresh: Date.now() }
+                });
+              } else {
+                router.push('/chat/gate');
+              }
+            }}
             justifyContent={isCollapsed ? 'center' : 'flex-start'}
             sx={{
               '&.nav-item': {
@@ -559,11 +569,29 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
         >
           <Flex alignItems="center" gap={3} width="100%">
             {userInfo?.avatar ? (
-              <Flex boxSize="36px" borderRadius="50%" overflow="hidden">
-                <Avatar src={userInfo?.avatar} boxSize="36px" borderRadius="50%" />
+              <Flex boxSize="36px" borderRadius="50%" overflow="hidden" flexShrink={0}>
+                <Avatar
+                  boxSize="100%"
+                  src={userInfo?.avatar}
+                  borderRadius="50%"
+                  objectFit="cover"
+                />
               </Flex>
             ) : (
-              <Avatar src={userInfo?.avatar || HUMAN_ICON} boxSize="36px" borderRadius="50%" />
+              <Box
+                boxSize="36px"
+                border="2px solid #fff"
+                borderRadius="50%"
+                overflow="hidden"
+                flexShrink={0}
+              >
+                <Avatar
+                  boxSize="100%"
+                  src={userInfo?.avatar || HUMAN_ICON}
+                  borderRadius="50%"
+                  objectFit="cover"
+                />
+              </Box>
             )}
             <Box>
               <Text
