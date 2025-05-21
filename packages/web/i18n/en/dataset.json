@@ -115,6 +115,7 @@
   "process.Get QA": "Q&A extraction",
   "process.Image_Index": "Image index generation",
   "process.Is_Ready": "Ready",
+  "process.Is_Ready_Count": "{{count}} Group is ready",
   "process.Parsing": "Parsing",
   "process.Vectorizing": "Index vectorization",
   "process.Waiting": "Queue",

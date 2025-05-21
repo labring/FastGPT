@@ -175,6 +175,7 @@
   "text_content_extraction": "Text Extract",
   "text_to_extract": "Text to Extract",
   "these_variables_will_be_input_parameters_for_code_execution": "These variables will be input parameters for code execution",
+  "tool.tool_result": "Tool operation results",
   "tool_call_termination": "Stop ToolCall",
   "tool_custom_field": "Custom Tool",
   "tool_field": " Tool Field Parameter Configuration",

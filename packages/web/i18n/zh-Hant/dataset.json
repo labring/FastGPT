@@ -115,6 +115,7 @@
   "process.Get QA": "問答對提取",
   "process.Image_Index": "圖片索引生成",
   "process.Is_Ready": "已就緒",
+  "process.Is_Ready_Count": "{{count}} 組已就緒",
   "process.Parsing": "內容解析中",
   "process.Vectorizing": "索引向量化",
   "process.Waiting": "排隊中",

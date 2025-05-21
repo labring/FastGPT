@@ -18,6 +18,8 @@
   "create_channel": "新增管道",
   "default_url": "預設地址",
   "detail": "詳細資訊",
+  "duration": "耗時",
+  "edit": "編輯",
   "edit_channel": "管道設定",
   "enable_channel": "啟用",
   "forbid_channel": "停用",
