@@ -268,6 +268,88 @@ const DataCard = () => {
     fetchDetailsAndCreateUrls();
   }, [datasetDataList, isImageCollection]);
 
+  // 判断是否为图片集合的函数
+  const isImageCollection = useMemo(() => {
+    if (!collection) return false;
+    // 检查metadata中是否有标记
+    if (
+      collection.metadata &&
+      typeof collection.metadata === 'object' &&
+      'isImageCollection' in collection.metadata
+    ) {
+      return collection.metadata.isImageCollection === true;
+    }
+    // 集合名称判断（备选方案）
+    return collection.name?.includes('图片集合') || false;
+  }, [collection]);
+
+  // 添加状态存储预览URLs
+  const [imagePreviewUrls, setImagePreviewUrls] = useState<Record<string, string>>({});
+
+  // 在数据加载成功后生成预览URLs
+  useEffect(() => {
+    if (!datasetDataList.length) {
+      console.log('数据列表为空，不生成预览URL');
+      return;
+    }
+
+    if (!isImageCollection) {
+      console.log('非图片集合，不生成预览URL');
+      return;
+    }
+
+    console.log('数据列表长度:', datasetDataList.length);
+    console.log(
+      '列表数据:',
+      datasetDataList.map((item) => ({
+        id: item._id,
+        q: item.q,
+        a: item.a,
+        imageFileId: item.imageFileId
+      }))
+    );
+
+    // 直接使用列表数据生成预览URL
+    const fetchDetailsAndCreateUrls = async () => {
+      const urlMap: Record<string, string> = {};
+
+      // 并行处理所有项目
+      const previewPromises = datasetDataList.map(async (item) => {
+        try {
+          // 直接检查列表数据中是否包含imageFileId
+          if (item.imageFileId) {
+            console.log(`项目 ${item._id} 包含图片ID:`, {
+              imageFileId: item.imageFileId,
+              fileName: item.a || 'image.jpg'
+            });
+
+            const previewUrl = await getImagePreviewUrl(
+              item.imageFileId,
+              item.a ?? 'image.jpg',
+              item.teamId ?? '',
+              item.datasetId
+            );
+
+            if (previewUrl) {
+              urlMap[item._id] = previewUrl;
+              console.log(`生成项目 ${item._id} 的预览URL成功`);
+            }
+          }
+        } catch (error) {
+          console.error(`生成项目 ${item._id} 预览URL失败:`, error);
+        }
+      });
+
+      // 等待所有预览URL生成完成
+      await Promise.all(previewPromises);
+
+      console.log(`成功生成 ${Object.keys(urlMap).length} 个预览URL`);
+      setImagePreviewUrls(urlMap);
+    };
+
+    fetchDetailsAndCreateUrls();
+  }, [datasetDataList, isImageCollection]);
+
   return (
     <MyBox py={[1, 0]} h={'100%'}>
       <Flex flexDirection={'column'} h={'100%'}>
