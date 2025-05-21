@@ -3,6 +3,7 @@ import Head from 'next/head';
 import React, { useMemo } from 'react';
 
 const NextHead = ({ title, icon, desc }: { title?: string; icon?: string; desc?: string }) => {
+  console.log('headicon', icon);
   const formatIcon = useMemo(() => {
     if (!icon) return LOGO_ICON;
     if (icon.startsWith('http') || icon.startsWith('/')) {

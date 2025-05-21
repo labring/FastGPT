@@ -185,7 +185,7 @@ const Chat = ({
     sidebarFolded,
     handleFoldChange
   ]);
-
+  console.log('avatar', userInfo?.team.teamAvatar);
   return (
     <AppFormContext.Provider value={{ appForm, setAppForm }}>
       <Flex h={'100%'}>

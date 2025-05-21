@@ -253,9 +253,29 @@ const GateChatInput = ({
           setValue('input', textarea.value);
         }}
         onKeyDown={(e) => {
-          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-            e.preventDefault();
+          // enter send.(pc or iframe && enter and unPress shift)
+          const isEnter = e.keyCode === 13;
+          if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+            // Add a new line
+            const index = TextareaDom.current.selectionStart;
+            const val = TextareaDom.current.value;
+            TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
+            TextareaDom.current.selectionStart = index + 1;
+            TextareaDom.current.selectionEnd = index + 1;
+
+            TextareaDom.current.style.height = textareaMinH;
+            TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+
+            return;
+          }
+
+          // 全选内容
+          // @ts-ignore
+          e.key === 'a' && e.ctrlKey && e.target?.select();
+
+          if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
             handleSend();
+            e.preventDefault();
           }
         }}
         onPaste={(e) => {

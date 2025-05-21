@@ -7,7 +7,7 @@
   "chat.quote.No Data": "The file cannot be found",
   "chat.quote.deleted": "This data has been deleted ~",
   "chat.waiting_for_response": "Please wait for the conversation to complete",
-  "chat_gate_app": "gate-{{name}}",
+  "chat_gate_app": "Portal homepage",
   "chat_history": "Conversation History",
   "chat_input_guide_lexicon_is_empty": "Lexicon not configured yet",
   "chat_test_app": "Debug-{{name}}",

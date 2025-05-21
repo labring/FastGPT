@@ -61,6 +61,8 @@ const GatewayConfig = () => {
     },
     [loadGateApps]
   );
+  // 设置标志让在app tab下不显示 config按钮
+  const isAppTab = useMemo(() => tab === 'app', [tab]);
 
   // 应用列表加载
   useEffect(() => {
@@ -98,14 +100,16 @@ const GatewayConfig = () => {
           <Flex alignItems={'center'}>
             {Tab}
             <Box flex={1} />
-            <ConfigButtons
-              tab={tab}
-              tools={gateConfig.tools}
-              slogan={gateConfig.slogan}
-              placeholderText={gateConfig.placeholderText}
-              status={gateConfig.status}
-              teamName={copyRightConfig.name}
-            />
+            {!isAppTab && (
+              <ConfigButtons
+                tab={tab}
+                tools={gateConfig.tools}
+                slogan={gateConfig.slogan}
+                placeholderText={gateConfig.placeholderText}
+                status={gateConfig.status}
+                teamName={copyRightConfig.name}
+              />
+            )}
           </Flex>
 
           {tab === 'home' && (
