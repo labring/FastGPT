@@ -2,21 +2,13 @@ import React from 'react';
 import { Box } from '@chakra-ui/react';
 import { useMarkdownWidth } from '../hooks';
 
-interface IframeBlockProps {
-  code: string;
-  sandbox?: string;
-}
-
-const IframeBlock = ({ code, sandbox }: IframeBlockProps) => {
+const IframeBlock = ({ code }: { code: string }) => {
   const { width, Ref } = useMarkdownWidth();
   return (
     <Box w={width} ref={Ref}>
       <iframe
         src={code}
-        sandbox={
-          sandbox ||
-          'allow-scripts allow-forms allow-popups allow-downloads allow-presentation allow-storage-access-by-user-activation'
-        }
+        sandbox="allow-scripts allow-forms allow-popups allow-downloads allow-presentation allow-storage-access-by-user-activation"
         referrerPolicy="no-referrer"
         style={{
           width: '100%',

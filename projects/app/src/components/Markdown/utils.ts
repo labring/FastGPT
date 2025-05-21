@@ -41,3 +41,26 @@ export const mdTextFormat = (text: string) => {
 
   return text;
 };
+
+export const checkIsUrlSafe = (url: string) => {
+  if (!url) return false;
+
+  if (url.toLowerCase().startsWith('javascript:')) return false;
+
+  if (typeof window !== 'undefined') {
+    try {
+      const urlObj = new URL(url, window.location.origin);
+      if (urlObj.origin === window.location.origin) {
+        return false;
+      }
+    } catch (error) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
+export const getSafeUrl = (url: string) => {
+  return checkIsUrlSafe(url) ? url : '#';
+};
