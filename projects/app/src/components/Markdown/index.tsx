@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, memo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -30,7 +30,26 @@ const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false
 
 const SafeA = (props: any) => {
   const href = props.href || '';
-  const safeHref = href.toLowerCase().startsWith('javascript:') ? '#' : href;
+
+  if (href.toString().startsWith('abbr:')) {
+    const hidden_text = decodeURIComponent(href.toString().split('abbr:')[1]);
+
+    return (
+      <abbr
+        className="cursor-pointer underline !decoration-primary-700 decoration-dashed"
+        onClick={() => props.onOpenCiteModal?.(hidden_text)}
+        title={props.children?.[0]?.value || ''}
+      >
+        {props.children?.[0]?.value || ''}
+      </abbr>
+    );
+  }
+
+  const isUnsafeUrl =
+    href.toLowerCase().startsWith('javascript:') ||
+    (typeof window !== 'undefined' && href.startsWith(window.location.origin));
+
+  const safeHref = isUnsafeUrl ? '#' : href;
 
   return (
     <a
@@ -40,7 +59,7 @@ const SafeA = (props: any) => {
       rel="noopener noreferrer"
       className="cursor-pointer underline !decoration-primary-700 decoration-dashed"
     >
-      {props.children}
+      {props.children || 'Download'}
     </a>
   );
 };
@@ -51,7 +70,6 @@ type Props = {
   isDisabled?: boolean;
   forbidZhFormat?: boolean;
 } & AProps;
-
 const Markdown = (props: Props) => {
   const source = props.source || '';
 
@@ -61,7 +79,6 @@ const Markdown = (props: Props) => {
 
   return <Box whiteSpace={'pre-wrap'}>{source}</Box>;
 };
-
 const MarkdownRender = ({
   source = '',
   showAnimation,
@@ -103,115 +120,24 @@ const MarkdownRender = ({
         rehypePlugins={[
           RehypeKatex,
           [RehypeExternalLinks, { target: '_blank', rel: ['noopener', 'noreferrer'] }],
-          RehypeRaw,
+          RehypeRaw as any,
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type !== 'element') return;
+                if (node.type === 'element' && node.properties?.ref) delete node.properties.ref;
 
-                const handlers: Record<string, (node: any) => void> = {
-                  script: (node) => {
-                    node.tagName = 'pre';
-                    node.children = [
-                      {
-                        type: 'element',
-                        tagName: 'code',
-                        properties: { className: ['language-javascript'] },
-                        children: [
-                          {
-                            type: 'text',
-                            value: `<script>${node.children?.[0]?.value || ''}</script>`
-                          }
-                        ]
-                      }
-                    ];
-                  },
-                  input: (node) => {
-                    const safeProps = { ...node.properties };
-                    Object.keys(safeProps).forEach((key) => {
-                      if (key.startsWith('on') && !['onChange', 'onClick'].includes(key)) {
-                        delete safeProps[key];
-                      }
-                    });
-
-                    const inputType = safeProps.type || 'text';
-                    const commonProps = {
-                      ...safeProps,
-                      onClick: (e: Event) => e.preventDefault()
-                    };
-
-                    node.properties =
-                      inputType === 'file'
-                        ? { ...commonProps, disabled: true, style: 'cursor: not-allowed;' }
-                        : { ...commonProps, style: 'cursor: pointer;' };
-                  },
-                  form: (node) => {
-                    node.properties = {
-                      ...node.properties,
-                      onSubmit: (e: Event) => e.preventDefault()
-                    };
-                  },
-                  button: (node) => {
-                    node.properties = {
-                      ...node.properties,
-                      onClick: (e: Event) => e.preventDefault(),
-                      style: 'cursor: pointer;'
-                    };
-                  },
-                  iframe: (node) => {
-                    const src = node.properties?.src || '';
-                    if (!src.startsWith('https://')) {
-                      node.tagName = 'pre';
-                      node.children = [
-                        {
-                          type: 'element',
-                          tagName: 'code',
-                          properties: { className: ['language-html'] },
-                          children: [
-                            {
-                              type: 'text',
-                              value: `<iframe src="${src}" ${Object.entries(node.properties || {})
-                                .filter(([key]) => key !== 'src')
-                                .map(([key, value]) => `${key}="${value}"`)
-                                .join(' ')}></iframe>`
-                            }
-                          ]
-                        }
-                      ];
-                    } else {
-                      node.properties = {
-                        ...node.properties,
-                        sandbox: 'allow-scripts allow-same-origin allow-popups',
-                        loading: 'lazy',
-                        referrerpolicy: 'no-referrer',
-                        allow: 'fullscreen'
-                      };
-                    }
-                  }
-                };
-
-                if (handlers[node.tagName]) {
-                  handlers[node.tagName](node);
-                }
-
-                if (node.properties?.ref) {
-                  delete node.properties.ref;
-                }
-                if (!/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
+                if (node.type === 'element' && !/^[a-z][a-z0-9]*$/i.test(node.tagName)) {
                   node.type = 'text';
                   node.value = `<${node.tagName}`;
                 }
 
-                if (node.children) {
-                  node.children.forEach(iterate);
-                }
+                if (node.children) node.children.forEach(iterate);
               };
-
               tree.children.forEach(iterate);
             };
           }
         ]}
-        disallowedElements={['script']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body', 'svg']}
         components={components}
         urlTransform={urlTransform}
       >
