@@ -97,6 +97,7 @@ const ImageDatasetInputModal = ({
   const [previewUrl, setPreviewUrl] = useState('');
   const [isEditing, setIsEditing] = useState(!!dataId);
   const [loading, setLoading] = useState(false);
+  const [isImageHovered, setIsImageHovered] = useState(false);
 
   // 引入文件选择器
   const {
@@ -257,14 +258,6 @@ const ImageDatasetInputModal = ({
               .then(({ fileId, previewUrl }) => {
                 setUploadedFileId(fileId);
                 setImagePreview(previewUrl);
-                console.log(
-                  '图片上传成功，ID:',
-                  fileId,
-                  '预览URL:',
-                  previewUrl,
-                  '原始文件名:',
-                  file?.name
-                );
               })
               .catch((error) => {
                 console.error('图片上传失败:', error);
@@ -537,6 +530,8 @@ const ImageDatasetInputModal = ({
                     justifyContent="center"
                     alignItems="center"
                     position="relative"
+                    onMouseEnter={() => setIsImageHovered(true)}
+                    onMouseLeave={() => setIsImageHovered(false)}
                   >
                     <Image
                       src={previewUrl || imagePreview}
@@ -549,7 +544,7 @@ const ImageDatasetInputModal = ({
                     />
 
                     {/* 图片链接显示 - 左上角 */}
-                    {uploadedFileId && (
+                    {uploadedFileId && isImageHovered && (
                       <Box
                         position="absolute"
                         width="265px"
@@ -598,30 +593,32 @@ const ImageDatasetInputModal = ({
                     )}
 
                     {/* 删除按钮 - 右下角 */}
-                    <Box
-                      position="absolute"
-                      width="22px"
-                      height="25.20833px"
-                      bottom="8px"
-                      right="8px"
-                      borderRadius="4px"
-                      padding="4px"
-                      bg="white"
-                      border="1px solid"
-                      borderColor="var(--Gray-Modern-250, #DFE2EA)"
-                      boxShadow="0px 0px 1px 0px #13336B14, 0px 1px 2px 0px #13336B0D"
-                      cursor="pointer"
-                      _hover={{ bg: 'gray.50' }}
-                      onClick={(e) => {
-                        e.stopPropagation(); // 阻止冒泡
-                        setPreviewUrl('');
-                        setImagePreview('');
-                        setSelectFiles([]);
-                        setUploadedFileId('');
-                      }}
-                    >
-                      <MyIcon name="delete" width="14px" height="14px" color="myGray.600" />
-                    </Box>
+                    {isImageHovered && (
+                      <Box
+                        position="absolute"
+                        width="22px"
+                        height="25.20833px"
+                        bottom="8px"
+                        right="8px"
+                        borderRadius="4px"
+                        padding="4px"
+                        bg="white"
+                        border="1px solid"
+                        borderColor="var(--Gray-Modern-250, #DFE2EA)"
+                        boxShadow="0px 0px 1px 0px #13336B14, 0px 1px 2px 0px #13336B0D"
+                        cursor="pointer"
+                        _hover={{ bg: 'gray.50' }}
+                        onClick={(e) => {
+                          e.stopPropagation(); // 阻止冒泡
+                          setPreviewUrl('');
+                          setImagePreview('');
+                          setSelectFiles([]);
+                          setUploadedFileId('');
+                        }}
+                      >
+                        <MyIcon name="delete" width="14px" height="14px" color="myGray.600" />
+                      </Box>
+                    )}
                   </Box>
                 ) : (
                   <FileSelector

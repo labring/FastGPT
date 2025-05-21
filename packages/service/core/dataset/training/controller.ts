@@ -62,6 +62,19 @@ export async function pushDataListToTrainingQueue({
   indexSize,
   session
 }: PushDataToTrainingQueueProps): Promise<PushDatasetDataResponse> {
+  console.log('pushDataListToTrainingQueue参数:', {
+    teamId,
+    tmbId,
+    datasetId,
+    collectionId,
+    agentModel,
+    vectorModel,
+    vlmModel,
+    mode,
+    indexSize,
+    dataLen: data.length
+  });
+
   const getImageChunkMode = (data: PushDatasetDataChunkProps, mode: TrainingModeEnum) => {
     if (mode !== TrainingModeEnum.image) return mode;
     // 检查内容中，是否包含 ![](xxx) 的图片格式
@@ -76,10 +89,12 @@ export async function pushDataListToTrainingQueue({
 
   const vectorModelData = getEmbeddingModel(vectorModel);
   if (!vectorModelData) {
+    console.log('未配置embedding模型');
     return Promise.reject(i18nT('common:error_embedding_not_config'));
   }
   const agentModelData = getLLMModel(agentModel);
   if (!agentModelData) {
+    console.log('未配置LLM模型');
     return Promise.reject(i18nT('common:error_llm_not_config'));
   }
   if (mode === TrainingModeEnum.chunk || mode === TrainingModeEnum.auto) {
@@ -104,6 +119,19 @@ export async function pushDataListToTrainingQueue({
     if (mode === TrainingModeEnum.image) {
       const vllmModelData = getVlmModel(vlmModel);
       if (!vllmModelData) {
+        console.log('未配置VLM模型');
+        return Promise.reject(i18nT('common:error_vlm_not_config'));
+      }
+      return {
+        maxToken: getLLMMaxChunkSize(vllmModelData),
+        model: vllmModelData.model,
+        weight: 0
+      };
+    }
+    if (mode === TrainingModeEnum.imageParse) {
+      const vllmModelData = getVlmModel(vlmModel);
+      if (!vllmModelData) {
+        console.log('未配置VLM模型');
         return Promise.reject(i18nT('common:error_vlm_not_config'));
       }
       return {
@@ -161,6 +189,13 @@ export async function pushDataListToTrainingQueue({
     }
   });
 
+  console.log('过滤后数据统计:', {
+    success: filterResult.success.length,
+    overToken: filterResult.overToken.length,
+    repeat: filterResult.repeat.length,
+    error: filterResult.error.length
+  });
+
   // insert data to db
   const insertLen = filterResult.success.length;
   const failedDocuments: PushDatasetDataChunkProps[] = [];
@@ -196,17 +231,25 @@ export async function pushDataListToTrainingQueue({
           ordered: true
         }
       );
+      console.log(`批量插入成功: ${list.length} 条`);
     } catch (error: any) {
       addLog.error(`Insert error`, error);
       // 如果有错误，将失败的文档添加到失败列表中
       error.writeErrors?.forEach((writeError: any) => {
         failedDocuments.push(data[writeError.index]);
       });
-      console.log('failed', failedDocuments);
+      console.log('批量插入失败，失败文档:', failedDocuments);
     }
 
     // 对于失败的文档，尝试单独插入
-    await MongoDatasetTraining.create(failedDocuments, { session });
+    if (failedDocuments.length > 0) {
+      try {
+        await MongoDatasetTraining.create(failedDocuments, { session });
+        console.log('单独插入失败文档成功:', failedDocuments.length);
+      } catch (e) {
+        console.log('单独插入失败文档仍然失败:', e);
+      }
+    }
 
     return insertData(startIndex + batchSize, session);
   };
@@ -220,6 +263,13 @@ export async function pushDataListToTrainingQueue({
   }
 
   delete filterResult.success;
+
+  console.log('pushDataListToTrainingQueue完成:', {
+    insertLen,
+    overToken: filterResult.overToken.length,
+    repeat: filterResult.repeat.length,
+    error: filterResult.error.length
+  });
 
   return {
     insertLen,
