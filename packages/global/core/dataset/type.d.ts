@@ -180,6 +180,7 @@ export type DatasetTrainingSchemaType = {
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
   retryCount: number;
   errorMsg?: string;
+  imageFileId?: string;
 };
 
 export type CollectionWithDatasetType = DatasetCollectionSchemaType & {

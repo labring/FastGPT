@@ -416,15 +416,6 @@ const DataCard = () => {
 
                 {/* Data content */}
                 <Box wordBreak={'break-all'} fontSize={'sm'}>
-                  {/* 显示调试信息 */}
-                  {process.env.NODE_ENV === 'development' && item.imageFileId && (
-                    <Box fontSize="xs" color="gray.500" mb={1}>
-                      imageFileId: {item.imageFileId}
-                      {imagePreviewUrls[item._id] ? ' (有预览URL)' : ' (无预览URL)'}
-                      {item.a ? ` | 文件名: ${item.a}` : ' (无文件名)'}
-                    </Box>
-                  )}
-
                   {/* 如果是图片数据且在图片集合中 */}
                   {isImageCollection ? (
                     <Box

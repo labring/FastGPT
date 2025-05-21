@@ -145,6 +145,7 @@ export async function insertData2Dataset({
   indexSize = 512,
   indexes,
   embeddingModel,
+  imageFileId,
   session
 }: CreateDatasetDataProps & {
   embeddingModel: string;
@@ -205,6 +206,7 @@ export async function insertData2Dataset({
         tmbId,
         datasetId,
         collectionId,
+        imageFileId,
         q,
         a,
         chunkIndex,
@@ -221,6 +223,7 @@ export async function insertData2Dataset({
         teamId,
         datasetId,
         collectionId,
+        imageFileId,
         dataId: _id,
         fullTextToken: await jiebaSplit({ text: `${q}\n${a}`.trim() })
       }

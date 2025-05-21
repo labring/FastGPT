@@ -129,112 +129,6 @@ const SelectFile = React.memo(function SelectFile() {
     }
   };
 
-  // 上传图片到数据集的函数
-  const uploadImageToDataset = async (file: File, collectionName?: string, index?: number) => {
-    const datasetId = router.query.datasetId as string;
-    if (!datasetId) {
-      throw new Error('数据集ID不存在');
-    }
-
-    try {
-      const data = {
-        datasetId
-      };
-
-      const { fileId, previewUrl } = await uploadFile2DB({
-        file,
-        bucketName: BucketNameEnum.dataset,
-        data,
-        metadata: {
-          collectionName: collectionName
-            ? `${collectionName}_${index || 0}_${file.name}`
-            : file.name,
-          fileType: 'image',
-          mimeType: file.type
-        },
-        percentListen: (percent) => {
-          setSelectFiles((prev) =>
-            prev.map((item) =>
-              item.file === file
-                ? { ...item, uploadedFileRate: percent, isUploading: percent < 100 }
-                : item
-            )
-          );
-        }
-      });
-
-      if (fileId) {
-        const response = await fetch('/api/core/dataset/collection/create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            datasetId,
-            parentId,
-            fileId,
-            name: collectionName ? `${collectionName}_${index || 0}_${file.name}` : file.name,
-            type: DatasetCollectionTypeEnum.file,
-            rawText: '',
-            trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-            chunkSettingMode: ChunkSettingModeEnum.auto
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || '创建集合失败');
-        }
-
-        const result = await response.json();
-        const collectionId = result.data;
-
-        if (!collectionId) {
-          throw new Error('创建集合失败：无法获取集合ID');
-        }
-
-        for (let i = 0; i < selectFiles.length; i++) {
-          try {
-            const currentFile = selectFiles[i];
-            if (!currentFile.dbFileId) continue;
-
-            const insertParams = {
-              collectionId: collectionId,
-              q: `图片第${i + 1}张`,
-              a: '',
-              chunkIndex: i,
-              imageFileId: currentFile.dbFileId
-            };
-
-            const dataItemResult = await postInsertData2Dataset(insertParams);
-          } catch (error) {}
-        }
-
-        toast({
-          title: `成功导入图片集合，共${selectFiles.length}张图片`,
-          status: 'success'
-        });
-
-        router.replace({
-          query: {
-            datasetId: router.query.datasetId,
-            currentTab: TabEnum.collectionCard
-          }
-        });
-      } else {
-        toast({
-          title: '所有图片导入失败',
-          status: 'error'
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: error?.message || t('common:common.Create Failed'),
-        status: 'error'
-      });
-    }
-  };
-
   // 处理确认导入
   const handleUploadAndCreateCollection = async () => {
     if (selectFiles.length === 0) {
@@ -313,17 +207,47 @@ const SelectFile = React.memo(function SelectFile() {
             throw new Error('创建集合失败：无法获取集合ID');
           }
 
-          for (let i = 0; i < imageRefs.length; i++) {
+          for (let i = 0; i < selectFiles.length; i++) {
             try {
-              const insertParams = {
-                collectionId: collectionId,
-                q: `图片第${i + 1}张`,
-                a: ``,
-                chunkIndex: i,
-                imageFileId: imageRefs[i]
+              const currentFile = selectFiles[i];
+              if (!currentFile.dbFileId) continue;
+
+              // 使用fileId方式创建集合并上传
+              const fileIdParams = {
+                fileId: currentFile.dbFileId,
+                datasetId: datasetId,
+                trainingType: 'chunk', // 使用预设的训练类型
+                imageIndex: true, // 启用图片索引
+                customPdfParse: false,
+                parentId: collectionId // 使用parentId而不是collectionId
               };
 
-              const dataItemResult = await postInsertData2Dataset(insertParams);
+              console.log('开始上传图片，参数:', fileIdParams);
+
+              // 确保API端点正确
+              const apiEndpoint = '/api/core/dataset/collection/create/fileId_image';
+
+              // 调用创建集合的API
+              try {
+                const response = await fetch(apiEndpoint, {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  body: JSON.stringify(fileIdParams)
+                });
+
+                if (!response.ok) {
+                  const errorText = await response.text();
+                  console.error('上传图片失败:', response.status, errorText);
+                  throw new Error(`上传图片失败: ${response.status} ${errorText}`);
+                }
+
+                const result = await response.json();
+                console.log('上传图片成功:', result);
+              } catch (error) {
+                console.error('上传图片出错:', error);
+              }
             } catch (error) {}
           }
 
