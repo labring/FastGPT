@@ -2,6 +2,7 @@ import React, { type ReactNode, useEffect, useMemo, useRef, useState } from 'rea
 import { createContext } from 'use-context-selector';
 import { useLocalStorageState } from 'ahooks';
 import { type SetState } from 'ahooks/lib/createUseStorageState';
+import type { OnConnectStartParams } from 'reactflow';
 
 type WorkflowEventContextType = {
   mouseInCanvas: boolean;
@@ -20,6 +21,8 @@ type WorkflowEventContextType = {
   // version history
   showHistoryModal: boolean;
   setShowHistoryModal: React.Dispatch<React.SetStateAction<boolean>>;
+  handleParams: OnConnectStartParams | null;
+  setHandleParams: React.Dispatch<React.SetStateAction<OnConnectStartParams | null>>;
 };
 
 export const WorkflowEventContext = createContext<WorkflowEventContextType>({
@@ -42,6 +45,10 @@ export const WorkflowEventContext = createContext<WorkflowEventContextType>({
   showHistoryModal: false,
   setShowHistoryModal: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
+  },
+  handleParams: null,
+  setHandleParams: function (value: React.SetStateAction<OnConnectStartParams | null>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -49,6 +56,8 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
   // Watch mouse in canvas
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [mouseInCanvas, setMouseInCanvas] = useState(false);
+  const [handleParams, setHandleParams] = useState<OnConnectStartParams | null>(null);
+
   useEffect(() => {
     const handleMouseInCanvas = (e: MouseEvent) => {
       setMouseInCanvas(true);
@@ -62,7 +71,7 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
       reactFlowWrapper?.current?.removeEventListener('mouseenter', handleMouseInCanvas);
       reactFlowWrapper?.current?.removeEventListener('mouseleave', handleMouseOutCanvas);
     };
-  }, [reactFlowWrapper?.current, setMouseInCanvas]);
+  }, [setMouseInCanvas]);
 
   // Watch hover node
   const [hoverNodeId, setHoverNodeId] = useState<string>();
@@ -95,7 +104,9 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
       menu,
       setMenu,
       showHistoryModal,
-      setShowHistoryModal
+      setShowHistoryModal,
+      handleParams,
+      setHandleParams
     }),
     [
       mouseInCanvas,
@@ -108,7 +119,9 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
       menu,
       setMenu,
       showHistoryModal,
-      setShowHistoryModal
+      setShowHistoryModal,
+      handleParams,
+      setHandleParams
     ]
   );
   return (

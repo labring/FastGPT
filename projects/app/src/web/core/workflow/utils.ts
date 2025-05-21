@@ -170,11 +170,16 @@ export const storeNode2FlowNode = ({
     zIndex
   };
 };
-export const storeEdgesRenderEdge = ({ edge }: { edge: StoreEdgeItemType }) => {
+export const storeEdge2RenderEdge = ({ edge }: { edge: StoreEdgeItemType }) => {
+  const sourceHandle = edge.sourceHandle.replace(/-source-(top|bottom|left)$/, '-source-right');
+  const targetHandle = edge.targetHandle.replace(/-target-(top|bottom|right)$/, '-target-left');
+
   return {
     ...edge,
     id: getNanoid(),
-    type: EDGE_TYPE
+    type: EDGE_TYPE,
+    sourceHandle,
+    targetHandle
   };
 };
 

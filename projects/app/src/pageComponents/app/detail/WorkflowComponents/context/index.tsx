@@ -2,7 +2,7 @@ import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
   compareSnapshot,
-  storeEdgesRenderEdge,
+  storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -56,6 +56,12 @@ import { getAppConfigByDiff } from '@/web/core/app/diff';
 import WorkflowStatusContextProvider from './workflowStatusContext';
 import { type ChatItemType, type UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { TemplateTypeEnum } from '../Flow/components/NodeTemplates/header';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { getTeamPlugTemplates, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 /* 
   Context
@@ -206,6 +212,22 @@ type WorkflowContextType = {
       | undefined
     >
   >;
+
+  templateType: TemplateTypeEnum;
+  setTemplateType: (templateType: TemplateTypeEnum) => void;
+
+  // template
+  parentId: ParentIdType;
+  setParentId: (parentId: ParentIdType) => void;
+  basicNodes: NodeTemplateListItemType[];
+  templates: NodeTemplateListItemType[];
+  templatesIsLoading: boolean;
+  loadNodeTemplates: (params: {
+    parentId?: ParentIdType;
+    type?: TemplateTypeEnum;
+    searchVal?: string;
+  }) => Promise<void>;
+  onUpdateParentId: (parentId: ParentIdType) => void;
 };
 
 export type DebugDataType = {
@@ -340,6 +362,30 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     chatConfig: AppChatConfigType;
     isSaved?: boolean;
   }): boolean {
+    throw new Error('Function not implemented.');
+  },
+
+  templateType: TemplateTypeEnum.basic,
+  setTemplateType: function (templateType: TemplateTypeEnum): void {
+    throw new Error('Function not implemented.');
+  },
+
+  // template
+  parentId: '',
+  setParentId: function (parentId: ParentIdType): void {
+    throw new Error('Function not implemented.');
+  },
+  basicNodes: [],
+  templates: [],
+  templatesIsLoading: true,
+  loadNodeTemplates: function (params: {
+    parentId?: ParentIdType;
+    type?: TemplateTypeEnum;
+    searchVal?: string;
+  }): Promise<void> {
+    throw new Error('Function not implemented.');
+  },
+  onUpdateParentId: function (parentId: ParentIdType): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -861,7 +907,7 @@ const WorkflowContextProvider = ({
   });
   const onSwitchCloudVersion = useMemoizedFn((appVersion: AppVersionSchemaType) => {
     const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
-    const edges = appVersion.edges.map((item) => storeEdgesRenderEdge({ edge: item }));
+    const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
     const chatConfig = appVersion.chatConfig;
 
     resetSnapshot({
@@ -912,7 +958,7 @@ const WorkflowContextProvider = ({
       isInit?: boolean
     ) => {
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
-      const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
+      const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // Get storage snapshot，兼容旧版正在编辑的用户，刷新后会把 local 数据存到内存并删除
       const pastSnapshot = (() => {
@@ -1004,6 +1050,113 @@ const WorkflowContextProvider = ({
     [appDetail.chatConfig, appId, past, setAppDetail, setEdges, setNodes, t]
   );
 
+  /* templates list */
+  const { feConfigs } = useSystemStore();
+  const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
+  const [parentId, setParentId] = useState<ParentIdType>('');
+
+  const { data: basicNodes } = useRequest2(
+    async () => {
+      if (templateType === TemplateTypeEnum.basic) {
+        return basicNodeTemplates
+          .filter((item) => {
+            // unique node filter
+            if (item.unique) {
+              const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
+              if (nodeExist) {
+                return false;
+              }
+            }
+            // special node filter
+            if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
+              return false;
+            }
+            // tool stop or tool params
+            if (
+              !hasToolNode &&
+              (item.flowNodeType === FlowNodeTypeEnum.stopTool ||
+                item.flowNodeType === FlowNodeTypeEnum.toolParams)
+            ) {
+              return false;
+            }
+            return true;
+          })
+          .map<NodeTemplateListItemType>((item) => ({
+            id: item.id,
+            flowNodeType: item.flowNodeType,
+            templateType: item.templateType,
+            avatar: item.avatar,
+            name: item.name,
+            intro: item.intro
+          }));
+      }
+    },
+    {
+      manual: false,
+      throttleWait: 100,
+      refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType]
+    }
+  );
+
+  const {
+    data: teamAndSystemApps,
+    loading: templatesIsLoading,
+    runAsync
+  } = useRequest2(
+    async ({
+      parentId = '',
+      type = templateType,
+      searchVal = ''
+    }: {
+      parentId?: ParentIdType;
+      type?: TemplateTypeEnum;
+      searchVal?: string;
+    }) => {
+      if (type === TemplateTypeEnum.teamPlugin) {
+        return getTeamPlugTemplates({
+          parentId,
+          searchKey: searchVal
+        }).then((res) => res.filter((app) => app.id !== appId));
+      }
+      if (type === TemplateTypeEnum.systemPlugin) {
+        return getSystemPlugTemplates({
+          searchKey: searchVal,
+          parentId
+        });
+      }
+    },
+    {
+      onSuccess(res, [{ parentId = '', type = templateType }]) {
+        setParentId(parentId);
+        setTemplateType(type);
+      },
+      refreshDeps: [templateType]
+    }
+  );
+
+  const loadNodeTemplates = useCallback(
+    async (params: { parentId?: ParentIdType; type?: TemplateTypeEnum; searchVal?: string }) => {
+      await runAsync(params);
+    },
+    [runAsync]
+  );
+
+  const onUpdateParentId = useCallback(
+    (parentId: ParentIdType) => {
+      loadNodeTemplates({
+        parentId
+      });
+    },
+    [loadNodeTemplates]
+  );
+
+  const templates = useMemo(() => {
+    if (templateType === TemplateTypeEnum.basic) {
+      return basicNodes || [];
+    }
+    return teamAndSystemApps || [];
+  }, [basicNodes, teamAndSystemApps, templateType]);
+
   const value = useMemo(
     () => ({
       appId,
@@ -1047,7 +1200,20 @@ const WorkflowContextProvider = ({
       onStopNodeDebug,
 
       // chat test
-      setWorkflowTestData
+      setWorkflowTestData,
+
+      // template
+      templateType,
+      setTemplateType,
+
+      // template
+      parentId,
+      setParentId,
+      basicNodes: basicNodes || [],
+      templates,
+      templatesIsLoading,
+      loadNodeTemplates,
+      onUpdateParentId
     }),
     [
       appId,
@@ -1075,7 +1241,16 @@ const WorkflowContextProvider = ({
       setPast,
       splitToolInputs,
       undo,
-      workflowDebugData
+      workflowDebugData,
+      templateType,
+      setTemplateType,
+      parentId,
+      setParentId,
+      basicNodes,
+      templates,
+      templatesIsLoading,
+      loadNodeTemplates,
+      onUpdateParentId
     ]
   );
 
