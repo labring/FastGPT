@@ -14,7 +14,10 @@ import {
   Center,
   IconButton,
   Button,
-  useDisclosure
+  useDisclosure,
+  Tooltip,
+  Wrap,
+  WrapItem
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useMemo, useState } from 'react';
@@ -46,6 +49,9 @@ const colorOptions: { value: string; color: string; bg: string }[] = [
   { value: 'purple', color: 'purple.600', bg: 'purple.50' },
   { value: 'teal', color: 'teal.600', bg: 'teal.50' }
 ];
+
+// 设置最大可见标签数
+const MAX_VISIBLE_TAGS = 2;
 
 // 获取标签样式
 const getTagStyle = (color: string) => {
@@ -133,7 +139,11 @@ const AppTable = () => {
   });
 
   // 获取标签列表
-  const { data: tagList = [], loading: loadingTags } = useRequest2(() => getTeamTags(), {
+  const {
+    data: tagList = [],
+    loading: loadingTags,
+    refresh: refreshTags
+  } = useRequest2(() => getTeamTags(), {
     manual: false
   });
 
@@ -292,23 +302,80 @@ const AppTable = () => {
                     </Td>
                     <Td py={4} borderBottomWidth="0">
                       <HStack spacing={2} wrap="wrap">
-                        {app.tags?.map((tagId) => {
-                          const tag = tagMap.get(tagId);
-                          if (!tag) return null;
+                        {(() => {
+                          // 获取所有有效标签（确保 tag 存在）
+                          const validTags = (app.tags || []).filter((tagId) => tagMap.get(tagId));
+                          // 可见标签
+                          const visibleTags = validTags.slice(0, MAX_VISIBLE_TAGS);
+                          // 剩余标签数量
+                          const remainingCount = Math.max(0, validTags.length - MAX_VISIBLE_TAGS);
+
                           return (
-                            <Tag
-                              key={tag._id}
-                              size="md"
-                              variant="subtle"
-                              {...getTagStyle(tag.color)}
-                              px={3}
-                              py={1.5}
-                              borderRadius="full"
-                            >
-                              {tag.name}
-                            </Tag>
+                            <>
+                              {visibleTags.map((tagId) => {
+                                const tag = tagMap.get(tagId);
+                                if (!tag) return null;
+                                return (
+                                  <Tag
+                                    key={tag._id}
+                                    size="md"
+                                    variant="subtle"
+                                    {...getTagStyle(tag.color)}
+                                    px={3}
+                                    py={1.5}
+                                    borderRadius="full"
+                                  >
+                                    {tag.name}
+                                  </Tag>
+                                );
+                              })}
+                              {remainingCount > 0 && (
+                                <Tooltip
+                                  label={
+                                    <Wrap spacing={2} maxW="300px" p={2}>
+                                      {validTags.slice(MAX_VISIBLE_TAGS).map((tagId) => {
+                                        const tag = tagMap.get(tagId);
+                                        if (!tag) return null;
+                                        return (
+                                          <WrapItem key={tagId}>
+                                            <Tag
+                                              size="md"
+                                              variant="subtle"
+                                              {...getTagStyle(tag.color)}
+                                              px={3}
+                                              py={1.5}
+                                              borderRadius="full"
+                                            >
+                                              {tag.name}
+                                            </Tag>
+                                          </WrapItem>
+                                        );
+                                      })}
+                                    </Wrap>
+                                  }
+                                  hasArrow
+                                  placement="top"
+                                  bg="white"
+                                  color="inherit"
+                                  p={0}
+                                  boxShadow="lg"
+                                >
+                                  <Tag
+                                    size="md"
+                                    variant="subtle"
+                                    borderRadius="full"
+                                    px={3}
+                                    py={1.5}
+                                    bg="gray.100"
+                                    color="gray.500"
+                                  >
+                                    +{remainingCount}
+                                  </Tag>
+                                </Tooltip>
+                              )}
+                            </>
                           );
-                        })}
+                        })()}
                       </HStack>
                     </Td>
                     <Td py={4} borderBottomWidth="0">
@@ -348,7 +415,15 @@ const AppTable = () => {
             onUpdateSuccess={refreshApps}
           />
         )}
-        {isTagModalOpen && <TagManageModal onClose={onCloseTagModal} />}
+        {isTagModalOpen && (
+          <TagManageModal
+            onClose={() => {
+              onCloseTagModal();
+              refreshTags();
+              refreshApps();
+            }}
+          />
+        )}
         <DelConfirmModal />
       </Flex>
     </MyBox>

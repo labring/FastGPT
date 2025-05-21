@@ -49,7 +49,13 @@ export const AppFormContext = React.createContext<{
   setAppForm: () => {}
 });
 
-const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+const Chat = ({
+  myApps,
+  initialAppDetail
+}: {
+  myApps: AppListItemType[];
+  initialAppDetail?: AppDetailType;
+}) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -67,9 +73,19 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  // 添加appForm共享状态
-  const [appForm, setAppForm] = useState<AppSimpleEditFormType>(getDefaultAppForm());
-  const [appDetail, setAppDetail] = useState<AppDetailType>();
+  // 添加appForm共享状态，使用初始化的appDetail
+  const [appForm, setAppForm] = useState<AppSimpleEditFormType>(() => {
+    if (initialAppDetail?.modules) {
+      return appWorkflow2Form({
+        nodes: initialAppDetail.modules,
+        chatConfig: initialAppDetail.chatConfig || {}
+      });
+    }
+    return getDefaultAppForm();
+  });
+  const [appDetail, setAppDetail] = useState<AppDetailType | undefined>(
+    () => initialAppDetail || undefined
+  );
   const [renderEdit, setRenderEdit] = useState(false);
   // 添加侧边栏折叠状态
   const [sidebarFolded, setSidebarFolded] = useState(false);
@@ -90,15 +106,21 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         variableList: res.app?.chatConfig?.variables
       });
 
-      // 获取 AppDetail 并初始化 AppForm
-      const detail = await getAppDetailById(appId);
-      if (detail?.modules) {
-        setAppDetail(detail);
-        const form = appWorkflow2Form({
-          nodes: detail.modules,
-          chatConfig: detail.chatConfig || {}
-        });
-        setAppForm(form);
+      // 如果还没有 AppDetail，则重新获取
+      if (!appDetail && appId) {
+        try {
+          const detail = await getAppDetailById(appId);
+          if (detail?.modules) {
+            setAppDetail(detail);
+            const form = appWorkflow2Form({
+              nodes: detail.modules,
+              chatConfig: detail.chatConfig || {}
+            });
+            setAppForm(form);
+          }
+        } catch (error) {
+          console.error('Failed to fetch app detail:', error);
+        }
       }
     },
     {
@@ -233,8 +255,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   );
 };
 
-const Render = (props: { appId: string; isStandalone?: string }) => {
-  const { appId, isStandalone } = props;
+const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?: string }) => {
+  const { appId, appDetail: initialAppDetail, isStandalone } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
@@ -344,7 +366,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} />
+          <Chat myApps={myApps} initialAppDetail={initialAppDetail} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
@@ -352,9 +374,21 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 };
 
 export async function getServerSideProps(context: any) {
+  const appId = context?.query?.appId || '';
+  let appDetail;
+
+  if (appId) {
+    try {
+      appDetail = await getAppDetailById(appId);
+    } catch (error) {
+      console.error('Failed to fetch app detail:', error);
+    }
+  }
+
   return {
     props: {
-      appId: context?.query?.appId || '',
+      appId,
+      appDetail: appDetail || null,
       isStandalone: context?.query?.isStandalone || '',
       ...(await serviceSideProps(context, [
         'file',

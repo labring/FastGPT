@@ -91,6 +91,14 @@ const AppInfoModal = ({ app, onClose, onUpdateSuccess }: AppInfoModalProps) => {
     }
   );
 
+  useEffect(() => {
+    // 如果应用的标签有变化，通知父组件刷新
+    if (app.tags && initialTags && JSON.stringify(app.tags) !== JSON.stringify(initialTags)) {
+      setInitialTags([...app.tags]);
+      if (onUpdateSuccess) onUpdateSuccess();
+    }
+  }, [app.tags, initialTags, onUpdateSuccess]);
+
   // 添加标签到应用
   const { runAsync: addTag, loading: addTagLoading } = useRequest2(
     async (tagId: string) => {
@@ -117,15 +125,21 @@ const AppInfoModal = ({ app, onClose, onUpdateSuccess }: AppInfoModalProps) => {
     const tagsToAdd = appTags.filter((tagId) => !initialTags.includes(tagId));
     const tagsToRemove = initialTags.filter((tagId) => !appTags.includes(tagId));
 
+    let hasChanges = false;
+
     if (tagsToAdd.length > 0) {
       await batchAddTagsToApp(app._id, tagsToAdd);
+      hasChanges = true;
     }
 
     if (tagsToRemove.length > 0) {
       await batchRemoveTagsFromApp(app._id, tagsToRemove);
+      hasChanges = true;
     }
 
     setInitialTags([...appTags]);
+
+    return hasChanges;
   }, [appTags, initialTags, app._id]);
 
   // submit config
@@ -139,10 +153,12 @@ const AppInfoModal = ({ app, onClose, onUpdateSuccess }: AppInfoModalProps) => {
       });
 
       // 保存标签变更
-      await saveTagChanges();
+      const tagsChanged = await saveTagChanges();
+
+      return tagsChanged; // 返回标签是否有变更
     },
     {
-      onSuccess() {
+      onSuccess(tagsChanged) {
         toast({
           title: t('common:update_success'),
           status: 'success'

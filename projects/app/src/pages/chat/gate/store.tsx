@@ -1,103 +1,86 @@
-import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import {
-  Box,
-  Flex,
-  Drawer,
-  DrawerOverlay,
-  DrawerContent,
-  useTheme,
-  Input,
-  HStack
-} from '@chakra-ui/react';
-import { streamFetch } from '@/web/common/api/fetch';
+import { Box, Flex } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import FoldButton from '@/pageComponents/chat/gatechat/FoldButton';
-import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import PageContainer from '@/components/PageContainer';
-import SideBar from '@/components/SideBar';
-import ChatHistorySlider from '@/pageComponents/chat/ChatHistorySlider';
-import SliderApps from '@/pageComponents/chat/SliderApps';
-import ChatHeader from '@/pageComponents/chat/ChatHeader';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getMyApps } from '@/web/core/app/api';
+import { getTeamTags } from '@fastgpt/service/core/app/tags/controller';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 import { useMount } from 'ahooks';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 import { GetChatTypeEnum } from '@/global/core/chat/constants';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
 import type { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
-import dynamic from 'next/dynamic';
-import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import ChatRecordContextProvider, {
-  ChatRecordContext
-} from '@/web/core/chat/context/chatRecordContext';
+import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
-import GateSideBar from '@/pageComponents/chat/gatechat/GateSideBar';
 import GatePageContainer from '@/components/GatePageContainer';
-import GateChatHistorySlider from '@/pageComponents/chat/gatechat/GateChatHistorySlider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
-import { getTeamTags } from '@/web/core/app/api/tags';
 import AppCard from '@/pageComponents/chat/gatechat/AppCard';
 
-const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
-
-const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+const Chat = ({
+  myApps,
+  serverTagList = [],
+  serverTagMap = {}
+}: {
+  myApps: AppListItemType[];
+  serverTagList?: any[];
+  serverTagMap?: Record<string, any>;
+}) => {
   const router = useRouter();
-  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
   const [search, setSearch] = useState('');
   const [selectedTag, setSelectedTag] = useState<string>('');
 
   const { userInfo } = useUserStore();
-  const { setLastChatAppId, chatId, appId, outLinkAuthData } = useChatStore();
+  const { setLastChatAppId, chatId, appId } = useChatStore();
 
-  const isOpenSlider = useContextSelector(ChatContext, (v) => v.isOpenSlider);
-  const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
   const forbidLoadChat = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
-  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
 
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
-  const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
-  const totalRecordsCount = useContextSelector(ChatRecordContext, (v) => v.totalRecordsCount);
+  // 使用服务端渲染的标签数据
+  const [tagList, setTagList] = useState<any[]>(serverTagList);
 
-  // get tags
-  const { data: tagList = [] } = useRequest2(() => getTeamTags(), {
-    manual: false
-  });
-
-  // create tag map
+  // 使用服务端渲染的标签映射
   const tagMap = useMemo(() => {
-    const map = new Map();
+    if (Object.keys(serverTagMap).length > 0) {
+      // 将对象转换为 Map
+      const map = new Map<string, any>();
+      Object.keys(serverTagMap).forEach((key) => {
+        map.set(key, serverTagMap[key]);
+      });
+      return map;
+    }
+
+    // 如果没有服务端数据，则创建新的映射（兼容旧版本）
+    const map = new Map<string, any>();
     tagList.forEach((tag) => {
       map.set(tag._id, tag);
     });
     return map;
-  }, [tagList]);
+  }, [serverTagMap, tagList]);
 
   // Get unique tags from all apps
   const allTags = useMemo(() => {
@@ -153,13 +136,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
         if (e?.code === 501) {
           setLastChatAppId('');
           router.replace('/dashboard/apps');
-        } else {
-          router.replace({
-            query: {
-              ...router.query,
-              appId: myApps[0]?._id
-            }
-          });
         }
       },
       onFinally() {
@@ -168,81 +144,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     }
   );
 
-  const onStartChat = useCallback(
-    async ({
-      messages,
-      responseChatItemId,
-      controller,
-      generatingMessage,
-      variables
-    }: StartChatFnProps) => {
-      // Just send a user prompt
-      const histories = messages.slice(-1);
-      const { responseText } = await streamFetch({
-        data: {
-          messages: histories,
-          variables,
-          responseChatItemId,
-          appId,
-          chatId
-        },
-        onMessage: generatingMessage,
-        abortCtrl: controller
-      });
-
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(histories)[0]);
-
-      // new chat
-      onUpdateHistoryTitle({ chatId, newTitle });
-      // update chat window
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
-
-      return { responseText, isNewChat: forbidLoadChat.current };
-    },
-    [appId, chatId, onUpdateHistoryTitle, setChatBoxData, forbidLoadChat]
-  );
   const [sidebarFolded, setSidebarFolded] = useState(false);
-  const handleFoldChange = (isFolded: boolean) => {
-    setSidebarFolded(isFolded);
-  };
-  const RenderHistorySlider = useMemo(() => {
-    const Children = (
-      <GateChatHistorySlider confirmClearText={t('common:core.chat.Confirm to clear history')} />
-    );
-
-    return isPc || !appId ? (
-      <GateSideBar
-        externalTrigger={!!datasetCiteData}
-        onFoldChange={handleFoldChange}
-        defaultFolded={sidebarFolded}
-      >
-        {Children}
-      </GateSideBar>
-    ) : (
-      <Drawer
-        isOpen={isOpenSlider}
-        placement="left"
-        autoFocus={false}
-        size={'xs'}
-        onClose={onCloseSlider}
-      >
-        <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-        <DrawerContent maxWidth={'75vw'}>{Children}</DrawerContent>
-      </Drawer>
-    );
-  }, [
-    t,
-    isPc,
-    appId,
-    datasetCiteData,
-    sidebarFolded,
-    isOpenSlider,
-    onCloseSlider,
-    handleFoldChange
-  ]);
 
   return (
     <Flex h={'100%'}>
@@ -338,22 +240,26 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   );
 };
 
-const Render = (props: { appId: string; isStandalone?: string }) => {
-  const { appId, isStandalone } = props;
+const Render = (props: {
+  appId: string;
+  isStandalone?: string;
+  serverTagList?: any[];
+  serverTagMap?: Record<string, any>;
+}) => {
+  const { appId, isStandalone, serverTagList = [], serverTagMap = {} } = props;
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
   const { gateConfig, initGateConfig } = useGateStore();
 
-  const {
-    data: myApps = [],
-    loading: loadingApps,
-    runAsync: loadMyApps
-  } = useRequest2(() => getMyApps({ getRecentlyChat: true }), {
-    manual: false,
-    refreshDeps: [appId]
-  });
+  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
+    () => getMyApps({ getRecentlyChat: true }),
+    {
+      manual: false,
+      refreshDeps: [appId]
+    }
+  );
 
   // 初始化聊天框
   useMount(async () => {
@@ -435,7 +341,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} />
+          <Chat myApps={myApps} serverTagList={serverTagList} serverTagMap={serverTagMap} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>
@@ -443,20 +349,46 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 };
 
 export async function getServerSideProps(context: any) {
-  return {
-    props: {
-      appId: context?.query?.appId || '',
-      isStandalone: context?.query?.isStandalone || '',
-      ...(await serviceSideProps(context, [
-        'file',
-        'app',
-        'chat',
-        'workflow',
-        'account_gate',
-        'common'
-      ]))
-    }
+  const props = {
+    ...(await serviceSideProps(context, [
+      'file',
+      'app',
+      'chat',
+      'workflow',
+      'account_gate',
+      'common'
+    ]))
   };
+
+  try {
+    // 服务端获取 teamId
+    const { req } = context;
+    const { teamId } = await authUserPer({
+      req,
+      authToken: true,
+      authApiKey: true,
+      per: ReadPermissionVal
+    });
+
+    // 服务端获取标签列表
+    const tagList = await getTeamTags(teamId);
+    // 创建标签映射
+    const tagMap: Record<string, any> = {};
+    tagList.forEach((tag: any) => {
+      tagMap[tag._id] = tag;
+    });
+
+    return {
+      props: {
+        ...props,
+        serverTagList: JSON.parse(JSON.stringify(tagList)),
+        serverTagMap: JSON.parse(JSON.stringify(tagMap))
+      }
+    };
+  } catch (error) {
+    console.error('获取标签数据失败:', error);
+    return { props };
+  }
 }
 
 export default Render;

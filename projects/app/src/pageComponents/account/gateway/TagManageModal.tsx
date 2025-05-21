@@ -40,9 +40,10 @@ const colorOptions: { value: string; color: string; bg: string }[] = [
 
 interface TagManageModalProps {
   onClose: () => void;
+  onTagsUpdated?: () => void;
 }
 
-const TagManageModal = ({ onClose }: TagManageModalProps) => {
+const TagManageModal = ({ onClose, onTagsUpdated }: TagManageModalProps) => {
   const { t } = useTranslation();
   const toast = useToast();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -84,6 +85,8 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
         setRefreshTrigger((prev) => prev + 1); // 触发刷新
         setIsCreating(false);
         setEditingTag({ name: '', color: 'blue' });
+        // 通知父组件标签已更新
+        onTagsUpdated?.();
       }
     }
   );
@@ -102,6 +105,8 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
         setRefreshTrigger((prev) => prev + 1); // 触发刷新
         setIsEditing(false);
         setEditingTag({ name: '', color: 'blue' });
+        // 通知父组件标签已更新
+        onTagsUpdated?.();
       }
     }
   );
@@ -118,6 +123,8 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
           isClosable: true
         });
         setRefreshTrigger((prev) => prev + 1); // 触发刷新
+        // 通知父组件标签已更新
+        onTagsUpdated?.();
       }
     }
   );
@@ -177,6 +184,13 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
 
   // 开始编辑标签
   const startEditTag = (tag: TagWithCountType) => {
+    // 如果点击的是当前正在编辑的标签，则取消编辑
+    if (isEditing && editingTag._id === tag._id) {
+      cancelEdit();
+      return;
+    }
+
+    // 切换到新的编辑标签
     setEditingTag({
       _id: tag._id,
       name: tag.name,
@@ -254,18 +268,18 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
               onClick={startCreateTag}
               colorScheme="blue"
               size="sm"
-              isDisabled={isCreating || isEditing}
+              isDisabled={isCreating}
             >
               创建标签
             </Button>
           </Flex>
 
-          {/* 创建或编辑标签表单 */}
-          {(isCreating || isEditing) && (
+          {/* 创建新标签表单 */}
+          {isCreating && (
             <Box mb={6} p={5} borderWidth="1px" borderRadius="lg" bg="gray.50">
               <Flex direction="column" gap={4}>
                 <Box fontSize="md" fontWeight="500" color="gray.700">
-                  {isCreating ? '创建新标签' : '编辑标签'}
+                  创建新标签
                 </Box>
                 <Flex gap={4} alignItems="center">
                   <Box width="80px" flexShrink={0} color="gray.600">
@@ -378,12 +392,8 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
                   <Button variant="outline" size="sm" onClick={cancelEdit}>
                     取消
                   </Button>
-                  <Button
-                    colorScheme="blue"
-                    size="sm"
-                    onClick={isCreating ? handleCreateTag : handleUpdateTag}
-                  >
-                    {isCreating ? '创建' : '保存'}
+                  <Button colorScheme="blue" size="sm" onClick={handleCreateTag}>
+                    创建
                   </Button>
                 </Flex>
               </Flex>
@@ -401,37 +411,171 @@ const TagManageModal = ({ onClose }: TagManageModalProps) => {
                 </Tr>
               </Thead>
               <Tbody>
-                {(tags as TagWithCountType[]).map((tag) => (
-                  <Tr key={tag._id}>
-                    <Td>
-                      <Tag size="md" variant="subtle" {...getTagStyle(tag.color)} px={3} py={1.5}>
-                        {tag.name}
-                      </Tag>
-                    </Td>
-                    <Td>{tag.count || 0}</Td>
-                    <Td>
-                      <HStack spacing={3}>
-                        <IconButton
-                          aria-label="编辑"
-                          icon={<MyIcon name="edit" w="16px" />}
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => startEditTag(tag)}
-                          isDisabled={isCreating || isEditing}
-                        />
-                        <IconButton
-                          aria-label="删除"
-                          icon={<MyIcon name="delete" w="16px" />}
-                          size="sm"
-                          variant="ghost"
-                          colorScheme="red"
-                          onClick={() => handleDeleteTag(tag._id)}
-                          isDisabled={isCreating || isEditing}
-                        />
-                      </HStack>
-                    </Td>
-                  </Tr>
-                ))}
+                {(tags as TagWithCountType[]).map((tag) =>
+                  isEditing && editingTag._id === tag._id ? (
+                    // 编辑模式行 - 显示编辑表单
+                    <Tr key={tag._id} bg="gray.50">
+                      <Td colSpan={3}>
+                        <Flex px={2} py={3} direction="column" gap={4}>
+                          <Flex gap={4} alignItems="center">
+                            <Box width="80px" flexShrink={0} color="gray.600">
+                              标签名称:
+                            </Box>
+                            <Input
+                              ref={inputRef}
+                              value={editingTag.name}
+                              onChange={(e) =>
+                                setEditingTag({ ...editingTag, name: e.target.value })
+                              }
+                              placeholder="输入标签名称"
+                              maxLength={20}
+                              bg="white"
+                              size="md"
+                            />
+                          </Flex>
+                          <Flex gap={4} alignItems="center">
+                            <Box width="80px" flexShrink={0} color="gray.600">
+                              标签颜色:
+                            </Box>
+                            <Flex gap={3} flex={1} alignItems="center">
+                              <Flex gap={3}>
+                                {colorOptions.map((option) => (
+                                  <Box
+                                    key={option.value}
+                                    w="28px"
+                                    h="28px"
+                                    borderRadius="md"
+                                    bg={option.bg}
+                                    borderWidth={editingTag.color === option.value ? '2px' : '1px'}
+                                    borderColor={
+                                      editingTag.color === option.value ? option.color : 'gray.200'
+                                    }
+                                    cursor="pointer"
+                                    transition="all 0.2s"
+                                    _hover={{
+                                      transform: 'scale(1.1)',
+                                      boxShadow: 'sm'
+                                    }}
+                                    onClick={() =>
+                                      setEditingTag({ ...editingTag, color: option.value })
+                                    }
+                                  />
+                                ))}
+                              </Flex>
+
+                              <Divider orientation="vertical" h="28px" />
+
+                              <Tooltip label="选择自定义颜色" placement="top">
+                                <Box
+                                  position="relative"
+                                  w="28px"
+                                  h="28px"
+                                  borderRadius="md"
+                                  overflow="hidden"
+                                  borderWidth={editingTag.color.startsWith('#') ? '2px' : '1px'}
+                                  borderColor={
+                                    editingTag.color.startsWith('#') ? editingTag.color : 'gray.200'
+                                  }
+                                  bg={
+                                    editingTag.color.startsWith('#')
+                                      ? getTagStyle(editingTag.color).bg
+                                      : 'transparent'
+                                  }
+                                  cursor="pointer"
+                                  transition="all 0.2s"
+                                  _hover={{
+                                    transform: 'scale(1.1)',
+                                    boxShadow: 'sm'
+                                  }}
+                                >
+                                  <Input
+                                    type="color"
+                                    value={
+                                      editingTag.color.startsWith('#')
+                                        ? editingTag.color
+                                        : '#3370ff'
+                                    }
+                                    onChange={handleCustomColorChange}
+                                    position="absolute"
+                                    top="0"
+                                    left="0"
+                                    width="150%"
+                                    height="150%"
+                                    transform="translate(-25%, -25%)"
+                                    cursor="pointer"
+                                    p={0}
+                                    opacity={0}
+                                  />
+                                </Box>
+                              </Tooltip>
+                              <Box fontSize="sm" color="gray.600">
+                                自定义颜色
+                              </Box>
+                            </Flex>
+                          </Flex>
+                          <Flex gap={4} alignItems="center">
+                            <Box width="80px" flexShrink={0} color="gray.600">
+                              预览:
+                            </Box>
+                            <Tag
+                              size="md"
+                              variant="subtle"
+                              {...(editingTag.color.startsWith('#')
+                                ? {
+                                    bg: `${editingTag.color}15`,
+                                    color: editingTag.color
+                                  }
+                                : getTagStyle(editingTag.color))}
+                              px={3}
+                              py={1.5}
+                            >
+                              {editingTag.name || '标签预览'}
+                            </Tag>
+                          </Flex>
+                          <Flex justifyContent="flex-end" gap={3} mt={2}>
+                            <Button variant="outline" size="sm" onClick={cancelEdit}>
+                              取消
+                            </Button>
+                            <Button colorScheme="blue" size="sm" onClick={handleUpdateTag}>
+                              保存
+                            </Button>
+                          </Flex>
+                        </Flex>
+                      </Td>
+                    </Tr>
+                  ) : (
+                    // 普通显示行
+                    <Tr key={tag._id}>
+                      <Td>
+                        <Tag size="md" variant="subtle" {...getTagStyle(tag.color)} px={3} py={1.5}>
+                          {tag.name}
+                        </Tag>
+                      </Td>
+                      <Td>{tag.count || 0}</Td>
+                      <Td>
+                        <HStack spacing={3}>
+                          <IconButton
+                            aria-label="编辑"
+                            icon={<MyIcon name="edit" w="16px" />}
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => startEditTag(tag)}
+                            isDisabled={isCreating}
+                          />
+                          <IconButton
+                            aria-label="删除"
+                            icon={<MyIcon name="delete" w="16px" />}
+                            size="sm"
+                            variant="ghost"
+                            colorScheme="red"
+                            onClick={() => handleDeleteTag(tag._id)}
+                            isDisabled={isCreating}
+                          />
+                        </HStack>
+                      </Td>
+                    </Tr>
+                  )
+                )}
                 {tags.length === 0 && !loadingTags && (
                   <Tr>
                     <Td colSpan={3} textAlign="center" py={6} color="gray.500">
