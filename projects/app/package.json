@@ -60,6 +60,7 @@
     "recharts": "^2.15.0",
     "rehype-external-links": "^3.0.0",
     "rehype-katex": "^7.0.0",
+    "rehype-raw": "^7.0.0",
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
