@@ -142,6 +142,7 @@ const Dataset = () => {
                 <MyMenu
                   size="md"
                   offset={[0, 10]}
+                  subMenuPlacement="left-start"
                   Button={
                     <Button variant={'primary'} px="0">
                       <Flex alignItems={'center'} px={5}>
@@ -170,31 +171,42 @@ const Dataset = () => {
                     {
                       children: [
                         {
-                          icon: 'core/dataset/externalDatasetColor',
-                          label: t('dataset:api_file'),
-                          description: t('dataset:external_file_dataset_desc'),
-                          onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
-                        },
-                        ...(feConfigs?.show_dataset_feishu !== false
-                          ? [
-                              {
-                                icon: 'core/dataset/feishuDatasetColor',
-                                label: t('dataset:feishu_dataset'),
-                                description: t('dataset:feishu_dataset_desc'),
-                                onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
-                              }
-                            ]
-                          : []),
-                        ...(feConfigs?.show_dataset_yuque !== false
-                          ? [
-                              {
-                                icon: 'core/dataset/yuqueDatasetColor',
-                                label: t('dataset:yuque_dataset'),
-                                description: t('dataset:yuque_dataset_desc'),
-                                onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
-                              }
-                            ]
-                          : [])
+                          icon: 'core/dataset/otherDataset',
+                          label: t('dataset:other_dataset'),
+                          description: t('dataset:external_other_dataset_desc'),
+                          menuList: [
+                            {
+                              children: [
+                                {
+                                  icon: 'core/dataset/externalDatasetColor',
+                                  label: t('dataset:api_file'),
+                                  description: t('dataset:external_file_dataset_desc'),
+                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
+                                },
+                                ...(feConfigs?.show_dataset_feishu !== false
+                                  ? [
+                                      {
+                                        icon: 'core/dataset/feishuDatasetColor',
+                                        label: t('dataset:feishu_dataset'),
+                                        description: t('dataset:feishu_dataset_desc'),
+                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                                      }
+                                    ]
+                                  : []),
+                                ...(feConfigs?.show_dataset_yuque !== false
+                                  ? [
+                                      {
+                                        icon: 'core/dataset/yuqueDatasetColor',
+                                        label: t('dataset:yuque_dataset'),
+                                        description: t('dataset:yuque_dataset_desc'),
+                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
+                                      }
+                                    ]
+                                  : [])
+                              ]
+                            }
+                          ]
+                        }
                       ]
                     },
                     {

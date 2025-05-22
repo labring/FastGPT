@@ -230,6 +230,7 @@ export const iconPaths = {
   'core/dataset/tableCollection': () => import('./icons/core/dataset/tableCollection.svg'),
   'core/dataset/tag': () => import('./icons/core/dataset/tag.svg'),
   'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
+  'core/dataset/otherDataset': () => import('./icons/core/dataset/otherDataset.svg'),
   'core/dataset/websiteDatasetColor': () => import('./icons/core/dataset/websiteDatasetColor.svg'),
   'core/dataset/websiteDatasetOutline': () =>
     import('./icons/core/dataset/websiteDatasetOutline.svg'),
