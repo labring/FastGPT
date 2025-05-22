@@ -3,12 +3,13 @@ import { Box, type BoxProps } from '@chakra-ui/react';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { type Connection, Handle, Position } from 'reactflow';
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/pageComponents/app/detail/WorkflowComponents/context';
 import { WorkflowNodeEdgeContext } from '../../../../context/workflowInitContext';
 
 const handleSize = '16px';
+const hoveredHandleSize = '18px';
 
 type ToolHandleProps = BoxProps & {
   nodeId: string;
@@ -68,6 +69,7 @@ export const ToolTargetHandle = ({ show, nodeId }: ToolHandleProps) => {
 export const ToolSourceHandle = () => {
   const { t } = useTranslation();
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
+  const [isHovered, setIsHovered] = useState(false);
 
   /* onConnect edge, delete tool input and switch */
   const onConnect = useCallback(
@@ -91,8 +93,8 @@ export const ToolSourceHandle = () => {
             borderRadius: '0',
             backgroundColor: 'transparent',
             border: 'none',
-            width: handleSize,
-            height: handleSize,
+            width: isHovered ? hoveredHandleSize : handleSize,
+            height: isHovered ? hoveredHandleSize : handleSize,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -102,10 +104,12 @@ export const ToolSourceHandle = () => {
           id={NodeOutputKeyEnum.selectedTools}
           position={Position.Bottom}
           onConnect={onConnect}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
           <Box
-            w={handleSize}
-            h={handleSize}
+            w={isHovered ? hoveredHandleSize : handleSize}
+            h={isHovered ? hoveredHandleSize : handleSize}
             border={'4px solid #8774EE'}
             rounded={'xs'}
             bg={'white'}
@@ -115,7 +119,7 @@ export const ToolSourceHandle = () => {
         </Handle>
       </MyTooltip>
     );
-  }, [onConnect, t]);
+  }, [onConnect, t, isHovered]);
 
   return Render;
 };
