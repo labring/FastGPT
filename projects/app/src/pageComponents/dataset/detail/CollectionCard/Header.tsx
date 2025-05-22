@@ -98,7 +98,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       onSuccess() {
         getData(pageNum);
       },
-      successToast: t('common:common.Create Success'),
+      successToast: t('common:create_success'),
       errorToast: t('common:common.Create Failed')
     }
   );
@@ -162,7 +162,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
             flex={1}
             size={'sm'}
             h={'36px'}
-            placeholder={t('common:common.Search') || ''}
+            placeholder={t('common:Search') || ''}
             value={searchText}
             leftIcon={
               <MyIcon
@@ -491,7 +491,7 @@ const Header = ({ hasTrainingData }: { hasTrainingData: boolean }) => {
       )}
       <EditCreateVirtualFileModal
         iconSrc={'modal/manualDataset'}
-        closeBtnText={t('common:common.Cancel')}
+        closeBtnText={t('common:Cancel')}
       />
       {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
       {isOpenBackupImportModal && (

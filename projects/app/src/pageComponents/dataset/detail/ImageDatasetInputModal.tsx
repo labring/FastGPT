@@ -302,7 +302,7 @@ const ImageDatasetInputModal = ({
   // update
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
     async (e: InputDataType) => {
-      if (!dataId) return Promise.reject(t('common:common.error.unKnow'));
+      if (!dataId) return Promise.reject(t('error.unKnow'));
 
       if (!e.q) {
         return Promise.reject('请输入图片描述');
@@ -475,7 +475,7 @@ const ImageDatasetInputModal = ({
             overflow={'hidden'}
             textOverflow={'ellipsis'}
           >
-            {collection.sourceName || t('common:common.UnKnow Source')} - 图片集合
+            {collection.sourceName || t('common:unknow_source')} - 图片集合
           </Box>
         </Flex>
       }
@@ -775,7 +775,7 @@ const ImageDatasetInputModal = ({
               // @ts-ignore
               onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
             >
-              {dataId ? t('common:common.Confirm Update') : t('common:common.Confirm Import')}
+              {dataId ? t('common:confirm_update') : t('common:comfirm_import')}
             </Button>
           </MyTooltip>
         </ModalFooter>
