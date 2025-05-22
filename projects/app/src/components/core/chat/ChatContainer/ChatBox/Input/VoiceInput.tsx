@@ -214,7 +214,8 @@ const MobileVoiceInput = ({
 const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
   ({ onSendMessage, resetInputVal }, ref) => {
     const { t } = useTranslation();
-    const isPc = !isMobile();
+    const isMobileDevice = isMobile();
+    const { isPc } = useSystem();
 
     const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
     const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
@@ -265,10 +266,10 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
           return;
         }
 
-        if (isPc) {
-          renderAudioGraphPc(analyser, canvas);
-        } else {
+        if (isMobileDevice) {
           renderAudioGraphMobile(analyser, canvas);
+        } else {
+          renderAudioGraphPc(analyser, canvas);
         }
         animationFrameId = window.requestAnimationFrame(renderCurve);
       };
@@ -283,7 +284,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         source.disconnect();
         analyser.disconnect();
       };
-    }, [stream, canvasRef, renderAudioGraphPc, renderAudioGraphMobile, isPc]);
+    }, [stream, canvasRef, renderAudioGraphPc, renderAudioGraphMobile, isMobileDevice]);
 
     const onStartSpeak = useCallback(() => {
       const finishWhisperTranscription = (text: string) => {
@@ -301,12 +302,12 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
     }, [autoTTSResponse, onSendMessage, resetInputVal, startSpeak, whisperConfig?.autoSend]);
 
     const onSpeach = useCallback(() => {
-      if (isPc) {
-        onStartSpeak();
-      } else {
+      if (isMobileDevice) {
         setMobilePreSpeak(true);
+      } else {
+        onStartSpeak();
       }
-    }, [isPc, onStartSpeak]);
+    }, [isMobileDevice, onStartSpeak]);
     useImperativeHandle(ref, () => ({
       onSpeak: onSpeach
     }));
@@ -328,17 +329,17 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         borderRadius={isPc ? 'md' : ''}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {isPc ? (
-          <PCVoiceInput
-            speakingTimeString={speakingTimeString}
-            stopSpeak={stopSpeak}
-            canvasRef={canvasRef}
-          />
-        ) : (
+        {isMobileDevice ? (
           <MobileVoiceInput
             isSpeaking={isSpeaking}
             onStartSpeak={onStartSpeak}
             onCloseSpeak={() => setMobilePreSpeak(false)}
+            stopSpeak={stopSpeak}
+            canvasRef={canvasRef}
+          />
+        ) : (
+          <PCVoiceInput
+            speakingTimeString={speakingTimeString}
             stopSpeak={stopSpeak}
             canvasRef={canvasRef}
           />
