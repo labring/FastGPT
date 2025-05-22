@@ -53,14 +53,13 @@ import { POST } from '@/web/common/api/request';
 
 export type InputDataType = {
   q: string;
-  a: string; // 保留a字段，但不再使用
+  a: string;
   indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
-    dataId?: string; // pg data id
+    dataId?: string;
     fold: boolean;
   })[];
 };
 
-// 复用DataCard.tsx中的获取token方法
 const postGetFileToken = (params: {
   bucketName: string;
   fileId: string;
@@ -85,21 +84,17 @@ const ImageDatasetInputModal = ({
   const { toast } = useToast();
   const { embeddingModelList, defaultModels } = useSystemStore();
 
-  // 添加图片上传状态
   const [imagePreview, setImagePreview] = useState<string>('');
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>([]);
   const [uploading, setUploading] = useState(false);
   const [multipleImagesError, setMultipleImagesError] = useState(false);
-  // 添加文件ID状态，用于存储上传到数据库的图片ID
   const [uploadedFileId, setUploadedFileId] = useState<string>('');
-  // 添加图片放大状态
   const [isImageEnlarged, setIsImageEnlarged] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
   const [isEditing, setIsEditing] = useState(!!dataId);
   const [loading, setLoading] = useState(false);
   const [isImageHovered, setIsImageHovered] = useState(false);
 
-  // 引入文件选择器
   const {
     File: FileSelectDom,
     onOpen: onSelectFile,
@@ -130,13 +125,9 @@ const ImageDatasetInputModal = ({
     }
   );
 
-  // 删除第一个getDatasetDataItemById调用
-  const { loading: isFetchingData } = useRequest2(
-    () => Promise.resolve(null), // 空请求，让状态管理保持一致
-    {
-      manual: true
-    }
-  );
+  const { loading: isFetchingData } = useRequest2(() => Promise.resolve(null), {
+    manual: true
+  });
 
   const maxToken = useMemo(() => {
     const vectorModel =
@@ -146,22 +137,20 @@ const ImageDatasetInputModal = ({
     return vectorModel?.maxToken || 3000;
   }, [collection.dataset.vectorModel, defaultModels.embedding, embeddingModelList]);
 
-  // 整合获取详情数据和处理图片预览的逻辑
   useEffect(() => {
-    let isActive = true; // 用于处理组件卸载后的状态更新问题
+    let isActive = true;
     setLoading(true);
 
     const fetchData = async () => {
       try {
         if (dataId) {
-          // 获取现有数据
           const data = await getDatasetDataItemById(dataId);
 
           if (!isActive) return;
 
           reset({
             q: data.q,
-            a: '', // 不再使用a字段
+            a: '',
             indexes:
               data.indexes?.map((item) => ({
                 ...item,
@@ -169,9 +158,7 @@ const ImageDatasetInputModal = ({
               })) || []
           });
 
-          // 如果有图片ID，生成预览URL
           if (data.imageFileId) {
-            // 获取预览URL
             const origin = window.location.origin;
             const token = await postGetFileToken({
               bucketName: 'dataset',
@@ -187,7 +174,6 @@ const ImageDatasetInputModal = ({
             setUploadedFileId(data.imageFileId);
           }
         } else if (defaultValue) {
-          // 处理默认值
           reset({
             q: defaultValue.q,
             a: ''
@@ -212,24 +198,20 @@ const ImageDatasetInputModal = ({
     fetchData();
 
     return () => {
-      isActive = false; // 组件卸载时设置为false
+      isActive = false;
     };
   }, [dataId, reset, setValue, defaultValue, toast, onClose, t]);
 
-  // 改进处理图片选择的函数
   const handleSelectImage = useCallback(
     (files: File[] | ImportSourceItemType[]) => {
       try {
-        // 检查是否选择了多个文件
         if (files.length > 1) {
-          // 立即清空已选文件
           setSelectFiles([]);
           setMultipleImagesError(true);
           setTimeout(() => setMultipleImagesError(false), 3000);
           return;
         }
 
-        // 单个文件的处理逻辑
         let file: File | undefined;
 
         if (files.length > 0) {
@@ -240,7 +222,6 @@ const ImageDatasetInputModal = ({
           }
 
           if (file) {
-            // 继续上传逻辑...
             uploadFile2DB({
               file,
               bucketName: BucketNameEnum.dataset,
@@ -279,27 +260,22 @@ const ImageDatasetInputModal = ({
     [collection.dataset._id, toast, setValue]
   );
 
-  // 处理图片点击放大
   const handleImageClick = useCallback(() => {
     setIsImageEnlarged(true);
   }, []);
 
-  // 处理关闭放大的图片
   const handleCloseEnlargedImage = useCallback(() => {
     setIsImageEnlarged(false);
   }, []);
 
-  // 在组件卸载时清理图片预览URL，防止内存泄漏
   useEffect(() => {
     return () => {
-      // 组件卸载时，确保清理所有状态
       setSelectFiles([]);
       setUploadedFileId('');
       setImagePreview('');
     };
   }, []);
 
-  // update
   const { runAsync: onUpdateData, loading: isUpdating } = useRequest2(
     async (e: InputDataType) => {
       if (!dataId) return Promise.reject(t('error.unKnow'));
@@ -308,11 +284,9 @@ const ImageDatasetInputModal = ({
         return Promise.reject('请输入图片描述');
       }
 
-      // 清理索引中的临时ID
       const cleanedIndexes = e.indexes
         .filter((item) => !!item.text?.trim())
         .map((item) => {
-          // 如果dataId是以temp_id_开头，则移除该属性
           if (
             item.dataId &&
             typeof item.dataId === 'string' &&
@@ -324,12 +298,10 @@ const ImageDatasetInputModal = ({
           return item;
         });
 
-      console.log('清理后的索引:', cleanedIndexes);
-
       await putDatasetDataById({
         dataId,
         q: e.q,
-        a: '', // 不再在a字段中存储文件名
+        a: '',
         indexes: cleanedIndexes,
         ...((uploadedFileId ? { imageFileId: uploadedFileId } : {}) as any)
       });
@@ -349,7 +321,6 @@ const ImageDatasetInputModal = ({
     }
   );
 
-  // 更新表单提交逻辑
   const { runAsync: sureImportData, loading: isImporting } = useRequest2(
     async (e: InputDataType) => {
       if (!e.q) {
@@ -363,11 +334,9 @@ const ImageDatasetInputModal = ({
       const data = { ...e };
 
       try {
-        // 清理索引中的临时ID
         const cleanedIndexes = e.indexes
           .filter((item) => !!item.text?.trim())
           .map((item) => {
-            // 如果dataId是以temp_id_开头，则移除该属性
             if (
               item.dataId &&
               typeof item.dataId === 'string' &&
@@ -379,22 +348,15 @@ const ImageDatasetInputModal = ({
             return item;
           });
 
-        console.log('清理后的索引:', cleanedIndexes);
-
-        // 这里是数据提交阶段，把上传的图片ID和表单内容一起发送到服务端
         const postData: any = {
           collectionId: collection._id,
-          q: data.q, // q字段作为图片描述
-          a: '', // 不再在a字段中存储文件名
+          q: data.q,
+          a: '',
           indexes: cleanedIndexes,
-          imageFileId: uploadedFileId // 使用imageFileId存储图片ID
+          imageFileId: uploadedFileId
         };
 
-        console.log('[图片数据集] 提交前数据:', JSON.stringify(postData));
-
-        // 实际提交
         const newDataId = await postInsertData2Dataset(postData);
-        console.log('[图片数据集] 提交成功，返回ID:', newDataId);
 
         return {
           ...data,
@@ -409,31 +371,23 @@ const ImageDatasetInputModal = ({
     {
       successToast: t('common:dataset.data.Input Success Tip'),
       onSuccess(e) {
-        console.log('[图片数据集] 成功回调:', e);
-
-        // 重置所有表单数据和状态
         reset({
           q: '',
           a: '',
           indexes: []
         });
 
-        // 清空图片预览和文件ID
         setImagePreview('');
         setUploadedFileId('');
         setSelectFiles([]);
 
-        // 告知父组件刷新列表，但不关闭模态框
         if (!dataId) {
-          // 只在新增模式下回调外部刷新函数
-          onSuccess(e as any); // 使用类型断言解决类型问题
+          onSuccess(e as any);
         } else {
-          // 在编辑模式下正常关闭
           onSuccess(e);
         }
       },
       onError(err) {
-        console.error('[图片数据集] 错误回调:', err);
         toast({
           title: getErrText(
             err,
@@ -487,13 +441,9 @@ const ImageDatasetInputModal = ({
         h={'100%'}
         py={[6, '1.5rem']}
       >
-        {/* 移除Tab切换，但保留相同的空间和布局 */}
-        <Box px={[5, '3.25rem']} h="38px">
-          {/* 这里留空，保持布局一致，但不显示标签页 */}
-        </Box>
+        <Box px={[5, '3.25rem']} h="38px"></Box>
 
         <Flex flex={'1 0 0'} h={['auto', '0']} gap={6} flexDir={['column', 'row']} px={[5, '0']}>
-          {/* Data */}
           <Flex
             pt={4}
             pl={[0, '3.25rem']}
@@ -521,7 +471,6 @@ const ImageDatasetInputModal = ({
                 flexDirection="column"
                 overflow="hidden"
               >
-                {/* 图片预览区域 - 优先使用previewUrl(编辑模式)，其次使用imagePreview(创建模式) */}
                 {previewUrl || imagePreview ? (
                   <Box
                     flex="1"
@@ -543,7 +492,6 @@ const ImageDatasetInputModal = ({
                       onClick={handleImageClick}
                     />
 
-                    {/* 图片链接显示 - 左上角 */}
                     {uploadedFileId && isImageHovered && (
                       <Box
                         position="absolute"
@@ -568,7 +516,7 @@ const ImageDatasetInputModal = ({
                           <Box
                             cursor="pointer"
                             onClick={(e) => {
-                              e.stopPropagation(); // 阻止冒泡
+                              e.stopPropagation();
                               navigator.clipboard.writeText(uploadedFileId);
                               toast({
                                 title: '已复制ID',
@@ -592,7 +540,6 @@ const ImageDatasetInputModal = ({
                       </Box>
                     )}
 
-                    {/* 删除按钮 - 右下角 */}
                     {isImageHovered && (
                       <Box
                         position="absolute"
@@ -609,7 +556,7 @@ const ImageDatasetInputModal = ({
                         cursor="pointer"
                         _hover={{ bg: 'gray.50' }}
                         onClick={(e) => {
-                          e.stopPropagation(); // 阻止冒泡
+                          e.stopPropagation();
                           setPreviewUrl('');
                           setImagePreview('');
                           setSelectFiles([]);
@@ -644,7 +591,6 @@ const ImageDatasetInputModal = ({
                 )}
               </Box>
 
-              {/* 修改标签和输入框 */}
               <FormLabel required mb={1}>
                 图片描述
               </FormLabel>
@@ -668,7 +614,6 @@ const ImageDatasetInputModal = ({
                 })}
               />
 
-              {/* 隐藏a字段，不再使用 */}
               <Textarea
                 display="none"
                 {...register('a', {
@@ -677,7 +622,6 @@ const ImageDatasetInputModal = ({
               />
             </Flex>
           </Flex>
-          {/* Index - 保持不变 */}
           <Box
             pt={4}
             pr={[0, '3.25rem']}
@@ -728,10 +672,8 @@ const ImageDatasetInputModal = ({
                       }
                     }}
                   >
-                    {/* Header */}
                     <Flex mb={2} alignItems={'center'}>
                       <FormLabel flex={'1 0 0'}>{t(data.label)}</FormLabel>
-                      {/* Delete */}
                       {index.type !== 'default' && (
                         <HStack className={'delete'} borderRight={'base'} pr={3} mr={2}>
                           <DeleteIcon onClick={() => removeIndexes(i)} />
@@ -746,7 +688,6 @@ const ImageDatasetInputModal = ({
                         />
                       )}
                     </Flex>
-                    {/* Content */}
                     <DataIndexTextArea
                       disabled={index.type === 'default'}
                       index={i}
@@ -772,7 +713,6 @@ const ImageDatasetInputModal = ({
             <Button
               isDisabled={!collection.permission.hasWritePer}
               isLoading={isImporting || isUpdating}
-              // @ts-ignore
               onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
             >
               {dataId ? t('common:confirm_update') : t('common:comfirm_import')}
@@ -781,15 +721,12 @@ const ImageDatasetInputModal = ({
         </ModalFooter>
       </MyBox>
 
-      {/* 文件选择器 */}
       <FileSelectDom
         onSelect={(files) => {
-          // 将File[]转换为兼容的格式
           handleSelectImage(files);
         }}
       />
 
-      {/* 多图上传错误提示 */}
       {multipleImagesError && (
         <Flex
           position="fixed"
@@ -801,8 +738,8 @@ const ImageDatasetInputModal = ({
           borderRadius="sm"
           justifyContent="space-between"
           alignItems="center"
-          px={6} // 左右内边距（替代paddingLeft/paddingRight）
-          py={3} // 上下内边距（替代paddingTop/paddingBottom）
+          px={6}
+          py={3}
           bg="var(--Red-50, #FEF3F2)"
           boxShadow="0px 0px 1px 0px #13336B1A, 0px 4px 10px 0px #13336B1A"
           zIndex={1000}
@@ -817,7 +754,7 @@ const ImageDatasetInputModal = ({
               alignItems="center"
               justifyContent="center"
               boxSizing="border-box"
-              border="1px solid rgba(255,255,255,0.2)" // 可选：添加浅色边框增强视觉
+              border="1px solid rgba(255,255,255,0.2)"
             >
               <MyIcon
                 name="soliderror"
@@ -843,13 +780,11 @@ const ImageDatasetInputModal = ({
         </Flex>
       )}
 
-      {/* 图片放大查看模态框 */}
       {isImageEnlarged && (
         <Modal isOpen={isImageEnlarged} onClose={handleCloseEnlargedImage} size="6xl" isCentered>
           <ModalOverlay bg="blackAlpha.600" backdropFilter="blur(10px)" />
           <ModalContent maxWidth="95vw" maxHeight="95vh" bg="transparent" boxShadow="none">
             <ModalBody display="flex" alignItems="center" justifyContent="center" p={0}>
-              {/* 新增外层容器 */}
               <Box
                 width="1440px"
                 padding="24px 40px 24px 0px"
@@ -862,7 +797,6 @@ const ImageDatasetInputModal = ({
                 position="relative"
                 overflow="hidden"
               >
-                {/* 图片预览区域 */}
                 <Box
                   width="100%"
                   height="100%"
@@ -882,7 +816,6 @@ const ImageDatasetInputModal = ({
                   />
                 </Box>
 
-                {/* 关闭按钮 - 相对于外层容器定位 */}
                 <Box
                   position="absolute"
                   top="0px"

@@ -19,10 +19,10 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
-// 扩展类型定义以包含预览URL
+// Extended type definition to include previewUrl
 type ExtendedImportSourceItemType = ImportSourceItemType & {
   previewUrl?: string;
-  file: File; // 确保文件始终存在
+  file: File; // Ensure file is always present
 };
 
 const fileType = '.jpg, .jpeg, .png, .gif, .webp';
@@ -42,7 +42,7 @@ const SelectFile = React.memo(function SelectFile() {
     sources.map((source) => ({
       isUploading: false,
       ...source,
-      file: source.file as File // 确保类型正确
+      file: source.file as File // Ensure type is correct
     }))
   );
   const [uploading, setUploading] = useState(false);
@@ -62,7 +62,7 @@ const SelectFile = React.memo(function SelectFile() {
     });
   };
 
-  // 为组件添加自定义的处理文件选择的方法
+  // Add a custom file selection handler for the component
   const handleFileSelection = async (files: File[]) => {
     if (files.length === 0) return;
 
@@ -129,11 +129,11 @@ const SelectFile = React.memo(function SelectFile() {
     }
   };
 
-  // 处理确认导入
+  // Use fileId to create collection and upload
   const handleUploadAndCreateCollection = async () => {
     if (selectFiles.length === 0) {
       toast({
-        title: '请选择要上传的图片',
+        title: t('file:Action'),
         status: 'warning'
       });
       return;
@@ -142,7 +142,7 @@ const SelectFile = React.memo(function SelectFile() {
     const pendingFiles = selectFiles.filter((file) => file.isUploading);
     if (pendingFiles.length > 0) {
       toast({
-        title: '请等待所有文件上传完成',
+        title: t('file:Please wait for all files to upload'),
         status: 'warning'
       });
       return;
@@ -197,39 +197,30 @@ const SelectFile = React.memo(function SelectFile() {
 
           if (!response.ok) {
             const errorData = await response.json();
-            throw new Error(errorData.message || '创建集合失败');
+            throw new Error(errorData.message || t('common:common.Create Failed'));
           }
 
           const result = await response.json();
           const collectionId = result.data;
-
-          if (!collectionId) {
-            throw new Error('创建集合失败：无法获取集合ID');
-          }
 
           for (let i = 0; i < selectFiles.length; i++) {
             try {
               const currentFile = selectFiles[i];
               if (!currentFile.dbFileId) continue;
 
-              // 使用fileId方式创建集合并上传
+              // Use fileId to create collection and upload
               const fileIdParams = {
                 fileId: currentFile.dbFileId,
                 datasetId: datasetId,
-                trainingType: 'chunk', // 使用预设的训练类型
-                imageIndex: true, // 启用图片索引
+                trainingType: 'chunk', // Use preset training type
+                imageIndex: true, // Enable image indexing
                 customPdfParse: false,
-                parentId: collectionId // 使用parentId而不是collectionId
+                parentId: collectionId // Use parentId instead of collectionId
               };
 
-              console.log('开始上传图片，参数:', fileIdParams);
-
-              // 确保API端点正确
-              const apiEndpoint = '/api/core/dataset/collection/create/fileId_image';
-
-              // 调用创建集合的API
+              // Call API to create collection
               try {
-                const response = await fetch(apiEndpoint, {
+                const response = await fetch('/api/core/dataset/collection/create/fileId_image', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json'
@@ -239,20 +230,18 @@ const SelectFile = React.memo(function SelectFile() {
 
                 if (!response.ok) {
                   const errorText = await response.text();
-                  console.error('上传图片失败:', response.status, errorText);
-                  throw new Error(`上传图片失败: ${response.status} ${errorText}`);
+                  throw new Error(t('file:upload_failed') + `: ${response.status} ${errorText}`);
                 }
 
                 const result = await response.json();
-                console.log('上传图片成功:', result);
-              } catch (error) {
-                console.error('上传图片出错:', error);
-              }
+              } catch (error) {}
             } catch (error) {}
           }
 
           toast({
-            title: `成功导入图片集合，共${imageRefs.length}张图片`,
+            title: t('file:count.core.dataset.collection.Create Success', {
+              count: imageRefs.length
+            }),
             status: 'success'
           });
 
@@ -264,13 +253,13 @@ const SelectFile = React.memo(function SelectFile() {
           });
         } catch (error: any) {
           toast({
-            title: error?.message || '创建集合失败',
+            title: error?.message || t('common:common.Create Failed'),
             status: 'error'
           });
         }
       } else {
         toast({
-          title: '所有图片导入失败',
+          title: t('file:All images import failed'),
           status: 'error'
         });
       }
@@ -300,7 +289,7 @@ const SelectFile = React.memo(function SelectFile() {
             width="76px"
             whiteSpace="nowrap"
           >
-            数据集名称
+            {t('core.dataset.collection.Collection name')}
           </Text>
 
           <Input
@@ -310,7 +299,7 @@ const SelectFile = React.memo(function SelectFile() {
             borderWidth="1px"
             bg="var(--Gray-Modern-50, #F7F8FA)"
             border="1px solid var(--Gray-Modern-200, #E8EBF0)"
-            placeholder="数据集名称"
+            placeholder={t('core.dataset.collection.Collection name')}
             value={databaseName}
             onChange={(e) => setDatabaseName(e.target.value)}
           />
@@ -329,7 +318,7 @@ const SelectFile = React.memo(function SelectFile() {
             width="76px"
             whiteSpace="nowrap"
           >
-            数据集内容
+            {t('core.dataset.collection.Collection raw text')}
           </Text>
 
           <Flex direction="column" width="706px" alignItems="flex-start" gap="8px">
@@ -372,12 +361,13 @@ const SelectFile = React.memo(function SelectFile() {
                   <MyIcon name="common/uploadFileFill" w="32px" h="32px" />
                   <Flex direction="column" alignItems="center" gap="4px" textAlign="center">
                     <Text fontWeight="500" fontSize="14px" letterSpacing="0.1px" lineHeight="20px">
-                      {uploading ? '正在上传...' : '点击或拖拽文件到此处上传'}
+                      {uploading ? t('file:uploading') : t('file:select_and_drag_file_tip')}
                     </Text>
                     <Text color="myGray.500" fontSize="12px" lineHeight="16px" textAlign="center">
-                      支持文件类型: {fileType} 类型文件
+                      {t('file:support_file_type', { fileType })}
                       <br />
-                      最多支持 100 个文件，单个文件最大 20 MB
+                      {t('file:support_max_count', { maxCount: 100 })}，
+                      {t('file:support_max_size', { maxSize: '20 MB' })}
                     </Text>
                   </Flex>
                 </Flex>
@@ -464,7 +454,7 @@ const SelectFile = React.memo(function SelectFile() {
                       )}
 
                       <IconButton
-                        aria-label="删除图片"
+                        aria-label={t('file:delete_image')}
                         icon={<MyIcon name="soliderror" width="12px" height="12px" color="white" />}
                         position="absolute"
                         top="-10px"
@@ -472,9 +462,7 @@ const SelectFile = React.memo(function SelectFile() {
                         size="xs"
                         bg="var(--Gray-Modern-400, #8A95A7)"
                         borderRadius="full"
-                        boxSize="17px"
-                        minWidth="17px"
-                        height="17px"
+                        boxSize="7px"
                         p={0}
                         display="flex"
                         alignItems="center"
