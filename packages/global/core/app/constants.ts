@@ -60,5 +60,3 @@ export enum AppTemplateTypeEnum {
   // special type
   contribute = 'contribute'
 }
-
-export const defaultDatasetMaxTokens = 16000;
