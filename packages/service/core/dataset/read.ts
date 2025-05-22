@@ -163,7 +163,7 @@ export const readApiServerFileContent = async ({
   title?: string;
   rawText: string;
 }> => {
-  const data = (
+  return (
     await getApiDatasetRequest({
       apiServer,
       yuqueServer,
@@ -175,10 +175,6 @@ export const readApiServerFileContent = async ({
     apiFileId,
     customPdfParse
   });
-  if (data) {
-    return data;
-  }
-  return Promise.reject(Error);
 };
 
 export const rawText2Chunks = ({
