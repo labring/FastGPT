@@ -16,6 +16,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import MyIconButton from '@/pageComponents/account/team/OrgManage/IconButton';
+import { isMobile } from '@fastgpt/web/common/system/utils';
 
 export interface VoiceInputComponentRef {
   onSpeak: () => void;
@@ -213,7 +214,7 @@ const MobileVoiceInput = ({
 const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
   ({ onSendMessage, resetInputVal }, ref) => {
     const { t } = useTranslation();
-    const { isPc } = useSystem();
+    const isPc = !isMobile();
 
     const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
     const appId = useContextSelector(ChatBoxContext, (v) => v.appId);
