@@ -20,6 +20,8 @@ import ContextMenu from './components/ContextMenu';
 import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../context/workflowInitContext';
 import { WorkflowEventContext } from '../context/workflowEventContext';
 import NodeTemplatesPopover from './NodeTemplatesPopover';
+import { WorkflowContext } from '../context';
+import { TemplateTypeEnum } from './components/NodeTemplates/header';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -75,6 +77,8 @@ const Workflow = () => {
     (v) => v.workflowControlMode
   );
   const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
+  const setTemplateType = useContextSelector(WorkflowContext, (v) => v.setTemplateType);
+  const setParentId = useContextSelector(WorkflowContext, (v) => v.setParentId);
 
   const {
     handleNodesChange,
@@ -127,7 +131,14 @@ const Workflow = () => {
               isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
             }}
           />
-          <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
+          <NodeTemplatesModal
+            isOpen={isOpenTemplate}
+            onClose={() => {
+              onCloseTemplate();
+              setTemplateType(TemplateTypeEnum.basic);
+              setParentId('');
+            }}
+          />
           <NodeTemplatesPopover />
         </>
 

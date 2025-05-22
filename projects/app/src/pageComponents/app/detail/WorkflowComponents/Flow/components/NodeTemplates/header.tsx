@@ -19,7 +19,7 @@ export enum TemplateTypeEnum {
 }
 
 export type TemplateHeaderProps = {
-  onClose: () => void;
+  onClose?: () => void;
   isPopover?: boolean;
 };
 

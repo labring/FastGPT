@@ -20,12 +20,6 @@ type ModuleTemplateListProps = {
   onClose: () => void;
 };
 
-export enum TemplateTypeEnum {
-  'basic' = 'basic',
-  'systemPlugin' = 'systemPlugin',
-  'teamPlugin' = 'teamPlugin'
-}
-
 export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {

@@ -531,7 +531,7 @@ export const useWorkflow = () => {
       // If node is folded, unfold it when connecting
       const sourceNode = nodeList.find((node) => node.nodeId === params.nodeId);
       if (sourceNode?.isFolded) {
-        return onChangeNode({
+        onChangeNode({
           nodeId: params.nodeId,
           type: 'attr',
           key: 'isFolded',
@@ -539,59 +539,39 @@ export const useWorkflow = () => {
         });
       }
       setConnectingEdge(params);
+      console.log('params', event, params);
 
       if (params.handleId) {
-        // 记录点击时的位置，用于后续判断是否发生了明显移动
-        const isTouchEvent = event.type === 'touchstart';
-        const initialX = isTouchEvent ? event.touches[0].clientX : event.clientX;
-        const initialY = isTouchEvent ? event.touches[0].clientY : event.clientY;
+        const initialX = event.clientX;
+        const initialY = event.clientY;
 
         let hasMoved = false;
 
-        // 监听鼠标/触摸移动事件
-        const handleMouseMove = (moveEvent: MouseEvent | TouchEvent) => {
-          const isMoveTouch = moveEvent.type === 'touchmove';
-          const currentX = isMoveTouch
-            ? (moveEvent as TouchEvent).touches[0].clientX
-            : (moveEvent as MouseEvent).clientX;
-          const currentY = isMoveTouch
-            ? (moveEvent as TouchEvent).touches[0].clientY
-            : (moveEvent as MouseEvent).clientY;
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          const currentX = moveEvent.clientX;
+          const currentY = moveEvent.clientY;
+          console.log('currentX', currentX, currentY);
 
-          // 如果移动距离超过5px，认为是在拖动而不是点击
           if (Math.abs(currentX - initialX) > 5 || Math.abs(currentY - initialY) > 5) {
             hasMoved = true;
-            // 移除事件监听器
             document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('touchmove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
-            document.removeEventListener('touchend', handleMouseUp);
           }
         };
 
-        // 监听鼠标/触摸松开事件
-        const handleMouseUp = (upEvent: MouseEvent | TouchEvent) => {
-          // 移除事件监听器
+        const handleMouseUp = (e: MouseEvent) => {
           document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('touchmove', handleMouseMove);
           document.removeEventListener('mouseup', handleMouseUp);
-          document.removeEventListener('touchend', handleMouseUp);
 
-          // 如果没有明显移动，则认为是点击行为
+          console.log('hasMoved', hasMoved);
           if (!hasMoved) {
-            console.log('hasMoved', params);
+            console.log('hasMoved setHandleParams', params);
             setHandleParams(params);
           }
         };
 
-        // 添加事件监听器
-        if (isTouchEvent) {
-          document.addEventListener('touchmove', handleMouseMove);
-          document.addEventListener('touchend', handleMouseUp);
-        } else {
-          document.addEventListener('mousemove', handleMouseMove);
-          document.addEventListener('mouseup', handleMouseUp);
-        }
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
       }
     },
     [nodeList, setConnectingEdge, onChangeNode, setHandleParams]
@@ -687,8 +667,8 @@ export const useWorkflow = () => {
 
   const onPaneClick = useCallback(() => {
     setMenu(null);
-    setHandleParams(null);
-  }, [setMenu, setHandleParams]);
+    // setHandleParams(null);
+  }, [setMenu]);
 
   // Watch
   // Auto save snapshot

@@ -153,7 +153,7 @@ const TemplateItem = ({
               onUpdateParentId(template.id);
             }}
           >
-            <MyIcon name="common/arrowRight" w={isPopover ? '16px' : '24px'} />
+            <MyIcon name="common/arrowRight" w={isPopover ? '16px' : '20px'} />
           </Box>
         )}
 
@@ -252,7 +252,12 @@ const TemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
               >
                 {t(item.label as any)}
               </Box>
-              <Grid gridTemplateColumns={['1fr', '1fr 1fr']} rowGap={2}>
+              <Grid
+                gridTemplateColumns={
+                  templateType === TemplateTypeEnum.teamPlugin ? ['1fr'] : ['1fr', '1fr 1fr']
+                }
+                rowGap={2}
+              >
                 {item.list.map((template) => (
                   <TemplateItem
                     key={template.id}

@@ -101,52 +101,33 @@ const MySourceHandle = React.memo(function MySourceHandle({
 
   const RenderHandle = useMemo(() => {
     return (
-      <>
-        {/* <Handle
-          type="source"
-          position={position}
-          id={`${handleId}`}
-          style={{
-            borderRadius: 0,
-            opacity: 0.5,
-            width: 50,
-            height: 50,
-            zIndex: 1,
-            ...(translateStr && {
-              transform
-            })
-            // transform: 'translateX(40px) translateY(-50%)'
-          }}
-          isConnectableEnd={false}
-        /> */}
-        <Handle
-          style={
-            !!styles
-              ? styles
-              : {
-                  visibility: 'hidden',
-                  transform,
-                  ...handleSize
-                }
-          }
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-          type="source"
-          id={handleId}
-          position={position}
-          isConnectableEnd={false}
-        >
-          {showAddIcon && (
-            <MyIcon
-              name={'edgeAdd'}
-              color={'primary.500'}
-              pointerEvents={'none'}
-              w={'14px'}
-              h={'14px'}
-            />
-          )}
-        </Handle>
-      </>
+      <Handle
+        style={
+          !!styles
+            ? styles
+            : {
+                visibility: 'hidden',
+                transform,
+                ...handleSize
+              }
+        }
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        type="source"
+        id={handleId}
+        position={position}
+        isConnectableEnd={false}
+      >
+        {showAddIcon && (
+          <MyIcon
+            name={'edgeAdd'}
+            color={'primary.500'}
+            pointerEvents={'none'}
+            w={'14px'}
+            h={'14px'}
+          />
+        )}
+      </Handle>
     );
   }, [handleId, position, showAddIcon, styles, transform]);
 
@@ -181,11 +162,6 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
 }) {
   const edges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.edges);
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
-  // const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-
-  // const node = useMemo(() => nodes.find((node) => node.data.nodeId === nodeId), [nodes, nodeId]);
-  // const nodeWidth = node?.width || 0;
-  // const nodeHeight = node?.height || 0;
 
   const connected = edges.some((edge) => edge.targetHandle === handleId);
 
@@ -221,41 +197,23 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
     return;
   }, [connected, connectingEdge, connectedStyle, highlightStyle, transform]);
 
-  // const handleWidth = Math.max(50, Math.floor(nodeWidth / 2));
-  // const handleHeight = Math.max(50, nodeHeight);
-
   const RenderHandle = useMemo(() => {
     return (
-      <>
-        {/* <Handle
-          type="target"
-          position={position}
-          id={handleId}
-          style={{
-            borderRadius: 0,
-            opacity: 0.5,
-            width: handleWidth,
-            height: handleHeight,
-            zIndex: 1
-          }}
-          isConnectable={!!connectingEdge}
-        /> */}
-        <Handle
-          style={
-            styles && showHandle
-              ? styles
-              : {
-                  visibility: 'hidden',
-                  transform,
-                  ...handleSize
-                }
-          }
-          isConnectableEnd={styles && showHandle}
-          type="target"
-          id={handleId}
-          position={position}
-        />
-      </>
+      <Handle
+        style={
+          styles && showHandle
+            ? styles
+            : {
+                visibility: 'hidden',
+                transform,
+                ...handleSize
+              }
+        }
+        isConnectableEnd={styles && showHandle}
+        type="target"
+        id={handleId}
+        position={position}
+      />
     );
   }, [position, handleId, styles, showHandle, transform]);
 
