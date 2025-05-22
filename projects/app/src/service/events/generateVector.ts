@@ -262,6 +262,7 @@ const insertData = async ({
       q: trainingData.q,
       a: trainingData.a,
       chunkIndex: trainingData.chunkIndex,
+      indexSize: trainingData.indexSize,
       indexes: trainingData.indexes,
       embeddingModel: trainingData.model,
       session

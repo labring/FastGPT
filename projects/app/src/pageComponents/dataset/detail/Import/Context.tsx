@@ -192,7 +192,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       chunkSettingMode: ChunkSettingModeEnum.auto,
 
       chunkSplitMode: DataChunkSplitModeEnum.size,
-      embeddingChunkSize: 2000,
+      embeddingChunkSize: chunkAutoChunkSize,
       indexSize: vectorModel?.defaultToken || 512,
       qaChunkSize: getLLMDefaultChunkSize(agentModel),
       chunkSplitter: '',
