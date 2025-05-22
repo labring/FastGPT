@@ -7,7 +7,7 @@ import type {
   FeishuServer,
   ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/getApiRequest';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
@@ -84,10 +84,6 @@ async function handler(
       };
     }
   })();
-
-  if (!apiServer && !feishuServer && !yuqueServer) {
-    return Promise.reject(DatasetErrEnum.noApiServer);
-  }
 
   if (feishuServer) {
     return '';

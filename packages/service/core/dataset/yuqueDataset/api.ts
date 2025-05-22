@@ -14,7 +14,7 @@ type ResponseDataType = {
   data: any;
 };
 
-type yuqueRepoListResponse = {
+type YuqueRepoListResponse = {
   id: string;
   name: string;
   title: string;
@@ -25,7 +25,7 @@ type yuqueRepoListResponse = {
   slug?: string;
 }[];
 
-type yuqueTocListResponse = {
+type YuqueTocListResponse = {
   uuid: string;
   type: string;
   title: string;
@@ -111,10 +111,10 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     if (!parentId) {
       const limit = 100;
       let offset = 0;
-      let allData: yuqueRepoListResponse = [];
+      let allData: YuqueRepoListResponse = [];
 
       while (true) {
-        const data = await request<yuqueRepoListResponse>(
+        const data = await request<YuqueRepoListResponse>(
           `/api/v2/groups/${yuqueServer.userId}/repos`,
           {
             offset,
@@ -145,7 +145,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       });
     } else {
       if (typeof parentId === 'number') {
-        const data = await request<yuqueTocListResponse>(
+        const data = await request<YuqueTocListResponse>(
           `/api/v2/repos/${parentId}/toc`,
           {},
           'GET'
@@ -166,7 +166,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
           }));
       } else {
         const [repoId, uuid, parentUuid] = parentId.split(/-(.*?)-(.*)/);
-        const data = await request<yuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
+        const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
 
         return data
           .filter((item) => item.parent_uuid === parentUuid)
@@ -239,10 +239,10 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
     if (typeof apiFileId === 'number' || !isNaN(Number(apiFileId))) {
       const limit = 100;
       let offset = 0;
-      let allData: yuqueRepoListResponse = [];
+      let allData: YuqueRepoListResponse = [];
 
       while (true) {
-        const data = await request<yuqueRepoListResponse>(
+        const data = await request<YuqueRepoListResponse>(
           `/api/v2/groups/${yuqueServer.userId}/repos`,
           {
             offset,
@@ -270,7 +270,7 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
       };
     } else {
       const [repoId, parentUuid, fileId] = apiFileId.split(/-(.*?)-(.*)/);
-      const data = await request<yuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
+      const data = await request<YuqueTocListResponse>(`/api/v2/repos/${repoId}/toc`, {}, 'GET');
       const file = data.find((item) => item.uuid === fileId);
       if (!file) {
         return Promise.reject('文件不存在');

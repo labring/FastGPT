@@ -3,9 +3,9 @@ import type {
   YuqueServer,
   FeishuServer
 } from '@fastgpt/global/core/dataset/apiDataset';
-import { useApiDatasetRequest } from './apiDataset/api';
-import { useYuqueDatasetRequest } from './yuqueDataset/api';
-import { useFeishuDatasetRequest } from './feishuDataset/api';
+import { useApiDatasetRequest } from './api';
+import { useYuqueDatasetRequest } from '../yuqueDataset/api';
+import { useFeishuDatasetRequest } from '../feishuDataset/api';
 
 export const getApiDatasetRequest = async (data: {
   apiServer?: APIFileServer;
@@ -23,4 +23,5 @@ export const getApiDatasetRequest = async (data: {
   if (feishuServer) {
     return useFeishuDatasetRequest({ feishuServer });
   }
+  return Promise.reject('Can not find api dataset server');
 };

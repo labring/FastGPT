@@ -11,7 +11,8 @@ import {
   type FeishuServer,
   type YuqueServer
 } from '@fastgpt/global/core/dataset/apiDataset';
-import { getApiDatasetRequest } from './getApiRequest';
+import { getApiDatasetRequest } from './apiDataset';
+import Papa from 'papaparse';
 
 export const readFileRawTextByUrl = async ({
   teamId,
@@ -162,20 +163,21 @@ export const readApiServerFileContent = async ({
   title?: string;
   rawText: string;
 }> => {
-  const apiDataset = await getApiDatasetRequest({
-    apiServer,
-    yuqueServer,
-    feishuServer
+  const data = (
+    await getApiDatasetRequest({
+      apiServer,
+      yuqueServer,
+      feishuServer
+    })
+  ).getFileContent({
+    teamId,
+    tmbId,
+    apiFileId,
+    customPdfParse
   });
-  if (apiDataset) {
-    return apiDataset.getFileContent({
-      teamId,
-      tmbId,
-      apiFileId,
-      customPdfParse
-    });
+  if (data) {
+    return data;
   }
-
   return Promise.reject(Error);
 };
 

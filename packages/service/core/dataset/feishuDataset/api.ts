@@ -14,7 +14,7 @@ type ResponseDataType = {
   data: any;
 };
 
-type feishuFileListResponse = {
+type FeishuFileListResponse = {
   files: {
     token: string;
     parent_token: string;
@@ -105,8 +105,8 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   };
 
   const listFiles = async ({ parentId }: { parentId?: ParentIdType }): Promise<APIFileItem[]> => {
-    const fetchFiles = async (pageToken?: string): Promise<feishuFileListResponse['files']> => {
-      const data = await request<feishuFileListResponse>(
+    const fetchFiles = async (pageToken?: string): Promise<FeishuFileListResponse['files']> => {
+      const data = await request<FeishuFileListResponse>(
         `/open-apis/drive/v1/files`,
         {
           folder_token: parentId || feishuServer.folderToken,

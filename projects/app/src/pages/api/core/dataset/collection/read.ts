@@ -9,7 +9,7 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/getApiRequest';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 
 export type readCollectionSourceQuery = {};
 
@@ -98,18 +98,15 @@ async function handler(
       const feishuServer = collection.dataset.feishuServer;
       const yuqueServer = collection.dataset.yuqueServer;
 
-      const apiDataset = await getApiDatasetRequest({
-        apiServer,
-        feishuServer,
-        yuqueServer
+      return (
+        await getApiDatasetRequest({
+          apiServer,
+          feishuServer,
+          yuqueServer
+        })
+      ).getFilePreviewUrl({
+        apiFileId: collection.apiFileId
       });
-      if (apiDataset) {
-        return apiDataset.getFilePreviewUrl({
-          apiFileId: collection.apiFileId
-        });
-      }
-
-      return '';
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.dataset.externalReadUrl) {

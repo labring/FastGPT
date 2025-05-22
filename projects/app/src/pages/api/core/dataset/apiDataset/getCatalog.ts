@@ -1,6 +1,5 @@
-import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/getApiRequest';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import type {
   APIFileItem,
@@ -21,24 +20,17 @@ export type GetApiDatasetCataLogProps = {
 export type GetApiDatasetCataLogResponse = APIFileItem[];
 
 async function handler(req: NextApiRequest) {
-  let { parentId = null, yuqueServer, feishuServer, apiServer } = req.body;
+  let { searchKey = '', parentId = null, yuqueServer, feishuServer, apiServer } = req.body;
 
   await authCert({ req, authToken: true });
 
-  const data = await (async () => {
-    if (feishuServer || yuqueServer || apiServer) {
-      const apiDataset = await getApiDatasetRequest({
-        feishuServer,
-        yuqueServer,
-        apiServer
-      });
-
-      const params = apiServer ? { parentId, searchKey: '' } : { parentId };
-      const result = await apiDataset?.listFiles(params);
-      return result || [];
-    }
-    return Promise.reject(DatasetErrEnum.noApiServer);
-  })();
+  const data = await (
+    await getApiDatasetRequest({
+      feishuServer,
+      yuqueServer,
+      apiServer
+    })
+  ).listFiles({ parentId, searchKey });
 
   return data?.filter((item: APIFileItem) => item.hasChild === true) || [];
 }
