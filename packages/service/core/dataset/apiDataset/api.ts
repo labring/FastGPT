@@ -146,7 +146,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServer }
         tmbId,
         url: previewUrl,
         relatedId: apiFileId,
-        customPdfParse
+        customPdfParse,
+        getFormatText: true
       });
       return {
         title,

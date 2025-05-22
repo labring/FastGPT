@@ -118,7 +118,7 @@ export const computeChunkSize = (params: {
     return getLLMMaxChunkSize(params.llmModel);
   }
 
-  return Math.min(params.chunkSize || chunkAutoChunkSize, getLLMMaxChunkSize(params.llmModel));
+  return Math.min(params.chunkSize ?? chunkAutoChunkSize, getLLMMaxChunkSize(params.llmModel));
 };
 
 export const computeChunkSplitter = (params: {

@@ -27,7 +27,7 @@ const datasetErr = [
   },
   {
     statusText: DatasetErrEnum.unExist,
-    message: 'core.dataset.error.unExistDataset'
+    message: i18nT('common:core.dataset.error.unExistDataset')
   },
   {
     statusText: DatasetErrEnum.unExistCollection,

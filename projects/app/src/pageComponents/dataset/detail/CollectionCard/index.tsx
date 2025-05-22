@@ -257,18 +257,12 @@ const CollectionCard = () => {
                     )}
                   </Td>
                   <Td py={2}>
-                    {!checkCollectionIsFolder(collection.type) ? (
-                      <>
-                        {collection.trainingType
-                          ? t(
-                              (DatasetCollectionDataProcessModeMap[collection.trainingType]
-                                ?.label || '-') as any
-                            )
-                          : '-'}
-                      </>
-                    ) : (
-                      '-'
-                    )}
+                    {collection.trainingType
+                      ? t(
+                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                            '-') as any
+                        )
+                      : '-'}
                   </Td>
                   <Td py={2}>{collection.dataAmount || '-'}</Td>
                   <Td fontSize={'xs'} py={2} color={'myGray.500'}>

@@ -75,7 +75,6 @@ const PreviewData = () => {
         overlapRatio: chunkOverlapRatio,
 
         selector: processParamsForm.getValues('webSelector'),
-        isQAImport: importSource === ImportDataSourceEnum.csvTable,
         externalFileId: previewFile.externalFileId
       });
     },

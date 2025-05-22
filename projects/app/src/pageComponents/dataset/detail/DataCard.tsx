@@ -27,7 +27,10 @@ import Markdown from '@/components/Markdown';
 import { useMemoizedFn } from 'ahooks';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { TabEnum } from './NavBar';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionDataProcessModeEnum,
+  ImportDataSourceEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import TrainingStates from './CollectionCard/TrainingStates';
 import { getTextValidLength } from '@fastgpt/global/common/string/utils';

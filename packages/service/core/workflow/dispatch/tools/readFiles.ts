@@ -211,12 +211,12 @@ export const getFileContentFromLinks = async ({
           // Read file
           const { rawText } = await readRawContentByFileBuffer({
             extension,
-            isQAImport: false,
             teamId,
             tmbId,
             buffer,
             encoding,
-            customPdfParse
+            customPdfParse,
+            getFormatText: true
           });
 
           // Add to buffer
