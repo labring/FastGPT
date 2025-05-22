@@ -11,6 +11,7 @@
   "backup_data_uploading": "備份數據上傳中: {{num}}%",
   "backup_dataset": "備份導入",
   "backup_dataset_success": "備份創建成功",
+  "backup_dataset_tip": "可以將導出知識庫時，下載的 csv 文件重新導入。",
   "backup_mode": "備份導入",
   "chunk_max_tokens": "分塊上限",
   "chunk_size": "分塊大小",

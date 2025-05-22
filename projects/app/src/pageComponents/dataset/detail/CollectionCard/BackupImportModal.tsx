@@ -9,6 +9,7 @@ import { postBackupDatasetCollection } from '@/web/core/dataset/api';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { useContextSelector } from 'use-context-selector';
+import LightTip from '@fastgpt/web/components/common/LightTip';
 
 const BackupImportModal = ({
   onFinish,
@@ -43,6 +44,8 @@ const BackupImportModal = ({
   return (
     <MyModal iconSrc="backup" iconColor={'primary.600'} isOpen title={t('dataset:backup_dataset')}>
       <ModalBody>
+        <LightTip mb={3} icon="common/info" text={t('dataset:backup_dataset_tip')} />
+
         <FileSelector
           maxCount={1}
           fileType="csv"

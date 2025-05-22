@@ -12,6 +12,7 @@
   "backup_data_uploading": "备份数据上传中: {{num}}%",
   "backup_dataset": "备份导入",
   "backup_dataset_success": "备份创建成功",
+  "backup_dataset_tip": "可以将导出知识库时，下载的 csv 文件重新导入。",
   "backup_mode": "备份导入",
   "chunk_max_tokens": "分块上限",
   "chunk_size": "分块大小",

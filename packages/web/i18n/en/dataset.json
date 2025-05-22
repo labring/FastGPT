@@ -12,6 +12,7 @@
   "backup_data_uploading": "Backup data is being uploaded: {{num}}%",
   "backup_dataset": "Backup import",
   "backup_dataset_success": "The backup was created successfully",
+  "backup_dataset_tip": "You can reimport the downloaded csv file when exporting the knowledge base.",
   "backup_mode": "Backup import",
   "chunk_max_tokens": "max_tokens",
   "chunk_size": "Block size",
