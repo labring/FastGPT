@@ -5,11 +5,24 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api';
+import { updateTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
 
 type Props = {
   gateName: string;
   gateLogo: string;
   gateBanner: string;
+  onNameChange?: (name: string) => void;
+  onLogoChange?: (logo: string) => void;
+  onBannerChange?: (banner: string) => void;
+};
+
+export const saveCopyRightConfig = async (data: putUpdateGateConfigCopyRightData) => {
+  try {
+    await updateTeamGateConfigCopyRight(data);
+  } catch (e) {
+    console.error('Error saving copyright config:', e);
+  }
 };
 
 // 斜线背景样式
@@ -47,7 +60,14 @@ const uploadOverlayStyle = {
   }
 };
 
-const CopyrightTable = ({ gateName, gateLogo, gateBanner }: Props) => {
+const CopyrightTable = ({
+  gateName,
+  gateLogo,
+  gateBanner,
+  onNameChange,
+  onLogoChange,
+  onBannerChange
+}: Props) => {
   const { t } = useTranslation();
 
   // 使用useForm管理表单数据
@@ -65,12 +85,15 @@ const CopyrightTable = ({ gateName, gateLogo, gateBanner }: Props) => {
 
   const handleGateNameChange = (name: string) => {
     setValue('name', name);
+    onNameChange?.(name);
   };
   const handleGateLogoChange = (logo: string) => {
     setValue('logo', logo);
+    onLogoChange?.(logo);
   };
   const handleGateBannerChange = (banner: string) => {
     setValue('banner', banner);
+    onBannerChange?.(banner);
   };
 
   // 添加文件选择器 - 分别为左右两侧Logo创建选择器
@@ -145,7 +168,7 @@ const CopyrightTable = ({ gateName, gateLogo, gateBanner }: Props) => {
               <Flex direction="column" gap={2} alignItems="center">
                 <Box
                   sx={stripedBackgroundStyle}
-                  onClick={onOpenLogoFile}
+                  onClick={onOpenBannerFile}
                   cursor="pointer"
                   role="group"
                   position="relative"
@@ -240,7 +263,7 @@ const CopyrightTable = ({ gateName, gateLogo, gateBanner }: Props) => {
               <Flex direction="column" gap={2} alignItems="center">
                 <Box
                   sx={stripedBackgroundStyle}
-                  onClick={onOpenBannerFile}
+                  onClick={onOpenLogoFile}
                   cursor="pointer"
                   role="group"
                   position="relative"

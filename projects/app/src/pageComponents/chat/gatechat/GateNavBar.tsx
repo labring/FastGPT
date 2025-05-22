@@ -3,7 +3,6 @@ import { Box, Flex, Text, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { AppListItemType } from '@fastgpt/global/core/app/type';
@@ -16,19 +15,37 @@ import type {
   GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import type { getGateConfigCopyRightResponse } from '@fastgpt/global/support/user/team/gate/api';
+import { getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
 
 type Props = {
   apps?: AppListItemType[];
   activeAppId?: string;
+  gateConfig?: GateSchemaType;
 };
 
-const GateNavBar = ({ apps, activeAppId }: Props) => {
+const GateNavBar = ({ apps, activeAppId, gateConfig }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo, setUserInfo } = useUserStore();
-  const { initCopyRightConfig, copyRightConfig } = useGateStore();
+  const [copyRightConfig, setCopyRightConfig] = useState<getGateConfigCopyRightResponse | null>(
+    null
+  );
+  // 加载 gateConfig
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getTeamGateConfigCopyRight();
+        setCopyRightConfig(config);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const companyNameRef = useRef<HTMLSpanElement>(null);
   const [companyNameScale, setCompanyNameScale] = useState(1);
@@ -39,9 +56,6 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
   const isChatPage = router.pathname === '/chat/gate';
   const isStorePage = router.pathname === '/chat/gate/store';
 
-  useEffect(() => {
-    initCopyRightConfig();
-  }, [initCopyRightConfig]);
   useEffect(() => {
     if (companyNameRef.current && !isCollapsed) {
       const containerWidth = 130;
@@ -111,7 +125,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
               transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
             }}
           >
-            {userInfo?.team.teamAvatar ? (
+            {gateConfig?.logo || gateConfig?.banner ? (
               <Flex
                 boxSize="36px"
                 borderRadius="9px"
@@ -123,7 +137,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
               >
                 <Avatar
                   boxSize="100%"
-                  src={userInfo?.team.teamAvatar}
+                  src={gateConfig?.logo || gateConfig?.banner}
                   borderRadius="9px"
                   objectFit="cover"
                 />
@@ -140,7 +154,7 @@ const GateNavBar = ({ apps, activeAppId }: Props) => {
               >
                 <Avatar
                   boxSize="100%"
-                  src={userInfo?.team.teamAvatar}
+                  src={gateConfig?.logo || gateConfig?.banner || HUMAN_ICON}
                   borderRadius="9px"
                   objectFit="cover"
                 />

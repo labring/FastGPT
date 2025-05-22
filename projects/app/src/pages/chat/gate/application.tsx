@@ -38,16 +38,22 @@ import ChatRecordContextProvider, {
 } from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import GateSideBar from '@/pageComponents/chat/gatechat/GateSideBar';
 import GatePageContainer from '@/components/GatePageContainer';
 import GateChatHistorySlider from '@/pageComponents/chat/gatechat/GateChatHistorySlider';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
-const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
+const Chat = ({
+  myApps,
+  gateConfig
+}: {
+  myApps: AppListItemType[];
+  gateConfig?: GateSchemaType;
+}) => {
   const router = useRouter();
-  const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystem();
 
@@ -180,7 +186,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
   return (
     <Flex h={'100%'}>
       <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
-      {isPc && <GateNavBar apps={myApps} activeAppId={appId} />}
+      {isPc && <GateNavBar gateConfig={gateConfig} apps={myApps} activeAppId={appId} />}
 
       {(!datasetCiteData || isPc) && (
         <GatePageContainer flex={'1 0 0'} w={0} position={'relative'}>
@@ -259,7 +265,19 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
-  const { gateConfig, initGateConfig } = useGateStore();
+  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  // 加载 gateConfig
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getTeamGateConfig();
+        setGateConfig(config);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   const {
     data: myApps = [],
@@ -272,9 +290,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
 
   // 初始化聊天框
   useMount(async () => {
-    // 初始化获取gate配置
-    await initGateConfig();
-
     // 检查gate status，如果为false则重定向到应用列表页面
     if (gateConfig && !gateConfig.status) {
       toast({
@@ -350,7 +365,7 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} />
+          <Chat myApps={myApps} gateConfig={gateConfig} />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>

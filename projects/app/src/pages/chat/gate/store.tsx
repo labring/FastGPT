@@ -28,11 +28,12 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import GateNavBar from '../../../pageComponents/chat/gatechat/GateNavBar';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import GatePageContainer from '@/components/GatePageContainer';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import AppCard from '@/pageComponents/chat/gatechat/AppCard';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
 
 const Chat = ({
   myApps,
@@ -251,8 +252,19 @@ const Render = (props: {
   const { toast } = useToast();
   const router = useRouter();
   const { source, chatId, lastChatAppId, setSource, setAppId } = useChatStore();
-  const { gateConfig, initGateConfig } = useGateStore();
-
+  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  // 加载 gateConfig
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getTeamGateConfig();
+        setGateConfig(config);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
   const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
     () => getMyApps({ getRecentlyChat: true }),
     {
@@ -263,9 +275,6 @@ const Render = (props: {
 
   // 初始化聊天框
   useMount(async () => {
-    // 初始化获取gate配置
-    await initGateConfig();
-
     // 检查gate status，如果为false则重定向到应用列表页面
     if (gateConfig && !gateConfig.status) {
       toast({

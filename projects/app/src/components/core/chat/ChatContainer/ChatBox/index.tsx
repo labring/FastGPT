@@ -72,6 +72,9 @@ import ChatWelcome from './components/ChatWelcome';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
+import { getTeamGateConfig, getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
+import type { getGateConfigCopyRightResponse } from '@fastgpt/global/support/user/team/gate/api';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
@@ -1097,7 +1100,24 @@ const ChatBox = ({
     welcomeText
   ]);
 
-  const { gateConfig, copyRightConfig } = useGateStore();
+  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  const [copyRightConfig, setCopyRightConfig] = useState<
+    getGateConfigCopyRightResponse | undefined
+  >(undefined);
+  // 加载 gateConfig 和 copyRightConfig
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const gateConfig = await getTeamGateConfig();
+        setGateConfig(gateConfig);
+        const copyRightConfig = await getTeamGateConfigCopyRight();
+        setCopyRightConfig(copyRightConfig);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
   const { userInfo } = useUserStore();
 
   const showWelcome = useMemo(() => {
@@ -1138,7 +1158,7 @@ const ChatBox = ({
             <Box>
               <ChatWelcome
                 teamName={copyRightConfig?.name || chatBoxData?.app?.name}
-                teamAvatar={userInfo?.team?.teamAvatar}
+                teamAvatar={copyRightConfig?.logo}
                 slogan={appIntro}
               />
             </Box>

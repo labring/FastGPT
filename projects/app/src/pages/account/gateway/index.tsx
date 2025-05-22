@@ -8,8 +8,10 @@ import dynamic from 'next/dynamic';
 import ConfigButtons from '@/pageComponents/account/gateway/ConfigButtons';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
+import { getTeamGateConfig, getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
+import type { getGateConfigCopyRightResponse } from '@fastgpt/global/support/user/team/gate/api';
+import { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api';
 
 // 动态导入两个新组件
 const HomeTable = dynamic(() => import('@/pageComponents/account/gateway/HomeTable'));
@@ -22,6 +24,9 @@ const GatewayConfig = () => {
   const { t } = useTranslation();
   const { gateApps, loadGateApps } = useGateStore();
   const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  const [copyRightConfig, setCopyRightConfig] = useState<
+    getGateConfigCopyRightResponse | undefined
+  >(undefined);
   const [tab, setTab] = useState<TabType>('home');
   const [isLoadingApps, setIsLoadingApps] = useState(true);
 
@@ -60,7 +65,6 @@ const GatewayConfig = () => {
     [gateConfig]
   );
 
-  // 添加 handlePlaceholderChange 函数
   const handlePlaceholderChange = useCallback(
     (newPlaceholder: string) => {
       if (!gateConfig) return;
@@ -71,6 +75,36 @@ const GatewayConfig = () => {
     },
     [gateConfig]
   );
+  const handleCopyRightNameChange = useCallback(
+    (newName: string) => {
+      if (!copyRightConfig) return;
+      setCopyRightConfig({
+        ...copyRightConfig,
+        name: newName
+      });
+    },
+    [copyRightConfig]
+  );
+  const handleCopyRightLogoChange = useCallback(
+    (newLogo: string) => {
+      if (!copyRightConfig) return;
+      setCopyRightConfig({
+        ...copyRightConfig,
+        logo: newLogo
+      });
+    },
+    [copyRightConfig]
+  );
+  const handleCopyRightBannerChange = useCallback(
+    (newBanner: string) => {
+      if (!copyRightConfig) return;
+      setCopyRightConfig({
+        ...copyRightConfig,
+        banner: newBanner
+      });
+    },
+    [copyRightConfig]
+  );
 
   // 加载 gateConfig
   useEffect(() => {
@@ -78,6 +112,8 @@ const GatewayConfig = () => {
       try {
         const config = await getTeamGateConfig();
         setGateConfig(config);
+        const copyRightConfig = await getTeamGateConfigCopyRight();
+        setCopyRightConfig(copyRightConfig);
       } catch (error) {
         console.error('Failed to load gate config:', error);
       }
@@ -132,10 +168,16 @@ const GatewayConfig = () => {
     );
   }, [t, tab]);
 
-  if (!gateConfig) return null;
+  const content = useMemo(() => {
+    if (!gateConfig || !copyRightConfig) {
+      return (
+        <Center w="100%" h="100%">
+          <Spinner size="md" color="blue.500" thickness="3px" />
+        </Center>
+      );
+    }
 
-  return (
-    <AccountContainer>
+    return (
       <Flex h={'100%'}>
         {isLoadingApps ? (
           <Center w="220px" h="100%" bg="#FBFBFC" borderRight="1px solid #E8EBF0">
@@ -148,7 +190,9 @@ const GatewayConfig = () => {
           <Flex alignItems={'center'}>
             {Tab}
             <Box flex={1} />
-            {!isAppTab && <ConfigButtons tab={tab} gateConfig={gateConfig} />}
+            {!isAppTab && (
+              <ConfigButtons tab={tab} gateConfig={gateConfig} copyRightConfig={copyRightConfig} />
+            )}
           </Flex>
 
           {tab === 'home' && (
@@ -165,16 +209,36 @@ const GatewayConfig = () => {
           )}
           {tab === 'copyright' && (
             <CopyrightTable
-              gateName={gateConfig.name}
-              gateLogo={gateConfig.logo}
-              gateBanner={gateConfig.banner}
+              gateName={copyRightConfig.name}
+              gateLogo={copyRightConfig.logo}
+              gateBanner={copyRightConfig.banner}
+              onNameChange={handleCopyRightNameChange}
+              onLogoChange={handleCopyRightLogoChange}
+              onBannerChange={handleCopyRightBannerChange}
             />
           )}
           {tab === 'app' && <AppTable />}
         </Flex>
       </Flex>
-    </AccountContainer>
-  );
+    );
+  }, [
+    gateConfig,
+    copyRightConfig,
+    isLoadingApps,
+    gateApps,
+    Tab,
+    isAppTab,
+    tab,
+    handleToolsChange,
+    handleStatusChange,
+    handleSloganChange,
+    handlePlaceholderChange,
+    handleCopyRightNameChange,
+    handleCopyRightLogoChange,
+    handleCopyRightBannerChange
+  ]);
+
+  return <AccountContainer>{content}</AccountContainer>;
 };
 
 export async function getServerSideProps(content: any) {

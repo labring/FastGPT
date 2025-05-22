@@ -14,6 +14,7 @@ import { putUpdateTeam } from '@/web/support/user/team/api';
 import { saveGateConfig } from './HomeTable';
 import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 import type { putUpdateGateConfigCopyRightData } from '@fastgpt/global/support/user/team/gate/api';
+import { saveCopyRightConfig } from './CopyrightTable';
 
 type Props = {
   tab: 'home' | 'copyright' | 'app';
@@ -25,7 +26,6 @@ const ConfigButtons = ({ tab, gateConfig, copyRightConfig }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { saveCopyRightConfig } = useGateStore();
   const { userInfo } = useUserStore();
 
   // 保存配置
@@ -55,11 +55,13 @@ const ConfigButtons = ({ tab, gateConfig, copyRightConfig }: Props) => {
   const { runAsync: saveCopyrightConfig, loading: savingCopyright } = useRequest2(
     async () => {
       // 保存其他版权配置
-      await saveCopyRightConfig();
-      toast({
-        title: t('common:save_success'),
-        status: 'success'
-      });
+      if (!!copyRightConfig) {
+        await saveCopyRightConfig(copyRightConfig);
+        toast({
+          title: t('common:save_success'),
+          status: 'success'
+        });
+      }
     },
     {
       manual: true,

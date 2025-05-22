@@ -40,7 +40,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { workflowStartNodeId } from '@/web/core/app/constants';
 import ConfigToolModal from './ConfigToolModal';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -62,7 +63,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const [searchKey, setSearchKey] = useState('');
-  const gateConfig = useGateStore((state) => state.gateConfig);
+  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
+  // 加载 gateConfig
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const config = await getTeamGateConfig();
+        setGateConfig(config);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
   const [gatePlugins, setGatePlugins] = useState<NodeTemplateListItemType[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
