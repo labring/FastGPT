@@ -20,7 +20,6 @@ import { WorkflowEventContext } from '../context/workflowEventContext';
 
 const popoverWidth = 400;
 const popoverHeight = 600;
-const margin = 20;
 
 const NodeTemplatesPopover = () => {
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
@@ -43,10 +42,12 @@ const NodeTemplatesPopover = () => {
   const { setLoading } = useSystemStore();
   const { toast } = useToast();
 
-  // TODO: 需要优化，区分 popoverPosition & addNodePosition
+  const currentNodeData = useMemo(() => {
+    if (!handleParams?.nodeId) return null;
+    return nodes.find((node) => node.id === handleParams.nodeId) || null;
+  }, [handleParams?.nodeId, nodes]);
+
   const popoverPosition = useMemo(() => {
-    if (!handleParams?.nodeId) return { x: 0, y: 0 };
-    const currentNodeData = nodes.find((node) => node.id === handleParams?.nodeId);
     if (!currentNodeData) return { x: 0, y: 0 };
 
     const position = flowToScreenPosition({
@@ -62,26 +63,37 @@ const NodeTemplatesPopover = () => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
+    const margin = 20;
+
+    // Check right boundary
     if (x + popoverWidth + margin > viewportWidth) {
       x = Math.max(margin, position.x - popoverWidth - margin);
     }
 
+    // Check bottom boundary
     if (y + popoverHeight + margin > viewportHeight) {
       y = Math.max(margin, viewportHeight - popoverHeight - margin);
     }
 
+    // Check top boundary
     if (y < margin) {
       y = margin;
     }
 
     return { x, y };
-  }, [handleParams?.nodeId, flowToScreenPosition, nodes, getZoom]);
+  }, [currentNodeData, flowToScreenPosition, getZoom]);
+
+  const getAddNodePosition = useMemoizedFn((nodeTemplate) => {
+    if (!currentNodeData) return { x: 0, y: 0 };
+
+    const x = currentNodeData.position.x + (currentNodeData.width || 0) + 80;
+    const y = currentNodeData.position.y;
+
+    return { x, y };
+  });
 
   const onAddNode = useMemoizedFn(async ({ template }: { template: NodeTemplateListItemType }) => {
-    const nodePosition = screenToFlowPosition({
-      x: popoverPosition.x + 80,
-      y: popoverPosition.y
-    });
+    const nodePosition = getAddNodePosition(template);
 
     const newNodes = await createNodeTemplate({
       template,
@@ -108,7 +120,27 @@ const NodeTemplatesPopover = () => {
     const isToolHandle = handleParams?.handleId === 'selectedTools';
 
     const newEdges = newNodes
-      .filter((node) => isToolHandle || node.data.flowNodeType !== FlowNodeTypeEnum.toolSet)
+      .filter((node) => {
+        // Exclude nodes that don't meet the conditions
+        // 1. Tool set nodes must be connected through tool handle
+        if (!isToolHandle && node.data.flowNodeType === FlowNodeTypeEnum.toolSet) {
+          return false;
+        }
+
+        // 2. Exclude loop start and end nodes
+        if (
+          [FlowNodeTypeEnum.loopStart, FlowNodeTypeEnum.loopEnd].includes(node.data.flowNodeType)
+        ) {
+          return false;
+        }
+
+        // 3. Tool handle can only connect to tool nodes
+        if (isToolHandle && !node.data.isTool) {
+          return false;
+        }
+
+        return true;
+      })
       .map((node) => ({
         id: nanoid(16),
         source: handleParams.nodeId as string,
@@ -151,7 +183,14 @@ const NodeTemplatesPopover = () => {
         border={'none'}
       >
         <PopoverBody padding={0} h={'full'}>
-          <MyBox isLoading={isLoading} py={4} h={'full'} userSelect="none">
+          <MyBox
+            isLoading={isLoading}
+            display={'flex'}
+            flexDirection={'column'}
+            py={4}
+            h={'full'}
+            userSelect="none"
+          >
             <TemplateHeader isPopover={true} />
             <TemplateList onAddNode={onAddNode} isPopover={true} />
           </MyBox>

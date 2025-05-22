@@ -539,7 +539,6 @@ export const useWorkflow = () => {
         });
       }
       setConnectingEdge(params);
-      console.log('params', event, params);
 
       if (params.handleId) {
         const initialX = event.clientX;
