@@ -18,10 +18,10 @@ export const getWebReqUrl = (url: string = '') => {
 };
 
 export const isMobile = () => {
-  // 服务端渲染时返回 false
+  // SSR return false
   if (typeof window === 'undefined') return false;
 
-  // 1. 检查 User-Agent
+  // 1. Check User-Agent
   const userAgent = navigator.userAgent.toLowerCase();
   const mobileKeywords = [
     'android',
@@ -36,12 +36,12 @@ export const isMobile = () => {
   ];
   const isMobileUA = mobileKeywords.some((keyword) => userAgent.includes(keyword));
 
-  // 2. 检查屏幕宽度
+  // 2. Check screen width
   const isMobileWidth = window.innerWidth <= 900;
 
-  // 3. 检查是否支持触摸事件（排除触控屏PC）
+  // 3. Check if touch events are supported (exclude touch screen PCs)
   const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
-  // 综合判断：满足以下任一条件即视为移动端
+  // If any of the following conditions are met, it is considered a mobile device
   return isMobileUA || (isMobileWidth && isTouchDevice);
 };
