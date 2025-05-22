@@ -17,6 +17,10 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
+import type {
+  ChunkTriggerConfigTypeEnum,
+  ParagraphChunkAIModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -42,7 +46,6 @@ import {
   minChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
-import { type ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 import type { LLMModelItemType, EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const PromptTextarea = ({
@@ -86,19 +89,35 @@ const PromptTextarea = ({
 
 export type CollectionChunkFormType = {
   trainingType: DatasetCollectionDataProcessModeEnum;
+
+  // Chunk trigger
+  chunkTriggerType: ChunkTriggerConfigTypeEnum;
+  chunkTriggerMinSize: number; // maxSize from agent model, not store
+
+  // Data enhance
+  dataEnhanceCollectionName: boolean; // Auto add collection name to data
+
+  // Index enhance
   imageIndex: boolean;
   autoIndexes: boolean;
 
-  chunkSettingMode: ChunkSettingModeEnum;
-
+  // Chunk setting
+  chunkSettingMode: ChunkSettingModeEnum; // 系统参数/自定义参数
   chunkSplitMode: DataChunkSplitModeEnum;
-  embeddingChunkSize: number;
-  qaChunkSize: number;
-  chunkSplitter?: string;
+  // Paragraph split
+  paragraphChunkAIMode: ParagraphChunkAIModeEnum;
+  paragraphChunkDeep: number; // Paragraph deep
+  paragraphChunkMinSize: number; // Paragraph min size, if too small, it will merge
+  paragraphChunkMaxSize: number; // Paragraph max size, if too large, it will split
+  // Size split
+  chunkSize: number;
+  // Char split
+  chunkSplitter: string;
   indexSize: number;
 
   qaPrompt?: string;
 };
+
 const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkFormType> }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -131,29 +150,26 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
       tooltip: t(value.tooltip as any)
     }));
   }, [t]);
+
   const {
-    chunkSizeField,
     maxChunkSize,
     minChunkSize: minChunkSizeValue,
     maxIndexSize
   } = useMemo(() => {
     if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
       return {
-        chunkSizeField: 'qaChunkSize',
         maxChunkSize: getLLMMaxChunkSize(agentModel),
         minChunkSize: 1000,
         maxIndexSize: 1000
       };
     } else if (autoIndexes) {
       return {
-        chunkSizeField: 'embeddingChunkSize',
         maxChunkSize: getMaxChunkSize(agentModel),
         minChunkSize: minChunkSize,
         maxIndexSize: getMaxIndexSize(vectorModel)
       };
     } else {
       return {
-        chunkSizeField: 'embeddingChunkSize',
         maxChunkSize: getMaxChunkSize(agentModel),
         minChunkSize: minChunkSize,
         maxIndexSize: getMaxIndexSize(vectorModel)
@@ -216,6 +232,11 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
           value={trainingType}
           onChange={(e) => {
             setValue('trainingType', e);
+            if (e === DatasetCollectionDataProcessModeEnum.qa) {
+              setValue('chunkSize', getLLMDefaultChunkSize(agentModel));
+            } else {
+              setValue('chunkSize', chunkAutoChunkSize);
+            }
           }}
           defaultBg="white"
           activeBg="white"
@@ -317,7 +338,7 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
                         >
                           <MyNumberInput
                             register={register}
-                            name={chunkSizeField}
+                            name={'chunkSize'}
                             min={minChunkSizeValue}
                             max={maxChunkSize}
                             size={'sm'}
@@ -456,24 +477,26 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
 
 export default CollectionChunkForm;
 
+// Get chunk settings from form
 export const collectionChunkForm2StoreChunkData = ({
-  trainingType,
-  imageIndex,
-  autoIndexes,
-  chunkSettingMode,
-  chunkSplitMode,
-  embeddingChunkSize,
-  qaChunkSize,
-  chunkSplitter,
-  indexSize,
-  qaPrompt,
-
   agentModel,
-  vectorModel
+  vectorModel,
+  ...data
 }: CollectionChunkFormType & {
   agentModel: LLMModelItemType;
   vectorModel: EmbeddingModelItemType;
-}): ChunkSettingsType => {
+}): CollectionChunkFormType => {
+  const {
+    trainingType,
+    autoIndexes,
+    chunkSettingMode,
+    chunkSize,
+    chunkSplitter,
+    indexSize,
+    qaPrompt
+  } = data;
+
+  // 根据处理方式，获取 auto 和 custom 的参数。
   const trainingModeSize: {
     autoChunkSize: number;
     autoIndexSize: number;
@@ -483,53 +506,53 @@ export const collectionChunkForm2StoreChunkData = ({
     if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
       return {
         autoChunkSize: getLLMDefaultChunkSize(agentModel),
-        autoIndexSize: 512,
-        chunkSize: qaChunkSize,
-        indexSize: 512
+        autoIndexSize: getMaxIndexSize(vectorModel),
+        chunkSize,
+        indexSize: getMaxIndexSize(vectorModel)
       };
     } else if (autoIndexes) {
       return {
         autoChunkSize: chunkAutoChunkSize,
         autoIndexSize: getAutoIndexSize(vectorModel),
-        chunkSize: embeddingChunkSize,
+        chunkSize,
         indexSize
       };
     } else {
       return {
         autoChunkSize: chunkAutoChunkSize,
         autoIndexSize: getAutoIndexSize(vectorModel),
-        chunkSize: embeddingChunkSize,
+        chunkSize,
         indexSize
       };
     }
   })();
 
-  const { chunkSize: formatChunkIndex, indexSize: formatIndexSize } = (() => {
+  // 获取真实参数
+  const {
+    chunkSize: formatChunkIndex,
+    indexSize: formatIndexSize,
+    chunkSplitter: formatChunkSplitter
+  } = (() => {
     if (chunkSettingMode === ChunkSettingModeEnum.auto) {
       return {
         chunkSize: trainingModeSize.autoChunkSize,
-        indexSize: trainingModeSize.autoIndexSize
+        indexSize: trainingModeSize.autoIndexSize,
+        chunkSplitter: ''
       };
     } else {
       return {
         chunkSize: trainingModeSize.chunkSize,
-        indexSize: trainingModeSize.indexSize
+        indexSize: trainingModeSize.indexSize,
+        chunkSplitter
       };
     }
   })();
 
   return {
-    trainingType,
-    imageIndex,
-    autoIndexes,
-
-    chunkSettingMode,
-    chunkSplitMode,
-
+    ...data,
     chunkSize: formatChunkIndex,
     indexSize: formatIndexSize,
-
-    chunkSplitter,
+    chunkSplitter: formatChunkSplitter,
     qaPrompt: trainingType === DatasetCollectionDataProcessModeEnum.qa ? qaPrompt : undefined
   };
 };
