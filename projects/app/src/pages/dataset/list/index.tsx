@@ -66,10 +66,7 @@ const Dataset = () => {
 
   const onSelectDatasetType = useCallback(
     (e: CreateDatasetType) => {
-      if (
-        !feConfigs?.isPlus &&
-        [DatasetTypeEnum.websiteDataset, DatasetTypeEnum.feishu, DatasetTypeEnum.yuque].includes(e)
-      ) {
+      if (!feConfigs?.isPlus && [DatasetTypeEnum.websiteDataset].includes(e)) {
         return toast({
           status: 'warning',
           title: t('common:commercial_function_tip')

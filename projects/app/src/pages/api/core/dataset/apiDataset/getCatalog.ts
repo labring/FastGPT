@@ -33,7 +33,8 @@ async function handler(req: NextApiRequest) {
         apiServer
       });
 
-      const result = await apiDataset?.listFiles({ parentId });
+      const params = apiServer ? { parentId, searchKey: '' } : { parentId };
+      const result = await apiDataset?.listFiles(params);
       return result || [];
     }
     return Promise.reject(DatasetErrEnum.noApiServer);
