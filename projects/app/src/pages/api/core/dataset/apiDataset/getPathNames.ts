@@ -7,12 +7,11 @@ import type {
   FeishuServer,
   ApiDatasetDetailResponse
 } from '@fastgpt/global/core/dataset/apiDataset';
-import { getProApiDatasetFileDetailRequest } from '@/service/core/dataset/apiDataset/controller';
+import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { useApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset/api';
 
 export type GetApiDatasetPathQuery = {};
 
@@ -86,26 +85,21 @@ async function handler(
     }
   })();
 
-  if (!apiServer && !feishuServer && !yuqueServer) {
-    return Promise.reject(DatasetErrEnum.noApiServer);
-  }
-
   if (feishuServer) {
     return '';
   }
 
-  if (apiServer) {
-    return await getFullPath(parentId, useApiDatasetRequest({ apiServer }).getFileDetail);
-  }
+  if (yuqueServer || apiServer) {
+    const apiDataset = await getApiDatasetRequest({
+      yuqueServer,
+      apiServer
+    });
 
-  if (yuqueServer) {
-    const yuqueFileGetter = async ({ apiFileId }: { apiFileId: string }) => {
-      return await getProApiDatasetFileDetailRequest({
-        yuqueServer,
-        apiFileId
-      });
-    };
-    return await getFullPath(parentId, yuqueFileGetter);
+    if (!apiDataset?.getFileDetail) {
+      return Promise.reject(DatasetErrEnum.noApiServer);
+    }
+
+    return await getFullPath(parentId, apiDataset.getFileDetail);
   }
 
   return Promise.reject(new Error(DatasetErrEnum.noApiServer));

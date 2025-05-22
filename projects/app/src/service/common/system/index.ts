@@ -20,12 +20,6 @@ import {
   type ConcatUsageProps,
   type CreateUsageProps
 } from '@fastgpt/global/support/wallet/usage/api';
-import {
-  getProApiDatasetFileContentRequest,
-  getProApiDatasetFileDetailRequest,
-  getProApiDatasetFileListRequest,
-  getProApiDatasetFilePreviewUrlRequest
-} from '@/service/core/dataset/apiDataset/controller';
 import { isProVersion } from './constants';
 
 export const readConfigData = async (name: string) => {
@@ -77,11 +71,6 @@ export function initGlobalVariables() {
       if (!isProVersion()) return;
       return POST('/support/wallet/usage/concatUsage', data);
     };
-
-    global.getProApiDatasetFileList = getProApiDatasetFileListRequest;
-    global.getProApiDatasetFileContent = getProApiDatasetFileContentRequest;
-    global.getProApiDatasetFilePreviewUrl = getProApiDatasetFilePreviewUrlRequest;
-    global.getProApiDatasetFileDetail = getProApiDatasetFileDetailRequest;
   }
 
   global.communityPlugins = [];
