@@ -3,18 +3,13 @@ import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useTranslation } from 'react-i18next';
-import { useReactFlow } from 'reactflow';
-import { useWorkflowUtils } from './hooks/useUtils';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { type Node, useReactFlow } from 'reactflow';
 import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import { nanoid } from 'nanoid';
 import NodeTemplateListHeader, { TemplateTypeEnum } from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
-import { createNodeTemplate } from '../utils';
 import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { WorkflowEventContext } from '../context/workflowEventContext';
 
@@ -29,18 +24,12 @@ const NodeTemplatesPopover = () => {
     templatesIsLoading: state.templatesIsLoading
   }));
 
-  const { t } = useTranslation();
-
-  const { flowToScreenPosition, getZoom, screenToFlowPosition } = useReactFlow();
+  const { flowToScreenPosition, getZoom } = useReactFlow();
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const setTemplateType = useContextSelector(WorkflowContext, (v) => v.setTemplateType);
   const setParentId = useContextSelector(WorkflowContext, (v) => v.setParentId);
-  const { computedNewNodeName } = useWorkflowUtils();
-  const { setLoading } = useSystemStore();
-  const { toast } = useToast();
 
   const currentNodeData = useMemo(() => {
     if (!handleParams?.nodeId) return null;
@@ -83,28 +72,7 @@ const NodeTemplatesPopover = () => {
     return { x, y };
   }, [currentNodeData, flowToScreenPosition, getZoom]);
 
-  const getAddNodePosition = useMemoizedFn((nodeTemplate) => {
-    if (!currentNodeData) return { x: 0, y: 0 };
-
-    const x = currentNodeData.position.x + (currentNodeData.width || 0) + 120;
-    const y = currentNodeData.position.y;
-
-    return { x, y };
-  });
-
-  const onAddNode = useMemoizedFn(async ({ template }: { template: NodeTemplateListItemType }) => {
-    const nodePosition = getAddNodePosition(template);
-
-    const newNodes = await createNodeTemplate({
-      template,
-      position: nodePosition,
-      t,
-      setLoading,
-      toast,
-      computedNewNodeName,
-      nodeList
-    });
-
+  const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
     setNodes((state) => {
       const newState = state
         .map((node) => ({

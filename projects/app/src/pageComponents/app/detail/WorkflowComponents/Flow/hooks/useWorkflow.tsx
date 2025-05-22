@@ -549,7 +549,6 @@ export const useWorkflow = () => {
         const handleMouseMove = (moveEvent: MouseEvent) => {
           const currentX = moveEvent.clientX;
           const currentY = moveEvent.clientY;
-          console.log('currentX', currentX, currentY);
 
           if (Math.abs(currentX - initialX) > 5 || Math.abs(currentY - initialY) > 5) {
             hasMoved = true;
@@ -562,9 +561,7 @@ export const useWorkflow = () => {
           document.removeEventListener('mousemove', handleMouseMove);
           document.removeEventListener('mouseup', handleMouseUp);
 
-          console.log('hasMoved', hasMoved);
           if (!hasMoved) {
-            console.log('hasMoved setHandleParams', params);
             setHandleParams(params);
           }
         };

@@ -9,13 +9,15 @@ import {
   Grid,
   Flex,
   HStack,
-  css
+  css,
+  useToast
 } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { getPluginGroups } from '@/web/core/app/api/plugin';
+import { getPluginGroups, getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type {
+  FlowNodeItemType,
   NodeTemplateListItemType,
   NodeTemplateListType
 } from '@fastgpt/global/core/workflow/type/node';
@@ -25,44 +27,55 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CostTooltip from '@/components/core/app/plugin/CostTooltip';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeTypeEnum,
+  AppNodeFlowNodeTypeMap
+} from '@fastgpt/global/core/workflow/node/constant';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { cloneDeep } from 'lodash';
 import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import { sliderWidth } from '../../NodeTemplatesModal';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useWorkflowUtils } from '../../hooks/useUtils';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
+import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/loopEnd';
+import { useReactFlow, type Node } from 'reactflow';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { WorkflowInitContext } from '../../../context/workflowInitContext';
+import { WorkflowEventContext } from '../../../context/workflowEventContext';
 
 export type TemplateListProps = {
-  onAddNode: ({
-    template,
-    position
-  }: {
-    template: NodeTemplateListItemType;
-    position?: { x: number; y: number };
-  }) => void;
+  onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
   isPopover?: boolean;
 };
 
 const NodeTemplateListItem = ({
   template,
   templateType,
-  onAddNode,
+  handleAddNode,
   isPopover
 }: {
   template: NodeTemplateListItemType;
   templateType: TemplateTypeEnum;
-  onAddNode: ({
+  handleAddNode: ({
     template,
     position
   }: {
     template: NodeTemplateListItemType;
-    position?: { x: number; y: number };
+    position: { x: number; y: number };
   }) => void;
   isPopover?: boolean;
 }) => {
   const { t } = useTranslation();
 
   const onUpdateParentId = useContextSelector(WorkflowContext, (state) => state.onUpdateParentId);
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
+
+  const { screenToFlowPosition } = useReactFlow();
 
   return (
     <MyTooltip
@@ -109,14 +122,30 @@ const NodeTemplateListItem = ({
         }
         onDragEnd={(e) => {
           if (e.clientX < sliderWidth) return;
-          onAddNode({ template, position: { x: e.clientX, y: e.clientY } });
+          const nodePosition = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+          handleAddNode({
+            template,
+            position: { x: nodePosition.x - 100, y: nodePosition.y - 20 }
+          });
         }}
-        onClick={() => {
+        onClick={(e) => {
           if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
             onUpdateParentId(template.id);
             return;
           }
-          onAddNode({ template });
+          if (isPopover) {
+            const currentNodeData = nodes.find((node) => node.id === handleParams?.nodeId);
+            if (currentNodeData) {
+              const position = {
+                x: currentNodeData.position.x + (currentNodeData.width || 0) + 120,
+                y: currentNodeData.position.y
+              };
+              handleAddNode({ template, position });
+            }
+          } else {
+            const position = screenToFlowPosition({ x: sliderWidth * 1.5, y: 200 });
+            handleAddNode({ template, position });
+          }
         }}
       >
         <MyAvatar
@@ -172,15 +201,133 @@ const NodeTemplateListItem = ({
 
 const NodeTemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
   const { t } = useTranslation();
+  const toast = useToast();
+  const { computedNewNodeName } = useWorkflowUtils();
 
-  const { templateType, templates } = useContextSelector(WorkflowContext, (state) => ({
+  const { templateType, templates, nodeList } = useContextSelector(WorkflowContext, (state) => ({
     templateType: state.templateType,
-    templates: state.templates
+    templates: state.templates,
+    nodeList: state.nodeList
   }));
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
   });
+
+  const handleAddNode = useMemoizedFn(
+    async ({
+      template,
+      position
+    }: {
+      template: NodeTemplateListItemType;
+      position: { x: number; y: number };
+    }) => {
+      if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
+        return;
+      }
+
+      try {
+        const templateNode = await (async () => {
+          try {
+            if (AppNodeFlowNodeTypeMap[template.flowNodeType]) {
+              const res = await getPreviewPluginNode({ appId: template.id });
+              return res;
+            }
+
+            const baseTemplate = moduleTemplatesFlat.find((item) => item.id === template.id);
+            if (!baseTemplate) {
+              throw new Error('baseTemplate not found');
+            }
+            return { ...baseTemplate };
+          } catch (e) {
+            toast({
+              status: 'error',
+              title: getErrText(e, t('common:core.plugin.Get Plugin Module Detail Failed'))
+            });
+            return Promise.reject(e);
+          }
+        })();
+
+        const defaultValueMap: Record<string, any> = {
+          [NodeInputKeyEnum.userChatInput]: undefined,
+          [NodeInputKeyEnum.fileUrlList]: undefined
+        };
+
+        nodeList.forEach((node) => {
+          if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+            defaultValueMap[NodeInputKeyEnum.userChatInput] = [
+              node.nodeId,
+              NodeOutputKeyEnum.userChatInput
+            ];
+            defaultValueMap[NodeInputKeyEnum.fileUrlList] = [
+              [node.nodeId, NodeOutputKeyEnum.userFiles]
+            ];
+          }
+        });
+
+        const newNode = nodeTemplate2FlowNode({
+          template: {
+            ...templateNode,
+            name: computedNewNodeName({
+              templateName: t(templateNode.name as any),
+              flowNodeType: templateNode.flowNodeType,
+              pluginId: templateNode.pluginId
+            }),
+            intro: t(templateNode.intro as any),
+            inputs: templateNode.inputs
+              .filter((input) => input.deprecated !== true)
+              .map((input) => ({
+                ...input,
+                value: defaultValueMap[input.key] ?? input.value,
+                valueDesc: t(input.valueDesc as any),
+                label: t(input.label as any),
+                description: t(input.description as any),
+                debugLabel: t(input.debugLabel as any),
+                toolDescription: t(input.toolDescription as any)
+              })),
+            outputs: templateNode.outputs
+              .filter((output) => output.deprecated !== true)
+              .map((output) => ({
+                ...output,
+                valueDesc: t(output.valueDesc as any),
+                label: t(output.label as any),
+                description: t(output.description as any)
+              }))
+          },
+          position,
+          selected: true,
+          t
+        });
+
+        const newNodes = [newNode];
+
+        if (templateNode.flowNodeType === FlowNodeTypeEnum.loop) {
+          const startNode = nodeTemplate2FlowNode({
+            template: LoopStartNode,
+            position: { x: position.x + 60, y: position.y + 280 },
+            parentNodeId: newNode.id,
+            t
+          });
+          const endNode = nodeTemplate2FlowNode({
+            template: LoopEndNode,
+            position: { x: position.x + 420, y: position.y + 680 },
+            parentNodeId: newNode.id,
+            t
+          });
+
+          newNodes.push(startNode, endNode);
+        }
+
+        if (newNodes && newNodes.length > 0) {
+          onAddNode({
+            newNodes
+          });
+        }
+      } catch (error) {
+        console.error('Failed to create node template:', error);
+      }
+    }
+  );
 
   const formatTemplatesArray = useMemoizedFn(
     (
@@ -263,7 +410,7 @@ const NodeTemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) =
                     key={template.id}
                     template={template}
                     templateType={templateType}
-                    onAddNode={onAddNode}
+                    handleAddNode={handleAddNode}
                     isPopover={isPopover}
                   />
                 ))}
