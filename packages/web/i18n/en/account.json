@@ -66,6 +66,7 @@
   "model.tool_choice_tip": "If the model supports tool calling, turn on this switch",
   "model.used_in_classify": "Used for problem classification",
   "model.used_in_extract_fields": "for text extraction",
+  "model.used_in_query_extension": "For problem optimization",
   "model.used_in_tool_call": "Used for tool call nodes",
   "model.vision": "Vision model",
   "model.vision_tag": "Vision",

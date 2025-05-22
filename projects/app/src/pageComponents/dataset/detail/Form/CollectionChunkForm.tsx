@@ -118,14 +118,18 @@ const CollectionChunkForm = ({ form }: { form: UseFormReturn<CollectionChunkForm
   const imageIndex = watch('imageIndex');
 
   const trainingModeList = useMemo(() => {
-    const list = Object.entries(DatasetCollectionDataProcessModeMap);
-    return list
-      .filter(([key]) => key !== DatasetCollectionDataProcessModeEnum.auto)
-      .map(([key, value]) => ({
-        title: t(value.label as any),
-        value: key as DatasetCollectionDataProcessModeEnum,
-        tooltip: t(value.tooltip as any)
-      }));
+    const list = {
+      [DatasetCollectionDataProcessModeEnum.chunk]:
+        DatasetCollectionDataProcessModeMap[DatasetCollectionDataProcessModeEnum.chunk],
+      [DatasetCollectionDataProcessModeEnum.qa]:
+        DatasetCollectionDataProcessModeMap[DatasetCollectionDataProcessModeEnum.qa]
+    };
+
+    return Object.entries(list).map(([key, value]) => ({
+      title: t(value.label as any),
+      value: key as DatasetCollectionDataProcessModeEnum,
+      tooltip: t(value.tooltip as any)
+    }));
   }, [t]);
   const {
     chunkSizeField,

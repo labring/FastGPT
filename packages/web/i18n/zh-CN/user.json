@@ -88,6 +88,7 @@
   "team.add_writer": "添加可写成员",
   "team.avatar_and_name": "头像 & 名称",
   "team.belong_to_group": "所属群组",
+  "team.collaborator.added": "已添加",
   "team.group.avatar": "群头像",
   "team.group.create": "创建群组",
   "team.group.create_failed": "创建群组失败",
@@ -99,9 +100,10 @@
   "team.group.keep_admin": "保留管理员权限",
   "team.group.manage_member": "管理成员",
   "team.group.manage_tip": "可以管理成员、创建群组、管理所有群组、为群组和成员分配权限",
-  "team.group.permission_tip": "单独配置权限的成员，将遵循个人权限配置，不再受群组权限影响。\n若成员在多个权限组，则该成员的权限取并集。",
   "team.group.members": "成员",
   "team.group.name": "群组名称",
+  "team.group.permission.write": "",
+  "team.group.permission_tip": "单独配置权限的成员，将遵循个人权限配置，不再受群组权限影响。\n若成员在多个权限组，则该成员的权限取并集。",
   "team.group.role.admin": "管理员",
   "team.group.role.member": "成员",
   "team.group.role.owner": "所有者",
@@ -111,6 +113,5 @@
   "team.manage_collaborators": "管理协作者",
   "team.no_collaborators": "暂无协作者",
   "team.org.org": "部门",
-  "team.write_role_member": "可写权限",
-  "team.collaborator.added": "已添加"
+  "team.write_role_member": "可写权限"
 }

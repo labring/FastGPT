@@ -16,6 +16,7 @@ export type readRawTextByLocalFileParams = {
   path: string;
   encoding: string;
   customPdfParse?: boolean;
+  getFormatText?: boolean;
   metadata?: Record<string, any>;
 };
 export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
@@ -27,8 +28,8 @@ export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParam
 
   return readRawContentByFileBuffer({
     extension,
-    isQAImport: false,
     customPdfParse: params.customPdfParse,
+    getFormatText: params.getFormatText,
     teamId: params.teamId,
     tmbId: params.tmbId,
     encoding: params.encoding,
@@ -46,7 +47,7 @@ export const readRawContentByFileBuffer = async ({
   encoding,
   metadata,
   customPdfParse = false,
-  isQAImport = false
+  getFormatText = true
 }: {
   teamId: string;
   tmbId: string;
@@ -57,8 +58,10 @@ export const readRawContentByFileBuffer = async ({
   metadata?: Record<string, any>;
 
   customPdfParse?: boolean;
-  isQAImport: boolean;
-}): Promise<ReadFileResponse> => {
+  getFormatText?: boolean;
+}): Promise<{
+  rawText: string;
+}> => {
   const systemParse = () =>
     runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
       extension,
@@ -176,16 +179,7 @@ export const readRawContentByFileBuffer = async ({
     });
   }
 
-  if (['csv', 'xlsx'].includes(extension)) {
-    // qa data
-    if (isQAImport) {
-      rawText = rawText || '';
-    } else {
-      rawText = formatText || rawText;
-    }
-  }
-
   addLog.debug(`Upload file success, time: ${Date.now() - start}ms`);
 
-  return { rawText, formatText, imageList };
+  return { rawText: getFormatText ? formatText || rawText : rawText };
 };

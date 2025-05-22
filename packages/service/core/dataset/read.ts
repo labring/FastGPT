@@ -2,7 +2,6 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
-import { parseCsvTable2Chunks } from './training/utils';
 import { type TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
@@ -13,18 +12,21 @@ import {
   type YuqueServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { useApiDatasetRequest } from './apiDataset/api';
+import Papa from 'papaparse';
 
 export const readFileRawTextByUrl = async ({
   teamId,
   tmbId,
   url,
   customPdfParse,
+  getFormatText,
   relatedId
 }: {
   teamId: string;
   tmbId: string;
   url: string;
   customPdfParse?: boolean;
+  getFormatText?: boolean;
   relatedId: string; // externalFileId / apiFileId
 }) => {
   const response = await axios({
@@ -38,7 +40,7 @@ export const readFileRawTextByUrl = async ({
 
   const { rawText } = await readRawContentByFileBuffer({
     customPdfParse,
-    isQAImport: false,
+    getFormatText,
     extension,
     teamId,
     tmbId,
@@ -62,21 +64,21 @@ export const readDatasetSourceRawText = async ({
   tmbId,
   type,
   sourceId,
-  isQAImport,
   selector,
   externalFileId,
   apiServer,
   feishuServer,
   yuqueServer,
-  customPdfParse
+  customPdfParse,
+  getFormatText
 }: {
   teamId: string;
   tmbId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
   customPdfParse?: boolean;
+  getFormatText?: boolean;
 
-  isQAImport?: boolean; // csv data
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
   apiServer?: APIFileServer; // api dataset
@@ -92,8 +94,8 @@ export const readDatasetSourceRawText = async ({
       tmbId,
       bucketName: BucketNameEnum.dataset,
       fileId: sourceId,
-      isQAImport,
-      customPdfParse
+      customPdfParse,
+      getFormatText
     });
     return {
       title: filename,
@@ -183,16 +185,38 @@ export const readApiServerFileContent = async ({
 
 export const rawText2Chunks = ({
   rawText,
-  isQAImport,
+  backupParse,
   chunkSize = 512,
   ...splitProps
 }: {
   rawText: string;
-  isQAImport?: boolean;
-} & TextSplitProps) => {
-  if (isQAImport) {
-    const { chunks } = parseCsvTable2Chunks(rawText);
-    return chunks;
+  backupParse?: boolean;
+  tableParse?: boolean;
+} & TextSplitProps): {
+  q: string;
+  a: string;
+  indexes?: string[];
+}[] => {
+  const parseDatasetBackup2Chunks = (rawText: string) => {
+    const csvArr = Papa.parse(rawText).data as string[][];
+    console.log(rawText, csvArr);
+
+    const chunks = csvArr
+      .slice(1)
+      .map((item) => ({
+        q: item[0] || '',
+        a: item[1] || '',
+        indexes: item.slice(2)
+      }))
+      .filter((item) => item.q || item.a);
+
+    return {
+      chunks
+    };
+  };
+
+  if (backupParse) {
+    return parseDatasetBackup2Chunks(rawText).chunks;
   }
 
   const { chunks } = splitText2Chunks({
@@ -203,6 +227,7 @@ export const rawText2Chunks = ({
 
   return chunks.map((item) => ({
     q: item,
-    a: ''
+    a: '',
+    indexes: []
   }));
 };

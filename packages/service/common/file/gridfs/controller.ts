@@ -210,15 +210,15 @@ export const readFileContentFromMongo = async ({
   tmbId,
   bucketName,
   fileId,
-  isQAImport = false,
-  customPdfParse = false
+  customPdfParse = false,
+  getFormatText
 }: {
   teamId: string;
   tmbId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  isQAImport?: boolean;
   customPdfParse?: boolean;
+  getFormatText?: boolean; // 数据类型都尽可能转化成 markdown 格式
 }): Promise<{
   rawText: string;
   filename: string;
@@ -254,8 +254,8 @@ export const readFileContentFromMongo = async ({
   // Get raw text
   const { rawText } = await readRawContentByFileBuffer({
     customPdfParse,
+    getFormatText,
     extension,
-    isQAImport,
     teamId,
     tmbId,
     buffer: fileBuffers,
