@@ -8,6 +8,8 @@ import dynamic from 'next/dynamic';
 import ConfigButtons from '@/pageComponents/account/gateway/ConfigButtons';
 import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 // 动态导入两个新组件
 const HomeTable = dynamic(() => import('@/pageComponents/account/gateway/HomeTable'));
@@ -18,24 +20,70 @@ type TabType = 'home' | 'copyright' | 'app';
 
 const GatewayConfig = () => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const {
-    gateConfig,
-    copyRightConfig,
-    gateApps,
-    initGateConfig,
-    initCopyRightConfig,
-    loadGateApps
-  } = useGateStore();
-
+  const { gateApps, loadGateApps } = useGateStore();
+  const [gateConfig, setGateConfig] = useState<GateSchemaType | undefined>(undefined);
   const [tab, setTab] = useState<TabType>('home');
   const [isLoadingApps, setIsLoadingApps] = useState(true);
 
-  // 加载初始配置
+  // 添加 handleStatusChange 函数
+  const handleStatusChange = useCallback(
+    (newStatus: boolean) => {
+      if (!gateConfig) return;
+      setGateConfig({
+        ...gateConfig,
+        status: newStatus
+      });
+    },
+    [gateConfig]
+  );
+  // 添加 handleToolsChange 函数
+  const handleToolsChange = useCallback(
+    (newTools: string[]) => {
+      if (!gateConfig) return;
+      setGateConfig({
+        ...gateConfig,
+        tools: newTools
+      });
+    },
+    [gateConfig]
+  );
+
+  // 添加 handleSloganChange 函数
+  const handleSloganChange = useCallback(
+    (newSlogan: string) => {
+      if (!gateConfig) return;
+      setGateConfig({
+        ...gateConfig,
+        slogan: newSlogan
+      });
+    },
+    [gateConfig]
+  );
+
+  // 添加 handlePlaceholderChange 函数
+  const handlePlaceholderChange = useCallback(
+    (newPlaceholder: string) => {
+      if (!gateConfig) return;
+      setGateConfig({
+        ...gateConfig,
+        placeholderText: newPlaceholder
+      });
+    },
+    [gateConfig]
+  );
+
+  // 加载 gateConfig
   useEffect(() => {
-    initGateConfig();
-    initCopyRightConfig();
-  }, [initCopyRightConfig, initGateConfig]);
+    const loadConfig = async () => {
+      try {
+        const config = await getTeamGateConfig();
+        setGateConfig(config);
+      } catch (error) {
+        console.error('Failed to load gate config:', error);
+      }
+    };
+    loadConfig();
+  }, []);
 
   // 获取 Gate 应用列表，添加重试机制
   const fetchGateApps = useCallback(
@@ -84,7 +132,7 @@ const GatewayConfig = () => {
     );
   }, [t, tab]);
 
-  if (!gateConfig || !copyRightConfig) return null;
+  if (!gateConfig) return null;
 
   return (
     <AccountContainer>
@@ -100,16 +148,7 @@ const GatewayConfig = () => {
           <Flex alignItems={'center'}>
             {Tab}
             <Box flex={1} />
-            {!isAppTab && (
-              <ConfigButtons
-                tab={tab}
-                tools={gateConfig.tools}
-                slogan={gateConfig.slogan}
-                placeholderText={gateConfig.placeholderText}
-                status={gateConfig.status}
-                teamName={copyRightConfig.name}
-              />
-            )}
+            {!isAppTab && <ConfigButtons tab={tab} gateConfig={gateConfig} />}
           </Flex>
 
           {tab === 'home' && (
@@ -118,9 +157,19 @@ const GatewayConfig = () => {
               slogan={gateConfig.slogan}
               placeholderText={gateConfig.placeholderText}
               status={gateConfig.status}
+              onToolsChange={handleToolsChange}
+              onStatusChange={handleStatusChange}
+              onSloganChange={handleSloganChange}
+              onPlaceholderChange={handlePlaceholderChange}
             />
           )}
-          {tab === 'copyright' && <CopyrightTable teamName={copyRightConfig.name} />}
+          {tab === 'copyright' && (
+            <CopyrightTable
+              gateName={gateConfig.name}
+              gateLogo={gateConfig.logo}
+              gateBanner={gateConfig.banner}
+            />
+          )}
           {tab === 'app' && <AppTable />}
         </Flex>
       </Flex>

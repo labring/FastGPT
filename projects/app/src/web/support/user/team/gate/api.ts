@@ -11,7 +11,7 @@ import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type
  * 获取门户配置 - Get请求
  */
 export const getTeamGateConfig = () => {
-  return GET<GateSchemaType>('/proApi/support/user/team/gate/config/list');
+  return GET<GateSchemaType>('/proApi/support/user/team/gate/config/get');
 };
 
 /**
@@ -36,6 +36,6 @@ export const updateTeamGateConfigCopyRight = (data: putUpdateGateConfigCopyRight
  */
 export const getTeamGateConfigCopyRight = () => {
   return GET<putUpdateGateConfigCopyRightResponse>(
-    '/proApi/support/user/team/gate/config/copyright/list'
+    '/proApi/support/user/team/gate/config/copyright/get'
   );
 };

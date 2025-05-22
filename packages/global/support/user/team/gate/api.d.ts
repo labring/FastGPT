@@ -1,5 +1,3 @@
-import type { GateTool } from './type';
-
 export type putUpdateGateConfigData = {
   status?: boolean;
   tools?: GateTool[];
@@ -16,15 +14,18 @@ export type putUpdateGateConfigResponse = {
 
 export type putUpdateGateConfigCopyRightData = {
   name?: string;
-  avatar?: string;
+  logo?: string;
+  banner?: string;
 };
 
 export type putUpdateGateConfigCopyRightResponse = {
   name: string;
-  avatar: string;
+  logo: string;
+  banner: string;
 };
 
 export type getGateConfigCopyRightResponse = {
   name: string;
-  avatar: string;
+  logo: string;
+  banner: string;
 };

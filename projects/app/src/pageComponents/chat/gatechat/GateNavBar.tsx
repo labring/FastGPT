@@ -1,15 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  Box,
-  Flex,
-  Text,
-  HStack,
-  IconButton,
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-  PopoverBody
-} from '@chakra-ui/react';
+import { Box, Flex, Text, HStack } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useUserStore } from '@/web/support/user/useUserStore';

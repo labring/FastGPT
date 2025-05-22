@@ -4,4 +4,7 @@ export type GateSchemaType = {
   tools: string[];
   slogan: string;
   placeholderText: string;
+  name: string;
+  logo: string;
+  banner: string;
 };

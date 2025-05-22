@@ -9,32 +9,50 @@ import {
   Input,
   FormControl,
   FormLabel,
-  Link,
-  Button
+  Link
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import type { ToolSelectRefType, ToolItemType } from './ToolSelect';
 import ToolSelect from './ToolSelect';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getBatchPlugins } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import TagManageModal from './TagManageModal';
+import type { putUpdateGateConfigData } from '@fastgpt/global/support/user/team/gate/api';
+import { updateTeamGateConfig } from '@/web/support/user/team/gate/api';
+
+export const saveGateConfig = async (data: putUpdateGateConfigData) => {
+  try {
+    await updateTeamGateConfig(data);
+  } catch (error) {
+    console.error('Failed to save gate config:', error);
+  }
+};
 
 type Props = {
   tools: string[];
   slogan: string;
   placeholderText: string;
   status: boolean;
+  onStatusChange?: (status: boolean) => void;
+  onSloganChange?: (slogan: string) => void;
+  onPlaceholderChange?: (text: string) => void;
+  onToolsChange?: (tools: string[]) => void;
 };
 
-const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
+const HomeTable = ({
+  tools,
+  slogan,
+  placeholderText,
+  status,
+  onStatusChange,
+  onSloganChange,
+  onPlaceholderChange,
+  onToolsChange
+}: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { updateLocalGateConfig } = useGateStore();
   const toolSelectRef = useRef<ToolSelectRefType>(null);
   const [selectedTools, setSelectedTools] = useState<ToolItemType[]>([]);
-  const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   // 批量获取插件信息
   const { runAsync: loadBatchPlugins, loading: loadingPlugins } = useRequest2(
     async (pluginIds: string[]) => {
@@ -116,17 +134,15 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
   const saveToolsToStore = useCallback(() => {
     if (toolSelectRef.current) {
       const selectedTools = toolSelectRef.current.getSelectedTools();
-      // 提取所有插件ID并保存到store
+      // 提取所有插件ID
       const pluginIds = selectedTools.map((tool) => tool.pluginId).filter(Boolean) as string[];
 
       // 检查值是否有变化，避免不必要的更新
       if (JSON.stringify(tools) !== JSON.stringify(pluginIds)) {
-        updateLocalGateConfig({
-          tools: pluginIds
-        });
+        onToolsChange?.(pluginIds);
       }
     }
-  }, [tools, updateLocalGateConfig]);
+  }, [tools, onToolsChange]);
 
   // 监听工具选择变更
   useEffect(() => {
@@ -135,29 +151,24 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
     // 添加 saveToolsToStore 作为依赖项，确保使用最新版本的函数
   }, [saveToolsToStore]);
 
-  // 处理初始工具加载
-  useEffect(() => {
-    if (toolSelectRef.current && tools?.length) {
-      // 这里可以处理初始工具加载逻辑，如有需要
+  const handleToolsChange = (selected: ToolItemType[]) => {
+    setSelectedTools(selected);
+    const pluginIds = selected.map((tool) => tool.pluginId).filter(Boolean) as string[];
+    // 检查值是否有变化，避免不必要的更新
+    if (JSON.stringify(tools) !== JSON.stringify(pluginIds)) {
+      onToolsChange?.(pluginIds);
     }
-  }, [tools]);
-
+  };
   const handleStatusChange = (val: string) => {
-    updateLocalGateConfig({
-      status: val === 'enabled'
-    });
+    onStatusChange?.(val === 'enabled');
   };
 
   const handleSloganChange = (val: string) => {
-    updateLocalGateConfig({
-      slogan: val
-    });
+    onSloganChange?.(val);
   };
 
   const handlePlaceholderChange = (val: string) => {
-    updateLocalGateConfig({
-      placeholderText: val
-    });
+    onPlaceholderChange?.(val);
   };
 
   return (
@@ -191,7 +202,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
                 borderWidth="1px"
                 borderColor={status ? 'primary.500' : 'myGray.200'}
                 borderRadius="7px"
-                bg={'white'}
+                bg={status ? 'blue.50' : 'white'}
                 transition="all 0.2s ease-in-out"
                 _hover={{
                   bg: status ? 'blue.100' : 'myGray.50',
@@ -200,7 +211,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
                   transform: 'translateY(-1px)'
                 }}
               >
-                <Radio value="enabled" colorScheme="blue" mr={2}>
+                <Radio value="enabled" colorScheme="blue">
                   <Text
                     fontSize={formStyles.fontSize}
                     lineHeight={formStyles.lineHeight}
@@ -226,7 +237,7 @@ const HomeTable = ({ tools, slogan, placeholderText, status }: Props) => {
                   transform: 'translateY(-1px)'
                 }}
               >
-                <Radio value="disabled" colorScheme="blue" mr={2}>
+                <Radio value="disabled" colorScheme="blue">
                   <Text
                     fontSize={formStyles.fontSize}
                     lineHeight={formStyles.lineHeight}

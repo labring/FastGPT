@@ -1,15 +1,22 @@
 import React, { useState } from 'react';
-import { Box, Flex, Text, Button, IconButton, Input } from '@chakra-ui/react';
+import { Box, Flex, Text, IconButton, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CopyIcon } from '@chakra-ui/icons';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
+import type { GateSchemaType } from '@fastgpt/global/support/user/team/gate/type';
 
 // 分享门户组件
-const ShareGateModal = ({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) => {
+const ShareGateModal = ({
+  isOpen,
+  onClose,
+  gateConfig
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  gateConfig: GateSchemaType | undefined;
+}) => {
   const { copyData } = useCopyData();
-  const { gateConfig } = useGateStore();
 
   // 门户链接和自定义域名
   const [defaultGateUrl] = useState(`${window.location.origin}/chat/gate`);

@@ -15,6 +15,7 @@
   "example": "示意图",
   "file_upload": "文件上传",
   "gate_list": "门户列表",
+  "gate_name": "门户名称",
   "image_upload": "图片上传",
   "no_gate_available": "没有可用门户",
   "no_gate_to_delete": "没有可以删除的门户了",

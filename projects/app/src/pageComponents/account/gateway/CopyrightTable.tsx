@@ -1,25 +1,16 @@
-import React, { useState } from 'react';
-import { Box, Flex, Text, Input, Button, useBreakpointValue, Image } from '@chakra-ui/react';
-import { keyframes } from '@emotion/react';
+import React from 'react';
+import { Box, Flex, Text, Input, useBreakpointValue, Image } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { SmallAddIcon } from '@chakra-ui/icons';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { putAppById } from '@/web/core/app/api';
 
 type Props = {
-  teamName: string;
+  gateName: string;
+  gateLogo: string;
+  gateBanner: string;
 };
-
-// 定义淡入淡出动画
-const fadeIn = keyframes`
-  from { opacity: 0; }
-  to { opacity: 1; }
-`;
 
 // 斜线背景样式
 const stripedBackgroundStyle = {
@@ -33,102 +24,6 @@ const stripedBackgroundStyle = {
   alignItems: 'center',
   boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)',
   border: '1px dashed #e0e0e0'
-};
-
-// LogoBox组件 - 提取重复的Logo盒子为可复用组件
-type LogoBoxProps = {
-  avatar?: string;
-  boxSize: any;
-  borderRadius: any;
-  uploadFontSize: any;
-  iconBoxSize: any;
-  onUploadClick: () => void;
-  withStripedBackground?: boolean; // 新增参数，决定是否添加斜线背景
-};
-
-const LogoBox = ({
-  avatar,
-  boxSize,
-  borderRadius,
-  uploadFontSize,
-  iconBoxSize,
-  onUploadClick,
-  withStripedBackground = false // 默认不添加斜线背景
-}: LogoBoxProps) => {
-  const { t } = useTranslation();
-
-  const logoContent = (
-    <Box
-      width={boxSize}
-      height={boxSize}
-      bg="white"
-      border="0.483px solid #ECECEC"
-      borderRadius={borderRadius}
-      display="flex"
-      justifyContent="center"
-      alignItems="center"
-      position="relative"
-      overflow="hidden"
-      boxSizing="border-box"
-      cursor="pointer"
-      onClick={onUploadClick}
-      transition="all 0.3s ease"
-    >
-      <Flex
-        width="40px"
-        height="40px"
-        justifyContent="center"
-        alignItems="center"
-        flexShrink="0"
-        aspectRatio="1/1"
-      >
-        <Image
-          src={avatar}
-          alt="Team Logo"
-          width="100%"
-          height="100%"
-          objectFit="contain"
-          fallbackSrc="/icon/logo.svg"
-        />
-      </Flex>
-      {/* 悬停时显示的上传提示遮罩 - 模糊风格 */}
-      {/* <Box
-        position="absolute"
-        top="0"
-        left="0"
-        width="100%"
-        height="100%"
-        backdropFilter="blur(4px)"
-        bg="rgba(255, 255, 255, 0.2)"
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        color="gray.700"
-        fontSize={uploadFontSize}
-        fontWeight="bold"
-        opacity="0"
-        borderRadius={borderRadius}
-        transition="all 0.3s ease"
-        _hover={{
-          opacity: 1,
-          animation: `${fadeIn} 0.3s ease-in-out`
-        }}
-      >
-        <Flex direction="column" alignItems="center">
-          <SmallAddIcon boxSize={iconBoxSize} mb={{ base: '1px', md: '2px' }} />
-          <Text>{t('account_gate:upload')}</Text>
-        </Flex>
-      </Box> */}
-    </Box>
-  );
-
-  // 如果需要斜线背景，则外包一层带斜线的Box
-  if (withStripedBackground) {
-    return <Box sx={stripedBackgroundStyle}>{logoContent}</Box>;
-  }
-
-  // 否则直接返回原始内容
-  return logoContent;
 };
 
 // 添加悬浮遮罩样式
@@ -152,33 +47,46 @@ const uploadOverlayStyle = {
   }
 };
 
-const CopyrightTable = ({ teamName }: Props) => {
+const CopyrightTable = ({ gateName, gateLogo, gateBanner }: Props) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const { userInfo } = useUserStore();
-  const { updateLocalCopyRightConfig } = useGateStore();
 
   // 使用useForm管理表单数据
   const { setValue, watch } = useForm({
     defaultValues: {
-      name: teamName,
-      avatar: userInfo?.team?.teamAvatar
+      name: gateName,
+      logo: gateLogo,
+      banner: gateBanner
     }
   });
 
-  // 从表单中获取avatar值
-  const avatar = watch('avatar');
+  // 从表单中获取logo和banner值
+  const logo = watch('logo');
+  const banner = watch('banner');
 
-  const handleTeamNameChange = (name: string) => {
+  const handleGateNameChange = (name: string) => {
     setValue('name', name);
-    updateLocalCopyRightConfig({ name });
+  };
+  const handleGateLogoChange = (logo: string) => {
+    setValue('logo', logo);
+  };
+  const handleGateBannerChange = (banner: string) => {
+    setValue('banner', banner);
   };
 
-  // 添加文件选择器
+  // 添加文件选择器 - 分别为左右两侧Logo创建选择器
   const {
-    File,
-    onOpen: onOpenSelectFile,
-    onSelectImage
+    File: LogoFile,
+    onOpen: onOpenLogoFile,
+    onSelectImage: onSelectLogoImage
+  } = useSelectFile({
+    fileType: '.jpg,.png,.svg',
+    multiple: false
+  });
+
+  const {
+    File: BannerFile,
+    onOpen: onOpenBannerFile,
+    onSelectImage: onSelectBannerImage
   } = useSelectFile({
     fileType: '.jpg,.png,.svg',
     multiple: false
@@ -208,11 +116,11 @@ const CopyrightTable = ({ teamName }: Props) => {
 
             <Flex direction="column" gap={2}>
               <Text fontSize="14px" color="#485264" fontWeight={500}>
-                {t('account_gate:team_name')}
+                {t('account_gate:gate_name')}
               </Text>
               <Input
                 value={watch('name')}
-                onChange={(e) => handleTeamNameChange(e.target.value)}
+                onChange={(e) => handleGateNameChange(e.target.value)}
                 bg="#FBFBFC"
                 border="1px solid #E8EBF0"
                 borderRadius="8px"
@@ -233,17 +141,17 @@ const CopyrightTable = ({ teamName }: Props) => {
               justifyContent="flex-start"
               flexDirection={{ base: 'column', md: 'row' }}
             >
-              {/* 左侧 Logo 显示 - 带文字 */}
+              {/* 左侧 Banner 显示 - 带文字 */}
               <Flex direction="column" gap={2} alignItems="center">
                 <Box
                   sx={stripedBackgroundStyle}
-                  onClick={onOpenSelectFile}
+                  onClick={onOpenLogoFile}
                   cursor="pointer"
                   role="group"
                   position="relative"
                 >
                   <Flex gap={{ base: 3, md: 5 }} alignItems="center">
-                    {avatar ? (
+                    {banner ? (
                       <Flex
                         width={logoBoxSizeWithText}
                         height={logoBoxSizeWithText}
@@ -256,7 +164,7 @@ const CopyrightTable = ({ teamName }: Props) => {
                         transition="all 0.3s ease"
                       >
                         <Image
-                          src={avatar}
+                          src={banner}
                           alt="Team Logo"
                           width="100%"
                           height="100%"
@@ -287,7 +195,7 @@ const CopyrightTable = ({ teamName }: Props) => {
                           aspectRatio="1/1"
                         >
                           <Image
-                            src={avatar}
+                            src={banner}
                             alt="Team Logo"
                             width="100%"
                             height="100%"
@@ -332,12 +240,12 @@ const CopyrightTable = ({ teamName }: Props) => {
               <Flex direction="column" gap={2} alignItems="center">
                 <Box
                   sx={stripedBackgroundStyle}
-                  onClick={onOpenSelectFile}
+                  onClick={onOpenBannerFile}
                   cursor="pointer"
                   role="group"
                   position="relative"
                 >
-                  {avatar ? (
+                  {logo ? (
                     <Flex
                       width={logoBoxSize}
                       height={logoBoxSize}
@@ -350,7 +258,7 @@ const CopyrightTable = ({ teamName }: Props) => {
                       transition="all 0.3s ease"
                     >
                       <Image
-                        src={avatar}
+                        src={logo}
                         alt="Team Logo"
                         width="100%"
                         height="100%"
@@ -381,7 +289,7 @@ const CopyrightTable = ({ teamName }: Props) => {
                         aspectRatio="1/1"
                       >
                         <Image
-                          src={avatar}
+                          src={logo}
                           alt="Team Logo"
                           width="100%"
                           height="100%"
@@ -421,14 +329,27 @@ const CopyrightTable = ({ teamName }: Props) => {
       </Box>
 
       {/* 文件选择器组件 */}
-      <File
-        onSelect={(e) =>
-          onSelectImage(e, {
+      <LogoFile
+        onSelect={(e: File[]) =>
+          onSelectLogoImage(e, {
             maxH: 300,
             maxW: 300,
-            callback: (e) => {
-              setValue('avatar', e);
-              updateLocalCopyRightConfig({ avatar: e });
+            callback: (e: string) => {
+              setValue('logo', e);
+              handleGateLogoChange(e);
+            }
+          })
+        }
+      />
+
+      <BannerFile
+        onSelect={(e: File[]) =>
+          onSelectBannerImage(e, {
+            maxH: 300,
+            maxW: 300,
+            callback: (e: string) => {
+              setValue('banner', e);
+              handleGateBannerChange(e);
             }
           })
         }
