@@ -666,7 +666,6 @@ export const useWorkflow = () => {
 
   const onPaneClick = useCallback(() => {
     setMenu(null);
-    // setHandleParams(null);
   }, [setMenu]);
 
   // Watch

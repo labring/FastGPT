@@ -43,7 +43,7 @@ export type TemplateListProps = {
   isPopover?: boolean;
 };
 
-const TemplateItem = ({
+const NodeTemplateListItem = ({
   template,
   templateType,
   onAddNode,
@@ -170,7 +170,7 @@ const TemplateItem = ({
   );
 };
 
-const TemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
+const NodeTemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
   const { t } = useTranslation();
 
   const { templateType, templates } = useContextSelector(WorkflowContext, (state) => ({
@@ -259,7 +259,7 @@ const TemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
                 rowGap={2}
               >
                 {item.list.map((template) => (
-                  <TemplateItem
+                  <NodeTemplateListItem
                     key={template.id}
                     template={template}
                     templateType={templateType}
@@ -310,4 +310,4 @@ const TemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
   );
 };
 
-export default React.memo(TemplateList);
+export default React.memo(NodeTemplateList);

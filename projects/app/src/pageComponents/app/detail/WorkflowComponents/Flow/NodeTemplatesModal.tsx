@@ -11,8 +11,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useWorkflowUtils } from './hooks/useUtils';
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
-import TemplateHeader from './components/NodeTemplates/header';
-import TemplateList from './components/NodeTemplates/list';
+import NodeTemplateListHeader from './components/NodeTemplates/header';
+import NodeTemplateList from './components/NodeTemplates/list';
 import { createNodeTemplate } from '../utils';
 
 type ModuleTemplateListProps = {
@@ -103,8 +103,8 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         userSelect={'none'}
         overflow={isOpen ? 'none' : 'hidden'}
       >
-        <TemplateHeader onClose={onClose} />
-        <TemplateList onAddNode={onAddNode} />
+        <NodeTemplateListHeader onClose={onClose} />
+        <NodeTemplateList onAddNode={onAddNode} />
       </MyBox>
     </>
   );

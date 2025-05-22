@@ -12,8 +12,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import { nanoid } from 'nanoid';
-import TemplateHeader, { TemplateTypeEnum } from './components/NodeTemplates/header';
-import TemplateList from './components/NodeTemplates/list';
+import NodeTemplateListHeader, { TemplateTypeEnum } from './components/NodeTemplates/header';
+import NodeTemplateList from './components/NodeTemplates/list';
 import { createNodeTemplate } from '../utils';
 import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { WorkflowEventContext } from '../context/workflowEventContext';
@@ -86,7 +86,7 @@ const NodeTemplatesPopover = () => {
   const getAddNodePosition = useMemoizedFn((nodeTemplate) => {
     if (!currentNodeData) return { x: 0, y: 0 };
 
-    const x = currentNodeData.position.x + (currentNodeData.width || 0) + 80;
+    const x = currentNodeData.position.x + (currentNodeData.width || 0) + 120;
     const y = currentNodeData.position.y;
 
     return { x, y };
@@ -191,8 +191,8 @@ const NodeTemplatesPopover = () => {
             h={'full'}
             userSelect="none"
           >
-            <TemplateHeader isPopover={true} />
-            <TemplateList onAddNode={onAddNode} isPopover={true} />
+            <NodeTemplateListHeader isPopover={true} />
+            <NodeTemplateList onAddNode={onAddNode} isPopover={true} />
           </MyBox>
         </PopoverBody>
       </PopoverContent>

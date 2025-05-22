@@ -18,12 +18,12 @@ export enum TemplateTypeEnum {
   'teamPlugin' = 'teamPlugin'
 }
 
-export type TemplateHeaderProps = {
+export type NodeTemplateListHeaderProps = {
   onClose?: () => void;
   isPopover?: boolean;
 };
 
-const TemplateHeader = ({ onClose, isPopover = false }: TemplateHeaderProps) => {
+const NodeTemplateListHeader = ({ onClose, isPopover = false }: NodeTemplateListHeaderProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const router = useRouter();
@@ -194,4 +194,4 @@ const TemplateHeader = ({ onClose, isPopover = false }: TemplateHeaderProps) => 
   );
 };
 
-export default React.memo(TemplateHeader);
+export default React.memo(NodeTemplateListHeader);
