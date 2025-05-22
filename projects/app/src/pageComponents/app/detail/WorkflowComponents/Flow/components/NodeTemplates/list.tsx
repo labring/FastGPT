@@ -50,13 +50,17 @@ import { WorkflowEventContext } from '../../../context/workflowEventContext';
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
   isPopover?: boolean;
+  templates: NodeTemplateListItemType[];
+  templateType: TemplateTypeEnum;
+  onUpdateParentId: (parentId: string) => void;
 };
 
 const NodeTemplateListItem = ({
   template,
   templateType,
   handleAddNode,
-  isPopover
+  isPopover,
+  onUpdateParentId
 }: {
   template: NodeTemplateListItemType;
   templateType: TemplateTypeEnum;
@@ -68,10 +72,10 @@ const NodeTemplateListItem = ({
     position: { x: number; y: number };
   }) => void;
   isPopover?: boolean;
+  onUpdateParentId: (parentId: string) => void;
 }) => {
   const { t } = useTranslation();
 
-  const onUpdateParentId = useContextSelector(WorkflowContext, (state) => state.onUpdateParentId);
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
 
@@ -199,16 +203,17 @@ const NodeTemplateListItem = ({
   );
 };
 
-const NodeTemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) => {
+const NodeTemplateList = ({
+  onAddNode,
+  isPopover = false,
+  templates,
+  templateType,
+  onUpdateParentId
+}: TemplateListProps) => {
   const { t } = useTranslation();
   const toast = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-
-  const { templateType, templates, nodeList } = useContextSelector(WorkflowContext, (state) => ({
-    templateType: state.templateType,
-    templates: state.templates,
-    nodeList: state.nodeList
-  }));
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
@@ -412,6 +417,7 @@ const NodeTemplateList = ({ onAddNode, isPopover = false }: TemplateListProps) =
                     templateType={templateType}
                     handleAddNode={handleAddNode}
                     isPopover={isPopover}
+                    onUpdateParentId={onUpdateParentId}
                   />
                 ))}
               </Grid>

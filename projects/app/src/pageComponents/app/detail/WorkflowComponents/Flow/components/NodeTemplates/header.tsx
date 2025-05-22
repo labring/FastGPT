@@ -9,8 +9,6 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSystemPluginPaths } from '@/web/core/app/api/plugin';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import FolderPath from '@/components/common/folder/Path';
-import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../../../context';
 
 export enum TemplateTypeEnum {
   'basic' = 'basic',
@@ -21,24 +19,29 @@ export enum TemplateTypeEnum {
 export type NodeTemplateListHeaderProps = {
   onClose?: () => void;
   isPopover?: boolean;
+  templateType: TemplateTypeEnum;
+  parentId: string;
+  loadNodeTemplates: (params: {
+    parentId?: string;
+    type?: TemplateTypeEnum;
+    searchVal?: string;
+  }) => Promise<void>;
+  onUpdateParentId: (parentId: string) => void;
 };
 
-const NodeTemplateListHeader = ({ onClose, isPopover = false }: NodeTemplateListHeaderProps) => {
+const NodeTemplateListHeader = ({
+  onClose,
+  isPopover = false,
+  templateType,
+  parentId,
+  loadNodeTemplates,
+  onUpdateParentId
+}: NodeTemplateListHeaderProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const router = useRouter();
 
   const [searchKey, setSearchKey] = useState('');
-
-  const { templateType, parentId, loadNodeTemplates, onUpdateParentId } = useContextSelector(
-    WorkflowContext,
-    (state) => ({
-      templateType: state.templateType,
-      parentId: state.parentId,
-      loadNodeTemplates: state.loadNodeTemplates,
-      onUpdateParentId: state.onUpdateParentId
-    })
-  );
 
   useEffect(() => {
     setSearchKey('');
@@ -50,7 +53,7 @@ const NodeTemplateListHeader = ({ onClose, isPopover = false }: NodeTemplateList
       parentId: '',
       searchVal: searchKey
     });
-  }, [searchKey]);
+  }, [searchKey, loadNodeTemplates, templateType]);
 
   // Get paths
   const { data: paths = [] } = useRequest2(

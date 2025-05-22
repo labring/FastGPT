@@ -1,17 +1,17 @@
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import React, { useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../context';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node, useReactFlow } from 'reactflow';
 import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import { nanoid } from 'nanoid';
-import NodeTemplateListHeader, { TemplateTypeEnum } from './components/NodeTemplates/header';
+import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { WorkflowEventContext } from '../context/workflowEventContext';
+import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 
 const popoverWidth = 400;
 const popoverHeight = 600;
@@ -20,16 +20,19 @@ const NodeTemplatesPopover = () => {
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
   const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
 
-  const { templatesIsLoading: isLoading } = useContextSelector(WorkflowContext, (state) => ({
-    templatesIsLoading: state.templatesIsLoading
-  }));
-
   const { flowToScreenPosition, getZoom } = useReactFlow();
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
-  const setTemplateType = useContextSelector(WorkflowContext, (v) => v.setTemplateType);
-  const setParentId = useContextSelector(WorkflowContext, (v) => v.setParentId);
+
+  const {
+    templateType,
+    parentId,
+    templatesIsLoading,
+    templates,
+    loadNodeTemplates,
+    onUpdateParentId
+  } = useNodeTemplates();
 
   const currentNodeData = useMemo(() => {
     if (!handleParams?.nodeId) return null;
@@ -131,11 +134,7 @@ const NodeTemplatesPopover = () => {
   return (
     <Popover
       isOpen={!!handleParams}
-      onClose={() => {
-        setHandleParams(null);
-        setTemplateType(TemplateTypeEnum.basic);
-        setParentId('');
-      }}
+      onClose={() => setHandleParams(null)}
       closeOnBlur={true}
       closeOnEsc={true}
       autoFocus={true}
@@ -152,15 +151,27 @@ const NodeTemplatesPopover = () => {
       >
         <PopoverBody padding={0} h={'full'}>
           <MyBox
-            isLoading={isLoading}
+            isLoading={templatesIsLoading}
             display={'flex'}
             flexDirection={'column'}
             py={4}
             h={'full'}
             userSelect="none"
           >
-            <NodeTemplateListHeader isPopover={true} />
-            <NodeTemplateList onAddNode={onAddNode} isPopover={true} />
+            <NodeTemplateListHeader
+              isPopover={true}
+              templateType={templateType}
+              loadNodeTemplates={loadNodeTemplates}
+              parentId={parentId || ''}
+              onUpdateParentId={onUpdateParentId}
+            />
+            <NodeTemplateList
+              onAddNode={onAddNode}
+              isPopover={true}
+              templates={templates}
+              templateType={templateType}
+              onUpdateParentId={onUpdateParentId}
+            />
           </MyBox>
         </PopoverBody>
       </PopoverContent>

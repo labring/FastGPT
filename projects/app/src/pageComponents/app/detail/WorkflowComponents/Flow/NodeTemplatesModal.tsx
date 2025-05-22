@@ -3,12 +3,12 @@ import { Box } from '@chakra-ui/react';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node.d';
 import { type Node } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '../context';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
+import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -18,11 +18,16 @@ type ModuleTemplateListProps = {
 export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
-  const { templatesIsLoading: isLoading } = useContextSelector(WorkflowContext, (state) => ({
-    templatesIsLoading: state.templatesIsLoading
-  }));
-
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
+
+  const {
+    templateType,
+    parentId,
+    templatesIsLoading,
+    templates,
+    loadNodeTemplates,
+    onUpdateParentId
+  } = useNodeTemplates();
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
     setNodes((state) => {
@@ -52,7 +57,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         fontSize={'sm'}
       />
       <MyBox
-        isLoading={isLoading}
+        isLoading={templatesIsLoading}
         display={'flex'}
         zIndex={3}
         flexDirection={'column'}
@@ -70,8 +75,19 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         userSelect={'none'}
         overflow={isOpen ? 'none' : 'hidden'}
       >
-        <NodeTemplateListHeader onClose={onClose} />
-        <NodeTemplateList onAddNode={onAddNode} />
+        <NodeTemplateListHeader
+          onClose={onClose}
+          templateType={templateType}
+          loadNodeTemplates={loadNodeTemplates}
+          parentId={parentId || ''}
+          onUpdateParentId={onUpdateParentId}
+        />
+        <NodeTemplateList
+          onAddNode={onAddNode}
+          templates={templates}
+          templateType={templateType}
+          onUpdateParentId={onUpdateParentId}
+        />
       </MyBox>
     </>
   );

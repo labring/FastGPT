@@ -77,8 +77,6 @@ const Workflow = () => {
     (v) => v.workflowControlMode
   );
   const menu = useContextSelector(WorkflowEventContext, (v) => v.menu);
-  const setTemplateType = useContextSelector(WorkflowContext, (v) => v.setTemplateType);
-  const setParentId = useContextSelector(WorkflowContext, (v) => v.setParentId);
 
   const {
     handleNodesChange,
@@ -131,14 +129,7 @@ const Workflow = () => {
               isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
             }}
           />
-          <NodeTemplatesModal
-            isOpen={isOpenTemplate}
-            onClose={() => {
-              onCloseTemplate();
-              setTemplateType(TemplateTypeEnum.basic);
-              setParentId('');
-            }}
-          />
+          <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
           <NodeTemplatesPopover />
         </>
 
