@@ -10,9 +10,22 @@ type Props<T = string> = Omit<BoxProps, 'onChange'> & {
   }[];
   value: T;
   onChange: (e: T) => void;
+  iconSize?: string;
+  labelSize?: string;
+  iconGap?: number;
 };
 
-const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
+const FillRowTabs = ({
+  list,
+  value,
+  onChange,
+  py = '7px',
+  px = '12px',
+  iconSize = '18px',
+  labelSize = '14px',
+  iconGap = 1.5,
+  ...props
+}: Props) => {
   return (
     <Box
       display={'inline-flex'}
@@ -53,8 +66,8 @@ const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props 
                 onClick: () => onChange(item.value)
               })}
         >
-          {item.icon && <MyIcon name={item.icon as any} mr={1.5} w={'18px'} />}
-          <Box>{item.label}</Box>
+          {item.icon && <MyIcon name={item.icon as any} mr={iconGap} w={iconSize} />}
+          <Box fontSize={labelSize}>{item.label}</Box>
         </Flex>
       ))}
     </Box>

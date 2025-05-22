@@ -2,7 +2,7 @@ import { postWorkflowDebug } from '@/web/core/workflow/api';
 import {
   checkWorkflowNodeAndConnection,
   compareSnapshot,
-  storeEdgesRenderEdge,
+  storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -861,7 +861,7 @@ const WorkflowContextProvider = ({
   });
   const onSwitchCloudVersion = useMemoizedFn((appVersion: AppVersionSchemaType) => {
     const nodes = appVersion.nodes.map((item) => storeNode2FlowNode({ item, t }));
-    const edges = appVersion.edges.map((item) => storeEdgesRenderEdge({ edge: item }));
+    const edges = appVersion.edges.map((item) => storeEdge2RenderEdge({ edge: item }));
     const chatConfig = appVersion.chatConfig;
 
     resetSnapshot({
@@ -912,7 +912,7 @@ const WorkflowContextProvider = ({
       isInit?: boolean
     ) => {
       const nodes = e.nodes?.map((item) => storeNode2FlowNode({ item, t })) || [];
-      const edges = e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || [];
+      const edges = e.edges?.map((item) => storeEdge2RenderEdge({ edge: item })) || [];
 
       // Get storage snapshot，兼容旧版正在编辑的用户，刷新后会把 local 数据存到内存并删除
       const pastSnapshot = (() => {

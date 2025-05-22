@@ -289,6 +289,7 @@ export const useWorkflow = () => {
     WorkflowStatusContext,
     (v) => v.resetParentNodeSizeAndPosition
   );
+  const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
 
   const { getIntersectingNodes } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
@@ -530,7 +531,7 @@ export const useWorkflow = () => {
       // If node is folded, unfold it when connecting
       const sourceNode = nodeList.find((node) => node.nodeId === params.nodeId);
       if (sourceNode?.isFolded) {
-        return onChangeNode({
+        onChangeNode({
           nodeId: params.nodeId,
           type: 'attr',
           key: 'isFolded',
@@ -538,8 +539,38 @@ export const useWorkflow = () => {
         });
       }
       setConnectingEdge(params);
+
+      if (params.handleId) {
+        const initialX = event.clientX;
+        const initialY = event.clientY;
+
+        let hasMoved = false;
+
+        const handleMouseMove = (moveEvent: MouseEvent) => {
+          const currentX = moveEvent.clientX;
+          const currentY = moveEvent.clientY;
+
+          if (Math.abs(currentX - initialX) > 5 || Math.abs(currentY - initialY) > 5) {
+            hasMoved = true;
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+          }
+        };
+
+        const handleMouseUp = (e: MouseEvent) => {
+          document.removeEventListener('mousemove', handleMouseMove);
+          document.removeEventListener('mouseup', handleMouseUp);
+
+          if (!hasMoved) {
+            setHandleParams(params);
+          }
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+      }
     },
-    [nodeList, setConnectingEdge, onChangeNode]
+    [nodeList, setConnectingEdge, onChangeNode, setHandleParams]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);
