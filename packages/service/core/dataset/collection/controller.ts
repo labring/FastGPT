@@ -36,13 +36,14 @@ import {
   computeChunkSplitter,
   getLLMMaxChunkSize
 } from '@fastgpt/global/core/dataset/training/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 
 export const createCollectionAndInsertData = async ({
   dataset,
   rawText,
   relatedId,
   createCollectionParams,
-  isQAImport = false,
+  backupParse = false,
   billId,
   session
 }: {
@@ -50,8 +51,8 @@ export const createCollectionAndInsertData = async ({
   rawText: string;
   relatedId?: string;
   createCollectionParams: CreateOneCollectionParams;
+  backupParse?: boolean;
 
-  isQAImport?: boolean;
   billId?: string;
   session?: ClientSession;
 }) => {
@@ -81,7 +82,7 @@ export const createCollectionAndInsertData = async ({
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio: trainingType === DatasetCollectionDataProcessModeEnum.chunk ? 0.2 : 0,
     customReg: chunkSplitter ? [chunkSplitter] : [],
-    isQAImport
+    backupParse
   });
 
   // 2. auth limit
@@ -157,6 +158,10 @@ export const createCollectionAndInsertData = async ({
       billId: traingBillId,
       data: chunks.map((item, index) => ({
         ...item,
+        indexes: item.indexes?.map((text) => ({
+          type: DatasetDataIndexTypeEnum.custom,
+          text
+        })),
         chunkIndex: index
       })),
       session

@@ -144,20 +144,6 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
         title: t('dataset:import_confirm')
       }
     ],
-    [ImportDataSourceEnum.csvTable]: [
-      {
-        title: t('dataset:import_select_file')
-      },
-      {
-        title: t('dataset:import_param_setting')
-      },
-      {
-        title: t('dataset:import_data_preview')
-      },
-      {
-        title: t('dataset:import_confirm')
-      }
-    ],
     [ImportDataSourceEnum.externalFile]: [
       {
         title: t('dataset:import_select_file')
@@ -206,7 +192,7 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
       chunkSettingMode: ChunkSettingModeEnum.auto,
 
       chunkSplitMode: DataChunkSplitModeEnum.size,
-      embeddingChunkSize: 2000,
+      embeddingChunkSize: chunkAutoChunkSize,
       indexSize: vectorModel?.defaultToken || 512,
       qaChunkSize: getLLMDefaultChunkSize(agentModel),
       chunkSplitter: '',

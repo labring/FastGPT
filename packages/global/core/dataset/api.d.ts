@@ -147,6 +147,7 @@ export type PushDatasetDataProps = {
   collectionId: string;
   data: PushDatasetDataChunkProps[];
   trainingType?: DatasetCollectionDataProcessModeEnum;
+  indexSize?: number;
   autoIndexes?: boolean;
   imageIndex?: boolean;
   prompt?: string;

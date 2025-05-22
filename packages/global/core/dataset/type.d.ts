@@ -175,6 +175,7 @@ export type DatasetTrainingSchemaType = {
   q: string;
   a: string;
   chunkIndex: number;
+  indexSize?: number;
   weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
   retryCount: number;

@@ -2,6 +2,7 @@
 
 export const iconPaths = {
   alignLeft: () => import('./icons/alignLeft.svg'),
+  backup: () => import('./icons/backup.svg'),
   book: () => import('./icons/book.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),

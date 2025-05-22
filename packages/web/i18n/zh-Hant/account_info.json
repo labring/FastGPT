@@ -39,8 +39,6 @@
   "new_password": "新密碼",
   "notification_receiving": "通知接收",
   "old_password": "舊密碼",
-  "openai_account_configuration": "OpenAI 帳號設定",
-  "openai_account_setting_exception": "設定 OpenAI 帳號異常",
   "package_and_usage": "套餐與用量",
   "package_details": "套餐詳細資訊",
   "package_expiry_time": "套餐到期時間",
@@ -52,8 +50,10 @@
   "password_update_success": "修改密碼成功",
   "pending_usage": "待使用",
   "phone_label": "手機號",
+  "please_bind_contact": "請綁定聯繫方式",
   "please_bind_notification_receiving_path": "請先綁定通知接收途徑",
   "purchase_extra_package": "購買額外套餐",
+  "redeem_coupon": "兌換代碼",
   "reminder_create_bound_notification_account": "提醒建立者綁定通知帳號",
   "reset_password": "重置密碼",
   "resource_usage": "資源用量",
@@ -75,6 +75,5 @@
   "user_team_team_name": "團隊",
   "verification_code": "驗證碼",
   "you_can_convert": "您可以兌換",
-  "yuan": "元",
-  "redeem_coupon": "兌換代碼"
+  "yuan": "元"
 }

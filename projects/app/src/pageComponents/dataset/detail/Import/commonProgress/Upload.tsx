@@ -26,7 +26,6 @@ import { useRouter } from 'next/router';
 import { TabEnum } from '../../../../../pages/dataset/detail/index';
 import {
   postCreateDatasetApiDatasetCollection,
-  postCreateDatasetCsvTableCollection,
   postCreateDatasetExternalFileCollection,
   postCreateDatasetFileCollection,
   postCreateDatasetLinkCollection,
@@ -145,11 +144,6 @@ const Upload = () => {
           await postCreateDatasetTextCollection({
             ...commonParams,
             text: item.rawText
-          });
-        } else if (importSource === ImportDataSourceEnum.csvTable && item.dbFileId) {
-          await postCreateDatasetCsvTableCollection({
-            ...commonParams,
-            fileId: item.dbFileId
           });
         } else if (importSource === ImportDataSourceEnum.externalFile && item.externalFileUrl) {
           await postCreateDatasetExternalFileCollection({

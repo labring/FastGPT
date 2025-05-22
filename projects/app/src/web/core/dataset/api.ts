@@ -1,7 +1,6 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type {
   GetPathProps,
-  ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type.d';
 import type {
@@ -120,6 +119,33 @@ export const resumeInheritPer = (datasetId: string) =>
 export const postChangeOwner = (data: { ownerId: string; datasetId: string }) =>
   POST(`/proApi/core/dataset/changeOwner`, data);
 
+export const postBackupDatasetCollection = ({
+  file,
+  percentListen,
+  datasetId
+}: {
+  file: File;
+  percentListen: (percent: number) => void;
+  datasetId: string;
+}) => {
+  const formData = new FormData();
+  formData.append('file', file, encodeURIComponent(file.name));
+  formData.append('data', JSON.stringify({ datasetId }));
+
+  return POST(`/core/dataset/collection/create/backup`, formData, {
+    timeout: 600000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen?.(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
+
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
   POST<SearchTestResponse>(`/core/dataset/searchTest`, data);
@@ -149,10 +175,7 @@ export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectio
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
-export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetCollectionParams) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/csvTable`, data, {
-    timeout: 360000
-  });
+
 export const postCreateDatasetExternalFileCollection = (
   data: ExternalFileCreateDatasetCollectionParams
 ) =>

@@ -16,5 +16,6 @@
   "register": "Register",
   "root_password_placeholder": "The root user password is the value of the environment variable DEFAULT_ROOT_PSW",
   "terms": "Terms",
-  "use_root_login": "Log in as root user"
+  "use_root_login": "Log in as root user",
+  "wecom": "Enterprise WeChat"
 }

@@ -39,8 +39,6 @@
   "new_password": "New Password",
   "notification_receiving": "Notify",
   "old_password": "Old Password",
-  "openai_account_configuration": "OpenAI account configuration",
-  "openai_account_setting_exception": "Setting OpenAI account exception",
   "package_and_usage": "Plans",
   "package_details": "Details",
   "package_expiry_time": "Expired",
@@ -52,8 +50,10 @@
   "password_update_success": "Password changed successfully",
   "pending_usage": "To be used",
   "phone_label": "Phone number",
+  "please_bind_contact": "Please bind the contact information",
   "please_bind_notification_receiving_path": "Please bind the notification receiving method first",
   "purchase_extra_package": "Upgrade",
+  "redeem_coupon": "Redeem coupon",
   "reminder_create_bound_notification_account": "Remind the creator to bind the notification account",
   "reset_password": "reset password",
   "resource_usage": "Usages",
@@ -75,6 +75,5 @@
   "user_team_team_name": "Team",
   "verification_code": "Verification code",
   "you_can_convert": "you can redeem",
-  "yuan": "Yuan",
-  "redeem_coupon": "Redeem coupon"
+  "yuan": "Yuan"
 }
