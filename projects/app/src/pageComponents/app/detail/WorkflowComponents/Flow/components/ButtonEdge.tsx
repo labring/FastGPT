@@ -1,5 +1,11 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { BezierEdge, getBezierPath, EdgeLabelRenderer, type EdgeProps } from 'reactflow';
+import {
+  BezierEdge,
+  getBezierPath,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  useViewport
+} from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
@@ -15,6 +21,8 @@ const ButtonEdge = (props: EdgeProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.hoverEdgeId);
+
+  const { zoom } = useViewport();
 
   const {
     id,
@@ -150,6 +158,8 @@ const ButtonEdge = (props: EdgeProps) => {
         return `translate(-50%, -90%) translate(${newTargetX}px,${newTargetY}px) rotate(90deg)`;
       }
     })();
+    const arrowScale = Number(Math.min(Math.max(1 / zoom, 1), 2).toFixed(1));
+
     return (
       <EdgeLabelRenderer>
         <Box hidden={parentNode?.isFolded}>
@@ -177,8 +187,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? '12px' : '10px'}
-              h={highlightEdge ? '12px' : '10px'}
+              w={highlightEdge ? `${12 * arrowScale}px` : `${10 * arrowScale}px`}
+              h={highlightEdge ? `${12 * arrowScale}px` : `${10 * arrowScale}px`}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
@@ -192,13 +202,14 @@ const ButtonEdge = (props: EdgeProps) => {
       </EdgeLabelRenderer>
     );
   }, [
+    zoom,
     parentNode?.isFolded,
     isHover,
     highlightEdge,
     labelX,
     labelY,
-    isToolEdge,
     defaultZIndex,
+    isToolEdge,
     edgeColor,
     targetPosition,
     newTargetX,
