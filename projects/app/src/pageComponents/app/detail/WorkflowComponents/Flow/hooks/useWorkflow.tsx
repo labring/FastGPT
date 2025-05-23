@@ -540,33 +540,22 @@ export const useWorkflow = () => {
       }
       setConnectingEdge(params);
 
+      // Check connect or click(If the mouse position remains basically unchanged, it indicates a click)
       if (params.handleId) {
         const initialX = event.clientX;
         const initialY = event.clientY;
 
-        let hasMoved = false;
+        const handleMouseUp = (moveEvent: MouseEvent) => {
+          document.removeEventListener('mouseup', handleMouseUp);
 
-        const handleMouseMove = (moveEvent: MouseEvent) => {
           const currentX = moveEvent.clientX;
           const currentY = moveEvent.clientY;
 
-          if (Math.abs(currentX - initialX) > 5 || Math.abs(currentY - initialY) > 5) {
-            hasMoved = true;
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-          }
-        };
-
-        const handleMouseUp = (e: MouseEvent) => {
-          document.removeEventListener('mousemove', handleMouseMove);
-          document.removeEventListener('mouseup', handleMouseUp);
-
-          if (!hasMoved) {
+          if (Math.abs(currentX - initialX) <= 5 && Math.abs(currentY - initialY) <= 5) {
             setHandleParams(params);
           }
         };
 
-        document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
       }
     },

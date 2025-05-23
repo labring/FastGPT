@@ -10,7 +10,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import Container from '../../components/Container';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
-import { SourceHandle } from '../render/Handle';
+import { MySourceHandle } from '../render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import ListItem from './ListItem';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
@@ -95,7 +95,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box color={'black'} fontSize={'md'} ml={2}>
               {IfElseResultEnum.ELSE}
             </Box>
-            <SourceHandle
+            <MySourceHandle
               nodeId={nodeId}
               handleId={elseHandleId}
               position={Position.Right}
