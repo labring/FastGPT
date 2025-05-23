@@ -593,14 +593,21 @@ export const useWorkflow = () => {
       if (params.handleId) {
         const initialX = event.clientX;
         const initialY = event.clientY;
+        const startTime = Date.now();
 
         const handleMouseUp = (moveEvent: MouseEvent) => {
           document.removeEventListener('mouseup', handleMouseUp);
 
           const currentX = moveEvent.clientX;
           const currentY = moveEvent.clientY;
+          const endTime = Date.now();
+          const pressDuration = endTime - startTime;
 
-          if (Math.abs(currentX - initialX) <= 5 && Math.abs(currentY - initialY) <= 5) {
+          if (
+            Math.abs(currentX - initialX) <= 5 &&
+            Math.abs(currentY - initialY) <= 5 &&
+            pressDuration < 1000
+          ) {
             const popoverPosition = getTemplatesListPopoverPosition(params.nodeId);
             const addNodePosition = getAddNodePosition(params.nodeId);
             setHandleParams({
