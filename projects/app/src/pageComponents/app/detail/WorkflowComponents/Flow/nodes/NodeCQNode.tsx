@@ -12,7 +12,7 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { SourceHandle } from './render/Handle';
+import { MySourceHandle } from './render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
@@ -95,7 +95,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                       });
                     }}
                   />
-                  <SourceHandle
+                  <MySourceHandle
                     nodeId={nodeId}
                     handleId={getHandleId(nodeId, 'source', item.key)}
                     position={Position.Right}

@@ -308,8 +308,9 @@ const NodeCard = (props: Props) => {
     );
   }, [nodeId, isFolded]);
   const RenderToolHandle = useMemo(
-    () => (node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle /> : null),
-    [node?.flowNodeType]
+    () =>
+      node?.flowNodeType === FlowNodeTypeEnum.tools ? <ToolSourceHandle nodeId={nodeId} /> : null,
+    [node?.flowNodeType, nodeId]
   );
 
   return (

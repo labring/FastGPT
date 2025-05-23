@@ -19,6 +19,7 @@ import FlowController from './components/FlowController';
 import ContextMenu from './components/ContextMenu';
 import { WorkflowNodeEdgeContext, WorkflowInitContext } from '../context/workflowInitContext';
 import { WorkflowEventContext } from '../context/workflowEventContext';
+import NodeTemplatesPopover from './NodeTemplatesPopover';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
 const nodeTypes: Record<FlowNodeTypeEnum, any> = {
@@ -127,6 +128,7 @@ const Workflow = () => {
             }}
           />
           <NodeTemplatesModal isOpen={isOpenTemplate} onClose={onCloseTemplate} />
+          <NodeTemplatesPopover />
         </>
 
         <ReactFlow
