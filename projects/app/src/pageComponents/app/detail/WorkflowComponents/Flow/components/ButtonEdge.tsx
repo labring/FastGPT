@@ -158,7 +158,7 @@ const ButtonEdge = (props: EdgeProps) => {
         return `translate(-50%, -90%) translate(${newTargetX}px,${newTargetY}px) rotate(90deg)`;
       }
     })();
-    const arrowScale = Number(Math.min(Math.max(1 / zoom, 1), 2).toFixed(1));
+    const scale = Number(Math.min(Math.max(1 / zoom, 1), 2).toFixed(1));
 
     return (
       <EdgeLabelRenderer>
@@ -170,8 +170,8 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={'18px'}
-            h={'18px'}
+            w={`${18 * scale}px`}
+            h={`${18 * scale}px`}
             bg={'white'}
             borderRadius={'18px'}
             cursor={'pointer'}
@@ -187,8 +187,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? `${12 * arrowScale}px` : `${10 * arrowScale}px`}
-              h={highlightEdge ? `${12 * arrowScale}px` : `${10 * arrowScale}px`}
+              w={highlightEdge ? `${12 * scale}px` : `${10 * scale}px`}
+              h={highlightEdge ? `${12 * scale}px` : `${10 * scale}px`}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
