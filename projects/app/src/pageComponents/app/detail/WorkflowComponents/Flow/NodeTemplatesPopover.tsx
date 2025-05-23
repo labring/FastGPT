@@ -12,16 +12,12 @@ import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { WorkflowEventContext } from '../context/workflowEventContext';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-
-const popoverWidth = 400;
-const popoverHeight = 600;
+import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
 
 const NodeTemplatesPopover = () => {
   const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
   const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
 
-  const { flowToScreenPosition, getZoom } = useReactFlow();
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const setNodes = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowNodeEdgeContext, (v) => v.setEdges);
 
@@ -33,47 +29,6 @@ const NodeTemplatesPopover = () => {
     loadNodeTemplates,
     onUpdateParentId
   } = useNodeTemplates();
-
-  const currentNodeData = useMemo(() => {
-    if (!handleParams?.nodeId) return null;
-    return nodes.find((node) => node.id === handleParams.nodeId) || null;
-  }, [handleParams?.nodeId, nodes]);
-
-  const popoverPosition = useMemo(() => {
-    if (!currentNodeData) return { x: 0, y: 0 };
-
-    const position = flowToScreenPosition({
-      x: currentNodeData.position.x,
-      y: currentNodeData.position.y
-    });
-
-    const zoom = getZoom();
-
-    let x = position.x + (currentNodeData.width || 0) * zoom;
-    let y = position.y;
-
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    const margin = 20;
-
-    // Check right boundary
-    if (x + popoverWidth + margin > viewportWidth) {
-      x = Math.max(margin, position.x - popoverWidth - margin);
-    }
-
-    // Check bottom boundary
-    if (y + popoverHeight + margin > viewportHeight) {
-      y = Math.max(margin, viewportHeight - popoverHeight - margin);
-    }
-
-    // Check top boundary
-    if (y < margin) {
-      y = margin;
-    }
-
-    return { x, y };
-  }, [currentNodeData, flowToScreenPosition, getZoom]);
 
   const onAddNode = useMemoizedFn(async ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => {
     setNodes((state) => {
@@ -142,8 +97,8 @@ const NodeTemplatesPopover = () => {
     >
       <PopoverContent
         position="fixed"
-        top={`${popoverPosition.y}px`}
-        left={`${popoverPosition.x + 10}px`}
+        top={`${handleParams.popoverPosition.y}px`}
+        left={`${handleParams.popoverPosition.x + 10}px`}
         width={popoverWidth}
         height={popoverHeight}
         boxShadow="3px 0 20px rgba(0,0,0,0.2)"

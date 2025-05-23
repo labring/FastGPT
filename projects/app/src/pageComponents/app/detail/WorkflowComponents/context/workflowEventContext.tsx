@@ -4,6 +4,11 @@ import { useLocalStorageState } from 'ahooks';
 import { type SetState } from 'ahooks/lib/createUseStorageState';
 import type { OnConnectStartParams } from 'reactflow';
 
+type handleParamsType = OnConnectStartParams & {
+  popoverPosition: { x: number; y: number };
+  addNodePosition: { x: number; y: number };
+};
+
 type WorkflowEventContextType = {
   mouseInCanvas: boolean;
   reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
@@ -21,8 +26,8 @@ type WorkflowEventContextType = {
   // version history
   showHistoryModal: boolean;
   setShowHistoryModal: React.Dispatch<React.SetStateAction<boolean>>;
-  handleParams: OnConnectStartParams | null;
-  setHandleParams: React.Dispatch<React.SetStateAction<OnConnectStartParams | null>>;
+  handleParams: handleParamsType | null;
+  setHandleParams: React.Dispatch<React.SetStateAction<handleParamsType | null>>;
 };
 
 export const WorkflowEventContext = createContext<WorkflowEventContextType>({
@@ -47,7 +52,7 @@ export const WorkflowEventContext = createContext<WorkflowEventContextType>({
     throw new Error('Function not implemented.');
   },
   handleParams: null,
-  setHandleParams: function (value: React.SetStateAction<OnConnectStartParams | null>): void {
+  setHandleParams: function (value: React.SetStateAction<handleParamsType | null>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -56,7 +61,7 @@ const WorkflowEventContextProvider = ({ children }: { children: ReactNode }) => 
   // Watch mouse in canvas
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [mouseInCanvas, setMouseInCanvas] = useState(false);
-  const [handleParams, setHandleParams] = useState<OnConnectStartParams | null>(null);
+  const [handleParams, setHandleParams] = useState<handleParamsType | null>(null);
 
   useEffect(() => {
     const handleMouseInCanvas = (e: MouseEvent) => {

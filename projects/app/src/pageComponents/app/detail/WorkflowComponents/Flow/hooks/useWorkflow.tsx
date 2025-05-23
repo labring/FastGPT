@@ -266,6 +266,9 @@ const computeHelperLines = (
     );
 };
 
+export const popoverWidth = 400;
+export const popoverHeight = 600;
+
 export const useWorkflow = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -291,7 +294,7 @@ export const useWorkflow = () => {
   );
   const setHandleParams = useContextSelector(WorkflowEventContext, (v) => v.setHandleParams);
 
-  const { getIntersectingNodes } = useReactFlow();
+  const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
   /* helper line */
@@ -374,6 +377,52 @@ export const useWorkflow = () => {
         state.filter((edge) => edge.source !== node.id && edge.target !== node.id)
       );
     }
+  });
+
+  const getTemplatesListPopoverPosition = useMemoizedFn((nodeId: string | null) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return { x: 0, y: 0 };
+
+    const position = flowToScreenPosition({
+      x: node.position.x,
+      y: node.position.y
+    });
+
+    const zoom = getZoom();
+
+    let x = position.x + (node.width || 0) * zoom;
+    let y = position.y;
+
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    const margin = 20;
+
+    // Check right boundary
+    if (x + popoverWidth + margin > viewportWidth) {
+      x = Math.max(margin, position.x + (node.width || 0) * zoom - popoverWidth - 30);
+    }
+
+    // Check bottom boundary
+    if (y + popoverHeight + margin > viewportHeight) {
+      y = Math.max(margin, viewportHeight - popoverHeight - margin);
+    }
+
+    // Check top boundary
+    if (y < margin) {
+      y = margin;
+    }
+
+    return { x, y };
+  });
+  const getAddNodePosition = useMemoizedFn((nodeId: string | null) => {
+    const node = nodes.find((n) => n.id === nodeId);
+    if (!node) return { x: 0, y: 0 };
+
+    return {
+      x: node.position.x + (node.width || 0) + 120,
+      y: node.position.y
+    };
   });
 
   /* node */
@@ -552,14 +601,27 @@ export const useWorkflow = () => {
           const currentY = moveEvent.clientY;
 
           if (Math.abs(currentX - initialX) <= 5 && Math.abs(currentY - initialY) <= 5) {
-            setHandleParams(params);
+            const popoverPosition = getTemplatesListPopoverPosition(params.nodeId);
+            const addNodePosition = getAddNodePosition(params.nodeId);
+            setHandleParams({
+              ...params,
+              popoverPosition,
+              addNodePosition
+            });
           }
         };
 
         document.addEventListener('mouseup', handleMouseUp);
       }
     },
-    [nodeList, setConnectingEdge, onChangeNode, setHandleParams]
+    [
+      nodeList,
+      setConnectingEdge,
+      onChangeNode,
+      getTemplatesListPopoverPosition,
+      getAddNodePosition,
+      setHandleParams
+    ]
   );
   const onConnectEnd = useCallback(() => {
     setConnectingEdge(undefined);
