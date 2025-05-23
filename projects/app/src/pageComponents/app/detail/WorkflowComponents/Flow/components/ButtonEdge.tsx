@@ -1,11 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  BezierEdge,
-  getBezierPath,
-  EdgeLabelRenderer,
-  type EdgeProps,
-  useViewport
-} from 'reactflow';
+import { BezierEdge, getBezierPath, EdgeLabelRenderer, type EdgeProps } from 'reactflow';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
@@ -21,8 +15,6 @@ const ButtonEdge = (props: EdgeProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
   const hoverEdgeId = useContextSelector(WorkflowEventContext, (v) => v.hoverEdgeId);
-
-  const { zoom } = useViewport();
 
   const {
     id,
@@ -101,24 +93,6 @@ const ButtonEdge = (props: EdgeProps) => {
         newTargetY: targetY
       };
     }
-    if (targetPosition === 'right') {
-      return {
-        newTargetX: targetX + 3,
-        newTargetY: targetY
-      };
-    }
-    if (targetPosition === 'bottom') {
-      return {
-        newTargetX: targetX,
-        newTargetY: targetY + 3
-      };
-    }
-    if (targetPosition === 'top') {
-      return {
-        newTargetX: targetX,
-        newTargetY: targetY - 3
-      };
-    }
     return {
       newTargetX: targetX,
       newTargetY: targetY
@@ -158,7 +132,6 @@ const ButtonEdge = (props: EdgeProps) => {
         return `translate(-50%, -90%) translate(${newTargetX}px,${newTargetY}px) rotate(90deg)`;
       }
     })();
-    const scale = Number(Math.min(Math.max(1 / zoom, 1), 2).toFixed(1));
 
     return (
       <EdgeLabelRenderer>
@@ -170,8 +143,8 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={`${18 * scale}px`}
-            h={`${18 * scale}px`}
+            w={'30px'}
+            h={'30px'}
             bg={'white'}
             borderRadius={'18px'}
             cursor={'pointer'}
@@ -187,8 +160,8 @@ const ButtonEdge = (props: EdgeProps) => {
               position={'absolute'}
               transform={arrowTransform}
               pointerEvents={'all'}
-              w={highlightEdge ? `${12 * scale}px` : `${10 * scale}px`}
-              h={highlightEdge ? `${12 * scale}px` : `${10 * scale}px`}
+              w={highlightEdge ? '14px' : '12px'}
+              h={highlightEdge ? '14px' : '12px'}
               zIndex={highlightEdge ? defaultZIndex + 1000 : defaultZIndex}
             >
               <MyIcon
@@ -202,7 +175,6 @@ const ButtonEdge = (props: EdgeProps) => {
       </EdgeLabelRenderer>
     );
   }, [
-    zoom,
     parentNode?.isFolded,
     isHover,
     highlightEdge,
