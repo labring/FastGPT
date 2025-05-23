@@ -4,6 +4,7 @@ import {
   MenuList,
   MenuItem,
   Box,
+  Flex,
   useOutsideClick,
   MenuButton,
   type MenuItemProps,
@@ -16,31 +17,35 @@ import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
+import MyPopover from '../MyPopover';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
 
 export type MenuSizeType = 'sm' | 'md' | 'xs' | 'mini';
 
+export type MenuItemData = {
+  label?: string;
+  children: Array<{
+    isActive?: boolean;
+    type?: MenuItemType;
+    icon?: IconNameType | string;
+    label: string | React.ReactNode;
+    description?: string;
+    onClick?: () => any;
+    menuItemStyles?: MenuItemProps;
+    menuList?: MenuItemData[];
+  }>;
+};
+
 export type Props = {
+  label?: string;
   width?: number | string;
   offset?: [number, number];
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
   size?: MenuSizeType;
-
   placement?: PlacementWithLogical;
-  menuList: {
-    label?: string;
-    children: {
-      isActive?: boolean;
-      type?: MenuItemType;
-      icon?: IconNameType | string;
-      label: string | React.ReactNode;
-      description?: string;
-      onClick?: () => any;
-      menuItemStyles?: MenuItemProps;
-    }[];
-  }[];
+  menuList: MenuItemData[];
 };
 
 const typeMapStyle: Record<MenuItemType, { styles: MenuItemProps; iconColor?: string }> = {
@@ -189,6 +194,174 @@ const sizeMapStyle: Record<
   }
 };
 
+const SubMenuItem = ({
+  item,
+  size,
+  trigger,
+  formatTrigger,
+  onClose
+}: {
+  item: MenuItemData['children'][number];
+  size: MenuSizeType;
+  trigger: Props['trigger'];
+  formatTrigger: 'hover' | 'click';
+  onClose: () => void;
+}) => {
+  const [isSubMenuOpen, setIsSubMenuOpen] = useState(false);
+  const subMenuRef = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<any>();
+
+  useOutsideClick({
+    ref: subMenuRef,
+    handler: () => setIsSubMenuOpen(false)
+  });
+
+  return (
+    <Box
+      ref={subMenuRef}
+      position="relative"
+      onMouseEnter={() => {
+        if (formatTrigger === 'hover' && item.menuList) {
+          setIsSubMenuOpen(true);
+        }
+        clearTimeout(closeTimer.current);
+      }}
+      onMouseLeave={() => {
+        if (formatTrigger === 'hover' && item.menuList) {
+          closeTimer.current = setTimeout(() => {
+            setIsSubMenuOpen(false);
+          }, 100);
+        }
+      }}
+    >
+      {item.menuList ? (
+        <MyPopover
+          placement="right-start"
+          offset={[10, 10]}
+          hasArrow
+          trigger={formatTrigger}
+          w={'auto'}
+          zIndex={999}
+          closeOnBlur={false}
+          Trigger={
+            <MenuItem
+              onClick={(e) => {
+                e.stopPropagation();
+                if (item.onClick) {
+                  onClose();
+                  item.onClick();
+                } else if (formatTrigger === 'click') {
+                  setIsSubMenuOpen(!isSubMenuOpen);
+                }
+              }}
+              {...typeMapStyle[item.type || 'primary'].styles}
+              {...sizeMapStyle[size].menuItemStyle}
+              {...item.menuItemStyles}
+            >
+              <Flex alignItems="center" w="100%">
+                {!!item.icon && (
+                  <Avatar
+                    src={item.icon as any}
+                    mr={2}
+                    {...sizeMapStyle[size].iconStyle}
+                    color={
+                      item.isActive ? 'inherit' : typeMapStyle[item.type || 'primary'].iconColor
+                    }
+                    sx={{
+                      '[role="menuitem"]:hover &': {
+                        color: 'inherit'
+                      }
+                    }}
+                  />
+                )}
+                <Box flex="1">
+                  <Box
+                    color={item.description ? 'myGray.900' : 'inherit'}
+                    {...sizeMapStyle[size].labelStyle}
+                  >
+                    {item.label}
+                  </Box>
+                  {item.description && (
+                    <Box color={'myGray.500'} fontSize={'mini'}>
+                      {item.description}
+                    </Box>
+                  )}
+                </Box>
+              </Flex>
+            </MenuItem>
+          }
+        >
+          {({ onClose: onCloseSubmenu }) => (
+            <MenuList position="relative" minW={'150px'} maxW={'300px'} p={'6px'} border="none">
+              {item.menuList?.map((subMenu, i) => (
+                <Box key={i}>
+                  {subMenu.label && <Box fontSize={'sm'}>{subMenu.label}</Box>}
+                  {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
+                  {subMenu.children.map((child, index) => (
+                    <SubMenuItem
+                      key={index}
+                      item={child}
+                      size={size}
+                      trigger={trigger}
+                      formatTrigger={formatTrigger}
+                      onClose={() => {
+                        onClose();
+                        onCloseSubmenu();
+                      }}
+                    />
+                  ))}
+                </Box>
+              ))}
+            </MenuList>
+          )}
+        </MyPopover>
+      ) : (
+        <MenuItem
+          onClick={(e) => {
+            e.stopPropagation();
+            if (item.onClick) {
+              onClose();
+              item.onClick();
+            }
+          }}
+          {...typeMapStyle[item.type || 'primary'].styles}
+          {...sizeMapStyle[size].menuItemStyle}
+          {...item.menuItemStyles}
+        >
+          <Flex alignItems="center" w="100%">
+            {!!item.icon && (
+              <Avatar
+                src={item.icon as any}
+                mr={2}
+                {...sizeMapStyle[size].iconStyle}
+                color={item.isActive ? 'inherit' : typeMapStyle[item.type || 'primary'].iconColor}
+                sx={{
+                  '[role="menuitem"]:hover &': {
+                    color: 'inherit'
+                  }
+                }}
+              />
+            )}
+            <Box flex="1">
+              <Box
+                color={item.description ? 'myGray.900' : 'inherit'}
+                {...sizeMapStyle[size].labelStyle}
+              >
+                {item.label}
+              </Box>
+              {item.description && (
+                <Box color={'myGray.500'} fontSize={'mini'}>
+                  {item.description}
+                </Box>
+              )}
+            </Box>
+          </Flex>
+        </MenuItem>
+      )}
+    </Box>
+  );
+};
+
 const MyMenu = ({
   width = 'auto',
   trigger = 'hover',
@@ -216,7 +389,7 @@ const MyMenu = ({
     if (offset) return offset;
     if (typeof width === 'number') return [-width / 2, 5];
     return [0, 5];
-  }, [offset]);
+  }, [offset, width]);
 
   return (
     <Menu
@@ -281,66 +454,22 @@ const MyMenu = ({
           border={'1px solid #fff'}
           boxShadow={'3'}
         >
-          {menuList.map((item, i) => {
-            return (
-              <Box key={i}>
-                {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
-                {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
-                {item.children.map((child, index) => (
-                  <MenuItem
-                    key={index}
-                    borderRadius={'sm'}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (child.onClick) {
-                        setIsOpen(false);
-                        child.onClick();
-                      }
-                    }}
-                    alignItems={'center'}
-                    fontSize={'sm'}
-                    color={child.isActive ? 'primary.700' : 'myGray.600'}
-                    whiteSpace={'pre-wrap'}
-                    {...typeMapStyle[child.type || 'primary'].styles}
-                    {...sizeMapStyle[size].menuItemStyle}
-                    {...child.menuItemStyles}
-                  >
-                    {!!child.icon && (
-                      <Avatar
-                        src={child.icon as any}
-                        mr={2}
-                        {...sizeMapStyle[size].iconStyle}
-                        color={
-                          child.isActive
-                            ? 'inherit'
-                            : typeMapStyle[child.type || 'primary'].iconColor
-                        }
-                        sx={{
-                          '[role="menuitem"]:hover &': {
-                            color: 'inherit'
-                          }
-                        }}
-                      />
-                    )}
-                    <Box w={'100%'}>
-                      <Box
-                        w={'100%'}
-                        color={child.description ? 'myGray.900' : 'inherit'}
-                        {...sizeMapStyle[size].labelStyle}
-                      >
-                        {child.label}
-                      </Box>
-                      {child.description && (
-                        <Box color={'myGray.500'} fontSize={'mini'} w={'100%'}>
-                          {child.description}
-                        </Box>
-                      )}
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Box>
-            );
-          })}
+          {menuList.map((item, i) => (
+            <Box key={i}>
+              {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
+              {i !== 0 && <MyDivider h={'1.5px'} {...sizeMapStyle[size].dividerStyle} />}
+              {item.children.map((child, index) => (
+                <SubMenuItem
+                  key={index}
+                  item={child}
+                  size={size}
+                  trigger={trigger}
+                  formatTrigger={formatTrigger}
+                  onClose={() => setIsOpen(false)}
+                />
+              ))}
+            </Box>
+          ))}
         </MenuList>
       </Box>
     </Menu>
