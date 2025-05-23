@@ -72,11 +72,8 @@ const NodeTemplateListItem = ({
   onUpdateParentId: (parentId: string) => void;
 }) => {
   const { t } = useTranslation();
-
-  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
-  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
-
   const { screenToFlowPosition } = useReactFlow();
+  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
 
   return (
     <MyTooltip
@@ -102,10 +99,12 @@ const NodeTemplateListItem = ({
           )}
         </Box>
       }
+      shouldWrapChildren={false}
     >
       <Flex
+        w={'100%'}
         alignItems={'center'}
-        py={isPopover ? 1 : 3}
+        py={isPopover ? 2 : 3}
         px={isPopover ? 2 : 3}
         cursor={'pointer'}
         _hover={{
@@ -145,7 +144,7 @@ const NodeTemplateListItem = ({
       >
         <MyAvatar
           src={template.avatar}
-          w={isPopover ? '1.25rem' : '1.75rem'}
+          w={isPopover ? '1.5rem' : '1.75rem'}
           objectFit={'contain'}
           borderRadius={'sm'}
           flexShrink={0}
@@ -153,7 +152,7 @@ const NodeTemplateListItem = ({
         <Box
           color={'myGray.900'}
           fontWeight={'500'}
-          fontSize={'sm'}
+          fontSize={isPopover ? 'xs' : 'sm'}
           flex={'1 0 0'}
           ml={3}
           className="textEllipsis"
@@ -161,6 +160,7 @@ const NodeTemplateListItem = ({
           {t(template.name as any)}
         </Box>
 
+        {/* Folder right arrow */}
         {template.isFolder && templateType === TemplateTypeEnum.teamPlugin && (
           <Box
             color={'myGray.500'}
@@ -168,7 +168,7 @@ const NodeTemplateListItem = ({
               bg: 'var(--light-general-surface-opacity-005, rgba(17, 24, 36, 0.05))',
               color: 'primary.600'
             }}
-            p={isPopover ? 0.5 : 1}
+            p={1}
             rounded={'sm'}
             className="arrowIcon"
             display="none"
@@ -181,6 +181,7 @@ const NodeTemplateListItem = ({
           </Box>
         )}
 
+        {/* Author */}
         {!isPopover && template.authorAvatar && template.author && (
           <HStack spacing={1} maxW={'120px'} flexShrink={0}>
             <MyAvatar src={template.authorAvatar} w={'1rem'} borderRadius={'50%'} />
