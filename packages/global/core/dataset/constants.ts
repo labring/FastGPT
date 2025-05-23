@@ -143,14 +143,24 @@ export const DatasetCollectionDataProcessModeMap = {
   }
 };
 
+export enum ChunkTriggerConfigTypeEnum {
+  minSize = 'minSize',
+  forceChunk = 'forceChunk',
+  maxSize = 'maxSize'
+}
 export enum ChunkSettingModeEnum {
   auto = 'auto',
   custom = 'custom'
 }
 
 export enum DataChunkSplitModeEnum {
+  paragraph = 'paragraph',
   size = 'size',
   char = 'char'
+}
+export enum ParagraphChunkAIModeEnum {
+  auto = 'auto',
+  force = 'force'
 }
 
 /* ------------ data -------------- */

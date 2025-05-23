@@ -3,8 +3,10 @@ import { type SetStateAction, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
 import {
+  ChunkTriggerConfigTypeEnum,
   DatasetCollectionDataProcessModeEnum,
-  ImportDataSourceEnum
+  ImportDataSourceEnum,
+  ParagraphChunkAIModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
@@ -16,38 +18,14 @@ import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import { DataChunkSplitModeEnum } from '@fastgpt/global/core/dataset/constants';
-import {
-  getMaxChunkSize,
-  getLLMDefaultChunkSize,
-  getLLMMaxChunkSize,
-  chunkAutoChunkSize,
-  minChunkSize,
-  getAutoIndexSize,
-  getMaxIndexSize
-} from '@fastgpt/global/core/dataset/training/utils';
+import { chunkAutoChunkSize, getAutoIndexSize } from '@fastgpt/global/core/dataset/training/utils';
 import { type CollectionChunkFormType } from '../Form/CollectionChunkForm';
 
-type ChunkSizeFieldType = 'embeddingChunkSize' | 'qaChunkSize';
 export type ImportFormType = {
   customPdfParse: boolean;
-
   webSelector: string;
 } & CollectionChunkFormType;
 
-type TrainingFiledType = {
-  chunkOverlapRatio: number;
-  maxChunkSize: number;
-  minChunkSize: number;
-  autoChunkSize: number;
-  chunkSize: number;
-  maxIndexSize?: number;
-  indexSize?: number;
-  autoIndexSize?: number;
-  charsPointsPrice: number;
-  priceTip: string;
-  uploadRate: number;
-  chunkSizeField: ChunkSizeFieldType;
-};
 type DatasetImportContextType = {
   importSource: ImportDataSourceEnum;
   parentId: string | undefined;
@@ -57,7 +35,35 @@ type DatasetImportContextType = {
   processParamsForm: UseFormReturn<ImportFormType, any>;
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
-} & TrainingFiledType;
+};
+
+export const defaultFormData: ImportFormType = {
+  customPdfParse: false,
+
+  trainingType: DatasetCollectionDataProcessModeEnum.chunk,
+
+  chunkTriggerType: ChunkTriggerConfigTypeEnum.minSize,
+  chunkTriggerMinSize: chunkAutoChunkSize,
+
+  dataEnhanceCollectionName: false,
+
+  imageIndex: false,
+  autoIndexes: false,
+
+  chunkSettingMode: ChunkSettingModeEnum.auto,
+  chunkSplitMode: DataChunkSplitModeEnum.size,
+  paragraphChunkAIMode: ParagraphChunkAIModeEnum.auto,
+  paragraphChunkDeep: 4,
+  paragraphChunkMinSize: 100,
+  paragraphChunkMaxSize: chunkAutoChunkSize,
+
+  chunkSize: chunkAutoChunkSize,
+  chunkSplitter: '',
+  indexSize: getAutoIndexSize(),
+
+  qaPrompt: Prompt_AgentQA.description,
+  webSelector: ''
+};
 
 export const DatasetImportContext = createContext<DatasetImportContextType>({
   importSource: ImportDataSourceEnum.fileLocal,
@@ -75,12 +81,9 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
   },
   chunkSize: 0,
   chunkOverlapRatio: 0,
-  uploadRate: 0,
   //@ts-ignore
   processParamsForm: undefined,
-  autoChunkSize: 0,
-  charsPointsPrice: 0,
-  priceTip: ''
+  autoChunkSize: 0
 });
 
 const DatasetImportContextProvider = ({ children }: { children: React.ReactNode }) => {
@@ -180,119 +183,17 @@ const DatasetImportContextProvider = ({ children }: { children: React.ReactNode 
   });
 
   const vectorModel = datasetDetail.vectorModel;
-  const agentModel = datasetDetail.agentModel;
 
   const processParamsForm = useForm<ImportFormType>({
     defaultValues: {
-      imageIndex: false,
-      autoIndexes: false,
-
-      trainingType: DatasetCollectionDataProcessModeEnum.chunk,
-
-      chunkSettingMode: ChunkSettingModeEnum.auto,
-
-      chunkSplitMode: DataChunkSplitModeEnum.size,
-      embeddingChunkSize: chunkAutoChunkSize,
-      indexSize: vectorModel?.defaultToken || 512,
-      qaChunkSize: getLLMDefaultChunkSize(agentModel),
-      chunkSplitter: '',
-      qaPrompt: Prompt_AgentQA.description,
-      webSelector: '',
-      customPdfParse: false
+      ...defaultFormData,
+      indexSize: getAutoIndexSize(vectorModel)
     }
   });
 
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
 
-  // watch form
-  const trainingType = processParamsForm.watch('trainingType');
-  const chunkSettingMode = processParamsForm.watch('chunkSettingMode');
-  const embeddingChunkSize = processParamsForm.watch('embeddingChunkSize');
-  const qaChunkSize = processParamsForm.watch('qaChunkSize');
-  const chunkSplitter = processParamsForm.watch('chunkSplitter');
-  const autoIndexes = processParamsForm.watch('autoIndexes');
-  const indexSize = processParamsForm.watch('indexSize');
-
-  const TrainingModeMap = useMemo<TrainingFiledType>(() => {
-    if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
-      return {
-        chunkSizeField: 'qaChunkSize',
-        chunkOverlapRatio: 0,
-        maxChunkSize: getLLMMaxChunkSize(agentModel),
-        minChunkSize: 1000,
-        autoChunkSize: getLLMDefaultChunkSize(agentModel),
-        chunkSize: qaChunkSize,
-        charsPointsPrice: agentModel.charsPointsPrice || 0,
-        priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
-          price: agentModel.charsPointsPrice
-        }),
-        uploadRate: 30
-      };
-    } else if (autoIndexes) {
-      return {
-        chunkSizeField: 'embeddingChunkSize',
-        chunkOverlapRatio: 0.2,
-        maxChunkSize: getMaxChunkSize(agentModel),
-        minChunkSize: minChunkSize,
-        autoChunkSize: chunkAutoChunkSize,
-        chunkSize: embeddingChunkSize,
-        maxIndexSize: getMaxIndexSize(vectorModel),
-        autoIndexSize: getAutoIndexSize(vectorModel),
-        indexSize,
-        charsPointsPrice: agentModel.charsPointsPrice || 0,
-        priceTip: t('dataset:import.Auto mode Estimated Price Tips', {
-          price: agentModel.charsPointsPrice
-        }),
-        uploadRate: 100
-      };
-    } else {
-      return {
-        chunkSizeField: 'embeddingChunkSize',
-        chunkOverlapRatio: 0.2,
-        maxChunkSize: getMaxChunkSize(agentModel),
-        minChunkSize: minChunkSize,
-        autoChunkSize: chunkAutoChunkSize,
-        chunkSize: embeddingChunkSize,
-        maxIndexSize: getMaxIndexSize(vectorModel),
-        autoIndexSize: getAutoIndexSize(vectorModel),
-        indexSize,
-        charsPointsPrice: vectorModel.charsPointsPrice || 0,
-        priceTip: t('dataset:import.Embedding Estimated Price Tips', {
-          price: vectorModel.charsPointsPrice
-        }),
-        uploadRate: 150
-      };
-    }
-  }, [
-    trainingType,
-    autoIndexes,
-    agentModel,
-    qaChunkSize,
-    t,
-    embeddingChunkSize,
-    vectorModel,
-    indexSize
-  ]);
-
-  const chunkSettingModeMap = useMemo(() => {
-    if (chunkSettingMode === ChunkSettingModeEnum.auto) {
-      return {
-        chunkSize: TrainingModeMap.autoChunkSize,
-        indexSize: TrainingModeMap.autoIndexSize,
-        chunkSplitter: ''
-      };
-    } else {
-      return {
-        chunkSize: TrainingModeMap.chunkSize,
-        indexSize: TrainingModeMap.indexSize,
-        chunkSplitter
-      };
-    }
-  }, [chunkSettingMode, TrainingModeMap, chunkSplitter]);
-
   const contextValue = {
-    ...TrainingModeMap,
-    ...chunkSettingModeMap,
     importSource: source,
     parentId,
     activeStep,

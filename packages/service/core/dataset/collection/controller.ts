@@ -74,6 +74,15 @@ export const createCollectionAndInsertData = async ({
     llmModel: getLLMModel(dataset.agentModel)
   });
   const chunkSplitter = computeChunkSplitter(createCollectionParams);
+  if (trainingType === DatasetCollectionDataProcessModeEnum.qa) {
+    delete createCollectionParams.chunkTriggerType;
+    delete createCollectionParams.chunkTriggerMinSize;
+    delete createCollectionParams.dataEnhanceCollectionName;
+    delete createCollectionParams.imageIndex;
+    delete createCollectionParams.autoIndexes;
+    delete createCollectionParams.indexSize;
+    delete createCollectionParams.qaPrompt;
+  }
 
   // 1. split chunks
   const chunks = rawText2Chunks({

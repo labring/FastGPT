@@ -1,9 +1,11 @@
-import type { DatasetDataIndexItemType, DatasetSchemaType } from './type';
+import type { ChunkSettingsType, DatasetDataIndexItemType, DatasetSchemaType } from './type';
 import type {
   DatasetCollectionTypeEnum,
   DatasetCollectionDataProcessModeEnum,
   ChunkSettingModeEnum,
-  DataChunkSplitModeEnum
+  DataChunkSplitModeEnum,
+  ChunkTriggerConfigTypeEnum,
+  ParagraphChunkAIModeEnum
 } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
 import type { ParentIdType } from 'common/parentFolder/type';
@@ -32,26 +34,16 @@ export type DatasetUpdateBody = {
 };
 
 /* ================= collection ===================== */
-export type DatasetCollectionChunkMetadataType = {
+// Input + store params
+type DatasetCollectionStoreDataType = ChunkSettingsType & {
   parentId?: string;
-  customPdfParse?: boolean;
-  trainingType?: DatasetCollectionDataProcessModeEnum;
-  imageIndex?: boolean;
-  autoIndexes?: boolean;
-
-  chunkSettingMode?: ChunkSettingModeEnum;
-  chunkSplitMode?: DataChunkSplitModeEnum;
-
-  chunkSize?: number;
-  indexSize?: number;
-
-  chunkSplitter?: string;
-  qaPrompt?: string;
   metadata?: Record<string, any>;
+
+  customPdfParse?: boolean;
 };
 
 // create collection params
-export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
+export type CreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   datasetId: string;
   name: string;
   type: DatasetCollectionTypeEnum;
@@ -72,7 +64,7 @@ export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType &
   nextSyncTime?: Date;
 };
 
-export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
+export type ApiCreateDatasetCollectionParams = DatasetCollectionStoreDataType & {
   datasetId: string;
   tags?: string[];
 };
@@ -90,7 +82,7 @@ export type ApiDatasetCreateDatasetCollectionParams = ApiCreateDatasetCollection
 export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   fileId: string;
 };
-export type reTrainingDatasetFileCollectionParams = DatasetCollectionChunkMetadataType & {
+export type reTrainingDatasetFileCollectionParams = DatasetCollectionStoreDataType & {
   datasetId: string;
   collectionId: string;
 };

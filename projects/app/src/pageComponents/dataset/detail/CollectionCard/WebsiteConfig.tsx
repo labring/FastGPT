@@ -21,9 +21,13 @@ import CollectionChunkForm, {
   collectionChunkForm2StoreChunkData,
   type CollectionChunkFormType
 } from '../Form/CollectionChunkForm';
-import { getLLMDefaultChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import {
+  getAutoIndexSize,
+  getLLMDefaultChunkSize
+} from '@fastgpt/global/core/dataset/training/utils';
 import { type ChunkSettingsType } from '@fastgpt/global/core/dataset/type';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
+import { defaultFormData } from '../Import/Context';
 
 export type WebsiteConfigFormType = {
   websiteConfig: {
@@ -76,17 +80,35 @@ const WebsiteConfigModal = ({
 
   const form = useForm<CollectionChunkFormType>({
     defaultValues: {
-      trainingType: chunkSettings?.trainingType || DatasetCollectionDataProcessModeEnum.chunk,
-      imageIndex: chunkSettings?.imageIndex || false,
-      autoIndexes: chunkSettings?.autoIndexes || false,
+      trainingType: chunkSettings?.trainingType,
 
-      chunkSettingMode: chunkSettings?.chunkSettingMode || ChunkSettingModeEnum.auto,
-      chunkSplitMode: chunkSettings?.chunkSplitMode || DataChunkSplitModeEnum.size,
-      embeddingChunkSize: chunkSettings?.chunkSize || 2000,
-      qaChunkSize: chunkSettings?.chunkSize || getLLMDefaultChunkSize(datasetDetail.agentModel),
-      indexSize: chunkSettings?.indexSize || datasetDetail.vectorModel?.defaultToken || 512,
+      chunkTriggerType: chunkSettings?.chunkTriggerType || defaultFormData.chunkTriggerType,
+      chunkTriggerMinSize:
+        chunkSettings?.chunkTriggerMinSize || defaultFormData.chunkTriggerMinSize,
 
-      chunkSplitter: chunkSettings?.chunkSplitter || '',
+      dataEnhanceCollectionName:
+        chunkSettings?.dataEnhanceCollectionName || defaultFormData.dataEnhanceCollectionName,
+
+      imageIndex: chunkSettings?.imageIndex || defaultFormData.imageIndex,
+      autoIndexes: chunkSettings?.autoIndexes || defaultFormData.autoIndexes,
+
+      chunkSettingMode: chunkSettings?.chunkSettingMode || defaultFormData.chunkSettingMode,
+      chunkSplitMode: chunkSettings?.chunkSplitMode || defaultFormData.chunkSplitMode,
+
+      paragraphChunkAIMode:
+        chunkSettings?.paragraphChunkAIMode || defaultFormData.paragraphChunkAIMode,
+      paragraphChunkDeep: chunkSettings?.paragraphChunkDeep || defaultFormData.paragraphChunkDeep,
+      paragraphChunkMinSize:
+        chunkSettings?.paragraphChunkMinSize || defaultFormData.paragraphChunkMinSize,
+      paragraphChunkMaxSize:
+        chunkSettings?.paragraphChunkMaxSize || defaultFormData.paragraphChunkMaxSize,
+
+      chunkSize: chunkSettings?.chunkSize || defaultFormData.chunkSize,
+
+      chunkSplitter: chunkSettings?.chunkSplitter || defaultFormData.chunkSplitter,
+
+      indexSize: chunkSettings?.indexSize || defaultFormData.indexSize,
+
       qaPrompt: chunkSettings?.qaPrompt || Prompt_AgentQA.description
     }
   });
