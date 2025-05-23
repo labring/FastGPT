@@ -70,6 +70,9 @@ export const MySourceHandle = React.memo(function MySourceHandle({
   );
 
   const { zoom } = useViewport();
+
+  const sourceScale = Number(Math.min(Math.max(1 / zoom, 1), 4).toFixed(1));
+  const targetScale = Number(Math.min(Math.max(1 / zoom, 1), 2).toFixed(1));
   const translateStr = useMemo(() => {
     if (!translate) return '';
     if (position === Position.Right) {
@@ -79,23 +82,24 @@ export const MySourceHandle = React.memo(function MySourceHandle({
 
   const { styles, showAddIcon } = useMemo(() => {
     if (active) {
-      const scale = Math.min(Math.max(1 / zoom, 1), 4).toFixed(1);
-
       return {
         styles: {
           ...handleHighLightStyle,
-          transform: `${translateStr ? `translate(${translateStr})` : ''} scale(${scale})`
+          transform: `${translateStr ? `translate(${translateStr})` : ''}`,
+          width: handleSize * sourceScale,
+          height: handleSize * sourceScale
         },
         showAddIcon: true
       };
     }
 
     if (connected || nodeFolded) {
-      const scale = Math.min(Math.max(1 / zoom, 1), 2).toFixed(1);
       return {
         styles: {
-          transform: `${translateStr ? `translate(${translateStr})` : ''} scale(${scale})`,
-          ...handleConnectedStyle
+          ...handleConnectedStyle,
+          transform: `${translateStr ? `translate(${translateStr})` : ''}`,
+          width: handleSizeConnected * targetScale,
+          height: handleSizeConnected * targetScale
         },
         showAddIcon: false
       };
@@ -107,7 +111,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       },
       showAddIcon: false
     };
-  }, [active, connected, nodeFolded, zoom, translateStr]);
+  }, [active, connected, nodeFolded, translateStr, sourceScale, targetScale]);
 
   if (!node) return null;
   if (connectingEdge?.handleId === NodeOutputKeyEnum.selectedTools) return null;
@@ -137,11 +141,11 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       >
         {showAddIcon && (
           <MyIcon
-            name={'edgeAdd'}
+            name={sourceScale > 1.3 ? 'common/add2' : 'edgeAdd'}
             color={'primary.500'}
             pointerEvents={'none'}
-            w={'1rem'}
-            h={'1rem'}
+            w={`${16 * sourceScale}px`}
+            h={`${16 * sourceScale}px`}
           />
         )}
       </Handle>
@@ -164,6 +168,8 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
   const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
 
   const { zoom } = useViewport();
+  const sourceScale = Number(Math.min(Math.max(1 / zoom, 1), 4).toFixed(1));
+  const targetScale = Number(Math.min(Math.max(1 / zoom, 1), 2).toFixed(1));
   const translateStr = useMemo(() => {
     if (!translate) return '';
 
@@ -173,36 +179,39 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
   }, [connectingEdge, position, translate]);
 
   const styles = useMemo(() => {
-    if (!connectingEdge && !connected && !showHandle) {
+    if ((!connectingEdge && !connected) || !showHandle) {
       return {
         visibility: 'hidden' as const
       };
     }
 
     if (connectingEdge) {
-      const scale = Math.min(Math.max(1 / zoom, 1), 4).toFixed(1);
       return {
         ...handleHighLightStyle,
-        transform: `${translateStr ? `translate(${translateStr})` : ''} scale(${scale})`
+        transform: `${translateStr ? `translate(${translateStr})` : ''}`,
+        width: handleSize * sourceScale,
+        height: handleSize * sourceScale
       };
     }
 
     if (connected) {
-      const scale = Math.min(Math.max(1 / zoom, 1), 2).toFixed(1);
       return {
         ...handleConnectedStyle,
-        transform: `${translateStr ? `translate(${translateStr})` : ''} scale(${scale})`
+        transform: `${translateStr ? `translate(${translateStr})` : ''}`,
+        width: handleSizeConnected * targetScale,
+        height: handleSizeConnected * targetScale
       };
     }
     return {
       visibility: 'hidden' as const
     };
-  }, [connected, connectingEdge, showHandle, translateStr, zoom]);
+  }, [connected, connectingEdge, showHandle, sourceScale, targetScale, translateStr]);
 
   return (
     <Handle
       style={styles}
       isConnectableEnd={styles && showHandle}
+      isConnectableStart={false}
       type="target"
       id={handleId}
       position={position}

@@ -129,24 +129,18 @@ const NodeTemplateListItem = ({
             position: { x: nodePosition.x - 100, y: nodePosition.y - 20 }
           });
         }}
-        onClick={(e) => {
+        onClick={() => {
           if (template.isFolder && template.flowNodeType !== FlowNodeTypeEnum.toolSet) {
             onUpdateParentId(template.id);
             return;
           }
-          if (isPopover) {
-            const currentNodeData = nodes.find((node) => node.id === handleParams?.nodeId);
-            if (currentNodeData) {
-              const position = {
-                x: currentNodeData.position.x + (currentNodeData.width || 0) + 120,
-                y: currentNodeData.position.y
-              };
-              handleAddNode({ template, position });
-            }
-          } else {
-            const position = screenToFlowPosition({ x: sliderWidth * 1.5, y: 200 });
-            handleAddNode({ template, position });
-          }
+
+          const position =
+            isPopover && handleParams
+              ? handleParams.addNodePosition
+              : screenToFlowPosition({ x: sliderWidth * 1.5, y: 200 });
+
+          handleAddNode({ template, position });
         }}
       >
         <MyAvatar
