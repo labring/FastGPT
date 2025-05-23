@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Position } from 'reactflow';
-import { SourceHandle, TargetHandle } from '.';
+import { MySourceHandle, MyTargetHandle } from '.';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
@@ -49,7 +49,7 @@ export const ConnectionSourceHandle = ({
         return null;
 
       return (
-        <SourceHandle
+        <MySourceHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Right}
@@ -130,7 +130,7 @@ export const ConnectionTargetHandle = React.memo(function ConnectionTargetHandle
       const handleId = getHandleId(nodeId, 'target', Position.Left);
 
       return (
-        <TargetHandle
+        <MyTargetHandle
           nodeId={nodeId}
           handleId={handleId}
           position={Position.Left}

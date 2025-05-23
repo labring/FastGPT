@@ -3,7 +3,7 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { SourceHandle } from '../Handle';
+import { MySourceHandle } from '../Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { Position } from 'reactflow';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
@@ -74,7 +74,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         )}
       </Flex>
       {output.type === FlowNodeOutputTypeEnum.source && (
-        <SourceHandle
+        <MySourceHandle
           nodeId={nodeId}
           handleId={getHandleId(nodeId, 'source', output.key)}
           translate={[34, 0]}

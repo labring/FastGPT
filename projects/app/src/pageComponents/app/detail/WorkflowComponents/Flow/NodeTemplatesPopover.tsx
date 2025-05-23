@@ -6,12 +6,12 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node, useReactFlow } from 'reactflow';
 import { WorkflowInitContext, WorkflowNodeEdgeContext } from '../context/workflowInitContext';
 import { useMemoizedFn } from 'ahooks';
-import { nanoid } from 'nanoid';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
 import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { WorkflowEventContext } from '../context/workflowEventContext';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const popoverWidth = 400;
 const popoverHeight = 600;
@@ -113,7 +113,7 @@ const NodeTemplatesPopover = () => {
         return true;
       })
       .map((node) => ({
-        id: nanoid(16),
+        id: getNanoid(),
         source: handleParams.nodeId as string,
         sourceHandle: handleParams.handleId,
         target: node.id,

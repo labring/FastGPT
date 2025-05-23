@@ -64,10 +64,7 @@ const NodeTemplateListItem = ({
 }: {
   template: NodeTemplateListItemType;
   templateType: TemplateTypeEnum;
-  handleAddNode: ({
-    template,
-    position
-  }: {
+  handleAddNode: (e: {
     template: NodeTemplateListItemType;
     position: { x: number; y: number };
   }) => void;
