@@ -606,7 +606,7 @@ export const useWorkflow = () => {
           if (
             Math.abs(currentX - initialX) <= 5 &&
             Math.abs(currentY - initialY) <= 5 &&
-            pressDuration < 1000
+            pressDuration < 500
           ) {
             const popoverPosition = getTemplatesListPopoverPosition(params.nodeId);
             const addNodePosition = getAddNodePosition(params.nodeId);
