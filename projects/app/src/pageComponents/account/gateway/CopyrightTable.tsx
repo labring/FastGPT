@@ -172,35 +172,42 @@ const CopyrightTable = ({
                   cursor="pointer"
                   role="group"
                   position="relative"
+                  width="100%"
+                  padding="20px"
                 >
-                  <Flex gap={{ base: 3, md: 5 }} alignItems="center">
+                  <Flex gap={{ base: 3, md: 5 }} alignItems="center" width="100%">
                     {banner ? (
-                      <Flex
-                        width={logoBoxSizeWithText}
+                      <Box
+                        width="100%"
                         height={logoBoxSizeWithText}
                         justifyContent="center"
                         alignItems="center"
                         position="relative"
                         overflow="hidden"
-                        borderRadius={logoBorderRadius}
                         boxSizing="border-box"
                         transition="all 0.3s ease"
+                        display="flex"
                       >
                         <Image
                           src={banner}
-                          alt="Team Logo"
+                          alt="Team Banner"
                           width="100%"
                           height="100%"
                           objectFit="contain"
+                          objectPosition="center"
+                          style={
+                            {
+                              imageRendering: 'crisp-edges'
+                            } as React.CSSProperties
+                          }
                         />
-                      </Flex>
+                      </Box>
                     ) : (
                       <Box
-                        width={logoBoxSizeWithText}
+                        width="100%"
                         height={logoBoxSizeWithText}
                         bg="white"
                         border="0.483px solid #ECECEC"
-                        borderRadius={logoBorderRadius}
                         display="flex"
                         justifyContent="center"
                         alignItems="center"
@@ -219,18 +226,20 @@ const CopyrightTable = ({
                         >
                           <Image
                             src={banner}
-                            alt="Team Logo"
+                            alt="Team Banner"
                             width="100%"
                             height="100%"
                             objectFit="contain"
                             fallbackSrc="/icon/logo.svg"
+                            style={
+                              {
+                                imageRendering: 'crisp-edges'
+                              } as React.CSSProperties
+                            }
                           />
                         </Flex>
                       </Box>
                     )}
-                    <Text fontSize={titleFontSize} fontWeight={700} lineHeight="140%">
-                      {watch('name')}
-                    </Text>
                   </Flex>
 
                   {/* 悬浮遮罩 - 4:1 */}
@@ -286,6 +295,11 @@ const CopyrightTable = ({
                         width="100%"
                         height="100%"
                         objectFit="contain"
+                        style={
+                          {
+                            imageRendering: 'crisp-edges'
+                          } as React.CSSProperties
+                        }
                       />
                     </Flex>
                   ) : (

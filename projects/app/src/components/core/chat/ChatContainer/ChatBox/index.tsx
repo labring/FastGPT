@@ -69,7 +69,6 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import GateChatInput from './Input/GateChatInput';
 import ChatWelcome from './components/ChatWelcome';
-import { useGateStore } from '@/web/support/user/team/gate/useGateStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRouter } from 'next/router';
 import { getTeamGateConfig, getTeamGateConfigCopyRight } from '@/web/support/user/team/gate/api';

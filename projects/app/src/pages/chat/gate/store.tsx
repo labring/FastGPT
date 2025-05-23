@@ -38,11 +38,13 @@ import { getTeamGateConfig } from '@/web/support/user/team/gate/api';
 const Chat = ({
   myApps,
   serverTagList = [],
-  serverTagMap = {}
+  serverTagMap = {},
+  gateConfig // 添加 gateConfig 参数
 }: {
   myApps: AppListItemType[];
   serverTagList?: any[];
   serverTagMap?: Record<string, any>;
+  gateConfig?: GateSchemaType; // 添加类型定义
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
@@ -149,8 +151,8 @@ const Chat = ({
 
   return (
     <Flex h={'100%'}>
-      <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
-      {isPc && <GateNavBar apps={myApps} activeAppId={appId} />}
+      <NextHead title={gateConfig?.name} icon={gateConfig?.logo}></NextHead>
+      {isPc && <GateNavBar apps={myApps} activeAppId={appId} gateConfig={gateConfig} />}
 
       {(!datasetCiteData || isPc) && (
         <GatePageContainer flex={'1 0 0'} w={0} position={'relative'}>
@@ -322,11 +324,6 @@ const Render = (props: {
     setAppId(appId);
   }, [appId, setAppId]);
 
-  // 如果状态检查失败，不渲染任何内容
-  if (gateConfig && !gateConfig.status) {
-    return null;
-  }
-
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
     [appId]
@@ -339,6 +336,11 @@ const Render = (props: {
     };
   }, [appId, chatId]);
 
+  // 在所有 hooks 之后进行状态检查
+  if (gateConfig && !gateConfig.status) {
+    return null;
+  }
+
   return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
@@ -346,11 +348,15 @@ const Render = (props: {
         showRouteToAppDetail={isStandalone !== '1'}
         showRouteToDatasetDetail={isStandalone !== '1'}
         isShowReadRawSource={true}
-        // isShowFullText={true}
         showNodeStatus
       >
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <Chat myApps={myApps} serverTagList={serverTagList} serverTagMap={serverTagMap} />
+          <Chat
+            myApps={myApps}
+            serverTagList={serverTagList}
+            serverTagMap={serverTagMap}
+            gateConfig={gateConfig} // 传递 gateConfig
+          />
         </ChatRecordContextProvider>
       </ChatItemContextProvider>
     </ChatContextProvider>

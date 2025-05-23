@@ -35,10 +35,6 @@ import { getTeamTags } from '@/web/core/app/api/tags';
 import type { TagSchemaType } from '@fastgpt/global/core/app/tags';
 import GateAppInfoModal from './GateAppInfoModal';
 import TagManageModal from './TagManageModal';
-const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
-const ModelEditModal = dynamic(() =>
-  import('../model/AddModelBox').then((mod) => mod.ModelEditModal)
-);
 
 // 复用 TagManageModal 中的颜色选项
 const colorOptions: { value: string; color: string; bg: string }[] = [

@@ -199,14 +199,10 @@ const Chat = ({
     sidebarFolded,
     handleFoldChange
   ]);
-  console.log('avatar', userInfo?.team.teamAvatar);
   return (
     <AppFormContext.Provider value={{ appForm, setAppForm }}>
       <Flex h={'100%'}>
-        <NextHead
-          title={userInfo?.team.teamName + t('account_gate:Gate')}
-          icon={userInfo?.team.teamAvatar}
-        ></NextHead>
+        <NextHead title={gateConfig?.name} icon={gateConfig?.logo}></NextHead>
         {isPc && (
           <Flex alignItems="center">
             <GateNavBar gateConfig={gateConfig} apps={myApps} activeAppId={appId} />
@@ -361,11 +357,6 @@ const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?
     setAppId(appId);
   }, [appId, setAppId]);
 
-  // 如果状态检查失败，不渲染任何内容
-  if (gateConfig && !gateConfig.status) {
-    return null;
-  }
-
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
     [appId]
@@ -378,6 +369,10 @@ const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?
     };
   }, [appId, chatId]);
 
+  // 如果状态检查失败，不渲染任何内容
+  if (gateConfig && !gateConfig.status) {
+    return null;
+  }
   return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
@@ -399,10 +394,12 @@ const Render = (props: { appId: string; appDetail?: AppDetailType; isStandalone?
 export async function getServerSideProps(context: any) {
   const appId = context?.query?.appId || '';
   let appDetail;
-
+  let testGateConfig;
   if (appId) {
     try {
       appDetail = await getAppDetailById(appId);
+      testGateConfig = await getTeamGateConfig();
+      console.log('testGateConfig', testGateConfig);
     } catch (error) {
       console.error('Failed to fetch app detail:', error);
     }

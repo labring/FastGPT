@@ -115,82 +115,110 @@ const GateNavBar = ({ apps, activeAppId, gateConfig }: Props) => {
           transition="all 0.4s ease-in-out"
           justifyContent={isCollapsed ? 'center' : 'flex-start'}
         >
-          <Flex
-            align="center"
-            cursor="pointer"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            position="relative"
-            gap={3}
-            style={{
-              transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-            }}
-          >
-            {gateConfig?.logo || gateConfig?.banner ? (
-              <Flex
-                boxSize="36px"
-                borderRadius="9px"
+          {copyRightConfig?.banner ? (
+            // 如果有banner，只显示banner（宽度自适应）
+            <Flex
+              align="center"
+              cursor="pointer"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              position="relative"
+              gap={3}
+              style={{
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
+              width="100%"
+            >
+              <Box
+                height="36px"
+                width={isCollapsed ? '36px' : '100%'}
                 overflow="hidden"
                 flexShrink={0}
                 transition="all 0.4s ease-in-out"
+                display="flex"
                 justifyContent="center"
                 alignItems="center"
               >
                 <Avatar
                   boxSize="100%"
-                  src={gateConfig?.logo || gateConfig?.banner}
-                  borderRadius="9px"
-                  objectFit="cover"
-                />
-              </Flex>
-            ) : (
-              <Box
-                boxSize="36px"
-                bg="white"
-                border="0.75px solid #ECECEC"
-                borderRadius="9px"
-                overflow="hidden"
-                flexShrink={0}
-                transition="all 0.4s ease-in-out"
-              >
-                <Avatar
-                  boxSize="100%"
-                  src={gateConfig?.logo || gateConfig?.banner || HUMAN_ICON}
-                  borderRadius="9px"
-                  objectFit="cover"
+                  src={isCollapsed ? copyRightConfig.logo : copyRightConfig.banner}
+                  objectFit={'contain'}
                 />
               </Box>
-            )}
-            <Box
-              opacity={isCollapsed ? 0 : 1}
-              maxW={isCollapsed ? 0 : '130px'}
-              w="130px"
-              transition="all 0.4s ease-in-out"
-              overflow="hidden"
-              transform="scale(1, 1)"
-              transformOrigin="left center"
-              className="company-name"
-              position={isCollapsed ? 'absolute' : 'relative'}
-              width={isCollapsed ? '0' : 'auto'}
-              height={isCollapsed ? '0' : 'auto'}
+            </Flex>
+          ) : (
+            // 如果没有banner，显示logo和文字
+            <Flex
+              align="center"
+              cursor="pointer"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              position="relative"
+              gap={3}
+              style={{
+                transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+              }}
             >
-              <Text
-                as="span"
-                fontSize="md"
-                fontWeight="bold"
-                color="#111824"
-                fontFamily="Inter"
-                whiteSpace="nowrap"
-                ref={companyNameRef}
-                style={{
-                  transform: `scale(${companyNameScale})`,
-                  display: 'inline-block',
-                  transformOrigin: 'left'
-                }}
+              {copyRightConfig?.logo ? (
+                <Flex
+                  boxSize="36px"
+                  borderRadius="9px"
+                  overflow="hidden"
+                  flexShrink={0}
+                  transition="all 0.4s ease-in-out"
+                  justifyContent="center"
+                  alignItems="center"
+                >
+                  <Avatar
+                    boxSize="100%"
+                    src={copyRightConfig.logo}
+                    borderRadius="9px"
+                    objectFit="cover"
+                  />
+                </Flex>
+              ) : (
+                <Box
+                  boxSize="36px"
+                  bg="white"
+                  border="0.75px solid #ECECEC"
+                  borderRadius="9px"
+                  overflow="hidden"
+                  flexShrink={0}
+                  transition="all 0.4s ease-in-out"
+                >
+                  <Avatar boxSize="100%" src={HUMAN_ICON} borderRadius="9px" objectFit="cover" />
+                </Box>
+              )}
+              <Box
+                opacity={isCollapsed ? 0 : 1}
+                maxW={isCollapsed ? 0 : '130px'}
+                w="130px"
+                transition="all 0.4s ease-in-out"
+                overflow="hidden"
+                transform="scale(1, 1)"
+                transformOrigin="left center"
+                className="company-name"
+                position={isCollapsed ? 'absolute' : 'relative'}
+                width={isCollapsed ? '0' : 'auto'}
+                height={isCollapsed ? '0' : 'auto'}
               >
-                {copyRightConfig?.name || '没渲染出来'}
-              </Text>
-            </Box>
-          </Flex>
+                <Text
+                  as="span"
+                  fontSize="md"
+                  fontWeight="bold"
+                  color="#111824"
+                  fontFamily="Inter"
+                  whiteSpace="nowrap"
+                  ref={companyNameRef}
+                  style={{
+                    transform: `scale(${companyNameScale})`,
+                    display: 'inline-block',
+                    transformOrigin: 'left'
+                  }}
+                >
+                  {copyRightConfig?.name || '没渲染出来'}
+                </Text>
+              </Box>
+            </Flex>
+          )}
         </Box>
 
         {/* Navigation Items */}

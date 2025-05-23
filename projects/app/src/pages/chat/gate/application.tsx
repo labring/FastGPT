@@ -185,7 +185,7 @@ const Chat = ({
 
   return (
     <Flex h={'100%'}>
-      <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar}></NextHead>
+      <NextHead title={gateConfig?.name} icon={gateConfig?.logo}></NextHead>
       {isPc && <GateNavBar gateConfig={gateConfig} apps={myApps} activeAppId={appId} />}
 
       {(!datasetCiteData || isPc) && (
@@ -337,11 +337,6 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
     setAppId(appId);
   }, [appId, setAppId]);
 
-  // 如果状态检查失败，不渲染任何内容
-  if (gateConfig && !gateConfig.status) {
-    return null;
-  }
-
   const chatHistoryProviderParams = useMemo(
     () => ({ appId, source: ChatSourceEnum.online }),
     [appId]
@@ -353,7 +348,10 @@ const Render = (props: { appId: string; isStandalone?: string }) => {
       chatId: chatId
     };
   }, [appId, chatId]);
-
+  // 如果状态检查失败，不渲染任何内容
+  if (gateConfig && !gateConfig.status) {
+    return null;
+  }
   return source === ChatSourceEnum.online ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
