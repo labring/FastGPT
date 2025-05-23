@@ -1,0 +1,218 @@
+# 数据库的默认账号和密码仅首次运行时设置有效
+# 如果修改了账号密码，记得改数据库和项目连接参数，别只改一处~
+# 该配置文件只是给快速启动，测试使用。正式使用，记得务必修改账号密码，以及调整合适的知识库参数，共享内存等。
+# 如何无法访问 dockerhub 和 git，可以用阿里云（阿里云没有arm包）
+
+version: '3.3'
+services:
+  # db
+  gs:
+    image: opengauss/opengauss:7.0.0-RC1 # docker hub
+    container_name: gs
+    restart: always
+    # ports: # 生产环境建议不要暴露
+    #   - 5432:5432
+    networks:
+      - fastgpt
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - GS_USER=username
+      - GS_PASSWORD=password
+      - GS_DB=postgres
+    volumes:
+      - ./opengauss/data:/var/lib/opengauss/data
+    healthcheck:
+      test: ['CMD-SHELL', 'netstat -lntp | grep tcp6 > /dev/null 2>&1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+  mongo:
+    image: mongo:5.0.18 # dockerhub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+    # image: mongo:4.4.29 # cpu不支持AVX时候使用
+    container_name: mongo
+    restart: always
+    # ports:
+    #   - 27017:27017
+    networks:
+      - fastgpt
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - ./mongo/data:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        # 启动MongoDB服务
+        exec docker-entrypoint.sh "$$@" &
+
+        # 等待MongoDB服务启动
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        # 执行初始化副本集的脚本
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+
+        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
+        wait $$!
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    # ports:
+    # - 6379:6379
+    networks:
+      - fastgpt
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'mypassword', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - ./redis/data:/data
+
+  # fastgpt
+  sandbox:
+    container_name: sandbox
+    image: ghcr.io/labring/fastgpt-sandbox:v4.9.7-fix2 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.9.7-fix2 # 阿里云
+    networks:
+      - fastgpt
+    restart: always
+  fastgpt-mcp-server:
+    container_name: fastgpt-mcp-server
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.9.7-fix2 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.9.7-fix2 # 阿里云
+    ports:
+      - 3005:3000
+    networks:
+      - fastgpt
+    restart: always
+    environment:
+      - FASTGPT_ENDPOINT=http://fastgpt:3000
+  fastgpt:
+    container_name: fastgpt
+    image: ghcr.io/labring/fastgpt:v4.9.7-fix2 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.9.7-fix2 # 阿里云
+    # image: swr.cn-north-4.myhuaweicloud.com/ddn-k8s/ghcr.io/labring/fastgpt:v4.8.4-linuxarm64 # openGauss在arm架构上性能更好
+    ports:
+      - 3000:3000
+    networks:
+      - fastgpt
+    depends_on:
+      - mongo
+      - gs
+      - sandbox
+    restart: always
+    environment:
+      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
+      - FE_DOMAIN=
+      # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
+      - DEFAULT_ROOT_PSW=1234
+      # AI Proxy 的地址，如果配了该地址，优先使用
+      - AIPROXY_API_ENDPOINT=http://aiproxy:3000
+      # AI Proxy 的 Admin Token，与 AI Proxy 中的环境变量 ADMIN_KEY
+      - AIPROXY_API_TOKEN=aiproxy
+      # 数据库最大连接数
+      - DB_MAX_LINK=30
+      # 登录凭证密钥
+      - TOKEN_KEY=any
+      # root的密钥，常用于升级时候的初始化请求
+      - ROOT_KEY=root_key
+      # 文件阅读加密
+      - FILE_TOKEN_KEY=filetoken
+      # MongoDB 连接参数. 用户名myusername,密码mypassword。
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
+      # openGauss 连接参数
+      - OPENGAUSS_URL=opengauss://gaussdb:Huawei12%23%24@gs:9999/test
+      # Redis 连接参数
+      - REDIS_URL=redis://default:mypassword@redis:6379
+      # sandbox 地址
+      - SANDBOX_URL=http://sandbox:3000
+      # 日志等级: debug, info, warn, error
+      - LOG_LEVEL=info
+      - STORE_LOG_LEVEL=warn
+      # 工作流最大运行次数
+      - WORKFLOW_MAX_RUN_TIMES=1000
+      # 批量执行节点，最大输入长度
+      - WORKFLOW_MAX_LOOP_TIMES=100
+      # 自定义跨域，不配置时，默认都允许跨域（多个域名通过逗号分割）
+      - ALLOWED_ORIGINS=
+      # 是否开启IP限制，默认不开启
+      - USE_IP_LIMIT=false
+      # 对话文件过期天数
+      - CHAT_FILE_EXPIRE_TIME=7
+    volumes:
+      - ./config.json:/app/data/config.json
+
+  # AI Proxy
+  aiproxy:
+    image: ghcr.io/labring/aiproxy:v0.1.7
+    # image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.1.7 # 阿里云
+    container_name: aiproxy
+    restart: unless-stopped
+    depends_on:
+      aiproxy_pg:
+        condition: service_healthy
+    networks:
+      - fastgpt
+    environment:
+      # 对应 fastgpt 里的AIPROXY_API_TOKEN
+      - ADMIN_KEY=aiproxy
+      # 错误日志详情保存时间（小时）
+      - LOG_DETAIL_STORAGE_HOURS=1
+      # 数据库连接地址
+      - SQL_DSN=postgres://postgres:aiproxy@aiproxy_pg:5432/aiproxy
+      # 最大重试次数
+      - RETRY_TIMES=3
+      # 不需要计费
+      - BILLING_ENABLED=false
+      # 不需要严格检测模型
+      - DISABLE_MODEL_CONFIG=true
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  aiproxy_pg:
+    image: pgvector/pgvector:0.8.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.8.0-pg15 # 阿里云
+    restart: unless-stopped
+    container_name: aiproxy_pg
+    volumes:
+      - ./aiproxy_pg:/var/lib/postgresql/data
+    networks:
+      - fastgpt
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aiproxy
+      POSTGRES_PASSWORD: aiproxy
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'aiproxy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+networks:
+  fastgpt:

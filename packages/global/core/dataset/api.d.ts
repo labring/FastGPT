@@ -124,6 +124,13 @@ export type PgSearchRawType = {
   collection_id: string;
   score: number;
 };
+
+export type GsSearchRawType = {
+  id: string;
+  collection_id: string;
+  score: number;
+};
+
 export type PushDatasetDataChunkProps = {
   q: string; // embedding content
   a?: string; // bonus content

@@ -15,6 +15,7 @@ declare global {
       MONGODB_LOG_URI?: string;
       PG_URL: string;
       OCEANBASE_URL: string;
+      OPENGAUSS_URL: string;
       MILVUS_ADDRESS: string;
       MILVUS_TOKEN: string;
       SANDBOX_URL: string;

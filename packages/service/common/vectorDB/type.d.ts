@@ -6,6 +6,7 @@ declare global {
   var pgClient: Pool | null;
   var obClient: MysqlPool | null;
   var milvusClient: MilvusClient | null;
+  var gsClient: Pool | null;
 }
 
 export type EmbeddingRecallItemType = {
