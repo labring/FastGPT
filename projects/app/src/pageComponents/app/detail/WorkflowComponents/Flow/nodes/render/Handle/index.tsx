@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Handle, Position, useViewport } from 'reactflow';
+import { Handle, Position } from 'reactflow';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../../context';
@@ -13,18 +13,18 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'react-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 
-const handleSize = 20;
 const handleSizeConnected = 16;
 const handleSizeConnecting = 30;
+const handleAddIconSize = 22;
 
 const sourceCommonStyle = {
   backgroundColor: 'white',
-  borderWidth: '3px',
   borderRadius: '50%'
 };
 
 const handleConnectedStyle = {
   ...sourceCommonStyle,
+  borderWidth: '3px',
   borderColor: '#94B5FF',
   width: handleSizeConnected,
   height: handleSizeConnected
@@ -32,12 +32,13 @@ const handleConnectedStyle = {
 
 const handleHighLightStyle = {
   ...sourceCommonStyle,
+  borderWidth: '4px',
   borderColor: '#487FFF',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: handleSize,
-  height: handleSize
+  width: handleSizeConnecting,
+  height: handleSizeConnecting
 };
 
 type Props = {
@@ -82,9 +83,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       return {
         styles: {
           ...handleHighLightStyle,
-          transform: `${translateStr ? `translate(${translateStr})` : ''}`,
-          width: handleSizeConnecting,
-          height: handleSizeConnecting
+          transform: `${translateStr ? `translate(${translateStr})` : ''}`
         },
         showAddIcon: true
       };
@@ -94,9 +93,7 @@ export const MySourceHandle = React.memo(function MySourceHandle({
       return {
         styles: {
           ...handleConnectedStyle,
-          transform: `${translateStr ? `translate(${translateStr})` : ''}`,
-          width: handleSizeConnected,
-          height: handleSizeConnected
+          transform: `${translateStr ? `translate(${translateStr})` : ''}`
         },
         showAddIcon: false
       };
@@ -141,8 +138,8 @@ export const MySourceHandle = React.memo(function MySourceHandle({
             name={'edgeAdd'}
             color={'primary.500'}
             pointerEvents={'none'}
-            w={'20px'}
-            h={'20px'}
+            w={`${handleAddIconSize}px`}
+            h={`${handleAddIconSize}px`}
           />
         )}
       </Handle>
@@ -182,18 +179,14 @@ export const MyTargetHandle = React.memo(function MyTargetHandle({
     if (connectingEdge) {
       return {
         ...handleHighLightStyle,
-        transform: `${translateStr ? `translate(${translateStr})` : ''}`,
-        width: handleSizeConnecting,
-        height: handleSizeConnecting
+        transform: `${translateStr ? `translate(${translateStr})` : ''}`
       };
     }
 
     if (connected) {
       return {
         ...handleConnectedStyle,
-        transform: `${translateStr ? `translate(${translateStr})` : ''}`,
-        width: handleSizeConnected,
-        height: handleSizeConnected
+        transform: `${translateStr ? `translate(${translateStr})` : ''}`
       };
     }
     return {

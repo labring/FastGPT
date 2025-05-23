@@ -143,8 +143,8 @@ const ButtonEdge = (props: EdgeProps) => {
             position={'absolute'}
             transform={`translate(-55%, -50%) translate(${labelX}px,${labelY}px)`}
             pointerEvents={'all'}
-            w={'30px'}
-            h={'30px'}
+            w={'26px'}
+            h={'26px'}
             bg={'white'}
             borderRadius={'18px'}
             cursor={'pointer'}
