@@ -379,7 +379,7 @@ export const useWorkflow = () => {
     }
   });
 
-  const getTemplatesListPopoverPosition = useMemoizedFn((nodeId: string | null) => {
+  const getTemplatesListPopoverPosition = useMemoizedFn(({ nodeId }: { nodeId: string | null }) => {
     const node = nodes.find((n) => n.id === nodeId);
     if (!node) return { x: 0, y: 0 };
 
@@ -415,15 +415,24 @@ export const useWorkflow = () => {
 
     return { x, y };
   });
-  const getAddNodePosition = useMemoizedFn((nodeId: string | null) => {
-    const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return { x: 0, y: 0 };
+  const getAddNodePosition = useMemoizedFn(
+    ({ nodeId, handleId }: { nodeId: string | null; handleId: string | null }) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return { x: 0, y: 0 };
 
-    return {
-      x: node.position.x + (node.width || 0) + 120,
-      y: node.position.y
-    };
-  });
+      if (handleId === 'selectedTools') {
+        return {
+          x: node.position.x,
+          y: node.position.y + (node.height || 0) + 80
+        };
+      }
+
+      return {
+        x: node.position.x + (node.width || 0) + 120,
+        y: node.position.y
+      };
+    }
+  );
 
   /* node */
   // Remove change node and its child nodes and edges
@@ -575,13 +584,14 @@ export const useWorkflow = () => {
   /* connect */
   const onConnectStart = useCallback(
     (event: any, params: OnConnectStartParams) => {
-      if (!params.nodeId) return;
+      const { nodeId, handleId } = params;
+      if (!nodeId) return;
 
       // If node is folded, unfold it when connecting
-      const sourceNode = nodeList.find((node) => node.nodeId === params.nodeId);
+      const sourceNode = nodeList.find((node) => node.nodeId === nodeId);
       if (sourceNode?.isFolded) {
         onChangeNode({
-          nodeId: params.nodeId,
+          nodeId,
           type: 'attr',
           key: 'isFolded',
           value: false
@@ -608,8 +618,8 @@ export const useWorkflow = () => {
             Math.abs(currentY - initialY) <= 5 &&
             pressDuration < 500
           ) {
-            const popoverPosition = getTemplatesListPopoverPosition(params.nodeId);
-            const addNodePosition = getAddNodePosition(params.nodeId);
+            const popoverPosition = getTemplatesListPopoverPosition({ nodeId });
+            const addNodePosition = getAddNodePosition({ nodeId, handleId });
             setHandleParams({
               ...params,
               popoverPosition,
@@ -718,7 +728,6 @@ export const useWorkflow = () => {
     },
     [setMenu]
   );
-
   const onPaneClick = useCallback(() => {
     setMenu(null);
   }, [setMenu]);

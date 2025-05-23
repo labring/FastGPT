@@ -44,7 +44,6 @@ import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/
 import { useReactFlow, type Node } from 'reactflow';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
-import { WorkflowInitContext } from '../../../context/workflowInitContext';
 import { WorkflowEventContext } from '../../../context/workflowEventContext';
 
 export type TemplateListProps = {
@@ -110,7 +109,7 @@ const NodeTemplateListItem = ({
         _hover={{
           bg: 'myWhite.600',
           '& .arrowIcon': {
-            display: 'block'
+            display: 'flex'
           }
         }}
         borderRadius={'sm'}
@@ -206,6 +205,7 @@ const NodeTemplateList = ({
   const toast = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const handleParams = useContextSelector(WorkflowEventContext, (v) => v.handleParams);
 
   const { data: pluginGroups = [] } = useRequest2(getPluginGroups, {
     manual: false
@@ -262,6 +262,8 @@ const NodeTemplateList = ({
           }
         });
 
+        const currentNode = nodeList.find((node) => node.nodeId === handleParams?.nodeId);
+
         const newNode = nodeTemplate2FlowNode({
           template: {
             ...templateNode,
@@ -293,6 +295,7 @@ const NodeTemplateList = ({
           },
           position,
           selected: true,
+          parentNodeId: currentNode?.parentNodeId,
           t
         });
 
