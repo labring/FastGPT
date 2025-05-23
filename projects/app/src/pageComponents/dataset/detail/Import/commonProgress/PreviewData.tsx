@@ -17,6 +17,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
+import { collectionChunkForm2StoreChunkData } from '../../Form/CollectionChunkForm';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -28,8 +29,6 @@ const PreviewData = () => {
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
-  const chunkSize = useContextSelector(DatasetImportContext, (v) => v.chunkSize);
-  const chunkOverlapRatio = useContextSelector(DatasetImportContext, (v) => v.chunkOverlapRatio);
   const processParamsForm = useContextSelector(DatasetImportContext, (v) => v.processParamsForm);
 
   const [previewFile, setPreviewFile] = useState<ImportSourceItemType>();
@@ -37,13 +36,20 @@ const PreviewData = () => {
   const { data = { chunks: [], total: 0 }, loading: isLoading } = useRequest2(
     async () => {
       if (!previewFile) return { chunks: [], total: 0 };
+
+      const chunkData = collectionChunkForm2StoreChunkData({
+        ...processParamsForm.getValues(),
+        vectorModel: datasetDetail.vectorModel,
+        agentModel: datasetDetail.agentModel
+      });
+
       if (importSource === ImportDataSourceEnum.fileCustom) {
         const chunkSplitter = processParamsForm.getValues('chunkSplitter');
         const { chunks } = splitText2Chunks({
           text: previewFile.rawText || '',
-          chunkSize,
+          chunkSize: chunkData.chunkSize,
           maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
-          overlapRatio: chunkOverlapRatio,
+          overlapRatio: 0.2,
           customReg: chunkSplitter ? [chunkSplitter] : []
         });
         return {
@@ -64,18 +70,12 @@ const PreviewData = () => {
           previewFile.externalFileUrl ||
           previewFile.apiFileId ||
           '',
+        externalFileId: previewFile.externalFileId,
 
-        customPdfParse: processParamsForm.getValues('customPdfParse'),
-
-        trainingType: processParamsForm.getValues('trainingType'),
-        chunkSettingMode: processParamsForm.getValues('chunkSettingMode'),
-        chunkSplitMode: processParamsForm.getValues('chunkSplitMode'),
-        chunkSize,
-        chunkSplitter: processParamsForm.getValues('chunkSplitter'),
-        overlapRatio: chunkOverlapRatio,
-
+        ...chunkData,
         selector: processParamsForm.getValues('webSelector'),
-        externalFileId: previewFile.externalFileId
+        customPdfParse: processParamsForm.getValues('customPdfParse'),
+        overlapRatio: 0.2
       });
     },
     {

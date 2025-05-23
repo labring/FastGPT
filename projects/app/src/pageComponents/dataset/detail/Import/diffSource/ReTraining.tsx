@@ -1,6 +1,6 @@
 import React from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetImportContext } from '../Context';
+import { DatasetImportContext, defaultFormData } from '../Context';
 
 import dynamic from 'next/dynamic';
 import DataProcess from '../commonProgress/DataProcess';
@@ -48,18 +48,36 @@ const ReTraining = () => {
       ]);
 
       processParamsForm.reset({
-        customPdfParse: collection.customPdfParse,
+        customPdfParse: collection.customPdfParse || false,
         trainingType: collection.trainingType,
-        imageIndex: collection.imageIndex,
-        autoIndexes: collection.autoIndexes,
 
-        chunkSettingMode: collection.chunkSettingMode || ChunkSettingModeEnum.auto,
-        chunkSplitMode: collection.chunkSplitMode || DataChunkSplitModeEnum.size,
-        embeddingChunkSize: collection.chunkSize,
-        qaChunkSize: collection.chunkSize,
-        indexSize: collection.indexSize || 512,
-        chunkSplitter: collection.chunkSplitter,
-        webSelector: collection.metadata?.webPageSelector,
+        chunkTriggerType: collection.chunkTriggerType || defaultFormData.chunkTriggerType,
+        chunkTriggerMinSize: collection.chunkTriggerMinSize || defaultFormData.chunkTriggerMinSize,
+
+        dataEnhanceCollectionName:
+          collection.dataEnhanceCollectionName || defaultFormData.dataEnhanceCollectionName,
+
+        imageIndex: collection.imageIndex || defaultFormData.imageIndex,
+        autoIndexes: collection.autoIndexes || defaultFormData.autoIndexes,
+
+        chunkSettingMode: collection.chunkSettingMode || defaultFormData.chunkSettingMode,
+        chunkSplitMode: collection.chunkSplitMode || defaultFormData.chunkSplitMode,
+
+        paragraphChunkAIMode:
+          collection.paragraphChunkAIMode || defaultFormData.paragraphChunkAIMode,
+        paragraphChunkDeep: collection.paragraphChunkDeep || defaultFormData.paragraphChunkDeep,
+        paragraphChunkMinSize:
+          collection.paragraphChunkMinSize || defaultFormData.paragraphChunkMinSize,
+        paragraphChunkMaxSize:
+          collection.paragraphChunkMaxSize || defaultFormData.paragraphChunkMaxSize,
+
+        chunkSize: collection.chunkSize || defaultFormData.chunkSize,
+
+        chunkSplitter: collection.chunkSplitter || defaultFormData.chunkSplitter,
+
+        indexSize: collection.indexSize || defaultFormData.indexSize,
+
+        webSelector: collection.metadata?.webPageSelector || defaultFormData.webSelector,
         qaPrompt: collection.qaPrompt || Prompt_AgentQA.description
       });
     }
