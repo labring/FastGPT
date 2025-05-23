@@ -26,7 +26,7 @@ import { WorkflowContext } from '../../../context';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { SourceHandle } from '../render/Handle';
+import { MySourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
 import { getRefData } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
@@ -261,7 +261,7 @@ const ListItem = ({
           </Button>
         </Container>
         {!snapshot.isDragging && (
-          <SourceHandle
+          <MySourceHandle
             nodeId={nodeId}
             handleId={handleId}
             position={Position.Right}
