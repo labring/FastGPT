@@ -142,7 +142,6 @@ const Dataset = () => {
                 <MyMenu
                   size="md"
                   offset={[0, 10]}
-                  subMenuPlacement="left-start"
                   Button={
                     <Button variant={'primary'} px="0">
                       <Flex alignItems={'center'} px={5}>
