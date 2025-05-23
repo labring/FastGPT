@@ -1,0 +1,613 @@
+{
+  "author": "shikaiwei1",
+  "version": "497",
+  "name": "知识库引用-自定义引用模板",
+  "avatar": "/imgs/workflow/tool.svg",
+  "intro": "该插件可以将知识库搜索节点的输出内容，通过自定义模板拼接为文本内容。（如果知识库未搜索到内容，则输出空字符串）",
+  "showStatus": false,
+  "weight": 10,
+  "isTool": true,
+  "templateType": "tools",
+  "workflow": {
+    "nodes": [
+      {
+        "nodeId": "pluginInput",
+        "name": "workflow:template.plugin_start",
+        "intro": "workflow:intro_plugin_input",
+        "avatar": "core/workflow/template/workflowStart",
+        "flowNodeType": "pluginInput",
+        "showStatus": false,
+        "position": {
+          "x": 616.4226348688949,
+          "y": -165.05298493910115
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "datasetQuote",
+            "canEdit": true,
+            "key": "knowledges",
+            "label": "knowledges",
+            "description": "知识库搜索结果",
+            "defaultValue": "",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "datasetQuote"
+              ]
+            }
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "template",
+            "label": "template",
+            "description": "知识库拼接模板\n\n本插件会根据模板生成**单条**知识的内容，并组合所有的单条知识后，输出整个知识库引用模板。\n\n可选变量如下：\n{{id}} - 引用数据唯一Id\n{{q}} - 主要数据\n{{a}} - 辅助数据\n{{source}} - 引用来源\n{{sourceId}} - 引用来源Id\n{{index}} - 索引序列，第几个引用",
+            "defaultValue": "{{q}}\n{{a}}\n---",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "prefix",
+            "label": "prefix",
+            "description": "前缀，用于放在整个输出的前部。",
+            "defaultValue": "忘记你已有的知识，仅使用 <Reference></Reference> 标记中的内容作为本次对话的参考:\n<Reference>",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false
+          },
+          {
+            "renderTypeList": [
+              "input",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "string",
+            "canEdit": true,
+            "key": "suffix",
+            "label": "suffix",
+            "description": "后缀，放在整个知识库拼接的后面",
+            "defaultValue": "</Reference>\n\n回答要求：\n- 如果你不清楚答案，你需要澄清。\n- 避免提及你是从 <Reference></Reference> 获取的知识。\n- 保持答案与 <Reference></Reference> 中描述的一致。\n- 使用 Markdown 语法优化回答格式。\n- 使用与问题相同的语言回答。\n",
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": false
+          },
+          {
+            "renderTypeList": [
+              "numberInput",
+              "reference"
+            ],
+            "selectedTypeIndex": 0,
+            "valueType": "number",
+            "canEdit": true,
+            "key": "maxTokens",
+            "label": "maxTokens",
+            "description": "最大tokens数量。插件会确保完整引用单条的知识，同时不会超出这个tokens数量。如果是-1则代表不限制",
+            "defaultValue": -1,
+            "list": [
+              {
+                "label": "",
+                "value": ""
+              }
+            ],
+            "maxFiles": 5,
+            "canSelectFile": true,
+            "canSelectImg": true,
+            "required": true,
+            "min": -1
+          }
+        ],
+        "outputs": [
+          {
+            "id": "knowledges",
+            "valueType": "datasetQuote",
+            "key": "knowledges",
+            "label": "knowledges",
+            "type": "hidden"
+          },
+          {
+            "id": "template",
+            "valueType": "string",
+            "key": "template",
+            "label": "template",
+            "type": "hidden"
+          },
+          {
+            "id": "prefix",
+            "valueType": "string",
+            "key": "prefix",
+            "label": "prefix",
+            "type": "hidden"
+          },
+          {
+            "id": "suffix",
+            "valueType": "string",
+            "key": "suffix",
+            "label": "suffix",
+            "type": "hidden"
+          },
+          {
+            "id": "maxTokens",
+            "valueType": "number",
+            "key": "maxTokens",
+            "label": "maxTokens",
+            "type": "hidden"
+          }
+        ]
+      },
+      {
+        "nodeId": "pluginOutput",
+        "name": "common:core.module.template.self_output",
+        "intro": "workflow:intro_custom_plugin_output",
+        "avatar": "core/workflow/template/pluginOutput",
+        "flowNodeType": "pluginOutput",
+        "showStatus": false,
+        "position": {
+          "x": 2005.8898373469553,
+          "y": -136.14102645490743
+        },
+        "version": "481",
+        "inputs": [
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "result",
+            "label": "result",
+            "isToolOutput": false,
+            "description": "完成拼接的知识库文本",
+            "required": true,
+            "value": [
+              "y5h0b6g77kftEbpo",
+              "qLUQfhG0ILRX"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "totalTokens",
+            "label": "totalTokens",
+            "isToolOutput": false,
+            "description": "所有的tokens数量",
+            "required": true,
+            "value": [
+              "y5h0b6g77kftEbpo",
+              "viS3EhtGX6QtkNQ5"
+            ]
+          }
+        ],
+        "outputs": []
+      },
+      {
+        "nodeId": "pluginConfig",
+        "name": "common:core.module.template.system_config",
+        "intro": "",
+        "avatar": "core/workflow/template/systemConfig",
+        "flowNodeType": "pluginConfig",
+        "position": {
+          "x": 184.66337662472682,
+          "y": -214.05298493910115
+        },
+        "version": "4811",
+        "inputs": [],
+        "outputs": []
+      },
+      {
+        "nodeId": "y5h0b6g77kftEbpo",
+        "name": "代码运行",
+        "intro": "执行一段简单的脚本代码，通常用于进行复杂的数据处理。",
+        "avatar": "core/workflow/template/codeRun",
+        "flowNodeType": "code",
+        "showStatus": true,
+        "position": {
+          "x": 1270.0646387478942,
+          "y": -423.8961980299121
+        },
+        "version": "482",
+        "inputs": [
+          {
+            "key": "system_addInputParam",
+            "renderTypeList": [
+              "addInputParam"
+            ],
+            "valueType": "dynamic",
+            "label": "",
+            "required": false,
+            "description": "workflow:these_variables_will_be_input_parameters_for_code_execution",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "valueDesc": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "codeType",
+            "renderTypeList": [
+              "hidden"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "js",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "key": "code",
+            "renderTypeList": [
+              "custom"
+            ],
+            "label": "",
+            "valueType": "string",
+            "value": "function main({ knowledges, template, prefix = \"\", suffix = \"\", max_tokens }) {\n    // 当 knowledges 数组为空时直接返回空字符串\n    if (!knowledges || knowledges.length === 0) {\n        return {\n            result: \"\",\n            totalTokens: 0\n        };\n    }\n\n    let tokens = 0;\n    let content = \"\";\n    \n    for (let i = 0; i < knowledges.length; i++) {\n        const k = knowledges[i];\n        const currentTokens = k.tokens;\n        \n        if (max_tokens > 0 && tokens + currentTokens > max_tokens) {\n            break;\n        }\n        \n        tokens += currentTokens;\n        const replaced = template\n            .replace(\"{{id}}\", k.id)\n            .replace(\"{{q}}\", k.q)\n            .replace(\"{{a}}\", k.a)\n            .replace(\"{{source}}\", k.sourceName)\n            .replace(\"{{sourceId}}\", k.collectionId)\n            .replace(\"{{index}}\", i.toString());\n        \n        content += `\\n${replaced}`;\n    }\n    \n    const result = `${prefix}\\n${content}\\n${suffix}\\n`;\n    \n    return {\n        result: result,\n        totalTokens: tokens\n    };\n}",
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "datasetQuote",
+            "canEdit": true,
+            "key": "knowledges",
+            "label": "knowledges",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "knowledges"
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "template",
+            "label": "template",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "template"
+            ],
+            "valueDesc": "",
+            "description": "",
+            "debugLabel": "",
+            "toolDescription": ""
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "prefix",
+            "label": "prefix",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "prefix"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "string",
+            "canEdit": true,
+            "key": "suffix",
+            "label": "suffix",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "suffix"
+            ]
+          },
+          {
+            "renderTypeList": [
+              "reference"
+            ],
+            "valueType": "number",
+            "canEdit": true,
+            "key": "max_tokens",
+            "label": "max_tokens",
+            "customInputConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": true
+            },
+            "required": true,
+            "value": [
+              "pluginInput",
+              "maxTokens"
+            ]
+          }
+        ],
+        "outputs": [
+          {
+            "id": "system_rawResponse",
+            "key": "system_rawResponse",
+            "label": "workflow:full_response_data",
+            "valueType": "object",
+            "type": "static",
+            "description": ""
+          },
+          {
+            "id": "error",
+            "key": "error",
+            "label": "workflow:execution_error",
+            "description": "代码运行错误信息，成功时返回空",
+            "valueType": "object",
+            "type": "static"
+          },
+          {
+            "id": "system_addOutputParam",
+            "key": "system_addOutputParam",
+            "type": "dynamic",
+            "valueType": "dynamic",
+            "label": "",
+            "customFieldConfig": {
+              "selectValueTypeList": [
+                "string",
+                "number",
+                "boolean",
+                "object",
+                "arrayString",
+                "arrayNumber",
+                "arrayBoolean",
+                "arrayObject",
+                "arrayAny",
+                "any",
+                "chatHistory",
+                "datasetQuote",
+                "dynamic",
+                "selectDataset",
+                "selectApp"
+              ],
+              "showDescription": false,
+              "showDefaultValue": false
+            },
+            "description": "将代码中 return 的对象作为输出，传递给后续的节点。变量名需要对应 return 的 key",
+            "valueDesc": ""
+          },
+          {
+            "id": "qLUQfhG0ILRX",
+            "type": "dynamic",
+            "key": "result",
+            "valueType": "string",
+            "label": "result",
+            "valueDesc": "",
+            "description": ""
+          },
+          {
+            "id": "viS3EhtGX6QtkNQ5",
+            "valueType": "number",
+            "type": "dynamic",
+            "key": "totalTokens",
+            "label": "totalTokens"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "source": "pluginInput",
+        "target": "y5h0b6g77kftEbpo",
+        "sourceHandle": "pluginInput-source-right",
+        "targetHandle": "y5h0b6g77kftEbpo-target-left"
+      },
+      {
+        "source": "y5h0b6g77kftEbpo",
+        "target": "pluginOutput",
+        "sourceHandle": "y5h0b6g77kftEbpo-source-right",
+        "targetHandle": "pluginOutput-target-left"
+      }
+    ],
+    "chatConfig": {
+      "welcomeText": "",
+      "variables": [],
+      "questionGuide": {
+        "open": false,
+        "model": "gpt-4o-mini",
+        "customPrompt": ""
+      },
+      "ttsConfig": {
+        "type": "web"
+      },
+      "whisperConfig": {
+        "open": false,
+        "autoSend": false,
+        "autoTTSResponse": false
+      },
+      "chatInputGuide": {
+        "open": false,
+        "textList": [],
+        "customUrl": ""
+      },
+      "instruction": "该插件可以将知识库搜索节点的输出内容，通过自定义模板拼接为文本内容。注意：当知识库未搜索到任何内容时，输出为空字符串。",
+      "autoExecute": {
+        "open": false,
+        "defaultPrompt": ""
+      },
+      "_id": "680755e28d408080d61036ee"
+    }
+  }
+}
