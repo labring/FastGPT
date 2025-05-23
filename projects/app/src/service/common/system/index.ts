@@ -205,3 +205,5 @@ export async function initAppTemplateTypes() {
     console.error('Error initializing system templates:', error);
   }
 }
+
+export { defaultFeConfigs };
