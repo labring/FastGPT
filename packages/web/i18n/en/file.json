@@ -1,9 +1,18 @@
 {
+  " t('core.dataset.collection.Create Success', { count.core.dataset.collection.Create Success": "",
+  " t('file.Please select the image to upload select the image to upload'),\n        status.file.Please select the image to upload select the image to upload": "Please select the image to upload select the image to upload",
+  "Action": "Please select the image to upload",
+  "All images import failed": "All pictures failed to import",
+  "Please select the image to upload": "Please select the image to upload",
+  "Please select the image to upload select the image to upload": "",
+  "Please wait for all files to upload": "Please wait for all files to be uploaded to complete",
   "bucket_chat": "Conversation Files",
   "bucket_file": "Dataset Documents",
   "click_to_view_raw_source": "Click to View Original Source",
+  "delete_image": "Delete pictures",
   "file_name": "Filename",
   "file_size": "Filesize",
+  "reached_max_file_count": "Maximum file count reached",
   "release_the_mouse_to_upload_the_file": "Release Mouse to Upload File",
   "select_and_drag_file_tip": "Click or Drag Files Here to Upload",
   "select_file_amount_limit": "You can select up to {{max}} files",
@@ -12,7 +21,7 @@
   "support_file_type": "Supports {{fileType}} file types",
   "support_max_count": "Supports up to {{maxCount}} files",
   "support_max_size": "Maximum file size is {{maxSize}}",
+  "upload_error_description": "Only multiple files or a single folder can be uploaded at a time",
   "upload_failed": "Upload Failed",
-  "reached_max_file_count": "Maximum file count reached",
-  "upload_error_description": "Only multiple files or a single folder can be uploaded at a time"
+  "uploading": "Uploading..."
 }

@@ -172,14 +172,16 @@ export enum ImportDataSourceEnum {
   fileCustom = 'fileCustom',
   externalFile = 'externalFile',
   apiDataset = 'apiDataset',
-  reTraining = 'reTraining'
+  reTraining = 'reTraining',
+  imageDataset = 'imageDataset'
 }
 
 export enum TrainingModeEnum {
   chunk = 'chunk',
   qa = 'qa',
   auto = 'auto',
-  image = 'image'
+  image = 'image',
+  imageParse = 'imageParse'
 }
 
 /* ------------ search -------------- */

@@ -73,7 +73,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 3. 複数 の 効果測定 チャンネル
 
    - [x] シングルポイントナレッジベース 検索 テスト
-   - [x] 対話中 のフィードバック 参照 と 修正 ・ 削除機能
+   - [x] 対話中 のフィードバック 参照 と 修正 · 削除機能
    - [x] 完全 なコンテキストの 提示
    - [ ] 完全 なモジュール 中間値提示
 
@@ -96,7 +96,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt&uid=fnWRt09fZP)
 
-  デプロイ 後、データベースをセットアップするので、2～4分待 ってください。基本設定 を 使 っているので、最初 は 少 し 遅 いかもしれません。
+  デプロイ 後、データベースをセットアップするので、2~4分待 ってください。基本設定 を 使 っているので、最初 は 少 し 遅 いかもしれません。
 
 - [ローカル 開発入門](https://doc.tryfastgpt.ai/docs/development)
 - [FastGPT のデプロイ](https://doc.tryfastgpt.ai/docs/installation)

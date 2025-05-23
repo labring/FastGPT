@@ -38,10 +38,48 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
       manual: false
     }
   );
+
+  const isImageCollection = useMemo(() => {
+    if (!collection) return false;
+    if (
+      collection.metadata &&
+      typeof collection.metadata === 'object' &&
+      'isImageCollection' in collection.metadata
+    ) {
+      return collection.metadata.isImageCollection === true;
+    }
+    return collection.name?.includes('图片集合') || false;
+  }, [collection]);
+
   const metadataList = useMemo<{ label?: string; value?: any }[]>(() => {
     if (!collection) return [];
 
     const webSelector = collection?.metadata?.webPageSelector;
+
+    if (isImageCollection) {
+      return [
+        {
+          label: t('common:core.dataset.collection.metadata.source'),
+          value: t('common:core.dataset.Image collection')
+        },
+        {
+          label: t('common:core.dataset.collection.metadata.source name'),
+          value: collection.file?.filename || collection?.rawLink || collection?.name
+        },
+        {
+          label: t('common:core.dataset.collection.metadata.source size'),
+          value: collection.file ? formatFileSize(collection.file.length) : '-'
+        },
+        {
+          label: t('common:core.dataset.collection.metadata.Createtime'),
+          value: formatTime2YMDHM(collection.createTime)
+        },
+        {
+          label: t('common:core.dataset.collection.metadata.Updatetime'),
+          value: formatTime2YMDHM(collection.updateTime)
+        }
+      ];
+    }
 
     return [
       {
@@ -127,7 +165,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
           : [])
       }
     ];
-  }, [collection, t]);
+  }, [collection, t, isImageCollection]);
 
   return (
     <MyBox isLoading={isLoading} w={'100%'} h={'100%'} p={6}>
@@ -152,7 +190,7 @@ const MetaDataCard = ({ datasetId }: { datasetId: string }) => {
             </Flex>
           )
       )}
-      {collection?.sourceId && (
+      {collection?.sourceId && !isImageCollection && (
         <Button variant={'whitePrimary'} onClick={readSource}>
           <Flex py={2} px={3}>
             <MyIcon name="visible" w={'1rem'} mr={'0.38rem'} />

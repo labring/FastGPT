@@ -152,6 +152,7 @@ export type DatasetDataSchemaType = {
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
   rebuilding?: boolean;
+  imageFileId?: string;
 };
 
 export type DatasetDataTextSchemaType = {
@@ -185,6 +186,7 @@ export type DatasetTrainingSchemaType = {
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
   retryCount: number;
   errorMsg?: string;
+  imageFileId?: string;
 };
 
 export type CollectionWithDatasetType = DatasetCollectionSchemaType & {
@@ -257,7 +259,7 @@ export type DatasetDataItemType = {
   chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
-  // permission: DatasetPermission;
+  imageFileId?: string;
 };
 
 /* --------------- file ---------------------- */

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, Button, Textarea, ModalFooter, HStack, VStack } from '@chakra-ui/react';
-import { type UseFormRegister, useFieldArray, useForm } from 'react-hook-form';
+import type { UseFormRegister } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
@@ -14,7 +15,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
-import { type DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
+import type { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/web/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -148,7 +149,7 @@ const InputDataModal = ({
         q: e.q,
         a: currentTab === TabEnum.qa ? e.a : '',
         // Contains no default index
-        indexes: e.indexes?.filter((item) => !!item.text?.trim())
+        indexes: e.indexes.filter((item) => !!item.text?.trim())
       });
 
       return {
@@ -168,7 +169,7 @@ const InputDataModal = ({
         });
         onSuccess(e);
       },
-      errorToast: t('common:error.unKnow')
+      errorToast: t('common:common.error.unKnow')
     }
   );
 
@@ -229,7 +230,7 @@ const InputDataModal = ({
             overflow={'hidden'}
             textOverflow={'ellipsis'}
           >
-            {collection.sourceName || t('common:unknow_source')}
+            {collection.sourceName || t('unknow_source')}
           </Box>
         </Flex>
       }
@@ -417,7 +418,7 @@ const InputDataModal = ({
               // @ts-ignore
               onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
             >
-              {dataId ? t('common:confirm_update') : t('common:comfirm_import')}
+              {dataId ? t('common:common.Confirm Update') : t('comfirm_import')}
             </Button>
           </MyTooltip>
         </ModalFooter>

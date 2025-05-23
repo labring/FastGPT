@@ -1,4 +1,5 @@
 {
+  " error?.message || t('core.dataset.collection.Create Failed'),\n            status.core.dataset.collection.Create Failed": "",
   "Enable": "啟用",
   "add_file": "新增文件",
   "api_file": "API 檔案庫",
