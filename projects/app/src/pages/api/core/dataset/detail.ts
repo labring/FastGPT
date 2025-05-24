@@ -59,11 +59,18 @@ async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
           basePath: dataset.yuqueServer.basePath
         }
       : undefined,
-    feishuServer: dataset.feishuServer
+    feishuShareServer: dataset.feishuShareServer
       ? {
-          appId: dataset.feishuServer.appId,
+          appId: dataset.feishuShareServer.appId,
           appSecret: '',
-          folderToken: dataset.feishuServer.folderToken
+          folderToken: dataset.feishuShareServer.folderToken
+        }
+      : undefined,
+    feishuKnowledgeServer: dataset.feishuKnowledgeServer
+      ? {
+          appId: dataset.feishuKnowledgeServer.appId,
+          appSecret: '',
+          basePath: dataset.feishuKnowledgeServer.basePath
         }
       : undefined,
     permission,

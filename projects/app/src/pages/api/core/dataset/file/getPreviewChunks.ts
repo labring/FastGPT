@@ -122,8 +122,9 @@ async function handler(
     sourceId,
     selector,
     apiServer: dataset.apiServer,
-    feishuServer: dataset.feishuServer,
+    feishuShareServer: dataset.feishuShareServer,
     yuqueServer: dataset.yuqueServer,
+    feishuKnowledgeServer: dataset.feishuKnowledgeServer,
     externalFileId,
     customPdfParse
   });

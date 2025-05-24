@@ -68,7 +68,8 @@ async function handler(
     externalReadUrl,
     apiServer,
     yuqueServer,
-    feishuServer,
+    feishuShareServer,
+    feishuKnowledgeServer,
     autoSync,
     chunkSettings
   } = req.body;
@@ -176,10 +177,21 @@ async function handler(
         ...(!!yuqueServer?.basePath !== undefined && {
           'yuqueServer.basePath': yuqueServer?.basePath
         }),
-        ...(!!feishuServer?.appId && { 'feishuServer.appId': feishuServer.appId }),
-        ...(!!feishuServer?.appSecret && { 'feishuServer.appSecret': feishuServer.appSecret }),
-        ...(!!feishuServer?.folderToken && {
-          'feishuServer.folderToken': feishuServer.folderToken
+        ...(!!feishuShareServer?.appId && { 'feishuShareServer.appId': feishuShareServer.appId }),
+        ...(!!feishuShareServer?.appSecret && {
+          'feishuShareServer.appSecret': feishuShareServer.appSecret
+        }),
+        ...(!!feishuShareServer?.folderToken && {
+          'feishuShareServer.folderToken': feishuShareServer.folderToken
+        }),
+        ...(!!feishuKnowledgeServer?.appId && {
+          'feishuKnowledgeServer.appId': feishuKnowledgeServer.appId
+        }),
+        ...(!!feishuKnowledgeServer?.appSecret && {
+          'feishuKnowledgeServer.appSecret': feishuKnowledgeServer.appSecret
+        }),
+        ...(!!feishuKnowledgeServer?.basePath !== undefined && {
+          'feishuKnowledgeServer.basePath': feishuKnowledgeServer?.basePath
         }),
         ...(isMove && { inheritPermission: true }),
         ...(typeof autoSync === 'boolean' && { autoSync })
