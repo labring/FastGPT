@@ -36,8 +36,9 @@ async function handler(
     agentModel = getDatasetModel()?.model,
     vlmModel,
     apiServer,
-    feishuServer,
-    yuqueServer
+    feishuShareServer,
+    yuqueServer,
+    feishuKnowledgeServer
   } = req.body;
 
   // auth
@@ -84,7 +85,8 @@ async function handler(
           avatar,
           type,
           apiServer,
-          feishuServer,
+          feishuShareServer,
+          feishuKnowledgeServer,
           yuqueServer
         }
       ],

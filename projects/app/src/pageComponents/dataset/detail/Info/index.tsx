@@ -345,13 +345,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             </Box>
           </>
         )}
-
-        {datasetDetail.type === DatasetTypeEnum.feishu && (
+        {datasetDetail.type === DatasetTypeEnum.feishuKnowledge && (
           <>
             <Box w={'100%'} alignItems={'center'} pt={4}>
               <Flex justifyContent={'space-between'} mb={1}>
                 <FormLabel fontSize={'mini'} fontWeight={'500'}>
-                  {t('dataset:feishu_dataset_config')}
+                  {t('dataset:feishu_knowledge_dataset_config')}
                 </FormLabel>
                 <MyIcon
                   name={'edit'}
@@ -361,12 +360,37 @@ const Info = ({ datasetId }: { datasetId: string }) => {
                   onClick={() =>
                     setEditedAPIDataset({
                       id: datasetDetail._id,
-                      feishuServer: datasetDetail.feishuServer
+                      feishuKnowledgeServer: datasetDetail.feishuKnowledgeServer
                     })
                   }
                 />
               </Flex>
-              <Box fontSize={'mini'}>{datasetDetail.feishuServer?.folderToken}</Box>
+              <Box fontSize={'mini'}>{datasetDetail.feishuKnowledgeServer?.appId}</Box>
+            </Box>
+          </>
+        )}
+
+        {datasetDetail.type === DatasetTypeEnum.feishuShare && (
+          <>
+            <Box w={'100%'} alignItems={'center'} pt={4}>
+              <Flex justifyContent={'space-between'} mb={1}>
+                <FormLabel fontSize={'mini'} fontWeight={'500'}>
+                  {t('dataset:feishu_share_dataset_config')}
+                </FormLabel>
+                <MyIcon
+                  name={'edit'}
+                  w={'14px'}
+                  _hover={{ color: 'primary.600' }}
+                  cursor={'pointer'}
+                  onClick={() =>
+                    setEditedAPIDataset({
+                      id: datasetDetail._id,
+                      feishuShareServer: datasetDetail.feishuShareServer
+                    })
+                  }
+                />
+              </Flex>
+              <Box fontSize={'mini'}>{datasetDetail.feishuShareServer?.folderToken}</Box>
             </Box>
           </>
         )}
@@ -437,7 +461,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               id: datasetId,
               apiServer: data.apiServer,
               yuqueServer: data.yuqueServer,
-              feishuServer: data.feishuServer
+              feishuShareServer: data.feishuShareServer,
+              feishuKnowledgeServer: data.feishuKnowledgeServer
             })
           }
         />
