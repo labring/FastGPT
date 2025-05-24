@@ -276,10 +276,8 @@ export const useFeishuKnowledgeDatasetRequest = ({
   }: {
     apiFileId: string;
   }): Promise<ApiFileReadContentResponse> => {
-    console.log('apiFileId', apiFileId);
     const nodeToken = apiFileId.split('-')[1];
     const node = await getNodeInfo(nodeToken);
-    console.log('node', node);
     const objToken = node.node.obj_token;
 
     const [{ content }, { document }] = await Promise.all([
