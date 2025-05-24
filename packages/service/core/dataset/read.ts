@@ -11,8 +11,9 @@ import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import {
   type APIFileServer,
-  type FeishuServer,
-  type YuqueServer
+  type FeishuShareServer,
+  type YuqueServer,
+  type FeishuKnowledgeServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { getApiDatasetRequest } from './apiDataset';
 import Papa from 'papaparse';
@@ -70,8 +71,9 @@ export const readDatasetSourceRawText = async ({
   selector,
   externalFileId,
   apiServer,
-  feishuServer,
+  feishuShareServer,
   yuqueServer,
+  feishuKnowledgeServer,
   customPdfParse,
   getFormatText
 }: {
@@ -85,7 +87,8 @@ export const readDatasetSourceRawText = async ({
   selector?: string; // link selector
   externalFileId?: string; // external file dataset
   apiServer?: APIFileServer; // api dataset
-  feishuServer?: FeishuServer; // feishu dataset
+  feishuShareServer?: FeishuShareServer; // feishu dataset
+  feishuKnowledgeServer?: FeishuKnowledgeServer; // feishu dataset
   yuqueServer?: YuqueServer; // yuque dataset
 }): Promise<{
   title?: string;
@@ -129,8 +132,9 @@ export const readDatasetSourceRawText = async ({
   } else if (type === DatasetSourceReadTypeEnum.apiFile) {
     const { title, rawText } = await readApiServerFileContent({
       apiServer,
-      feishuServer,
+      feishuShareServer,
       yuqueServer,
+      feishuKnowledgeServer,
       apiFileId: sourceId,
       teamId,
       tmbId
@@ -148,16 +152,18 @@ export const readDatasetSourceRawText = async ({
 
 export const readApiServerFileContent = async ({
   apiServer,
-  feishuServer,
+  feishuShareServer,
   yuqueServer,
+  feishuKnowledgeServer,
   apiFileId,
   teamId,
   tmbId,
   customPdfParse
 }: {
   apiServer?: APIFileServer;
-  feishuServer?: FeishuServer;
+  feishuShareServer?: FeishuShareServer;
   yuqueServer?: YuqueServer;
+  feishuKnowledgeServer?: FeishuKnowledgeServer;
   apiFileId: string;
   teamId: string;
   tmbId: string;
@@ -170,7 +176,8 @@ export const readApiServerFileContent = async ({
     await getApiDatasetRequest({
       apiServer,
       yuqueServer,
-      feishuServer
+      feishuShareServer,
+      feishuKnowledgeServer
     })
   ).getFileContent({
     teamId,

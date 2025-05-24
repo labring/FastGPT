@@ -60,7 +60,8 @@ async function handler(
         type: DatasetSourceReadTypeEnum.apiFile,
         sourceId: collection.apiFileId,
         apiServer: collection.dataset.apiServer,
-        feishuServer: collection.dataset.feishuServer,
+        feishuShareServer: collection.dataset.feishuShareServer,
+        feishuKnowledgeServer: collection.dataset.feishuKnowledgeServer,
         yuqueServer: collection.dataset.yuqueServer
       };
     }

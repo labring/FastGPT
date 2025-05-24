@@ -117,13 +117,20 @@ export const DatasetPageContextProvider = ({
               basePath: data.yuqueServer.basePath
             }
           : state.yuqueServer,
-        feishuServer: data.feishuServer
+        feishuShareServer: data.feishuShareServer
           ? {
-              appId: data.feishuServer.appId,
+              appId: data.feishuShareServer.appId,
               appSecret: '',
-              folderToken: data.feishuServer.folderToken
+              folderToken: data.feishuShareServer.folderToken
             }
-          : state.feishuServer
+          : state.feishuShareServer,
+        feishuKnowledgeServer: data.feishuKnowledgeServer
+          ? {
+              appId: data.feishuKnowledgeServer.appId,
+              appSecret: '',
+              basePath: data.feishuKnowledgeServer.basePath
+            }
+          : state.feishuKnowledgeServer
       }));
     }
   };
