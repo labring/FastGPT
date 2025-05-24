@@ -2,7 +2,7 @@ import type {
   APIFileItem,
   ApiFileReadContentResponse,
   ApiDatasetDetailResponse,
-  FeishuServer
+  FeishuShareServer
 } from '@fastgpt/global/core/dataset/apiDataset';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import axios, { type Method } from 'axios';
@@ -31,7 +31,11 @@ type FeishuFileListResponse = {
 
 const feishuBaseUrl = process.env.FEISHU_BASE_URL || 'https://open.feishu.cn';
 
-export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: FeishuServer }) => {
+export const useFeishuShareDatasetRequest = ({
+  feishuShareServer
+}: {
+  feishuShareServer: FeishuShareServer;
+}) => {
   const instance = axios.create({
     baseURL: feishuBaseUrl,
     timeout: 60000
@@ -43,8 +47,8 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       const { data } = await axios.post<{ tenant_access_token: string }>(
         `${feishuBaseUrl}/open-apis/auth/v3/tenant_access_token/internal`,
         {
-          app_id: feishuServer.appId,
-          app_secret: feishuServer.appSecret
+          app_id: feishuShareServer.appId,
+          app_secret: feishuShareServer.appSecret
         }
       );
 
@@ -109,7 +113,7 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
       const data = await request<FeishuFileListResponse>(
         `/open-apis/drive/v1/files`,
         {
-          folder_token: parentId || feishuServer.folderToken,
+          folder_token: parentId || feishuShareServer.folderToken,
           page_size: 200,
           page_token: pageToken
         },

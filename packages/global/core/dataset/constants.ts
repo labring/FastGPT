@@ -7,7 +7,8 @@ export enum DatasetTypeEnum {
   websiteDataset = 'websiteDataset', // depp link
   externalFile = 'externalFile',
   apiDataset = 'apiDataset',
-  feishu = 'feishu',
+  feishuShare = 'feishuShare',
+  feishuKnowledge = 'feishuKnowledge',
   yuque = 'yuque'
 }
 export const DatasetTypeMap = {
@@ -36,9 +37,14 @@ export const DatasetTypeMap = {
     label: i18nT('dataset:api_file'),
     collectionLabel: i18nT('common:File')
   },
-  [DatasetTypeEnum.feishu]: {
-    icon: 'core/dataset/feishuDatasetOutline',
-    label: i18nT('dataset:feishu_dataset'),
+  [DatasetTypeEnum.feishuShare]: {
+    icon: 'core/dataset/feishuShareDatasetOutline',
+    label: i18nT('dataset:feishu_share_dataset'),
+    collectionLabel: i18nT('common:File')
+  },
+  [DatasetTypeEnum.feishuKnowledge]: {
+    icon: 'core/dataset/feishuKnowledgeDatasetOutline',
+    label: i18nT('dataset:feishu_knowledge_dataset'),
     collectionLabel: i18nT('common:File')
   },
   [DatasetTypeEnum.yuque]: {
