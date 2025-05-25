@@ -28,11 +28,11 @@ export const readXlsxRawText = async ({
       if (!header) return;
 
       const formatText = `| ${header.join(' | ')} |
-      | ${header.map(() => '---').join(' | ')} |
-      ${csvArr
-        .slice(1)
-        .map((row) => `| ${row.map((item) => item.replace(/\n/g, '\\n')).join(' | ')} |`)
-        .join('\n')}`;
+| ${header.map(() => '---').join(' | ')} |
+${csvArr
+  .slice(1)
+  .map((row) => `| ${row.map((item) => item.replace(/\n/g, '\\n')).join(' | ')} |`)
+  .join('\n')}`;
 
       return formatText;
     })
