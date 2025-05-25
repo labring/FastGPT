@@ -50,7 +50,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
-  res.setHeader('Content-Disposition', `attachment; filename=${dataset.name}-backup.csv;`);
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename=${encodeURIComponent(dataset.name)}-backup.csv;`
+  );
 
   const cursor = MongoDatasetData.find<DataItemType>(
     {
