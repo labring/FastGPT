@@ -4,7 +4,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import {
   transformPreviewHistories,
-  addStatisticalDataToHistoryItem
+  addStatisticalDataToHistoryItem,
+  getFlatAppResponses
 } from '@/global/core/chat/utils';
 
 const mockResponseData = {
@@ -13,6 +14,70 @@ const mockResponseData = {
   moduleName: 'test',
   moduleType: FlowNodeTypeEnum.chatNode
 };
+
+describe('getFlatAppResponses', () => {
+  it('should return empty array for empty input', () => {
+    expect(getFlatAppResponses([])).toEqual([]);
+  });
+
+  it('should handle single level responses', () => {
+    const responses = [
+      { ...mockResponseData, moduleType: FlowNodeTypeEnum.chatNode },
+      { ...mockResponseData, moduleType: FlowNodeTypeEnum.tools }
+    ];
+    expect(getFlatAppResponses(responses)).toEqual(responses);
+  });
+
+  it('should handle nested pluginDetail', () => {
+    const responses = [
+      {
+        ...mockResponseData,
+        pluginDetail: [{ ...mockResponseData, moduleType: FlowNodeTypeEnum.tools }]
+      }
+    ];
+    expect(getFlatAppResponses(responses)).toHaveLength(2);
+  });
+
+  it('should handle nested toolDetail', () => {
+    const responses = [
+      {
+        ...mockResponseData,
+        toolDetail: [{ ...mockResponseData, moduleType: FlowNodeTypeEnum.chatNode }]
+      }
+    ];
+    expect(getFlatAppResponses(responses)).toHaveLength(2);
+  });
+
+  it('should handle nested loopDetail', () => {
+    const responses = [
+      {
+        ...mockResponseData,
+        loopDetail: [{ ...mockResponseData, moduleType: FlowNodeTypeEnum.datasetSearchNode }]
+      }
+    ];
+    expect(getFlatAppResponses(responses)).toHaveLength(2);
+  });
+
+  it('should handle multiple levels of nesting', () => {
+    const responses = [
+      {
+        ...mockResponseData,
+        pluginDetail: [
+          {
+            ...mockResponseData,
+            toolDetail: [
+              {
+                ...mockResponseData,
+                loopDetail: [{ ...mockResponseData }]
+              }
+            ]
+          }
+        ]
+      }
+    ];
+    expect(getFlatAppResponses(responses)).toHaveLength(4);
+  });
+});
 
 describe('transformPreviewHistories', () => {
   it('should transform histories correctly with responseDetail=true', () => {
