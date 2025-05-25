@@ -31,6 +31,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { type PermissionValueType } from '@fastgpt/global/support/permission/type';
+import MyPopover from '@fastgpt/web/components/common/MyPopover';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -170,42 +171,31 @@ const Dataset = () => {
                     {
                       children: [
                         {
-                          icon: 'core/dataset/otherDataset',
-                          label: t('dataset:other_dataset'),
-                          description: t('dataset:external_other_dataset_desc'),
-                          menuList: [
-                            {
-                              children: [
-                                {
-                                  icon: 'core/dataset/externalDatasetColor',
-                                  label: t('dataset:api_file'),
-                                  description: t('dataset:external_file_dataset_desc'),
-                                  onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
-                                },
-                                ...(feConfigs?.show_dataset_feishu !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/feishuDatasetColor',
-                                        label: t('dataset:feishu_dataset'),
-                                        description: t('dataset:feishu_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
-                                      }
-                                    ]
-                                  : []),
-                                ...(feConfigs?.show_dataset_yuque !== false
-                                  ? [
-                                      {
-                                        icon: 'core/dataset/yuqueDatasetColor',
-                                        label: t('dataset:yuque_dataset'),
-                                        description: t('dataset:yuque_dataset_desc'),
-                                        onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
-                                      }
-                                    ]
-                                  : [])
-                              ]
-                            }
-                          ]
-                        }
+                          icon: 'core/dataset/externalDatasetColor',
+                          label: t('dataset:api_file'),
+                          description: t('dataset:external_file_dataset_desc'),
+                          onClick: () => onSelectDatasetType(DatasetTypeEnum.apiDataset)
+                        },
+                        ...(feConfigs?.show_dataset_feishu !== false
+                          ? [
+                              {
+                                icon: 'core/dataset/feishuDatasetColor',
+                                label: t('dataset:feishu_dataset'),
+                                description: t('dataset:feishu_dataset_desc'),
+                                onClick: () => onSelectDatasetType(DatasetTypeEnum.feishu)
+                              }
+                            ]
+                          : []),
+                        ...(feConfigs?.show_dataset_yuque !== false
+                          ? [
+                              {
+                                icon: 'core/dataset/yuqueDatasetColor',
+                                label: t('dataset:yuque_dataset'),
+                                description: t('dataset:yuque_dataset_desc'),
+                                onClick: () => onSelectDatasetType(DatasetTypeEnum.yuque)
+                              }
+                            ]
+                          : [])
                       ]
                     },
                     {
