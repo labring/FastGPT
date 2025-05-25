@@ -65,8 +65,8 @@ export const filterGPTMessageByMaxContext = async ({
     if (lastMessage.role === ChatCompletionRequestMessageRoleEnum.User) {
       const tokens = await countGptMessagesTokens([lastMessage, ...tmpChats]);
       maxContext -= tokens;
-      // 该轮信息整体 tokens 超出范围，这段数据不要了
-      if (maxContext < 0) {
+      // 该轮信息整体 tokens 超出范围，这段数据不要了。但是至少保证一组。
+      if (maxContext < 0 && chats.length > 0) {
         break;
       }
 

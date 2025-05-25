@@ -19,23 +19,25 @@ export function transformPreviewHistories(
   });
 }
 
+export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryItemResType[] => {
+  return res
+    .map((item) => {
+      return [
+        item,
+        ...getFlatAppResponses(item.pluginDetail || []),
+        ...getFlatAppResponses(item.toolDetail || []),
+        ...getFlatAppResponses(item.loopDetail || [])
+      ];
+    })
+    .flat();
+};
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
   if (historyItem.totalQuoteList !== undefined) return historyItem;
   if (!historyItem.responseData) return historyItem;
 
   // Flat children
-  const flatResData: ChatHistoryItemResType[] =
-    historyItem.responseData
-      ?.map((item) => {
-        return [
-          item,
-          ...(item.pluginDetail || []),
-          ...(item.toolDetail || []),
-          ...(item.loopDetail || [])
-        ];
-      })
-      .flat() || [];
+  const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
   return {
     ...historyItem,
