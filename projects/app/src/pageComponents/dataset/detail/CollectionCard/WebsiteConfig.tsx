@@ -100,8 +100,6 @@ const WebsiteConfigModal = ({
       paragraphChunkDeep: chunkSettings?.paragraphChunkDeep || defaultFormData.paragraphChunkDeep,
       paragraphChunkMinSize:
         chunkSettings?.paragraphChunkMinSize || defaultFormData.paragraphChunkMinSize,
-      paragraphChunkMaxSize:
-        chunkSettings?.paragraphChunkMaxSize || defaultFormData.paragraphChunkMaxSize,
 
       chunkSize: chunkSettings?.chunkSize || defaultFormData.chunkSize,
 

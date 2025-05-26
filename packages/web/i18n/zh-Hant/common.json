@@ -554,7 +554,7 @@
   "core.dataset.training.Agent queue": "問答訓練排隊中",
   "core.dataset.training.Auto mode": "補充索引",
   "core.dataset.training.Auto mode Tip": "透過子索引以及呼叫模型產生相關問題與摘要，來增加資料區塊的語意豐富度，更有利於檢索。需要消耗更多的儲存空間並增加 AI 呼叫次數。",
-  "core.dataset.training.Chunk mode": "直接分塊",
+  "core.dataset.training.Chunk mode": "分塊存儲",
   "core.dataset.training.Full": "預計 20 分鐘以上",
   "core.dataset.training.Leisure": "閒置",
   "core.dataset.training.QA mode": "問答對提取",

@@ -120,7 +120,6 @@ export const computeChunkSize = (params: {
 
   return Math.min(params.chunkSize ?? chunkAutoChunkSize, getLLMMaxChunkSize(params.llmModel));
 };
-
 export const computeChunkSplitter = (params: {
   chunkSettingMode?: ChunkSettingModeEnum;
   chunkSplitMode?: DataChunkSplitModeEnum;
@@ -129,8 +128,21 @@ export const computeChunkSplitter = (params: {
   if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
     return undefined;
   }
-  if (params.chunkSplitMode === DataChunkSplitModeEnum.size) {
+  if (params.chunkSplitMode !== DataChunkSplitModeEnum.char) {
     return undefined;
   }
   return params.chunkSplitter;
+};
+export const computeParagraphChunkDeep = (params: {
+  chunkSettingMode?: ChunkSettingModeEnum;
+  chunkSplitMode?: DataChunkSplitModeEnum;
+  paragraphChunkDeep?: number;
+}) => {
+  if (params.chunkSettingMode === ChunkSettingModeEnum.auto) {
+    return 5;
+  }
+  if (params.chunkSplitMode === DataChunkSplitModeEnum.paragraph) {
+    return params.paragraphChunkDeep;
+  }
+  return 0;
 };
