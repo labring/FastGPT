@@ -1,5 +1,6 @@
 import iconv from 'iconv-lite';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
+import { matchMdImg } from '@fastgpt/global/common/string/markdown';
 
 const rawEncodingList = [
   'ascii',
@@ -34,7 +35,10 @@ export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): Read
     }
   })();
 
+  const { text, imageList } = matchMdImg(content);
+
   return {
-    rawText: content
+    rawText: text,
+    imageList
   };
 };

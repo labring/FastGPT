@@ -658,7 +658,7 @@ export async function searchDatasetData(
         tokenLen: 0
       };
     } catch (error) {
-      addLog.error('multiQueryRecall error', error);
+      addLog.error('Full text search error', error);
       return {
         fullTextRecallResults: [],
         tokenLen: 0

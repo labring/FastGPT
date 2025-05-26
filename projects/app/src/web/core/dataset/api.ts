@@ -16,7 +16,6 @@ import type {
   ApiDatasetCreateDatasetCollectionParams,
   CreateDatasetCollectionParams,
   CreateDatasetCollectionTagParams,
-  CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
   ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,

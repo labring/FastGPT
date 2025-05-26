@@ -47,7 +47,6 @@ export const ChunkSettings = {
   },
   paragraphChunkDeep: Number,
   paragraphChunkMinSize: Number,
-  paragraphChunkMaxSize: Number,
   chunkSize: Number,
   chunkSplitter: String,
 
