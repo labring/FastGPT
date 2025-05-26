@@ -151,7 +151,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const customRegLen = customReg.length;
   const markdownIndex = paragraphChunkDeep - 1;
-  const forbidOverlapIndex = customRegLen + markdownIndex + 5;
+  const forbidOverlapIndex = customRegLen + markdownIndex + 4;
 
   const markdownHeaderRules = ((deep?: number): { reg: RegExp; maxLen: number }[] => {
     if (!deep || deep === 0) return [];
@@ -179,10 +179,6 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
     { reg: /([\n](```[\s\S]*?```|~~~[\s\S]*?~~~))/g, maxLen: maxSize }, // code block
     // HTML Table tag 尽可能保障完整
-    {
-      reg: /(<table[\s\S]*?<\/table>)/g,
-      maxLen: maxSize
-    },
     {
       reg: /(\n\|(?:(?:[^\n|]+\|){1,})\n\|(?:[:\-\s]+\|){1,}\n(?:\|(?:[^\n|]+\|)*\n)*)/g,
       maxLen: chunkSize
@@ -324,6 +320,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     const splitTexts = getSplitTexts({ text, step });
 
     const chunks: string[] = [];
+
     for (let i = 0; i < splitTexts.length; i++) {
       const item = splitTexts[i];
 
