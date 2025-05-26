@@ -222,7 +222,8 @@ export const rawText2Chunks = ({
   // 1. 选择最大值条件，只有超过了最大值(默认为模型的最大值*0.7），才会触发分块
   if (chunkTriggerType === ChunkTriggerConfigTypeEnum.maxSize) {
     const textLength = rawText.trim().length;
-    if (textLength < (splitProps.maxSize || 16000)) {
+    const maxSize = splitProps.maxSize ? splitProps.maxSize * 0.7 : 16000;
+    if (textLength < maxSize) {
       return [
         {
           q: rawText,
