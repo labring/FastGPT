@@ -17,12 +17,8 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import type {
-  ParagraphChunkAIModeEnum
-} from '@fastgpt/global/core/dataset/constants';
-import {
-  ChunkTriggerConfigTypeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import type { ParagraphChunkAIModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { ChunkTriggerConfigTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   DataChunkSplitModeEnum,
   DatasetCollectionDataProcessModeEnum,
